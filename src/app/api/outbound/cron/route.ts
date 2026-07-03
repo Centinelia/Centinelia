@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendWhatsApp } from '@/lib/whatsapp/send';
 
 // Configurable: hours before appointment to send reminder
 const REMINDER_HOURS_BEFORE = parseInt(process.env.OUTBOUND_REMINDER_HOURS ?? '24');
@@ -31,6 +32,7 @@ async function fireVapiCall(params: {
       type: 'outboundPhoneCall',
       assistantId: params.assistantId,
       phoneNumberId: params.phoneNumberId,
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/outbound/vapi-webhook?secret=${process.env.VAPI_SERVER_SECRET}`,
       customer: {
         number: params.customerNumber,
         name: params.nombre,
@@ -54,10 +56,10 @@ async function fireVapiCall(params: {
 }
 
 export async function GET(req: NextRequest) {
-  // Secure with CRON_SECRET
-  const secret =
-    req.headers.get('x-cron-secret') ?? req.nextUrl.searchParams.get('secret');
-  if (secret !== process.env.CRON_SECRET) {
+  // Vercel sends Authorization: Bearer <CRON_SECRET> automatically for cron jobs.
+  // CRON_SECRET is a system env var set by Vercel — no need to embed it in vercel.json.
+  const authHeader = req.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -174,6 +176,61 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── 2b. WhatsApp appointment reminders ───────────────────────────────────
+  const { data: waAppointments } = await supabase
+    .from('wa_appointments')
+    .select('*, voice_agents(id, vapi_agent_id, vapi_phone_number_id, timezone)')
+    .eq('status', 'confirmada')
+    .eq('reminder_sent', false)
+    .gte('starts_at', windowStart.toISOString())
+    .lte('starts_at', windowEnd.toISOString());
+
+  for (const apt of waAppointments ?? []) {
+    const agent = apt.voice_agents as {
+      id: string;
+      vapi_agent_id: string;
+      vapi_phone_number_id: string;
+      timezone: string;
+    } | null;
+
+    if (!agent?.vapi_agent_id || !agent?.vapi_phone_number_id || !apt.customer_number) continue;
+
+    if (!isWithinBusinessHours(agent.timezone)) {
+      results.skipped++;
+      continue;
+    }
+
+    const motivo = `recordatorio de cita — ${apt.servicio ?? 'su cita'} el ${apt.fecha}${apt.hora ? ` a las ${apt.hora}` : ''}`;
+
+    const vapiCallId = await fireVapiCall({
+      assistantId: agent.vapi_agent_id,
+      phoneNumberId: agent.vapi_phone_number_id,
+      customerNumber: apt.customer_number,
+      nombre: apt.nombre ?? undefined,
+      motivo,
+    });
+
+    if (vapiCallId) {
+      await Promise.all([
+        supabase.from('outbound_calls').insert({
+          agent_id:       agent.id,
+          appointment_id: apt.id,
+          telefono:       apt.customer_number,
+          nombre:         apt.nombre,
+          motivo:         'recordatorio_cita',
+          vapi_call_id:   vapiCallId,
+          status:         'calling',
+          scheduled_at:   now.toISOString(),
+          called_at:      now.toISOString(),
+        }),
+        supabase.from('wa_appointments').update({ reminder_sent: true }).eq('id', apt.id),
+      ]);
+      results.fired++;
+    } else {
+      results.errors++;
+    }
+  }
+
   // ── 3. Retries for no-answer (attempt 1, retry after 10 min) ─────────────
   const { data: retries } = await supabase
     .from('outbound_calls')
@@ -225,6 +282,62 @@ export async function GET(req: NextRequest) {
       ]);
       results.fired++;
     }
+  }
+
+  // ── 4. WhatsApp broadcasts ────────────────────────────────────────────────
+  const { data: readyBroadcasts } = await supabase
+    .from('wa_broadcasts')
+    .select('id, message, voice_agents(wa_phone_number)')
+    .eq('status', 'pending')
+    .lte('scheduled_at', now.toISOString());
+
+  for (const broadcast of readyBroadcasts ?? []) {
+    const waAgent  = broadcast.voice_agents as unknown as { wa_phone_number: string } | null;
+    const waNumber = waAgent?.wa_phone_number;
+
+    await supabase.from('wa_broadcasts').update({ status: 'sending' }).eq('id', broadcast.id);
+
+    const { data: batch } = await supabase
+      .from('wa_broadcast_recipients')
+      .select('id, nombre, telefono')
+      .eq('broadcast_id', broadcast.id)
+      .eq('status', 'pending')
+      .limit(50);
+
+    for (const r of batch ?? []) {
+      const msg  = broadcast.message.replace(/\{\{nombre\}\}/gi, r.nombre ?? '');
+      const sent = await sendWhatsApp(r.telefono, msg, waNumber);
+
+      await supabase
+        .from('wa_broadcast_recipients')
+        .update({
+          status:  sent ? 'sent' : 'failed',
+          sent_at: sent ? now.toISOString() : null,
+          error:   sent ? null : 'Twilio rejected — contact may require an approved template',
+        })
+        .eq('id', r.id);
+
+      if (sent) results.fired++; else results.errors++;
+    }
+
+    // Update counters; mark completed only when no pending recipients remain
+    const { data: allRecipients } = await supabase
+      .from('wa_broadcast_recipients')
+      .select('status')
+      .eq('broadcast_id', broadcast.id);
+
+    const sentCount    = allRecipients?.filter(r => r.status === 'sent').length    ?? 0;
+    const failedCount  = allRecipients?.filter(r => r.status === 'failed').length  ?? 0;
+    const pendingCount = allRecipients?.filter(r => r.status === 'pending').length ?? 0;
+
+    await supabase
+      .from('wa_broadcasts')
+      .update({
+        sent:   sentCount,
+        failed: failedCount,
+        status: pendingCount === 0 ? 'completed' : 'sending',
+      })
+      .eq('id', broadcast.id);
   }
 
   return NextResponse.json({ ok: true, timestamp: now.toISOString(), ...results });

@@ -25,7 +25,7 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/outbound/cron?secret=tF2j4%2Bh2Tq6xn4UQhRaTmoaj4Uxv8PSDO0vAABnqfgE%3D",
+      "path": "/api/outbound/cron",
       "schedule": "*/5 * * * *"
     }
   ]

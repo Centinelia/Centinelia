@@ -7,8 +7,9 @@ export const dynamic = 'force-dynamic';
 export default async function WhatsAppAgentsPage() {
   const supabase = createAdminClient();
   const { data: agents } = await supabase
-    .from('whatsapp_agents')
+    .from('voice_agents')
     .select('*')
+    .not('wa_phone_number', 'is', null)
     .order('created_at', { ascending: false });
 
   return (

@@ -1,6 +1,6 @@
-import type { WAAgent } from '@/types/whatsapp-agent';
+import type { VoiceAgent, BusinessHours } from '@/types/agent';
 
-export function buildWASystemPrompt(agent: WAAgent): string {
+export function buildWASystemPrompt(agent: VoiceAgent): string {
   const agentName = agent.agent_name?.trim() || agent.business_name;
 
   const now = new Date().toLocaleString('es-MX', {
@@ -69,15 +69,15 @@ Usa esta información para responder preguntas. Si algo no está aquí, dilo con
   return blocks.join('\n\n');
 }
 
-function formatBusinessHours(hours: NonNullable<WAAgent['business_hours']>): string {
-  const days: Array<[keyof NonNullable<WAAgent['business_hours']>, string]> = [
-    ['monday', 'Lunes'],
-    ['tuesday', 'Martes'],
+function formatBusinessHours(hours: BusinessHours): string {
+  const days: Array<[keyof BusinessHours, string]> = [
+    ['monday',    'Lunes'],
+    ['tuesday',   'Martes'],
     ['wednesday', 'Miércoles'],
-    ['thursday', 'Jueves'],
-    ['friday', 'Viernes'],
-    ['saturday', 'Sábado'],
-    ['sunday', 'Domingo'],
+    ['thursday',  'Jueves'],
+    ['friday',    'Viernes'],
+    ['saturday',  'Sábado'],
+    ['sunday',    'Domingo'],
   ];
 
   return days

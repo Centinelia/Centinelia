@@ -40,3 +40,27 @@ export function nextResetDate(): string {
   d.setMonth(d.getMonth() + 1, 1);
   return d.toISOString().slice(0, 10);
 }
+
+// ─── WhatsApp Messages Plans ──────────────────────────────────────────────────
+
+export type WaMessagesPlan = 'wa_200' | 'wa_500' | 'wa_1000';
+
+export interface WaMessagesPlanConfig {
+  label: string;
+  messages: number;
+  mxn: number;
+  priceId: () => string;
+}
+
+export const WA_MESSAGES_PLAN_CONFIG: Record<WaMessagesPlan, WaMessagesPlanConfig> = {
+  wa_200:  { label: 'WA Starter', messages: 200,  mxn: 249,  priceId: () => process.env.STRIPE_WA_200! },
+  wa_500:  { label: 'WA Growth',  messages: 500,  mxn: 449,  priceId: () => process.env.STRIPE_WA_500! },
+  wa_1000: { label: 'WA Scale',   messages: 1000, mxn: 749,  priceId: () => process.env.STRIPE_WA_1000! },
+};
+
+export function waMsgsPlanFromPriceId(priceId: string): WaMessagesPlan | null {
+  for (const [plan, cfg] of Object.entries(WA_MESSAGES_PLAN_CONFIG) as [WaMessagesPlan, WaMessagesPlanConfig][]) {
+    if (cfg.priceId() === priceId) return plan;
+  }
+  return null;
+}

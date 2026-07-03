@@ -8,6 +8,11 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 const NO_ANSWER_REASONS = ['no-answer', 'voicemail', 'machine_detected', 'busy', 'failed'];
 
 export async function POST(req: NextRequest) {
+  const vapiSecret = process.env.VAPI_SERVER_SECRET;
+  if (vapiSecret && req.nextUrl.searchParams.get('secret') !== vapiSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body = await req.json();
   const { message } = body;
   const type: string = message?.type ?? body?.type ?? '';

@@ -7,7 +7,14 @@ import { createAdminClient } from '@/lib/supabase/admin';
 //   agent_id    — UUID of the voice_agent
 //   scheduled_at — ISO datetime for when to fire the calls
 
+const ADMIN_COOKIE = 'Centinelia_admin';
+
 export async function POST(req: NextRequest) {
+  const token = req.cookies.get(ADMIN_COOKIE)?.value;
+  if (token !== process.env.ADMIN_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   const agent_id = formData.get('agent_id') as string | null;
