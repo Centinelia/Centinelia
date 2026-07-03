@@ -299,6 +299,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   multilingual:            'Multiidioma',
   client_memory:           'Memoria',
   whatsapp_escalation:     'WhatsApp',
+  outbound_calls:          'Salientes',
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

@@ -20,6 +20,9 @@ export interface AgentFeatures {
   multilingual: boolean;        // Español + inglés automático
   client_memory: boolean;       // Recordar historial del cliente
   whatsapp_escalation: boolean; // WhatsApp si línea ocupada o fuera de horario
+
+  // Fase 2 — llamadas salientes (por activar cuando Phase 2 lance)
+  outbound_calls: boolean;      // Permite disparar llamadas salientes desde el portal
 }
 
 // ─── Business hours ───────────────────────────────────────────────────────────
@@ -51,6 +54,7 @@ export interface VoiceAgent {
   business_phone_display: string; // número que el agente menciona verbalmente
   phone_number: string;           // número Twilio/Vapi asignado
   vapi_agent_id?: string;
+  vapi_phone_number_id?: string;  // ID del número Vapi asignado (necesario para outbound)
   elevenlabs_voice_id?: string;
   plan: Plan;
   features: AgentFeatures;
@@ -129,6 +133,7 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     multilingual:            false,
     client_memory:           false,
     whatsapp_escalation:     false,
+    outbound_calls:          false,
   },
   estandar: {
     receptionist:            true,
@@ -140,6 +145,7 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     multilingual:            false,
     client_memory:           false,
     whatsapp_escalation:     true,
+    outbound_calls:          false,
   },
   pro: {
     receptionist:            true,
@@ -151,6 +157,7 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     multilingual:            true,
     client_memory:           true,
     whatsapp_escalation:     true,
+    outbound_calls:          true,
   },
 };
 
@@ -176,4 +183,5 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   multilingual:            'Multiidioma (ES + EN)',
   client_memory:           'Memoria de cliente',
   whatsapp_escalation:     'Escalación a WhatsApp',
+  outbound_calls:          'Llamadas salientes',
 };
