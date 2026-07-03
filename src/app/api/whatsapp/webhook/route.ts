@@ -109,6 +109,20 @@ export async function POST(req: NextRequest) {
 
   const agent = agentRow as VoiceAgent;
 
+  // 2a. Quota guard — only enforced when agent is on an active WA plan
+  if (
+    agent.wa_messages_plan &&
+    agent.wa_messages_included > 0 &&
+    agent.wa_messages_used >= agent.wa_messages_included
+  ) {
+    await sendWhatsApp(
+      customerNumber,
+      'Lo sentimos, hemos alcanzado el límite de mensajes de este mes. Contáctanos por otro medio.',
+      agentWaNumber,
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   // 2. Find or create conversation
   const { data: existingConv } = await supabase
     .from('wa_conversations')

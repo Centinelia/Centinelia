@@ -293,7 +293,7 @@ export async function GET(req: NextRequest) {
   // ── 4. WhatsApp broadcasts ────────────────────────────────────────────────
   const { data: readyBroadcasts } = await supabase
     .from('wa_broadcasts')
-    .select('id, message, voice_agents(wa_phone_number)')
+    .select('id, agent_id, message, voice_agents(wa_phone_number)')
     .eq('status', 'pending')
     .lte('scheduled_at', now.toISOString());
 
@@ -310,6 +310,7 @@ export async function GET(req: NextRequest) {
       .eq('status', 'pending')
       .limit(50);
 
+    let sentInBatch = 0;
     for (const r of batch ?? []) {
       const msg  = broadcast.message.replace(/\{\{nombre\}\}/gi, r.nombre ?? '');
       const sent = await sendWhatsApp(r.telefono, msg, waNumber);
@@ -323,7 +324,15 @@ export async function GET(req: NextRequest) {
         })
         .eq('id', r.id);
 
-      if (sent) results.fired++; else results.errors++;
+      if (sent) { results.fired++; sentInBatch++; } else results.errors++;
+    }
+
+    // Track broadcast messages against the agent's monthly quota
+    if (sentInBatch > 0) {
+      await supabase.rpc('increment_wa_messages_used', {
+        p_agent_id: (broadcast as unknown as { agent_id: string }).agent_id,
+        p_count:    sentInBatch,
+      });
     }
 
     // Update counters; mark completed only when no pending recipients remain
