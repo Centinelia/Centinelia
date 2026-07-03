@@ -102,25 +102,29 @@ async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string): Pr
   return res.ok;
 }
 
+export interface ProvisionResult {
+  phoneNumber: string;
+  vapiPhoneId: string | null;
+}
+
 /**
  * Full provisioning:
  * 1. Buy a Mexican number in Twilio
  * 2. Import it into Vapi (Vapi auto-configures the Twilio webhook)
  * 3. Assign the Vapi assistant
  *
- * Returns the E.164 phone number on success, null on failure.
+ * Returns { phoneNumber, vapiPhoneId } on success, null on failure.
  */
-export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string): Promise<string | null> {
+export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string): Promise<ProvisionResult | null> {
   const phoneNumber = await buyTwilioNumber(areaCode);
   if (!phoneNumber) return null;
 
   const vapiPhoneId = await importToVapi(phoneNumber);
   if (!vapiPhoneId) {
-    // Number bought but Vapi import failed, still return so DB records it
     console.error('provision: number bought but Vapi import failed:', phoneNumber);
-    return phoneNumber;
+    return { phoneNumber, vapiPhoneId: null };
   }
 
   await assignAssistant(vapiPhoneId, vapiAssistantId);
-  return phoneNumber;
+  return { phoneNumber, vapiPhoneId };
 }

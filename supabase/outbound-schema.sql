@@ -11,6 +11,31 @@ ALTER TABLE appointments_voice ADD COLUMN IF NOT EXISTS reminder_sent boolean NO
 -- This is the Vapi phone registry ID (different from the Twilio number)
 ALTER TABLE voice_agents ADD COLUMN IF NOT EXISTS vapi_phone_number_id text;
 
+-- Link a WhatsApp agent to a voice agent so WA-booked appointments can get reminder calls
+ALTER TABLE whatsapp_agents ADD COLUMN IF NOT EXISTS voice_agent_id uuid references voice_agents(id) on delete set null;
+
+-- WhatsApp appointments: booked via Claude tool use in the WA webhook
+create table if not exists wa_appointments (
+  id               uuid primary key default gen_random_uuid(),
+  agent_id         uuid not null references whatsapp_agents(id) on delete cascade,
+  voice_agent_id   uuid references voice_agents(id) on delete set null,
+  customer_number  text not null,
+  nombre           text,
+  servicio         text,
+  fecha            text,
+  hora             text,
+  notas            text,
+  status           text not null default 'confirmada'
+                     check (status in ('confirmada', 'cancelada', 'completada')),
+  starts_at        timestamptz,
+  reminder_sent    boolean not null default false,
+  created_at       timestamptz not null default now()
+);
+
+create index if not exists wa_appointments_agent_idx on wa_appointments(agent_id);
+create index if not exists wa_appointments_reminder_idx
+  on wa_appointments(starts_at, reminder_sent) where reminder_sent = false;
+
 -- Outbound contacts: manual lists uploaded via CSV or portal
 create table if not exists outbound_contacts (
   id            uuid primary key default gen_random_uuid(),
@@ -59,3 +84,39 @@ create index if not exists outbound_calls_agent_idx
   on outbound_calls(agent_id);
 create index if not exists outbound_calls_vapi_call_id_idx
   on outbound_calls(vapi_call_id);
+
+-- ── WhatsApp Broadcasts ───────────────────────────────────────────────────────
+-- Campaigns that send a message to a list of contacts.
+-- Supports {{nombre}} variable in the message body.
+-- Note: Twilio rejects first-contact messages without an approved Meta template.
+
+create table if not exists wa_broadcasts (
+  id           uuid primary key default gen_random_uuid(),
+  agent_id     uuid not null references whatsapp_agents(id) on delete cascade,
+  message      text not null,
+  scheduled_at timestamptz not null,
+  status       text not null default 'pending'
+                 check (status in ('pending', 'sending', 'completed', 'cancelled')),
+  total        integer not null default 0,
+  sent         integer not null default 0,
+  failed       integer not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists wa_broadcasts_status_scheduled_idx
+  on wa_broadcasts(status, scheduled_at);
+
+create table if not exists wa_broadcast_recipients (
+  id           uuid primary key default gen_random_uuid(),
+  broadcast_id uuid not null references wa_broadcasts(id) on delete cascade,
+  nombre       text,
+  telefono     text not null,
+  status       text not null default 'pending'
+                 check (status in ('pending', 'sent', 'failed')),
+  error        text,
+  sent_at      timestamptz,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists wa_broadcast_recipients_broadcast_status_idx
+  on wa_broadcast_recipients(broadcast_id, status);

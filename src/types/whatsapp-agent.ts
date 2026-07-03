@@ -1,36 +1,5 @@
-export interface WAAgent {
-  id: string;
-  client_name: string;
-  business_name: string;
-  business_description: string;
-  wa_phone_number: string;       // e.g. '+14155238886'
-  agent_name?: string;
-  timezone: string;
-  knowledge_base?: string;
-  transfer_whatsapp?: string;    // owner notification number
-  client_email?: string;
-  business_hours?: {
-    monday:    WADaySchedule;
-    tuesday:   WADaySchedule;
-    wednesday: WADaySchedule;
-    thursday:  WADaySchedule;
-    friday:    WADaySchedule;
-    saturday:  WADaySchedule;
-    sunday:    WADaySchedule;
-  };
-  capture_leads: boolean;
-  capture_appointments: boolean;
-  capture_orders: boolean;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WADaySchedule {
-  open:  boolean;
-  from?: string;
-  to?:   string;
-}
+// WAAgent is deprecated — WhatsApp capabilities are now part of VoiceAgent.
+// These supporting types are kept for the webhook and conversation logic.
 
 export interface WAConversation {
   id: string;

@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MINUTES_PLAN_CONFIG, minutesPlanFromPriceId, nextResetDate } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MINUTES_PLAN_CONFIG, minutesPlanFromPriceId, nextResetDate, WA_MESSAGES_PLAN_CONFIG, waMsgsPlanFromPriceId } from '@/lib/billing/plans';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
@@ -178,9 +178,13 @@ export async function POST(req: NextRequest) {
         const areaCode = session.metadata?.area_code || undefined;
         let phoneNumber: string | null = null;
         if (vapiId) {
-          phoneNumber = await provisionPhoneNumber(vapiId, areaCode);
-          if (phoneNumber) {
-            await supabase.from('voice_agents').update({ phone_number: phoneNumber }).eq('id', agentId);
+          const provisioned = await provisionPhoneNumber(vapiId, areaCode);
+          if (provisioned) {
+            phoneNumber = provisioned.phoneNumber;
+            await supabase.from('voice_agents').update({
+              phone_number:          provisioned.phoneNumber,
+              vapi_phone_number_id:  provisioned.vapiPhoneId ?? null,
+            }).eq('id', agentId);
           }
         }
 
@@ -223,9 +227,13 @@ export async function POST(req: NextRequest) {
 
       const sub         = await stripe.subscriptions.retrieve(subId);
       const agentId     = sub.metadata?.agent_id;
-      const minutesPlan = minutesPlanFromPriceId(sub.items.data[0]?.price.id ?? '');
-      if (!agentId || !minutesPlan) break;
+      const priceId     = sub.items.data[0]?.price.id ?? '';
+      const minutesPlan = minutesPlanFromPriceId(priceId);
+      const waMsgsPlan  = waMsgsPlanFromPriceId(priceId);
+      if (!agentId || (!minutesPlan && !waMsgsPlan)) break;
 
+      // ── Minutes renewal ───────────────────────────────────────────────────
+      if (!minutesPlan) break;
       const minutesCfg = MINUTES_PLAN_CONFIG[minutesPlan];
 
       // Rollover: carry unused minutes (capped at 1× the plan base)
@@ -270,6 +278,26 @@ export async function POST(req: NextRequest) {
         .single();
       if (agent?.phone_number && agent?.vapi_agent_id) {
         await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
+      }
+
+      // ── WA Messages renewal (separate subscription) ───────────────────────
+      if (waMsgsPlan) {
+        const waCfg = WA_MESSAGES_PLAN_CONFIG[waMsgsPlan];
+
+        const { data: prevWa } = await supabase
+          .from('voice_agents')
+          .select('wa_messages_used, wa_messages_included')
+          .eq('id', agentId)
+          .single();
+
+        const waUnused   = prevWa ? Math.max(0, prevWa.wa_messages_included - prevWa.wa_messages_used) : 0;
+        const waRollover = Math.min(waUnused, waCfg.messages);
+
+        await supabase.from('voice_agents').update({
+          wa_messages_plan:     waMsgsPlan,
+          wa_messages_included: waCfg.messages + waRollover,
+          wa_messages_used:     0,
+        }).eq('id', agentId);
       }
       break;
     }

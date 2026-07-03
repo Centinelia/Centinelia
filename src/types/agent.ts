@@ -1,4 +1,7 @@
-﻿// ─── Plans ────────────────────────────────────────────────────────────────────
+﻿import type { WaMessagesPlan } from '@/lib/billing/plans';
+export type { WaMessagesPlan };
+
+// ─── Plans ────────────────────────────────────────────────────────────────────
 
 export type Plan = 'basico' | 'estandar' | 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
@@ -85,6 +88,14 @@ export interface VoiceAgent {
   contract_text?: string | null;          // custom contract override (null = use template)
   contract_accepted_at?: string | null;   // ISO timestamp of client acceptance
   contract_ip?: string | null;            // IP at acceptance
+  // WhatsApp capabilities (Fase 2)
+  wa_phone_number?: string;        // número Twilio asignado para WhatsApp
+  capture_leads: boolean;          // capturar prospectos por WA
+  capture_appointments: boolean;   // agendar citas por WA
+  capture_orders: boolean;         // tomar pedidos por WA
+  wa_messages_plan?: WaMessagesPlan;
+  wa_messages_included: number;    // plan base + rollover del mes anterior
+  wa_messages_used: number;        // mensajes usados este mes
   active: boolean;
   created_at: string;
   updated_at: string;

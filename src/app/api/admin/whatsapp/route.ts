@@ -4,8 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export async function GET() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
-    .from('whatsapp_agents')
+    .from('voice_agents')
     .select('*')
+    .not('wa_phone_number', 'is', null)
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -31,12 +32,14 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
-    .from('whatsapp_agents')
+    .from('voice_agents')
     .insert({
       client_name:           client_name.trim(),
       business_name:         business_name.trim(),
       business_description:  business_description?.trim() ?? '',
       wa_phone_number:       wa_phone_number.trim().replace(/\s/g, ''),
+      phone_number:          wa_phone_number.trim().replace(/\s/g, ''),
+      business_phone_display: '',
       agent_name:            agent_name?.trim() ?? null,
       timezone:              timezone?.trim() ?? 'America/Monterrey',
       knowledge_base:        knowledge_base?.trim() ?? null,

@@ -4,7 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { buildWASystemPrompt } from '@/lib/whatsapp/prompt-builder';
-import type { WAAgent, WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
+import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
+import type { VoiceAgent } from '@/types/agent';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,9 +94,9 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // 1. Find the WhatsApp agent by wa_phone_number
+  // 1. Find the agent by wa_phone_number
   const { data: agentRow } = await supabase
-    .from('whatsapp_agents')
+    .from('voice_agents')
     .select('*')
     .eq('wa_phone_number', agentWaNumber)
     .eq('active', true)
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const agent = agentRow as WAAgent;
+  const agent = agentRow as VoiceAgent;
 
   // 2. Find or create conversation
   const { data: existingConv } = await supabase
@@ -281,8 +282,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 8. Send reply to customer
+  // 8. Send reply to customer + track usage
   await sendWhatsApp(customerNumber, claudeReply, agentWaNumber);
+
+  await supabase.rpc('increment_wa_messages_used', { p_agent_id: agent.id, p_count: 1 });
 
   return NextResponse.json({ ok: true });
 }
