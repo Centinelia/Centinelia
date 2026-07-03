@@ -94,10 +94,10 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // 1. Find the agent by wa_phone_number
+  // 1. Find the WhatsApp agent by wa_phone_number, joining voice_agents for full feature set
   const { data: agentRow } = await supabase
-    .from('voice_agents')
-    .select('*')
+    .from('whatsapp_agents')
+    .select('*, voice_agents(*)')
     .eq('wa_phone_number', agentWaNumber)
     .eq('active', true)
     .maybeSingle();
@@ -107,21 +107,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const agent = agentRow as VoiceAgent;
-
-  // 2a. Quota guard — only enforced when agent is on an active WA plan
-  if (
-    agent.wa_messages_plan &&
-    agent.wa_messages_included > 0 &&
-    agent.wa_messages_used >= agent.wa_messages_included
-  ) {
-    await sendWhatsApp(
-      customerNumber,
-      'Lo sentimos, hemos alcanzado el límite de mensajes de este mes. Contáctanos por otro medio.',
-      agentWaNumber,
-    );
-    return NextResponse.json({ ok: true });
-  }
+  // Merge voice_agents fields (full config) with whatsapp_agents overrides
+  const { voice_agents: voiceAgent, ...waFields } = agentRow;
+  const agent = { ...(voiceAgent ?? {}), ...waFields } as WAAgent;
 
   // 2. Find or create conversation
   const { data: existingConv } = await supabase
