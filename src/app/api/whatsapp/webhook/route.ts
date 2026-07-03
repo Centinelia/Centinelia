@@ -32,6 +32,23 @@ function validateTwilioSignature(rawBody: string, signature: string): boolean {
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const CITA_TOOL: Anthropic.Tool = {
+  name: 'agendar_cita',
+  description: 'Agenda una cita para el cliente. Úsala cuando hayas recopilado nombre, servicio o motivo, fecha y hora preferida.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      nombre:   { type: 'string', description: 'Nombre completo del cliente' },
+      servicio: { type: 'string', description: 'Servicio o motivo de la cita' },
+      fecha:    { type: 'string', description: 'Fecha de la cita (ej: martes 15 de julio de 2026)' },
+      hora:     { type: 'string', description: 'Hora de la cita (ej: 10:00)' },
+      telefono: { type: 'string', description: 'Teléfono de confirmación' },
+      notas:    { type: 'string', description: 'Notas adicionales' },
+    },
+    required: ['nombre', 'fecha'],
+  },
+};
+
 const LEAD_TOOL: Anthropic.Tool = {
   name: 'guardar_lead',
   description: 'Guarda los datos de contacto del prospecto o cliente interesado. Úsala cuando hayas recopilado al menos nombre y un medio de contacto.',
@@ -109,7 +126,10 @@ export async function POST(req: NextRequest) {
 
   // 4. Call Claude with optional tool use
   const tools: Anthropic.Tool[] = [];
-  if (agent.capture_leads || agent.capture_appointments || agent.capture_orders) {
+  if (agent.capture_appointments) {
+    tools.push(CITA_TOOL);
+  }
+  if (agent.capture_leads || agent.capture_orders) {
     tools.push(LEAD_TOOL);
   }
 
@@ -132,6 +152,45 @@ export async function POST(req: NextRequest) {
     for (const block of response.content) {
       if (block.type === 'text') {
         claudeReply += block.text;
+      } else if (block.type === 'tool_use' && block.name === 'agendar_cita') {
+        const args = block.input as {
+          nombre?: string; servicio?: string; fecha?: string;
+          hora?: string; telefono?: string; notas?: string;
+        };
+
+        await supabase.from('wa_appointments').insert({
+          agent_id:        agent.id,
+          customer_number: customerNumber,
+          nombre:          args.nombre ?? null,
+          servicio:        args.servicio ?? null,
+          fecha:           args.fecha ?? null,
+          hora:            args.hora ?? null,
+          notas:           args.notas ?? null,
+          status:          'confirmada',
+        }).then(({ error }) => {
+          if (error) console.error('wa/webhook: appointment insert error', error.message);
+        });
+
+        if (!claudeReply) {
+          const followUp = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [
+              ...claudeMessages,
+              { role: 'assistant', content: response.content },
+              {
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: block.id, content: 'Cita registrada correctamente.' }],
+              },
+            ],
+            tools,
+          });
+          claudeReply = followUp.content
+            .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+            .map(b => b.text)
+            .join('');
+        }
       } else if (block.type === 'tool_use' && block.name === 'guardar_lead') {
         capturedLead = block.input as WACapturedLead;
 
@@ -155,8 +214,8 @@ export async function POST(req: NextRequest) {
             ],
           });
           claudeReply = followUp.content
-            .filter(b => b.type === 'text')
-            .map(b => (b as Anthropic.TextBlock).text)
+            .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+            .map(b => b.text)
             .join('');
         }
       }

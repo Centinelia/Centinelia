@@ -44,9 +44,10 @@ Después de guardar, confírmale que el equipo le contactará pronto.`);
   if (agent.capture_appointments) {
     blocks.push(`AGENDA DE CITAS:
 Puedes agendar citas o consultas.
-Pide: nombre del cliente, servicio o motivo, fecha y hora preferida, teléfono de confirmación.
+Pide al cliente, una pregunta a la vez: nombre completo, servicio o motivo, fecha preferida y hora.
 Confirma los detalles antes de registrar.
-Usa la herramienta guardar_lead para registrar la cita con el campo servicio indicando la fecha/hora solicitada.`);
+Cuando tengas nombre y fecha (mínimo), usa la herramienta agendar_cita para guardar la cita.
+Después de registrarla, confírmale al cliente con un resumen claro: qué, cuándo y a qué hora.`);
   }
 
   if (agent.capture_orders) {
