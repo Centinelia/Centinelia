@@ -4,6 +4,7 @@ import { createVapiAssistant, updateVapiAssistant, assignAssistantToPhone } from
 import type { VoiceAgent } from '@/types/agent';
 
 import { scrapeWebsite } from '@/lib/scrape/website';
+import { configureTwilioWhatsAppWebhook } from '@/lib/twilio/configure-webhook';
 
 // Shared resync helper, updates website_knowledge and syncs Vapi
 export async function resyncWebsite(agentId: string): Promise<{ ok: boolean; chars?: number; error?: string }> {
@@ -62,6 +63,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const agent = data as VoiceAgent;
   const isFullUpdate = body.business_name !== undefined;
+
+  // Auto-configure Twilio webhook when a WhatsApp number is set/changed
+  if (body.wa_phone_number) {
+    const result = await configureTwilioWhatsAppWebhook(body.wa_phone_number);
+    if (!result.ok) {
+      console.warn(`Twilio webhook auto-config failed for ${body.wa_phone_number}:`, result.error);
+    }
+  }
 
   if (isFullUpdate) {
     if (agent.vapi_agent_id) {

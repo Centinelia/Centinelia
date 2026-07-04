@@ -613,6 +613,9 @@ export default function LandingPage() {
 
           {/* Header */}
           <AnimatedSection className="text-center mb-16">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accentLt }}>
+              Precios
+            </p>
             <h2
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}
