@@ -64,7 +64,7 @@ export default function MinutesAdjuster({
 
   const activeAction = ACTIONS.find(a => a.id === action)!;
   const amountLabel  = action === 'set_used' ? 'Fijar minutos usados a' : 'Cantidad de minutos';
-  const btnLabel     = action === 'credit' ? `+ ${amount || '0'} min` : action === 'debit' ? `− ${amount || '0'} min` : `Fijar en ${amount || '0'}`;
+  const btnLabel     = action === 'credit' ? `Acreditar ${amount || '0'} min` : action === 'debit' ? `Descontar ${amount || '0'} min` : `Fijar en ${amount || '0'}`;
 
   return (
     <div className="p-5 rounded-xl flex flex-col gap-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

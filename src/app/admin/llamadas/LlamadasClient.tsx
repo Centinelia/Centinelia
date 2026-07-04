@@ -293,7 +293,7 @@ export default function LlamadasClient({
       <div className="flex flex-col gap-3 mb-5">
 
         {/* Row 1: phone search + agent combobox */}
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {/* Phone number search */}
           <div className="relative flex-1">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-3)' }} />
@@ -309,7 +309,7 @@ export default function LlamadasClient({
           </div>
 
           {/* Agent combobox */}
-          <div className="w-56 flex-shrink-0">
+          <div className="sm:w-56 sm:flex-shrink-0">
             <AgentCombobox
               agents={agents}
               selectedId={currentFilters.agentId}

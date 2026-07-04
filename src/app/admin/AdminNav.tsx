@@ -1,33 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, BarChart3, Plus, CreditCard, LogOut, FileText, Users, MessageCircle, BookOpen, Phone, Bot } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, MessageCircle, Settings, Phone } from 'lucide-react';
 
 const links = [
   { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/clientes',     icon: Users,           label: 'Clientes' },
-  { href: '/admin/agentes',      icon: Settings,        label: 'Agentes de voz' },
+  { href: '/admin/agentes',      icon: Bot,             label: 'Agentes' },
   { href: '/admin/llamadas',     icon: Phone,           label: 'Llamadas' },
-  { href: '/admin/demo',         icon: Bot,             label: 'Agente demo' },
   { href: '/admin/whatsapp',     icon: MessageCircle,   label: 'WhatsApp' },
   { href: '/admin/analytics',    icon: BarChart3,       label: 'Analytics' },
   { href: '/admin/billing',      icon: CreditCard,      label: 'Facturación' },
   { href: '/admin/contratos',    icon: FileText,        label: 'Contratos' },
-  { href: '/admin/conocimiento', icon: BookOpen,        label: 'Conocimiento' },
 ];
 
 export default function AdminNav() {
   const path = usePathname();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await fetch('/api/admin/auth/logout', { method: 'POST' });
-    router.push('/admin/login');
-  };
 
   return (
-    <nav className="flex-1 p-4 flex flex-col gap-0.5 overflow-y-auto">
+    <nav className="flex-1 min-h-0 p-4 flex flex-col gap-0.5 overflow-y-auto">
+      <Link
+        href="/admin/agentes/nuevo"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity mb-2"
+        style={{ background: '#6C3BFF', color: '#FAFBFF' }}
+      >
+        <Plus size={14} />
+        Nuevo agente
+      </Link>
+
       {links.map(({ href, icon: Icon, label }) => {
         const active = path === href || path.startsWith(href + '/');
         return (
@@ -47,24 +48,27 @@ export default function AdminNav() {
         );
       })}
 
-      <div className="mt-4 pt-4 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-        <Link
-          href="/admin/agentes/nuevo"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-          style={{ background: '#6C3BFF', color: '#FAFBFF' }}
-        >
-          <Plus size={14} />
-          Nuevo agente
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors text-left"
-          style={{ color: 'rgba(255,255,255,0.3)' }}
-        >
-          <LogOut size={13} />
-          Cerrar sesión
-        </button>
+      {/* Configuración — fijo al fondo del nav */}
+      <div className="mt-auto pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        {(() => {
+          const active = path === '/admin/configuracion' || path.startsWith('/admin/configuracion/');
+          return (
+            <Link
+              href="/admin/configuracion"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
+              style={{
+                color: active ? '#9B6DFF' : 'rgba(255,255,255,0.45)',
+                background: active ? 'rgba(108,59,255,0.12)' : 'transparent',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              <Settings size={16} />
+              Configuración
+            </Link>
+          );
+        })()}
       </div>
+
     </nav>
   );
 }

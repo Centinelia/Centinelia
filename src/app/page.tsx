@@ -726,11 +726,11 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-5 mb-5">
             {MINUTE_TIERS.map((t, i) => (
               <AnimatedSection key={t.id} delay={i * 0.08}>
               <div
-                className="rounded-2xl p-6 flex flex-col h-full relative overflow-hidden"
+                className="rounded-xl sm:rounded-2xl p-3 sm:p-6 flex flex-col h-full relative overflow-hidden"
                 style={{
                   background: t.popular ? 'linear-gradient(145deg, rgba(108,59,255,0.2), rgba(108,59,255,0.08))' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${t.popular ? 'rgba(108,59,255,0.5)' : 'rgba(255,255,255,0.09)'}`,
@@ -741,41 +741,73 @@ export default function LandingPage() {
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
                     background: 'linear-gradient(90deg, #6C3BFF, #9B6DFF88)' }} />
                 )}
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold" style={{ color: '#fff' }}>{t.label}</p>
-                  {t.popular && (
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: '#6C3BFF', color: '#fff' }}>
-                      <Star size={9} style={{ fill: '#fff' }} /> Más usado
+                {/* Desktop layout */}
+                <div className="hidden sm:block">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-bold text-base" style={{ color: '#fff' }}>{t.label}</p>
+                    {t.popular && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: '#6C3BFF', color: '#fff' }}>
+                        <Star size={9} style={{ fill: '#fff' }} /> Más usado
+                      </span>
+                    )}
+                  </div>
+                  <div className="mb-4">
+                    <span className="text-5xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                      {fmt(t.minutes)}
                     </span>
-                  )}
+                    <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
+                  </div>
+                  <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                        ${fmt(t.price)}
+                      </span>
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/registro?tier=${t.id}`}
+                    className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
+                    style={{
+                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
+                      color: '#fff',
+                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    }}
+                  >
+                    Seleccionar
+                  </Link>
                 </div>
-                <div className="mb-4">
-                  <span className="text-5xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                    {fmt(t.minutes)}
-                  </span>
-                  <span className="text-sm ml-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>min / mes</span>
-                </div>
-                <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+
+                {/* Mobile layout — compact 3-col */}
+                <div className="sm:hidden flex flex-col gap-1.5">
+                  <p className="font-bold text-[11px] leading-none" style={{ color: 'rgba(255,255,255,0.7)' }}>{t.label}</p>
+                  <div>
+                    <span className="text-xl font-bold tabular-nums leading-none" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                      {fmt(t.minutes)}
+                    </span>
+                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>min</span>
+                  </div>
+                  <div className="w-full h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                  <div>
+                    <span className="text-[11px] font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
                       ${fmt(t.price)}
                     </span>
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes + IVA</span>
+                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
                   </div>
+                  <Link
+                    href={`/registro?tier=${t.id}`}
+                    className="block text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:opacity-90 mt-0.5"
+                    style={{
+                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
+                      color: '#fff',
+                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    }}
+                  >
+                    Elegir
+                  </Link>
                 </div>
-                <Link
-                  href={`/registro?tier=${t.id}`}
-                  className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
-                  style={{
-                    background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
-                    color: '#fff',
-                    border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
-                  }}
-                >
-                  Seleccionar
-                </Link>
               </div>
               </AnimatedSection>
             ))}

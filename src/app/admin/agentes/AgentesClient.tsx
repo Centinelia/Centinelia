@@ -1,199 +1,377 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Search, X, ChevronLeft, ChevronRight,
+  CheckCircle2, XCircle, AlertTriangle, ArrowRight, ChevronDown,
+} from 'lucide-react';
 import Link from 'next/link';
-import { Plus, PhoneCall, CheckCircle, XCircle, Search } from 'lucide-react';
-import type { VoiceAgent } from '@/types/agent';
 import { PLAN_LABELS } from '@/types/agent';
 
-type StatusFilter = 'todos' | 'activos' | 'pausados';
-type PlanFilter   = 'todos' | 'comercial' | 'pro';
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Filters = { status: string; plan: string; search: string; sort: string };
+
+interface AgentRow {
+  id:               string;
+  business_name:    string;
+  client_name:      string;
+  plan:             string;
+  minutes_plan:     string | null;
+  minutes_used:     number;
+  minutes_included: number;
+  active:           boolean;
+  billing_status:   string | null;
+  phone_number:     string | null;
+}
+
+interface Props {
+  agents:         AgentRow[];
+  totalCount:     number;
+  page:           number;
+  totalPages:     number;
+  currentFilters: Filters;
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const PLAN_COLORS: Record<string, string> = {
-  comercial: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6',
+  pro:       '#a855f7',
 };
 
-export default function AgentesClient({ list }: { list: VoiceAgent[] }) {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('todos');
-  const [plan,   setPlan]   = useState<PlanFilter>('todos');
+const STATUS_OPTS = [
+  { value: '',         label: 'Todos'   },
+  { value: 'activos',  label: 'Activos' },
+  { value: 'pausados', label: 'Pausados'},
+];
 
-  const filtered = useMemo(() => {
-    let result = list;
-    if (status === 'activos')  result = result.filter(a => a.active);
-    if (status === 'pausados') result = result.filter(a => !a.active);
-    if (plan !== 'todos')      result = result.filter(a => a.plan === plan);
-    if (!search.trim()) return result;
-    const q = search.toLowerCase();
-    return result.filter(a =>
-      a.business_name.toLowerCase().includes(q) ||
-      a.client_name.toLowerCase().includes(q) ||
-      (a.phone_number ?? '').includes(q)
-    );
-  }, [list, search, status, plan]);
+const PLAN_OPTS = [
+  { value: '',          label: 'Todos',     color: undefined    },
+  { value: 'comercial', label: 'Comercial', color: '#3b82f6'    },
+  { value: 'pro',       label: 'Pro',       color: '#a855f7'    },
+];
 
-  const activeCount = list.filter(a => a.active).length;
-  const pausedCount = list.filter(a => !a.active).length;
-  const planCounts  = {
-    comercial: list.filter(a => a.plan === 'comercial').length,
-    pro:       list.filter(a => a.plan === 'pro').length,
+const SORT_OPTS = [
+  { value: 'recent', label: 'Más recientes' },
+  { value: 'name',   label: 'A–Z'           },
+];
+
+// ── URL helper ────────────────────────────────────────────────────────────────
+
+function buildUrl(filters: Filters, page: number) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.plan)   params.set('plan',   filters.plan);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.sort && filters.sort !== 'recent') params.set('sort', filters.sort);
+  if (page > 1)       params.set('page',   String(page));
+  const qs = params.toString();
+  return '/admin/agentes' + (qs ? '?' + qs : '');
+}
+
+// ── Agent row ─────────────────────────────────────────────────────────────────
+
+function AgentRowItem({ agent }: { agent: AgentRow }) {
+  const pct      = agent.minutes_included > 0
+    ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
+  const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e';
+  const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
+
+  return (
+    <Link
+      href={`/admin/agentes/${agent.id}`}
+      className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:border-[rgba(108,59,255,0.35)]"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+    >
+      {/* Active indicator */}
+      <div className="flex-shrink-0">
+        {agent.active
+          ? <CheckCircle2 size={15} style={{ color: '#22c55e' }} />
+          : <XCircle      size={15} style={{ color: '#6b7280' }} />}
+      </div>
+
+      {/* Business + client */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
+            {agent.business_name}
+          </span>
+          {agent.billing_status === 'pago_fallido' && (
+            <span title="Pago fallido">
+              <AlertTriangle size={12} style={{ color: '#ef4444' }} />
+            </span>
+          )}
+        </div>
+        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+          {agent.client_name}{agent.phone_number ? ` · ${agent.phone_number}` : ''}
+        </div>
+      </div>
+
+      {/* Plan + minutes + arrow */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <span
+          className="px-2 py-0.5 rounded-full text-xs font-semibold hidden sm:inline"
+          style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}
+        >
+          {PLAN_LABELS[agent.plan as keyof typeof PLAN_LABELS] ?? agent.plan}
+        </span>
+
+        {agent.minutes_included > 0 && (
+          <div className="hidden md:flex flex-col items-end gap-1 w-24">
+            <span className="text-xs tabular-nums font-medium" style={{ color: barColor }}>
+              {agent.minutes_used}/{agent.minutes_included} min
+            </span>
+            <div className="w-full h-1 rounded-full" style={{ background: 'var(--c-border)' }}>
+              <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: barColor }} />
+            </div>
+          </div>
+        )}
+
+        <ArrowRight size={13} style={{ color: 'var(--c-text-4)' }} />
+      </div>
+    </Link>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function AgentesClient({
+  agents, totalCount, page, totalPages, currentFilters,
+}: Props) {
+  const router  = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [searchInput, setSearchInput] = useState(currentFilters.search);
+  const [openDropdown, setOpenDropdown] = useState<'status' | 'plan' | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => { setSearchInput(currentFilters.search); }, [currentFilters.search]);
+
+  const navigate = (overrides: Partial<Filters & { page: number }>) => {
+    startTransition(() => {
+      const filters: Filters = { ...currentFilters, ...overrides };
+      const p = 'page' in overrides ? (overrides.page ?? 1) : 1;
+      router.push(buildUrl(filters, p));
+    });
+  };
+
+  const commitSearch = () => {
+    if (searchInput !== currentFilters.search) navigate({ search: searchInput });
+  };
+
+  const hasFilters = !!(currentFilters.status || currentFilters.plan || currentFilters.search);
+
+  const clearAll = () => {
+    setSearchInput('');
+    startTransition(() => router.push('/admin/agentes'));
   };
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Agentes de Voz</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-            {list.length} agente{list.length !== 1 ? 's' : ''} configurado{list.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <Link
-          href="/admin/agentes/nuevo"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-          style={{ background: '#6C3BFF', color: '#FAFBFF' }}
-        >
-          <Plus size={15} />
-          Nuevo agente
-        </Link>
-      </div>
+    <div style={{ opacity: pending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
 
-      {list.length === 0 ? (
-        <div className="text-center py-24" style={{ color: 'var(--c-text-3)' }}>
-          <PhoneCall size={40} className="mx-auto mb-4 opacity-30" />
-          <p className="text-lg" style={{ color: 'var(--c-text-2)' }}>Sin agentes configurados</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>Crea tu primer agente para empezar.</p>
+      {/* ── Filter bar ── */}
+      <div className="flex flex-col gap-3 mb-5">
+
+        {/* Row 1: search + sort */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'var(--c-text-3)' }} />
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && commitSearch()}
+              onBlur={commitSearch}
+              placeholder="Buscar por negocio, cliente o número… (Enter)"
+              disabled={pending}
+              className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm outline-none"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            />
+          </div>
+
+          <select
+            value={currentFilters.sort}
+            onChange={e => navigate({ sort: e.target.value })}
+            disabled={pending}
+            className="px-3 py-2.5 rounded-xl text-sm outline-none cursor-pointer"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', colorScheme: 'dark' }}
+          >
+            {SORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
-      ) : (
-        <>
-          {/* Filters + Search */}
-          <div className="flex flex-col gap-2 mb-5">
-            <div className="flex flex-col sm:flex-row gap-2">
-              {/* Status */}
-              <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                {([
-                  { key: 'todos',    label: `Todos (${list.length})` },
-                  { key: 'activos',  label: `Activos (${activeCount})` },
-                  { key: 'pausados', label: `Pausados (${pausedCount})` },
-                ] as { key: StatusFilter; label: string }[]).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setStatus(key)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+
+        {/* Row 2: status + plan pills — desktop */}
+        <div className="hidden sm:flex items-center gap-2 flex-wrap">
+          <div className="flex gap-1 p-1 rounded-xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            {STATUS_OPTS.map(o => {
+              const active = currentFilters.status === o.value;
+              return (
+                <button key={o.value} onClick={() => navigate({ status: o.value })} disabled={pending}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-1 p-1 rounded-xl"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            {PLAN_OPTS.map(({ value, label, color }) => {
+              const active = currentFilters.plan === value;
+              const c = color ?? '#6C3BFF';
+              return (
+                <button key={value} onClick={() => navigate({ plan: value })} disabled={pending}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  style={{ background: active ? c : 'transparent', color: active ? '#fff' : (color ?? 'var(--c-text-3)') }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {hasFilters && (
+            <button onClick={clearAll}
+              className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+              style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+              <X size={11} /> Limpiar filtros
+            </button>
+          )}
+        </div>
+
+        {/* Row 2: dropdowns — mobile */}
+        <div className="sm:hidden flex items-center gap-2" ref={dropdownRef}>
+          {/* Status dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{
+                background: 'var(--c-surface)',
+                border: `1px solid ${currentFilters.status ? '#6C3BFF' : 'var(--c-border)'}`,
+                color: currentFilters.status ? '#9B6DFF' : 'var(--c-text-2)',
+              }}>
+              Estatus: {STATUS_OPTS.find(o => o.value === currentFilters.status)?.label ?? 'Todos'}
+              <ChevronDown size={11} />
+            </button>
+            {openDropdown === 'status' && (
+              <div className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-50 min-w-[130px]"
+                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {STATUS_OPTS.map(o => (
+                  <button key={o.value}
+                    onClick={() => { navigate({ status: o.value }); setOpenDropdown(null); }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
                     style={{
-                      background: status === key ? '#6C3BFF' : 'transparent',
-                      color: status === key ? '#fff' : 'var(--c-text-3)',
-                    }}
-                  >
-                    {label}
+                      color: currentFilters.status === o.value ? '#9B6DFF' : 'rgba(255,255,255,0.7)',
+                      background: currentFilters.status === o.value ? 'rgba(108,59,255,0.15)' : 'transparent',
+                    }}>
+                    {o.label}
                   </button>
                 ))}
               </div>
-
-              {/* Plan */}
-              <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                {([
-                  { key: 'todos',     label: 'Todos',                              color: undefined },
-                  { key: 'comercial', label: `Comercial (${planCounts.comercial})`, color: PLAN_COLORS.comercial },
-                  { key: 'pro',       label: `Pro (${planCounts.pro})`,             color: PLAN_COLORS.pro },
-                ] as { key: PlanFilter; label: string; color?: string }[]).map(({ key, label, color }) => {
-                  const active = plan === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setPlan(key)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={{
-                        background: active ? (color ?? '#6C3BFF') : 'transparent',
-                        color:      active ? '#fff' : (color ?? 'var(--c-text-3)'),
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-3)' }} />
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre, cliente o número…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-                  style={{
-                    background: 'var(--c-input-bg)',
-                    border: '1px solid var(--c-input-border)',
-                    color: 'var(--c-text)',
-                  }}
-                />
-              </div>
-            </div>
+            )}
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="text-center py-12" style={{ color: 'var(--c-text-3)' }}>
-              <p className="text-sm">Sin resultados para &ldquo;{search}&rdquo;</p>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {filtered.map((agent) => (
-                <Link
-                  key={agent.id}
-                  href={`/admin/agentes/${agent.id}`}
-                  className="flex items-center justify-between p-5 rounded-xl border transition-all hover:border-purple-500/40"
-                  style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(108,59,255,0.12)' }}>
-                      <PhoneCall size={18} style={{ color: '#9B6DFF' }} />
-                    </div>
-                    <div>
-                      <div className="font-semibold" style={{ color: 'var(--c-text)' }}>{agent.business_name}</div>
-                      <div className="text-sm" style={{ color: 'var(--c-text-3)' }}>{agent.client_name} · {agent.phone_number || 'Sin número'}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <PlanBadge plan={agent.plan} />
-                    <MinutesBadge used={agent.minutes_used} included={agent.minutes_included} />
-                    {agent.active
-                      ? <CheckCircle size={18} color="#22c55e" />
-                      : <XCircle size={18} color="#ef4444" />
-                    }
-                  </div>
-                </Link>
-              ))}
-            </div>
+          {/* Plan dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setOpenDropdown(openDropdown === 'plan' ? null : 'plan')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{
+                background: 'var(--c-surface)',
+                border: `1px solid ${currentFilters.plan ? '#6C3BFF' : 'var(--c-border)'}`,
+                color: currentFilters.plan ? '#9B6DFF' : 'var(--c-text-2)',
+              }}>
+              Tipo: {PLAN_OPTS.find(o => o.value === currentFilters.plan)?.label ?? 'Todos'}
+              <ChevronDown size={11} />
+            </button>
+            {openDropdown === 'plan' && (
+              <div className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-50 min-w-[130px]"
+                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {PLAN_OPTS.map(o => (
+                  <button key={o.value}
+                    onClick={() => { navigate({ plan: o.value }); setOpenDropdown(null); }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    style={{
+                      color: currentFilters.plan === o.value ? '#9B6DFF' : 'rgba(255,255,255,0.7)',
+                      background: currentFilters.plan === o.value ? 'rgba(108,59,255,0.15)' : 'transparent',
+                    }}>
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {hasFilters && (
+            <button onClick={clearAll}
+              className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg"
+              style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+              <X size={11} /> Limpiar
+            </button>
           )}
-        </>
-      )}
-    </div>
-  );
-}
+        </div>
 
-function PlanBadge({ plan }: { plan: VoiceAgent['plan'] }) {
-  const colors: Record<string, string> = {
-    comercial: '#3b82f6', pro: '#a855f7',
-  };
-  const c = colors[plan] ?? '#6b7280';
-  return (
-    <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: `${c}22`, color: c, border: `1px solid ${c}44` }}>
-      {PLAN_LABELS[plan]}
-    </span>
-  );
-}
-
-function MinutesBadge({ used, included }: { used: number; included: number }) {
-  const pct = included > 0 ? Math.min((used / included) * 100, 100) : 0;
-  const color = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e';
-  return (
-    <div className="text-right">
-      <div className="text-xs font-semibold" style={{ color }}>{used} / {included} min</div>
-      <div className="w-20 h-1 rounded-full mt-1" style={{ background: 'var(--c-border)' }}>
-        <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: color }} />
+        {/* Result count */}
+        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          {hasFilters
+            ? `${totalCount.toLocaleString('es-MX')} resultado${totalCount !== 1 ? 's' : ''}`
+            : `${totalCount.toLocaleString('es-MX')} agente${totalCount !== 1 ? 's' : ''} en total`}
+          {totalPages > 1 && ` · página ${page} de ${totalPages}`}
+        </p>
       </div>
+
+      {/* ── Agent list ── */}
+      {agents.length === 0 ? (
+        <div className="p-12 rounded-xl text-center"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+            {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin agentes configurados'}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {agents.map(agent => <AgentRowItem key={agent.id} agent={agent} />)}
+        </div>
+      )}
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-5 pt-4"
+          style={{ borderTop: '1px solid var(--c-border)' }}>
+          <button
+            onClick={() => navigate({ page: page - 1 })}
+            disabled={page <= 1 || pending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          >
+            <ChevronLeft size={13} /> Anterior
+          </button>
+
+          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+            {page} / {totalPages}
+          </span>
+
+          <button
+            onClick={() => navigate({ page: page + 1 })}
+            disabled={page >= totalPages || pending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          >
+            Siguiente <ChevronRight size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

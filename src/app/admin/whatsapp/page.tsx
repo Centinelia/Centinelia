@@ -12,10 +12,11 @@ export default async function WhatsAppMonitorPage() {
     .from('voice_agents')
     .select('id, business_name, client_name, active, wa_phone_number, capture_leads, capture_appointments, capture_orders, wa_messages_plan, wa_messages_used, wa_messages_included')
     .not('wa_phone_number', 'is', null)
+    .neq('id', process.env.DEMO_AGENT_ID ?? '')
     .order('created_at', { ascending: false });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl">
       <div className="mb-6">
         <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>WhatsApp</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>

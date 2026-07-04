@@ -31,6 +31,7 @@ export default async function LlamadasPage({ searchParams }: Props) {
   const { data: agentsData } = await supabase
     .from('voice_agents')
     .select('id, business_name, timezone')
+    .neq('id', process.env.DEMO_AGENT_ID ?? '')
     .order('business_name');
 
   const calls      = (callsData ?? []) as VoiceCall[];

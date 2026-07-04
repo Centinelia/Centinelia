@@ -114,18 +114,25 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
   const supabase = createAdminClient();
 
+  // Cap "Todo" to last 12 months — charts only show 12 months and select('*') on
+  // unbounded voice_calls would download transcripts/recordings at scale.
+  const cap12 = new Date(Date.now() - 365 * 86400000).toISOString();
+  const callsSince = since ?? cap12;
+  const leadsSince = since ?? cap12;
+
   const [
     { data: calls },
     { data: agents },
     { data: leads },
   ] = await Promise.all([
-    since
-      ? supabase.from('voice_calls').select('*').gte('created_at', since).order('created_at', { ascending: false })
-      : supabase.from('voice_calls').select('*').order('created_at', { ascending: false }),
-    supabase.from('voice_agents').select('id, business_name, minutes_used, minutes_plan, plan, active').order('created_at'),
-    since
-      ? supabase.from('leads_voice').select('id, created_at, agent_id').gte('created_at', since)
-      : supabase.from('leads_voice').select('id, created_at, agent_id'),
+    supabase.from('voice_calls')
+      .select('id, outcome, duration_seconds, created_at, agent_id')
+      .gte('created_at', callsSince)
+      .order('created_at', { ascending: false }),
+    supabase.from('voice_agents').select('id, business_name, minutes_used, minutes_plan, plan, active').neq('id', process.env.DEMO_AGENT_ID ?? '').order('created_at'),
+    supabase.from('leads_voice')
+      .select('id, created_at, agent_id')
+      .gte('created_at', leadsSince),
   ]);
 
   const allCalls  = calls  ?? [];
@@ -181,17 +188,25 @@ export default async function AnalyticsPage({ searchParams }: Props) {
   return (
     <div className="p-4 md:p-8 max-w-5xl">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
+      <div className="mb-6">
+        <div className="flex items-start justify-between gap-4 mb-3">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Analytics</h1>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <div className="text-right shrink-0">
+            <div className="text-2xl font-bold" style={{ color: '#22c55e' }}>
+              ${mrr.toLocaleString('es-MX')} <span className="text-base font-normal" style={{ color: 'var(--c-text-3)' }}>MXN</span>
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>MRR estimado · {activeAgentsCount} activos</div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
             {PERIOD_OPTIONS.map(({ label, param }) => {
               const active = (period ?? '') === param;
               return (
                 <Link
                   key={param}
                   href={param ? `/admin/analytics?period=${param}` : '/admin/analytics'}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  className="flex-1 text-center px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                   style={{
                     background: active ? '#6C3BFF' : 'var(--c-surface)',
                     color: active ? '#fff' : 'var(--c-text-3)',
@@ -202,21 +217,15 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                 </Link>
               );
             })}
-            <a
-              href={csvHref}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 ml-2"
-              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
-            >
-              <Download size={12} />
-              CSV
-            </a>
           </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-2xl font-bold" style={{ color: '#22c55e' }}>
-            ${mrr.toLocaleString('es-MX')} <span className="text-base font-normal" style={{ color: 'var(--c-text-3)' }}>MXN</span>
-          </div>
-          <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>MRR estimado · {activeAgentsCount} activos</div>
+          <a
+            href={csvHref}
+            className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          >
+            <Download size={12} />
+            CSV
+          </a>
         </div>
       </div>
 

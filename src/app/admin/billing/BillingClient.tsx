@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown, Search, X } from 'lucide-react';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
@@ -233,6 +233,8 @@ const STATUS_SORT: Record<string, number> = { pago_fallido: 0, sin_plan: 1, canc
 
 export default function BillingClient({ agents }: { agents: Agent[] }) {
   const [linkOpen, setLinkOpen] = useState<Set<string>>(new Set());
+  const [search, setSearch]     = useState('');
+
   const toggleLink = (id: string) =>
     setLinkOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -241,6 +243,11 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
     const sb = b.plan ? (b.billing_status ?? 'activo') : 'sin_plan';
     return (STATUS_SORT[sa] ?? 4) - (STATUS_SORT[sb] ?? 4);
   });
+
+  const q        = search.toLowerCase();
+  const filtered = q
+    ? sorted.filter(a => a.business_name.toLowerCase().includes(q) || a.client_name.toLowerCase().includes(q))
+    : sorted;
 
   const totalMRR    = agents.reduce((sum, a) => {
     if (!a.minutes_plan || a.billing_status !== 'activo') return sum;
@@ -275,9 +282,30 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'var(--c-text-3)' }} />
+        <input
+          type="text"
+          placeholder="Buscar por negocio o cliente…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--c-text-3)' }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
       {/* Agent list */}
       <div className="space-y-3">
-        {sorted.map(agent => {
+        {filtered.map(agent => {
           const billingStatus = agent.plan ? (agent.billing_status ?? 'activo') : 'sin_plan';
           const pct      = agent.minutes_included > 0 ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
           const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
@@ -348,10 +376,12 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
           );
         })}
 
-        {agents.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-12 rounded-xl" style={{ border: '1px dashed var(--c-border)' }}>
             <CreditCard size={32} className="mx-auto mb-3" style={{ color: 'var(--c-text-3)' }} />
-            <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>No hay agentes registrados</div>
+            <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+              {search ? 'Sin resultados para esa búsqueda' : 'No hay agentes registrados'}
+            </div>
           </div>
         )}
       </div>

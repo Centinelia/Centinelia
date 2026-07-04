@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { FileText, CheckCircle, Clock, ExternalLink, Pencil, Search } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { FileText, CheckCircle, Clock, ExternalLink, Pencil, Search, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
@@ -20,7 +20,7 @@ export interface ContratoRow {
   client_name: string;
   plan: string;
   portal_token: string | null;
-  contract_text: string | null;
+  has_custom: boolean;
   contract_accepted_at: string | null;
   active: boolean;
 }
@@ -33,10 +33,22 @@ interface Props {
 }
 
 export default function ContratosClient({ list, signedCount, pendingCount, customCount }: Props) {
-  const [search, setSearch]       = useState('');
-  const [status, setStatus]       = useState<StatusFilter>('todos');
-  const [type, setType]           = useState<TypeFilter>('todos');
+  const [search, setSearch]         = useState('');
+  const [status, setStatus]         = useState<StatusFilter>('todos');
+  const [type, setType]             = useState<TypeFilter>('todos');
   const [planFilter, setPlanFilter] = useState<PlanFilter>('todos');
+  const [openDropdown, setOpenDropdown] = useState<'status' | 'type' | 'plan' | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -44,8 +56,8 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
       if (q && !a.business_name.toLowerCase().includes(q) && !a.client_name.toLowerCase().includes(q)) return false;
       if (status === 'firmados'   && !a.contract_accepted_at) return false;
       if (status === 'pendientes' && !!a.contract_accepted_at) return false;
-      if (type === 'automatico'   && !!a.contract_text) return false;
-      if (type === 'personalizado' && !a.contract_text) return false;
+      if (type === 'automatico'   && a.has_custom)  return false;
+      if (type === 'personalizado' && !a.has_custom) return false;
       if (planFilter !== 'todos'  && a.plan !== planFilter) return false;
       return true;
     });
@@ -87,9 +99,8 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
           />
         </div>
 
-        {/* Filter pills */}
-        <div className="flex flex-wrap gap-2">
-          {/* Status */}
+        {/* Desktop: filter pills */}
+        <div className="hidden sm:flex flex-wrap gap-2">
           <FilterGroup label="Estado">
             {(['todos', 'firmados', 'pendientes'] as StatusFilter[]).map(v => (
               <Pill key={v} active={status === v} onClick={() => setStatus(v)}
@@ -98,8 +109,6 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
               />
             ))}
           </FilterGroup>
-
-          {/* Type */}
           <FilterGroup label="Tipo">
             {(['todos', 'automatico', 'personalizado'] as TypeFilter[]).map(v => (
               <Pill key={v} active={type === v} onClick={() => setType(v)}
@@ -108,8 +117,6 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
               />
             ))}
           </FilterGroup>
-
-          {/* Plan */}
           <FilterGroup label="Plan">
             {(['todos', 'comercial', 'pro'] as PlanFilter[]).map(v => (
               <Pill key={v} active={planFilter === v} onClick={() => setPlanFilter(v)}
@@ -118,6 +125,99 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
               />
             ))}
           </FilterGroup>
+        </div>
+
+        {/* Mobile: dropdown filters */}
+        <div className="sm:hidden flex gap-2" ref={dropdownRef}>
+          {/* Estado */}
+          <div className="relative flex-1">
+            <button
+              type="button"
+              onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
+              className="w-full flex items-center justify-between gap-1 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{
+                background: status !== 'todos' ? 'rgba(108,59,255,0.08)' : 'var(--c-surface)',
+                border: `1px solid ${status !== 'todos' ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+                color: status !== 'todos' ? '#9B6DFF' : 'var(--c-text-2)',
+              }}
+            >
+              <span>{status === 'todos' ? 'Estado' : status === 'firmados' ? 'Firmados' : 'Pendientes'}</span>
+              <ChevronDown size={12} style={{ transform: openDropdown === 'status' ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
+            </button>
+            {openDropdown === 'status' && (
+              <div className="absolute top-full left-0 mt-1 z-20 rounded-xl overflow-hidden min-w-[130px]"
+                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {([['todos', 'Todos'], ['firmados', 'Firmados'], ['pendientes', 'Pendientes']] as [StatusFilter, string][]).map(([v, label]) => (
+                  <button key={v} type="button"
+                    onClick={() => { setStatus(v); setOpenDropdown(null); }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    style={{ color: status === v ? '#9B6DFF' : 'rgba(255,255,255,0.7)', background: status === v ? 'rgba(108,59,255,0.15)' : 'transparent' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tipo */}
+          <div className="relative flex-1">
+            <button
+              type="button"
+              onClick={() => setOpenDropdown(openDropdown === 'type' ? null : 'type')}
+              className="w-full flex items-center justify-between gap-1 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{
+                background: type !== 'todos' ? 'rgba(108,59,255,0.08)' : 'var(--c-surface)',
+                border: `1px solid ${type !== 'todos' ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+                color: type !== 'todos' ? '#9B6DFF' : 'var(--c-text-2)',
+              }}
+            >
+              <span>{type === 'todos' ? 'Tipo' : type === 'automatico' ? 'Automático' : 'Personalizado'}</span>
+              <ChevronDown size={12} style={{ transform: openDropdown === 'type' ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
+            </button>
+            {openDropdown === 'type' && (
+              <div className="absolute top-full left-0 mt-1 z-20 rounded-xl overflow-hidden min-w-[140px]"
+                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {([['todos', 'Todos'], ['automatico', 'Automático'], ['personalizado', 'Personalizado']] as [TypeFilter, string][]).map(([v, label]) => (
+                  <button key={v} type="button"
+                    onClick={() => { setType(v); setOpenDropdown(null); }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    style={{ color: type === v ? '#9B6DFF' : 'rgba(255,255,255,0.7)', background: type === v ? 'rgba(108,59,255,0.15)' : 'transparent' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Plan */}
+          <div className="relative flex-1">
+            <button
+              type="button"
+              onClick={() => setOpenDropdown(openDropdown === 'plan' ? null : 'plan')}
+              className="w-full flex items-center justify-between gap-1 px-3 py-2 rounded-xl text-xs font-medium"
+              style={{
+                background: planFilter !== 'todos' ? 'rgba(108,59,255,0.08)' : 'var(--c-surface)',
+                border: `1px solid ${planFilter !== 'todos' ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+                color: planFilter !== 'todos' ? '#9B6DFF' : 'var(--c-text-2)',
+              }}
+            >
+              <span>{planFilter === 'todos' ? 'Plan' : PLAN_LABELS[planFilter as Plan]}</span>
+              <ChevronDown size={12} style={{ transform: openDropdown === 'plan' ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
+            </button>
+            {openDropdown === 'plan' && (
+              <div className="absolute top-full left-0 mt-1 z-20 rounded-xl overflow-hidden min-w-[120px]"
+                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {([['todos', 'Todos'], ['comercial', 'Comercial'], ['pro', 'Pro']] as [PlanFilter, string][]).map(([v, label]) => (
+                  <button key={v} type="button"
+                    onClick={() => { setPlanFilter(v); setOpenDropdown(null); }}
+                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    style={{ color: planFilter === v ? '#9B6DFF' : 'rgba(255,255,255,0.7)', background: planFilter === v ? 'rgba(108,59,255,0.15)' : 'transparent' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {filtered.length !== list.length && (
@@ -131,7 +231,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
       <div className="flex flex-col gap-3">
         {filtered.map(agent => {
           const signed     = !!agent.contract_accepted_at;
-          const hasCustom  = !!agent.contract_text;
+          const hasCustom  = agent.has_custom;
           const planColor  = PLAN_COLORS[agent.plan] ?? '#6b7280';
           const signedDate = agent.contract_accepted_at
             ? new Date(agent.contract_accepted_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -170,13 +270,13 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
                   <a href={`/portal/${agent.portal_token}/contrato`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                    <ExternalLink size={12} /> Ver contrato
+                    <ExternalLink size={12} /><span className="hidden sm:inline"> Ver contrato</span>
                   </a>
                 )}
-                <Link href={`/admin/agentes/${agent.id}/editar?tab=contrato`}
+                <Link href={`/admin/contratos/${agent.id}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                   style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                  <Pencil size={12} /> Editar
+                  <Pencil size={12} /><span className="hidden sm:inline"> Editar</span>
                 </Link>
               </div>
             </div>
