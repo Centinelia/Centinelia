@@ -17,13 +17,13 @@ export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
   pro:       { label: 'Pro',       setupFee: 14990, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
-// ─── Monthly plans (base platform fee + minutes, combined Stripe price) ───────
-// Base: Comercial $200/mes · Pro $400/mes
-// Minutes: $9.99 MXN/min in-plan · $12.99 MXN/min extra
+// ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────
+// Minutes: $9.99 MXN/min in-plan · $12.99 MXN/min extra · +16% IVA on total
+// Starter 300min = $2,997 | Growth 600min = $5,994 | Scale 1,200min = $11,988
 
 export const PLAN_BASE_MXN: Record<Plan, number> = {
-  comercial: 200,
-  pro:       400,
+  comercial: 0,
+  pro:       0,
 };
 
 export const MINUTES_RATE_IN_PLAN = 9.99;
@@ -38,15 +38,15 @@ export interface MonthlyPlanConfig {
 
 export const MONTHLY_CONFIG: Record<Plan, Record<MinutesTier, MonthlyPlanConfig>> = {
   comercial: {
-    starter:    { label: 'Starter',    minutes: 300,  mxn: 3197,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  mxn: 6194,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, mxn: 12188, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
+    starter:    { label: 'Starter',    minutes: 300,  mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
     enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
   },
   pro: {
-    starter:    { label: 'Starter',    minutes: 300,  mxn: 3397,  priceId: () => process.env.STRIPE_PRO_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  mxn: 6394,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, mxn: 12388, priceId: () => process.env.STRIPE_PRO_SCALE! },
+    starter:    { label: 'Starter',    minutes: 300,  mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, mxn: 11988, priceId: () => process.env.STRIPE_PRO_SCALE! },
     enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
   },
 };

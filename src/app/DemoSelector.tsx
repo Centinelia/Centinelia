@@ -54,7 +54,7 @@ const OTRO: Giro = {
   id:    'otro',
   icon:  Sparkles,
   label: 'Otro giro',
-  sub:   'El agente se adapta a cualquier negocio',
+  sub:   'Se adapta a cualquier negocio',
   hint:  'Dile al agente qué tipo de negocio quieres que simule. Él se adapta a cualquier escenario y llevará la conversación desde ahí.',
 };
 
@@ -142,7 +142,7 @@ export default function DemoSelector({ demoPhone, demoPhoneHref }: Props) {
       <p className="text-center text-sm mb-6" style={{ color: 'rgba(26,10,59,0.5)' }}>
         ¿Qué tipo de negocio quieres probar?
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-3xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[...GIROS, OTRO].map((g, idx) => {
           const Icon = g.icon;
           const isOtro = g.id === 'otro';
@@ -165,7 +165,7 @@ export default function DemoSelector({ demoPhone, demoPhoneHref }: Props) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>{g.label}</p>
-                <p className="text-xs" style={{ color: 'rgba(26,10,59,0.45)', marginTop: 1 }}>{g.sub}</p>
+                <p className="text-xs truncate" style={{ color: 'rgba(26,10,59,0.45)', marginTop: 1 }}>{g.sub}</p>
               </div>
               <ChevronRight size={14} style={{ color: 'rgba(108,59,255,0.4)', flexShrink: 0 }} />
             </button>
