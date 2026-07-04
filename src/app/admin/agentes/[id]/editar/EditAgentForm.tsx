@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink, RefreshCw, Check } from 'lucide-react';
+import { ArrowLeft, ExternalLink, RefreshCw, Check, MessageCircle, Phone, PhoneOutgoing, Clock } from 'lucide-react';
 import VoiceSelector from '@/components/VoiceSelector';
 import { PLAN_FEATURES, PLAN_LABELS, PLAN_MINUTES, FEATURE_LABELS } from '@/types/agent';
 import type { Plan, AgentFeatures, VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
@@ -33,12 +33,14 @@ const DEFAULT_HOURS: BusinessHours = {
   sunday:    { open: false },
 };
 
-type Tab = 'info' | 'agente' | 'funciones' | 'horarios' | 'contrato';
+const INBOUND_FEATURES = (Object.keys(PLAN_FEATURES.pro) as (keyof AgentFeatures)[])
+  .filter(k => k !== 'outbound_calls');
+
+type Tab = 'info' | 'agente' | 'funciones' | 'contrato';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'info',      label: 'Información' },
   { id: 'agente',    label: 'Agente' },
   { id: 'funciones', label: 'Funciones' },
-  { id: 'horarios',  label: 'Horarios' },
   { id: 'contrato',  label: 'Contrato' },
 ];
 
@@ -46,6 +48,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const initialTab   = (searchParams.get('tab') as Tab | null) ?? 'info';
+
   const [saving, setSaving]               = useState(false);
   const [resyncing, setResyncing]         = useState(false);
   const [resyncOk, setResyncOk]           = useState(false);
@@ -55,6 +58,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const [features, setFeatures]           = useState<AgentFeatures>(agent.features);
   const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
   const [hoursEnabled, setHoursEnabled]   = useState<boolean>(!!agent.business_hours);
+  const [waActive, setWaActive]           = useState<boolean>(!!agent.wa_phone_number);
 
   const handlePlanChange = (p: Plan) => {
     setPlan(p);
@@ -79,26 +83,33 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
     setSaving(true);
     const fd = new FormData(e.currentTarget);
     const body = {
+      // Información general
       client_name:            fd.get('client_name'),
       client_email:           fd.get('client_email') || null,
       business_name:          fd.get('business_name'),
       business_description:   fd.get('business_description'),
       business_address:       fd.get('business_address'),
-      business_phone_display: fd.get('business_phone_display'),
-      transfer_whatsapp:      fd.get('transfer_whatsapp'),
-      transfer_number:        fd.get('transfer_number'),
-      calendar_url:           fd.get('calendar_url'),
       business_website:       fd.get('business_website') || null,
       timezone:               fd.get('timezone') || 'America/Monterrey',
       phone_number:           fd.get('phone_number'),
+      // Agente
       knowledge_base:         fd.get('knowledge_base'),
       agent_name:             plan === 'pro' ? fd.get('agent_name') : null,
       elevenlabs_voice_id:    voiceId ?? null,
+      // Funciones — llamadas entrantes
+      business_phone_display: fd.get('business_phone_display'),
+      transfer_number:        fd.get('transfer_number'),
+      transfer_whatsapp:      fd.get('transfer_whatsapp'),
+      calendar_url:           fd.get('calendar_url'),
+      // Funciones — plan, features, horarios
       plan,
       features,
-      business_hours:  hoursEnabled ? businessHours : null,
-      minutes_included: PLAN_MINUTES[plan],
-      contract_text:   (fd.get('contract_text') as string)?.trim() || null,
+      business_hours:         hoursEnabled ? businessHours : null,
+      minutes_included:       PLAN_MINUTES[plan],
+      // Funciones — WhatsApp
+      wa_phone_number:        plan === 'pro' && waActive ? (agent.phone_number ?? null) : null,
+      // Contrato
+      contract_text:          (fd.get('contract_text') as string)?.trim() || null,
     };
 
     const res = await fetch(`/api/admin/agentes/${agent.id}`, {
@@ -141,7 +152,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
-        {/* Tab: Información */}
+        {/* ── Tab: Información ─────────────────────────────────────────── */}
         <div className={tab !== 'info' ? 'hidden' : 'flex flex-col gap-6'}>
           <Section title="Plan">
             <div className="grid grid-cols-3 gap-3">
@@ -161,19 +172,15 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
 
           <Section title="Datos del cliente">
             <Field label="Nombre del cliente (interno)" name="client_name" required defaultValue={agent.client_name} />
-            <Field label="Email del cliente (alertas)" name="client_email" placeholder="cliente@email.com" defaultValue={(agent as any).client_email ?? ''} />
-            <Field label="WhatsApp del dueño (notificaciones)" name="transfer_whatsapp" defaultValue={agent.transfer_whatsapp ?? ''} />
+            <Field label="Email del cliente" name="client_email" placeholder="cliente@email.com" defaultValue={(agent as any).client_email ?? ''} />
           </Section>
 
-          <Section title="Información del negocio">
+          <Section title="Negocio">
             <Field label="Nombre del negocio" name="business_name" required defaultValue={agent.business_name} />
-            <Field label="Descripción del negocio" name="business_description" textarea defaultValue={agent.business_description} />
+            <Field label="Descripción" name="business_description" textarea defaultValue={agent.business_description} />
             <Field label="Dirección" name="business_address" defaultValue={agent.business_address ?? ''} />
-            <Field label="Teléfono de contacto (que menciona el agente)" name="business_phone_display" defaultValue={agent.business_phone_display} />
-            <Field label="Número de transferencia" name="transfer_number" defaultValue={agent.transfer_number ?? ''} />
-            <Field label="Link de calendario" name="calendar_url" defaultValue={agent.calendar_url ?? ''} />
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>Sitio web del negocio</label>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>Sitio web</label>
               <div className="flex gap-2">
                 <input name="business_website" placeholder="https://negocio.com" defaultValue={(agent as any).business_website ?? ''}
                   className="flex-1"
@@ -182,9 +189,9 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-opacity hover:opacity-80"
                   style={{
                     background: resyncOk ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.08)',
-                    color: resyncOk ? '#16a34a' : '#9B6DFF',
-                    border: `1px solid ${resyncOk ? 'rgba(34,197,94,0.25)' : 'rgba(108,59,255,0.2)'}`,
-                    opacity: resyncing ? 0.5 : 1,
+                    color:      resyncOk ? '#16a34a' : '#9B6DFF',
+                    border:     `1px solid ${resyncOk ? 'rgba(34,197,94,0.25)' : 'rgba(108,59,255,0.2)'}`,
+                    opacity:    resyncing ? 0.5 : 1,
                   }}>
                   {resyncing ? <RefreshCw size={11} className="animate-spin" /> : resyncOk ? <Check size={11} /> : <RefreshCw size={11} />}
                   {resyncing ? 'Sincronizando…' : resyncOk ? 'Listo' : 'Sincronizar'}
@@ -192,16 +199,16 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               </div>
             </div>
             <Field label="Zona horaria" name="timezone" defaultValue={agent.timezone} />
-            <Field label="Número Vapi" name="phone_number" defaultValue={agent.phone_number} />
+            <Field label="Número Vapi (Twilio)" name="phone_number" defaultValue={agent.phone_number} />
           </Section>
         </div>
 
-        {/* Tab: Agente */}
+        {/* ── Tab: Agente ──────────────────────────────────────────────── */}
         <div className={tab !== 'agente' ? 'hidden' : 'flex flex-col gap-6'}>
-          <Section title="Identidad del agente">
+          <Section title="Identidad">
             <div className="p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span>, En planes Básico y Estándar el agente se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>. Con Pro puedes darle un nombre propio.
+                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro:</span> puedes darle un nombre propio al agente. En Básico y Estándar siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
               </p>
             </div>
             <Field label="Nombre del agente" name="agent_name"
@@ -210,7 +217,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               disabled={plan !== 'pro'} />
           </Section>
 
-          <Section title="Voz del agente">
+          <Section title="Voz">
             <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}>
               Elige la voz de ElevenLabs. Usa ▶ para escuchar una muestra antes de seleccionar.
             </p>
@@ -227,65 +234,87 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           </Section>
         </div>
 
-        {/* Tab: Funciones */}
+        {/* ── Tab: Funciones ───────────────────────────────────────────── */}
         <div className={tab !== 'funciones' ? 'hidden' : 'flex flex-col gap-6'}>
-          <Section title="Funcionalidades activas">
-            <div className="flex flex-col gap-2">
-              {(Object.keys(features) as (keyof AgentFeatures)[]).map(key => (
-                <label key={key} className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+
+          {/* Llamadas entrantes */}
+          <Section title={<span className="flex items-center gap-1.5"><Phone size={13} />Llamadas entrantes</span>}>
+            {/* Feature toggles */}
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+              {INBOUND_FEATURES.map((key, i) => (
+                <div key={key}
+                  className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none"
+                  style={{
+                    background:   'var(--c-surface)',
+                    borderBottom: i < INBOUND_FEATURES.length - 1 ? '1px solid var(--c-border)' : undefined,
+                  }}
+                  onClick={() => toggleFeature(key)}>
                   <span className="text-sm" style={{ color: features[key] ? 'var(--c-text)' : 'var(--c-text-3)' }}>
                     {FEATURE_LABELS[key]}
                   </span>
-                  <button type="button" onClick={() => toggleFeature(key)}
-                    className="w-10 h-5 rounded-full transition-colors relative"
-                    style={{ background: features[key] ? '#6C3BFF' : 'var(--c-border-2)' }}>
-                    <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                      style={{ left: features[key] ? '1.25rem' : '0.125rem' }} />
-                  </button>
-                </label>
+                  <Toggle on={features[key]} />
+                </div>
               ))}
             </div>
-          </Section>
-        </div>
 
-        {/* Tab: Horarios */}
-        <div className={tab !== 'horarios' ? 'hidden' : 'flex flex-col gap-6'}>
-          <Section title="Horario de atención">
-            <label className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            {/* Ajustes específicos */}
+            <Field label="Teléfono que menciona el agente verbalmente" name="business_phone_display" defaultValue={agent.business_phone_display} />
+            <Field label="Número de transferencia a humano" name="transfer_number" defaultValue={agent.transfer_number ?? ''} />
+            <Field label="WhatsApp del dueño (notificaciones de leads)" name="transfer_whatsapp" defaultValue={agent.transfer_whatsapp ?? ''} />
+            <Field label="Link de calendario (para agendar citas)" name="calendar_url" defaultValue={agent.calendar_url ?? ''} />
+          </Section>
+
+          {/* Llamadas salientes — solo Pro */}
+          <Section title={<span className="flex items-center gap-1.5"><PhoneOutgoing size={13} />Llamadas salientes</span>}>
+            <ProToggleRow
+              label="Activar llamadas salientes"
+              desc={features.outbound_calls ? 'El cliente puede subir contactos y disparar llamadas desde su portal' : 'Permite al cliente disparar llamadas programadas desde su portal'}
+              isPro={plan === 'pro'}
+              active={plan === 'pro' && features.outbound_calls}
+              accentColor="#6C3BFF"
+              onToggle={() => plan === 'pro' && toggleFeature('outbound_calls')}
+            />
+          </Section>
+
+          {/* WhatsApp — solo Pro */}
+          <Section title={<span className="flex items-center gap-1.5"><MessageCircle size={13} />WhatsApp</span>}>
+            <ProToggleRow
+              label="Activar WhatsApp"
+              desc={waActive ? `Número activo: ${agent.phone_number}` : 'Usa el mismo número de voz para atender por WhatsApp'}
+              isPro={plan === 'pro'}
+              active={plan === 'pro' && waActive}
+              accentColor="#25D366"
+              onToggle={() => plan === 'pro' && setWaActive(v => !v)}
+            />
+          </Section>
+
+          {/* Horarios */}
+          <Section title={<span className="flex items-center gap-1.5"><Clock size={13} />Horarios de atención</span>}>
+            <div className="flex items-center justify-between p-3 rounded-xl cursor-pointer select-none"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              onClick={() => setHoursEnabled(v => !v)}>
               <div>
-                <div className="text-sm" style={{ color: 'var(--c-text)' }}>Restringir horario</div>
-                <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-                  El agente solo contesta en el horario configurado
-                </div>
+                <p className="text-sm" style={{ color: 'var(--c-text)' }}>Restringir horario</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>El agente solo contesta en el horario configurado</p>
               </div>
-              <button type="button" onClick={() => setHoursEnabled(v => !v)}
-                className="w-10 h-5 rounded-full transition-colors relative flex-shrink-0"
-                style={{ background: hoursEnabled ? '#6C3BFF' : 'var(--c-border-2)' }}>
-                <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                  style={{ left: hoursEnabled ? '1.25rem' : '0.125rem' }} />
-              </button>
-            </label>
+              <Toggle on={hoursEnabled} color="#6C3BFF" />
+            </div>
 
             {hoursEnabled && (
-              <div className="flex flex-col gap-1">
-                {DAYS.map(({ key, label }) => {
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+                {DAYS.map(({ key, label }, i) => {
                   const s: DaySchedule = businessHours[key] ?? { open: false };
                   return (
-                    <div key={key} className="grid grid-cols-[80px_1fr] items-center gap-3 px-3 py-2 rounded-lg"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <button type="button"
-                          onClick={() => setBusinessHours(h => ({ ...h, [key]: { ...s, open: !s.open } }))}
-                          className="w-8 h-4 rounded-full transition-colors relative flex-shrink-0"
-                          style={{ background: s.open ? '#6C3BFF' : 'var(--c-border-2)' }}>
-                          <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all"
-                            style={{ left: s.open ? '1rem' : '0.125rem' }} />
-                        </button>
+                    <div key={key} className="flex items-center gap-3 px-3 py-2"
+                      style={{
+                        background:   'var(--c-surface)',
+                        borderBottom: i < DAYS.length - 1 ? '1px solid var(--c-border)' : undefined,
+                      }}>
+                      <div className="flex items-center gap-2 w-28 flex-shrink-0 cursor-pointer select-none"
+                        onClick={() => setBusinessHours(h => ({ ...h, [key]: { ...s, open: !s.open } }))}>
+                        <Toggle on={s.open} size="sm" color="#6C3BFF" />
                         <span className="text-xs" style={{ color: s.open ? 'var(--c-text)' : 'var(--c-text-3)' }}>{label}</span>
-                      </label>
-
+                      </div>
                       {s.open ? (
                         <div className="flex items-center gap-2">
                           <input type="text" value={s.from ?? '09:00'} maxLength={5} placeholder="09:00"
@@ -317,11 +346,11 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           </Section>
         </div>
 
-        {/* Tab: Contrato */}
+        {/* ── Tab: Contrato ────────────────────────────────────────────── */}
         <div className={tab !== 'contrato' ? 'hidden' : 'flex flex-col gap-6'}>
           <Section title="Texto del contrato">
             <div className="p-3 rounded-lg text-xs" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-2)' }}>
-              <strong style={{ color: '#9B6DFF' }}>Template automático activo.</strong> Si dejas este campo vacío, el contrato se genera automáticamente con los datos del agente (plan, funciones incluidas/excluidas, precio mensual, nombre del negocio). Solo escribe aquí si necesitas personalizar el texto para este cliente específico.
+              <strong style={{ color: '#9B6DFF' }}>Template automático activo.</strong> Si dejas este campo vacío, el contrato se genera automáticamente. Solo escribe aquí si necesitas personalizar para este cliente.
             </div>
             <Field
               label="Texto personalizado (opcional)"
@@ -332,20 +361,17 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               defaultValue={(agent as any).contract_text ?? ''}
             />
             {agent.portal_token && (
-              <a
-                href={`/portal/${agent.portal_token}/contrato`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <a href={`/portal/${agent.portal_token}/contrato`} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2 text-xs transition-opacity hover:opacity-80"
-                style={{ color: '#9B6DFF' }}
-              >
+                style={{ color: '#9B6DFF' }}>
                 <ExternalLink size={12} />
                 Previsualizar contrato del cliente
               </a>
             )}
             {(agent as any).contract_accepted_at && (
-              <div className="flex items-center gap-2 p-3 rounded-lg text-xs" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', color: '#16a34a' }}>
-                ✓ Firmado por el cliente el {new Date((agent as any).contract_accepted_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+              <div className="flex items-center gap-2 p-3 rounded-lg text-xs"
+                style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', color: '#16a34a' }}>
+                ✓ Firmado el {new Date((agent as any).contract_accepted_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             )}
           </Section>
@@ -361,11 +387,52 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>{title}</h2>
+      <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>{title}</h2>
       <div className="flex flex-col gap-3">{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ on, color = '#6C3BFF', size = 'md' }: { on: boolean; color?: string; size?: 'md' | 'sm' }) {
+  const w  = size === 'sm' ? 28 : 36;
+  const h  = size === 'sm' ? 14 : 18;
+  const d  = size === 'sm' ? 10 : 14;
+  const on_left  = size === 'sm' ? w - d - 2 : w - d - 2;
+  const off_left = 2;
+  return (
+    <div className="rounded-full transition-colors relative flex-shrink-0"
+      style={{ width: w, height: h, background: on ? color : 'var(--c-border-2)' }}>
+      <span className="absolute rounded-full bg-white transition-all"
+        style={{ width: d, height: d, top: 2, left: on ? on_left : off_left }} />
+    </div>
+  );
+}
+
+function ProToggleRow({ label, desc, isPro, active, accentColor, onToggle }: {
+  label: string; desc: string; isPro: boolean; active: boolean; accentColor: string; onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-xl cursor-pointer select-none"
+      style={{
+        background: active ? `${accentColor}0D` : 'var(--c-surface)',
+        border:     `1px solid ${active ? `${accentColor}40` : 'var(--c-border)'}`,
+        opacity:    !isPro ? 0.5 : 1,
+        cursor:     !isPro ? 'not-allowed' : 'pointer',
+      }}
+      onClick={onToggle}>
+      <div>
+        <p className="text-sm" style={{ color: active ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+          {label}
+          {!isPro && <span className="ml-2 text-xs" style={{ color: '#a855f7' }}>Solo Plan Pro</span>}
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: active ? accentColor : 'var(--c-text-3)' }}>{desc}</p>
+      </div>
+      <Toggle on={active} color={accentColor} />
     </div>
   );
 }
