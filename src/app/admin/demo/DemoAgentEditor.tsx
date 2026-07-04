@@ -84,7 +84,12 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
     });
     setSaving(false);
     if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
-    else { setError('Error al guardar. Revisa la consola.'); }
+    else {
+      const body = await res.json().catch(() => ({}));
+      const msg = body?.error ?? `HTTP ${res.status}`;
+      console.error('Demo save error:', msg);
+      setError(`Error: ${msg}`);
+    }
   };
 
   const handleApplyInstructions = async () => {

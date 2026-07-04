@@ -66,9 +66,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Auto-configure Twilio webhook when a WhatsApp number is set/changed
   if (body.wa_phone_number) {
-    const result = await configureTwilioWhatsAppWebhook(body.wa_phone_number);
-    if (!result.ok) {
-      console.warn(`Twilio webhook auto-config failed for ${body.wa_phone_number}:`, result.error);
+    try {
+      const result = await configureTwilioWhatsAppWebhook(body.wa_phone_number);
+      if (!result.ok) console.warn(`Twilio webhook auto-config failed for ${body.wa_phone_number}:`, result.error);
+    } catch (err) {
+      console.warn('Twilio webhook auto-config threw:', err);
     }
   }
 
