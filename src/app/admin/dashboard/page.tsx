@@ -124,9 +124,14 @@ export default async function DashboardPage() {
           </div>
 
           {agentList.length === 0 ? (
-            <p className="text-xs py-6 text-center" style={{ color: 'var(--c-text-4)' }}>
-              Sin agentes, crea el primero con el botón de arriba
-            </p>
+            <div className="py-8 text-center flex flex-col items-center gap-3">
+              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin agentes configurados</p>
+              <Link href="/admin/agentes/nuevo"
+                className="text-xs px-4 py-2 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                style={{ background: '#6C3BFF', color: '#fff' }}>
+                + Crear primer agente
+              </Link>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {agentList.map(a => {
@@ -192,7 +197,7 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--c-text-3)' }}>Llamadas recientes</h2>
           {(recentCalls ?? []).length === 0 ? (
             <p className="text-xs py-6 text-center" style={{ color: 'var(--c-text-4)' }}>
-              Sin llamadas, asegúrate de que los números estén activos en Vapi
+              Sin llamadas registradas aún — aparecerán aquí en tiempo real
             </p>
           ) : (
             <div className="flex flex-col gap-1.5">

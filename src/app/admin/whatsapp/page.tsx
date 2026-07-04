@@ -78,10 +78,17 @@ export default async function WhatsAppMonitorPage() {
 
                   <p className="text-xs mt-1 font-mono" style={{ color: '#25D366' }}>{agent.wa_phone_number}</p>
 
-                  <div className="flex gap-3 mt-1.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    {agent.capture_leads        && <span>Leads</span>}
-                    {agent.capture_appointments && <span>· Citas</span>}
-                    {agent.capture_orders       && <span>· Pedidos</span>}
+                  <div className="flex gap-2 mt-1.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    {[
+                      agent.capture_leads        && 'Leads',
+                      agent.capture_appointments && 'Citas',
+                      agent.capture_orders       && 'Pedidos',
+                    ].filter(Boolean).map((label, i, arr) => (
+                      <span key={label as string}>{i > 0 ? '· ' : ''}{label}</span>
+                    ))}
+                    {!agent.capture_leads && !agent.capture_appointments && !agent.capture_orders && (
+                      <span style={{ color: 'var(--c-text-4)' }}>Sin capturas activas</span>
+                    )}
                   </div>
 
                   {included > 0 && (

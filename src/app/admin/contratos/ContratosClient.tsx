@@ -170,7 +170,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
                   <a href={`/portal/${agent.portal_token}/contrato`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                     style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                    <ExternalLink size={12} /> Ver portal ↗
+                    <ExternalLink size={12} /> Ver contrato
                   </a>
                 )}
                 <Link href={`/admin/agentes/${agent.id}/editar?tab=contrato`}

@@ -19,16 +19,24 @@ export default function MinutesAdjuster({
   const [action, setAction]     = useState<Action>('credit');
   const [amount, setAmount]     = useState('');
   const [reason, setReason]     = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [saved, setSaved]       = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [saved, setSaved]         = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const available = included - used;
   const pct       = included > 0 ? Math.min((used / included) * 100, 100) : 0;
   const barColor  = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e';
 
+  const requestApply = () => {
+    const n = parseInt(amount);
+    if (isNaN(n) || n <= 0) return;
+    setConfirming(true);
+  };
+
   const apply = async () => {
     const n = parseInt(amount);
     if (isNaN(n) || n < 0) return;
+    setConfirming(false);
     setLoading(true);
     setSaved(false);
     const res = await fetch(`/api/admin/agentes/${agentId}/minutes`, {
@@ -135,24 +143,51 @@ export default function MinutesAdjuster({
         />
       </div>
 
-      {/* Submit */}
-      <button
-        type="button"
-        onClick={apply}
-        disabled={loading || !amount}
-        className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all"
-        style={{
-          background: amount ? activeAction.color : 'var(--c-surface-2)',
-          color:      amount ? '#fff' : 'var(--c-text-3)',
-          opacity:    loading ? 0.6 : 1,
-          cursor:     amount ? 'pointer' : 'not-allowed',
-        }}
-      >
-        {loading
-          ? <Loader2 size={14} className="animate-spin" />
-          : <>{activeAction.icon} {btnLabel}</>
-        }
-      </button>
+      {/* Submit / Confirm */}
+      {confirming ? (
+        <div className="rounded-lg p-3 flex flex-col gap-2.5" style={{ background: `${activeAction.color}12`, border: `1px solid ${activeAction.color}40` }}>
+          <p className="text-xs font-medium text-center" style={{ color: 'var(--c-text)' }}>
+            ¿Confirmar {activeAction.label.toLowerCase()} <strong>{amount} min</strong>
+            {action !== 'set_used' ? ' a este agente?' : ' de uso?'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: activeAction.color, color: '#fff' }}
+            >
+              {activeAction.icon} Confirmar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={requestApply}
+          disabled={loading || !amount}
+          className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          style={{
+            background: amount ? activeAction.color : 'var(--c-surface-2)',
+            color:      amount ? '#fff' : 'var(--c-text-3)',
+            opacity:    loading ? 0.6 : 1,
+            cursor:     amount ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {loading
+            ? <Loader2 size={14} className="animate-spin" />
+            : <>{activeAction.icon} {btnLabel}</>
+          }
+        </button>
+      )}
     </div>
   );
 }

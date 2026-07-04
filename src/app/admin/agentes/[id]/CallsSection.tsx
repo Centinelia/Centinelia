@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Mic, FileText, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, Mic, FileText, ExternalLink, Copy, Check } from 'lucide-react';
 import type { VoiceCall } from '@/types/agent';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
@@ -24,6 +24,25 @@ function OutcomeBadge({ outcome }: { outcome: string }) {
   );
 }
 
+function CopyTranscriptButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      title={copied ? 'Copiado' : 'Copiar transcripción'}
+      className="p-1 rounded transition-colors hover:bg-[var(--c-surface-2)]"
+      style={{ color: copied ? '#22c55e' : 'var(--c-text-3)' }}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
+  );
+}
+
 function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
   const [open, setOpen] = useState(false);
   const hasDetails = call.summary || call.transcript || call.recording_url;
@@ -31,7 +50,7 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
   return (
     <div className="rounded-lg overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
       <div
-        className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none"
+        className={`flex items-center justify-between px-3 py-2.5 ${hasDetails ? 'cursor-pointer select-none' : ''}`}
         onClick={() => hasDetails && setOpen(o => !o)}
       >
         <div>
@@ -41,10 +60,18 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {call.recording_url && <Mic size={13} style={{ color: '#a855f7' }} />}
-          {call.transcript && <FileText size={13} style={{ color: '#3b82f6' }} />}
+          {call.recording_url && (
+            <span title="Tiene grabación">
+              <Mic size={13} style={{ color: '#a855f7' }} />
+            </span>
+          )}
+          {call.transcript && (
+            <span title="Tiene transcripción">
+              <FileText size={13} style={{ color: '#3b82f6' }} />
+            </span>
+          )}
           <OutcomeBadge outcome={call.outcome} />
-          <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-2)' }}>
             {Math.ceil(call.duration_seconds / 60)} min
           </span>
           {hasDetails && (
@@ -78,6 +105,7 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
                   href={call.recording_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title="Abrir en nueva pestaña"
                   className="flex-shrink-0 p-1.5 rounded hover:bg-[var(--c-surface-2)] transition-colors"
                   style={{ color: 'var(--c-text-2)' }}
                 >
@@ -89,7 +117,10 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
 
           {call.transcript && (
             <div>
-              <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Transcripción</div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Transcripción</div>
+                <CopyTranscriptButton text={call.transcript} />
+              </div>
               <div
                 className="text-xs leading-relaxed rounded-lg p-3 max-h-48 overflow-y-auto whitespace-pre-wrap"
                 style={{ background: 'var(--c-code-bg)', color: 'var(--c-text-2)', fontFamily: 'monospace' }}
@@ -111,7 +142,9 @@ export default function CallsSection({ calls, timezone }: { calls: VoiceCall[]; 
         Llamadas recientes ({calls.length})
       </h2>
       {calls.length === 0 ? (
-        <p className="text-sm py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Sin llamadas registradas</p>
+        <p className="text-xs py-6 text-center leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+          Sin llamadas aún — aparecen aquí automáticamente cuando el agente atienda su primera llamada
+        </p>
       ) : (
         <div className="flex flex-col gap-2">
           {calls.map(call => (
