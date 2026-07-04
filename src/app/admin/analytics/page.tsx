@@ -239,10 +239,12 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                 <div
                   className="w-full rounded-sm transition-all"
+                  title={`${label}: ${count} llamada${count !== 1 ? 's' : ''}`}
                   style={{
                     height: `${Math.max((count / maxChartCount) * 88, count > 0 ? 4 : 0)}px`,
                     background: count > 0 ? '#6C3BFF' : 'var(--c-border)',
                     minHeight: count > 0 ? '4px' : '2px',
+                    cursor: 'default',
                   }}
                 />
                 <span className="truncate w-full text-center" style={{ color: 'var(--c-text-4)', fontSize: '9px' }}>
@@ -264,10 +266,12 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               <div key={h} className="flex-1 flex flex-col items-center">
                 <div
                   className="w-full rounded-sm"
+                  title={`${h}:00 — ${count} llamada${count !== 1 ? 's' : ''}`}
                   style={{
                     height: `${Math.max((count / maxHourCount) * 88, count > 0 ? 3 : 0)}px`,
                     background: h === peakHour && count > 0 ? '#f59e0b' : count > 0 ? '#a855f7' : 'var(--c-border)',
                     minHeight: count > 0 ? '3px' : '1px',
+                    cursor: 'default',
                   }}
                 />
               </div>

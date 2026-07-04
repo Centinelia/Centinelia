@@ -229,7 +229,19 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
+const STATUS_SORT: Record<string, number> = { pago_fallido: 0, sin_plan: 1, cancelado: 2, activo: 3 };
+
 export default function BillingClient({ agents }: { agents: Agent[] }) {
+  const [linkOpen, setLinkOpen] = useState<Set<string>>(new Set());
+  const toggleLink = (id: string) =>
+    setLinkOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const sorted = [...agents].sort((a, b) => {
+    const sa = a.plan ? (a.billing_status ?? 'activo') : 'sin_plan';
+    const sb = b.plan ? (b.billing_status ?? 'activo') : 'sin_plan';
+    return (STATUS_SORT[sa] ?? 4) - (STATUS_SORT[sb] ?? 4);
+  });
+
   const totalMRR    = agents.reduce((sum, a) => {
     if (!a.minutes_plan || a.billing_status !== 'activo') return sum;
     return sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0);
@@ -265,7 +277,7 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
 
       {/* Agent list */}
       <div className="space-y-3">
-        {agents.map(agent => {
+        {sorted.map(agent => {
           const billingStatus = agent.plan ? (agent.billing_status ?? 'activo') : 'sin_plan';
           const pct      = agent.minutes_included > 0 ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
           const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
@@ -313,12 +325,24 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                 </div>
               )}
 
-              {/* Generate link */}
+              {/* Generate link — collapsible */}
               <div className="pt-1" style={{ borderTop: '1px solid var(--c-divider)' }}>
-                <div className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>
+                <button
+                  type="button"
+                  onClick={() => toggleLink(agent.id)}
+                  className="flex items-center gap-2 text-xs font-medium w-full text-left transition-opacity hover:opacity-80"
+                  style={{ color: linkOpen.has(agent.id) ? '#9B6DFF' : 'var(--c-text-2)' }}
+                >
+                  <CreditCard size={12} />
                   Generar link de pago
-                </div>
-                <GenerateLinkButton agentId={agent.id} agentName={agent.business_name} />
+                  <ChevronDown size={10} className="ml-auto transition-transform flex-shrink-0"
+                    style={{ transform: linkOpen.has(agent.id) ? 'rotate(180deg)' : undefined, color: 'var(--c-text-4)' }} />
+                </button>
+                {linkOpen.has(agent.id) && (
+                  <div className="mt-3">
+                    <GenerateLinkButton agentId={agent.id} agentName={agent.business_name} />
+                  </div>
+                )}
               </div>
             </div>
           );

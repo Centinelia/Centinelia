@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink, RefreshCw, Check, MessageCircle, Phone, PhoneOutgoing, Clock } from 'lucide-react';
+import { ArrowLeft, ExternalLink, RefreshCw, Check, MessageCircle, Phone, PhoneOutgoing, Clock, ChevronDown } from 'lucide-react';
 import VoiceSelector from '@/components/VoiceSelector';
 import { PLAN_FEATURES, PLAN_LABELS, PLAN_MINUTES, FEATURE_LABELS } from '@/types/agent';
 import type { Plan, AgentFeatures, VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
@@ -59,6 +59,10 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
   const [hoursEnabled, setHoursEnabled]   = useState<boolean>(!!agent.business_hours);
   const [waActive, setWaActive]           = useState<boolean>(!!agent.wa_phone_number);
+  const [funcOpen, setFuncOpen]           = useState<Set<string>>(new Set(['entrantes', 'salientes', 'whatsapp', 'horarios']));
+
+  const toggleFunc = (key: string) =>
+    setFuncOpen(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   const handlePlanChange = (p: Plan) => {
     setPlan(p);
@@ -208,7 +212,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           <Section title="Identidad">
             <div className="p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro:</span> puedes darle un nombre propio al agente. En Básico y Estándar siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
+                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro:</span> puedes darle un nombre propio al agente. En el Plan Comercial siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
               </p>
             </div>
             <Field label="Nombre del agente" name="agent_name"
@@ -235,10 +239,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
         </div>
 
         {/* ── Tab: Funciones ───────────────────────────────────────────── */}
-        <div className={tab !== 'funciones' ? 'hidden' : 'flex flex-col gap-6'}>
+        <div className={tab !== 'funciones' ? 'hidden' : 'flex flex-col gap-4'}>
 
           {/* Llamadas entrantes */}
-          <Section title={<span className="flex items-center gap-1.5"><Phone size={13} />Llamadas entrantes</span>}>
+          <CollapsibleSection
+            id="entrantes"
+            open={funcOpen.has('entrantes')}
+            onToggle={() => toggleFunc('entrantes')}
+            title={<span className="flex items-center gap-1.5"><Phone size={13} />Llamadas entrantes</span>}>
             {/* Feature toggles */}
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
               {INBOUND_FEATURES.map((key, i) => (
@@ -262,10 +270,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             <Field label="Número de transferencia a humano" name="transfer_number" defaultValue={agent.transfer_number ?? ''} />
             <Field label="WhatsApp del dueño (notificaciones de leads)" name="transfer_whatsapp" defaultValue={agent.transfer_whatsapp ?? ''} />
             <Field label="Link de calendario (para agendar citas)" name="calendar_url" defaultValue={agent.calendar_url ?? ''} />
-          </Section>
+          </CollapsibleSection>
 
           {/* Llamadas salientes — solo Pro */}
-          <Section title={<span className="flex items-center gap-1.5"><PhoneOutgoing size={13} />Llamadas salientes</span>}>
+          <CollapsibleSection
+            id="salientes"
+            open={funcOpen.has('salientes')}
+            onToggle={() => toggleFunc('salientes')}
+            title={<span className="flex items-center gap-1.5"><PhoneOutgoing size={13} />Llamadas salientes</span>}>
             <ProToggleRow
               label="Activar llamadas salientes"
               desc={features.outbound_calls ? 'El cliente puede subir contactos y disparar llamadas desde su portal' : 'Permite al cliente disparar llamadas programadas desde su portal'}
@@ -274,10 +286,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               accentColor="#6C3BFF"
               onToggle={() => plan === 'pro' && toggleFeature('outbound_calls')}
             />
-          </Section>
+          </CollapsibleSection>
 
           {/* WhatsApp — solo Pro */}
-          <Section title={<span className="flex items-center gap-1.5"><MessageCircle size={13} />WhatsApp</span>}>
+          <CollapsibleSection
+            id="whatsapp"
+            open={funcOpen.has('whatsapp')}
+            onToggle={() => toggleFunc('whatsapp')}
+            title={<span className="flex items-center gap-1.5"><MessageCircle size={13} />WhatsApp</span>}>
             <ProToggleRow
               label="Activar WhatsApp"
               desc={waActive ? `Número activo: ${agent.phone_number}` : 'Usa el mismo número de voz para atender por WhatsApp'}
@@ -286,10 +302,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               accentColor="#25D366"
               onToggle={() => plan === 'pro' && setWaActive(v => !v)}
             />
-          </Section>
+          </CollapsibleSection>
 
           {/* Horarios */}
-          <Section title={<span className="flex items-center gap-1.5"><Clock size={13} />Horarios de atención</span>}>
+          <CollapsibleSection
+            id="horarios"
+            open={funcOpen.has('horarios')}
+            onToggle={() => toggleFunc('horarios')}
+            title={<span className="flex items-center gap-1.5"><Clock size={13} />Horarios de atención</span>}>
             <div className="flex items-center justify-between p-3 rounded-xl cursor-pointer select-none"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
               onClick={() => setHoursEnabled(v => !v)}>
@@ -343,7 +363,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
                 })}
               </div>
             )}
-          </Section>
+          </CollapsibleSection>
         </div>
 
         {/* ── Tab: Contrato ────────────────────────────────────────────── */}
@@ -394,6 +414,29 @@ function Section({ title, children }: { title: React.ReactNode; children: React.
     <div>
       <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>{title}</h2>
       <div className="flex flex-col gap-3">{children}</div>
+    </div>
+  );
+}
+
+function CollapsibleSection({ id, title, open, onToggle, children }: {
+  id: string; title: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        style={{ background: open ? 'var(--c-surface-2)' : 'transparent' }}
+      >
+        <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>{title}</h2>
+        <ChevronDown size={14} className="flex-shrink-0 transition-transform" style={{ color: 'var(--c-text-4)', transform: open ? 'rotate(180deg)' : undefined }} />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-3 px-4 pb-4 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }

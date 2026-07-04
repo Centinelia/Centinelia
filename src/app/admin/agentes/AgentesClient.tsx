@@ -175,7 +175,7 @@ export default function AgentesClient({ list }: { list: VoiceAgent[] }) {
 
 function PlanBadge({ plan }: { plan: VoiceAgent['plan'] }) {
   const colors: Record<string, string> = {
-    basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+    comercial: '#3b82f6', pro: '#a855f7',
   };
   const c = colors[plan] ?? '#6b7280';
   return (

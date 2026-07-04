@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PhoneCall, Clock, Users, AlertTriangle, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
-const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
+const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   lead_created:       { label: 'Lead',        color: '#22c55e' },
@@ -116,10 +116,10 @@ export default async function DashboardPage() {
         <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Estado de agentes</h2>
-            <Link href="/admin/agentes/nuevo"
-              className="text-xs px-3 py-1.5 rounded-lg font-semibold hover:opacity-80 transition-opacity"
-              style={{ background: '#6C3BFF', color: '#fff' }}>
-              + Nuevo
+            <Link href="/admin/agentes"
+              className="text-xs px-3 py-1.5 rounded-lg font-medium hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+              Ver todos →
             </Link>
           </div>
 

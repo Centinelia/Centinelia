@@ -31,9 +31,10 @@ export default async function AgentDetailPage({ params }: Props) {
   const calls = (callsData ?? []) as VoiceCall[];
 
   const planColors: Record<string, string> = {
-    basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+    comercial: '#3b82f6', pro: '#a855f7',
   };
   const planColor = planColors[agent.plan] ?? '#6b7280';
+  const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
@@ -51,6 +52,16 @@ export default async function AgentDetailPage({ params }: Props) {
             {agent.active
               ? <CheckCircle size={16} color="#22c55e" />
               : <XCircle size={16} color="#ef4444" />}
+            {isOpen !== null && (
+              <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{
+                  background: isOpen ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)',
+                  color: isOpen ? '#22c55e' : '#9ca3af',
+                  border: `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)'}`,
+                }}>
+                {isOpen ? 'Abierto ahora' : 'Cerrado ahora'}
+              </span>
+            )}
           </div>
           <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.client_name}</p>
         </div>
@@ -170,6 +181,25 @@ export default async function AgentDetailPage({ params }: Props) {
       </div>
     </div>
   );
+}
+
+function getIsOpenNow(hours: any, timezone: string): boolean | null {
+  if (!hours) return null;
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, weekday: 'long', hour: 'numeric', minute: 'numeric', hour12: false,
+    }).formatToParts(now);
+    const weekday = parts.find(p => p.type === 'weekday')?.value?.toLowerCase() ?? '';
+    const hour    = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0', 10);
+    const minute  = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0', 10);
+    const current = hour * 60 + minute;
+    const schedule = hours[weekday];
+    if (!schedule?.open || !schedule.from || !schedule.to) return false;
+    const [fh, fm] = (schedule.from as string).split(':').map(Number);
+    const [th, tm] = (schedule.to as string).split(':').map(Number);
+    return current >= fh * 60 + fm && current < th * 60 + tm;
+  } catch { return null; }
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

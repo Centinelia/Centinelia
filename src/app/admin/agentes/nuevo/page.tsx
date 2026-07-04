@@ -2,10 +2,21 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { UtensilsCrossed, Stethoscope, Sparkles, Briefcase, ShoppingBag, Building2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { PLAN_FEATURES, PLAN_LABELS, PLAN_MINUTES, FEATURE_LABELS } from '@/types/agent';
 import type { Plan, AgentFeatures } from '@/types/agent';
 import { AGENT_TEMPLATES } from '@/lib/voice/templates';
 import type { GiroTemplate } from '@/lib/voice/templates';
+
+const TEMPLATE_ICONS: Record<GiroTemplate, LucideIcon> = {
+  restaurante: UtensilsCrossed,
+  consultorio: Stethoscope,
+  estetica:    Sparkles,
+  agencia:     Briefcase,
+  retail:      ShoppingBag,
+  general:     Building2,
+};
 
 const PLANS: Plan[] = ['comercial', 'pro'];
 const PLAN_COLORS: Record<Plan, string> = {
@@ -120,14 +131,18 @@ export default function NuevoAgentePage() {
           </p>
         )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {AGENT_TEMPLATES.map(tpl => (
+          {AGENT_TEMPLATES.map(tpl => {
+            const Icon = TEMPLATE_ICONS[tpl.id];
+            return (
             <button
               key={tpl.id}
               onClick={() => handleTemplateSelect(tpl.id)}
               className="p-5 rounded-xl text-left transition-all hover:scale-[1.02]"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
             >
-              <div className="text-3xl mb-3">{tpl.emoji}</div>
+              <div className="mb-3 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.1)' }}>
+                <Icon size={18} style={{ color: '#9B6DFF' }} />
+              </div>
               <div className="font-semibold text-sm mb-1" style={{ color: 'var(--c-text)' }}>{tpl.label}</div>
               <div className="text-xs" style={{ color: 'var(--c-text-2)' }}>{tpl.description}</div>
               <div className="mt-3 flex flex-wrap gap-1">
@@ -142,7 +157,7 @@ export default function NuevoAgentePage() {
                   ))}
               </div>
             </button>
-          ))}
+          ); })}
         </div>
       </div>
     );
@@ -164,7 +179,7 @@ export default function NuevoAgentePage() {
           ← Cambiar tipo
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-xl">{selectedTpl?.emoji}</span>
+          {selectedTpl && (() => { const TplIcon = TEMPLATE_ICONS[selectedTpl.id]; return <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.1)' }}><TplIcon size={16} style={{ color: '#9B6DFF' }} /></div>; })()}
           <div>
             <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>{selectedTpl?.label}</h1>
             <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>{selectedTpl?.description}</p>

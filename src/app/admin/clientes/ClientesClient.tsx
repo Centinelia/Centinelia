@@ -7,7 +7,7 @@ import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 
 const PLAN_COLORS: Record<string, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6', pro: '#a855f7',
 };
 
 type AgentRow = {
