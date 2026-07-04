@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Phone, ExternalLink, RefreshCw } from 'lucide-react';
+import { Check, Loader2, Phone, ExternalLink, RefreshCw, MessageCircle } from 'lucide-react';
 import type { VoiceAgent } from '@/types/agent';
 import { DEMO_INSTRUCTIONS } from '@/lib/demo/instructions';
 
@@ -42,6 +42,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
   const [firstMessage,  setFirstMessage]  = useState(agent.first_message ?? '');
   const [description,   setDescription]   = useState(agent.business_description ?? '');
   const [knowledgeBase, setKnowledgeBase] = useState(agent.knowledge_base ?? '');
+  const [waActive,      setWaActive]      = useState(!!agent.wa_phone_number);
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
   const [applying,  setApplying]  = useState(false);
@@ -72,6 +73,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
         business_website:       (agent as any).business_website ?? null,
         timezone:               agent.timezone,
         phone_number:           agent.phone_number,
+        wa_phone_number:        waActive ? (agent.phone_number ?? null) : null,
         elevenlabs_voice_id:    (agent as any).elevenlabs_voice_id ?? null,
         plan:                   agent.plan,
         features:               agent.features,
@@ -146,6 +148,30 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
           rows={3}
           placeholder="Agente demo de Centinelia: adopta cualquier papel que se le indique."
         />
+      </div>
+
+      {/* WhatsApp */}
+      <div className="rounded-2xl p-5 flex items-center justify-between gap-4" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: waActive ? 'rgba(37,211,102,0.12)' : 'var(--c-surface-2)' }}>
+            <MessageCircle size={16} style={{ color: waActive ? '#25D366' : 'var(--c-text-3)' }} />
+          </div>
+          <div>
+            <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>WhatsApp</p>
+            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+              {waActive ? `Activo en ${agent.phone_number}` : 'Usa el mismo número de voz para WhatsApp'}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWaActive(v => !v)}
+          className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors"
+          style={{ background: waActive ? '#25D366' : 'var(--c-border)' }}>
+          <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm"
+            style={{ transform: waActive ? 'translateX(20px)' : 'translateX(0)' }} />
+        </button>
       </div>
 
       {/* Knowledge base */}
