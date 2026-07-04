@@ -8,9 +8,9 @@ import VoiceSelector from '@/components/VoiceSelector';
 import { PLAN_FEATURES, PLAN_LABELS, PLAN_MINUTES, FEATURE_LABELS } from '@/types/agent';
 import type { Plan, AgentFeatures, VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
 
-const PLANS: Plan[] = ['basico', 'estandar', 'pro'];
+const PLANS: Plan[] = ['comercial', 'pro'];
 const PLAN_COLORS: Record<Plan, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6', pro: '#a855f7',
 };
 
 const DAYS: { key: keyof BusinessHours; label: string }[] = [

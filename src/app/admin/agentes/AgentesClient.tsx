@@ -7,10 +7,10 @@ import type { VoiceAgent } from '@/types/agent';
 import { PLAN_LABELS } from '@/types/agent';
 
 type StatusFilter = 'todos' | 'activos' | 'pausados';
-type PlanFilter   = 'todos' | 'basico' | 'estandar' | 'pro';
+type PlanFilter   = 'todos' | 'comercial' | 'pro';
 
 const PLAN_COLORS: Record<string, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6', pro: '#a855f7',
 };
 
 export default function AgentesClient({ list }: { list: VoiceAgent[] }) {
@@ -35,9 +35,8 @@ export default function AgentesClient({ list }: { list: VoiceAgent[] }) {
   const activeCount = list.filter(a => a.active).length;
   const pausedCount = list.filter(a => !a.active).length;
   const planCounts  = {
-    basico:   list.filter(a => a.plan === 'basico').length,
-    estandar: list.filter(a => a.plan === 'estandar').length,
-    pro:      list.filter(a => a.plan === 'pro').length,
+    comercial: list.filter(a => a.plan === 'comercial').length,
+    pro:       list.filter(a => a.plan === 'pro').length,
   };
 
   return (
@@ -94,10 +93,9 @@ export default function AgentesClient({ list }: { list: VoiceAgent[] }) {
               {/* Plan */}
               <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
                 {([
-                  { key: 'todos',    label: 'Todos',                          color: undefined },
-                  { key: 'basico',   label: `Básico (${planCounts.basico})`,   color: PLAN_COLORS.basico },
-                  { key: 'estandar', label: `Estándar (${planCounts.estandar})`, color: PLAN_COLORS.estandar },
-                  { key: 'pro',      label: `Pro (${planCounts.pro})`,         color: PLAN_COLORS.pro },
+                  { key: 'todos',     label: 'Todos',                              color: undefined },
+                  { key: 'comercial', label: `Comercial (${planCounts.comercial})`, color: PLAN_COLORS.comercial },
+                  { key: 'pro',       label: `Pro (${planCounts.pro})`,             color: PLAN_COLORS.pro },
                 ] as { key: PlanFilter; label: string; color?: string }[]).map(({ key, label, color }) => {
                   const active = plan === key;
                   return (

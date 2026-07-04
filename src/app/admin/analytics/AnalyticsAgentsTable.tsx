@@ -17,12 +17,11 @@ export interface AgentRow {
 }
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  basico:   { label: 'Básico',   color: '#6b7280' },
-  estandar: { label: 'Estándar', color: '#3b82f6' },
-  pro:      { label: 'Pro',      color: '#a855f7' },
+  comercial: { label: 'Comercial', color: '#3b82f6' },
+  pro:       { label: 'Pro',       color: '#a855f7' },
 };
 
-type TierFilter   = 'todos' | 'basico' | 'estandar' | 'pro';
+type TierFilter   = 'todos' | 'comercial' | 'pro';
 type StatusFilter = 'todos' | 'activos' | 'pausados';
 
 export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
@@ -45,8 +44,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
   }, [rows, tier, status, search]);
 
   const counts = {
-    basico:   rows.filter(r => r.plan === 'basico').length,
-    estandar: rows.filter(r => r.plan === 'estandar').length,
+    comercial: rows.filter(r => r.plan === 'comercial').length,
     pro:      rows.filter(r => r.plan === 'pro').length,
     activos:  rows.filter(r => r.active).length,
     pausados: rows.filter(r => !r.active).length,
@@ -98,8 +96,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               <div className="flex gap-1 flex-wrap p-1 rounded-lg" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
                 {([
                   { key: 'todos',    label: `Todos (${rows.length})`,          color: undefined },
-                  { key: 'basico',   label: `Básico (${counts.basico})`,       color: '#6b7280' },
-                  { key: 'estandar', label: `Estándar (${counts.estandar})`,   color: '#3b82f6' },
+                  { key: 'comercial', label: `Comercial (${counts.comercial})`, color: '#3b82f6' },
                   { key: 'pro',      label: `Pro (${counts.pro})`,             color: '#a855f7' },
                 ] as { key: TierFilter; label: string; color?: string }[]).map(({ key, label, color }) => (
                   <button
@@ -166,7 +163,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {filtered.map(row => {
-            const meta = PLAN_META[row.plan] ?? PLAN_META.basico;
+            const meta = PLAN_META[row.plan] ?? PLAN_META.comercial;
             return (
               <Link
                 key={row.id}

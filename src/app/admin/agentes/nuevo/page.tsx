@@ -7,9 +7,9 @@ import type { Plan, AgentFeatures } from '@/types/agent';
 import { AGENT_TEMPLATES } from '@/lib/voice/templates';
 import type { GiroTemplate } from '@/lib/voice/templates';
 
-const PLANS: Plan[] = ['basico', 'estandar', 'pro'];
+const PLANS: Plan[] = ['comercial', 'pro'];
 const PLAN_COLORS: Record<Plan, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6', pro: '#a855f7',
 };
 
 export default function NuevoAgentePage() {
@@ -23,8 +23,8 @@ export default function NuevoAgentePage() {
 
   const [saving, setSaving] = useState(false);
   const [template, setTemplate] = useState<GiroTemplate | null>(null);
-  const [plan, setPlan] = useState<Plan>('basico');
-  const [features, setFeatures] = useState<AgentFeatures>(PLAN_FEATURES.basico);
+  const [plan, setPlan] = useState<Plan>('comercial');
+  const [features, setFeatures] = useState<AgentFeatures>(PLAN_FEATURES.comercial);
 
   const selectedTpl = AGENT_TEMPLATES.find(t => t.id === template);
   const [formTab, setFormTab] = useState<'info' | 'agente' | 'funciones'>('info');
@@ -237,7 +237,7 @@ export default function NuevoAgentePage() {
           <Section title="Identidad del agente">
             <div className="p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span>, En Básico y Estándar el agente se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>. Con Pro puedes darle un nombre propio.
+                <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span> En Comercial el agente se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>. Con Pro puedes darle un nombre propio.
               </p>
             </div>
             <Field label="Nombre del agente" name="agent_name" placeholder="Ej: Sofía (solo Plan Pro)" disabled={plan !== 'pro'} />

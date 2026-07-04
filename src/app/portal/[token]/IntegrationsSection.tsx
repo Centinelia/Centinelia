@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { Calendar, CalendarCheck, Check, ChevronDown, ChevronUp, ExternalLink, Lock, MessageCircle, Save } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
-const PLAN_ORDER: Plan[] = ['basico', 'estandar', 'pro'];
-const PLAN_LABELS: Record<Plan, string> = { basico: 'Básico', estandar: 'Comercial', pro: 'Pro' };
-const PLAN_COLORS: Record<Plan, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
+const PLAN_ORDER: Plan[] = ['comercial', 'pro'];
+const PLAN_LABELS: Record<Plan, string> = { comercial: 'Comercial', pro: 'Pro' };
+const PLAN_COLORS: Record<Plan, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 function canUse(clientPlan: Plan, required: Plan): boolean {
   return PLAN_ORDER.indexOf(clientPlan) >= PLAN_ORDER.indexOf(required);
@@ -26,7 +26,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'cal_com',
     label:        'Cal.com',
     description:  'Agendamiento directo, el agente crea la cita durante la llamada',
-    requiredPlan: 'basico',
+    requiredPlan: 'comercial',
     accentColor:  '#000',
     icon: (
       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -39,7 +39,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'calendly',
     label:        'Calendly',
     description:  'Agendamiento vía link, el agente comparte tu URL por WhatsApp',
-    requiredPlan: 'basico',
+    requiredPlan: 'comercial',
     accentColor:  '#006BFF',
     icon: (
       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -52,7 +52,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'google',
     label:        'Google Calendar',
     description:  'Agendamiento vía link, el agente comparte tu URL por WhatsApp',
-    requiredPlan: 'basico',
+    requiredPlan: 'comercial',
     accentColor:  '#4285F4',
     icon: (
       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"

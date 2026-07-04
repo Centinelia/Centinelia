@@ -1,7 +1,7 @@
 ﻿import { FEATURE_LABELS, PLAN_LABELS } from '@/types/agent';
 import type { VoiceAgent } from '@/types/agent';
-import { MINUTES_PLAN_CONFIG } from '@/lib/billing/plans';
-import type { MinutesPlan } from '@/lib/billing/plans';
+import { MINUTES_TIER_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
 
 function fmt(date: string) {
   return new Date(date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -10,9 +10,10 @@ function fmt(date: string) {
 export function ContractDocument({ agent }: { agent: VoiceAgent }) {
   const features       = agent.features ?? {};
   const planLabel      = PLAN_LABELS[agent.plan] ?? agent.plan;
-  const minutesCfg     = agent.minutes_plan ? MINUTES_PLAN_CONFIG[agent.minutes_plan as MinutesPlan] : null;
-  const monthlyPrice   = minutesCfg?.mxn ?? 0;
-  const minutesIncluded = agent.minutes_included ?? (minutesCfg?.minutes ?? 0);
+  const tierCfg         = agent.minutes_plan ? MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier] : null;
+  const monthlyCfg      = (agent.plan && agent.minutes_plan) ? MONTHLY_CONFIG[agent.plan as 'comercial' | 'pro']?.[agent.minutes_plan as MinutesTier] : null;
+  const monthlyPrice    = monthlyCfg?.mxn ?? 0;
+  const minutesIncluded = agent.minutes_included ?? (tierCfg?.minutes ?? 0);
   const signedAt       = agent.contract_accepted_at ? fmt(agent.contract_accepted_at) : null;
   const today          = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -86,7 +87,7 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
       <Clause title={`${excluded.length > 0 ? '5' : '4'}. FACTURACIÓN`}>
         <p>
           La mensualidad del servicio es de <strong>${monthlyPrice.toLocaleString('es-MX')} MXN + IVA</strong> por mes, correspondiente
-          al plan de minutos <strong>{minutesCfg?.label ?? agent.minutes_plan ?? ','}</strong> ({minutesIncluded} min/mes).
+          al plan de minutos <strong>{tierCfg?.label ?? agent.minutes_plan ?? ','}</strong> ({minutesIncluded} min/mes).
           El cobro se realizará de forma automática a través de Stripe en la fecha de renovación mensual.
         </p>
         <p style={{ marginTop: '0.5rem' }}>

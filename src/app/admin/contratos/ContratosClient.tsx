@@ -7,12 +7,12 @@ import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 
 const PLAN_COLORS: Record<string, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
+  comercial: '#3b82f6', pro: '#a855f7',
 };
 
 type StatusFilter = 'todos' | 'firmados' | 'pendientes';
 type TypeFilter   = 'todos' | 'automatico' | 'personalizado';
-type PlanFilter   = 'todos' | 'basico' | 'estandar' | 'pro';
+type PlanFilter   = 'todos' | 'comercial' | 'pro';
 
 export interface ContratoRow {
   id: string;
@@ -111,7 +111,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
 
           {/* Plan */}
           <FilterGroup label="Plan">
-            {(['todos', 'basico', 'estandar', 'pro'] as PlanFilter[]).map(v => (
+            {(['todos', 'comercial', 'pro'] as PlanFilter[]).map(v => (
               <Pill key={v} active={planFilter === v} onClick={() => setPlanFilter(v)}
                 label={v === 'todos' ? 'Todos' : PLAN_LABELS[v as Plan]}
                 color={v !== 'todos' ? PLAN_COLORS[v] : undefined}

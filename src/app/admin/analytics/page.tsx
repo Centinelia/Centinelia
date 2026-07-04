@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Phone, Clock, TrendingUp, Users, Download } from 'lucide-react';
 import Link from 'next/link';
-import { MINUTES_PLAN_CONFIG } from '@/lib/billing/plans';
-import type { MinutesPlan } from '@/lib/billing/plans';
+import { MONTHLY_CONFIG } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
+import type { Plan } from '@/types/agent';
 import AnalyticsAgentsTable from './AnalyticsAgentsTable';
 import type { AgentRow } from './AnalyticsAgentsTable';
 
@@ -139,7 +140,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
   const mrr = allAgents
     .filter(a => a.active && a.minutes_plan)
-    .reduce((sum, a) => sum + (MINUTES_PLAN_CONFIG[a.minutes_plan as MinutesPlan]?.mxn ?? 0), 0);
+    .reduce((sum, a) => sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0), 0);
   const activeAgentsCount = allAgents.filter(a => a.active).length;
 
   const outcomeCounts: Record<string, number> = {};
@@ -171,7 +172,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
   const agentRows: AgentRow[] = allAgents.map(a => {
     const stats  = agentCallMap[a.id] ?? { calls: 0, leads: 0, duration: 0 };
     const avgMin = stats.calls > 0 ? Math.round(stats.duration / stats.calls / 60) : 0;
-    const mxn    = a.minutes_plan ? (MINUTES_PLAN_CONFIG[a.minutes_plan as MinutesPlan]?.mxn ?? 0) : 0;
+    const mxn    = (a.plan && a.minutes_plan) ? (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0) : 0;
     return { id: a.id, business_name: a.business_name, plan: a.plan, active: a.active, mxn, calls: stats.calls, leads: stats.leads, avgMin, minutesUsed: a.minutes_used };
   });
 

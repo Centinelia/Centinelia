@@ -1,38 +1,79 @@
 import type { Plan } from '@/types/agent';
 
-export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
+export type { Plan };
+export type MinutesTier = 'starter' | 'growth' | 'scale' | 'enterprise';
+export type MinutesPlan = MinutesTier; // alias kept for DB field compatibility
+
+// ─── Agent type (one-time setup fee) ─────────────────────────────────────────
 
 export interface FeaturePlanConfig {
-  label: string;
-  setupFee: number;
+  label:       string;
+  setupFee:    number;
   setupPriceId: () => string;
 }
 
-export interface MinutesPlanConfig {
-  label: string;
-  minutes: number;
-  mxn: number;
-  priceId: () => string;
+export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
+  comercial: { label: 'Comercial', setupFee: 8990,  setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
+  pro:       { label: 'Pro',       setupFee: 14990, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+};
+
+// ─── Monthly plans (base platform fee + minutes, combined Stripe price) ───────
+// Base: Comercial $200/mes · Pro $400/mes
+// Minutes: $9.99 MXN/min in-plan · $12.99 MXN/min extra
+
+export const PLAN_BASE_MXN: Record<Plan, number> = {
+  comercial: 200,
+  pro:       400,
+};
+
+export const MINUTES_RATE_IN_PLAN = 9.99;
+export const MINUTES_RATE_EXTRA   = 12.99;
+
+export interface MonthlyPlanConfig {
+  label:     string;
+  minutes:   number;
+  mxn:       number; // total monthly (base + minutes)
+  priceId:   () => string;
 }
 
-export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  basico:   { label: 'Recepcionista', setupFee: 4990,  setupPriceId: () => process.env.STRIPE_SETUP_BASICO! },
-  estandar: { label: 'Comercial',     setupFee: 7990,  setupPriceId: () => process.env.STRIPE_SETUP_ESTANDAR! },
-  pro:      { label: 'Pro',           setupFee: 12990, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+export const MONTHLY_CONFIG: Record<Plan, Record<MinutesTier, MonthlyPlanConfig>> = {
+  comercial: {
+    starter:    { label: 'Starter',    minutes: 300,  mxn: 3197,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  mxn: 6194,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, mxn: 12188, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
+    enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
+  },
+  pro: {
+    starter:    { label: 'Starter',    minutes: 300,  mxn: 3397,  priceId: () => process.env.STRIPE_PRO_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  mxn: 6394,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, mxn: 12388, priceId: () => process.env.STRIPE_PRO_SCALE! },
+    enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
+  },
 };
 
-export const MINUTES_PLAN_CONFIG: Record<MinutesPlan, MinutesPlanConfig> = {
-  starter:    { label: 'Starter',    minutes: 200,  mxn: 1990,  priceId: () => process.env.STRIPE_MINUTES_STARTER! },
-  growth:     { label: 'Growth',     minutes: 500,  mxn: 3490,  priceId: () => process.env.STRIPE_MINUTES_GROWTH! },
-  scale:      { label: 'Scale',      minutes: 1000, mxn: 6490,  priceId: () => process.env.STRIPE_MINUTES_SCALE! },
-  enterprise: { label: 'Enterprise', minutes: 3000, mxn: 12990, priceId: () => process.env.STRIPE_MINUTES_ENTERPRISE! },
+// Flat tier config for display purposes (plan-agnostic: minutes count + label only)
+export const MINUTES_TIER_CONFIG: Record<MinutesTier, { label: string; minutes: number }> = {
+  starter:    { label: 'Starter',    minutes: 300 },
+  growth:     { label: 'Growth',     minutes: 600 },
+  scale:      { label: 'Scale',      minutes: 1200 },
+  enterprise: { label: 'Enterprise', minutes: 0 },
 };
 
-export function minutesPlanFromPriceId(priceId: string): MinutesPlan | null {
-  for (const [plan, cfg] of Object.entries(MINUTES_PLAN_CONFIG) as [MinutesPlan, MinutesPlanConfig][]) {
-    if (cfg.priceId() === priceId) return plan;
+/** @deprecated Use MONTHLY_CONFIG[plan][tier] for pricing, MINUTES_TIER_CONFIG for display */
+export const MINUTES_PLAN_CONFIG = MINUTES_TIER_CONFIG as Record<MinutesTier, { label: string; minutes: number; mxn?: number; priceId?: () => string }>;
+
+export function monthlyConfigFromPriceId(priceId: string): { plan: Plan; tier: MinutesTier; cfg: MonthlyPlanConfig } | null {
+  for (const [plan, tiers] of Object.entries(MONTHLY_CONFIG) as [Plan, Record<MinutesTier, MonthlyPlanConfig>][]) {
+    for (const [tier, cfg] of Object.entries(tiers) as [MinutesTier, MonthlyPlanConfig][]) {
+      if (cfg.priceId && cfg.priceId() === priceId) return { plan, tier, cfg };
+    }
   }
   return null;
+}
+
+/** @deprecated Use monthlyConfigFromPriceId */
+export function minutesPlanFromPriceId(priceId: string): MinutesTier | null {
+  return monthlyConfigFromPriceId(priceId)?.tier ?? null;
 }
 
 export function nextResetDate(): string {
@@ -46,16 +87,16 @@ export function nextResetDate(): string {
 export type WaMessagesPlan = 'wa_200' | 'wa_500' | 'wa_1000';
 
 export interface WaMessagesPlanConfig {
-  label: string;
+  label:    string;
   messages: number;
-  mxn: number;
-  priceId: () => string;
+  mxn:      number;
+  priceId:  () => string;
 }
 
 export const WA_MESSAGES_PLAN_CONFIG: Record<WaMessagesPlan, WaMessagesPlanConfig> = {
-  wa_200:  { label: 'WA Starter', messages: 200,  mxn: 249,  priceId: () => process.env.STRIPE_WA_200! },
-  wa_500:  { label: 'WA Growth',  messages: 500,  mxn: 449,  priceId: () => process.env.STRIPE_WA_500! },
-  wa_1000: { label: 'WA Scale',   messages: 1000, mxn: 749,  priceId: () => process.env.STRIPE_WA_1000! },
+  wa_200:  { label: 'WA Starter', messages: 200,  mxn: 249, priceId: () => process.env.STRIPE_WA_200! },
+  wa_500:  { label: 'WA Growth',  messages: 500,  mxn: 449, priceId: () => process.env.STRIPE_WA_500! },
+  wa_1000: { label: 'WA Scale',   messages: 1000, mxn: 749, priceId: () => process.env.STRIPE_WA_1000! },
 };
 
 export function waMsgsPlanFromPriceId(priceId: string): WaMessagesPlan | null {

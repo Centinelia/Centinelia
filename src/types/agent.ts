@@ -3,7 +3,7 @@ export type { WaMessagesPlan };
 
 // ─── Plans ────────────────────────────────────────────────────────────────────
 
-export type Plan = 'basico' | 'estandar' | 'pro';
+export type Plan = 'comercial' | 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -134,19 +134,7 @@ export interface VoiceCall {
 // ─── Plan defaults ────────────────────────────────────────────────────────────
 
 export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
-  basico: {
-    receptionist:            true,
-    lead_qualification:      true,
-    appointment_booking:     false,
-    existing_client_support: false,
-    smart_transfer:          false,
-    order_taking:            false,
-    multilingual:            false,
-    client_memory:           false,
-    whatsapp_escalation:     false,
-    outbound_calls:          false,
-  },
-  estandar: {
+  comercial: {
     receptionist:            true,
     lead_qualification:      true,
     appointment_booking:     true,
@@ -173,15 +161,13 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
 };
 
 export const PLAN_MINUTES: Record<Plan, number> = {
-  basico:   200,
-  estandar: 500,
-  pro:      1000,
+  comercial: 300,
+  pro:       300,
 };
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  basico:   'Recepcionista',
-  estandar: 'Comercial',
-  pro:      'Pro',
+  comercial: 'Comercial',
+  pro:       'Pro',
 };
 
 export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {

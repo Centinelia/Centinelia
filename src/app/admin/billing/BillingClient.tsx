@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
-import { FEATURE_PLAN_CONFIG, MINUTES_PLAN_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
-import type { MinutesPlan } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
+type MinutesPlan = MinutesTier;
 
 interface Agent {
   id: string;
@@ -111,15 +112,15 @@ function SelectMenu<T extends string>({
 // ── Generate link section ──────────────────────────────────────────────────────
 
 function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName: string }) {
-  const [featurePlan, setFeaturePlan] = useState<Plan>('basico');
+  const [featurePlan, setFeaturePlan] = useState<Plan>('comercial');
   const [minutesPlan, setMinutesPlan] = useState<MinutesPlan>('starter');
   const [loading, setLoading]         = useState(false);
   const [url, setUrl]                 = useState<string | null>(null);
   const [copied, setCopied]           = useState(false);
 
-  const featureCfg = FEATURE_PLAN_CONFIG[featurePlan];
-  const minutesCfg = MINUTES_PLAN_CONFIG[minutesPlan];
-  const totalFirst  = featureCfg.setupFee + minutesCfg.mxn;
+  const featureCfg  = FEATURE_PLAN_CONFIG[featurePlan];
+  const monthlyCfg  = MONTHLY_CONFIG[featurePlan]?.[minutesPlan];
+  const totalFirst  = featureCfg.setupFee + (monthlyCfg?.mxn ?? 0);
 
   const featureOptions = (Object.entries(FEATURE_PLAN_CONFIG) as [Plan, typeof featureCfg][]).map(([key, cfg]) => ({
     value: key,
@@ -127,11 +128,14 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
     sub:   `Instalación única`,
   }));
 
-  const minutesOptions = (Object.entries(MINUTES_PLAN_CONFIG) as [MinutesPlan, typeof minutesCfg][]).map(([key, cfg]) => ({
-    value: key,
-    label: `${cfg.label} · ${cfg.minutes} min, $${cfg.mxn.toLocaleString('es-MX')}/mes`,
-    sub:   `Mensualidad recurrente`,
-  }));
+  const minutesOptions = (Object.entries(MINUTES_TIER_CONFIG) as [MinutesPlan, { label: string; minutes: number }][]).map(([key, cfg]) => {
+    const mc = MONTHLY_CONFIG[featurePlan]?.[key];
+    return {
+      value: key,
+      label: `${cfg.label} · ${cfg.minutes} min, $${(mc?.mxn ?? 0).toLocaleString('es-MX')}/mes`,
+      sub:   `Mensualidad recurrente`,
+    };
+  });
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -186,7 +190,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
       <div className="flex items-center justify-between rounded-lg px-3 py-2 text-xs"
         style={{ background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.12)' }}>
         <span style={{ color: 'var(--c-text-2)' }}>
-          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${minutesCfg.mxn.toLocaleString('es-MX')} mes
+          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${(monthlyCfg?.mxn ?? 0).toLocaleString('es-MX')} mes
         </span>
         <span className="font-semibold" style={{ color: '#9B6DFF' }}>
           ${totalFirst.toLocaleString('es-MX')} MXN
@@ -228,7 +232,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
 export default function BillingClient({ agents }: { agents: Agent[] }) {
   const totalMRR    = agents.reduce((sum, a) => {
     if (!a.minutes_plan || a.billing_status !== 'activo') return sum;
-    return sum + (MINUTES_PLAN_CONFIG[a.minutes_plan]?.mxn ?? 0);
+    return sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0);
   }, 0);
   const activeCount = agents.filter(a => a.billing_status === 'activo').length;
   const failedCount = agents.filter(a => a.billing_status === 'pago_fallido').length;
@@ -266,7 +270,7 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
           const pct      = agent.minutes_included > 0 ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
           const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
           const fCfg     = agent.plan         ? FEATURE_PLAN_CONFIG[agent.plan]         : null;
-          const mCfg     = agent.minutes_plan ? MINUTES_PLAN_CONFIG[agent.minutes_plan] : null;
+          const mCfg     = (agent.plan && agent.minutes_plan) ? MONTHLY_CONFIG[agent.plan as Plan]?.[agent.minutes_plan as MinutesTier] : null;
 
           return (
             <div key={agent.id} className="rounded-xl p-4 space-y-3"
