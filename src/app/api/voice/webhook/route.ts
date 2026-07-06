@@ -202,22 +202,41 @@ export async function POST(req: NextRequest) {
         break;
       }
       const minutes = Math.ceil(durationSeconds / 60) || 1;
-      await supabase.rpc('increment_minutes_used', { agent_id: resolvedAgentId, minutes });
 
       // 4. Fetch agent for notifications
       const { data: agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url')
+        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url')
         .eq('id', resolvedAgentId)
         .single();
 
-      const used     = agent?.minutes_used     ?? 0;
-      const included = agent?.minutes_included ?? 0;
-      const pct      = included > 0 ? (used / included) * 100 : 0;
+      // 5. Increment minutes — account-level if portal_email, per-agent for demo/standalone
+      let used         = 0;
+      let included     = 0;
+      let resetDateStr = ',';
 
-      const resetDateStr = agent?.minutes_reset_date
-        ? new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
-        : ',';
+      if (agent?.portal_email) {
+        await supabase.rpc('increment_account_minutes_used', { p_portal_email: agent.portal_email, minutes });
+        const { data: acct } = await supabase
+          .from('account_minutes')
+          .select('minutes_used, minutes_included, minutes_reset_date')
+          .eq('portal_email', agent.portal_email)
+          .single();
+        used     = acct?.minutes_used     ?? 0;
+        included = acct?.minutes_included ?? 0;
+        if (acct?.minutes_reset_date) {
+          resetDateStr = new Date(acct.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+        }
+      } else {
+        await supabase.rpc('increment_minutes_used', { agent_id: resolvedAgentId, minutes });
+        used     = (agent?.minutes_used     ?? 0) + minutes;
+        included = agent?.minutes_included ?? 0;
+        if (agent?.minutes_reset_date) {
+          resetDateStr = new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+        }
+      }
+
+      const pct = included > 0 ? (used / included) * 100 : 0;
 
       // 5. WhatsApp call summary to owner, runs before auto-pause so it always fires
       if (agent?.transfer_whatsapp && (agent.notify_whatsapp ?? true)) {
@@ -257,8 +276,19 @@ export async function POST(req: NextRequest) {
 
       // 6. Auto-pause at 100%
       if (agent?.active && used >= included) {
-        await supabase.from('voice_agents').update({ active: false }).eq('id', resolvedAgentId);
-        if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
+        if (agent.portal_email) {
+          const { data: accountAgents } = await supabase
+            .from('voice_agents').select('id, phone_number').eq('portal_email', agent.portal_email).eq('active', true);
+          if (accountAgents?.length) {
+            await supabase.from('voice_agents').update({ active: false }).eq('portal_email', agent.portal_email);
+            for (const a of accountAgents) {
+              if (a.phone_number) await pauseVapiAgent(a.phone_number);
+            }
+          }
+        } else {
+          await supabase.from('voice_agents').update({ active: false }).eq('id', resolvedAgentId);
+          if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
+        }
         const pauseMsg = `⚠️ *Límite de minutos alcanzado, ${agent.business_name}*\n\nTu agente de voz ha sido *pausado automáticamente* al haber utilizado los ${included} minutos de tu plan.\n\nContacta a tu asesor de Centinelia para reactivar el servicio o adquirir minutos adicionales.`;
         if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, pauseMsg);
         if (agent.client_email) {

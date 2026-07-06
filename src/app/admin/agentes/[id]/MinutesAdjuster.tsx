@@ -9,10 +9,12 @@ export default function MinutesAdjuster({
   agentId,
   minutesUsed,
   minutesIncluded,
+  isAccountPool = false,
 }: {
   agentId: string;
   minutesUsed: number;
   minutesIncluded: number;
+  isAccountPool?: boolean;
 }) {
   const [used, setUsed]         = useState(minutesUsed);
   const [included, setIncluded] = useState(minutesIncluded);
@@ -71,7 +73,14 @@ export default function MinutesAdjuster({
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
+          {isAccountPool && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF' }}>
+              Cuenta
+            </span>
+          )}
+        </div>
         {saved && (
           <span className="flex items-center gap-1 text-xs font-medium" style={{ color: '#22c55e' }}>
             <Check size={12} /> Aplicado
@@ -182,10 +191,7 @@ export default function MinutesAdjuster({
             cursor:     amount ? 'pointer' : 'not-allowed',
           }}
         >
-          {loading
-            ? <Loader2 size={14} className="animate-spin" />
-            : <>{activeAction.icon} {btnLabel}</>
-          }
+          {loading ? <Loader2 size={14} className="animate-spin" /> : btnLabel}
         </button>
       )}
     </div>

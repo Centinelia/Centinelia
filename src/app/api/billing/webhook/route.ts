@@ -59,24 +59,41 @@ export async function POST(req: NextRequest) {
         const newMinutesCfg = MONTHLY_CONFIG[toPlan][toMinutesPlan];
         const { data: prevForUpgrade } = await supabase
           .from('voice_agents')
-          .select('minutes_used, minutes_included')
+          .select('minutes_used, minutes_included, portal_email')
           .eq('id', agentId)
           .single();
-        // Carry already-used minutes; new balance = new plan allocation minus used so far
-        const usedSoFar    = prevForUpgrade?.minutes_used ?? 0;
-        const newIncluded  = Math.max(newMinutesCfg.minutes, usedSoFar); // never go negative
+        const upgradeEmail = prevForUpgrade?.portal_email ?? null;
+
+        let usedSoFar = 0;
+        let prevIncluded = 0;
+        if (upgradeEmail) {
+          const { data: acctUpgrade } = await supabase
+            .from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', upgradeEmail).single();
+          usedSoFar    = acctUpgrade?.minutes_used     ?? 0;
+          prevIncluded = acctUpgrade?.minutes_included ?? 0;
+        } else {
+          usedSoFar    = prevForUpgrade?.minutes_used     ?? 0;
+          prevIncluded = prevForUpgrade?.minutes_included ?? 0;
+        }
+        const newIncluded = Math.max(newMinutesCfg.minutes, usedSoFar);
 
         await supabase.from('voice_agents').update({
-          plan:             toPlan,
-          features:         PLAN_FEATURES[toPlan],
-          minutes_plan:     toMinutesPlan,
-          minutes_included: newIncluded,
+          plan:         toPlan,
+          features:     PLAN_FEATURES[toPlan],
+          minutes_plan: toMinutesPlan,
+          ...(upgradeEmail ? {} : { minutes_included: newIncluded }),
         }).eq('id', agentId);
 
-        if (newIncluded > (prevForUpgrade?.minutes_included ?? 0)) {
+        if (upgradeEmail) {
+          await supabase.from('account_minutes')
+            .update({ minutes_plan: toMinutesPlan, minutes_included: newIncluded, updated_at: new Date().toISOString() })
+            .eq('portal_email', upgradeEmail);
+        }
+
+        if (newIncluded > prevIncluded) {
           await supabase.from('minutes_ledger').insert({
             agent_id:    agentId,
-            amount:      newIncluded - (prevForUpgrade?.minutes_included ?? 0),
+            amount:      newIncluded - prevIncluded,
             description: `Upgrade a ${newMinutesCfg.label}, ajuste inmediato de minutos`,
             source:      'activacion',
           });
@@ -92,17 +109,36 @@ export async function POST(req: NextRequest) {
 
         const { data: agent } = await supabase
           .from('voice_agents')
-          .select('minutes_included, phone_number, vapi_agent_id')
+          .select('minutes_included, phone_number, vapi_agent_id, portal_email')
           .eq('id', agentId)
           .single();
 
-        await supabase.from('voice_agents')
-          .update({
-            minutes_included: (agent?.minutes_included ?? 0) + minutes,
-            active:           true,
-            billing_status:   'activo',
-          })
-          .eq('id', agentId);
+        if (agent?.portal_email) {
+          const { data: acctExtra } = await supabase
+            .from('account_minutes').select('minutes_included').eq('portal_email', agent.portal_email).single();
+          await supabase.from('account_minutes')
+            .update({ minutes_included: (acctExtra?.minutes_included ?? 0) + minutes, updated_at: new Date().toISOString() })
+            .eq('portal_email', agent.portal_email);
+          // Reactivate all agents in this account
+          await supabase.from('voice_agents')
+            .update({ active: true, billing_status: 'activo' })
+            .eq('portal_email', agent.portal_email);
+          const { data: acctAgents } = await supabase
+            .from('voice_agents').select('phone_number, vapi_agent_id')
+            .eq('portal_email', agent.portal_email).not('phone_number', 'is', null);
+          if (acctAgents) {
+            for (const a of acctAgents) {
+              if (a.phone_number && a.vapi_agent_id) await resumeVapiAgent(a.phone_number, a.vapi_agent_id);
+            }
+          }
+        } else {
+          await supabase.from('voice_agents')
+            .update({ minutes_included: (agent?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
+            .eq('id', agentId);
+          if (agent?.phone_number && agent?.vapi_agent_id) {
+            await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
+          }
+        }
 
         await supabase.from('minutes_ledger').insert({
           agent_id:    agentId,
@@ -110,11 +146,6 @@ export async function POST(req: NextRequest) {
           description: `Compra de ${minutes} minutos extra`,
           source:      'extra_compra',
         });
-
-        // Reactivate Vapi in case agent was auto-paused for hitting the limit
-        if (agent?.phone_number && agent?.vapi_agent_id) {
-          await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
-        }
         break;
       }
 
@@ -128,6 +159,10 @@ export async function POST(req: NextRequest) {
 
       const minutesCfg = MONTHLY_CONFIG[featurePlan][minutesPlan];
 
+      const { data: agentForActivation } = await supabase
+        .from('voice_agents').select('portal_email').eq('id', agentId).single();
+      const activationEmail = agentForActivation?.portal_email ?? null;
+
       await supabase.from('voice_agents').update({
         plan:                   featurePlan,
         minutes_plan:           minutesPlan,
@@ -135,11 +170,24 @@ export async function POST(req: NextRequest) {
         billing_status:         'activo',
         stripe_customer_id:     session.customer as string,
         stripe_subscription_id: session.subscription as string,
-        minutes_included:       minutesCfg.minutes,
-        minutes_used:           0,
-        minutes_reset_date:     nextResetDate(),
         grace_period_ends_at:   null,
+        ...(activationEmail ? {} : {
+          minutes_included:   minutesCfg.minutes,
+          minutes_used:       0,
+          minutes_reset_date: nextResetDate(),
+        }),
       }).eq('id', agentId);
+
+      if (activationEmail) {
+        await supabase.from('account_minutes').upsert({
+          portal_email:      activationEmail,
+          minutes_included:  minutesCfg.minutes,
+          minutes_used:      0,
+          minutes_plan:      minutesPlan,
+          minutes_reset_date: nextResetDate(),
+          updated_at:        new Date().toISOString(),
+        }, { onConflict: 'portal_email' });
+      }
 
       await supabase.from('minutes_ledger').insert({
         agent_id:    agentId,
@@ -257,21 +305,45 @@ export async function POST(req: NextRequest) {
       // Rollover: carry unused minutes (capped at 1× the plan base)
       const { data: prevAgent } = await supabase
         .from('voice_agents')
-        .select('minutes_used, minutes_included')
+        .select('minutes_used, minutes_included, portal_email')
         .eq('id', agentId)
         .single();
-      const unused   = prevAgent ? Math.max(0, prevAgent.minutes_included - prevAgent.minutes_used) : 0;
-      const rollover = Math.min(unused, minutesCfg.minutes);
+      const renewalEmail = prevAgent?.portal_email ?? null;
 
-      await supabase.from('voice_agents').update({
-        minutes_plan:         minutesPlan,
-        minutes_included:     minutesCfg.minutes + rollover,
-        minutes_used:         0,
-        minutes_reset_date:   nextResetDate(),
-        active:               true,
-        billing_status:       'activo',
-        grace_period_ends_at: null,
-      }).eq('id', agentId);
+      let rollover = 0;
+      if (renewalEmail) {
+        const { data: acctRenewal } = await supabase
+          .from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', renewalEmail).single();
+        const acctUnused = acctRenewal ? Math.max(0, acctRenewal.minutes_included - acctRenewal.minutes_used) : 0;
+        rollover = Math.min(acctUnused, minutesCfg.minutes);
+        await supabase.from('account_minutes').upsert({
+          portal_email:      renewalEmail,
+          minutes_plan:      minutesPlan,
+          minutes_included:  minutesCfg.minutes + rollover,
+          minutes_used:      0,
+          minutes_reset_date: nextResetDate(),
+          updated_at:        new Date().toISOString(),
+        }, { onConflict: 'portal_email' });
+        // Reactivate all agents in this account
+        await supabase.from('voice_agents').update({
+          minutes_plan:         minutesPlan,
+          active:               true,
+          billing_status:       'activo',
+          grace_period_ends_at: null,
+        }).eq('portal_email', renewalEmail);
+      } else {
+        const unused = prevAgent ? Math.max(0, prevAgent.minutes_included - prevAgent.minutes_used) : 0;
+        rollover     = Math.min(unused, minutesCfg.minutes);
+        await supabase.from('voice_agents').update({
+          minutes_plan:         minutesPlan,
+          minutes_included:     minutesCfg.minutes + rollover,
+          minutes_used:         0,
+          minutes_reset_date:   nextResetDate(),
+          active:               true,
+          billing_status:       'activo',
+          grace_period_ends_at: null,
+        }).eq('id', agentId);
+      }
 
       await supabase.from('minutes_ledger').insert({
         agent_id:    agentId,
@@ -288,14 +360,22 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Re-associate Vapi on renewal (in case it was paused for overage)
-      const { data: agent } = await supabase
-        .from('voice_agents')
-        .select('phone_number, vapi_agent_id')
-        .eq('id', agentId)
-        .single();
-      if (agent?.phone_number && agent?.vapi_agent_id) {
-        await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
+      // Re-associate Vapi on renewal (in case agents were paused for overage)
+      if (renewalEmail) {
+        const { data: acctAgentsRenewal } = await supabase
+          .from('voice_agents').select('phone_number, vapi_agent_id')
+          .eq('portal_email', renewalEmail).not('phone_number', 'is', null);
+        if (acctAgentsRenewal) {
+          for (const a of acctAgentsRenewal) {
+            if (a.phone_number && a.vapi_agent_id) await resumeVapiAgent(a.phone_number, a.vapi_agent_id);
+          }
+        }
+      } else {
+        const { data: agentForResume } = await supabase
+          .from('voice_agents').select('phone_number, vapi_agent_id').eq('id', agentId).single();
+        if (agentForResume?.phone_number && agentForResume?.vapi_agent_id) {
+          await resumeVapiAgent(agentForResume.phone_number, agentForResume.vapi_agent_id);
+        }
       }
 
       break;

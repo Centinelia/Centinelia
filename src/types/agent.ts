@@ -75,6 +75,7 @@ export interface VoiceAgent {
   agent_name?: string;            // nombre propio del agente (solo Pro, default: Centinelia)
   giro_template?: string;         // template de industria: restaurante, consultorio, estetica, agencia, retail, general
   portal_token?: string;          // UUID único para el portal del cliente
+  portal_email?: string;          // email del cliente; todos los agentes con el mismo email comparten el pool de minutos
   minutes_plan?: MinutesPlan;
   minutes_included: number;
   minutes_used: number;
