@@ -76,25 +76,25 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
   return (
     <Link
       href={`/admin/agentes/${agent.id}`}
-      className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:border-[rgba(108,59,255,0.35)]"
+      className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:border-[rgba(108,59,255,0.35)]"
       style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
     >
       {/* Active indicator */}
       <div className="flex-shrink-0">
         {agent.active
-          ? <CheckCircle2 size={15} style={{ color: '#22c55e' }} />
-          : <XCircle      size={15} style={{ color: '#6b7280' }} />}
+          ? <CheckCircle2 size={14} style={{ color: '#22c55e' }} />
+          : <XCircle      size={14} style={{ color: '#6b7280' }} />}
       </div>
 
       {/* Business + client */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
             {agent.business_name}
           </span>
           {agent.billing_status === 'pago_fallido' && (
-            <span title="Pago fallido">
-              <AlertTriangle size={12} style={{ color: '#ef4444' }} />
+            <span title="Pago fallido" className="flex-shrink-0">
+              <AlertTriangle size={11} style={{ color: '#ef4444' }} />
             </span>
           )}
         </div>
@@ -103,16 +103,15 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
         </div>
       </div>
 
-      {/* Plan + minutes + arrow */}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      {/* Plan badge + arrow */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         <span
-          className="px-2 py-0.5 rounded-full text-xs font-semibold hidden sm:inline"
+          className="px-2 py-0.5 rounded-full text-xs font-semibold"
           style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}
         >
           {PLAN_LABELS[agent.plan as keyof typeof PLAN_LABELS] ?? agent.plan}
         </span>
-
-        <ArrowRight size={13} style={{ color: 'var(--c-text-4)' }} />
+        <ArrowRight size={12} style={{ color: 'var(--c-text-4)' }} />
       </div>
     </Link>
   );
@@ -323,7 +322,7 @@ export default function AgentesClient({
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {agents.map(agent => <AgentRowItem key={agent.id} agent={agent} />)}
         </div>
       )}
