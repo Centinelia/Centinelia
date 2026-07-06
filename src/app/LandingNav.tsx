@@ -64,15 +64,6 @@ export default function LandingNav() {
 
       {industriasOpen && (
         <div style={{ borderTop: '1px solid rgba(108,59,255,0.06)', background: 'rgba(108,59,255,0.02)' }}>
-          <Link
-            href="/industrias"
-            onClick={close}
-            className="flex items-center justify-between px-8 py-2.5 text-sm font-semibold hover:bg-[rgba(108,59,255,0.05)] transition-colors"
-            style={{ color: '#6C3BFF' }}
-          >
-            Ver todas las industrias
-          </Link>
-          <div style={{ borderTop: '1px solid rgba(108,59,255,0.06)' }} />
           {INDUSTRIES.map(ind => (
             <Link
               key={ind.href}
