@@ -586,7 +586,7 @@ export default function LandingPage() {
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
               Elige el escenario, llama y experimenta. Recepcionista, vendedor, tomador de pedidos,
-              seguimiento — un solo agente configurado para lo que tu negocio necesite.
+              seguimiento: un solo agente configurado para lo que tu negocio necesite.
             </p>
           </AnimatedSection>
 
