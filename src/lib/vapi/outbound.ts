@@ -57,14 +57,56 @@ export async function triggerOutboundCall({
     return { ok: false, error: `No se encontró el número ${agent.phone_number} en Vapi` };
   }
 
-  const greeting  = customerName ? `Hola ${customerName}` : 'Hola';
+  // Proactive memory lookup for agents with client_memory or existing_client_support
+  let resolvedName    = customerName;
+  let customerContext = '';
+
+  if (agent.features?.client_memory || agent.features?.existing_client_support) {
+    const supabase  = createAdminClient();
+    const normPhone = customerNumber.replace(/\D/g, '').slice(-10);
+
+    const [leadRes, histRes] = await Promise.all([
+      supabase
+        .from('leads_voice')
+        .select('nombre')
+        .eq('agent_id', agent.id)
+        .ilike('whatsapp', `%${normPhone}%`)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('voice_calls')
+        .select('summary, outcome, created_at')
+        .eq('agent_id', agent.id)
+        .ilike('caller_number', `%${normPhone}%`)
+        .order('created_at', { ascending: false })
+        .limit(3),
+    ]);
+
+    const lead    = leadRes.data;
+    const history = histRes.data ?? [];
+
+    if (lead?.nombre || history.length > 0) {
+      resolvedName = resolvedName || lead?.nombre || '';
+      const parts: string[] = [];
+      if (resolvedName) parts.push(`Nombre: ${resolvedName}`);
+      if (history.length > 0) {
+        parts.push(`Ha llamado antes ${history.length} vez${history.length > 1 ? 'es' : ''}.`);
+        if (history[0]?.summary) parts.push(`Última llamada: ${history[0].summary}`);
+      }
+      customerContext = `CONTEXTO DEL CLIENTE (${customerNumber}):\n${parts.join('\n')}`;
+    }
+  }
+
   const isFormal  = (agent.speech_style ?? 'usted') !== 'tu';
   const notice    = 'Esta llamada puede ser grabada.';
+  const firstName = resolvedName ? ` ${resolvedName.split(' ')[0]}` : '';
+  const greeting  = resolvedName ? `Hola${firstName}` : 'Hola';
+
   const firstMessage = isCallback
-    ? `Hola, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
+    ? `Hola${firstName}, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
     : `${greeting}, le habla ${agent.business_name}. ${notice}${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
 
-  const systemPrompt = buildOutboundSystemPrompt(agent, customerName, motivo);
+  const systemPrompt = buildOutboundSystemPrompt(agent, resolvedName, motivo, customerContext);
 
   const res = await fetch(`${VAPI_URL}/call`, {
     method: 'POST',

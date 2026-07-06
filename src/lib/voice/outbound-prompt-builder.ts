@@ -4,6 +4,7 @@ export function buildOutboundSystemPrompt(
   agent: VoiceAgent,
   customerName?: string,
   motivo?: string,
+  customerContext?: string,
 ): string {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
 
@@ -32,6 +33,10 @@ Nunca menciones que eres una IA a menos que te pregunten directamente.`
   );
 
   blocks.push(`FECHA Y HORA ACTUAL: ${now}`);
+
+  if (customerContext) {
+    blocks.push(`${customerContext}\nUsa esta información para personalizar la conversación. Si conoces el nombre del cliente, úsalo al saludar.`);
+  }
 
   if (agent.outbound_knowledge_base?.trim()) {
     blocks.push(
