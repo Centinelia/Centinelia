@@ -82,7 +82,8 @@ export interface VoiceAgent {
   minutes_reset_date: string;     // ISO date del próximo reset
   notify_whatsapp?: boolean;       // enviar resumen de llamada por WhatsApp (default true)
   notify_email?: boolean;          // enviar notificación de lead/cita/pedido por email (default true)
-  speech_style?: 'tu' | 'usted';   // trato al cliente: 'tu' (informal) | 'usted' (formal, default)
+  speech_style?: 'tu' | 'usted';        // trato al cliente: 'tu' (informal) | 'usted' (formal, default)
+  missed_call_recovery?: boolean;       // devolver llamada automáticamente si queda sin contestar
   first_message?: string;          // primer mensaje del agente al contestar (personalizable)
   transfer_rules?: string;         // reglas de cuándo transferir la llamada a un humano
   google_review_url?: string;      // link de reseñas de Google del negocio
