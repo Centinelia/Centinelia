@@ -144,7 +144,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes] = await Promise.all([
     // Calls, always needed (resumen + minutos tab for allCalls)
     since
       ? supabase.from('voice_calls').select('*').eq('agent_id', agent.id).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -157,7 +157,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     // Contacts tab
     supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('wa_leads').select('id, nombre, customer_number, whatsapp, email, negocio, giro, servicio, presupuesto, timeline, notas, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
-    supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, status, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
   ]);
 
   const calls             = (callsRes.data           ?? []) as VoiceCall[];
@@ -168,7 +169,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const outboundCalls     = (outboundRes.data        ?? []) as OutboundCall[];
   const contactVoiceLeads = (contactLeadsRes.data    ?? []) as ContactVoiceLead[];
   const contactWALeads    = (contactWALeadsRes.data  ?? []) as ContactWALead[];
-  const contactOutbound   = (contactOutboundRes.data ?? []) as ContactOutbound[];
+  const contactOutbound   = (contactOutboundRes.data   ?? []) as ContactOutbound[];
+  const outboundCampaigns = outboundCampaignsRes.data  ?? [];
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -713,6 +715,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <OutboundSection
                     token={token}
                     initialContacts={contactOutbound as any[]}
+                    initialCampaigns={outboundCampaigns as any[]}
+                    agents={allClientAgents.map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
                   />
                 </>
               )}
