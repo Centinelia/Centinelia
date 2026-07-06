@@ -98,7 +98,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo me llegan los pedidos y reservaciones?',
-    a: 'Al instante por WhatsApp y correo electrónico. También quedan registrados en tu portal donde puedes verlos todos en un solo lugar.',
+    a: 'Al instante por WhatsApp y correo electrónico. También quedan registrados en tu portal donde puedes verlos todos en un solo lugar. Si tu sistema POS lo permite, los pedidos y reservaciones se registran ahí automáticamente también.',
   },
   {
     q: '¿Puede coordinar con plataformas de delivery como Rappi o Uber Eats?',
