@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, minutesAlertHtml, newLeadHtml } from '@/lib/email/send';
 import { pauseVapiAgent } from '@/lib/vapi/control';
+import { triggerOutboundCall } from '@/lib/vapi/outbound';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -321,6 +322,22 @@ export async function POST(req: NextRequest) {
       if (reviewUrl && callerWa && goodCall && durationSeconds >= 60) {
         const reviewMsg = `¡Hola! Gracias por contactar a *${agent?.business_name}*. Si le atendimos bien, nos ayudaría mucho dejar una reseña en Google 🙏\n\n${reviewUrl}`;
         await sendWhatsApp(callerWa, reviewMsg).catch(() => null);
+      }
+
+      // 9. Missed call recovery — call back unanswered callers automatically
+      if (
+        outcome === 'unanswered' &&
+        callerNumber &&
+        agent?.missed_call_recovery &&
+        agent?.active &&
+        agent?.vapi_agent_id &&
+        agent?.phone_number
+      ) {
+        triggerOutboundCall({
+          agent:          agent as any,
+          customerNumber: callerNumber,
+          isCallback:     true,
+        }).catch(err => console.error('[webhook] missed_call_recovery failed:', err));
       }
 
       break;

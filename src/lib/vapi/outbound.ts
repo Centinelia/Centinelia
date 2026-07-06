@@ -40,11 +40,13 @@ export async function triggerOutboundCall({
   customerNumber,
   customerName,
   motivo,
+  isCallback = false,
 }: {
   agent:          VoiceAgent;
   customerNumber: string;
   customerName?:  string;
   motivo?:        string;
+  isCallback?:    boolean;
 }): Promise<{ ok: boolean; callId?: string; error?: string }> {
   if (!agent.vapi_agent_id) {
     return { ok: false, error: 'El agente no está sincronizado con Vapi' };
@@ -55,9 +57,10 @@ export async function triggerOutboundCall({
     return { ok: false, error: `No se encontró el número ${agent.phone_number} en Vapi` };
   }
 
-  const greeting     = customerName ? `Hola ${customerName}` : 'Hola';
-  const motivoPart   = motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : '';
-  const firstMessage = `${greeting}, le habla ${agent.business_name}.${motivoPart} ¿Tiene un momento?`;
+  const greeting = customerName ? `Hola ${customerName}` : 'Hola';
+  const firstMessage = isCallback
+    ? `${greeting}, le habla el asistente de ${agent.business_name}. Nos llamaste hace un momento y no pudimos contestar, ¡disculpa! ¿En qué te podemos ayudar?`
+    : `${greeting}, le habla ${agent.business_name}.${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
 
   const systemPrompt = buildOutboundSystemPrompt(agent, customerName, motivo);
 
