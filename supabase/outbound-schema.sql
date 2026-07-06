@@ -11,6 +11,13 @@ ALTER TABLE appointments_voice ADD COLUMN IF NOT EXISTS reminder_sent boolean NO
 -- This is the Vapi phone registry ID (different from the Twilio number)
 ALTER TABLE voice_agents ADD COLUMN IF NOT EXISTS vapi_phone_number_id text;
 
+-- Context/instructions the agent uses when making outbound calls (editable from the portal)
+ALTER TABLE voice_agents ADD COLUMN IF NOT EXISTS outbound_knowledge_base text;
+
+-- Role that segments this agent's purpose in outbound campaigns
+ALTER TABLE voice_agents ADD COLUMN IF NOT EXISTS outbound_role text
+  CHECK (outbound_role IN ('vendedor', 'cotizador', 'seguimiento', 'recuperacion', 'cobrador'));
+
 -- Link a WhatsApp agent to a voice agent so WA-booked appointments can get reminder calls
 ALTER TABLE whatsapp_agents ADD COLUMN IF NOT EXISTS voice_agent_id uuid references voice_agents(id) on delete set null;
 
