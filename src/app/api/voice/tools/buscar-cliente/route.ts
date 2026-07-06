@@ -64,8 +64,10 @@ export async function POST(req: NextRequest) {
 
   if (calls.length > 0) {
     const lastCall = calls[0];
+    const { data: agentRow } = await supabase.from('voice_agents').select('timezone').eq('id', agent_id).single();
+    const tz = agentRow?.timezone ?? 'America/Monterrey';
     const lastDate = new Date(lastCall.created_at).toLocaleDateString('es-MX', {
-      timeZone: 'America/Monterrey', day: 'numeric', month: 'long', year: 'numeric',
+      timeZone: tz, day: 'numeric', month: 'long', year: 'numeric',
     });
     parts.push(`Ha llamado ${calls.length} vez${calls.length > 1 ? 'es' : ''}. Última vez: ${lastDate}.`);
     if (lastCall.summary) parts.push(`Última llamada: ${lastCall.summary}`);
