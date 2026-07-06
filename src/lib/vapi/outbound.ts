@@ -57,9 +57,10 @@ export async function triggerOutboundCall({
     return { ok: false, error: `No se encontró el número ${agent.phone_number} en Vapi` };
   }
 
-  const greeting = customerName ? `Hola ${customerName}` : 'Hola';
+  const greeting  = customerName ? `Hola ${customerName}` : 'Hola';
+  const isFormal  = (agent.speech_style ?? 'usted') !== 'tu';
   const firstMessage = isCallback
-    ? `${greeting}, le habla el asistente de ${agent.business_name}. Nos llamaste hace un momento y no pudimos contestar, ¡disculpa! ¿En qué te podemos ayudar?`
+    ? `Hola, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. Nos llamaste hace un momento y no pudimos contestar, le ofrecemos una disculpa, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
     : `${greeting}, le habla ${agent.business_name}.${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
 
   const systemPrompt = buildOutboundSystemPrompt(agent, customerName, motivo);

@@ -8,7 +8,7 @@ import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
 import { createVapiAssistant } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
 import type { VoiceAgent } from '@/types/agent';
-import { PLAN_FEATURES } from '@/types/agent';
+import { PLAN_FEATURES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import type Stripe from 'stripe';
@@ -224,9 +224,10 @@ export async function POST(req: NextRequest) {
 
         // 2. Buy Twilio number + import to Vapi + assign assistant
         const areaCode = session.metadata?.area_code || undefined;
+        const concurrencyLimit = PLAN_CONCURRENT_CALLS[(fullAgent.plan ?? 'comercial') as Plan];
         let phoneNumber: string | null = null;
         if (vapiId) {
-          const provisioned = await provisionPhoneNumber(vapiId, areaCode);
+          const provisioned = await provisionPhoneNumber(vapiId, areaCode, concurrencyLimit);
           if (provisioned) {
             phoneNumber = provisioned.phoneNumber;
             await supabase.from('voice_agents').update({

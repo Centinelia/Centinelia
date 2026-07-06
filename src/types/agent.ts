@@ -158,7 +158,7 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     multilingual:            true,
     client_memory:           true,
     whatsapp_escalation:     true,
-    outbound_calls:          true,
+    outbound_calls:          false,
   },
 };
 
@@ -170,6 +170,11 @@ export const PLAN_MINUTES: Record<Plan, number> = {
 export const PLAN_LABELS: Record<Plan, string> = {
   comercial: 'Comercial',
   pro:       'Pro',
+};
+
+export const PLAN_CONCURRENT_CALLS: Record<Plan, number> = {
+  comercial: 1,
+  pro:       3,
 };
 
 export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {

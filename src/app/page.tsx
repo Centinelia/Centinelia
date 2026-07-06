@@ -116,6 +116,7 @@ const AGENT_TYPES: {
     description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
       'Todo el plan Comercial',
+      'Hasta 3 llamadas simultáneas',
       'Toma de pedidos por teléfono',
       'Voz y nombre personalizables',
       'Multiidioma (español + inglés)',

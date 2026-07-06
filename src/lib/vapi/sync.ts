@@ -299,7 +299,11 @@ export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceA
   return true;
 }
 
-export async function assignAssistantToPhone(phoneNumber: string, vapiAssistantId: string): Promise<boolean> {
+export async function assignAssistantToPhone(
+  phoneNumber: string,
+  vapiAssistantId: string,
+  concurrencyLimit?: number,
+): Promise<boolean> {
   // Find the Vapi phone number ID by number
   const listRes = await fetch(`${VAPI_URL}/phone-number`, { headers: headers() });
   if (!listRes.ok) return false;
@@ -311,10 +315,13 @@ export async function assignAssistantToPhone(phoneNumber: string, vapiAssistantI
     return false;
   }
 
+  const patch: Record<string, unknown> = { assistantId: vapiAssistantId };
+  if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
+
   const res = await fetch(`${VAPI_URL}/phone-number/${phone.id}`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify({ assistantId: vapiAssistantId }),
+    body: JSON.stringify(patch),
   });
   if (!res.ok) {
     console.error('Vapi assignAssistant error:', await res.text());

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createVapiAssistant, updateVapiAssistant, assignAssistantToPhone } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
+import { PLAN_CONCURRENT_CALLS } from '@/types/agent';
 
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { configureTwilioWhatsAppWebhook } from '@/lib/twilio/configure-webhook';
@@ -81,7 +82,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       // Re-assign if phone number changed
       if (agent.phone_number) {
-        await assignAssistantToPhone(agent.phone_number, agent.vapi_agent_id);
+        await assignAssistantToPhone(agent.phone_number, agent.vapi_agent_id, PLAN_CONCURRENT_CALLS[agent.plan]);
       }
     } else {
       // First time syncing, create assistant and assign
@@ -93,7 +94,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           .eq('id', id);
 
         if (agent.phone_number) {
-          await assignAssistantToPhone(agent.phone_number, vapiAssistantId);
+          await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
         }
       }
     }

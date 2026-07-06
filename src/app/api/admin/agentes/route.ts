@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PLAN_MINUTES } from '@/types/agent';
+import { PLAN_MINUTES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import { createVapiAssistant, assignAssistantToPhone } from '@/lib/vapi/sync';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import type { Plan, VoiceAgent } from '@/types/agent';
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Assign assistant to the phone number in Vapi
     if (agent.phone_number) {
-      await assignAssistantToPhone(agent.phone_number, vapiAssistantId);
+      await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
     }
   }
 

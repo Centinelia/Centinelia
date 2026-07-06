@@ -85,18 +85,18 @@ async function importToVapi(phoneNumber: string): Promise<string | null> {
   return (data.id as string) ?? null;
 }
 
-async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string): Promise<boolean> {
+async function assignAssistant(vapiPhoneId: string, vapiAssistantId: string, concurrencyLimit?: number): Promise<boolean> {
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
   const secret  = process.env.VAPI_SERVER_SECRET ?? '';
   const serverUrl = `${appUrl}/api/voice/inbound?secret=${secret}`;
 
+  const patch: Record<string, unknown> = { assistantId: vapiAssistantId, serverUrl };
+  if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
+
   const res = await fetch(`${VAPI_URL}/phone-number/${vapiPhoneId}`, {
     method:  'PATCH',
     headers: vapiHeaders(),
-    body:    JSON.stringify({
-      assistantId: vapiAssistantId,
-      serverUrl,
-    }),
+    body:    JSON.stringify(patch),
   });
   if (!res.ok) console.error('provision: assign assistant failed', await res.text());
   return res.ok;
@@ -115,7 +115,7 @@ export interface ProvisionResult {
  *
  * Returns { phoneNumber, vapiPhoneId } on success, null on failure.
  */
-export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string): Promise<ProvisionResult | null> {
+export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: string, concurrencyLimit?: number): Promise<ProvisionResult | null> {
   const phoneNumber = await buyTwilioNumber(areaCode);
   if (!phoneNumber) return null;
 
@@ -125,6 +125,6 @@ export async function provisionPhoneNumber(vapiAssistantId: string, areaCode?: s
     return { phoneNumber, vapiPhoneId: null };
   }
 
-  await assignAssistant(vapiPhoneId, vapiAssistantId);
+  await assignAssistant(vapiPhoneId, vapiAssistantId, concurrencyLimit);
   return { phoneNumber, vapiPhoneId };
 }
