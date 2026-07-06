@@ -14,16 +14,13 @@ import { PLAN_LABELS } from '@/types/agent';
 type Filters = { status: string; plan: string; search: string; sort: string };
 
 interface AgentRow {
-  id:               string;
-  business_name:    string;
-  client_name:      string;
-  plan:             string;
-  minutes_plan:     string | null;
-  minutes_used:     number;
-  minutes_included: number;
-  active:           boolean;
-  billing_status:   string | null;
-  phone_number:     string | null;
+  id:             string;
+  business_name:  string;
+  client_name:    string;
+  plan:           string;
+  active:         boolean;
+  billing_status: string | null;
+  phone_number:   string | null;
 }
 
 interface Props {
@@ -74,9 +71,6 @@ function buildUrl(filters: Filters, page: number) {
 // ── Agent row ─────────────────────────────────────────────────────────────────
 
 function AgentRowItem({ agent }: { agent: AgentRow }) {
-  const pct      = agent.minutes_included > 0
-    ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
-  const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e';
   const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
 
   return (
@@ -117,17 +111,6 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
         >
           {PLAN_LABELS[agent.plan as keyof typeof PLAN_LABELS] ?? agent.plan}
         </span>
-
-        {agent.minutes_included > 0 && (
-          <div className="hidden md:flex flex-col items-end gap-1 w-24">
-            <span className="text-xs tabular-nums font-medium" style={{ color: barColor }}>
-              {agent.minutes_used}/{agent.minutes_included} min
-            </span>
-            <div className="w-full h-1 rounded-full" style={{ background: 'var(--c-border)' }}>
-              <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: barColor }} />
-            </div>
-          </div>
-        )}
 
         <ArrowRight size={13} style={{ color: 'var(--c-text-4)' }} />
       </div>

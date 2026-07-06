@@ -26,7 +26,7 @@ export default async function AgentesPage({ searchParams }: Props) {
   let query = supabase
     .from('voice_agents')
     .select(
-      'id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, phone_number, created_at, portal_email',
+      'id, business_name, client_name, plan, active, billing_status, phone_number, created_at',
       { count: 'exact' }
     )
     .neq('id', demoId ?? '');
@@ -45,17 +45,6 @@ export default async function AgentesPage({ searchParams }: Props) {
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  // Merge account-level minutes for portal agents
-  const portalEmails = (data ?? []).map((a: any) => a.portal_email).filter(Boolean) as string[];
-  const { data: acctData } = portalEmails.length
-    ? await supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included').in('portal_email', portalEmails)
-    : { data: [] };
-  const acctMap = new Map((acctData ?? []).map((m: any) => [m.portal_email, m]));
-  const agentsWithMins = (data ?? []).map((a: any) => {
-    const acct = a.portal_email ? acctMap.get(a.portal_email) : null;
-    return { ...a, minutes_used: acct?.minutes_used ?? a.minutes_used, minutes_included: acct?.minutes_included ?? a.minutes_included };
-  });
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -88,7 +77,7 @@ export default async function AgentesPage({ searchParams }: Props) {
       </div>
 
       <AgentesClient
-        agents={agentsWithMins as any[]}
+        agents={(data ?? []) as any[]}
         totalCount={totalCount}
         page={pageNum}
         totalPages={totalPages}
