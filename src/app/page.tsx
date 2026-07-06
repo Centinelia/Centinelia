@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Phone, Users, CalendarDays, ShoppingBag,
-  BarChart3, PhoneOff, TrendingDown,
+  BarChart3, PhoneOff, TrendingDown, PhoneOutgoing,
   Clock, Check, ArrowRight, Play, Target, Rocket, Star,
 } from 'lucide-react';
 import LandingNav from './LandingNav';
@@ -14,7 +14,6 @@ import AnimatedSection from './AnimatedSection';
 import MeerkatReveal from './MeerkatReveal';
 import AudioWaveform from './AudioWaveform';
 import Marquee from './Marquee';
-import WaitlistSection from './WaitlistSection';
 
 // ─── Demo agent ───────────────────────────────────────────────────────────────
 // Reemplaza con el número real del agente demo cuando esté configurado
@@ -47,6 +46,12 @@ const FEATURES = [
     color: '#d97706',
     title: 'Toma de pedidos',
     desc:  'Registra pedidos por teléfono con todos los detalles: productos, cantidades y dirección de entrega.',
+  },
+  {
+    icon:  <PhoneOutgoing size={20} color="#059669" />,
+    color: '#059669',
+    title: 'Llamadas salientes',
+    desc:  'Tu agente llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas de forma automática.',
   },
   {
     icon:  <BarChart3 size={20} color="#0891b2" />,
@@ -117,11 +122,11 @@ const AGENT_TYPES: {
     features: [
       'Todo el plan Comercial',
       'Hasta 3 llamadas simultáneas',
+      'Llamadas salientes y devolución automática',
       'Toma de pedidos por teléfono',
-      'Voz y nombre personalizables',
       'Multiidioma (español + inglés)',
       'Memoria de cliente entre llamadas',
-      'Flujos complejos a medida',
+      'Flujos complejos y voz personalizable',
     ],
     meerkat: '/agent-plan-pro.png', meerkatBottom: 66,
     meerkatDesk: '/meerkat-transparente-07.png', meerkatDeskBottom: 65,
@@ -258,9 +263,9 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Centinelia atiende tus llamadas, captura leads, agenda citas y
-              toma pedidos con IA, las 24 horas, los 7 días, mientras tú
-              atiendes lo que importa.
+              Centinelia atiende y realiza tus llamadas, captura leads, agenda
+              citas y toma pedidos con IA, las 24 horas, los 7 días, mientras
+              tú atiendes lo que importa.
             </p>
 
             {/* CTAs */}
@@ -409,8 +414,8 @@ export default function LandingPage() {
                 Centinelia resuelve los tres problemas a la vez.
               </p>
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>
-                Un agente de voz entrenado con la información de tu negocio que atiende, captura y agenda,
-                sin que tú tengas que estar presente.
+                Un agente de voz que atiende, captura, agenda y también llama de regreso a los
+                clientes que no alcanzó a atender — sin que tú tengas que intervenir.
               </p>
             </div>
           </div>
@@ -938,9 +943,6 @@ export default function LandingPage() {
             sizes="(max-width: 640px) 300px, 580px" style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
         </MeerkatReveal>
       </section>
-
-      {/* ── PRÓXIMAMENTE ─────────────────────────────────────────────────── */}
-      <WaitlistSection />
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
       <footer
