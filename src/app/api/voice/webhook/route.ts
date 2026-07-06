@@ -117,6 +117,37 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // 2c-pre-outbound. Auto-add caller to outbound_contacts for future campaigns.
+      // Only for inbound calls answered for more than 5 seconds.
+      const callTypeRaw  = call?.type ?? '';
+      const isInboundCall = !callTypeRaw || callTypeRaw === 'inboundPhoneCall';
+
+      if (isInboundCall && callerNumber && durationSeconds > 5) {
+        const normCaller2 = callerNumber.replace(/\D/g, '').slice(-10);
+        const { data: existingContact } = await supabase
+          .from('outbound_contacts')
+          .select('id, nombre')
+          .eq('agent_id', resolvedAgentId)
+          .ilike('telefono', `%${normCaller2}%`)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingContact) {
+          await supabase.from('outbound_contacts').insert({
+            agent_id: resolvedAgentId,
+            nombre:   structured?.nombre ?? null,
+            telefono: callerNumber,
+            motivo:   null,
+            source:   'llamada_entrante',
+          }).catch(() => null); // fail silently if source column not yet migrated
+        } else if (structured?.nombre && !existingContact.nombre) {
+          await supabase.from('outbound_contacts')
+            .update({ nombre: structured.nombre })
+            .eq('id', existingContact.id)
+            .catch(() => null);
+        }
+      }
+
       // 2c-pre. Save minimal caller profile so future calls can greet by name.
       // Only when a nombre was captured AND no existing profile exists for this number.
       if (structured?.nombre && callerNumber) {

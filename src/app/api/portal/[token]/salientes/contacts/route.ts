@@ -48,18 +48,22 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   // Supports single { nombre, telefono, motivo } or batch { contacts: [...] }
-  const rows = body.contacts
+  const isBatch = Array.isArray(body.contacts);
+  const rows = isBatch
     ? (body.contacts as Array<{ nombre?: string; telefono: string; motivo?: string }>)
     : [{ nombre: body.nombre, telefono: body.telefono, motivo: body.motivo }];
 
   const valid = rows.filter(r => r.telefono?.trim());
   if (!valid.length) return NextResponse.json({ error: 'Se requiere al menos un teléfono válido' }, { status: 400 });
 
+  const source = isBatch ? 'csv' : 'manual';
+
   const toInsert = valid.map(r => ({
     agent_id: agent.id,
     nombre:   r.nombre?.trim() || null,
     telefono: r.telefono.trim(),
     motivo:   r.motivo?.trim()  || null,
+    source,
   }));
 
   const { data, error } = await supabase
