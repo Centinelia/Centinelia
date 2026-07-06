@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, MessageCircle, Settings, Phone } from 'lucide-react';
+import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone } from 'lucide-react';
 
 const links = [
   { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/clientes',     icon: Users,           label: 'Clientes' },
   { href: '/admin/agentes',      icon: Bot,             label: 'Agentes' },
   { href: '/admin/llamadas',     icon: Phone,           label: 'Llamadas' },
-  { href: '/admin/whatsapp',     icon: MessageCircle,   label: 'WhatsApp' },
   { href: '/admin/analytics',    icon: BarChart3,       label: 'Analytics' },
   { href: '/admin/billing',      icon: CreditCard,      label: 'Facturación' },
   { href: '/admin/contratos',    icon: FileText,        label: 'Contratos' },
