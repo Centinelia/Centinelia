@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .from('voice_agents').select('id, vapi_agent_id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-  const allowed = ['business_hours', 'knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
+  const allowed = ['business_hours', 'knowledge_base', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   const { data, error } = await supabase

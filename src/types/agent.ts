@@ -68,7 +68,8 @@ export interface VoiceAgent {
   transfer_whatsapp?: string;     // WhatsApp del dueño para notificaciones
   calendar_url?: string;          // Calendly / Google Cal link para citas
   crm_webhook?: string;           // webhook externo del sistema del cliente
-  knowledge_base?: string;        // catálogo, precios y FAQs del negocio
+  knowledge_base?: string;        // catálogo, precios y FAQs del negocio (entrantes)
+  outbound_knowledge_base?: string; // instrucciones específicas para llamadas salientes
   business_website?: string;      // URL del sitio web del negocio
   website_knowledge?: string;     // contenido extraído del sitio web (servidor lo llena)
   agent_name?: string;            // nombre propio del agente (solo Pro, default: Centinelia)

@@ -137,7 +137,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const leads    = leadsRes.data     ?? [];
   const orders   = ordersRes.data    ?? [];
   const appts    = apptsRes.data     ?? [];
-  const allCalls = allCallsRes.data  ?? [];
+  const allCalls = allCallsRes.data ?? [];
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');

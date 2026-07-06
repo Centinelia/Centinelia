@@ -61,25 +61,9 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
         first_message:        firstMessage || null,
         business_description: description,
         knowledge_base:       knowledgeBase,
-        // keep everything else unchanged
-        client_name:            agent.client_name,
-        client_email:           (agent as any).client_email ?? null,
-        business_name:          agent.business_name,
-        business_address:       agent.business_address ?? null,
-        business_phone_display: agent.business_phone_display,
-        transfer_whatsapp:      agent.transfer_whatsapp ?? null,
-        transfer_number:        agent.transfer_number ?? null,
-        calendar_url:           agent.calendar_url ?? null,
-        business_website:       (agent as any).business_website ?? null,
-        timezone:               agent.timezone,
-        phone_number:           agent.phone_number,
-        wa_phone_number:        waActive ? (agent.phone_number ?? null) : null,
-        elevenlabs_voice_id:    (agent as any).elevenlabs_voice_id ?? null,
-        plan:                   agent.plan,
-        features:               agent.features,
-        business_hours:         agent.business_hours ?? null,
-        minutes_included:       agent.minutes_included,
-        contract_text:          (agent as any).contract_text ?? null,
+        wa_phone_number:      waActive ? (agent.phone_number ?? null) : null,
+        // Included so the PATCH route knows to sync Vapi
+        business_name:        agent.business_name,
       }),
     });
     setSaving(false);
