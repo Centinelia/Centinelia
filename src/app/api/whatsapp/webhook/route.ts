@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
   // Merge voice_agents fields (full config) with whatsapp_agents overrides
   const { voice_agents: voiceAgent, ...waFields } = agentRow;
-  const agent = { ...(voiceAgent ?? {}), ...waFields } as WAAgent;
+  const agent = { ...(voiceAgent ?? {}), ...waFields } as VoiceAgent;
 
   // 2. Find or create conversation
   const { data: existingConv } = await supabase

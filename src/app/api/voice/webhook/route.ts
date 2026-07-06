@@ -139,12 +139,11 @@ export async function POST(req: NextRequest) {
             telefono: callerNumber,
             motivo:   null,
             source:   'llamada_entrante',
-          }).catch(() => null); // fail silently if source column not yet migrated
+          });
         } else if (structured?.nombre && !existingContact.nombre) {
           await supabase.from('outbound_contacts')
             .update({ nombre: structured.nombre })
-            .eq('id', existingContact.id)
-            .catch(() => null);
+            .eq('id', existingContact.id);
         }
       }
 
