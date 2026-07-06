@@ -92,7 +92,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo maneja el agente los pedidos que toma?',
-    a: 'Cada pedido llega a tu WhatsApp y al portal con todos los datos: producto, cantidad, nombre del cliente y tipo de entrega. También queda registrado para que puedas exportarlo.',
+    a: 'Cada pedido llega a tu WhatsApp y al portal con todos los datos: producto, cantidad, nombre del cliente y tipo de entrega. También queda registrado para que puedas exportarlo. Si tu sistema POS lo permite, los pedidos se registran ahí automáticamente también.',
   },
   {
     q: '¿Puede el agente dar seguimiento a pedidos ya realizados?',
