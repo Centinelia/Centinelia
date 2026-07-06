@@ -59,9 +59,10 @@ export async function triggerOutboundCall({
 
   const greeting  = customerName ? `Hola ${customerName}` : 'Hola';
   const isFormal  = (agent.speech_style ?? 'usted') !== 'tu';
+  const notice    = 'Esta llamada puede ser grabada.';
   const firstMessage = isCallback
-    ? `Hola, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. Nos llamaste hace un momento y no pudimos contestar, le ofrecemos una disculpa, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
-    : `${greeting}, le habla ${agent.business_name}.${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
+    ? `Hola, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
+    : `${greeting}, le habla ${agent.business_name}. ${notice}${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
 
   const systemPrompt = buildOutboundSystemPrompt(agent, customerName, motivo);
 

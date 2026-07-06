@@ -65,7 +65,7 @@ export default function IndustryFooter() {
           <Link href="/industrias" className="text-xs transition-colors" style={{ color: textMute }}>Industrias</Link>
           <Link href="/portal/login" className="text-xs transition-colors" style={{ color: textMute }}>Portal de clientes</Link>
           <Link href="/registro" className="text-xs" style={{ color: textMute }}>Contratar</Link>
-          <Link href="/privacidad-datos" className="text-xs transition-colors" style={{ color: textMute }}>Privacidad</Link>
+          <Link href="/legal" className="text-xs transition-colors" style={{ color: textMute }}>Legal</Link>
           <a href="https://www.instagram.com/centinelia.mx/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="transition-opacity hover:opacity-70">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/>

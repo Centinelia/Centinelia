@@ -582,11 +582,11 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
             >
-              Escúchalo antes de decidir
+              El mismo agente. Cualquier rol.
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
-              Llama al agente demo y pruébalo en vivo. Invéntate el negocio que quieras
-              o pídele que elija un escenario por ti, él lleva la conversación.
+              Elige el escenario, llama y experimenta. Recepcionista, vendedor, tomador de pedidos,
+              seguimiento — un solo agente configurado para lo que tu negocio necesite.
             </p>
           </AnimatedSection>
 
@@ -1023,8 +1023,8 @@ export default function LandingPage() {
             <Link href="/registro" className="text-xs" style={{ color: C.textMute }}>
               Contratar
             </Link>
-            <Link href="/privacidad-datos" className="text-xs transition-colors" style={{ color: C.textMute }}>
-              Privacidad
+            <Link href="/legal" className="text-xs transition-colors" style={{ color: C.textMute }}>
+              Legal
             </Link>
             <a href="https://www.instagram.com/centinelia.mx/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="transition-opacity hover:opacity-70">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

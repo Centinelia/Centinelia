@@ -212,7 +212,14 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = []) {
         punctuationBoundaries: ['.', '!', '?', ',', ';', ':'],
       },
     },
-    firstMessage: agent.first_message?.trim() || `${agent.business_name}, buenos días. Le habla ${agentName}. ¿En qué le puedo ayudar?`,
+    firstMessage: (() => {
+      const notice = 'Esta llamada puede ser grabada.';
+      const custom = agent.first_message?.trim();
+      if (custom) {
+        return custom.toLowerCase().includes('grabada') ? custom : `${custom} ${notice}`;
+      }
+      return `${agent.business_name}, buenos días. Le habla ${agentName}. ${notice} ¿En qué le puedo ayudar?`;
+    })(),
     endCallMessage: 'Hasta luego, que tenga un excelente día.',
     endCallPhrases: ['hasta luego', 'hasta pronto', 'que tenga un excelente día', 'que tenga buen día', 'adiós', 'fue un placer atenderle'],
     transcriber: {

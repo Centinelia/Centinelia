@@ -125,7 +125,39 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '8' : '7'}. SOPORTE`}>
+      <Clause title={`${excluded.length > 0 ? '8' : '7'}. USO RESPONSABLE DEL SERVICIO Y CUMPLIMIENTO LEGAL`}>
+        <p>
+          <strong>Uso permitido.</strong> El Cliente utilizará el agente de voz exclusivamente para comunicaciones
+          con personas que tengan o hayan manifestado interés en establecer una relación comercial con el
+          negocio del Cliente, incluyendo: (i) atender llamadas entrantes; (ii) devolver llamadas que el negocio
+          no pudo contestar; (iii) confirmar, modificar o cancelar citas con clientes existentes; y (iv) dar
+          seguimiento a prospectos que hayan proporcionado sus datos de contacto voluntariamente.
+        </p>
+        <p style={{ marginTop: '0.5rem' }}>
+          <strong>Lista Nacional de No Llamar (LNCL).</strong> El Cliente reconoce que las llamadas salientes
+          realizadas a través del agente se rigen por la Ley Federal de Protección al Consumidor (LFPC),
+          artículos 17 BIS y 17 BIS 2, y por la Lista Nacional de No Llamar (LNCL) administrada por
+          PROFECO. El Cliente, como proveedor que origina las llamadas, es el único responsable de verificar
+          que los números de destino no estén registrados en la LNCL cuando la naturaleza de las llamadas
+          así lo requiera.
+        </p>
+        <p style={{ marginTop: '0.5rem' }}>
+          <strong>Usos prohibidos.</strong> Queda expresamente prohibido utilizar el agente para: (i) realizar
+          llamadas de prospección a listas masivas sin consentimiento previo del destinatario; (ii) contactar
+          de forma reiterada a personas que hayan solicitado no ser contactadas; o (iii) cualquier actividad
+          que contravenga la legislación mexicana aplicable.
+        </p>
+        <p style={{ marginTop: '0.5rem' }}>
+          <strong>Responsabilidad e indemnización.</strong> Centinelia actúa exclusivamente como proveedor
+          de tecnología y no como parte en las comunicaciones que el agente realiza en nombre del Cliente.
+          El Cliente libera a Centinelia de toda responsabilidad derivada del uso que dé al servicio y se
+          compromete a indemnizar y sacar en paz a Centinelia respecto de cualquier reclamación, sanción o
+          multa iniciada por PROFECO, IFT o cualquier autoridad competente, derivada de llamadas realizadas
+          o recibidas a través del agente.
+        </p>
+      </Clause>
+
+      <Clause title={`${excluded.length > 0 ? '9' : '8'}. SOPORTE`}>
         <p>
           El Cliente tiene acceso a soporte técnico por WhatsApp y correo electrónico. Los tiempos de respuesta son de
           hasta 24 horas hábiles. Actualizaciones de configuración del agente (guión, horarios, base de conocimiento)
@@ -133,7 +165,7 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '9' : '8'}. USO DE MARCA Y CASOS DE ÉXITO`}>
+      <Clause title={`${excluded.length > 0 ? '10' : '9'}. USO DE MARCA Y CASOS DE ÉXITO`}>
         <p>
           Al aceptar este contrato, el Cliente autoriza a Centinelia y a Pneuma Studio a mencionar el nombre
           y logotipo de <strong>{agent.business_name}</strong> como caso de éxito en materiales de marketing,
@@ -143,7 +175,7 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '10' : '9'}. ACEPTACIÓN`}>
+      <Clause title={`${excluded.length > 0 ? '11' : '10'}. ACEPTACIÓN`}>
         <p>
           Al firmar este contrato, el Cliente declara haber leído, entendido y aceptado todos los términos y condiciones
           establecidos en el presente documento. Este contrato entra en vigor en la fecha de aceptación.

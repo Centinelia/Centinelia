@@ -79,11 +79,12 @@ const AGENT_PLANS: AgentPlanDef[] = [
     description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
       { label: 'Todo el plan Comercial', desc: 'Recepcionista 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
+      { label: 'Hasta 3 llamadas simultáneas', desc: 'Tu agente atiende hasta 3 llamadas al mismo tiempo sin dar señal de ocupado.' },
+      { label: 'Llamadas salientes y devolución automática', desc: 'Llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas automáticamente.' },
       { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los manda a tu WhatsApp.' },
       { label: 'Memoria de cliente', desc: 'Recuerda quién ha llamado antes, qué pidió y sus preferencias.' },
-      { label: 'Voz y nombre personalizables', desc: 'Elige el nombre y la voz que mejor representen tu marca.' },
       { label: 'Multiidioma (ES + EN)', desc: 'Detecta el idioma del cliente y responde en español o inglés.' },
-      { label: 'Flujos complejos a medida', desc: 'Guiones y lógica conversacional diseñados para tu operación.' },
+      { label: 'Flujos complejos y voz personalizable', desc: 'Elige nombre, voz y diseña lógica conversacional a medida de tu operación.' },
     ],
   },
   {
@@ -923,11 +924,17 @@ function RegistroInner() {
               </button>
             </div>
 
-            {plan !== 'empresarial' && (
-              <p className="text-center text-xs mt-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Pago seguro procesado por Stripe · Precios en MXN
-              </p>
-            )}
+            <p className="text-center text-xs mt-4" style={{ color: 'rgba(255,255,255,0.22)', lineHeight: 1.6 }}>
+              {plan !== 'empresarial' && <>Pago seguro procesado por Stripe · Precios en MXN<br /></>}
+              Al continuar aceptas nuestros{' '}
+              <a href="/legal" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline' }}>
+                Términos y Condiciones
+              </a>
+              {' '}y el{' '}
+              <a href="/privacidad-datos" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'underline' }}>
+                Aviso de Privacidad
+              </a>.
+            </p>
           </div>
         )}
       </div>

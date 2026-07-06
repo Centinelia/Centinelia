@@ -81,12 +81,12 @@ export default function LandingNav() {
       <div style={{ borderTop: '1px solid rgba(108,59,255,0.08)' }} />
 
       <Link
-        href="/privacidad-datos"
+        href="/legal"
         onClick={close}
         className="block px-5 py-3 text-sm hover:bg-[#FAFBFF] transition-colors"
         style={{ color: 'rgba(26,10,59,0.6)' }}
       >
-        Privacidad de datos
+        Legal
       </Link>
     </>
   );
