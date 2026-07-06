@@ -2,12 +2,12 @@
 
 import {
   ArrowLeftRight, Globe, Cpu, Zap,
-  Mic, ShieldCheck, PhoneIncoming, FileText, Clock, BadgeCheck, MessageCircle,
+  Mic, ShieldCheck, PhoneIncoming, FileText, Clock, BadgeCheck, MessageCircle, Phone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-// Solo capacidades que NO aparecen en las tarjetas de arriba
 const ITEMS: { icon: LucideIcon; label: string }[] = [
+  { icon: Phone,          label: 'Recepcionista 24/7' },
   { icon: ArrowLeftRight, label: 'Transferencia inteligente' },
   { icon: Globe,          label: 'Multiidioma ES + EN' },
   { icon: Cpu,            label: 'Inteligencia Artificial' },

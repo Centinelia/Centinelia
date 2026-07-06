@@ -24,12 +24,6 @@ const DEMO_PHONE_HREF = 'tel:+528121888490';
 
 const FEATURES = [
   {
-    icon:  <Phone size={20} color="#6C3BFF" />,
-    color: '#6C3BFF',
-    title: 'Recepcionista 24/7',
-    desc:  'Atiende cada llamada aunque estés en junta, comiendo o durmiendo. Sin pausas, sin ausencias, sin costo extra.',
-  },
-  {
     icon:  <Users size={20} color="#7c3aed" />,
     color: '#7c3aed',
     title: 'Captura de leads',
