@@ -9,13 +9,16 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import ThemeToggle from '@/components/ThemeToggle';
 
-import PortalLogout           from '../PortalLogout';
-import PortalVoiceSelector    from '../PortalVoiceSelector';
-import NotificationsToggle    from '../NotificationsToggle';
-import AgentCustomization     from '../AgentCustomization';
-import AgentNameEditor        from '../AgentNameEditor';
-import ResyncButton           from '../ResyncButton';
-import SupportChat            from '../SupportChat';
+import PortalLogout              from '../PortalLogout';
+import PortalVoiceSelector       from '../PortalVoiceSelector';
+import NotificationsToggle       from '../NotificationsToggle';
+import AgentCustomization        from '../AgentCustomization';
+import AgentNameEditor           from '../AgentNameEditor';
+import ResyncButton              from '../ResyncButton';
+import SupportChat               from '../SupportChat';
+import OutboundInstructionsEditor from '../OutboundInstructionsEditor';
+import OutboundRoleSelector from '../OutboundRoleSelector';
+import KnowledgeBaseEditor from '../KnowledgeBaseEditor';
 
 const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
 const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
@@ -40,9 +43,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     redirect('/portal/login');
   }
 
-  const agentName  = agent.agent_name?.trim() || 'Centinelia';
-  const planColor  = PLAN_COLORS[agent.plan] ?? '#6b7280';
-  const planLabel  = PLAN_LABELS[agent.plan] ?? agent.plan;
+  const agentName    = agent.agent_name?.trim() || 'Centinelia';
+  const planColor    = PLAN_COLORS[agent.plan] ?? '#6b7280';
+  const planLabel    = PLAN_LABELS[agent.plan] ?? agent.plan;
+  const features     = (agent.features ?? {}) as Record<string, boolean>;
+  const showOutbound = process.env.NODE_ENV === 'development' ? true : !!features.outbound_calls;
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -105,10 +110,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Personalización del agente
+              Llamadas entrantes
             </h2>
             <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-              Ajusta cómo habla y cuándo transfiere tu agente.
+              Ajusta cómo saluda el agente, cuándo transfiere y cómo trata a los clientes.
             </p>
             <AgentCustomization
               token={token}
@@ -117,6 +122,44 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               initSpeechStyle={(agent as any).speech_style ?? 'usted'}
             />
           </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Base de conocimiento
+            </h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+              Catálogo, precios y FAQs que el agente usa en todas las conversaciones — entrantes y salientes.
+            </p>
+            <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
+          </div>
+
+          {showOutbound && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Llamadas salientes
+              </h2>
+              <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+                Define el objetivo de tus campañas, qué decir, cómo manejar objeciones y qué hacer si no contestan.
+              </p>
+              <div className="mb-5 pb-5" style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-3)' }}>
+                  Rol del agente
+                </p>
+                <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+                  Etiqueta este agente según el tipo de llamadas que hace. Aparece en el selector al programar salientes.
+                </p>
+                <OutboundRoleSelector
+                  token={token}
+                  initialRole={(agent as any).outbound_role ?? null}
+                />
+              </div>
+
+              <OutboundInstructionsEditor
+                token={token}
+                initialValue={(agent as any).outbound_knowledge_base ?? ''}
+              />
+            </div>
+          )}
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>

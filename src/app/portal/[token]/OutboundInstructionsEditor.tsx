@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 
-export default function KnowledgeBaseEditor({
+export default function OutboundInstructionsEditor({
   token,
   initialValue,
 }: {
@@ -22,7 +22,7 @@ export default function KnowledgeBaseEditor({
   const hint =
     chars <= SOFT_LIMIT ? 'Ideal' :
     chars <= HARD_LIMIT ? 'Largo pero aceptable, considera resumir' :
-    'Muy extenso, el agente puede tener dificultad usando toda esta información';
+    'Muy extenso, el agente puede perder el hilo';
 
   const handleSave = async () => {
     setSaving(true);
@@ -30,7 +30,7 @@ export default function KnowledgeBaseEditor({
     const res = await fetch(`/api/portal/${token}/settings`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ knowledge_base: value }),
+      body: JSON.stringify({ outbound_knowledge_base: value }),
     });
     setSaving(false);
     if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
@@ -39,13 +39,24 @@ export default function KnowledgeBaseEditor({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-        El agente consulta esta información en todas sus conversaciones — llamadas entrantes y salientes. Incluye servicios, precios, FAQs y cualquier detalle que deba conocer.
+        Define el objetivo de tus llamadas salientes, qué decir, cómo manejar objeciones y qué hacer si no contestan.
       </p>
       <textarea
         value={value}
         onChange={e => { setValue(e.target.value); setSaved(false); }}
         rows={10}
-        placeholder={'SERVICIOS:\n- Corte de cabello: $150\n- Tinte: $300\n\nFAQS:\n¿Aceptan tarjeta? Sí.'}
+        placeholder={
+          'OBJETIVO:\n' +
+          'Hacer seguimiento a clientes que pidieron cotización esta semana.\n\n' +
+          'QUÉ DECIR:\n' +
+          '- Preguntar si recibieron la cotización y si tienen dudas\n' +
+          '- Mencionar que incluye instalación sin costo\n\n' +
+          'OBJECIONES:\n' +
+          '- "Está caro": Ofrecer plan a 6 meses sin intereses\n' +
+          '- "No tengo tiempo": Preguntar cuándo puede atender\n\n' +
+          'SI NO CONTESTAN:\n' +
+          '- Preguntar cuándo es buen momento para volver a llamar'
+        }
         className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
         style={{
           background: 'var(--c-input-bg)',
@@ -62,10 +73,8 @@ export default function KnowledgeBaseEditor({
           <span style={{ color: 'var(--c-text-4)' }}>{hint}</span>
         </div>
         <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-input-border)' }}>
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${pct}%`, background: barColor }}
-          />
+          <div className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${pct}%`, background: barColor }} />
         </div>
       </div>
       <div className="flex items-center justify-between">

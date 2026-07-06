@@ -40,8 +40,15 @@ import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
+import PortalOutboundSection     from './PortalOutboundSection';
+import PortalContactsSection     from './PortalContactsSection';
+import OutboundSection           from './OutboundSection';
+import OutboundToggles           from './OutboundToggles';
+import OutboundInstructionsEditor from './OutboundInstructionsEditor';
+import type { OutboundCall }     from './PortalOutboundSection';
+import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'agentes' | 'negocio' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones';
+type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -73,13 +80,27 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   }
 
   // All agents for this client (same portal_email)
-  const { data: clientAgents } = session?.portalEmail
+  // In dev the middleware bypasses auth so session is null — fall back to the agent's own email
+  const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
+  const { data: clientAgents } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url')
-        .eq('portal_email', session.portalEmail)
+        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features')
+        .eq('portal_email', lookupEmail)
     : { data: [] };
   const allClientAgents = clientAgents ?? [];
+
+  // Agents with outbound calling enabled — available to select when scheduling
+  const outboundAgents = allClientAgents
+    .filter(a => {
+      const f = (a as any).features ?? {};
+      return !!f.outbound_calls;
+    })
+    .map(a => ({
+      token: a.portal_token,
+      name:  (a.agent_name?.trim() || 'Centinelia'),
+      role:  (a as any).outbound_role ?? undefined,
+    }));
 
   // Group agents by business
   type BusinessGroup = { business_name: string; logo_url: string | null; first_token: string; agents: typeof allClientAgents };
@@ -97,11 +118,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const clientPaused  = (agent as any).client_paused ?? false;
   const billingPaused = !agent.active && agent.billing_status === 'pago_fallido';
 
-  const features   = agent.features ?? {};
-  const showLeads  = !!features.lead_qualification;
-  const showOrders = !!features.order_taking;
-  const showAppts  = !!features.appointment_booking;
-  const hasStripe  = !!agent.stripe_customer_id;
+  const features      = agent.features ?? {};
+  const showLeads     = !!features.lead_qualification;
+  const showOrders    = !!features.order_taking;
+  const showAppts     = !!features.appointment_booking;
+  const showOutbound  = !!features.outbound_calls;
+  const hasStripe     = !!agent.stripe_customer_id;
   const agentName  = agent.agent_name?.trim() || 'Centinelia';
 
   // Minutes: account-level pool when portal_email exists, per-agent for demo/standalone
@@ -129,7 +151,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes] = await Promise.all([
     // Calls, always needed (resumen + minutos tab for allCalls)
     since
       ? supabase.from('voice_calls').select('*').eq('agent_id', agent.id).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -138,13 +160,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     showOrders ? supabase.from('orders_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     showAppts  ? supabase.from('appointments_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     supabase.from('voice_calls').select('duration_seconds, created_at').eq('agent_id', agent.id).order('created_at', { ascending: true }),
+    showOutbound ? supabase.from('outbound_calls').select('*').eq('agent_id', agent.id).order('scheduled_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
+    // Contacts tab
+    supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('wa_leads').select('id, nombre, customer_number, whatsapp, email, negocio, giro, servicio, presupuesto, timeline, notas, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
   ]);
 
-  const calls    = (callsRes.data    ?? []) as VoiceCall[];
-  const leads    = leadsRes.data     ?? [];
-  const orders   = ordersRes.data    ?? [];
-  const appts    = apptsRes.data     ?? [];
-  const allCalls = allCallsRes.data ?? [];
+  const calls             = (callsRes.data           ?? []) as VoiceCall[];
+  const leads             = leadsRes.data            ?? [];
+  const orders            = ordersRes.data           ?? [];
+  const appts             = apptsRes.data            ?? [];
+  const allCalls          = allCallsRes.data         ?? [];
+  const outboundCalls     = (outboundRes.data        ?? []) as OutboundCall[];
+  const contactVoiceLeads = (contactLeadsRes.data    ?? []) as ContactVoiceLead[];
+  const contactWALeads    = (contactWALeadsRes.data  ?? []) as ContactWALead[];
+  const contactOutbound   = (contactOutboundRes.data   ?? []) as ContactOutbound[];
+  const outboundCampaigns = outboundCampaignsRes.data  ?? [];
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -179,6 +212,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'agentes',       label: 'Agentes' },
     { id: 'negocio',       label: 'Negocio' },
+    { id: 'entrantes',     label: 'Entrantes' },
+    ...(agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
     { id: 'resumen',       label: 'Resumen' },
     { id: 'actividad',     label: 'Actividad' },
     { id: 'minutos',       label: 'Minutos' },
@@ -209,15 +244,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
-              {agent.plan && (() => {
-                const pc = PLAN_COLORS[agent.plan] ?? '#6b7280';
-                return (
-                  <span className="hidden sm:inline-flex items-center text-xs px-2 py-1 rounded-full font-medium"
-                    style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
-                    {PLAN_LABELS[agent.plan]}
-                  </span>
-                );
-              })()}
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               {hasStripe && (
                 <a href={`/api/billing/portal-session?token=${token}`}
@@ -441,6 +467,42 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             </div>
           )}
 
+          {/* ── ENTRANTES ────────────────────────────────────────────────── */}
+          {tab === 'entrantes' && (
+            <div className="flex flex-col gap-5">
+              {/* KPI strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />} value={String(calls.length)} label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
+                <KpiCard icon={<span style={{ fontSize: 16 }}>⏱</span>} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
+                {showLeads && leads.length > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />} value={String(leads.length)} label="Leads" sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
+              </div>
+
+              {/* Call list */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                    <PhoneCall size={13} /> Llamadas recientes
+                  </h2>
+                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+                </div>
+                {calls.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                      <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
+                    <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
+                      En cuanto llegue la primera llamada aparecerá aquí automáticamente.
+                    </p>
+                  </div>
+                ) : (
+                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── RESUMEN ──────────────────────────────────────────────────── */}
           {tab === 'resumen' && (
             <div className="flex flex-col gap-5">
@@ -640,6 +702,31 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── SALIENTES ────────────────────────────────────────────────── */}
+          {tab === 'salientes' && (
+            <div className="flex flex-col gap-6">
+              <OutboundToggles
+                token={token}
+                initOutbound={!!(agent.features as any)?.outbound_calls}
+                initMissedCallRecovery={!!(agent as any).missed_call_recovery}
+              />
+              {(agent.features as any)?.outbound_calls && (
+                <>
+                  <OutboundInstructionsEditor
+                    token={token}
+                    initialValue={(agent as any).outbound_knowledge_base ?? ''}
+                  />
+                  <OutboundSection
+                    token={token}
+                    initialContacts={contactOutbound as any[]}
+                    initialCampaigns={outboundCampaigns as any[]}
+                    agents={allClientAgents.map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+                  />
+                </>
+              )}
             </div>
           )}
 

@@ -16,17 +16,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id, vapi_agent_id, portal_email').eq('portal_token', token).single();
+    .from('voice_agents').select('id, vapi_agent_id, portal_email, features').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-  const allowed = ['business_hours', 'knowledge_base', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
+  // Feature flags live inside the features JSONB column — merge instead of flat update
+  const featureFlagKeys = ['outbound_calls'];
+  const featureFlagUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureFlagKeys.includes(k)));
+  if (Object.keys(featureFlagUpdate).length > 0) {
+    const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureFlagUpdate };
+    await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
+  }
+
+  const allowed = ['business_hours', 'knowledge_base', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
-  // Handle outbound_calls feature flag toggle (only this flag is client-controllable)
-  if (typeof body.outbound_calls === 'boolean') {
-    const { data: current } = await supabase.from('voice_agents').select('features').eq('id', agent.id).single();
-    update.features = { ...(current?.features ?? {}), outbound_calls: body.outbound_calls };
-  }
+  if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
 
   const { data, error } = await supabase
     .from('voice_agents').update(update).eq('id', agent.id).select('*').single();
