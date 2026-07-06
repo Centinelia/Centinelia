@@ -582,7 +582,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
             >
-              El mismo agente. Cualquier rol.
+              Un agente. Cualquier rol.
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
               Elige el escenario, llama y experimenta. Recepcionista, vendedor, tomador de pedidos,
