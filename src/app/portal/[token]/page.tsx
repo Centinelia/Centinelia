@@ -104,15 +104,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const hasStripe  = !!agent.stripe_customer_id;
   const agentName  = agent.agent_name?.trim() || 'Centinelia';
 
-  const minutesIncluded = agent.minutes_included ?? 0;
-  const minutesUsed     = agent.minutes_used ?? 0;
+  // Minutes: account-level pool when portal_email exists, per-agent for demo/standalone
+  const { data: acctMins } = agent.portal_email
+    ? await supabase.from('account_minutes').select('minutes_used, minutes_included, minutes_reset_date').eq('portal_email', agent.portal_email).single()
+    : { data: null };
+
+  const minutesIncluded = acctMins?.minutes_included ?? agent.minutes_included ?? 0;
+  const minutesUsed     = acctMins?.minutes_used     ?? agent.minutes_used     ?? 0;
+  const minutesResetDate = acctMins?.minutes_reset_date ?? agent.minutes_reset_date ?? null;
+
   const minutesPct      = minutesIncluded > 0 ? Math.min((minutesUsed / minutesIncluded) * 100, 100) : 0;
   const minutesColor    = minutesPct > 90 ? '#ef4444' : minutesPct > 70 ? '#f59e0b' : '#22c55e';
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
   const planBaseMinutes = agent.minutes_plan ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded) : minutesIncluded;
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);
-  const resetDate       = agent.minutes_reset_date
-    ? new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
+  const resetDate       = minutesResetDate
+    ? new Date(minutesResetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
     : ',';
 
   const supportWhatsApp    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '';

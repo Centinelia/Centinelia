@@ -20,9 +20,10 @@ export default async function DashboardPage() {
     { data: agentsData },
     { data: calls14d },
     { data: lastCallsData },
+    { data: acctMinsData },
   ] = await Promise.all([
     supabase.from('voice_agents')
-      .select('id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, created_at')
+      .select('id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, created_at, portal_email')
       .neq('id', process.env.DEMO_AGENT_ID ?? '')
       .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
@@ -32,10 +33,18 @@ export default async function DashboardPage() {
       .select('agent_id, created_at')
       .order('created_at', { ascending: false })
       .limit(1000),
+    supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included'),
   ]);
 
-  const agents = (agentsData ?? []) as any[];
-  const calls  = (calls14d   ?? []) as any[];
+  const agents    = (agentsData ?? []) as any[];
+  const calls     = (calls14d   ?? []) as any[];
+  const acctMins  = new Map((acctMinsData ?? []).map((m: any) => [m.portal_email, m]));
+  const seenAcct  = new Set<string>(); // deduplicate account pools in aggregate stats
+
+  // Resolve effective minutes for an agent (account pool or per-agent)
+  const effMins = (a: any) => a.portal_email && acctMins.has(a.portal_email)
+    ? acctMins.get(a.portal_email)
+    : { minutes_used: a.minutes_used, minutes_included: a.minutes_included };
 
   // MRR — only agents with billing_status = 'activo' and a known minutes plan
   const mrr = agents
@@ -74,9 +83,15 @@ export default async function DashboardPage() {
     }
   }
 
+  const alertedAccts = new Set<string>();
   for (const a of agents) {
-    if (a.active && a.minutes_included > 0 && (a.minutes_used / a.minutes_included) >= 0.9) {
-      const pct = Math.round((a.minutes_used / a.minutes_included) * 100);
+    const m = effMins(a);
+    // Deduplicate: only alert once per account pool
+    const acctKey = a.portal_email ?? a.id;
+    if (alertedAccts.has(acctKey)) continue;
+    if (a.active && m.minutes_included > 0 && (m.minutes_used / m.minutes_included) >= 0.9) {
+      alertedAccts.add(acctKey);
+      const pct = Math.round((m.minutes_used / m.minutes_included) * 100);
       alerts.push({ priority: 1, label: a.business_name, sub: `${pct}% de minutos consumidos — ofrecer recarga`, href: `/admin/agentes/${a.id}`, color: '#f59e0b' });
     }
   }
@@ -92,12 +107,31 @@ export default async function DashboardPage() {
     }
   }
 
-  // Minutes health
-  const withMinutes    = agents.filter(a => a.active && a.minutes_included > 0);
-  const minsOk         = withMinutes.filter(a => (a.minutes_used / a.minutes_included) <  0.70).length;
-  const minsWarning    = withMinutes.filter(a => { const p = a.minutes_used / a.minutes_included; return p >= 0.70 && p < 0.90; }).length;
-  const minsCritical   = withMinutes.filter(a => (a.minutes_used / a.minutes_included) >= 0.90).length;
-  const totalRemaining = agents.reduce((s: number, a: any) => s + Math.max(0, (a.minutes_included ?? 0) - (a.minutes_used ?? 0)), 0);
+  // Minutes health — deduplicate account pools so multi-agent accounts count once
+  const healthAgents: { used: number; included: number }[] = [];
+  const seenHealthAcct = new Set<string>();
+  for (const a of agents) {
+    if (!a.active) continue;
+    const acctKey = a.portal_email ?? a.id;
+    if (seenHealthAcct.has(acctKey)) continue;
+    seenHealthAcct.add(acctKey);
+    const m = effMins(a);
+    if (m.minutes_included > 0) healthAgents.push({ used: m.minutes_used, included: m.minutes_included });
+  }
+  const minsOk         = healthAgents.filter(m => (m.used / m.included) <  0.70).length;
+  const minsWarning    = healthAgents.filter(m => { const p = m.used / m.included; return p >= 0.70 && p < 0.90; }).length;
+  const minsCritical   = healthAgents.filter(m => (m.used / m.included) >= 0.90).length;
+  const withMinutes    = healthAgents;
+  // Total remaining: sum across unique pools
+  const seenRemAcct = new Set<string>();
+  let totalRemaining = 0;
+  for (const a of agents) {
+    const acctKey = a.portal_email ?? a.id;
+    if (seenRemAcct.has(acctKey)) continue;
+    seenRemAcct.add(acctKey);
+    const m = effMins(a);
+    totalRemaining += Math.max(0, (m.minutes_included ?? 0) - (m.minutes_used ?? 0));
+  }
 
   // Billing summary
   const billing = {
