@@ -22,6 +22,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const allowed = ['business_hours', 'knowledge_base', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
+  // Handle outbound_calls feature flag toggle (only this flag is client-controllable)
+  if (typeof body.outbound_calls === 'boolean') {
+    const { data: current } = await supabase.from('voice_agents').select('features').eq('id', agent.id).single();
+    update.features = { ...(current?.features ?? {}), outbound_calls: body.outbound_calls };
+  }
+
   const { data, error } = await supabase
     .from('voice_agents').update(update).eq('id', agent.id).select('*').single();
 
