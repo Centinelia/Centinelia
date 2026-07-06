@@ -10,7 +10,6 @@ import type { AgentFeatures } from '@/types/agent';
 import AgentActions from './AgentActions';
 import CallsSection from './CallsSection';
 import CopyButton from './CopyButton';
-import MinutesAdjuster from './MinutesAdjuster';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -47,14 +46,6 @@ export default async function AgentDetailPage({ params }: Props) {
 
   const calls = (callsData ?? []) as VoiceCall[];
 
-  // Account-level minutes pool (when the agent belongs to a client account)
-  const { data: accountMinutes } = agent.portal_email
-    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', agent.portal_email).single()
-    : { data: null };
-
-  const minutesUsed     = accountMinutes?.minutes_used     ?? agent.minutes_used;
-  const minutesIncluded = accountMinutes?.minutes_included ?? agent.minutes_included;
-  const isAccountPool   = !!accountMinutes;
 
   const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
@@ -209,12 +200,6 @@ export default async function AgentDetailPage({ params }: Props) {
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
-          <MinutesAdjuster
-            agentId={agent.id}
-            minutesUsed={minutesUsed}
-            minutesIncluded={minutesIncluded}
-            isAccountPool={isAccountPool}
-          />
 
           {/* Portal + Vapi config */}
           {(agent.portal_token || agent.vapi_agent_id) && (

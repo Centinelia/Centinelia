@@ -15,8 +15,6 @@ type AgentRow = {
   plan: string;
   active: boolean;
   billing_status: string | null;
-  minutes_used: number;
-  minutes_included: number;
   portal_email: string | null;
   portal_token: string | null;
 };
@@ -27,6 +25,8 @@ type ClientGroup = {
   client_email: string | null;
   portal_email: string | null;
   agents: AgentRow[];
+  acct_minutes_used: number | null;
+  acct_minutes_included: number | null;
 };
 
 export default async function ClientesPage({ searchParams }: Props) {
@@ -38,7 +38,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, business_name, plan, active, billing_status, minutes_used, minutes_included, portal_email, portal_token')
+    .select('id, client_name, client_email, business_name, plan, active, billing_status, portal_email, portal_token')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -57,29 +57,42 @@ export default async function ClientesPage({ searchParams }: Props) {
     if (!map.has(key)) {
       map.set(key, {
         key,
-        client_name:  agent.client_name,
-        client_email: agent.client_email ?? null,
-        portal_email: agent.portal_email ?? null,
-        agents:       [],
+        client_name:           agent.client_name,
+        client_email:          agent.client_email ?? null,
+        portal_email:          agent.portal_email ?? null,
+        agents:                [],
+        acct_minutes_used:     null,
+        acct_minutes_included: null,
       });
     }
     map.get(key)!.agents.push({
-      id:               agent.id,
-      business_name:    agent.business_name,
-      plan:             agent.plan,
-      active:           agent.active,
-      billing_status:   agent.billing_status ?? null,
-      minutes_used:     agent.minutes_used,
-      minutes_included: agent.minutes_included,
-      portal_email:     agent.portal_email ?? null,
-      portal_token:     (agent as any).portal_token ?? null,
+      id:             agent.id,
+      business_name:  agent.business_name,
+      plan:           agent.plan,
+      active:         agent.active,
+      billing_status: agent.billing_status ?? null,
+      portal_email:   agent.portal_email ?? null,
+      portal_token:   (agent as any).portal_token ?? null,
     });
   }
 
   const allGroups  = Array.from(map.values());
   const totalCount = allGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const groups     = allGroups.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
+
+  // Fetch account-level minutes pool for visible page
+  const pageGroups    = allGroups.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
+  const emailsOnPage  = pageGroups.map(g => g.portal_email).filter((e): e is string => !!e);
+  const { data: acctMinsData } = emailsOnPage.length
+    ? await supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included').in('portal_email', emailsOnPage)
+    : { data: [] };
+  const acctMinsMap = new Map((acctMinsData ?? []).map(m => [m.portal_email, m]));
+
+  const groups = pageGroups.map(g => ({
+    ...g,
+    acct_minutes_used:     g.portal_email ? (acctMinsMap.get(g.portal_email)?.minutes_used ?? null) : null,
+    acct_minutes_included: g.portal_email ? (acctMinsMap.get(g.portal_email)?.minutes_included ?? null) : null,
+  }));
 
   const totalAgents = (agents ?? []).length;
   const totalActive = (agents ?? []).filter(a => a.active).length;

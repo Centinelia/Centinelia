@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
+import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,8 +19,6 @@ type AgentRow = {
   plan: string;
   active: boolean;
   billing_status: string | null;
-  minutes_used: number;
-  minutes_included: number;
   portal_email: string | null;
   portal_token: string | null;
 };
@@ -30,6 +29,8 @@ type ClientGroup = {
   client_email: string | null;
   portal_email: string | null;
   agents: AgentRow[];
+  acct_minutes_used: number | null;
+  acct_minutes_included: number | null;
 };
 
 type CredForm = {
@@ -196,6 +197,11 @@ export default function ClientesClient({
           const pausedCount = client.agents.length - activeCount;
           const initials    = client.client_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
+          const acctUsed     = client.acct_minutes_used;
+          const acctIncluded = client.acct_minutes_included;
+          const acctPct      = acctIncluded && acctIncluded > 0 ? Math.round((acctUsed! / acctIncluded) * 100) : 0;
+          const acctBarColor = acctPct > 90 ? '#ef4444' : acctPct > 70 ? '#f59e0b' : '#22c55e';
+
           return (
             <div key={client.key} className="rounded-xl overflow-hidden"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
@@ -237,6 +243,19 @@ export default function ClientesClient({
                   )}
                 </div>
 
+                {/* Account minutes mini-bar */}
+                {acctIncluded != null && acctIncluded > 0 && (
+                  <div className="hidden sm:flex flex-col items-end gap-1 mr-1 flex-shrink-0">
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+                      {acctUsed}/{acctIncluded} min
+                    </span>
+                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(acctPct, 100)}%`, background: acctBarColor }} />
+                    </div>
+                  </div>
+                )}
+
                 <ChevronDown size={15} className="flex-shrink-0 transition-transform"
                   style={{ color: 'var(--c-text-3)', transform: open ? 'rotate(180deg)' : undefined }} />
               </button>
@@ -246,8 +265,6 @@ export default function ClientesClient({
                 <div style={{ borderTop: '1px solid var(--c-divider)' }}>
                   {client.agents.map((agent, i) => {
                     const planColor  = PLAN_COLORS[agent.plan] ?? '#6b7280';
-                    const pct        = agent.minutes_included > 0
-                      ? Math.round((agent.minutes_used / agent.minutes_included) * 100) : 0;
                     const credIsOpen = credOpen.has(agent.id);
                     const form       = credForms[agent.id];
 
@@ -273,15 +290,6 @@ export default function ClientesClient({
                                   Pago fallido
                                 </span>
                               )}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex-1 max-w-[80px] h-1 rounded-full" style={{ background: 'var(--c-border)' }}>
-                                <div className="h-1 rounded-full"
-                                  style={{ width: `${Math.min(pct, 100)}%`, background: pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e' }} />
-                              </div>
-                              <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-4)' }}>
-                                {agent.minutes_used}/{agent.minutes_included} min
-                              </span>
                             </div>
                           </div>
 
@@ -381,6 +389,21 @@ export default function ClientesClient({
                       </div>
                     );
                   })}
+
+                  {/* Account minutes adjuster */}
+                  {client.agents[0] && (
+                    <div className="px-5 py-5" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                      <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--c-text-4)' }}>
+                        Pool de minutos de la cuenta
+                      </p>
+                      <MinutesAdjuster
+                        agentId={client.agents[0].id}
+                        minutesUsed={client.acct_minutes_used ?? 0}
+                        minutesIncluded={client.acct_minutes_included ?? 0}
+                        isAccountPool={client.acct_minutes_included != null}
+                      />
+                    </div>
+                  )}
 
                   {/* Agregar empresa */}
                   <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid var(--c-divider)' }}>
