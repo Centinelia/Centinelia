@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Phone, ArrowRight, Briefcase, PhoneOff, Clock, TrendingDown, Star } from 'lucide-react';
+import { Check, Phone, ArrowRight, Briefcase, PhoneOff, Clock, TrendingDown, Star, PhoneOutgoing } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import MeerkatReveal from '@/app/MeerkatReveal';
@@ -53,6 +53,21 @@ const FEATURES = [
   { label: 'Captura datos completos del prospecto para seguimiento' },
   { label: 'Transfiere llamadas urgentes a tu celular en tiempo real' },
   { label: 'Resumen de cada llamada con nivel de interés del prospecto' },
+];
+
+const OUTBOUND_CASES = [
+  {
+    title: 'Tus documentos están listos para firma',
+    desc: 'El agente notifica al cliente cuando un trámite avanzó y necesita su atención. Sin recordatorios manuales, sin procesos atascados por falta de seguimiento.',
+  },
+  {
+    title: '¿Todavía le interesa? El recontacto que cierra',
+    desc: 'A los 30 días de un prospecto sin respuesta, el agente hace el seguimiento. Muchos casos se cierran en ese segundo intento que nadie tiene tiempo de hacer.',
+  },
+  {
+    title: 'Novedad en tu caso',
+    desc: 'Cuando hay un avance importante, el agente informa al cliente de inmediato. El cliente se siente atendido; tú no interrumpes lo que estás haciendo.',
+  },
 ];
 
 const TESTIMONIALS = [
@@ -213,6 +228,29 @@ export default function DespachosPage() {
       </section>
 
       <section style={{ background: C.bg, padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El agente también llama</p>
+          <h2 className="font-bold text-center mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            Seguimiento automático que cierra más casos
+          </h2>
+          <p className="text-center mb-12 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: C.textSub }}>
+            Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para dar seguimiento, reactivar prospectos y mantener a tus clientes informados.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {OUTBOUND_CASES.map((c, i) => (
+              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-center rounded-xl mb-4" style={{ width: 40, height: 40, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
+                  <PhoneOutgoing size={18} color={C.accent} />
+                </div>
+                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{c.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>Lo que dicen los despachos que ya lo usan</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

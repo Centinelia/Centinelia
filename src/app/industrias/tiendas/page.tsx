@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Phone, ArrowRight, ShoppingBag, PhoneOff, Clock, MessageCircle, Star } from 'lucide-react';
+import { Check, Phone, ArrowRight, ShoppingBag, PhoneOff, Clock, MessageCircle, Star, PhoneOutgoing } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import MeerkatReveal from '@/app/MeerkatReveal';
@@ -53,6 +53,21 @@ const FEATURES = [
   { label: 'Registra cada pedido y notifica al equipo por WhatsApp' },
   { label: 'Captura datos de clientes interesados cuando el producto no está disponible' },
   { label: 'Atiende fuera de horario para no perder ventas nocturnas ni de fin de semana' },
+];
+
+const OUTBOUND_CASES = [
+  {
+    title: 'Ya llegó lo que buscabas',
+    desc: 'Cuando repones un producto que estaba agotado, el agente llama a todos los clientes que preguntaron por él. La venta se cierra antes de que el producto llegue al estante.',
+  },
+  {
+    title: 'Tu pedido va en camino',
+    desc: 'El agente notifica al cliente cuando su pedido salió a entrega, con el tiempo estimado. Menos llamadas de "¿dónde está mi pedido?" y más clientes tranquilos.',
+  },
+  {
+    title: 'Oferta exclusiva para ti',
+    desc: 'El agente contacta clientes que no han comprado en 60 días con una promoción personalizada. La reactivación automática que nunca se hace por falta de tiempo.',
+  },
 ];
 
 const TESTIMONIALS = [
@@ -207,6 +222,29 @@ export default function TiendasPage() {
       </section>
 
       <section style={{ background: C.bg, padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El agente también llama</p>
+          <h2 className="font-bold text-center mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            Avisa, reactiva y confirma sin intervención
+          </h2>
+          <p className="text-center mb-12 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: C.textSub }}>
+            Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para avisar de llegadas, confirmar entregas y reactivar clientes que no regresan.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {OUTBOUND_CASES.map((c, i) => (
+              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-center rounded-xl mb-4" style={{ width: 40, height: 40, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
+                  <PhoneOutgoing size={18} color={C.accent} />
+                </div>
+                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{c.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>Lo que dicen los negocios que ya lo usan</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

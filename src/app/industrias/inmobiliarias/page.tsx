@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Phone, ArrowRight, Building2, PhoneOff, Clock, TrendingDown, Star } from 'lucide-react';
+import { Check, Phone, ArrowRight, Building2, PhoneOff, Clock, TrendingDown, Star, PhoneOutgoing } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import MeerkatReveal from '@/app/MeerkatReveal';
@@ -53,6 +53,21 @@ const FEATURES = [
   { label: 'Comparte información de propiedades disponibles según el perfil del comprador' },
   { label: 'Captura datos completos: nombre, teléfono, presupuesto, zona de interés' },
   { label: 'Clasifica leads por nivel de interés para que priorices tus seguimientos' },
+];
+
+const OUTBOUND_CASES = [
+  {
+    title: 'Entró la propiedad que buscabas',
+    desc: 'Cuando registras un inmueble nuevo, el agente llama a los prospectos con ese perfil. El lead más caliente vuelve a estar activo sin que muevas un dedo.',
+  },
+  {
+    title: 'Visita mañana, ¿confirmamos?',
+    desc: 'El agente confirma cada visita agendada un día antes. Menos citas fantasma, más recorridos reales y menos tiempo invertido en prospectos que no llegan.',
+  },
+  {
+    title: 'Retomemos el contacto',
+    desc: 'A los 60 días de inactividad, el agente contacta prospectos calificados. El mercado cambia, los presupuestos también, y muchos cierres llegan en ese segundo momento.',
+  },
 ];
 
 const TESTIMONIALS = [
@@ -207,6 +222,29 @@ export default function InmobiliariasPage() {
       </section>
 
       <section style={{ background: C.bg, padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El agente también llama</p>
+          <h2 className="font-bold text-center mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            Ningún lead se enfría solo
+          </h2>
+          <p className="text-center mb-12 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: C.textSub }}>
+            Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para reactivar prospectos, confirmar visitas y avisar cuando hay propiedades nuevas.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {OUTBOUND_CASES.map((c, i) => (
+              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-center rounded-xl mb-4" style={{ width: 40, height: 40, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
+                  <PhoneOutgoing size={18} color={C.accent} />
+                </div>
+                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{c.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>Lo que dicen las inmobiliarias que ya lo usan</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

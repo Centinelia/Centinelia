@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Phone, ArrowRight, UtensilsCrossed, PhoneOff, Clock, Users, Star } from 'lucide-react';
+import { Check, Phone, ArrowRight, UtensilsCrossed, PhoneOff, Clock, Users, Star, PhoneOutgoing } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import MeerkatReveal from '@/app/MeerkatReveal';
@@ -59,6 +59,21 @@ const FEATURES = [
   { label: 'Informa horarios, ubicación y tiempo de espera estimado' },
   { label: 'Registra cada pedido y lo notifica al equipo por WhatsApp' },
   { label: 'Disponible las 24 horas, incluso cuando el local está cerrado' },
+];
+
+const OUTBOUND_CASES = [
+  {
+    title: 'Tu pedido ya está listo',
+    desc: 'El agente llama al cliente cuando su comida está lista para recoger. Nadie llega a un pedido frío ni espera en la puerta sin saber que ya está.',
+  },
+  {
+    title: 'Reservación confirmada, hora antes',
+    desc: 'Una hora antes de cada reservación, el agente confirma automáticamente. Menos lugares vacíos de último momento, menos desperdicio y menos sorpresas.',
+  },
+  {
+    title: 'Promo del día para tus habituales',
+    desc: 'El agente contacta a tus clientes frecuentes cuando tienes una promoción especial o un platillo de temporada. La llamada llega, la venta se genera.',
+  },
 ];
 
 const TESTIMONIALS = [
@@ -221,6 +236,29 @@ export default function RestaurantesPage() {
       </section>
 
       <section style={{ background: C.bg, padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El agente también llama</p>
+          <h2 className="font-bold text-center mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+            Llamadas que se pagan solas
+          </h2>
+          <p className="text-center mb-12 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: C.textSub }}>
+            Además de atender llamadas entrantes, el agente puede hacer llamadas salientes en nombre de tu restaurante.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {OUTBOUND_CASES.map((c, i) => (
+              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center justify-center rounded-xl mb-4" style={{ width: 40, height: 40, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
+                  <PhoneOutgoing size={18} color={C.accent} />
+                </div>
+                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{c.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>
             Lo que dicen los restaurantes que ya lo usan
