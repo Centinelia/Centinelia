@@ -6,6 +6,7 @@ export function buildOutboundSystemPrompt(
   customerName?: string,
   motivo?: string,
   customerContext?: string,
+  campaignInstructions?: string,
 ): string {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
   const f = agent.features ?? {};
@@ -106,9 +107,14 @@ Si el cliente solicita hablar con una persona o la situación requiere atención
 Si nadie contesta, ofrece que alguien le llame de regreso y toma sus datos.`);
   }
 
-  // ── Campaign instructions ─────────────────────────────────────────────────
+  // ── Campaign-specific instructions (highest priority, set per call) ─────────
+  if (campaignInstructions?.trim()) {
+    blocks.push(`INSTRUCCIONES DE ESTA CAMPAÑA:\n${campaignInstructions.trim()}`);
+  }
+
+  // ── General outbound instructions (agent-level default) ───────────────────
   if (agent.outbound_knowledge_base?.trim()) {
-    blocks.push(`INSTRUCCIONES PARA ESTA CAMPAÑA:\n${agent.outbound_knowledge_base.trim()}`);
+    blocks.push(`INSTRUCCIONES GENERALES PARA LLAMADAS SALIENTES:\n${agent.outbound_knowledge_base.trim()}`);
   }
 
   // ── Business knowledge (reference) ────────────────────────────────────────
