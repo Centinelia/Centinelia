@@ -90,30 +90,49 @@ const PAINS = [
   },
 ];
 
-const PLANS: {
-  name: string; id: string; price: number; origPrice: number; setup: number; origSetup: number;
-  minutes: number; color: string; popular?: boolean; custom?: boolean; includes: string[]; meerkat: string; meerkatBottom: number;
+const AGENT_TYPES: {
+  id: string; name: string; setupFee: number; color: string;
+  description: string; features: string[]; popular?: boolean;
+  meerkat: string; meerkatBottom: number;
+  meerkatDesk: string; meerkatDeskBottom: number;
 }[] = [
   {
-    name: 'Recepcionista', id: 'basico', price: 1990, origPrice: 2490, setup: 4990, origSetup: 6990, minutes: 200, color: '#6b7280',
-    includes: ['Recepcionista 24/7', 'Captura de leads', 'Resúmenes WhatsApp + Email', 'Reseña Google automática', 'Portal con horas pico', '200 min/mes incluidos'],
-    meerkat: '/agent-plan-basico.png', meerkatBottom: 66,
-  },
-  {
-    name: 'Comercial', id: 'estandar', price: 3490, origPrice: 4490, setup: 7990, origSetup: 9990, minutes: 500, color: '#6C3BFF', popular: true,
-    includes: ['Todo Recepcionista', 'Agendamiento de citas', 'Transferencia inteligente', 'Escalación a WhatsApp', 'Reseña Google automática', '500 min/mes incluidos'],
+    id: 'comercial', name: 'Comercial', setupFee: 8990, color: '#6C3BFF',
+    description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
+    features: [
+      'Recepcionista 24/7',
+      'Captura de leads automática',
+      'Agendamiento de citas',
+      'Transferencia inteligente a staff',
+      'Escalación a WhatsApp',
+      'Reseñas Google automáticas',
+      'Portal con reportes y horas pico',
+    ],
     meerkat: '/agent-plan-estandar.png', meerkatBottom: 64,
+    meerkatDesk: '/meerkat-transparente-11.png', meerkatDeskBottom: 66,
   },
   {
-    name: 'Pro', id: 'pro', price: 6490, origPrice: 8490, setup: 12990, origSetup: 16990, minutes: 1000, color: '#7c3aed',
-    includes: ['Todo Comercial', 'Toma de pedidos', 'Voz + nombre personalizable', 'Multiidioma (ES + EN)', 'Memoria de cliente', 'Reseña Google automática', '1,000 min/mes incluidos'],
+    id: 'pro', name: 'Pro', setupFee: 14990, color: '#9B6DFF', popular: true,
+    description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
+    features: [
+      'Todo el plan Comercial',
+      'Toma de pedidos por teléfono',
+      'Voz y nombre personalizables',
+      'Multiidioma (español + inglés)',
+      'Memoria de cliente entre llamadas',
+      'Flujos complejos a medida',
+    ],
     meerkat: '/agent-plan-pro.png', meerkatBottom: 66,
+    meerkatDesk: '/meerkat-transparente-07.png', meerkatDeskBottom: 65,
   },
-  {
-    name: 'Empresarial', id: 'empresarial', price: 0, origPrice: 0, setup: 0, origSetup: 0, minutes: 0, color: '#f59e0b', custom: true,
-    includes: ['Todo el plan Pro', 'Integración con tu sistema (POS, CRM, calendario)', 'Flujos conversacionales a medida', 'Múltiples agentes / sucursales', 'Onboarding y capacitación', 'SLA y soporte dedicado'],
-    meerkat: '/meerkat-transparente-07.png', meerkatBottom: 66,
-  },
+];
+
+const MINUTE_TIERS: {
+  id: string; label: string; minutes: number; price: number; popular?: boolean;
+}[] = [
+  { id: 'starter', label: 'Starter', minutes: 300,  price: 2997 },
+  { id: 'growth',  label: 'Growth',  minutes: 600,  price: 5994, popular: true },
+  { id: 'scale',   label: 'Scale',   minutes: 1200, price: 11988 },
 ];
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX').format(n);
@@ -269,7 +288,7 @@ export default function LandingPage() {
             </div>
 
             {/* Trust chips */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-2">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-2 mx-auto sm:mx-0 w-fit">
               {['Sin contrato mínimo', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
                 <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
                   <Check size={11} color="#9B6DFF" /> {t}
@@ -492,8 +511,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── CÓMO FUNCIONA ────────────────────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28 pb-40 lg:pb-28 relative overflow-hidden">
-        <AnimatedSection className="text-center mb-14">
+      <section className="max-w-5xl mx-auto px-5 sm:px-8 pt-16 sm:pt-20 pb-20 lg:pb-0 relative overflow-hidden">
+        <AnimatedSection className="text-center mb-8">
           <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
             Cómo funciona
           </p>
@@ -538,13 +557,6 @@ export default function LandingPage() {
           </MeerkatReveal>
         </div>
 
-        {/* Duo mobile, asomándose desde el borde inferior de la sección */}
-        <div className="agent-float-slow meerkat-duo-mob">
-          <MeerkatReveal style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <Image src="/agent-duo-stand2.png" alt="" fill sizes="220px"
-              style={{ objectFit: 'cover', objectPosition: 'center 20%' }} />
-          </MeerkatReveal>
-        </div>
       </section>
 
       {/* ── DEMO EN VIVO ─────────────────────────────────────────────────── */}
@@ -561,7 +573,7 @@ export default function LandingPage() {
           <Image src="/agent-headset.png" alt="" fill sizes="260px"
             style={{ objectFit: 'contain', objectPosition: 'top center' }} />
         </MeerkatReveal>
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 pt-20 pb-44 sm:py-24">
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 pt-20 pb-44 sm:pt-24 sm:pb-32">
           <AnimatedSection className="text-center mb-12">
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
               Demo en vivo
@@ -578,7 +590,9 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          <DemoSelector demoPhone={DEMO_PHONE} demoPhoneHref={DEMO_PHONE_HREF} />
+          <AnimatedSection delay={0.15}>
+            <DemoSelector demoPhone={DEMO_PHONE} demoPhoneHref={DEMO_PHONE_HREF} />
+          </AnimatedSection>
         </div>
       </section>
 
@@ -595,139 +609,246 @@ export default function LandingPage() {
           ['--orb-dur' as string]: '13s',
         }} />
 
-        <div className="max-w-7xl mx-auto px-5 sm:px-8" style={{ position: 'relative', zIndex: 1 }}>
-          <AnimatedSection className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4"
-              style={{ background: 'rgba(108,59,255,0.18)', border: '1px solid rgba(108,59,255,0.35)', color: '#C4A8FF' }}>
-              <Rocket size={12} /> Precio de lanzamiento · Primeros 20 clientes
-            </div>
+        <div className="max-w-5xl mx-auto px-5 sm:px-8" style={{ position: 'relative', zIndex: 1 }}>
+
+          {/* Header */}
+          <AnimatedSection className="text-center mb-16">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accentLt }}>
+              Precios
+            </p>
             <h2
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}
             >
               El precio correcto<br />para tu negocio
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)' }}>Sin contratos de permanencia. Cancela cuando quieras.</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Una compra única por tu agente, más una mensualidad según los minutos que uses.
+            </p>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            {PLANS.map((p, i) => (
-              <AnimatedSection key={p.name} delay={i * 0.09} className={p.custom ? 'relative' : ''}>
-              {p.custom && (
-                <div className="hidden xl:block" style={{
-                  position: 'absolute', bottom: '100%', left: 0, right: 0, height: 240,
-                  pointerEvents: 'none', userSelect: 'none',
-                }}>
-                  <Image src={p.meerkat} alt="" fill sizes="260px"
-                    style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-                </div>
-              )}
+          {/* ─── PASO 1: Tipo de agente ─────────────── */}
+          <AnimatedSection>
+            <div className="flex flex-col items-center gap-3 mb-7 text-center">
+              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(108,59,255,0.2)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                Paso 1 · Pago único
+              </span>
+              <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
+                Elige tu tipo de agente
+              </h3>
+            </div>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-16">
+            {AGENT_TYPES.map((a, i) => (
+              <AnimatedSection key={a.id} delay={i * 0.09}>
               <div
-                className="rounded-2xl p-6 flex flex-col relative overflow-hidden h-full"
+                className="rounded-2xl p-6 flex flex-col h-full relative overflow-hidden"
                 style={{
-                  background: p.popular
-                    ? `linear-gradient(145deg, ${p.color}22, ${p.color}0a)`
-                    : 'rgba(255,255,255,0.04)',
-                  border:    `1px solid ${p.popular ? p.color + '55' : 'rgba(255,255,255,0.09)'}`,
-                  boxShadow:  p.popular ? `0 12px 48px ${p.color}30` : 'none',
+                  background: a.popular ? `linear-gradient(145deg, ${a.color}22, ${a.color}0a)` : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${a.popular ? a.color + '55' : 'rgba(255,255,255,0.09)'}`,
+                  boxShadow: a.popular ? `0 12px 48px ${a.color}30` : 'none',
                   backdropFilter: 'blur(12px)',
                 }}
               >
-                {/* Top accent stripe */}
-                {p.popular && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${p.color}, ${p.color}88)` }} />
+                {a.popular && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                    background: `linear-gradient(90deg, ${a.color}, ${a.color}88)` }} />
                 )}
-
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold" style={{ color: '#fff' }}>{p.name}</p>
-                    {p.popular && (
-                      <span
-                        className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: p.color, color: '#fff' }}
-                      >
-                        <Star size={9} style={{ fill: '#fff' }} /> Popular
-                      </span>
-                    )}
-                  </div>
-                  {!p.custom && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
-                      Lanzamiento
+                <div className="flex items-center justify-between mb-4">
+                  <p className="font-bold" style={{ color: '#fff', fontSize: '1.1rem' }}>{a.name}</p>
+                  {a.popular && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: a.color, color: '#fff' }}>
+                      <Star size={9} style={{ fill: '#fff' }} /> Más completo
                     </span>
                   )}
                 </div>
-
-                {/* Precio */}
-                {p.custom ? (
-                  <div className="mb-4">
-                    <div className="text-3xl font-bold" style={{ color: p.color }}>A consultar</div>
-                    <div className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Cotización sin compromiso</div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.32)' }}>
-                      Próximamente: ${fmt(p.origPrice)}/mes
-                    </p>
-                    <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-4xl font-bold tabular-nums" style={{ color: p.popular ? p.color : '#fff' }}>
-                        ${fmt(p.price)}
-                      </span>
-                      <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
-                    </div>
-                  </>
-                )}
-
-                {/* Bloque instalación + minutos */}
-                <div className="rounded-xl px-3 py-2.5 mb-5 flex flex-col gap-2"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center justify-between text-xs">
-                    <span style={{ color: 'rgba(255,255,255,0.45)' }}>Instalación</span>
-                    <span className="font-semibold" style={{ color: '#fff' }}>
-                      {p.custom ? 'Incluida' : `$${fmt(p.setup)}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span style={{ color: 'rgba(255,255,255,0.45)' }}>Minutos incluidos</span>
-                    <span className="font-semibold" style={{ color: '#fff' }}>
-                      {p.custom ? 'A definir' : `${fmt(p.minutes)} min/mes`}
-                    </span>
-                  </div>
+                <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Instalación · pago único</p>
+                <div className="flex items-baseline gap-1.5 mb-3">
+                  <span className="text-4xl font-bold tabular-nums" style={{ color: a.popular ? a.color : '#fff' }}>
+                    ${fmt(a.setupFee)}
+                  </span>
+                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>+ IVA</span>
                 </div>
-
+                <p className="text-sm mb-5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.48)' }}>{a.description}</p>
                 <ul className="flex flex-col gap-2 flex-1 mb-6">
-                  {p.includes.map(f => (
+                  {a.features.map(f => (
                     <li key={f} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      <Check size={13} color={p.popular ? p.color : '#9B6DFF'} className="flex-shrink-0 mt-0.5" /> {f}
+                      <Check size={13} color={a.color} className="flex-shrink-0 mt-0.5" /> {f}
                     </li>
                   ))}
                 </ul>
-
-                {/* Mobile peeking meerkat, right side of button */}
-                <MeerkatReveal className="block sm:hidden" style={{
-                  position: 'absolute', bottom: p.meerkatBottom, right: 10,
-                  width: 108, height: 108, zIndex: 0, pointerEvents: 'none', userSelect: 'none',
+                {/* Mobile meerkat */}
+                <MeerkatReveal className="hidden" style={{
+                  position: 'absolute', bottom: a.meerkatBottom, right: 10,
+                  width: 136, height: 136, zIndex: 0, pointerEvents: 'none', userSelect: 'none',
                 }}>
-                  <Image src={p.meerkat} alt="" fill sizes="88px"
+                  <Image src={a.meerkat} alt="" fill sizes="136px"
+                    style={{ objectFit: 'cover', objectPosition: 'top center' }} />
+                </MeerkatReveal>
+                {/* Desktop meerkat */}
+                <MeerkatReveal className="hidden sm:block" style={{
+                  position: 'absolute', bottom: a.meerkatDeskBottom, right: 8,
+                  width: 165, height: 165, zIndex: 0, pointerEvents: 'none', userSelect: 'none',
+                }}>
+                  <Image src={a.meerkatDesk} alt="" fill sizes="165px"
                     style={{ objectFit: 'cover', objectPosition: 'top center' }} />
                 </MeerkatReveal>
                 <Link
-                  href={`/registro?plan=${p.id}`}
+                  href={`/registro?plan=${a.id}`}
                   className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
                   style={{
-                    background: p.custom ? p.color : p.popular ? p.color : 'rgba(108,59,255,0.2)',
-                    color:      '#fff',
-                    border:     p.popular || p.custom ? 'none' : `1.5px solid rgba(108,59,255,0.4)`,
-                    position:   'relative',
-                    zIndex:     1,
+                    background: a.popular ? a.color : 'rgba(108,59,255,0.2)',
+                    color: '#fff',
+                    border: a.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    position: 'relative', zIndex: 1,
                   }}
                 >
-                  {p.custom ? 'Contactar' : 'Contratar'}
+                  Contratar {a.name}
                 </Link>
               </div>
               </AnimatedSection>
             ))}
           </div>
+
+          {/* ─── PASO 2: Minutos mensuales ──────────── */}
+          <AnimatedSection>
+            <div className="flex flex-col items-center gap-3 mb-3 text-center">
+              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(155,109,255,0.15)', color: '#C4A8FF', border: '1px solid rgba(155,109,255,0.25)' }}>
+                Paso 2 · Mensualidad
+              </span>
+              <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
+                Elige tus minutos al mes
+              </h3>
+            </div>
+            <p className="text-sm mb-8 text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              Pagas solo los minutos del plan + IVA. Sin cuotas adicionales.
+            </p>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-5 mb-5">
+            {MINUTE_TIERS.map((t, i) => (
+              <AnimatedSection key={t.id} delay={i * 0.08}>
+              <div
+                className="rounded-xl sm:rounded-2xl p-3 sm:p-6 flex flex-col h-full relative overflow-hidden"
+                style={{
+                  background: t.popular ? 'linear-gradient(145deg, rgba(108,59,255,0.2), rgba(108,59,255,0.08))' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${t.popular ? 'rgba(108,59,255,0.5)' : 'rgba(255,255,255,0.09)'}`,
+                  boxShadow: t.popular ? '0 12px 48px rgba(108,59,255,0.25)' : 'none',
+                }}
+              >
+                {t.popular && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                    background: 'linear-gradient(90deg, #6C3BFF, #9B6DFF88)' }} />
+                )}
+                {/* Desktop layout */}
+                <div className="hidden sm:block">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-bold text-base" style={{ color: '#fff' }}>{t.label}</p>
+                    {t.popular && (
+                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: '#6C3BFF', color: '#fff' }}>
+                        <Star size={9} style={{ fill: '#fff' }} /> Más usado
+                      </span>
+                    )}
+                  </div>
+                  <div className="mb-4">
+                    <span className="text-5xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                      {fmt(t.minutes)}
+                    </span>
+                    <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
+                  </div>
+                  <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                        ${fmt(t.price)}
+                      </span>
+                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/registro?tier=${t.id}`}
+                    className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
+                    style={{
+                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
+                      color: '#fff',
+                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    }}
+                  >
+                    Seleccionar
+                  </Link>
+                </div>
+
+                {/* Mobile layout — compact 3-col */}
+                <div className="sm:hidden flex flex-col gap-1.5">
+                  <p className="font-bold text-[11px] leading-none" style={{ color: 'rgba(255,255,255,0.7)' }}>{t.label}</p>
+                  <div>
+                    <span className="text-xl font-bold tabular-nums leading-none" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                      {fmt(t.minutes)}
+                    </span>
+                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>min</span>
+                  </div>
+                  <div className="w-full h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                  <div>
+                    <span className="text-[11px] font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                      ${fmt(t.price)}
+                    </span>
+                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
+                  </div>
+                  <Link
+                    href={`/registro?tier=${t.id}`}
+                    className="block text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:opacity-90 mt-0.5"
+                    style={{
+                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
+                      color: '#fff',
+                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    }}
+                  >
+                    Elegir
+                  </Link>
+                </div>
+              </div>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          {/* Extra minutes note */}
+          <AnimatedSection>
+            <p className="text-center text-xs mb-14" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              Minutos extra fuera del plan: $12.99 MXN / min
+            </p>
+          </AnimatedSection>
+
+          {/* ─── Empresarial ────────────────────────── */}
+          <AnimatedSection>
+          <div
+            className="relative rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6"
+            style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)', overflow: 'hidden' }}
+          >
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <Rocket size={18} color="#f59e0b" />
+            </div>
+            <div className="flex-1 xl:pr-44">
+              <p className="font-bold mb-1" style={{ color: '#fff', fontSize: '1.1rem' }}>Empresarial</p>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                Múltiples agentes y sucursales, integración con tu POS o CRM, flujos a medida y SLA dedicado.
+              </p>
+            </div>
+            <Link
+              href="/registro?plan=empresarial"
+              className="flex-shrink-0 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+              style={{ background: '#f59e0b', color: '#000' }}
+            >
+              Cotizar
+            </Link>
+          </div>
+          </AnimatedSection>
+
         </div>
       </section>
 

@@ -3,34 +3,55 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import ClientesClient from './ClientesClient';
 
-export default async function ClientesPage() {
+const PAGE_SIZE = 25; // grupos de clientes por página
+
+interface Props {
+  searchParams: Promise<{ page?: string; search?: string }>;
+}
+
+type AgentRow = {
+  id: string;
+  business_name: string;
+  plan: string;
+  active: boolean;
+  billing_status: string | null;
+  minutes_used: number;
+  minutes_included: number;
+  portal_email: string | null;
+  portal_token: string | null;
+};
+
+type ClientGroup = {
+  key: string;
+  client_name: string;
+  client_email: string | null;
+  portal_email: string | null;
+  agents: AgentRow[];
+};
+
+export default async function ClientesPage({ searchParams }: Props) {
+  const { page = '1', search = '' } = await searchParams;
+  const pageNum = Math.max(1, parseInt(page) || 1);
+
   const supabase = createAdminClient();
-  const { data: agents } = await supabase
+  const demoId   = process.env.DEMO_AGENT_ID;
+
+  let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, business_name, plan, active, billing_status, minutes_used, minutes_included, portal_email, portal_token, created_at')
-    .order('created_at', { ascending: false });
+    .select('id, client_name, client_email, business_name, plan, active, billing_status, minutes_used, minutes_included, portal_email, portal_token')
+    .neq('id', demoId ?? '')
+    .order('client_name', { ascending: true });
 
-  type ClientGroup = {
-    key: string;
-    client_name: string;
-    client_email: string | null;
-    portal_email: string | null;
-    agents: {
-      id: string;
-      business_name: string;
-      plan: string;
-      active: boolean;
-      billing_status: string | null;
-      minutes_used: number;
-      minutes_included: number;
-      portal_email: string | null;
-      portal_token: string | null;
-    }[];
-  };
+  if (search) {
+    query = query.or(
+      `client_name.ilike.%${search}%,client_email.ilike.%${search}%,business_name.ilike.%${search}%`
+    );
+  }
 
-  // Group by client_email (fallback: client_name)
+  const { data: agents } = await query;
+
+  // Agrupar por client_email (fallback: client_name) — server-side
   const map = new Map<string, ClientGroup>();
-
   for (const agent of agents ?? []) {
     const key = agent.client_email?.toLowerCase().trim() || agent.client_name;
     if (!map.has(key)) {
@@ -55,7 +76,23 @@ export default async function ClientesPage() {
     });
   }
 
-  const clients = Array.from(map.values());
+  const allGroups  = Array.from(map.values());
+  const totalCount = allGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const groups     = allGroups.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
 
-  return <ClientesClient clients={clients} />;
+  const totalAgents = (agents ?? []).length;
+  const totalActive = (agents ?? []).filter(a => a.active).length;
+
+  return (
+    <ClientesClient
+      clients={groups}
+      totalCount={totalCount}
+      totalAgents={totalAgents}
+      totalActive={totalActive}
+      page={pageNum}
+      totalPages={totalPages}
+      currentSearch={search}
+    />
+  );
 }

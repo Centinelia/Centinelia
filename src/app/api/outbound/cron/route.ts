@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   // ── 1. Manual contacts scheduled now ─────────────────────────────────────
   const { data: contacts } = await supabase
     .from('outbound_contacts')
-    .select('*, voice_agents(vapi_agent_id, vapi_phone_number_id, timezone)')
+    .select('*, voice_agents(vapi_agent_id, vapi_phone_number_id, timezone, features)')
     .eq('status', 'pending')
     .lte('scheduled_at', now.toISOString())
     .limit(50);
@@ -80,9 +80,11 @@ export async function GET(req: NextRequest) {
       vapi_agent_id: string;
       vapi_phone_number_id: string;
       timezone: string;
+      features?: Record<string, boolean>;
     } | null;
 
     if (!agent?.vapi_agent_id || !agent?.vapi_phone_number_id) continue;
+    if (!agent.features?.outbound_calls) { results.skipped++; continue; }
 
     if (!isWithinBusinessHours(agent.timezone)) {
       results.skipped++;
@@ -124,7 +126,7 @@ export async function GET(req: NextRequest) {
 
   const { data: appointments } = await supabase
     .from('appointments_voice')
-    .select('*, voice_agents(id, vapi_agent_id, vapi_phone_number_id, timezone)')
+    .select('*, voice_agents(id, vapi_agent_id, vapi_phone_number_id, timezone, features)')
     .eq('status', 'confirmada')
     .eq('reminder_sent', false)
     .gte('starts_at', windowStart.toISOString())
@@ -136,9 +138,11 @@ export async function GET(req: NextRequest) {
       vapi_agent_id: string;
       vapi_phone_number_id: string;
       timezone: string;
+      features?: Record<string, boolean>;
     } | null;
 
     if (!agent?.vapi_agent_id || !agent?.vapi_phone_number_id || !apt.telefono) continue;
+    if (!agent.features?.outbound_calls) { results.skipped++; continue; }
 
     if (!isWithinBusinessHours(agent.timezone)) {
       results.skipped++;
@@ -234,7 +238,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Retries for no-answer (attempt 1, retry after 10 min) ─────────────
   const { data: retries } = await supabase
     .from('outbound_calls')
-    .select('*, voice_agents(vapi_agent_id, vapi_phone_number_id, timezone)')
+    .select('*, voice_agents(vapi_agent_id, vapi_phone_number_id, timezone, features)')
     .eq('status', 'no_answer')
     .lte('next_retry_at', now.toISOString())
     .lt('attempt', 2)
@@ -245,9 +249,11 @@ export async function GET(req: NextRequest) {
       vapi_agent_id: string;
       vapi_phone_number_id: string;
       timezone: string;
+      features?: Record<string, boolean>;
     } | null;
 
     if (!agent?.vapi_agent_id || !agent?.vapi_phone_number_id) continue;
+    if (!agent.features?.outbound_calls) { results.skipped++; continue; }
 
     if (!isWithinBusinessHours(agent.timezone)) {
       results.skipped++;

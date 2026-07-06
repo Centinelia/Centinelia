@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ChevronDown, ExternalLink, Users, Settings, KeyRound, Eye, EyeOff, Check, X, Plus } from 'lucide-react';
+import {
+  Search, ChevronDown, ExternalLink, Settings, KeyRound,
+  Eye, EyeOff, Check, X, Plus, Users, ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 
-const PLAN_COLORS: Record<string, string> = {
-  basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7',
-};
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type AgentRow = {
   id: string;
@@ -39,28 +41,57 @@ type CredForm = {
   msg: { ok: boolean; text: string } | null;
 };
 
-export default function ClientesClient({ clients }: { clients: ClientGroup[] }) {
-  const [search, setSearch]     = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [credOpen, setCredOpen] = useState<Set<string>>(new Set());
-  const [credForms, setCredForms] = useState<Record<string, CredForm>>({});
+interface Props {
+  clients:       ClientGroup[];
+  totalCount:    number;
+  totalAgents:   number;
+  totalActive:   number;
+  page:          number;
+  totalPages:    number;
+  currentSearch: string;
+}
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    if (!q) return clients;
-    return clients.filter(c =>
-      c.client_name.toLowerCase().includes(q) ||
-      c.client_email?.toLowerCase().includes(q) ||
-      c.agents.some(a => a.business_name.toLowerCase().includes(q))
-    );
-  }, [clients, search]);
+const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
+
+// ── URL helper ────────────────────────────────────────────────────────────────
+
+function buildUrl(search: string, page: number) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (page > 1) params.set('page', String(page));
+  const qs = params.toString();
+  return '/admin/clientes' + (qs ? '?' + qs : '');
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function ClientesClient({
+  clients, totalCount, totalAgents, totalActive, page, totalPages, currentSearch,
+}: Props) {
+  const router  = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const [expanded,   setExpanded]   = useState<Set<string>>(new Set());
+  const [credOpen,   setCredOpen]   = useState<Set<string>>(new Set());
+  const [credForms,  setCredForms]  = useState<Record<string, CredForm>>({});
+
+  useEffect(() => { setSearchInput(currentSearch); }, [currentSearch]);
+
+  const navigate = (search: string, p: number) => {
+    startTransition(() => router.push(buildUrl(search, p)));
+  };
+
+  const commitSearch = () => {
+    if (searchInput !== currentSearch) navigate(searchInput, 1);
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    startTransition(() => router.push('/admin/clientes'));
+  };
 
   const toggle = (key: string) =>
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+    setExpanded(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   const openCred = (agentId: string, currentEmail: string | null) => {
     setCredOpen(prev => { const n = new Set(prev); n.add(agentId); return n; });
@@ -70,9 +101,8 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
     }));
   };
 
-  const closeCred = (agentId: string) => {
+  const closeCred = (agentId: string) =>
     setCredOpen(prev => { const n = new Set(prev); n.delete(agentId); return n; });
-  };
 
   const updateForm = (agentId: string, patch: Partial<CredForm>) =>
     setCredForms(prev => ({ ...prev, [agentId]: { ...prev[agentId], ...patch } }));
@@ -104,34 +134,63 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
     }
   };
 
-  const totalAgents = clients.reduce((s, c) => s + c.agents.length, 0);
-  const totalActive = clients.reduce((s, c) => s + c.agents.filter(a => a.active).length, 0);
-
   return (
-    <div className="p-4 md:p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-4xl" style={{ opacity: pending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+
+      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Clientes</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-          {clients.length} clientes · {totalAgents} agentes · {totalActive} activos
+          {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} agentes · {totalActive} activos
         </p>
       </div>
 
       {/* Search */}
-      <div className="relative mb-5">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-3)' }} />
-        <input
-          type="text"
-          placeholder="Buscar por cliente, email o negocio…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-        />
+      <div className="flex gap-2 mb-5">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: 'var(--c-text-3)' }} />
+          <input
+            type="text"
+            placeholder="Buscar por cliente, email o negocio… (Enter)"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && commitSearch()}
+            onBlur={commitSearch}
+            disabled={pending}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          />
+        </div>
+        {currentSearch && (
+          <button
+            onClick={clearSearch}
+            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs transition-colors hover:bg-[var(--c-surface-2)]"
+            style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+          >
+            <X size={12} /> Limpiar
+          </button>
+        )}
       </div>
+
+      {/* Result count when searching */}
+      {currentSearch && (
+        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+          {totalCount} resultado{totalCount !== 1 ? 's' : ''} para &ldquo;{currentSearch}&rdquo;
+          {totalPages > 1 && ` · página ${page} de ${totalPages}`}
+        </p>
+      )}
 
       {/* Client list */}
       <div className="flex flex-col gap-3">
-        {filtered.map(client => {
+        {clients.length === 0 ? (
+          <div className="text-center py-16" style={{ color: 'var(--c-text-3)' }}>
+            <Users size={36} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm">
+              {currentSearch ? 'Sin resultados para esa búsqueda' : 'Sin clientes registrados'}
+            </p>
+          </div>
+        ) : clients.map(client => {
           const open        = expanded.has(client.key);
           const activeCount = client.agents.filter(a => a.active).length;
           const pausedCount = client.agents.length - activeCount;
@@ -141,12 +200,12 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
             <div key={client.key} className="rounded-xl overflow-hidden"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
-              {/* Client header */}
+              {/* Client header row */}
               <button
                 onClick={() => toggle(client.key)}
                 className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--c-surface-2)]"
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
                   style={{ background: 'rgba(108,59,255,0.15)', color: '#9B6DFF' }}>
                   {initials}
                 </div>
@@ -171,35 +230,33 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    {client.client_email && (
-                      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{client.client_email}</span>
-                    )}
-                  </div>
+                  {client.client_email && (
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+                      {client.client_email}
+                    </p>
+                  )}
                 </div>
 
                 <ChevronDown size={15} className="flex-shrink-0 transition-transform"
                   style={{ color: 'var(--c-text-3)', transform: open ? 'rotate(180deg)' : undefined }} />
               </button>
 
-              {/* Expanded: agents + portal access */}
+              {/* Expanded: agents */}
               {open && (
                 <div style={{ borderTop: '1px solid var(--c-divider)' }}>
-                  {/* Agent rows */}
                   {client.agents.map((agent, i) => {
-                    const planColor   = PLAN_COLORS[agent.plan] ?? '#6b7280';
-                    const pct         = agent.minutes_included > 0
+                    const planColor  = PLAN_COLORS[agent.plan] ?? '#6b7280';
+                    const pct        = agent.minutes_included > 0
                       ? Math.round((agent.minutes_used / agent.minutes_included) * 100) : 0;
-                    const credIsOpen  = credOpen.has(agent.id);
-                    const form        = credForms[agent.id];
+                    const credIsOpen = credOpen.has(agent.id);
+                    const form       = credForms[agent.id];
 
                     return (
                       <div key={agent.id}>
-                        {/* Agent row */}
                         <div
                           className="flex items-center gap-3 px-5 py-3"
-                          style={{ borderTop: i > 0 ? '1px solid var(--c-divider)' : undefined, background: 'var(--c-surface-2)' }}>
-
+                          style={{ borderTop: i > 0 ? '1px solid var(--c-divider)' : undefined, background: 'var(--c-surface-2)' }}
+                        >
                           <div className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ background: agent.active ? '#22c55e' : '#ef4444' }} />
 
@@ -210,7 +267,7 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                                 style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}>
                                 {PLAN_LABELS[agent.plan as Plan] ?? agent.plan}
                               </span>
-                              {!agent.active && agent.billing_status === 'pago_fallido' && (
+                              {agent.billing_status === 'pago_fallido' && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full"
                                   style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
                                   Pago fallido
@@ -233,13 +290,13 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                               <Link href={`/portal/${agent.portal_token}`} target="_blank"
                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                                 style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
-                                <ExternalLink size={11} /> Portal
+                                <ExternalLink size={11} /><span className="hidden sm:inline"> Portal</span>
                               </Link>
                             )}
                             <Link href={`/admin/agentes/${agent.id}/editar`}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
                               style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                              <Settings size={11} /> Editar
+                              <Settings size={11} /><span className="hidden sm:inline"> Editar</span>
                             </Link>
                             <button
                               onClick={() => credIsOpen ? closeCred(agent.id) : openCred(agent.id, agent.portal_email)}
@@ -250,40 +307,35 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                                 border: `1px solid ${credIsOpen ? 'rgba(245,158,11,0.25)' : 'var(--c-border)'}`,
                               }}>
                               <KeyRound size={11} />
-                              {agent.portal_email ? 'Acceso' : 'Sin acceso'}
+                              <span className="hidden sm:inline"> {agent.portal_email ? 'Acceso' : 'Sin acceso'}</span>
                             </button>
                           </div>
                         </div>
 
-                        {/* Credentials form (inline) */}
+                        {/* Credentials form */}
                         {credIsOpen && form && (
                           <div className="px-5 py-4 flex flex-col gap-3"
                             style={{ background: 'rgba(245,158,11,0.04)', borderTop: '1px solid rgba(245,158,11,0.15)' }}>
                             <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-                              Acceso al portal, <span style={{ color: 'var(--c-text-3)', fontWeight: 400 }}>{agent.business_name}</span>
+                              Acceso al portal —{' '}
+                              <span style={{ color: 'var(--c-text-3)', fontWeight: 400 }}>{agent.business_name}</span>
                             </p>
-
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                               <div>
                                 <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Email de acceso</label>
-                                <input
-                                  type="email"
-                                  value={form.email}
+                                <input type="email" value={form.email}
                                   onChange={e => updateForm(agent.id, { email: e.target.value })}
                                   placeholder="cliente@negocio.com"
                                   className="w-full text-sm outline-none rounded-lg px-3 py-2"
                                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
                                 />
                               </div>
-
                               <div>
                                 <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
-                                  {agent.portal_email ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña (mín. 8 caracteres)'}
+                                  {agent.portal_email ? 'Nueva contraseña (vacío = sin cambio)' : 'Contraseña (mín. 8 caracteres)'}
                                 </label>
                                 <div className="relative">
-                                  <input
-                                    type={form.showPw ? 'text' : 'password'}
-                                    value={form.pw}
+                                  <input type={form.showPw ? 'text' : 'password'} value={form.pw}
                                     onChange={e => updateForm(agent.id, { pw: e.target.value })}
                                     placeholder="••••••••"
                                     className="w-full text-sm outline-none rounded-lg px-3 py-2 pr-9"
@@ -296,13 +348,10 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                                   </button>
                                 </div>
                               </div>
-
                               {form.pw && (
                                 <div className="sm:col-start-2">
                                   <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Confirmar contraseña</label>
-                                  <input
-                                    type={form.showPw ? 'text' : 'password'}
-                                    value={form.confirm}
+                                  <input type={form.showPw ? 'text' : 'password'} value={form.confirm}
                                     onChange={e => updateForm(agent.id, { confirm: e.target.value })}
                                     placeholder="••••••••"
                                     className="w-full text-sm outline-none rounded-lg px-3 py-2"
@@ -311,24 +360,17 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                                 </div>
                               )}
                             </div>
-
                             {form.msg && (
-                              <p className="text-xs" style={{ color: form.msg.ok ? '#16a34a' : '#dc2626' }}>
-                                {form.msg.text}
-                              </p>
+                              <p className="text-xs" style={{ color: form.msg.ok ? '#16a34a' : '#dc2626' }}>{form.msg.text}</p>
                             )}
-
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => saveCred(agent.id)}
-                                disabled={form.saving || !form.email}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity"
-                                style={{ background: '#6C3BFF', color: '#FAFBFF', opacity: (form.saving || !form.email) ? 0.5 : 1 }}>
+                              <button onClick={() => saveCred(agent.id)} disabled={form.saving || !form.email}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-50"
+                                style={{ background: '#6C3BFF', color: '#FAFBFF' }}>
                                 <Check size={12} />
                                 {form.saving ? 'Guardando…' : 'Guardar'}
                               </button>
-                              <button
-                                onClick={() => closeCred(agent.id)}
+                              <button onClick={() => closeCred(agent.id)}
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
                                 style={{ color: 'var(--c-text-3)' }}>
                                 <X size={12} /> Cancelar
@@ -340,7 +382,7 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
                     );
                   })}
 
-                  {/* Add new business for this client */}
+                  {/* Agregar empresa */}
                   <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid var(--c-divider)' }}>
                     <Link
                       href={`/admin/agentes/nuevo?client_name=${encodeURIComponent(client.client_name)}&client_email=${encodeURIComponent(client.client_email ?? '')}&portal_email=${encodeURIComponent(client.portal_email ?? '')}`}
@@ -355,14 +397,32 @@ export default function ClientesClient({ clients }: { clients: ClientGroup[] }) 
             </div>
           );
         })}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-16" style={{ color: 'var(--c-text-3)' }}>
-            <Users size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{clients.length === 0 ? 'Sin clientes registrados' : 'Sin resultados'}</p>
-          </div>
-        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <button
+            onClick={() => navigate(currentSearch, page - 1)}
+            disabled={page <= 1 || pending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          >
+            <ChevronLeft size={13} /> Anterior
+          </button>
+          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+            {page} / {totalPages}
+          </span>
+          <button
+            onClick={() => navigate(currentSearch, page + 1)}
+            disabled={page >= totalPages || pending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
+            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+          >
+            Siguiente <ChevronRight size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

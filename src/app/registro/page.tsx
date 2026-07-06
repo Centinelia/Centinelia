@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { Check, ChevronRight, ChevronLeft, ChevronDown, Loader, Phone, Building2, User, Utensils, Stethoscope, Sparkles, Smartphone, ShoppingBag, type LucideProps } from 'lucide-react';
 import Image from 'next/image';
 
-type FormPlan = 'basico' | 'estandar' | 'pro' | 'empresarial';
+type FormPlan = 'comercial' | 'pro' | 'empresarial';
+type FormTier = 'starter' | 'growth' | 'scale';
 type Giro    = 'general' | 'restaurante' | 'consultorio' | 'estetica' | 'agencia' | 'retail';
 
 const CITIES: { label: string; lada: string }[] = [
@@ -48,125 +49,67 @@ const CITIES: { label: string; lada: string }[] = [
   { label: 'Los Cabos, BCS',           lada: '624' },
 ];
 
-type PlanDef = {
-  id:            FormPlan;
-  label:         string;
-  price:         number;
-  origPrice:     number;
-  monthly:       number;
-  origMonthly:   number;
-  minutes:       number;
-  recommended?:  boolean;
-  custom?:       boolean;
-  color:         string;
-  features:      { label: string; desc: string }[];
+type AgentPlanDef = {
+  id:           FormPlan;
+  label:        string;
+  setupFee:     number;
+  color:        string;
+  description:  string;
+  recommended?: boolean;
+  custom?:      boolean;
+  features:     { label: string; desc: string }[];
 };
 
-const PLANS: PlanDef[] = [
+const AGENT_PLANS: AgentPlanDef[] = [
   {
-    id: 'basico', label: 'Recepcionista', price: 4990, origPrice: 6990, monthly: 1990, origMonthly: 2490, minutes: 200, color: '#6b7280',
+    id: 'comercial', label: 'Comercial', setupFee: 8990, color: '#6C3BFF',
+    description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
     features: [
-      {
-        label: 'Recepcionista 24/7',
-        desc: 'Contesta a cualquier hora, noches, domingos, días festivos, con el nombre de tu negocio y la información que le proporcionaste.',
-      },
-      {
-        label: 'Captura de leads',
-        desc: 'Obtiene nombre, teléfono y necesidad de cada prospecto y te los manda por WhatsApp en tiempo real.',
-      },
-      {
-        label: 'Resúmenes por WhatsApp y Email',
-        desc: 'Al terminar cada llamada recibes quién llamó, qué quería y qué quedó pendiente.',
-      },
-      {
-        label: 'Portal con historial y horas pico',
-        desc: 'Visualiza todas tus llamadas, en qué horarios recibes más contactos y qué está solicitando tu clientela.',
-      },
+      { label: 'Recepcionista 24/7', desc: 'Contesta a cualquier hora con el nombre y la información de tu negocio.' },
+      { label: 'Captura de leads', desc: 'Obtiene nombre, teléfono y necesidad de cada prospecto automáticamente.' },
+      { label: 'Agendamiento de citas', desc: 'Confirma, modifica y cancela citas durante la llamada.' },
+      { label: 'Transferencia inteligente', desc: 'Transfiere a tu celular cuando el cliente necesita hablar con alguien.' },
+      { label: 'Escalación a WhatsApp', desc: 'Si el cliente prefiere mensaje, el agente lo dirige a tu WhatsApp.' },
+      { label: 'Reseñas Google automáticas', desc: 'Tras cada llamada exitosa manda el link de tu reseña Google por WhatsApp.' },
+      { label: 'Portal con reportes y horas pico', desc: 'Visualiza llamadas, leads, citas y horarios de mayor actividad.' },
     ],
   },
   {
-    id: 'estandar', label: 'Comercial', price: 7990, origPrice: 9990, monthly: 3490, origMonthly: 4490, minutes: 500, recommended: true, color: '#3b82f6',
+    id: 'pro', label: 'Pro', setupFee: 14990, color: '#9B6DFF', recommended: true,
+    description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
-      {
-        label: 'Todo lo de Recepcionista',
-        desc: 'Recepcionista 24/7, captura de leads, resúmenes por WhatsApp y email, y portal con historial completo.',
-      },
-      {
-        label: 'Agendamiento de citas',
-        desc: 'Confirma, modifica o cancela citas durante la llamada. Compatible con Google Calendar, Calendly y Cal.com.',
-      },
-      {
-        label: 'Transferencia inteligente',
-        desc: 'Transfiere la llamada a tu celular cuando hay una urgencia o el cliente pide hablar con alguien.',
-      },
-      {
-        label: 'Escalación a WhatsApp',
-        desc: 'Si el cliente prefiere mensaje, el agente cierra la llamada y lo dirige al WhatsApp de tu negocio.',
-      },
-      {
-        label: 'Reporte semanal por email',
-        desc: 'Cada lunes recibes: llamadas totales, leads, citas agendadas y horas de mayor actividad.',
-      },
+      { label: 'Todo el plan Comercial', desc: 'Recepcionista 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
+      { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los manda a tu WhatsApp.' },
+      { label: 'Memoria de cliente', desc: 'Recuerda quién ha llamado antes, qué pidió y sus preferencias.' },
+      { label: 'Voz y nombre personalizables', desc: 'Elige el nombre y la voz que mejor representen tu marca.' },
+      { label: 'Multiidioma (ES + EN)', desc: 'Detecta el idioma del cliente y responde en español o inglés.' },
+      { label: 'Flujos complejos a medida', desc: 'Guiones y lógica conversacional diseñados para tu operación.' },
     ],
   },
   {
-    id: 'pro', label: 'Pro', price: 12990, origPrice: 16990, monthly: 6490, origMonthly: 8490, minutes: 1000, color: '#a855f7',
+    id: 'empresarial', label: 'Empresarial', setupFee: 0, color: '#f59e0b', custom: true,
+    description: 'Múltiples agentes y sucursales, integraciones POS/CRM y SLA dedicado.',
     features: [
-      {
-        label: 'Todo lo de Comercial',
-        desc: 'Recepcionista 24/7, leads, citas, transferencia inteligente, escalación a WhatsApp y reportes semanales.',
-      },
-      {
-        label: 'Toma de pedidos',
-        desc: 'Recibe pedidos completos durante la llamada, producto, cantidad y entrega, y los manda a tu WhatsApp listos para preparar.',
-      },
-      {
-        label: 'Memoria de cliente',
-        desc: 'Recuerda quién ha llamado antes, qué pidió y sus preferencias. Los clientes frecuentes sienten que los conocen.',
-      },
-      {
-        label: 'Nombre + Voz personalizable',
-        desc: 'Elige el nombre de tu agente y la voz que mejor represente tu marca, entre varias opciones de tono y acento.',
-      },
-      {
-        label: 'Multiidioma (ES + EN)',
-        desc: 'Detecta el idioma del cliente en las primeras palabras y responde en español o inglés durante toda la llamada.',
-      },
-      {
-        label: 'Grabaciones de llamadas',
-        desc: 'Escucha y descarga desde el portal las grabaciones de los últimos 7 días para auditar calidad o resolver disputas.',
-      },
+      { label: 'Todo el plan Pro', desc: 'Todas las capacidades del plan Pro más las siguientes.' },
+      { label: 'Integración con tu sistema', desc: 'Conectamos el agente con tu POS, CRM o calendario en tiempo real.' },
+      { label: 'Múltiples agentes / sucursales', desc: 'Un agente independiente por sucursal con su propio portal.' },
+      { label: 'SLA y soporte dedicado', desc: 'Tiempo de respuesta garantizado y línea directa con el equipo técnico.' },
     ],
   },
-  {
-    id: 'empresarial', label: 'Empresarial', price: 0, origPrice: 0, monthly: 0, origMonthly: 0, minutes: 0, custom: true, color: '#f59e0b',
-    features: [
-      {
-        label: 'Todo lo del plan Pro',
-        desc: 'Recepcionista 24/7, leads, citas, transferencia, escalación, pedidos, memoria de cliente, voz personalizable, multiidioma, grabaciones y reportes.',
-      },
-      {
-        label: 'Integración con tu sistema',
-        desc: 'Conectamos el agente con tu POS, CRM o calendario (Square, Shopify, HubSpot, Calendly, etc.) para consultar datos en tiempo real durante la llamada.',
-      },
-      {
-        label: 'Flujos conversacionales a medida',
-        desc: 'Diseñamos desde cero el guión exacto que tu operación necesita, sin limitaciones de plantilla.',
-      },
-      {
-        label: 'Múltiples agentes / sucursales',
-        desc: 'Un agente independiente por sucursal o departamento, cada uno con su propia identidad y portal de reportes.',
-      },
-      {
-        label: 'Onboarding y capacitación',
-        desc: 'Nuestro equipo entrena el agente con tu catálogo y capacita a quien administrará el portal.',
-      },
-      {
-        label: 'SLA y soporte dedicado',
-        desc: 'Tiempo de respuesta garantizado y línea directa con el equipo técnico, no un ticket, una persona.',
-      },
-    ],
-  },
+];
+
+type TierDef = {
+  id:       FormTier;
+  label:    string;
+  minutes:  number;
+  price:    number;
+  popular?: boolean;
+};
+
+const TIERS: TierDef[] = [
+  { id: 'starter', label: 'Starter', minutes: 300,  price: 2997 },
+  { id: 'growth',  label: 'Growth',  minutes: 600,  price: 5994, popular: true },
+  { id: 'scale',   label: 'Scale',   minutes: 1200, price: 11988 },
 ];
 
 const GIROS: { id: Giro; label: string; icon: React.FC<LucideProps> }[] = [
@@ -286,17 +229,21 @@ function RegistroInner() {
   const canceled = params.get('canceled') === '1';
   const backUrl  = params.get('back') ?? null;
 
-  const validPlans: FormPlan[] = ['basico', 'estandar', 'pro', 'empresarial'];
+  const validPlans: FormPlan[] = ['comercial', 'pro', 'empresarial'];
+  const validTiers: FormTier[] = ['starter', 'growth', 'scale'];
   const rawPlan = params.get('plan') as FormPlan | null;
-  const initPlan: FormPlan = rawPlan && validPlans.includes(rawPlan) ? rawPlan : 'estandar';
+  const rawTier = params.get('tier') as FormTier | null;
+  const initPlan: FormPlan = rawPlan && validPlans.includes(rawPlan) ? rawPlan : 'comercial';
+  const initTier: FormTier = rawTier && validTiers.includes(rawTier) ? rawTier : 'growth';
 
-  const [step,         setStep]         = useState<1 | 2 | 3>(rawPlan && validPlans.includes(rawPlan) ? 2 : 1);
+  const [step,         setStep]         = useState<1 | 2 | 3>(1);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
   const [submitted,    setSubmitted]    = useState(false);
 
   // Form state
   const [plan,          setPlan]         = useState<FormPlan>(initPlan);
+  const [tier,          setTier]         = useState<FormTier>(initTier);
   const [businessName,  setBusinessName] = useState('');
   const [businessDesc,  setBusinessDesc] = useState('');
   const [businessPhone, setBusinessPhone]= useState('');
@@ -307,7 +254,9 @@ function RegistroInner() {
   const [clientEmail,   setClientEmail]  = useState('');
   const [whatsapp,      setWhatsapp]     = useState('');
 
-  const selectedPlan = PLANS.find(p => p.id === plan)!;
+  const selectedAgentPlan  = AGENT_PLANS.find(p => p.id === plan)!;
+  const selectedTier       = TIERS.find(t => t.id === tier) ?? TIERS[1];
+  const monthlyPrice       = plan !== 'empresarial' ? selectedTier.price : 0;
 
   const handleNext = () => {
     setError('');
@@ -333,6 +282,7 @@ function RegistroInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan,
+          minutes_tier:           tier,
           business_name:          businessName.trim(),
           business_description:   businessDesc.trim(),
           business_phone_display: businessPhone.trim(),
@@ -501,13 +451,18 @@ function RegistroInner() {
         {/* ── STEP 1: Plan ──────────────────────────────────────────────────── */}
         {step === 1 && (
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Elige tu plan</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">Configura tu agente</h1>
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Incluye instalación de tu agente de voz + minutos mensuales. Cancela cuando quieras.
+              Dos decisiones: tu tipo de agente (pago único) y tus minutos al mes.
             </p>
 
-            <div className="flex flex-col gap-3">
-              {PLANS.map(p => {
+            {/* ── Sección A: Tipo de agente ─────────────── */}
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Paso 1 — Tipo de agente · Pago único de instalación
+            </p>
+            <div className="flex flex-col gap-3 mb-8">
+              {AGENT_PLANS.map(p => {
                 const selected = plan === p.id;
                 return (
                   <div
@@ -515,116 +470,64 @@ function RegistroInner() {
                     onClick={() => setPlan(p.id)}
                     className="rounded-2xl cursor-pointer transition-all relative overflow-hidden"
                     style={{
-                      background: selected ? `${p.color}0f` : 'rgba(255,255,255,0.03)',
+                      background: selected ? `${p.color}10` : 'rgba(255,255,255,0.03)',
                       border:     `2px solid ${selected ? p.color : 'rgba(255,255,255,0.07)'}`,
                     }}
                   >
-                    {/* Colored top stripe when selected */}
                     {selected && (
                       <div style={{ height: 3, background: `linear-gradient(90deg, ${p.color}, ${p.color}88)` }} />
                     )}
-
                     <div className="p-5">
-                      {/* Row 1: Radio + Name + Recommended | Lanzamiento */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                          <div
-                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
-                            style={{
-                              borderColor: selected ? p.color : 'rgba(255,255,255,0.2)',
-                              background:  selected ? p.color : 'transparent',
-                            }}
-                          >
-                            {selected && <div className="w-2 h-2 rounded-full bg-white" />}
-                          </div>
-                          <span className="text-base font-bold text-white">{p.label}</span>
-                          {p.recommended && (
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
-                              style={{ background: p.color, color: '#fff' }}
-                            >
-                              Popular
-                            </span>
-                          )}
-                          {!p.custom && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
-                              style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
-                              Lanzamiento
-                            </span>
-                          )}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                          style={{
+                            borderColor: selected ? p.color : 'rgba(255,255,255,0.2)',
+                            background:  selected ? p.color : 'transparent',
+                          }}
+                        >
+                          {selected && <div className="w-2 h-2 rounded-full bg-white" />}
                         </div>
+                        <span className="text-base font-bold text-white">{p.label}</span>
+                        {p.recommended && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                            style={{ background: p.color, color: '#fff' }}>
+                            Más completo
+                          </span>
+                        )}
                       </div>
-
-                      {/* Row 2: Price, hero element */}
-                      {p.custom ? (
-                        <div className="ml-8 mb-4">
-                          <p className="text-2xl font-bold text-white">Cotización personalizada</p>
-                          <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                            Propuesta según tu industria e integraciones requeridas
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="ml-8 mb-4">
-                          <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.32)' }}>
-                            Próximamente: {priceFmt(p.origMonthly)}/mes
-                          </p>
-                          <div className="flex items-baseline gap-1 mb-3">
-                            <span className="text-4xl font-extrabold tabular-nums" style={{ color: p.recommended ? p.color : '#fff' }}>
-                              {priceFmt(p.monthly)}
+                      <div className="ml-8">
+                        {p.custom ? (
+                          <p className="text-xl font-bold text-white mb-1">Cotización personalizada</p>
+                        ) : (
+                          <div className="flex items-baseline gap-1.5 mb-2">
+                            <span className="text-3xl font-extrabold tabular-nums" style={{ color: selected ? p.color : '#fff' }}>
+                              {priceFmt(p.setupFee)}
                             </span>
-                            <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
+                            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>+ IVA · pago único</span>
                           </div>
-                          <div className="rounded-xl px-3 py-2.5 flex flex-col gap-2"
-                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <div className="flex items-center justify-between text-xs">
-                              <span style={{ color: 'rgba(255,255,255,0.45)' }}>Instalación</span>
-                              <div className="flex items-center gap-2">
-                                <span className="line-through" style={{ color: 'rgba(255,255,255,0.25)' }}>{priceFmt(p.origPrice)}</span>
-                                <span className="font-semibold text-white">{priceFmt(p.price)}</span>
-                              </div>
+                        )}
+                        <p className="text-xs mb-3" style={{ color: 'rgba(255,255,255,0.45)' }}>{p.description}</p>
+                        {selected && (
+                          <>
+                            <div className="mb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+                            <div className="flex flex-col gap-1.5">
+                              {p.features.map(f => (
+                                <div key={f.label} className="flex items-start gap-2">
+                                  <Check size={11} style={{ color: p.color, flexShrink: 0, marginTop: 3 }} />
+                                  <div>
+                                    <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                                      {f.label}
+                                    </span>
+                                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)', lineHeight: 1.45 }}>
+                                      {f.desc}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span style={{ color: 'rgba(255,255,255,0.45)' }}>Minutos incluidos</span>
-                              <span className="font-semibold text-white">{p.minutes} min/mes</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Divider before features when selected */}
-                      {selected && (
-                        <div className="ml-8 mb-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
-                      )}
-
-                      {/* Feature list */}
-                      <div className="ml-8 flex flex-col gap-2">
-                        {p.features.map(f => (
-                          <div key={f.label} className="flex items-start gap-2">
-                            <Check
-                              size={11}
-                              style={{ color: p.color, flexShrink: 0, marginTop: selected ? 3 : 2 }}
-                            />
-                            <div>
-                              <span
-                                className="text-xs leading-snug"
-                                style={{
-                                  color:      selected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.5)',
-                                  fontWeight: selected ? 500 : 400,
-                                }}
-                              >
-                                {f.label}
-                              </span>
-                              {selected && (
-                                <p
-                                  className="text-xs mt-0.5"
-                                  style={{ color: 'rgba(255,255,255,0.38)', lineHeight: 1.45 }}
-                                >
-                                  {f.desc}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -632,14 +535,71 @@ function RegistroInner() {
               })}
             </div>
 
+            {/* ── Sección B: Minutos mensuales (solo si no empresarial) ──── */}
+            {plan !== 'empresarial' && (
+              <>
+                <p className="text-xs font-semibold tracking-widest uppercase mb-3"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Paso 2 — Minutos al mes · Mensualidad recurrente
+                </p>
+                <div className="flex flex-col gap-2 mb-6">
+                  {TIERS.map(t => {
+                    const selected = tier === t.id;
+                    const price = t.price;
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setTier(t.id)}
+                        className="rounded-xl cursor-pointer transition-all"
+                        style={{
+                          background: selected ? 'rgba(108,59,255,0.14)' : 'rgba(255,255,255,0.03)',
+                          border:     `2px solid ${selected ? '#6C3BFF' : 'rgba(255,255,255,0.07)'}`,
+                        }}
+                      >
+                        <div className="px-4 py-3.5 flex items-center gap-3">
+                          <div
+                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                            style={{
+                              borderColor: selected ? '#6C3BFF' : 'rgba(255,255,255,0.2)',
+                              background:  selected ? '#6C3BFF' : 'transparent',
+                            }}
+                          >
+                            {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+                          <div className="flex-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-white">{t.label}</span>
+                              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.minutes} min/mes</span>
+                              {t.popular && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                                  style={{ background: 'rgba(108,59,255,0.2)', color: '#9B6DFF' }}>
+                                  Más usado
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-bold tabular-nums" style={{ color: selected ? '#9B6DFF' : '#fff', fontSize: 15 }}>
+                              {priceFmt(price)}/mes
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs mb-6" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                  Minutos extra fuera del plan: $12.99 MXN / min
+                </p>
+              </>
+            )}
+
             <button
               onClick={handleNext}
-              className="w-full mt-6 py-3.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-              style={{ background: selectedPlan.custom ? `linear-gradient(135deg, #f59e0b, #fbbf24)` : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}
+              className="w-full py-3.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+              style={{ background: selectedAgentPlan.custom ? 'linear-gradient(135deg, #f59e0b, #fbbf24)' : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}
             >
-              {selectedPlan.custom
-                ? <>Solicitar propuesta, {selectedPlan.label} <ChevronRight size={16} /></>
-                : <>Continuar con plan {selectedPlan.label} <ChevronRight size={16} /></>
+              {selectedAgentPlan.custom
+                ? <>Solicitar propuesta Empresarial <ChevronRight size={16} /></>
+                : <>Continuar con {selectedAgentPlan.label} · {selectedTier.label} <ChevronRight size={16} /></>
               }
             </button>
           </div>
@@ -829,79 +789,74 @@ function RegistroInner() {
             {plan !== 'empresarial' ? (
               <div
                 className="mt-7 rounded-2xl overflow-hidden"
-                style={{ border: `1px solid ${selectedPlan.color}38`, background: `${selectedPlan.color}08` }}
+                style={{ border: `1px solid ${selectedAgentPlan.color}38`, background: `${selectedAgentPlan.color}08` }}
               >
                 {/* Plan header */}
                 <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ background: selectedPlan.color }} />
-                      <span
-                        className="text-xs font-semibold tracking-widest uppercase"
-                        style={{ color: selectedPlan.color }}
-                      >
-                        Plan {selectedPlan.label}
+                      <div className="w-2 h-2 rounded-full" style={{ background: selectedAgentPlan.color }} />
+                      <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: selectedAgentPlan.color }}>
+                        {selectedAgentPlan.label} · {selectedTier.label}
                       </span>
                     </div>
-                    <span
-                      className="text-xs px-2.5 py-1 rounded-full font-semibold"
-                      style={{ background: `${selectedPlan.color}22`, color: selectedPlan.color }}
-                    >
-                      {selectedPlan.minutes} min/mes
+                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                      style={{ background: `${selectedAgentPlan.color}22`, color: selectedAgentPlan.color }}>
+                      {selectedTier.minutes} min/mes
                     </span>
                   </div>
-                  <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.32)' }}>
-                    Próximamente: {priceFmt(selectedPlan.origMonthly)}/mes
-                  </p>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold tabular-nums" style={{ color: selectedPlan.color }}>
-                      {priceFmt(selectedPlan.monthly)}
+                    <span className="text-3xl font-bold tabular-nums" style={{ color: selectedAgentPlan.color }}>
+                      {priceFmt(monthlyPrice)}
                     </span>
                     <span className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>
-                      Precio de lanzamiento
-                    </span>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.28)' }}>
-                      Sin contrato mínimo
-                    </p>
-                  </div>
+                  <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.28)' }}>Sin contrato mínimo</p>
                 </div>
 
                 {/* Line items */}
                 <div className="px-5 py-3">
                   <div className="flex justify-between items-center py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Suscripción mensual</span>
-                    <span className="text-sm font-medium text-white">{priceFmt(selectedPlan.monthly)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
                     <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
                       Instalación del agente
                       <span className="text-xs ml-1.5" style={{ color: 'rgba(255,255,255,0.25)' }}>(pago único)</span>
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm line-through" style={{ color: 'rgba(255,255,255,0.25)' }}>{priceFmt(selectedPlan.origPrice)}</span>
-                      <span className="text-sm font-medium text-white">{priceFmt(selectedPlan.price)}</span>
-                    </div>
+                    <span className="text-sm font-medium text-white">{priceFmt(selectedAgentPlan.setupFee)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Mensualidad ({selectedTier.label})</span>
+                    <span className="text-sm font-medium text-white">{priceFmt(monthlyPrice)}</span>
                   </div>
                 </div>
 
                 {/* Total */}
                 <div
-                  className="mx-4 mb-4 px-4 py-3.5 rounded-xl flex items-center justify-between"
-                  style={{ background: `${selectedPlan.color}16`, border: `1px solid ${selectedPlan.color}28` }}
+                  className="mx-4 mb-4 px-4 py-3.5 rounded-xl"
+                  style={{ background: `${selectedAgentPlan.color}16`, border: `1px solid ${selectedAgentPlan.color}28` }}
                 >
-                  <div>
-                    <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Total hoy</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.28)' }}>
-                      Después: {priceFmt(selectedPlan.monthly)}/mes
-                    </p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Subtotal</span>
+                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      {priceFmt(selectedAgentPlan.setupFee + monthlyPrice)}
+                    </span>
                   </div>
-                  <span className="text-2xl font-bold tabular-nums" style={{ color: selectedPlan.color }}>
-                    {priceFmt(selectedPlan.price + selectedPlan.monthly)}
-                  </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>IVA (16%)</span>
+                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      {priceFmt(Math.round((selectedAgentPlan.setupFee + monthlyPrice) * 0.16))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2.5" style={{ borderTop: `1px solid ${selectedAgentPlan.color}35` }}>
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Total hoy</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                        Después: {priceFmt(Math.round(monthlyPrice * 1.16))}/mes
+                      </p>
+                    </div>
+                    <span className="text-2xl font-bold tabular-nums" style={{ color: selectedAgentPlan.color }}>
+                      {priceFmt(Math.round((selectedAgentPlan.setupFee + monthlyPrice) * 1.16))}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -955,7 +910,7 @@ function RegistroInner() {
                 style={{
                   background: plan === 'empresarial'
                     ? 'linear-gradient(135deg, #f59e0b, #fbbf24)'
-                    : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
+                    : `linear-gradient(135deg, ${selectedAgentPlan.color}, #9B6DFF)`,
                   opacity: loading ? 0.6 : 1,
                 }}
               >
@@ -970,7 +925,7 @@ function RegistroInner() {
 
             {plan !== 'empresarial' && (
               <p className="text-center text-xs mt-4" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Pago seguro procesado por Stripe · IVA incluido
+                Pago seguro procesado por Stripe · Precios en MXN
               </p>
             )}
           </div>

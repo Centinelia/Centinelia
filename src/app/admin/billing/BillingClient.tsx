@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
-import { FEATURE_PLAN_CONFIG, MINUTES_PLAN_CONFIG } from '@/lib/billing/plans';
+import { Copy, Check, ExternalLink, CreditCard, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown, Search, X } from 'lucide-react';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
-import type { MinutesPlan } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
+type MinutesPlan = MinutesTier;
 
 interface Agent {
   id: string;
@@ -111,15 +112,15 @@ function SelectMenu<T extends string>({
 // ── Generate link section ──────────────────────────────────────────────────────
 
 function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName: string }) {
-  const [featurePlan, setFeaturePlan] = useState<Plan>('basico');
+  const [featurePlan, setFeaturePlan] = useState<Plan>('comercial');
   const [minutesPlan, setMinutesPlan] = useState<MinutesPlan>('starter');
   const [loading, setLoading]         = useState(false);
   const [url, setUrl]                 = useState<string | null>(null);
   const [copied, setCopied]           = useState(false);
 
-  const featureCfg = FEATURE_PLAN_CONFIG[featurePlan];
-  const minutesCfg = MINUTES_PLAN_CONFIG[minutesPlan];
-  const totalFirst  = featureCfg.setupFee + minutesCfg.mxn;
+  const featureCfg  = FEATURE_PLAN_CONFIG[featurePlan];
+  const monthlyCfg  = MONTHLY_CONFIG[featurePlan]?.[minutesPlan];
+  const totalFirst  = featureCfg.setupFee + (monthlyCfg?.mxn ?? 0);
 
   const featureOptions = (Object.entries(FEATURE_PLAN_CONFIG) as [Plan, typeof featureCfg][]).map(([key, cfg]) => ({
     value: key,
@@ -127,11 +128,14 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
     sub:   `Instalación única`,
   }));
 
-  const minutesOptions = (Object.entries(MINUTES_PLAN_CONFIG) as [MinutesPlan, typeof minutesCfg][]).map(([key, cfg]) => ({
-    value: key,
-    label: `${cfg.label} · ${cfg.minutes} min, $${cfg.mxn.toLocaleString('es-MX')}/mes`,
-    sub:   `Mensualidad recurrente`,
-  }));
+  const minutesOptions = (Object.entries(MINUTES_TIER_CONFIG) as [MinutesPlan, { label: string; minutes: number }][]).map(([key, cfg]) => {
+    const mc = MONTHLY_CONFIG[featurePlan]?.[key];
+    return {
+      value: key,
+      label: `${cfg.label} · ${cfg.minutes} min, $${(mc?.mxn ?? 0).toLocaleString('es-MX')}/mes`,
+      sub:   `Mensualidad recurrente`,
+    };
+  });
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -186,7 +190,7 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
       <div className="flex items-center justify-between rounded-lg px-3 py-2 text-xs"
         style={{ background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.12)' }}>
         <span style={{ color: 'var(--c-text-2)' }}>
-          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${minutesCfg.mxn.toLocaleString('es-MX')} mes
+          Primer cobro: ${featureCfg.setupFee.toLocaleString('es-MX')} inst. + ${(monthlyCfg?.mxn ?? 0).toLocaleString('es-MX')} mes
         </span>
         <span className="font-semibold" style={{ color: '#9B6DFF' }}>
           ${totalFirst.toLocaleString('es-MX')} MXN
@@ -225,10 +229,29 @@ function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
+const STATUS_SORT: Record<string, number> = { pago_fallido: 0, sin_plan: 1, cancelado: 2, activo: 3 };
+
 export default function BillingClient({ agents }: { agents: Agent[] }) {
+  const [linkOpen, setLinkOpen] = useState<Set<string>>(new Set());
+  const [search, setSearch]     = useState('');
+
+  const toggleLink = (id: string) =>
+    setLinkOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const sorted = [...agents].sort((a, b) => {
+    const sa = a.plan ? (a.billing_status ?? 'activo') : 'sin_plan';
+    const sb = b.plan ? (b.billing_status ?? 'activo') : 'sin_plan';
+    return (STATUS_SORT[sa] ?? 4) - (STATUS_SORT[sb] ?? 4);
+  });
+
+  const q        = search.toLowerCase();
+  const filtered = q
+    ? sorted.filter(a => a.business_name.toLowerCase().includes(q) || a.client_name.toLowerCase().includes(q))
+    : sorted;
+
   const totalMRR    = agents.reduce((sum, a) => {
     if (!a.minutes_plan || a.billing_status !== 'activo') return sum;
-    return sum + (MINUTES_PLAN_CONFIG[a.minutes_plan]?.mxn ?? 0);
+    return sum + (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0);
   }, 0);
   const activeCount = agents.filter(a => a.billing_status === 'activo').length;
   const failedCount = agents.filter(a => a.billing_status === 'pago_fallido').length;
@@ -259,14 +282,35 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ color: 'var(--c-text-3)' }} />
+        <input
+          type="text"
+          placeholder="Buscar por negocio o cliente…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--c-text-3)' }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
       {/* Agent list */}
       <div className="space-y-3">
-        {agents.map(agent => {
+        {filtered.map(agent => {
           const billingStatus = agent.plan ? (agent.billing_status ?? 'activo') : 'sin_plan';
           const pct      = agent.minutes_included > 0 ? Math.min((agent.minutes_used / agent.minutes_included) * 100, 100) : 0;
           const barColor = pct >= 90 ? '#f87171' : pct >= 70 ? '#facc15' : '#6C3BFF';
           const fCfg     = agent.plan         ? FEATURE_PLAN_CONFIG[agent.plan]         : null;
-          const mCfg     = agent.minutes_plan ? MINUTES_PLAN_CONFIG[agent.minutes_plan] : null;
+          const mCfg     = (agent.plan && agent.minutes_plan) ? MONTHLY_CONFIG[agent.plan as Plan]?.[agent.minutes_plan as MinutesTier] : null;
 
           return (
             <div key={agent.id} className="rounded-xl p-4 space-y-3"
@@ -309,21 +353,35 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                 </div>
               )}
 
-              {/* Generate link */}
+              {/* Generate link — collapsible */}
               <div className="pt-1" style={{ borderTop: '1px solid var(--c-divider)' }}>
-                <div className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>
+                <button
+                  type="button"
+                  onClick={() => toggleLink(agent.id)}
+                  className="flex items-center gap-2 text-xs font-medium w-full text-left transition-opacity hover:opacity-80"
+                  style={{ color: linkOpen.has(agent.id) ? '#9B6DFF' : 'var(--c-text-2)' }}
+                >
+                  <CreditCard size={12} />
                   Generar link de pago
-                </div>
-                <GenerateLinkButton agentId={agent.id} agentName={agent.business_name} />
+                  <ChevronDown size={10} className="ml-auto transition-transform flex-shrink-0"
+                    style={{ transform: linkOpen.has(agent.id) ? 'rotate(180deg)' : undefined, color: 'var(--c-text-4)' }} />
+                </button>
+                {linkOpen.has(agent.id) && (
+                  <div className="mt-3">
+                    <GenerateLinkButton agentId={agent.id} agentName={agent.business_name} />
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
 
-        {agents.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-12 rounded-xl" style={{ border: '1px dashed var(--c-border)' }}>
             <CreditCard size={32} className="mx-auto mb-3" style={{ color: 'var(--c-text-3)' }} />
-            <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>No hay agentes registrados</div>
+            <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+              {search ? 'Sin resultados para esa búsqueda' : 'No hay agentes registrados'}
+            </div>
           </div>
         )}
       </div>

@@ -2,43 +2,16 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { PLAN_FEATURES } from '@/types/agent';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, empresarialConfirmationHtml } from '@/lib/email/send';
 import type { Plan } from '@/types/agent';
-
-const PLAN_MINUTES_COUNT: Record<Plan, number> = {
-  basico:   200,
-  estandar: 500,
-  pro:      1000,
-};
-
-const PLAN_MINUTES_PLAN: Record<Plan, string> = {
-  basico:   'starter',
-  estandar: 'growth',
-  pro:      'scale',
-};
-
-function setupPriceId(plan: Plan): string {
-  const map: Record<Plan, string> = {
-    basico:   process.env.STRIPE_SETUP_BASICO!,
-    estandar: process.env.STRIPE_SETUP_ESTANDAR!,
-    pro:      process.env.STRIPE_SETUP_PRO!,
-  };
-  return map[plan];
-}
-
-function minutesPriceId(plan: Plan): string {
-  const map: Record<Plan, string> = {
-    basico:   process.env.STRIPE_MINUTES_STARTER!,
-    estandar: process.env.STRIPE_MINUTES_GROWTH!,
-    pro:      process.env.STRIPE_MINUTES_SCALE!,
-  };
-  return map[plan];
-}
+import type { MinutesTier } from '@/lib/billing/plans';
 
 export async function POST(req: NextRequest) {
   const {
     plan,
+    minutes_tier,
     business_name,
     business_description,
     business_phone_display,
@@ -151,9 +124,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ empresarial: true });
   }
 
-  // ── Standard plans (basico / estandar / pro) ────────────────────────────────
-  if (!['basico', 'estandar', 'pro'].includes(plan))
+  // ── Standard plans (comercial / pro) ─────────────────────────────────────────
+  if (!['comercial', 'pro'].includes(plan))
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
+  const tier: MinutesTier = (['starter', 'growth', 'scale'] as MinutesTier[]).includes(minutes_tier) ? minutes_tier : 'starter';
   if (!business_phone_display?.trim())
     return NextResponse.json({ error: 'Teléfono requerido' }, { status: 400 });
 
@@ -176,7 +150,8 @@ export async function POST(req: NextRequest) {
       phone_number:           '',
       plan:                   p,
       features:               PLAN_FEATURES[p],
-      minutes_included:       PLAN_MINUTES_COUNT[p],
+      minutes_included:       MONTHLY_CONFIG[p][tier].minutes,
+      minutes_plan:           tier,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
       active:                 false,
       billing_status:         'pendiente',
@@ -202,13 +177,13 @@ export async function POST(req: NextRequest) {
     customer:  customer.id,
     mode:      'subscription',
     line_items: [
-      { price: setupPriceId(p),   quantity: 1 },
-      { price: minutesPriceId(p), quantity: 1 },
+      { price: FEATURE_PLAN_CONFIG[p].setupPriceId(),     quantity: 1 },
+      { price: MONTHLY_CONFIG[p][tier].priceId(),         quantity: 1 },
     ],
     metadata: {
       agent_id:     agent.id,
       feature_plan: p,
-      minutes_plan: PLAN_MINUTES_PLAN[p],
+      minutes_plan: tier,
       source:       'onboarding',
       area_code:    area_code ?? '',
     },
@@ -216,7 +191,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         agent_id:     agent.id,
         feature_plan: p,
-        minutes_plan: PLAN_MINUTES_PLAN[p],
+        minutes_plan: tier,
       },
     },
     success_url: `${appUrl}/registro/pendiente?token=${agent.portal_token}`,

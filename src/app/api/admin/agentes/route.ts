@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
       knowledge_base:         knowledge_base?.trim() ?? null,
       agent_name:             plan === 'pro' ? (agent_name?.trim() ?? null) : null,
       giro_template:          body.giro_template ?? null,
-      plan:                   plan ?? 'basico',
+      plan:                   plan ?? 'comercial',
       features,
-      minutes_included:       PLAN_MINUTES[(plan ?? 'basico') as Plan],
+      minutes_included:       PLAN_MINUTES[(plan ?? 'comercial') as Plan],
       minutes_reset_date:     resetDate.toISOString().split('T')[0],
     })
     .select()

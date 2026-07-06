@@ -1,62 +1,116 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { PhoneCall, Clock, Users, AlertTriangle, ArrowRight, CheckCircle, XCircle } from 'lucide-react';
+import { MONTHLY_CONFIG } from '@/lib/billing/plans';
+import type { Plan, MinutesTier } from '@/lib/billing/plans';
+import {
+  AlertTriangle, ArrowRight, DollarSign,
+  Users, PhoneCall, UserPlus,
+} from 'lucide-react';
 import Link from 'next/link';
 
-const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
-
-const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
-  lead_created:       { label: 'Lead',        color: '#22c55e' },
-  appointment_booked: { label: 'Cita',         color: '#3b82f6' },
-  order_taken:        { label: 'Pedido',       color: '#f59e0b' },
-  transferred:        { label: 'Transferido',  color: '#a855f7' },
-  info_provided:      { label: 'Información',  color: '#6b7280' },
-  escalated_whatsapp: { label: 'WhatsApp',     color: '#25D366' },
-  other:              { label: 'Otro',         color: '#4b5563' },
-};
-
 export default async function DashboardPage() {
-  const supabase = createAdminClient();
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const supabase   = createAdminClient();
+  const now        = Date.now();
+  const since14d   = new Date(now - 14 * 86400000).toISOString();
+  const since7d    = new Date(now -  7 * 86400000);
+  const startMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   const [
-    { data: agents },
-    { data: calls24h },
-    { data: recentCalls },
-    { data: lastCallsAll },
+    { data: agentsData },
+    { data: calls14d },
+    { data: lastCallsData },
   ] = await Promise.all([
     supabase.from('voice_agents')
-      .select('id, business_name, plan, minutes_used, minutes_included, active')
-      .order('business_name'),
+      .select('id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, created_at')
+      .neq('id', process.env.DEMO_AGENT_ID ?? '')
+      .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
-      .select('id, agent_id, duration_seconds')
-      .gte('created_at', since24h),
-    supabase.from('voice_calls')
-      .select('id, agent_id, caller_number, outcome, duration_seconds, created_at')
-      .order('created_at', { ascending: false })
-      .limit(12),
+      .select('id, agent_id, created_at')
+      .gte('created_at', since14d),
     supabase.from('voice_calls')
       .select('agent_id, created_at')
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(1000),
   ]);
 
-  const agentList = agents ?? [];
-  const callList24h = calls24h ?? [];
+  const agents = (agentsData ?? []) as any[];
+  const calls  = (calls14d   ?? []) as any[];
 
-  const agentMap: Record<string, string> = {};
-  for (const a of agentList) agentMap[a.id] = a.business_name;
+  // MRR — only agents with billing_status = 'activo' and a known minutes plan
+  const mrr = agents
+    .filter(a => a.billing_status === 'activo' && a.plan && a.minutes_plan && a.minutes_plan !== 'enterprise')
+    .reduce((sum: number, a: any) => {
+      const cfg = MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier];
+      return sum + (cfg?.mxn ?? 0);
+    }, 0);
 
-  const lastCallMap: Record<string, string> = {};
-  for (const c of (lastCallsAll ?? [])) {
-    if (!lastCallMap[c.agent_id]) lastCallMap[c.agent_id] = c.created_at;
+  // Active agent count
+  const activeCount = agents.filter(a => a.active).length;
+
+  // Week-over-week call trend
+  const callsThisWeek = calls.filter(c => new Date(c.created_at) >= since7d).length;
+  const callsLastWeek = calls.filter(c => new Date(c.created_at)  < since7d).length;
+  const callsDelta    = callsLastWeek > 0
+    ? Math.round(((callsThisWeek - callsLastWeek) / callsLastWeek) * 100)
+    : null;
+
+  // New agents this calendar month
+  const newThisMonth = agents.filter(a => a.created_at >= startMonth).length;
+
+  // Last call per agent
+  const lastCallMap: Record<string, Date> = {};
+  for (const c of (lastCallsData ?? [])) {
+    if (!lastCallMap[c.agent_id]) lastCallMap[c.agent_id] = new Date(c.created_at);
   }
 
-  const todayMinutes  = callList24h.reduce((s, c) => s + Math.ceil((c.duration_seconds ?? 0) / 60), 0);
-  const activeAgents  = agentList.filter(a => a.active).length;
-  const criticalAgents = agentList.filter(a => a.active && a.minutes_included > 0 && (a.minutes_used / a.minutes_included) > 0.8);
-  const inactiveAgents = agentList.filter(a => !a.active);
+  // Prioritized alerts
+  type Alert = { priority: number; label: string; sub: string; href: string; color: string };
+  const alerts: Alert[] = [];
+
+  for (const a of agents) {
+    if (a.billing_status === 'pago_fallido') {
+      alerts.push({ priority: 0, label: a.business_name, sub: 'Pago fallido — contactar cliente', href: '/admin/billing', color: '#ef4444' });
+    }
+  }
+
+  for (const a of agents) {
+    if (a.active && a.minutes_included > 0 && (a.minutes_used / a.minutes_included) >= 0.9) {
+      const pct = Math.round((a.minutes_used / a.minutes_included) * 100);
+      alerts.push({ priority: 1, label: a.business_name, sub: `${pct}% de minutos consumidos — ofrecer recarga`, href: `/admin/agentes/${a.id}`, color: '#f59e0b' });
+    }
+  }
+
+  const sevenDaysAgo = new Date(now - 7 * 86400000);
+  for (const a of agents) {
+    if (!a.active) continue;
+    const last = lastCallMap[a.id];
+    if (!last || last < sevenDaysAgo) {
+      const days = last ? Math.floor((now - last.getTime()) / 86400000) : null;
+      const sub  = days === null ? 'Sin llamadas registradas — ¿problema?' : `Sin llamadas hace ${days} días — ¿problema?`;
+      alerts.push({ priority: 2, label: a.business_name, sub, href: `/admin/agentes/${a.id}`, color: '#6b7280' });
+    }
+  }
+
+  // Minutes health
+  const withMinutes    = agents.filter(a => a.active && a.minutes_included > 0);
+  const minsOk         = withMinutes.filter(a => (a.minutes_used / a.minutes_included) <  0.70).length;
+  const minsWarning    = withMinutes.filter(a => { const p = a.minutes_used / a.minutes_included; return p >= 0.70 && p < 0.90; }).length;
+  const minsCritical   = withMinutes.filter(a => (a.minutes_used / a.minutes_included) >= 0.90).length;
+  const totalRemaining = agents.reduce((s: number, a: any) => s + Math.max(0, (a.minutes_included ?? 0) - (a.minutes_used ?? 0)), 0);
+
+  // Billing summary
+  const billing = {
+    activo:       agents.filter(a => a.billing_status === 'activo').length,
+    pago_fallido: agents.filter(a => a.billing_status === 'pago_fallido').length,
+    sin_plan:     agents.filter(a => !a.billing_status || a.billing_status === 'sin_plan').length,
+    cancelado:    agents.filter(a => a.billing_status === 'cancelado').length,
+  };
+
+  const trendSub = callsDelta === null
+    ? 'Sin datos semana anterior'
+    : `${callsDelta >= 0 ? '+' : ''}${callsDelta}% vs semana anterior`;
+  const trendColor = callsDelta === null ? 'var(--c-text-4)' : callsDelta >= 0 ? '#22c55e' : '#ef4444';
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -67,181 +121,169 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* KPIs */}
+      {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard icon={<Users size={18} />}         label="Agentes activos"  value={`${activeAgents} / ${agentList.length}`} color="#22c55e" />
-        <KpiCard icon={<PhoneCall size={18} />}     label="Llamadas (24h)"   value={String(callList24h.length)}              color="#6C3BFF" />
-        <KpiCard icon={<Clock size={18} />}         label="Minutos (24h)"    value={String(todayMinutes)}                    color="#a855f7" />
         <KpiCard
-          icon={<AlertTriangle size={18} />}
-          label="Al límite (>80%)"
-          value={String(criticalAgents.length)}
-          color={criticalAgents.length > 0 ? '#ef4444' : '#22c55e'}
-          sub={criticalAgents.length === 0 ? 'Todo bien' : 'requieren atención'}
+          icon={<DollarSign size={16} />}
+          label="MRR estimado"
+          value={`$${mrr.toLocaleString('es-MX')}`}
+          sub="MXN / mes"
+          color="#22c55e"
+        />
+        <KpiCard
+          icon={<Users size={16} />}
+          label="Agentes activos"
+          value={String(activeCount)}
+          sub={`de ${agents.length} totales`}
+          color="#6C3BFF"
+        />
+        <KpiCard
+          icon={<PhoneCall size={16} />}
+          label="Llamadas esta semana"
+          value={String(callsThisWeek)}
+          sub={trendSub}
+          subColor={trendColor}
+          color="#a855f7"
+        />
+        <KpiCard
+          icon={<UserPlus size={16} />}
+          label="Nuevos clientes"
+          value={String(newThisMonth)}
+          sub="este mes"
+          color="#3b82f6"
         />
       </div>
 
       {/* Alerts */}
-      {(criticalAgents.length > 0 || inactiveAgents.length > 0) && (
-        <div className="mb-6 flex flex-col gap-2">
-          {criticalAgents.map(a => {
-            const pct = Math.round((a.minutes_used / a.minutes_included) * 100);
-            const color = pct >= 100 ? '#ef4444' : '#f59e0b';
-            return (
-              <Link key={a.id} href={`/admin/agentes/${a.id}`}
+      {alerts.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+            Acción requerida
+          </h2>
+          <div className="flex flex-col gap-2">
+            {alerts.map((alert, i) => (
+              <Link key={i} href={alert.href}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: `${color}0f`, border: `1px solid ${color}33` }}>
-                <AlertTriangle size={14} style={{ color, flexShrink: 0 }} />
-                <span className="text-sm flex-1" style={{ color: 'var(--c-text)' }}>{a.business_name}</span>
-                <span className="text-xs font-semibold" style={{ color }}>{pct}% de minutos usados</span>
-                <ArrowRight size={13} style={{ color: 'var(--c-text-3)' }} />
+                style={{ background: `${alert.color}10`, border: `1px solid ${alert.color}30` }}>
+                <AlertTriangle size={14} style={{ color: alert.color, flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-none" style={{ color: 'var(--c-text)' }}>{alert.label}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{alert.sub}</p>
+                </div>
+                <ArrowRight size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
               </Link>
-            );
-          })}
-          {inactiveAgents.map(a => (
-            <Link key={a.id} href={`/admin/agentes/${a.id}`}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:opacity-90 transition-opacity"
-              style={{ background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.2)' }}>
-              <XCircle size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
-              <span className="text-sm flex-1" style={{ color: 'var(--c-text)' }}>{a.business_name}</span>
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Agente pausado</span>
-              <ArrowRight size={13} style={{ color: 'var(--c-text-3)' }} />
-            </Link>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
-      <div className="flex flex-col gap-6">
-        {/* Agents status table */}
+      {/* Bottom grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Minutes Health */}
         <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Estado de agentes</h2>
-            <Link href="/admin/agentes/nuevo"
-              className="text-xs px-3 py-1.5 rounded-lg font-semibold hover:opacity-80 transition-opacity"
-              style={{ background: '#6C3BFF', color: '#fff' }}>
-              + Nuevo
+            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Salud de minutos
+            </h2>
+            <Link href="/admin/agentes" className="text-xs hover:opacity-70 transition-opacity" style={{ color: 'var(--c-text-3)' }}>
+              Ver agentes →
             </Link>
           </div>
 
-          {agentList.length === 0 ? (
-            <p className="text-xs py-6 text-center" style={{ color: 'var(--c-text-4)' }}>
-              Sin agentes, crea el primero con el botón de arriba
-            </p>
+          {withMinutes.length === 0 ? (
+            <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Sin agentes activos con plan de minutos</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {agentList.map(a => {
-                const pct = a.minutes_included > 0 ? Math.min((a.minutes_used / a.minutes_included) * 100, 100) : 0;
-                const barColor = pct > 90 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#22c55e';
-                const lastCall = lastCallMap[a.id];
-                const daysSince = lastCall
-                  ? Math.floor((Date.now() - new Date(lastCall).getTime()) / 86400000)
-                  : null;
-
-                return (
-                  <Link key={a.id} href={`/admin/agentes/${a.id}`}
-                    className="flex items-center gap-4 px-4 py-3 rounded-xl hover:opacity-80 transition-opacity"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-
-                    {/* Status icon */}
-                    {a.active
-                      ? <CheckCircle size={14} style={{ color: '#22c55e', flexShrink: 0 }} />
-                      : <XCircle    size={14} style={{ color: '#6b7280', flexShrink: 0 }} />}
-
-                    {/* Name + minutes bar */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.business_name}</span>
-                        <span className="text-xs px-1.5 py-0.5 rounded flex-shrink-0"
-                          style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-                          {PLAN_LABELS[a.plan] ?? a.plan}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full" style={{ background: 'var(--c-border-2)' }}>
-                          <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
-                        </div>
-                        <span className="text-xs flex-shrink-0 tabular-nums" style={{ color: 'var(--c-text-3)' }}>
-                          {a.minutes_used}/{a.minutes_included} min
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Last call */}
-                    <div className="text-right flex-shrink-0 hidden sm:block w-20">
-                      {daysSince === null
-                        ? <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin llamadas</span>
-                        : daysSince === 0
-                          ? <span className="text-xs font-medium" style={{ color: '#22c55e' }}>Hoy</span>
-                          : daysSince === 1
-                            ? <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>Ayer</span>
-                            : <span className="text-xs" style={{ color: daysSince > 7 ? '#f59e0b' : 'var(--c-text-3)' }}>
-                                Hace {daysSince}d
-                              </span>}
-                    </div>
-
-                    <ArrowRight size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                  </Link>
-                );
-              })}
-            </div>
+            <>
+              <div className="flex flex-col gap-2.5">
+                <MinutesRow label="OK"       count={minsOk}       of={withMinutes.length} color="#22c55e" hint="< 70% consumido" />
+                <MinutesRow label="Alerta"   count={minsWarning}   of={withMinutes.length} color="#f59e0b" hint="70–90% consumido" />
+                <MinutesRow label="Crítico"  count={minsCritical}  of={withMinutes.length} color="#ef4444" hint="≥ 90% consumido" />
+              </div>
+              <div className="mt-4 pt-4 flex justify-between text-xs"
+                style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                <span>Minutos disponibles total</span>
+                <span className="font-semibold tabular-nums" style={{ color: 'var(--c-text-2)' }}>
+                  {totalRemaining.toLocaleString('es-MX')} min
+                </span>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Recent calls */}
+        {/* Billing Summary */}
         <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <h2 className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--c-text-3)' }}>Llamadas recientes</h2>
-          {(recentCalls ?? []).length === 0 ? (
-            <p className="text-xs py-6 text-center" style={{ color: 'var(--c-text-4)' }}>
-              Sin llamadas, asegúrate de que los números estén activos en Vapi
-            </p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {(recentCalls ?? []).map(call => (
-                <Link key={call.id} href={`/admin/agentes/${call.agent_id}`}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:opacity-80 transition-opacity"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                  <div className="min-w-0 flex items-center gap-2">
-                    <span className="text-sm" style={{ color: 'var(--c-text)' }}>{call.caller_number || 'Desconocido'}</span>
-                    <span className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{agentMap[call.agent_id] ?? ''}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <OutcomeBadge outcome={call.outcome} />
-                    <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
-                      {Math.ceil(call.duration_seconds / 60)}m
-                    </span>
-                    <span className="text-xs hidden sm:block" style={{ color: 'var(--c-text-4)' }}>
-                      {new Date(call.created_at).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Estado de facturación
+            </h2>
+            <Link href="/admin/billing" className="text-xs hover:opacity-70 transition-opacity" style={{ color: 'var(--c-text-3)' }}>
+              Ver billing →
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <BillingRow label="Al corriente"    count={billing.activo}       color="#22c55e" />
+            <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#ef4444" />
+            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6b7280" />
+            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#374151" />
+          </div>
+          <div className="mt-4 pt-4 flex justify-between text-xs"
+            style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+            <span>Total agentes registrados</span>
+            <span className="font-semibold tabular-nums" style={{ color: 'var(--c-text-2)' }}>{agents.length}</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function KpiCard({ icon, label, value, color, sub }: {
-  icon: React.ReactNode; label: string; value: string; color: string; sub?: string;
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function KpiCard({ icon, label, value, sub, color, subColor }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+  color: string;
+  subColor?: string;
 }) {
   return (
     <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <div className="flex items-center gap-2 mb-3" style={{ color }}>{icon}</div>
-      <div className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{value}</div>
-      <div className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>{label}</div>
-      {sub && <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>{sub}</div>}
+      <div className="mb-3" style={{ color }}>{icon}</div>
+      <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{value}</div>
+      <div className="text-xs mt-1 font-medium" style={{ color: 'var(--c-text-2)' }}>{label}</div>
+      {sub && (
+        <div className="text-xs mt-0.5" style={{ color: subColor ?? 'var(--c-text-4)' }}>{sub}</div>
+      )}
     </div>
   );
 }
 
-function OutcomeBadge({ outcome }: { outcome: string }) {
-  const o = OUTCOME_LABELS[outcome] ?? OUTCOME_LABELS.other;
+function MinutesRow({ label, count, of: total, color, hint }: {
+  label: string; count: number; of: number; color: string; hint: string;
+}) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-      style={{ background: `${o.color}22`, color: o.color }}>
-      {o.label}
-    </span>
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-xs flex-1" style={{ color: 'var(--c-text-2)' }}>
+        {label} <span style={{ color: 'var(--c-text-4)' }}>— {hint}</span>
+      </span>
+      <span className="text-xs tabular-nums font-semibold" style={{ color }}>
+        {count} <span className="font-normal" style={{ color: 'var(--c-text-4)' }}>({pct}%)</span>
+      </span>
+    </div>
+  );
+}
+
+function BillingRow({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-xs flex-1" style={{ color: 'var(--c-text-2)' }}>{label}</span>
+      <span className="text-xs tabular-nums font-semibold" style={{ color: count > 0 ? color : 'var(--c-text-4)' }}>
+        {count}
+      </span>
+    </div>
   );
 }

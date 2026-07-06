@@ -5,11 +5,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink } from 'lucide-react';
-import type { BusinessHours } from '@/types/agent';
+import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
-import { MINUTES_PLAN_CONFIG } from '@/lib/billing/plans';
-import type { MinutesPlan } from '@/lib/billing/plans';
+import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
+import type { MinutesTier } from '@/lib/billing/plans';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import ThemeToggle from '@/components/ThemeToggle';
 import { cookies } from 'next/headers';
@@ -48,8 +48,8 @@ interface Props {
   searchParams: Promise<{ tab?: string; period?: string }>;
 }
 
-const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
-const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
+const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
+const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 export default async function ClientPortalPage({ params, searchParams }: Props) {
   const { token }          = await params;
@@ -109,7 +109,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const minutesPct      = minutesIncluded > 0 ? Math.min((minutesUsed / minutesIncluded) * 100, 100) : 0;
   const minutesColor    = minutesPct > 90 ? '#ef4444' : minutesPct > 70 ? '#f59e0b' : '#22c55e';
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
-  const planBaseMinutes = agent.minutes_plan ? (MINUTES_PLAN_CONFIG[agent.minutes_plan as MinutesPlan]?.minutes ?? minutesIncluded) : minutesIncluded;
+  const planBaseMinutes = agent.minutes_plan ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded) : minutesIncluded;
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);
   const resetDate       = agent.minutes_reset_date
     ? new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
@@ -137,7 +137,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const leads    = leadsRes.data     ?? [];
   const orders   = ordersRes.data    ?? [];
   const appts    = apptsRes.data     ?? [];
-  const allCalls = allCallsRes.data  ?? [];
+  const allCalls = allCallsRes.data ?? [];
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -607,7 +607,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
-                  <UpgradePlanSection token={token} currentPlan={agent.plan as 'basico' | 'estandar' | 'pro'} />
+                  <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
                 </div>
               )}
 
@@ -644,7 +644,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                   Cal.com crea la cita directamente durante la llamada. Calendly y Google Calendar envían el link de reserva al cliente por WhatsApp.
                 </p>
-                <IntegrationsSection token={token} plan={agent.plan as 'basico' | 'estandar' | 'pro'} />
+                <IntegrationsSection token={token} plan={agent.plan as Plan} />
               </div>
             </div>
           )}

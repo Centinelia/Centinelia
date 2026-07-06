@@ -3,7 +3,7 @@ export type { WaMessagesPlan };
 
 // ─── Plans ────────────────────────────────────────────────────────────────────
 
-export type Plan = 'basico' | 'estandar' | 'pro';
+export type Plan = 'comercial' | 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -68,7 +68,8 @@ export interface VoiceAgent {
   transfer_whatsapp?: string;     // WhatsApp del dueño para notificaciones
   calendar_url?: string;          // Calendly / Google Cal link para citas
   crm_webhook?: string;           // webhook externo del sistema del cliente
-  knowledge_base?: string;        // catálogo, precios y FAQs del negocio
+  knowledge_base?: string;        // catálogo, precios y FAQs del negocio (entrantes)
+  outbound_knowledge_base?: string; // instrucciones específicas para llamadas salientes
   business_website?: string;      // URL del sitio web del negocio
   website_knowledge?: string;     // contenido extraído del sitio web (servidor lo llena)
   agent_name?: string;            // nombre propio del agente (solo Pro, default: Centinelia)
@@ -134,19 +135,7 @@ export interface VoiceCall {
 // ─── Plan defaults ────────────────────────────────────────────────────────────
 
 export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
-  basico: {
-    receptionist:            true,
-    lead_qualification:      true,
-    appointment_booking:     false,
-    existing_client_support: false,
-    smart_transfer:          false,
-    order_taking:            false,
-    multilingual:            false,
-    client_memory:           false,
-    whatsapp_escalation:     false,
-    outbound_calls:          false,
-  },
-  estandar: {
+  comercial: {
     receptionist:            true,
     lead_qualification:      true,
     appointment_booking:     true,
@@ -173,15 +162,13 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
 };
 
 export const PLAN_MINUTES: Record<Plan, number> = {
-  basico:   200,
-  estandar: 500,
-  pro:      1000,
+  comercial: 300,
+  pro:       300,
 };
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  basico:   'Recepcionista',
-  estandar: 'Comercial',
-  pro:      'Pro',
+  comercial: 'Comercial',
+  pro:       'Pro',
 };
 
 export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
