@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Stethoscope, UtensilsCrossed, Briefcase, Building2, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Stethoscope, UtensilsCrossed, Briefcase, Building2, ShoppingBag, PhoneIncoming, PhoneOutgoing, Check } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
+import IndustryFooter from '@/app/industrias/IndustryFooter';
 
 const BASE_URL = 'https://www.centinelia.mx';
 
@@ -19,6 +20,20 @@ export const metadata: Metadata = {
 };
 
 const C = { bg: '#FAFBFF', text: '#1A0A3B', textSub: 'rgba(26,10,59,0.58)', accent: '#6C3BFF', border: 'rgba(108,59,255,0.12)' };
+
+const INBOUND_BULLETS = [
+  'Atiende cada llamada al instante, sin importar la hora',
+  'Agenda citas y confirma disponibilidad en tiempo real',
+  'Toma pedidos y resuelve dudas sin poner a nadie en espera',
+  'Califica prospectos y captura sus datos automáticamente',
+];
+
+const OUTBOUND_BULLETS = [
+  'Confirma citas el día anterior para reducir cancelaciones',
+  'Avisa al cliente cuando su pedido está listo o hay un retraso',
+  'Reactiva clientes frecuentes con una promoción del día',
+  'Da seguimiento a prospectos que aún no han cerrado',
+];
 
 const INDUSTRIES = [
   {
@@ -74,8 +89,63 @@ export default function IndustriasPage() {
         </div>
       </section>
 
+      {/* ── Dos modos ────────────────────────────────────────────────────────── */}
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: C.accent }}>Dos modos, un solo agente</p>
+            <h2 className="font-bold leading-tight" style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)', color: C.text }}>
+              Atiende las llamadas que entran.<br className="hidden sm:block" /> Y también hace las que salen.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Inbound */}
+            <div className="rounded-2xl p-8 flex flex-col gap-5" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl flex items-center justify-center" style={{ width: 44, height: 44, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
+                  <PhoneIncoming size={22} color={C.accent} />
+                </div>
+                <span className="font-semibold" style={{ fontSize: '1rem', color: C.text }}>Recibe llamadas</span>
+              </div>
+              <ul className="flex flex-col gap-3">
+                {INBOUND_BULLETS.map((b) => (
+                  <li key={b} className="flex items-start gap-2.5">
+                    <Check size={15} color={C.accent} style={{ marginTop: 3, flexShrink: 0 }} />
+                    <span className="text-sm leading-relaxed" style={{ color: C.textSub }}>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Outbound */}
+            <div className="rounded-2xl p-8 flex flex-col gap-5" style={{ background: 'linear-gradient(135deg, #0D0520 0%, #1A0A3B 100%)', border: '1px solid rgba(108,59,255,0.3)' }}>
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl flex items-center justify-center" style={{ width: 44, height: 44, background: 'rgba(108,59,255,0.25)', flexShrink: 0 }}>
+                  <PhoneOutgoing size={22} color="#C4A8FF" />
+                </div>
+                <span className="font-semibold" style={{ fontSize: '1rem', color: '#fff' }}>También llama</span>
+              </div>
+              <ul className="flex flex-col gap-3">
+                {OUTBOUND_BULLETS.map((b) => (
+                  <li key={b} className="flex items-start gap-2.5">
+                    <Check size={15} color="#9B6DFF" style={{ marginTop: 3, flexShrink: 0 }} />
+                    <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Industry cards ───────────────────────────────────────────────────── */}
       <section style={{ background: C.bg, padding: '80px 24px' }}>
         <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>Elige tu industria</p>
+            <h2 className="font-bold" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)', color: C.text }}>¿En qué giro trabajas?</h2>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {INDUSTRIES.map((ind) => (
               <Link
@@ -117,6 +187,8 @@ export default function IndustriasPage() {
           </div>
         </div>
       </section>
+
+      <IndustryFooter />
     </>
   );
 }
