@@ -389,9 +389,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     return (
                       <div key={a.id} className="flex items-center gap-3 px-4 py-3"
                         style={{
-                          background: isCurrent ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)',
+                          background: 'var(--c-surface-2)',
                           borderTop:  i > 0 ? '1px solid var(--c-divider)' : undefined,
-                          borderLeft: isCurrent ? '3px solid #6C3BFF' : '3px solid transparent',
                         }}>
 
                         {/* Status dot */}
@@ -404,12 +403,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
                               {a.agent_name?.trim() || 'Centinelia'}
                             </span>
-                            {isCurrent && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}>
-                                Actual
-                              </span>
-                            )}
                             {(() => { const pc = PLAN_COLORS[a.plan] ?? '#6b7280'; return (
                               <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
                                 style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
@@ -489,7 +482,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento</h2>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
+                </p>
                 <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
               </div>
 
@@ -757,10 +753,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               />
               {(agent.features as any)?.outbound_calls && (
                 <>
-                  <OutboundInstructionsEditor
-                    token={token}
-                    initialValue={(agent as any).outbound_knowledge_base ?? ''}
-                  />
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento saliente</h2>
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                      Instrucciones específicas para cuando este agente hace llamadas: objetivo de la llamada, qué decir, cómo manejar objeciones. Define el rol de este agente (vendedor, cobrador, seguimiento, etc.).
+                    </p>
+                    <OutboundInstructionsEditor
+                      token={token}
+                      initialValue={(agent as any).outbound_knowledge_base ?? ''}
+                    />
+                  </div>
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                     <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Rol del agente saliente</h2>
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
