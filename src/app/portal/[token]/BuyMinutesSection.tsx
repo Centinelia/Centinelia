@@ -73,7 +73,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
             color:      selected === 'custom' ? '#6C3BFF' : 'var(--c-text-2)',
           }}
         >
-          <span className="text-sm font-bold">Custom</span>
+          <span className="text-sm font-bold">Personalizado</span>
           <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_MIN}/min</span>
         </button>
       </div>

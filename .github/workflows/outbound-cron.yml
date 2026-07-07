@@ -11,7 +11,14 @@ jobs:
     steps:
       - name: Trigger outbound cron endpoint
         run: |
-          curl -s -o /dev/null -w "%{http_code}" \
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
             -X POST "${{ secrets.APP_URL }}/api/cron/outbound" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Cron endpoint returned $HTTP_CODE — expected 200"
+            exit 1
+          fi

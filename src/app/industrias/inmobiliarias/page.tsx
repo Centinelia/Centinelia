@@ -1,17 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Phone, ArrowRight, Building2, PhoneOff, Clock, TrendingDown, Star, PhoneOutgoing } from 'lucide-react';
+import { Check, Phone, ArrowRight, Building2, PhoneOff, Clock, TrendingDown, Star } from 'lucide-react';
 import LandingNav from '@/app/LandingNav';
 import LandingWidgets from '@/app/LandingWidgets';
 import MeerkatReveal from '@/app/MeerkatReveal';
+import AnimatedSection from '@/app/AnimatedSection';
 import IndustryFooter from '@/app/industrias/IndustryFooter';
 
 const BASE_URL = 'https://www.centinelia.mx';
 
 export const metadata: Metadata = {
   title: 'Recepcionista Virtual para Inmobiliarias',
-  description: 'Agente de voz con IA que atiende prospectos, filtra por presupuesto y agenda visitas a propiedades 24/7. No pierdas otro comprador. Plan Comercial desde $3,490/mes.',
+  description: 'Agente de voz con IA que atiende prospectos, filtra por presupuesto y agenda visitas a propiedades 24/7. No pierdas otro comprador. Plan Comercial desde $2,997/mes.',
   keywords: [
     'recepcionista virtual inmobiliaria', 'agente voz bienes raíces México',
     'agenda visitas propiedades automática', 'calificación leads inmobiliarios',
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: `${BASE_URL}/industrias/inmobiliarias` },
   openGraph: {
     title: 'Recepcionista Virtual para Inmobiliarias | Centinelia',
-    description: 'Agente de voz con IA que atiende prospectos, filtra por presupuesto y agenda visitas 24/7. Plan Comercial desde $3,490/mes.',
+    description: 'Agente de voz con IA que atiende prospectos, filtra por presupuesto y agenda visitas 24/7. Plan Comercial desde $2,997/mes.',
     url: `${BASE_URL}/industrias/inmobiliarias`,
     images: [{ url: '/og-image.png?v=2', width: 1200, height: 630 }],
   },
@@ -124,13 +125,12 @@ export default function InmobiliariasPage() {
       <LandingNav />
       <LandingWidgets />
 
+      {/* ── HERO ── */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>
-        {/* Background image + overlay */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <Image src="/hero-bg.png" alt="" fill priority quality={85} style={{ objectFit: 'cover', objectPosition: 'center' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(13,5,32,0.88) 0%, rgba(26,10,59,0.93) 100%)' }} />
         </div>
-        {/* Content */}
         <div className="max-w-4xl mx-auto px-6 text-center" style={{ paddingTop: 120, paddingBottom: 100, position: 'relative', zIndex: 1 }}>
           <p className="text-xs font-semibold tracking-widest uppercase mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>Centinelia para inmobiliarias</p>
           <h1 className="font-bold leading-tight mb-5" style={{ fontSize: 'clamp(2.2rem, 5vw, 4rem)', color: '#fff' }}>
@@ -139,8 +139,8 @@ export default function InmobiliariasPage() {
               cierra la venta
             </span>
           </h1>
-          <p className="mb-8 max-w-2xl mx-auto" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
-            Un agente de voz con IA atiende a tus prospectos al instante, filtra por presupuesto y agenda visitas, mientras tú estás mostrando propiedades o cerrando otros tratos.
+          <p className="mb-8 max-w-xl mx-auto" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
+            Atiende prospectos al instante, filtra por presupuesto y agenda visitas mientras muestras propiedades o cierras tratos.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/registro" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
@@ -151,33 +151,42 @@ export default function InmobiliariasPage() {
             </a>
           </div>
         </div>
-        {/* Meerkat, desktop, peeks from bottom edge (clipped by overflow:hidden) */}
         <MeerkatReveal className="agent-sway meerkat-headset-desk" style={{ zIndex: 2 }}>
           <Image src="/agent-headset.png" alt="" fill sizes="260px" style={{ objectFit: 'contain', objectPosition: 'top center' }} />
         </MeerkatReveal>
       </section>
 
+      {/* ── PROBLEMS ── */}
       <section style={{ background: C.bg, padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El problema</p>
-          <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>En bienes raíces, el tiempo de respuesta decide quién cierra</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PROBLEMS.map((p, i) => (
-              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
-                <div className="mb-4">{p.icon}</div>
-                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{p.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{p.desc}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-start">
+            <AnimatedSection>
+              <h2 className="font-bold" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text, lineHeight: 1.2 }}>
+                En bienes raíces, el tiempo de respuesta decide quién cierra
+              </h2>
+            </AnimatedSection>
+            <div>
+              {PROBLEMS.map((p, i) => (
+                <AnimatedSection key={i} delay={i * 0.1}>
+                  <div className="flex gap-4 items-start" style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, paddingBottom: 20 }}>
+                    <div style={{ flexShrink: 0, marginTop: 2 }}>{p.icon}</div>
+                    <div>
+                      <h3 className="font-semibold mb-1.5 text-sm" style={{ color: C.text }}>{p.title}</h3>
+                      <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{p.desc}</p>
+                    </div>
+                  </div>
+                </AnimatedSection>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
+      {/* ── SOLUTION ── */}
       <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>La solución</p>
+            <AnimatedSection>
               <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>Un agente que califica, informa y agenda mientras tú cierras</h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>Centinelia configura un agente entrenado con tu inventario y criterios de calificación. Responde al instante, filtra a los prospectos serios y te los entrega listos para visitar.</p>
               <ul className="space-y-3">
@@ -191,97 +200,137 @@ export default function InmobiliariasPage() {
               <Link href="/registro" className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
                 Contratar ahora <ArrowRight size={14} />
               </Link>
-            </div>
-            <div className="rounded-2xl p-8" style={{ background: 'linear-gradient(135deg, rgba(108,59,255,0.06), rgba(155,109,255,0.03))', border: `1px solid ${C.border}` }}>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}>
-                  <Building2 size={20} color="#fff" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: C.text }}>Agente activo ahora mismo</p>
-                  <p className="text-xs" style={{ color: C.textSub }}>Inmobiliaria ejemplo · 6:20 pm</p>
-                </div>
-              </div>
-              {[
-                { msg: '"Hola, vi un departamento en Cumbres de 2 recámaras, ¿sigue disponible?"' },
-                { msg: 'Sí, contamos con opciones en Cumbres. ¿Me puede decir su presupuesto aproximado para mostrarle las más adecuadas?', agent: true },
-                { msg: '"Estamos pensando en algo entre dos y dos cinco millones."' },
-                { msg: 'Perfecto, tenemos tres opciones en ese rango. ¿Le gustaría agendar una visita esta semana para conocerlas?', agent: true },
-              ].map((m, i) => (
-                <div key={i} className={`flex ${m.agent ? 'justify-end' : 'justify-start'} mb-3`}>
-                  <div className="max-w-[85%]">
-                    <div className="rounded-2xl px-4 py-2.5 text-xs leading-relaxed" style={{ background: m.agent ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' : '#f3f4f6', color: m.agent ? '#fff' : C.text }}>
-                      {m.msg}
-                    </div>
+            </AnimatedSection>
+            <AnimatedSection delay={0.12}>
+              <div className="rounded-2xl p-8" style={{ background: 'linear-gradient(135deg, rgba(108,59,255,0.06), rgba(155,109,255,0.03))', border: `1px solid ${C.border}` }}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}>
+                    <Building2 size={20} color="#fff" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: C.text }}>Agente activo ahora mismo</p>
+                    <p className="text-xs" style={{ color: C.textSub }}>Inmobiliaria ejemplo · 6:20 pm</p>
                   </div>
                 </div>
+                {[
+                  { msg: '"Hola, vi un departamento en Cumbres de 2 recámaras, ¿sigue disponible?"' },
+                  { msg: 'Sí, contamos con opciones en Cumbres. ¿Me puede decir su presupuesto aproximado para mostrarle las más adecuadas?', agent: true },
+                  { msg: '"Estamos pensando en algo entre dos y dos cinco millones."' },
+                  { msg: 'Perfecto, tenemos tres opciones en ese rango. ¿Le gustaría agendar una visita esta semana para conocerlas?', agent: true },
+                ].map((m, i) => (
+                  <div key={i} className={`flex ${m.agent ? 'justify-end' : 'justify-start'} mb-3`}>
+                    <div className="max-w-[85%]">
+                      <div className="rounded-2xl px-4 py-2.5 text-xs leading-relaxed" style={{ background: m.agent ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' : '#f3f4f6', color: m.agent ? '#fff' : C.text }}>
+                        {m.msg}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
+      {/* ── OUTBOUND ── */}
+      <section style={{ background: C.bg, padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <AnimatedSection className="mb-10">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>El agente también llama</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-16 items-end">
+              <h2 className="font-bold" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
+                Ningún lead se enfría solo
+              </h2>
+              <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>
+                Además de atender llamadas entrantes, el agente puede reactivar prospectos, confirmar visitas y avisar cuando hay propiedades nuevas.
+              </p>
+            </div>
+          </AnimatedSection>
+          <div>
+            {OUTBOUND_CASES.map((c, i) => (
+              <AnimatedSection key={i} delay={i * 0.1}>
+                <div className="flex gap-6 items-start" style={{ borderTop: `1px solid ${C.border}`, paddingTop: 24, paddingBottom: 24 }}>
+                  <span className="font-bold tabular-nums flex-shrink-0" style={{ fontSize: '2rem', lineHeight: 1, color: C.accent, opacity: 0.22 }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold mb-1.5" style={{ color: C.text }}>{c.title}</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
+                  </div>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <section style={{ background: '#fff', padding: '80px 24px' }}>
+        <div className="max-w-5xl mx-auto">
+          <AnimatedSection className="mb-10">
+            <h2 className="font-bold text-center" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>
+              Lo que dicen las inmobiliarias que ya lo usan
+            </h2>
+          </AnimatedSection>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <AnimatedSection className="lg:col-span-3">
+              <div className="rounded-2xl p-8 flex flex-col h-full" style={{ background: 'linear-gradient(160deg, #0D0520 0%, #1A0A3B 100%)', border: '1px solid rgba(108,59,255,0.3)' }}>
+                <div className="flex gap-0.5 mb-5">
+                  {Array.from({ length: 5 }).map((_, j) => <Star key={j} size={14} fill="#9B6DFF" color="#9B6DFF" />)}
+                </div>
+                <p className="leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1rem' }}>
+                  &ldquo;{TESTIMONIALS[0].quote}&rdquo;
+                </p>
+                <p className="mt-6 text-sm font-semibold" style={{ color: '#9B6DFF' }}>{TESTIMONIALS[0].author}</p>
+              </div>
+            </AnimatedSection>
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              {TESTIMONIALS.slice(1).map((t, i) => (
+                <AnimatedSection key={i} delay={(i + 1) * 0.1} className="flex-1">
+                  <div className="rounded-2xl p-6 flex flex-col gap-3 h-full" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, j) => <Star key={j} size={13} fill="#6C3BFF" color="#6C3BFF" />)}
+                    </div>
+                    <p className="text-sm leading-relaxed flex-1" style={{ color: C.textSub }}>&ldquo;{t.quote}&rdquo;</p>
+                    <p className="text-xs font-semibold" style={{ color: C.accent }}>{t.author}</p>
+                  </div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── FAQ ── */}
       <section style={{ background: C.bg, padding: '80px 24px' }}>
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold tracking-widest uppercase text-center mb-3" style={{ color: C.accent }}>El agente también llama</p>
-          <h2 className="font-bold text-center mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
-            Ningún lead se enfría solo
-          </h2>
-          <p className="text-center mb-12 max-w-xl mx-auto text-sm leading-relaxed" style={{ color: C.textSub }}>
-            Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para reactivar prospectos, confirmar visitas y avisar cuando hay propiedades nuevas.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {OUTBOUND_CASES.map((c, i) => (
-              <div key={i} className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
-                <div className="flex items-center justify-center rounded-xl mb-4" style={{ width: 40, height: 40, background: 'rgba(108,59,255,0.08)', flexShrink: 0 }}>
-                  <PhoneOutgoing size={18} color={C.accent} />
-                </div>
-                <h3 className="font-semibold mb-2 text-sm" style={{ color: C.text }}>{c.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{c.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section style={{ background: '#fff', padding: '80px 24px' }}>
-        <div className="max-w-5xl mx-auto">
-          <h2 className="font-bold text-center mb-12" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', color: C.text }}>Lo que dicen las inmobiliarias que ya lo usan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
-                <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, j) => <Star key={j} size={13} fill="#6C3BFF" color="#6C3BFF" />)}</div>
-                <p className="text-sm leading-relaxed flex-1" style={{ color: C.textSub }}>"{t.quote}"</p>
-                <p className="text-xs font-semibold" style={{ color: C.accent }}>, {t.author}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section style={{ background: '#fff', padding: '80px 24px' }}>
         <div className="max-w-2xl mx-auto">
-          <h2 className="font-bold text-center mb-10" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: C.text }}>Preguntas frecuentes de inmobiliarias</h2>
+          <AnimatedSection>
+            <h2 className="font-bold text-center mb-10" style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: C.text }}>Preguntas frecuentes de inmobiliarias</h2>
+          </AnimatedSection>
           <div className="space-y-4">
             {FAQS.map((f, i) => (
-              <div key={i} className="rounded-xl p-5" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-                <p className="font-semibold text-sm mb-2" style={{ color: C.text }}>{f.q}</p>
-                <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{f.a}</p>
-              </div>
+              <AnimatedSection key={i} delay={i * 0.07}>
+                <div className="rounded-xl p-5" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+                  <p className="font-semibold text-sm mb-2" style={{ color: C.text }}>{f.q}</p>
+                  <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{f.a}</p>
+                </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ── CTA ── */}
       <section className="relative overflow-hidden" style={{ background: 'linear-gradient(160deg, #0D0520 0%, #1A0A3B 100%)' }}>
-        <div className="max-w-2xl mx-auto px-6 text-center" style={{ paddingTop: 80, paddingBottom: 'clamp(160px, 30vw, 280px)', position: 'relative', zIndex: 1 }}>
-          <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}>Responde primero. Cierra más.</h2>
-          <p className="mb-8" style={{ color: 'rgba(255,255,255,0.58)', lineHeight: 1.7 }}>Activo en menos de 24 horas. Sin contratos de permanencia. Plan Comercial desde $3,490/mes.</p>
-          <Link href="/registro" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-            Activar mi agente ahora <ArrowRight size={15} />
-          </Link>
-        </div>
-        {/* Meerkat duo, peeks from bottom edge (clipped by overflow:hidden) */}
+        <AnimatedSection>
+          <div className="max-w-2xl mx-auto px-6 text-center" style={{ paddingTop: 80, paddingBottom: 'clamp(160px, 30vw, 280px)', position: 'relative', zIndex: 1 }}>
+            <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}>Responde primero. Cierra más.</h2>
+            <p className="mb-8" style={{ color: 'rgba(255,255,255,0.58)', lineHeight: 1.7 }}>Activo en menos de 24 horas. Sin contratos de permanencia. Plan Comercial desde $2,997/mes.</p>
+            <Link href="/registro" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
+              Activar mi agente ahora <ArrowRight size={15} />
+            </Link>
+          </div>
+        </AnimatedSection>
         <MeerkatReveal
           className="agent-sway absolute bottom-[-50px] sm:bottom-[-80px] left-1/2 -translate-x-1/2 pointer-events-none select-none w-[300px] h-[216px] sm:w-[580px] sm:h-[420px]"
           style={{ zIndex: 1 }}

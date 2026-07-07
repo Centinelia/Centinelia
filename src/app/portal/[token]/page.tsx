@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Plus } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Plus, Clock } from 'lucide-react';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -44,8 +44,6 @@ import PortalOutboundSection     from './PortalOutboundSection';
 import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
-import OutboundInstructionsEditor from './OutboundInstructionsEditor';
-import OutboundRoleSelector      from './OutboundRoleSelector';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -61,6 +59,23 @@ const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f
 const OUTBOUND_ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor', cotizador: 'Cotizador', seguimiento: 'Seguimiento',
   recuperacion: 'Recuperación', cobrador: 'Cobrador',
+};
+
+const FEED_OUTCOME: Record<string, { label: string; color: string; bg: string }> = {
+  lead_created:       { label: 'Lead',       color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'   },
+  appointment_booked: { label: 'Cita',       color: '#3b82f6', bg: 'rgba(59,130,246,0.1)'   },
+  order_taken:        { label: 'Pedido',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'   },
+  transferred:        { label: 'Transfer.',  color: '#a855f7', bg: 'rgba(168,85,247,0.1)'   },
+  info_provided:      { label: 'Info',       color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
+  escalated_whatsapp: { label: 'WhatsApp',   color: '#16a34a', bg: 'rgba(22,163,74,0.1)'    },
+  unanswered:         { label: 'Sin resp.',  color: '#9ca3af', bg: 'rgba(156,163,175,0.08)' },
+  missed:             { label: 'Perdida',    color: '#ef4444', bg: 'rgba(239,68,68,0.1)'    },
+  other:              { label: 'Completada', color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
+};
+const FEED_TYPE_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  lead:  { label: 'Lead',   color: '#22c55e', bg: 'rgba(34,197,94,0.1)'  },
+  order: { label: 'Pedido', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  appt:  { label: 'Cita',   color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
 };
 
 export default async function ClientPortalPage({ params, searchParams }: Props) {
@@ -147,7 +162,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);
   const resetDate       = minutesResetDate
     ? new Date(minutesResetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
-    : ',';
+    : 'N/A';
 
   const supportWhatsApp    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '';
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
@@ -169,7 +184,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     // Contacts tab
     supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('wa_leads').select('id, nombre, customer_number, whatsapp, email, negocio, giro, servicio, presupuesto, timeline, notas, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
-    supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
+    supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
   ]);
 
@@ -213,6 +228,37 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const avgMinPerDay    = allCalls.length > 0 ? (allTimeTotalMin / daysSinceFirst).toFixed(1) : '0';
   const avgMinPerWeek   = allCalls.length > 0 ? Math.round(allTimeTotalMin / (daysSinceFirst / 7)) : 0;
   const avgMinPerMonth  = allCalls.length > 0 ? Math.round(allTimeTotalMin / (daysSinceFirst / 30)) : 0;
+
+  const outboundCallCount = showOutbound
+    ? (since ? outboundCalls.filter((c: any) => c.called_at && c.called_at >= since).length : outboundCalls.length)
+    : 0;
+  const kpiCount     = 2
+    + (showLeads  && leads.length  > 0 ? 1 : 0)
+    + (showOrders && orders.length > 0 ? 1 : 0)
+    + (showAppts  && appts.length  > 0 ? 1 : 0)
+    + (showOutbound && outboundCallCount > 0 ? 1 : 0);
+  const kpiGridClass = kpiCount <= 2 ? 'grid-cols-2' : kpiCount === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4';
+
+  // Activity feed — merges calls + leads + orders + appts sorted by time
+  const resumenFeed: Array<{ type: 'call'|'lead'|'order'|'appt'; id: string; label: string; badge: string; sub: string|null; created_at: string }> = [
+    ...calls.map(c => ({
+      type:       'call' as const,
+      id:         c.id,
+      label:      callerNames[normPhone(c.caller_number ?? '')] ?? c.caller_number,
+      badge:      c.outcome as string,
+      sub:        `${Math.max(1, Math.ceil(c.duration_seconds / 60))} min`,
+      created_at: c.created_at,
+    })),
+    ...(showLeads  ? leads.map((l: any)  => ({ type: 'lead'  as const, id: l.id, label: (l.nombre  ?? 'Cliente') as string, badge: 'lead',  sub: null as string|null, created_at: l.created_at as string })) : []),
+    ...(showOrders ? orders.map((o: any) => ({ type: 'order' as const, id: o.id, label: (o.nombre  ?? 'Cliente') as string, badge: 'order', sub: o.total != null ? `$${o.total}` : null, created_at: o.created_at as string })) : []),
+    ...(showAppts  ? appts.map((a: any)  => ({ type: 'appt'  as const, id: a.id, label: (a.nombre  ?? 'Cliente') as string, badge: 'appt',  sub: a.fecha ? new Date(a.fecha + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : null, created_at: a.created_at as string })) : []),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+   .slice(0, 8);
+
+  // Outbound snapshot
+  const pendingOutboundCount    = showOutbound ? (contactOutbound as any[]).filter((c: any) => c.status === 'pending').length : 0;
+  const activeOutboundCampaigns = showOutbound ? (outboundCampaigns as any[]).filter((c: any) => c.status === 'active').length  : 0;
+  const lastCampaignRunAt       = showOutbound ? ((outboundCampaigns as any[]).find((c: any) => c.last_run_at)?.last_run_at ?? null) : null;
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'agentes',       label: 'Agentes' },
@@ -490,7 +536,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Define los días y horarios en que tu agente está disponible para atender llamadas.
+                </p>
                 <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
               </div>
 
@@ -511,7 +560,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {/* KPI strip */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />} value={String(calls.length)} label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
-                <KpiCard icon={<span style={{ fontSize: 16 }}>⏱</span>} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
+                <KpiCard icon={<Clock size={16} color="#6b7280" />} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
                 {showLeads && leads.length > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />} value={String(leads.length)} label="Leads" sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
               </div>
 
@@ -560,26 +609,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* KPI cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}  value={String(calls.length)}   label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
-                <KpiCard icon={<span style={{ fontSize: 16 }}>⏱</span>}  value={`${totalHours}h`}       label="Tiempo atendido"  valueColor="var(--c-text)" accentColor="#6b7280" />
-                {showLeads  && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}       value={String(leads.length)}   label="Leads"    sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
-                {showOrders && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />} value={String(orders.length)}  label="Pedidos"  sub={`${pendingOrders} pendientes`} valueColor="#f59e0b" accentColor="#f59e0b" />}
-                {showAppts  && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}value={String(appts.length)}   label="Citas"    sub={`${confirmedAppts} confirmadas`} valueColor="#3b82f6" accentColor="#3b82f6" />}
-              </div>
-
-              {/* Peak hours */}
-              {calls.length > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Horas pico
-                  </h2>
-                  <PeakHoursChart hourCounts={hourCounts} />
-                </div>
-              )}
-
-              {/* Period filter */}
+              {/* Period filter — first, affects all numbers below */}
               <div className="flex items-center gap-2">
                 <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
                 <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -596,27 +626,98 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
-              {/* Recent calls */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                    <PhoneCall size={13} /> Llamadas recientes
-                  </h2>
-                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                </div>
-                {calls.length === 0
-                  ? (
-                    <div className="flex flex-col items-center py-8 gap-3">
-                      <div className="relative" style={{ width: 64, height: 88 }}>
-                        <Image src="/agent-f2.png" alt="" fill sizes="64px"
-                          style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                      </div>
-                      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas en este período</p>
-                    </div>
-                  )
-                  : <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} />
-                }
+              {/* KPI cards */}
+              <div className={`grid ${kpiGridClass} gap-3`}>
+                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}     value={String(calls.length)}        label="Llamadas"        sub={`prom. ${avgDuration} min`}                                                                                  valueColor="#6C3BFF"       accentColor="#6C3BFF"  />
+                <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalHours}h`}            label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
+                {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
+                {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
+                {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
+                {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
               </div>
+
+              {/* Peak hours */}
+              {calls.length > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Horas pico
+                  </h2>
+                  <PeakHoursChart hourCounts={hourCounts} />
+                </div>
+              )}
+
+              {/* Activity feed */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Actividad reciente
+                </h2>
+                {resumenFeed.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <div className="relative" style={{ width: 64, height: 88 }}>
+                      <Image src="/agent-f2.png" alt="" fill sizes="64px"
+                        style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {resumenFeed.map((item, idx) => {
+                      const cfg = item.type === 'call'
+                        ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
+                        : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
+                      return (
+                        <div key={`${item.type}-${item.id}`}
+                          className="flex items-center gap-3 py-2.5"
+                          style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ background: cfg.bg, color: cfg.color }}>
+                            {item.type === 'call'  && <Phone        size={12} />}
+                            {item.type === 'lead'  && <Users        size={12} />}
+                            {item.type === 'order' && <ShoppingBag  size={12} />}
+                            {item.type === 'appt'  && <CalendarDays size={12} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
+                              {item.label}
+                            </span>
+                            {item.sub && (
+                              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
+                            )}
+                          </div>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                            style={{ background: cfg.bg, color: cfg.color }}>
+                            {cfg.label}
+                          </span>
+                          <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
+                            {fmtRelative(item.created_at)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Outbound snapshot */}
+              {showOutbound && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                      <PhoneOutgoing size={13} /> Salientes
+                    </h2>
+                    <Link href={`/portal/${token}?tab=salientes`}
+                      className="text-xs transition-opacity hover:opacity-70"
+                      style={{ color: '#9B6DFF' }}>
+                      Ver salientes →
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
+                    <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
+                    <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -624,44 +725,61 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'actividad' && (
             <div className="flex flex-col gap-5">
               {!showLeads && !showOrders && !showAppts ? (
+                /* Features not enabled for this agent */
                 <div className="flex flex-col items-center py-12 gap-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="relative" style={{ width: 140, height: 200 }}>
                     <Image src="/agent-duo-stand.png" alt="" fill sizes="140px"
                       style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Tu equipo está listo, esperando la primera llamada</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Leads, pedidos y citas están disponibles en planes superiores</p>
+                  <div className="text-center px-8">
+                    <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Captura de leads, citas y pedidos no está activa</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Estas funciones se habilitan según la configuración de tu agente.</p>
                   </div>
                 </div>
-              ) : (
-                <>
-                  {(
-                    [
-                      showOrders && { count: orders.length, el: (
-                        <CollapsibleSection key="orders" title="Pedidos" icon={<ShoppingBag size={14} />} defaultOpen={orders.length > 0} count={orders.length}>
-                          <PortalOrdersSection initialOrders={orders as any} token={token} isPro={agent.plan === 'pro'} />
-                        </CollapsibleSection>
-                      )},
-                      showAppts && { count: appts.length, el: (
-                        <CollapsibleSection key="appts" title="Citas" icon={<CalendarDays size={14} />} defaultOpen={appts.length > 0} count={appts.length}>
-                          <PortalAppointmentsSection initialAppointments={appts as any} token={token} label="cita" isPro={agent.plan === 'pro'} />
-                        </CollapsibleSection>
-                      )},
-                      showLeads && { count: leads.length, el: (
-                        <CollapsibleSection key="leads" title="Leads" icon={<Users size={14} />} defaultOpen={leads.length > 0} count={leads.length}>
-                          <PortalLeadsSection initialLeads={leads as any} token={token} isPro={agent.plan === 'pro'}
-                            filename={`leads-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                        </CollapsibleSection>
-                      )},
-                    ] as ({ count: number; el: React.ReactNode } | false)[]
-                  )
-                    .filter((s): s is { count: number; el: React.ReactNode } => !!s)
-                    .sort((a, b) => b.count - a.count)
-                    .map(s => s.el)
-                  }
-                </>
-              )}
+              ) : (() => {
+                const visibleSections = (
+                  [
+                    showOrders && orders.length > 0 && { count: orders.length, el: (
+                      <CollapsibleSection key="orders" title="Pedidos" icon={<ShoppingBag size={14} />} defaultOpen count={orders.length}>
+                        <PortalOrdersSection initialOrders={orders as any} token={token} isPro={agent.plan === 'pro'} />
+                      </CollapsibleSection>
+                    )},
+                    showAppts && appts.length > 0 && { count: appts.length, el: (
+                      <CollapsibleSection key="appts" title="Citas" icon={<CalendarDays size={14} />} defaultOpen count={appts.length}>
+                        <PortalAppointmentsSection initialAppointments={appts as any} token={token} label="cita" isPro={agent.plan === 'pro'} />
+                      </CollapsibleSection>
+                    )},
+                    showLeads && leads.length > 0 && { count: leads.length, el: (
+                      <CollapsibleSection key="leads" title="Leads" icon={<Users size={14} />} defaultOpen count={leads.length}>
+                        <PortalLeadsSection initialLeads={leads as any} token={token} isPro={agent.plan === 'pro'}
+                          filename={`leads-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+                      </CollapsibleSection>
+                    )},
+                  ] as ({ count: number; el: React.ReactNode } | false)[]
+                ).filter((s): s is { count: number; el: React.ReactNode } => !!s)
+                 .sort((a, b) => b.count - a.count);
+
+                if (visibleSections.length === 0) return (
+                  /* Features enabled, no data yet */
+                  <div className="flex flex-col items-center py-12 gap-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div className="relative" style={{ width: 72, height: 100 }}>
+                      <Image src="/agent-f2.png" alt="" fill sizes="72px"
+                        style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                    </div>
+                    <div className="text-center px-8">
+                      <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Aún no hay actividad registrada</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Los leads, citas y pedidos que el agente capture aparecerán aquí.</p>
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <>
+                    <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Todos los registros desde el inicio</p>
+                    {visibleSections.map(s => s.el)}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -680,7 +798,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
                 <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
                   <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
-                  <span>Reset: {resetDate}</span>
+                  <span>Se renueva el {resetDate}</span>
                 </div>
                 {rolloverMinutes > 0 && (
                   <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
@@ -702,9 +820,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* Buy extra */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              {/* Buy extra — border/urgency scales with usage */}
+              <div className="rounded-xl p-5" style={{
+                background:       minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
+                border:           minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
+                backdropFilter:   'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              }}>
                 <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
+                {minutesPct >= 70 && (
+                  <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                    <AlertTriangle size={11} />
+                    {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
+                  </p>
+                )}
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
                 <BuyMinutesSection token={token} />
               </div>
@@ -736,8 +864,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {/* Ledger */}
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                 <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
-                <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
-                  <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                <div className="relative">
+                  <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                    <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+                    style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                 </div>
               </div>
             </div>
@@ -753,31 +885,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               />
               {(agent.features as any)?.outbound_calls && (
                 <>
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento saliente</h2>
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                      Instrucciones específicas para cuando este agente hace llamadas: objetivo de la llamada, qué decir, cómo manejar objeciones. Define el rol de este agente (vendedor, cobrador, seguimiento, etc.).
-                    </p>
-                    <OutboundInstructionsEditor
-                      token={token}
-                      initialValue={(agent as any).outbound_knowledge_base ?? ''}
-                    />
-                  </div>
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Rol del agente saliente</h2>
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                      Define el propósito principal de este agente en llamadas salientes. Ayuda a organizar tus agentes cuando tienes más de uno.
-                    </p>
-                    <OutboundRoleSelector
-                      token={token}
-                      initialRole={(agent as any).outbound_role ?? null}
-                    />
-                  </div>
                   <OutboundSection
                     token={token}
                     initialContacts={contactOutbound as any[]}
                     initialCampaigns={outboundCampaigns as any[]}
-                    agents={allClientAgents.map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+                    agents={allClientAgents
+                      .filter(a => !!(a.features as any)?.outbound_calls)
+                      .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
                   />
                 </>
               )}
@@ -787,7 +901,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── INTEGRACIONES ────────────────────────────────────────────── */}
           {tab === 'integraciones' && (
             <div className="flex flex-col gap-5">
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                 <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Calendario</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                   Cal.com crea la cita directamente durante la llamada. Calendly y Google Calendar envían el link de reserva al cliente por WhatsApp.
@@ -906,4 +1020,17 @@ function StatBox({ label, value, highlight }: { label: string; value: string; hi
       <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{label}</div>
     </div>
   );
+}
+
+function fmtRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return 'ahora';
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24) return `hace ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'ayer';
+  if (days < 7)  return `hace ${days} días`;
+  return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }

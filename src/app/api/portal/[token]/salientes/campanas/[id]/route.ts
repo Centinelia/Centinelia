@@ -135,6 +135,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (result.ok) {
       triggered++;
       await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
+      await supabase.from('outbound_calls').insert({
+        agent_id:     agent.id,
+        contact_id:   contact.id,
+        campaign_id:  id,
+        telefono:     contact.telefono,
+        nombre:       contact.nombre   ?? null,
+        motivo:       campaign.motivo  ?? contact.motivo ?? null,
+        vapi_call_id: result.callId    ?? null,
+        status:       'calling',
+        called_at:    new Date().toISOString(),
+      });
     } else {
       failed++;
     }

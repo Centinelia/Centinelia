@@ -3,7 +3,8 @@
 import { useState, useMemo, useRef } from 'react';
 import {
   Phone, Plus, Upload, Trash2, Loader2, Check, X, PhoneCall, RefreshCw,
-  Pencil, PhoneOutgoing, Pause, Play, CalendarClock,
+  Pencil, PhoneOutgoing, Pause, Play, CalendarClock, Search, AlertTriangle,
+  ChevronDown, ChevronUp, BarChart2,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ interface Contact {
   motivo:     string | null;
   source:     'llamada_entrante' | 'csv' | 'manual';
   status:     'pending' | 'calling' | 'completed' | 'failed' | 'cancelled';
+  fail_count: number;
   created_at: string;
 }
 
@@ -156,6 +158,91 @@ function CampaignStatusBadge({ status }: { status: Campaign['status'] }) {
       style={{ background: cfg.bg, color: cfg.color }}>
       {cfg.label}
     </span>
+  );
+}
+
+// ── Campaign result types & sub-components ───────────────────────────────────
+
+interface CampaignResult {
+  id:               string;
+  contact_id:       string | null;
+  nombre:           string | null;
+  telefono:         string;
+  status:           string;
+  called_at:        string | null;
+  vapi_call_id:     string | null;
+  summary:          string | null;
+  duration_seconds: number | null;
+  outcome:          string | null;
+}
+
+function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="rounded-lg px-2.5 py-2 text-center flex-1"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div className="text-base font-bold tabular-nums leading-none" style={{ color }}>{value}</div>
+      <div className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--c-text-3)' }}>{label}</div>
+    </div>
+  );
+}
+
+function CampaignResultsPanel({ results }: { results: CampaignResult[] }) {
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  const total     = results.length;
+  const answered  = results.filter(r => ['completed', 'answered'].includes(r.status)).length;
+  const noAnswer  = results.filter(r => r.status === 'no_answer').length;
+  const failed    = results.filter(r => r.status === 'failed').length;
+
+  return (
+    <div className="flex flex-col gap-3 pt-1">
+      {/* Stats row */}
+      <div className="flex gap-2">
+        <StatPill label="Total"         value={total}    color="var(--c-text-2)" />
+        <StatPill label="Contestaron"   value={answered} color="#22c55e"         />
+        <StatPill label="No contestaron" value={noAnswer} color="#f59e0b"        />
+        <StatPill label="Fallidas"      value={failed}   color="#ef4444"         />
+      </div>
+
+      {/* Per-call rows */}
+      <div className="flex flex-col gap-1.5">
+        {results.map(r => (
+          <div key={r.id} className="rounded-xl overflow-hidden"
+            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+            <div className="px-3 py-2.5 flex items-center gap-2.5 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>
+                  {r.nombre ?? r.telefono}
+                </span>
+                {r.nombre && (
+                  <span className="text-xs ml-2 font-mono" style={{ color: 'var(--c-text-3)' }}>{r.telefono}</span>
+                )}
+              </div>
+              <StatusPill status={r.status as Contact['status']} />
+              {r.duration_seconds != null && r.duration_seconds > 0 && (
+                <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+                  {Math.ceil(r.duration_seconds / 60)} min
+                </span>
+              )}
+              {r.summary && (
+                <button type="button"
+                  onClick={() => setExpandedRowId(expandedRowId === r.id ? null : r.id)}
+                  className="p-1 rounded-lg transition-opacity hover:opacity-70 flex-shrink-0"
+                  style={{ color: '#9B6DFF', background: 'rgba(108,59,255,0.08)', border: 'none', cursor: 'pointer' }}>
+                  {expandedRowId === r.id ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+              )}
+            </div>
+            {expandedRowId === r.id && r.summary && (
+              <div className="px-3 pb-3"
+                style={{ borderTop: '1px solid var(--c-border)' }}>
+                <p className="text-xs leading-relaxed pt-2.5" style={{ color: 'var(--c-text-2)' }}>{r.summary}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -385,11 +472,14 @@ export default function OutboundSection({
   const [selectedAgentId, setSelectedAgentId] = useState<string>(agents[0]?.id ?? '');
   const [calling,         setCalling]         = useState(false);
   const [callResult,      setCallResult]      = useState<{ triggered: number; failed: number } | null>(null);
+  const [showCallConfirm, setShowCallConfirm] = useState(false);
+  const [contactSearch,   setContactSearch]   = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactSaving,   setContactSaving]   = useState(false);
   const [deleting,        setDeleting]        = useState(false);
   const [refreshing,      setRefreshing]      = useState(false);
   const [contactError,    setContactError]    = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [nombre,    setNombre]    = useState('');
   const [telefono,  setTelefono]  = useState('');
@@ -401,17 +491,22 @@ export default function OutboundSection({
   const [campaigns,     setCampaigns]     = useState<Campaign[]>(initialCampaigns);
   const [showCampForm,  setShowCampForm]  = useState(false);
   const [editCampaign,  setEditCampaign]  = useState<Campaign | null>(null);
-  const [running,       setRunning]       = useState<string | null>(null);
-  const [campError,     setCampError]     = useState('');
+  const [running,          setRunning]          = useState<string | null>(null);
+  const [campError,        setCampError]        = useState('');
+  const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
+  const [campaignResults,  setCampaignResults]  = useState<Record<string, CampaignResult[]>>({});
+  const [loadingResultId,  setLoadingResultId]  = useState<string | null>(null);
 
   // ── Contacts derived ──────────────────────────────────────────────────────────
   const pendingContacts = contacts.filter(c => c.status === 'pending');
   const selectedPending = [...selected].filter(id => contacts.find(c => c.id === id && c.status === 'pending'));
 
-  const visibleContacts = useMemo(() =>
-    sourceFilter === 'all' ? contacts : contacts.filter(c => c.source === sourceFilter),
-    [contacts, sourceFilter]
-  );
+  const visibleContacts = useMemo(() => {
+    const q = contactSearch.trim().toLowerCase();
+    return contacts
+      .filter(c => sourceFilter === 'all' || c.source === sourceFilter)
+      .filter(c => !q || c.nombre?.toLowerCase().includes(q) || c.telefono.includes(q));
+  }, [contacts, sourceFilter, contactSearch]);
 
   const visiblePending = visibleContacts.filter(c => c.status === 'pending');
 
@@ -443,6 +538,7 @@ export default function OutboundSection({
 
   const handleCall = async () => {
     if (!selectedPending.length) return;
+    setShowCallConfirm(false);
     setCalling(true);
     setCallResult(null);
     setContactError('');
@@ -454,8 +550,10 @@ export default function OutboundSection({
       });
       const data = await res.json();
       if (!res.ok) { setContactError(data.error ?? 'Error al llamar'); return; }
-      setCallResult({ triggered: data.triggered, failed: data.failed });
+      const result = { triggered: data.triggered, failed: data.failed };
+      setCallResult(result);
       setSelected(new Set());
+      setTimeout(() => setCallResult(null), 5000);
       await refresh();
     } finally { setCalling(false); }
   };
@@ -545,10 +643,24 @@ export default function OutboundSection({
   };
 
   const handleDeleteCampaign = async (id: string) => {
-    if (!confirm('¿Eliminar esta campaña? Esta acción no se puede deshacer.')) return;
+    setConfirmDeleteId(null);
     const res = await fetch(`/api/portal/${token}/salientes/campanas/${id}`, { method: 'DELETE' });
     if (res.ok) setCampaigns(prev => prev.filter(c => c.id !== id));
     else { const d = await res.json(); setCampError(d.error ?? 'Error al eliminar'); }
+  };
+
+  const fetchCampaignResults = async (campaignId: string) => {
+    if (expandedResultId === campaignId) { setExpandedResultId(null); return; }
+    setExpandedResultId(campaignId);
+    if (campaignResults[campaignId]) return;
+    setLoadingResultId(campaignId);
+    try {
+      const res = await fetch(`/api/portal/${token}/salientes/campanas/${campaignId}/resultados`);
+      if (res.ok) {
+        const data = await res.json();
+        setCampaignResults(prev => ({ ...prev, [campaignId]: data }));
+      }
+    } finally { setLoadingResultId(null); }
   };
 
   const handleCampaignSaved = (saved: Campaign) => {
@@ -660,10 +772,30 @@ export default function OutboundSection({
             </form>
           )}
 
-          {/* CSV hint */}
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            Formato CSV: columnas <span className="font-mono">nombre, telefono, motivo</span>. La primera fila puede ser encabezado.
-          </p>
+          {/* Search + CSV hint row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: 'var(--c-text-3)' }} />
+              <input
+                type="text"
+                value={contactSearch}
+                onChange={e => setContactSearch(e.target.value)}
+                placeholder="Buscar por nombre o teléfono…"
+                className="w-full pl-8 pr-8 py-2 rounded-lg text-xs outline-none"
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              />
+              {contactSearch && (
+                <button onClick={() => setContactSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                  style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+            <p className="text-xs shrink-0" style={{ color: 'var(--c-text-3)' }}>
+              CSV: columnas <span className="font-mono">nombre, telefono, motivo</span>
+            </p>
+          </div>
 
           {/* Contacts table */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
@@ -722,7 +854,15 @@ export default function OutboundSection({
                         <SourceBadge source={c.source} />
                       </td>
                       <td className="px-4 py-3">
-                        <StatusPill status={c.status} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusPill status={c.status} />
+                          {c.fail_count > 0 && c.status !== 'completed' && c.status !== 'cancelled' && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums"
+                              style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                              ×{c.fail_count}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -733,43 +873,76 @@ export default function OutboundSection({
 
           {/* Action bar */}
           {contacts.length > 0 && (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs flex-1" style={{ color: 'var(--c-text-3)' }}>
-                {selectedPending.length} seleccionado{selectedPending.length !== 1 ? 's' : ''} de {pendingContacts.length}
-              </span>
-
-              {agents.length > 1 && (
-                <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
-                  className="rounded-xl px-3 py-2.5 text-sm outline-none"
-                  style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                  {agents.map(a => (
-                    <option key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</option>
-                  ))}
-                </select>
-              )}
-
-              <button type="button" onClick={handleCall} disabled={calling || selectedPending.length === 0}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-40"
-                style={{ background: selectedPending.length > 0 ? '#6C3BFF' : 'var(--c-surface-2)', color: selectedPending.length > 0 ? '#fff' : 'var(--c-text-3)' }}>
-                {calling ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
-                {calling ? 'Llamando…' : `Llamar seleccionados${selectedPending.length > 0 ? ` (${selectedPending.length})` : ''}`}
-              </button>
-
-              {selected.size > 0 && (
-                <button type="button" onClick={handleDelete} disabled={deleting}
-                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                  style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                  Eliminar {selected.size > 1 ? `(${selected.size})` : ''}
-                </button>
-              )}
-
-              {callResult && (
-                <span className="text-xs flex items-center gap-1.5" style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
-                  <Check size={12} />
-                  {callResult.triggered} llamada{callResult.triggered !== 1 ? 's' : ''} iniciada{callResult.triggered !== 1 ? 's' : ''}
-                  {callResult.failed > 0 && `, ${callResult.failed} fallida${callResult.failed !== 1 ? 's' : ''}`}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs flex-1" style={{ color: 'var(--c-text-3)' }}>
+                  {selectedPending.length} seleccionado{selectedPending.length !== 1 ? 's' : ''} de {pendingContacts.length}
                 </span>
+
+                {/* Agent selector (multi-agent) or label (single agent) */}
+                {agents.length > 1 ? (
+                  <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
+                    className="rounded-xl px-3 py-2 text-xs outline-none"
+                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
+                    {agents.map(a => (
+                      <option key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</option>
+                    ))}
+                  </select>
+                ) : agents.length === 1 ? (
+                  <span className="text-xs px-2.5 py-1 rounded-full"
+                    style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                    {agents[0].agent_name ?? agents[0].business_name}
+                  </span>
+                ) : null}
+
+                <button type="button"
+                  onClick={() => selectedPending.length > 0 && !showCallConfirm && setShowCallConfirm(true)}
+                  disabled={calling || selectedPending.length === 0}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-40"
+                  style={{ background: selectedPending.length > 0 ? '#6C3BFF' : 'var(--c-surface-2)', color: selectedPending.length > 0 ? '#fff' : 'var(--c-text-3)' }}>
+                  {calling ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                  {calling ? 'Llamando…' : `Llamar seleccionados${selectedPending.length > 0 ? ` (${selectedPending.length})` : ''}`}
+                </button>
+
+                {selected.size > 0 && !showCallConfirm && (
+                  <button type="button" onClick={handleDelete} disabled={deleting}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
+                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                    Eliminar {selected.size > 1 ? `(${selected.size})` : ''}
+                  </button>
+                )}
+
+                {callResult && (
+                  <span className="text-xs flex items-center gap-1.5" style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
+                    <Check size={12} />
+                    {callResult.triggered} llamada{callResult.triggered !== 1 ? 's' : ''} iniciada{callResult.triggered !== 1 ? 's' : ''}
+                    {callResult.failed > 0 && `, ${callResult.failed} fallida${callResult.failed !== 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </div>
+
+              {/* Confirmation panel */}
+              {showCallConfirm && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-wrap"
+                  style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+                  <AlertTriangle size={14} style={{ color: '#9B6DFF', flexShrink: 0 }} />
+                  <p className="text-sm flex-1" style={{ color: 'var(--c-text-2)' }}>
+                    ¿Iniciar <strong style={{ color: 'var(--c-text)' }}>{selectedPending.length} llamada{selectedPending.length !== 1 ? 's' : ''}</strong> reales ahora?
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={handleCall}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                      style={{ background: '#6C3BFF', color: '#fff' }}>
+                      <Phone size={12} /> Confirmar
+                    </button>
+                    <button type="button" onClick={() => setShowCallConfirm(false)}
+                      className="px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
+                      style={{ color: 'var(--c-text-3)' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -865,49 +1038,65 @@ export default function OutboundSection({
                       <CampaignStatusBadge status={c.status} />
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {/* Run now */}
-                      <button type="button"
-                        onClick={() => handleRunCampaign(c.id)}
-                        disabled={running === c.id}
-                        title="Ejecutar ahora"
-                        className="p-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
-                        style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)' }}>
-                        {running === c.id
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <PhoneOutgoing size={14} />}
-                      </button>
-
-                      {/* Edit */}
-                      <button type="button"
-                        onClick={() => { setEditCampaign(c); setShowCampForm(false); }}
-                        title="Editar"
-                        className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-                        style={{ color: 'var(--c-text-2)', background: 'var(--c-surface-2)' }}>
-                        <Pencil size={14} />
-                      </button>
-
-                      {/* Pause / Activate */}
-                      {c.status !== 'completed' && (
-                        <button type="button"
-                          onClick={() => handleToggleCampaign(c)}
-                          title={c.status === 'active' ? 'Pausar' : 'Activar'}
-                          className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-                          style={{ color: c.status === 'active' ? '#f59e0b' : '#22c55e', background: c.status === 'active' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)' }}>
-                          {c.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                    {/* Action buttons or inline delete confirm */}
+                    {confirmDeleteId === c.id ? (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>¿Eliminar?</span>
+                        <button type="button" onClick={() => handleDeleteCampaign(c.id)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                          style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                          Sí
                         </button>
-                      )}
+                        <button type="button" onClick={() => setConfirmDeleteId(null)}
+                          className="px-2.5 py-1 rounded-lg text-xs transition-opacity hover:opacity-70"
+                          style={{ color: 'var(--c-text-3)' }}>
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {/* Run now */}
+                        <button type="button"
+                          onClick={() => handleRunCampaign(c.id)}
+                          disabled={running === c.id}
+                          title="Ejecutar ahora"
+                          className="p-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
+                          style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)' }}>
+                          {running === c.id
+                            ? <Loader2 size={14} className="animate-spin" />
+                            : <PhoneOutgoing size={14} />}
+                        </button>
 
-                      {/* Delete */}
-                      <button type="button"
-                        onClick={() => handleDeleteCampaign(c.id)}
-                        title="Eliminar"
-                        className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-                        style={{ color: '#ef4444', background: 'rgba(239,68,68,0.08)' }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                        {/* Edit */}
+                        <button type="button"
+                          onClick={() => { setEditCampaign(c); setShowCampForm(false); }}
+                          title="Editar"
+                          className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                          style={{ color: 'var(--c-text-2)', background: 'var(--c-surface-2)' }}>
+                          <Pencil size={14} />
+                        </button>
+
+                        {/* Pause / Activate */}
+                        {c.status !== 'completed' && (
+                          <button type="button"
+                            onClick={() => handleToggleCampaign(c)}
+                            title={c.status === 'active' ? 'Pausar' : 'Activar'}
+                            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                            style={{ color: c.status === 'active' ? '#f59e0b' : '#22c55e', background: c.status === 'active' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)' }}>
+                            {c.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                        )}
+
+                        {/* Delete */}
+                        <button type="button"
+                          onClick={() => setConfirmDeleteId(c.id)}
+                          title="Eliminar"
+                          className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+                          style={{ color: '#ef4444', background: 'rgba(239,68,68,0.08)' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Schedule description */}
@@ -938,6 +1127,34 @@ export default function OutboundSection({
                       {c.instrucciones}
                     </p>
                   )}
+
+                  {/* Results toggle */}
+                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 10, marginTop: 2 }}>
+                    <button type="button" onClick={() => fetchCampaignResults(c.id)}
+                      className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                      style={{ color: '#9B6DFF', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      {loadingResultId === c.id
+                        ? <Loader2 size={11} className="animate-spin" />
+                        : expandedResultId === c.id
+                          ? <ChevronUp size={11} />
+                          : <BarChart2 size={11} />}
+                      {loadingResultId === c.id
+                        ? 'Cargando…'
+                        : expandedResultId === c.id
+                          ? 'Ocultar resultados'
+                          : `Ver resultados${campaignResults[c.id]?.length ? ` (${campaignResults[c.id].length})` : ''}`}
+                    </button>
+
+                    {expandedResultId === c.id && !loadingResultId && (
+                      campaignResults[c.id]?.length
+                        ? <CampaignResultsPanel results={campaignResults[c.id]} />
+                        : (
+                          <p className="text-xs py-3 text-center" style={{ color: 'var(--c-text-3)' }}>
+                            Sin llamadas registradas aún. Ejecuta la campaña para ver resultados.
+                          </p>
+                        )
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -139,7 +139,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
         />
       </div>
 
-      {/* WhatsApp */}
+      {/* WhatsApp — TODO: descomentar cuando se lance el canal de WhatsApp
       <div className="rounded-2xl p-5 flex items-center justify-between gap-4" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -162,6 +162,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
             style={{ transform: waActive ? 'translateX(20px)' : 'translateX(0)' }} />
         </button>
       </div>
+      */}
 
       {/* Knowledge base */}
       <div className="flex flex-col gap-3 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

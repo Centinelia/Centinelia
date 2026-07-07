@@ -340,7 +340,7 @@ h1, h2, h3, h4, h5, h6 {
     display: block;
     position: absolute;
     bottom: -20px;
-    left: 40px;
+    left: 0;
     width: 360px;
     height: 400px;
     z-index: 1;
@@ -364,6 +364,17 @@ h1, h2, h3, h4, h5, h6 {
 input:focus, textarea:focus {
   border-color: rgba(108,59,255,0.5) !important;
   box-shadow: 0 0 0 3px rgba(108,59,255,0.1);
+}
+
+/* ── Select option colors (browser uses OS popup — must hardcode) ────────── */
+/* Without this, options inherit white CSS text on white OS background      */
+select option {
+  background-color: #1D0B3E;
+  color: #e2e8f0;
+}
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #1A0A3B;
 }
 
 /* ── Feature card hover lift (light sections) ───────────────────────────── */

@@ -15,7 +15,9 @@ export default function ContractSection({ token, businessName, signedAt, contrac
   const [checked, setChecked]   = useState(false);
   const [loading, setLoading]   = useState(false);
   const [done, setDone]         = useState(!!signedAt);
-  const [signedDate, setSignedDate] = useState<string | null>(signedAt);
+  const [signedDate, setSignedDate] = useState<string | null>(
+    signedAt ? new Date(signedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : null
+  );
 
   const handleSign = async () => {
     if (!checked || loading) return;
@@ -34,7 +36,7 @@ export default function ContractSection({ token, businessName, signedAt, contrac
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: `1px solid ${done ? 'rgba(34,197,94,0.25)' : 'var(--c-border)'}` }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: `1px solid ${done ? 'rgba(34,197,94,0.25)' : 'var(--c-border)'}`, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       {/* Header */}
       <button
         onClick={() => setOpen(o => !o)}

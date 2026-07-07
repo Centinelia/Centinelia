@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -22,34 +23,41 @@ const DEMO_PHONE_HREF = 'tel:+528121888490';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const FEATURES = [
+const FEATURES: {
+  icon: React.ReactNode; color: string; title: string; desc: string;
+  cardBg?: string; cardBorder?: string;
+}[] = [
   {
-    icon:  <Users size={20} color="#7c3aed" />,
-    color: '#7c3aed',
+    icon:  <Users size={20} color="#6C3BFF" />,
+    color: '#6C3BFF',
     title: 'Captura de leads',
     desc:  'Registra nombre, contacto y necesidades de cada prospecto y los guarda en tu portal automáticamente.',
   },
   {
-    icon:  <CalendarDays size={20} color="#2563eb" />,
-    color: '#2563eb',
+    icon:  <CalendarDays size={20} color="#9B6DFF" />,
+    color: '#9B6DFF',
     title: 'Agenda de citas',
     desc:  'Confirma, modifica y cancela citas sin que muevas un dedo. El cliente habla, el agente registra.',
+    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(155,109,255,0.05) 100%)',
+    cardBorder: 'rgba(155,109,255,0.35)',
   },
   {
-    icon:  <ShoppingBag size={20} color="#d97706" />,
-    color: '#d97706',
+    icon:  <ShoppingBag size={20} color="#6C3BFF" />,
+    color: '#6C3BFF',
     title: 'Toma de pedidos',
     desc:  'Registra pedidos por teléfono con todos los detalles: productos, cantidades y dirección de entrega.',
   },
   {
-    icon:  <PhoneOutgoing size={20} color="#059669" />,
-    color: '#059669',
+    icon:  <PhoneOutgoing size={20} color="#9B6DFF" />,
+    color: '#9B6DFF',
     title: 'Llamadas salientes',
     desc:  'Tu agente llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas de forma automática.',
+    cardBg: 'linear-gradient(145deg, rgba(108,59,255,0.2) 0%, rgba(108,59,255,0.06) 100%)',
+    cardBorder: 'rgba(108,59,255,0.36)',
   },
   {
-    icon:  <BarChart3 size={20} color="#0891b2" />,
-    color: '#0891b2',
+    icon:  <BarChart3 size={20} color="#6C3BFF" />,
+    color: '#6C3BFF',
     title: 'Portal de reportes',
     desc:  'Monitorea llamadas, leads, citas y minutos desde tu portal exclusivo. Todo en un solo lugar.',
   },
@@ -65,6 +73,8 @@ const FEATURES = [
     color: '#4285F4',
     title: 'Reseñas Google automáticas',
     desc:  'Tras cada llamada exitosa, tu agente manda el link de tu reseña Google por WhatsApp. Más reseñas, sin pedir favores.',
+    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(108,59,255,0.05) 100%)',
+    cardBorder: 'rgba(155,109,255,0.35)',
   },
 ];
 
@@ -226,11 +236,6 @@ export default function LandingPage() {
               <AudioWaveform barCount={22} />
             </div>
 
-            {/* Eyebrow */}
-            <p className="text-xs font-semibold tracking-widest uppercase mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Agente de voz con inteligencia artificial
-            </p>
-
             {/* Headline */}
             <h1
               className="font-bold leading-[1.06] tracking-tight mb-3"
@@ -257,13 +262,12 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Centinelia atiende y realiza tus llamadas, captura leads, agenda
-              citas y toma pedidos con IA, las 24 horas, los 7 días, mientras
-              tú atiendes lo que importa.
+              Tu agente atiende y realiza llamadas, captura leads, agenda citas
+              y toma pedidos, mientras tú atiendes lo que importa.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 mb-10">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
               <Link
                 href="/registro"
                 className="cta-pulse flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
@@ -287,16 +291,29 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Trust chips */}
-            <div className="grid grid-cols-2 gap-x-5 gap-y-2 mx-auto sm:mx-0 w-fit">
-              {['Sin contrato mínimo', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
-                <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
-                  <Check size={11} color="#9B6DFF" /> {t}
-                </span>
-              ))}
-            </div>
-
           </div>
+        </div>
+
+        {/* Trust chips — pinned al fondo del hero, visible sin scroll */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 90,
+            left: 0,
+            right: 0,
+            zIndex: 3,
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: '6px 28px',
+            padding: '0 20px',
+          }}
+        >
+          {['Sin contrato mínimo', 'Activo en menos de 24 h', 'Número local incluido', 'Soporte en español'].map(t => (
+            <span key={t} className="flex items-center gap-1.5 text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              <Check size={11} color="#9B6DFF" /> {t}
+            </span>
+          ))}
         </div>
       </section>
 
@@ -339,7 +356,7 @@ export default function LandingPage() {
               />
             </MeerkatReveal>
             <div style={{ paddingLeft: 112 }}>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: '#9B6DFF' }}>
+              <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'rgba(155,109,255,0.7)' }}>
                 El problema
               </p>
               <h2
@@ -357,7 +374,7 @@ export default function LandingPage() {
 
           {/* Desktop: centered heading */}
           <div className="hidden lg:block text-center mb-14">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: '#9B6DFF' }}>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
               El problema
             </p>
             <h2
@@ -485,14 +502,14 @@ export default function LandingPage() {
                 <div
                   className="feature-card rounded-2xl p-6 h-full"
                   style={{
-                    background:  C.surface,
-                    border:      `1px solid ${C.border}`,
+                    background:  f.cardBg ?? C.surface,
+                    border:      `1px solid ${f.cardBorder ?? C.border}`,
                     boxShadow:   '0 2px 16px rgba(108,59,255,0.05)',
                   }}
                 >
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: `${f.color}10`, border: `1px solid ${f.color}22` }}
+                    style={{ background: `${f.color}22`, border: `1px solid ${f.color}44` }}
                   >
                     {f.icon}
                   </div>
@@ -511,8 +528,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── CÓMO FUNCIONA ────────────────────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-5 sm:px-8 pt-16 sm:pt-20 pb-20 lg:pb-0 relative overflow-hidden">
-        <AnimatedSection className="text-center mb-8">
+      <section className="max-w-5xl mx-auto px-5 sm:px-8 pt-16 sm:pt-24 pb-20 lg:pb-12 relative overflow-hidden">
+
+        <AnimatedSection className="mb-12 lg:mb-16">
           <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
             Cómo funciona
           </p>
@@ -524,38 +542,42 @@ export default function LandingPage() {
           </h2>
         </AnimatedSection>
 
-        {/* Steps + character side by side on desktop, stacked on mobile */}
-        <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-16">
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-8 flex-1">
-            {[
-              { n: '01', title: 'Elige tu plan y paga',       desc: 'Selecciona el plan que se adapte a tu negocio y completa el pago en línea. Tarda menos de 5 minutos.' },
-              { n: '02', title: 'Configura tu agente',         desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu agente.' },
-              { n: '03', title: 'Empieza a recibir llamadas',  desc: 'Tu número queda activo en horas. Tu agente atiende, tú solo monitoreas desde el portal.' },
-            ].map((s, i) => (
-              <AnimatedSection key={s.n} delay={i * 0.12}>
-              <div className="flex gap-5 items-start">
+        {/* Editorial numbered list — unique layout vs 3-col cards elsewhere */}
+        <div className="lg:pr-72">
+          {[
+            { n: '01', title: 'Elige tu plan y paga',       desc: 'Selecciona el plan que se adapte a tu negocio y completa el pago en línea. Tarda menos de 5 minutos.' },
+            { n: '02', title: 'Configura tu agente',         desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu agente.' },
+            { n: '03', title: 'Empieza a recibir llamadas',  desc: 'Tu número queda activo en horas. Tu agente atiende, tú solo monitoreas desde el portal.' },
+          ].map((s, i) => (
+            <AnimatedSection key={s.n} delay={i * 0.12}>
+              <div
+                className="flex items-start gap-6 sm:gap-10 py-7 sm:py-8"
+                style={{ borderBottom: i < 2 ? `1px solid ${C.border}` : 'none' }}
+              >
                 <span
-                  className="font-bold tabular-nums flex-shrink-0"
-                  style={{ fontSize: '2.8rem', color: 'rgba(108,59,255,0.18)', lineHeight: 1, minWidth: 64 }}
+                  className="font-bold tabular-nums flex-shrink-0 select-none"
+                  style={{ fontSize: 'clamp(3rem, 5vw, 4rem)', color: 'rgba(108,59,255,0.13)', lineHeight: 1, minWidth: 72 }}
                 >
                   {s.n}
                 </span>
                 <div className="pt-1">
-                  <h3 className="font-semibold mb-1.5" style={{ color: C.text }}>{s.title}</h3>
+                  <h3 className="font-semibold text-base sm:text-lg mb-2" style={{ color: C.text }}>{s.title}</h3>
                   <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{s.desc}</p>
                 </div>
               </div>
-              </AnimatedSection>
-            ))}
-          </div>
-
-          {/* Character, desktop: lateral en el flex, mobile: oculto aquí */}
-          <MeerkatReveal className="agent-float-slow meerkat-duo-stand overflow-hidden">
-            <Image src="/agent-duo-stand2.png" alt="Agentes Centinelia" fill
-              sizes="340px"
-              style={{ objectFit: 'cover', objectPosition: 'center 85%' }} />
-          </MeerkatReveal>
+            </AnimatedSection>
+          ))}
         </div>
+
+        {/* Character peeking bottom-right, desktop only */}
+        <MeerkatReveal
+          className="agent-float-slow meerkat-duo-stand overflow-hidden"
+          style={{ position: 'absolute', right: -16, bottom: -20 }}
+        >
+          <Image src="/agent-duo-stand2.png" alt="Agentes Centinelia" fill
+            sizes="340px"
+            style={{ objectFit: 'cover', objectPosition: 'center 85%' }} />
+        </MeerkatReveal>
 
       </section>
 
@@ -826,23 +848,26 @@ export default function LandingPage() {
           {/* ─── Empresarial ────────────────────────── */}
           <AnimatedSection>
           <div
-            className="relative rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6"
-            style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)', overflow: 'hidden' }}
+            className="relative rounded-2xl p-4 sm:p-8 flex flex-row items-center gap-3 sm:gap-6"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}
           >
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <Rocket size={18} color="#f59e0b" />
+            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'rgba(108,59,255,0.18)', border: '1px solid rgba(108,59,255,0.35)' }}>
+              <Rocket size={16} color="#C4A8FF" />
             </div>
-            <div className="flex-1 xl:pr-44">
-              <p className="font-bold mb-1" style={{ color: '#fff', fontSize: '1.1rem' }}>Empresarial</p>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            <div className="flex-1 min-w-0 xl:pr-44">
+              <p className="font-bold leading-tight" style={{ color: '#fff', fontSize: '1rem' }}>Empresarial</p>
+              <p className="text-sm hidden sm:block mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
                 Múltiples agentes y sucursales, integración con tu POS o CRM, flujos a medida y SLA dedicado.
+              </p>
+              <p className="text-xs sm:hidden mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Múltiples agentes · POS/CRM · SLA dedicado
               </p>
             </div>
             <Link
               href="/registro?plan=empresarial"
-              className="flex-shrink-0 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
-              style={{ background: '#f59e0b', color: '#000' }}
+              className="flex-shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all hover:opacity-90"
+              style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)' }}
             >
               Cotizar
             </Link>
@@ -854,91 +879,124 @@ export default function LandingPage() {
 
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden" style={{ padding: '0' }}>
+      <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 2 }}>
         <MeerkatReveal className="agent-float-slow meerkat-faq-desk">
           <Image src="/agent-duo-phones.png" alt="" fill sizes="360px"
             style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
         </MeerkatReveal>
-      <div className="max-w-3xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 2 }}>
-        <AnimatedSection className="text-center mb-12">
-          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-            Preguntas frecuentes
-          </p>
-          <h2
-            className="font-bold tracking-tight"
-            style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
-          >
-            Resolvemos tus dudas
-          </h2>
-        </AnimatedSection>
-        <FaqSection />
+        <div className="lg:grid lg:grid-cols-5 lg:gap-16 lg:items-start">
+          <div className="mb-4 lg:mb-0 lg:col-span-2 lg:pt-2" style={{ position: 'relative' }}>
+            <AnimatedSection>
+              <div className="pr-40 lg:pr-0">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
+                  Preguntas frecuentes
+                </p>
+                <h2
+                  className="font-bold tracking-tight"
+                  style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text, lineHeight: 1.1 }}
+                >
+                  Resolvemos<br />tus dudas
+                </h2>
+              </div>
+            </AnimatedSection>
+            <MeerkatReveal
+              className="lg:hidden agent-float-slow absolute"
+              style={{ bottom: -50, right: 0, width: 140, height: 180, zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}
+            >
+              <Image src="/agent-duo-phones.png" alt="" fill sizes="140px"
+                style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
+            </MeerkatReveal>
+          </div>
+          <div className="lg:col-span-3" style={{ position: 'relative', zIndex: 1 }}>
+            <FaqSection />
+          </div>
+        </div>
       </div>
       </section>
 
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ background: '#1A0A3B' }}>
-        {/* Glow */}
-        <div style={{
-          position:     'absolute',
-          top:          0,
-          left:         '50%',
-          transform:    'translateX(-50%)',
-          width:        700,
-          height:       500,
-          background:   'radial-gradient(circle, rgba(108,59,255,0.3) 0%, transparent 65%)',
-          pointerEvents:'none',
-          zIndex:       0,
-        }} />
-
-        {/* Centered text, bottom padding creates space for the duo below */}
-        <div className="relative max-w-3xl mx-auto px-5 sm:px-8 pt-24 sm:pt-28 text-center" style={{ zIndex: 2, paddingBottom: 'clamp(160px, 30vw, 280px)' }}>
-        <AnimatedSection>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: '#9B6DFF' }}>
-            Tu equipo te espera
-          </p>
-          <h2
-            className="font-bold tracking-tight mb-5"
-            style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#fff' }}
-          >
-            Mientras tú atiendes tu negocio,<br />ellos atienden el teléfono.
-          </h2>
-          <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
-            Tu agente puede estar en línea en menos de 24 horas.<br />
-            Sin contratos largos. Sin complicaciones.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/registro"
-              className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
-              style={{
-                background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
-                color:      '#fff',
-              }}
-            >
-              Contratar ahora <ArrowRight size={15} />
-            </Link>
-            <a
-              href="tel:+528116333559"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-all hover:opacity-90"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                color:      'rgba(255,255,255,0.72)',
-                border:     '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <Phone size={14} /> Habla con un asesor
-            </a>
-          </div>
-        </AnimatedSection>
+      <section className="relative" style={{ background: '#1A0A3B' }}>
+        {/* Glow wrapper — overflow:hidden aquí, no en section, para que los meerkats desborden */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{
+            position:  'absolute',
+            top:       0,
+            left:      '30%',
+            transform: 'translateX(-50%)',
+            width:     700,
+            height:    500,
+            background:'radial-gradient(circle, rgba(108,59,255,0.3) 0%, transparent 65%)',
+          }} />
         </div>
 
-        {/* Duo flotante, peeking up from the bottom edge */}
-        <MeerkatReveal className="agent-sway absolute bottom-[-50px] sm:bottom-[-80px] left-1/2 -translate-x-1/2 pointer-events-none w-[300px] h-[216px] sm:w-[580px] sm:h-[420px]" style={{ zIndex: 1 }}>
-          <Image src="/agent-duo-call.png" alt="Equipo Centinelia" fill
-            sizes="(max-width: 640px) 300px, 580px" style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-        </MeerkatReveal>
+        {/* ── Mobile: centrado + duo al fondo ─────────────────────────── */}
+        <div
+          className="lg:hidden relative max-w-3xl mx-auto px-5 sm:px-8 pt-24 sm:pt-28 text-center"
+          style={{ paddingBottom: 'clamp(160px, 30vw, 280px)' }}
+        >
+          <AnimatedSection>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+              Tu equipo te espera
+            </p>
+            <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(1.8rem, 6vw, 2.8rem)', color: '#fff' }}>
+              Mientras tú atiendes tu negocio,<br />ellos atienden el teléfono.
+            </h2>
+            <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
+              Tu agente puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
+                Contratar ahora <ArrowRight size={15} />
+              </Link>
+              <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Phone size={14} /> Habla con un asesor
+              </a>
+            </div>
+          </AnimatedSection>
+          <MeerkatReveal className="agent-sway absolute bottom-[-50px] sm:bottom-[-80px] left-1/2 -translate-x-1/2 pointer-events-none w-[300px] h-[216px] sm:w-[580px] sm:h-[420px]">
+            <Image src="/agent-duo-call.png" alt="Equipo Centinelia" fill sizes="(max-width: 640px) 300px, 580px" style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
+          </MeerkatReveal>
+        </div>
+
+        {/* ── Desktop: texto + meerkat dentro del contenedor max-6xl ────── */}
+        <div
+          className="hidden lg:block max-w-6xl mx-auto px-8 pt-28 pb-20"
+          style={{ position: 'relative' }}
+        >
+          <AnimatedSection style={{ maxWidth: 520 }}>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+              Tu equipo te espera
+            </p>
+            <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', color: '#fff', lineHeight: 1.1 }}>
+              Mientras tú atiendes<br />tu negocio, ellos<br />atienden el teléfono.
+            </h2>
+            <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420 }}>
+              Tu agente puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.
+            </p>
+            <div className="flex items-start gap-3">
+              <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
+                Contratar ahora <ArrowRight size={15} />
+              </Link>
+              <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Phone size={14} /> Habla con un asesor
+              </a>
+            </div>
+          </AnimatedSection>
+
+          {/* Meerkat absoluto dentro del max-6xl: right/bottom relativo a este contenedor */}
+          <MeerkatReveal
+            className="agent-sway"
+            style={{ position: 'absolute', bottom: -20, right: 32, width: 500, height: 380 }}
+          >
+            <Image src="/agent-duo-call.png" alt="Equipo Centinelia" fill sizes="500px"
+              style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
+          </MeerkatReveal>
+        </div>
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+      {/* Wrapper full-width con z-index:1 para que el footer actúe como capa encima del meerkat */}
+      <div style={{ position: 'relative', zIndex: 1, background: C.bg }}>
       <footer
         className="max-w-6xl mx-auto px-5 sm:px-8 pt-5 pb-24 sm:py-10 relative"
         style={{ borderTop: `1px solid ${C.border}` }}
@@ -1050,6 +1108,7 @@ export default function LandingPage() {
         </div>
 
       </footer>
+      </div>
 
       <LandingWidgets />
     </div>

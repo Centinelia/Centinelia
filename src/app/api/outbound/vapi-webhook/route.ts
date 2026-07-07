@@ -52,6 +52,26 @@ export async function POST(req: NextRequest) {
       .update({ status: 'no_answer', outcome: 'no_answer', next_retry_at: retryAt })
       .eq('id', outboundCall.id);
 
+    // Update contact fail_count; auto-delete at 3 failures
+    if (outboundCall.contact_id) {
+      const { data: contact } = await supabase
+        .from('outbound_contacts')
+        .select('fail_count')
+        .eq('id', outboundCall.contact_id)
+        .single();
+
+      if (contact) {
+        const newFailCount = ((contact.fail_count as number) ?? 0) + 1;
+        if (newFailCount >= 3) {
+          await supabase.from('outbound_contacts').delete().eq('id', outboundCall.contact_id);
+        } else {
+          await supabase.from('outbound_contacts')
+            .update({ status: 'pending', fail_count: newFailCount })
+            .eq('id', outboundCall.contact_id);
+        }
+      }
+    }
+
     // WhatsApp fallback on second failed attempt
     if (!isFirstAttempt && !outboundCall.wa_fallback_sent && outboundCall.telefono) {
       const agent = outboundCall.voice_agents as { phone_number: string } | null;

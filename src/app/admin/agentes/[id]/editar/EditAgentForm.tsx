@@ -416,6 +416,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           </CollapsibleSection>
 
           {/* WhatsApp — solo Pro */}
+          {/* TODO: descomentar cuando se lance el canal de WhatsApp
           <CollapsibleSection
             id="whatsapp"
             open={funcOpen.has('whatsapp')}
@@ -430,6 +431,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               onToggle={() => plan === 'pro' && setWaActive(v => !v)}
             />
           </CollapsibleSection>
+          */}
 
           {/* Horarios */}
           <CollapsibleSection

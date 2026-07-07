@@ -458,10 +458,15 @@ function RegistroInner() {
             </p>
 
             {/* ── Sección A: Tipo de agente ─────────────── */}
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3"
-              style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Paso 1 — Tipo de agente · Pago único de instalación
-            </p>
+            <div className="mb-3">
+              <p className="text-xs font-semibold tracking-widest uppercase"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Paso 1 — Tipo de agente
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                Pago único de instalación
+              </p>
+            </div>
             <div className="flex flex-col gap-3 mb-8">
               {AGENT_PLANS.map(p => {
                 const selected = plan === p.id;
@@ -539,10 +544,15 @@ function RegistroInner() {
             {/* ── Sección B: Minutos mensuales (solo si no empresarial) ──── */}
             {plan !== 'empresarial' && (
               <>
-                <p className="text-xs font-semibold tracking-widest uppercase mb-3"
-                  style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  Paso 2 — Minutos al mes · Mensualidad recurrente
-                </p>
+                <div className="mb-3">
+                  <p className="text-xs font-semibold tracking-widest uppercase"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    Paso 2 — Minutos al mes
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                    Mensualidad recurrente
+                  </p>
+                </div>
                 <div className="flex flex-col gap-2 mb-6">
                   {TIERS.map(t => {
                     const selected = tier === t.id;
@@ -567,18 +577,20 @@ function RegistroInner() {
                           >
                             {selected && <div className="w-2 h-2 rounded-full bg-white" />}
                           </div>
-                          <div className="flex-1 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white">{t.label}</span>
-                              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.minutes} min/mes</span>
-                              {t.popular && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold"
-                                  style={{ background: 'rgba(108,59,255,0.2)', color: '#9B6DFF' }}>
-                                  Más usado
-                                </span>
-                              )}
+                          <div className="flex-1 flex items-center justify-between gap-2">
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-white">{t.label}</span>
+                                {t.popular && (
+                                  <span className="text-[10px] px-1 py-px rounded-full font-semibold leading-none whitespace-nowrap flex-shrink-0"
+                                    style={{ background: 'rgba(108,59,255,0.2)', color: '#9B6DFF' }}>
+                                    Más usado
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{t.minutes} min/mes</span>
                             </div>
-                            <span className="font-bold tabular-nums" style={{ color: selected ? '#9B6DFF' : '#fff', fontSize: 15 }}>
+                            <span className="font-bold tabular-nums flex-shrink-0" style={{ color: selected ? '#9B6DFF' : '#fff', fontSize: 15 }}>
                               {priceFmt(price)}/mes
                             </span>
                           </div>
@@ -587,7 +599,7 @@ function RegistroInner() {
                     );
                   })}
                 </div>
-                <p className="text-xs mb-6" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
                   Minutos extra fuera del plan: $12.99 MXN / min
                 </p>
               </>

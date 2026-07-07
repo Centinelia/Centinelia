@@ -129,7 +129,7 @@ export default async function MinutesLedgerSection({
     <div className="flex flex-col gap-1">
       {/* Current balance header, sticky so it stays visible while scrolling */}
       <div className="flex items-center justify-between mb-2 pb-2 sticky top-0 z-10"
-        style={{ borderBottom: '1px solid var(--c-divider)', background: 'var(--c-bg)' }}>
+        style={{ borderBottom: '1px solid var(--c-divider)', background: 'var(--c-surface)' }}>
         <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Saldo actual</span>
         <span className="text-sm font-bold" style={{ color: currentBalance > 0 ? '#22c55e' : '#ef4444' }}>
           {currentBalance} min

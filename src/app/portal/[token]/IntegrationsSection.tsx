@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Calendar, CalendarCheck, Check, ChevronDown, ChevronUp, ExternalLink, Lock, MessageCircle, Save } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
@@ -78,6 +78,7 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
     calendar_type: null, calendar_event_type_id: '', calendar_link: '',
     cal_api_configured: false, cal_api_key: '',
   });
+  const cleanState = useRef<Pick<State, 'calendar_type' | 'calendar_event_type_id' | 'calendar_link'> | null>(null);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
@@ -88,10 +89,22 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
       .then(r => r.json())
       .then(d => {
         setState(prev => ({ ...prev, ...d, cal_api_key: '' }));
+        cleanState.current = {
+          calendar_type:          d.calendar_type ?? null,
+          calendar_event_type_id: d.calendar_event_type_id ?? '',
+          calendar_link:          d.calendar_link ?? '',
+        };
         setLoading(false);
         if (d.calendar_type) setExpanded(d.calendar_type);
       });
   }, [token]);
+
+  const isDirty = cleanState.current === null ? false : (
+    state.calendar_type          !== cleanState.current.calendar_type          ||
+    state.calendar_event_type_id !== cleanState.current.calendar_event_type_id ||
+    state.calendar_link          !== cleanState.current.calendar_link          ||
+    state.cal_api_key            !== ''
+  );
 
   const set = (key: keyof State, val: string | null) =>
     setState(prev => ({ ...prev, [key]: val }));
@@ -112,6 +125,11 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
     });
     setSaving(false);
     setSaved(true);
+    cleanState.current = {
+      calendar_type:          state.calendar_type,
+      calendar_event_type_id: state.calendar_event_type_id,
+      calendar_link:          state.calendar_link,
+    };
     if (state.cal_api_key) setState(prev => ({ ...prev, cal_api_configured: true, cal_api_key: '' }));
     setTimeout(() => setSaved(false), 2500);
   };
@@ -255,7 +273,7 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
                         color:      isActive ? '#22c55e' : intg.accentColor === '#000' ? 'var(--c-text)' : intg.accentColor,
                       }}
                     >
-                      {isActive ? '✓ Seleccionado' : `Usar ${intg.label}`}
+                      {isActive ? <><Check size={12} /> Seleccionado</> : `Usar ${intg.label}`}
                     </button>
                     {isActive && (
                       <button
@@ -277,13 +295,14 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
       {/* Save */}
       <button
         onClick={handleSave}
-        disabled={saving}
-        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+        disabled={saving || !isDirty}
+        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
         style={{
-          background: saved ? 'rgba(34,197,94,0.15)' : '#6C3BFF',
-          border:     saved ? '1px solid rgba(34,197,94,0.3)' : 'none',
-          color:      saved ? '#22c55e' : '#fff',
+          background: saved  ? 'rgba(34,197,94,0.15)' : isDirty ? '#6C3BFF' : 'var(--c-surface-2)',
+          border:     saved  ? '1px solid rgba(34,197,94,0.3)' : isDirty ? 'none' : '1px solid var(--c-border)',
+          color:      saved  ? '#22c55e' : isDirty ? '#fff' : 'var(--c-text-3)',
           opacity:    saving ? 0.6 : 1,
+          cursor:     isDirty && !saving ? 'pointer' : 'default',
         }}
       >
         {saved ? <><Check size={14} /> Guardado</> : <><Save size={14} /> {saving ? 'Guardando…' : 'Guardar integración'}</>}
@@ -297,7 +316,7 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
           <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Podemos conectar cualquier sistema, escríbenos</p>
         </div>
         {SUPPORT_WA && (
-          <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`}
+          <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('¡Hola! Quiero conectar una herramienta a mi agente de voz, ¿pueden ayudarme?')}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
             style={{ background: '#25D366', color: '#fff' }}>

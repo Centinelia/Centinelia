@@ -63,7 +63,7 @@ export default function OutboundRoleSelector({
       >
         <option value="">Sin rol asignado</option>
         {OUTBOUND_ROLES.map(r => (
-          <option key={r.id} value={r.id}>{r.label} — {r.desc}</option>
+          <option key={r.id} value={r.id}>{r.label}: {r.desc}</option>
         ))}
       </select>
 

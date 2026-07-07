@@ -18,7 +18,6 @@ import ResyncButton              from '../ResyncButton';
 import SupportChat               from '../SupportChat';
 import OutboundInstructionsEditor from '../OutboundInstructionsEditor';
 import OutboundRoleSelector from '../OutboundRoleSelector';
-import KnowledgeBaseEditor from '../KnowledgeBaseEditor';
 
 const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
 const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
@@ -97,22 +96,22 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
 
           {agent.plan === 'pro' && (
-            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
               <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                 Voz del agente
               </h2>
-              <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                 Elige la voz con la que tu agente atenderá las llamadas. Usa el botón ▶ para escuchar una muestra.
               </p>
               <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
             </div>
           )}
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
               Llamadas entrantes
             </h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
               Ajusta cómo saluda el agente, cuándo transfiere y cómo trata a los clientes.
             </p>
             <AgentCustomization
@@ -123,24 +122,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Base de conocimiento
-            </h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-              Catálogo, precios y FAQs que el agente usa en todas las conversaciones — entrantes y salientes.
-            </p>
-            <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
-          </div>
-
           {showOutbound && (
-            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
               <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                 Llamadas salientes
               </h2>
-              <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-                Define el objetivo de tus campañas, qué decir, cómo manejar objeciones y qué hacer si no contestan.
-              </p>
               <div className="mb-5 pb-5" style={{ borderBottom: '1px solid var(--c-border)' }}>
                 <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-3)' }}>
                   Rol del agente
@@ -161,11 +147,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             </div>
           )}
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
               Notificaciones
             </h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
               Elige cómo quieres recibir la información de cada llamada.
             </p>
             <NotificationsToggle
@@ -175,7 +161,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <ResyncButton token={token} />
           </div>
 

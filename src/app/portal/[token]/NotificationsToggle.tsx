@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle, Mail } from 'lucide-react';
+import { Check, MessageCircle, Mail } from 'lucide-react';
 
 interface Props {
   token:        string;
@@ -127,7 +127,7 @@ export default function NotificationsToggle({ token, initWhatsApp, initEmail }: 
               <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: 0, lineHeight: 1.3 }}>
                 {r.label}
                 {saved === r.field && (
-                  <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Guardado ✓</span>
+                  <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} /> Guardado</span>
                 )}
               </p>
               <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '2px 0 0', lineHeight: 1.4 }}>
