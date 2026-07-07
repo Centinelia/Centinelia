@@ -13,28 +13,43 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
-  const { data: agent } = await supabase
+  // Verify the portal token belongs to this session
+  const { data: portalAgent } = await supabase
     .from('voice_agents')
-    .select('id, vapi_agent_id, phone_number, business_name, features')
+    .select('id, portal_email')
     .eq('portal_token', token)
     .eq('portal_email', session.portalEmail)
     .single();
 
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  if (!portalAgent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  const body = await req.json() as { contactIds: string[]; agentId?: string };
+  const { contactIds, agentId } = body;
+  if (!contactIds?.length) return NextResponse.json({ error: 'Se requieren contactIds' }, { status: 400 });
+
+  // Resolve which agent makes the calls:
+  // if agentId is provided and belongs to the same client, use it; otherwise use the portal agent
+  const targetId = agentId ?? portalAgent.id;
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('*')
+    .eq('id', targetId)
+    .eq('portal_email', session.portalEmail)
+    .single();
+
+  if (!agent) return NextResponse.json({ error: 'Agente no encontrado o no autorizado' }, { status: 403 });
   if (!agent.features?.outbound_calls) {
-    return NextResponse.json({ error: 'Tu plan no incluye llamadas salientes' }, { status: 403 });
+    return NextResponse.json({ error: 'Este agente no tiene llamadas salientes activas' }, { status: 403 });
   }
   if (!agent.vapi_agent_id) {
     return NextResponse.json({ error: 'El agente no está sincronizado con Vapi' }, { status: 400 });
   }
 
-  const { contactIds } = await req.json() as { contactIds: string[] };
-  if (!contactIds?.length) return NextResponse.json({ error: 'Se requieren contactIds' }, { status: 400 });
-
+  // Contacts must belong to the portal's own agent (where they were captured)
   const { data: contacts } = await supabase
     .from('outbound_contacts')
     .select('*')
-    .eq('agent_id', agent.id)
+    .eq('agent_id', portalAgent.id)
     .in('id', contactIds);
 
   if (!contacts?.length) return NextResponse.json({ error: 'Contactos no encontrados' }, { status: 404 });
@@ -58,14 +73,14 @@ export async function POST(req: NextRequest, { params }: Params) {
         .eq('id', contact.id);
 
       await supabase.from('outbound_calls').insert({
-        agent_id:    agent.id,
-        contact_id:  contact.id,
-        telefono:    contact.telefono,
-        nombre:      contact.nombre ?? null,
-        motivo:      contact.motivo ?? null,
+        agent_id:     agent.id,
+        contact_id:   contact.id,
+        telefono:     contact.telefono,
+        nombre:       contact.nombre ?? null,
+        motivo:       contact.motivo ?? null,
         vapi_call_id: result.callId ?? null,
-        status:      'calling',
-        called_at:   new Date().toISOString(),
+        status:       'calling',
+        called_at:    new Date().toISOString(),
       });
     } else {
       await supabase

@@ -45,6 +45,7 @@ import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
 import OutboundInstructionsEditor from './OutboundInstructionsEditor';
+import OutboundRoleSelector      from './OutboundRoleSelector';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -719,6 +720,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     token={token}
                     initialValue={(agent as any).outbound_knowledge_base ?? ''}
                   />
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Rol del agente saliente</h2>
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                      Define el propósito principal de este agente en llamadas salientes. Ayuda a organizar tus agentes cuando tienes más de uno.
+                    </p>
+                    <OutboundRoleSelector
+                      token={token}
+                      initialRole={(agent as any).outbound_role ?? null}
+                    />
+                  </div>
                   <OutboundSection
                     token={token}
                     initialContacts={contactOutbound as any[]}
