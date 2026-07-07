@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Plus } from 'lucide-react';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -58,6 +58,10 @@ interface Props {
 
 const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
 const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
+const OUTBOUND_ROLE_LABELS: Record<string, string> = {
+  vendedor: 'Vendedor', cotizador: 'Cotizador', seguimiento: 'Seguimiento',
+  recuperacion: 'Recuperación', cobrador: 'Cobrador',
+};
 
 export default async function ClientPortalPage({ params, searchParams }: Props) {
   const { token }          = await params;
@@ -86,7 +90,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: clientAgents } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features')
+        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, outbound_role, stripe_customer_id')
         .eq('portal_email', lookupEmail)
     : { data: [] };
   const allClientAgents = clientAgents ?? [];
@@ -313,14 +317,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <Link
                 href={`/registro?back=/portal/${token}`}
                 className="flex items-center justify-between px-5 py-4 rounded-xl transition-all group"
-                style={{
-                  background: 'rgba(108,59,255,0.06)',
-                  border:     '1px dashed rgba(108,59,255,0.35)',
-                }}>
+                style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)' }}>
-                    <span style={{ fontSize: 16 }}>+</span>
+                    <Plus size={16} color="#9B6DFF" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: '#9B6DFF' }}>Agregar otro agente</p>
@@ -333,8 +334,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </Link>
 
               {businessGroups.length === 0 && (
-                <p className="text-sm text-center py-12" style={{ color: 'var(--c-text-3)' }}>Sin agentes asociados</p>
+                <div className="flex flex-col items-center gap-3 py-14 rounded-xl"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                    <PhoneCall size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin agentes asociados a tu cuenta</p>
+                  <p className="text-xs text-center px-10" style={{ color: 'var(--c-text-3)' }}>
+                    Contrata tu primer agente usando el mismo correo y aparecerá aquí automáticamente.
+                  </p>
+                </div>
               )}
+
               {businessGroups.map(group => (
                 <div key={group.business_name} className="rounded-xl overflow-hidden"
                   style={{ border: '1px solid var(--c-border)' }}>
@@ -342,7 +354,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {/* Business header */}
                   <div className="flex items-center gap-4 px-5 py-4"
                     style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
-                    {/* Logo or initials */}
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
                       style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
                       {group.logo_url
@@ -360,28 +371,32 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
 
-                  {/* Agents for this business */}
+                  {/* Agents */}
                   {group.agents.map((a: any, i: number) => {
                     const isBillingPaused = !a.active && a.billing_status === 'pago_fallido';
                     const isClientPaused  = !!(a.client_paused) && !isBillingPaused;
+                    const isInactive      = !a.active && !isBillingPaused && !isClientPaused;
                     const isCurrent       = a.portal_token === token;
+                    const isOnline        = a.active && !isClientPaused && !isBillingPaused;
 
                     let statusLabel = 'Activo';
                     let statusColor = '#16a34a';
                     let statusBg    = 'rgba(34,197,94,0.1)';
-                    if (isBillingPaused)    { statusLabel = 'Pago pendiente'; statusColor = '#dc2626'; statusBg = 'rgba(239,68,68,0.08)'; }
-                    else if (isClientPaused){ statusLabel = 'Pausado';        statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
+                    if (isBillingPaused) { statusLabel = 'Pago pendiente'; statusColor = '#dc2626'; statusBg = 'rgba(239,68,68,0.08)'; }
+                    else if (isClientPaused) { statusLabel = 'Pausado'; statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
+                    else if (isInactive) { statusLabel = 'Inactivo'; statusColor = '#6b7280'; statusBg = 'rgba(107,114,128,0.1)'; }
 
                     return (
-                      <div key={a.id} className="flex items-center gap-3 px-4 py-2.5"
+                      <div key={a.id} className="flex items-center gap-3 px-4 py-3"
                         style={{
-                          background: 'var(--c-surface-2)',
-                          borderTop: i > 0 ? '1px solid var(--c-divider)' : undefined,
+                          background: isCurrent ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)',
+                          borderTop:  i > 0 ? '1px solid var(--c-divider)' : undefined,
+                          borderLeft: isCurrent ? '3px solid #6C3BFF' : '3px solid transparent',
                         }}>
 
                         {/* Status dot */}
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${a.active && !isClientPaused && !isBillingPaused ? 'animate-pulse' : ''}`}
-                          style={{ background: a.active && !isClientPaused && !isBillingPaused ? '#22c55e' : '#ef4444' }} />
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'animate-pulse' : ''}`}
+                          style={{ background: isOnline ? '#22c55e' : isBillingPaused ? '#ef4444' : '#6b7280' }} />
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
@@ -389,6 +404,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
                               {a.agent_name?.trim() || 'Centinelia'}
                             </span>
+                            {isCurrent && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}>
+                                Actual
+                              </span>
+                            )}
                             {(() => { const pc = PLAN_COLORS[a.plan] ?? '#6b7280'; return (
                               <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
                                 style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
@@ -399,16 +420,29 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                               style={{ background: statusBg, color: statusColor }}>
                               {statusLabel}
                             </span>
+                            {a.outbound_role && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
+                                {OUTBOUND_ROLE_LABELS[a.outbound_role] ?? a.outbound_role}
+                              </span>
+                            )}
                           </div>
-                          {a.phone_number && (
-                            <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
-                              <Phone size={10} /> {a.phone_number}
-                            </p>
-                          )}
+                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <Phone size={10} />
+                            {a.phone_number ?? <span style={{ fontStyle: 'italic' }}>Sin número asignado</span>}
+                          </p>
                         </div>
 
-                        {/* Action buttons */}
+                        {/* Actions */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {!isCurrent && (
+                            <Link
+                              href={`/portal/${a.portal_token}`}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+                              Ver portal
+                            </Link>
+                          )}
                           <Link
                             href={`/portal/${a.portal_token}/configurar`}
                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
@@ -417,7 +451,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           </Link>
                           {!isBillingPaused
                             ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                            : <span className="text-xs" style={{ color: '#dc2626' }}>Pago pendiente</span>
+                            : (
+                              <a
+                                href={`/api/billing/portal-session?token=${a.portal_token}`}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                                style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                Resolver pago →
+                              </a>
+                            )
                           }
                         </div>
                       </div>
