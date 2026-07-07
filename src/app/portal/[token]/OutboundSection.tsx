@@ -97,7 +97,7 @@ function describeSchedule(c: Campaign): string {
   if (c.schedule_type === 'once')  return `Una vez${c.run_at_date ? ` el ${c.run_at_date}` : ''} a las ${c.run_at_time}`;
   if (c.schedule_type === 'daily') return `Diario a las ${c.run_at_time}`;
   const days = (c.run_on_days ?? []).sort().map(d => DAY_NAMES[d]).join(', ');
-  return `Semanal — ${days || 'Lunes'} a las ${c.run_at_time}`;
+  return `Semanal: ${days || 'Lunes'} a las ${c.run_at_time}`;
 }
 
 function fmtShort(iso: string) {
@@ -318,7 +318,7 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
         <input type="time" value={runAtTime} onChange={e => setRunAtTime(e.target.value)}
           className={inputCls} style={{ ...inputSty, maxWidth: 160 }} />
         <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>
-          El cron corre cada 10 min — la hora exacta puede variar hasta 10 min.
+          El cron corre cada 10 min, la hora exacta puede variar hasta 10 min.
         </p>
       </div>
 
@@ -662,7 +662,7 @@ export default function OutboundSection({
 
           {/* CSV hint */}
           <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            Formato CSV: columnas <span className="font-mono">nombre, telefono, motivo</span> — la primera fila puede ser encabezado.
+            Formato CSV: columnas <span className="font-mono">nombre, telefono, motivo</span>. La primera fila puede ser encabezado.
           </p>
 
           {/* Contacts table */}
