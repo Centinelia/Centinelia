@@ -2,8 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Phone, Users, CalendarDays, ShoppingBag,
-  BarChart3, PhoneOff, TrendingDown, PhoneOutgoing,
+  Phone, BarChart3, PhoneOff, TrendingDown, PhoneOutgoing,
   Clock, Check, ArrowRight, Play, Target, Rocket, Star,
 } from 'lucide-react';
 import LandingNav from './LandingNav';
@@ -28,30 +27,30 @@ const FEATURES: {
   cardBg?: string; cardBorder?: string;
 }[] = [
   {
-    icon:  <Users size={20} color="#6C3BFF" />,
+    icon:  <Phone size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
-    title: 'Captura de leads',
-    desc:  'Registra nombre, contacto y necesidades de cada prospecto y los guarda en tu portal automáticamente.',
-  },
-  {
-    icon:  <CalendarDays size={20} color="#9B6DFF" />,
-    color: '#9B6DFF',
-    title: 'Agenda de citas',
-    desc:  'Confirma, modifica y cancela citas sin que muevas un dedo. El cliente habla, el agente registra.',
-    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(155,109,255,0.05) 100%)',
-    cardBorder: 'rgba(155,109,255,0.35)',
-  },
-  {
-    icon:  <ShoppingBag size={20} color="#6C3BFF" />,
-    color: '#6C3BFF',
-    title: 'Toma de pedidos',
-    desc:  'Registra pedidos por teléfono con todos los detalles: productos, cantidades y dirección de entrega.',
+    title: 'Recepcionista 24/7',
+    desc:  'Contesta cada llamada, captura leads, agenda citas y toma pedidos por teléfono. Disponible siempre, registra todo en tu portal.',
   },
   {
     icon:  <PhoneOutgoing size={20} color="#9B6DFF" />,
     color: '#9B6DFF',
     title: 'Llamadas salientes',
-    desc:  'Tu agente llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas de forma automática.',
+    desc:  'Tu agente llama a tus contactos para confirmar citas, hacer seguimiento y recupera las llamadas perdidas de forma automática.',
+    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(155,109,255,0.05) 100%)',
+    cardBorder: 'rgba(155,109,255,0.35)',
+  },
+  {
+    icon:  <Target size={20} color="#6C3BFF" />,
+    color: '#6C3BFF',
+    title: 'Seguimiento automático',
+    desc:  'Detecta prospectos que no contestaron y los llama de regreso. Ningún lead se enfría por falta de seguimiento.',
+  },
+  {
+    icon:  <Rocket size={20} color="#9B6DFF" />,
+    color: '#9B6DFF',
+    title: 'Campañas salientes',
+    desc:  'Lanza campañas de llamadas para confirmar citas, cobrar, encuestar o reactivar clientes inactivos.',
     cardBg: 'linear-gradient(145deg, rgba(108,59,255,0.2) 0%, rgba(108,59,255,0.06) 100%)',
     cardBorder: 'rgba(108,59,255,0.36)',
   },
@@ -466,30 +465,31 @@ export default function LandingPage() {
 
             {/* Suricata flotante */}
             <MeerkatReveal className="agent-float relative flex-shrink-0 pointer-events-none select-none"
-              style={{ width: 280, height: 360, marginBottom: -160 }}>
+              style={{ width: 280, height: 360, marginBottom: -160, zIndex: 2 }}>
               <Image src="/agent-f2.png" alt="" fill sizes="280px"
                 style={{ objectFit: 'contain', objectPosition: 'top center' }} />
             </MeerkatReveal>
           </div>
 
-          {/* Mobile: heading + meerkat peeking over top-right card */}
-          {/* Mobile heading: grid 2-col reserva espacio para el meerkat sin paddingRight */}
-          <div className="lg:hidden mb-4" style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
-            <div>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                Capacidades
-              </p>
-              <h2
-                className="font-bold tracking-tight mb-3"
-                style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
-              >
-                Todo lo que necesitas,<br />desde el primer día
-              </h2>
-              <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                Tu agente aprende sobre tu negocio y comienza a atender llamadas en menos de 24 horas.
-              </p>
+          {/* Mobile: heading 2-col reserva espacio para la meerkat que asoma desde card[1] */}
+          <div className="lg:hidden mb-4">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
+              <div>
+                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
+                  Capacidades
+                </p>
+                <h2
+                  className="font-bold tracking-tight mb-3"
+                  style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
+                >
+                  Todo lo que necesitas,<br />desde el primer día
+                </h2>
+                <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  Tu agente aprende sobre tu negocio y comienza a atender llamadas en menos de 24 horas.
+                </p>
+              </div>
+              <div />{/* espacio reservado para meerkat */}
             </div>
-            <div />{/* espacio reservado para meerkat */}
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:mt-12">
