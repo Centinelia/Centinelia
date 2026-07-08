@@ -425,7 +425,7 @@ export default function LandingPage() {
               </p>
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>
                 Un agente de voz que atiende, captura, agenda y también llama de regreso a los
-                clientes que no alcanzó a atender — sin que tú tengas que intervenir.
+                clientes que no alcanzó a atender, sin que tú tengas que intervenir.
               </p>
             </div>
           </div>
