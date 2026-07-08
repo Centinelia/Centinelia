@@ -296,9 +296,9 @@ export default function LandingPage() {
 
         {/* Trust chips — pinned al fondo del hero, visible sin scroll */}
         <div
+          className="trust-chips"
           style={{
             position: 'absolute',
-            bottom: 90,
             left: 0,
             right: 0,
             zIndex: 3,
