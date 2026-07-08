@@ -1,0 +1,122 @@
+name: Scheduled cron jobs
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # outbound-campaigns
+    - cron: '0 3 * * *'     # cleanup-recordings
+    - cron: '0 4 * * *'     # cleanup-pending
+    - cron: '0 7 * * *'     # analytics snapshot
+    - cron: '0 8 * * 1'     # weekly summary
+    - cron: '0 10 * * *'    # billing grace-period
+    - cron: '0 15 * * *'    # appointment reminders
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run (leave empty to run all)'
+        required: false
+
+jobs:
+  outbound-campaigns:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
+    steps:
+      - name: Trigger outbound-campaigns
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/outbound-campaigns" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  cleanup-recordings:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 * * *'
+    steps:
+      - name: Trigger cleanup-recordings
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/cleanup-recordings" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  cleanup-pending:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 4 * * *'
+    steps:
+      - name: Trigger cleanup-pending
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/cleanup-pending" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  analytics-snapshot:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 7 * * *'
+    steps:
+      - name: Trigger analytics snapshot
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/admin/analytics/snapshot" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  weekly-summary:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 8 * * 1'
+    steps:
+      - name: Trigger weekly summary
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/weekly-summary" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  billing-grace-period:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 10 * * *'
+    steps:
+      - name: Trigger billing grace-period check
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/billing/grace-period-check" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+  appointment-reminders:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 15 * * *'
+    steps:
+      - name: Trigger appointment reminders
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
+            -X POST "${{ secrets.APP_URL }}/api/cron/appointment-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_CODE"
+          cat /tmp/response.txt
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
