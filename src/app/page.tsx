@@ -564,9 +564,9 @@ export default function LandingPage() {
         {/* Editorial numbered list — unique layout vs 3-col cards elsewhere */}
         <div className="lg:pr-72">
           {[
-            { n: '01', title: 'Elige tu plan y paga',       desc: 'Selecciona el plan que se adapte a tu negocio y completa el pago en línea. Tarda menos de 5 minutos.' },
-            { n: '02', title: 'Configura tu agente',         desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu agente.' },
-            { n: '03', title: 'Empieza a recibir llamadas',  desc: 'Tu número queda activo en horas. Tu agente atiende, tú solo monitoreas desde el portal.' },
+            { n: '01', title: 'Elige tu agente y tus minutos',  desc: 'Selecciona el tipo de agente que necesita tu negocio y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
+            { n: '02', title: 'Configura tu agente',             desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu agente.' },
+            { n: '03', title: 'Recibe y realiza llamadas',       desc: 'Tu número queda activo en horas. Tu agente atiende llamadas entrantes, llama de regreso a los que no contestaron y ejecuta campañas salientes. Tú solo monitoreas desde el portal.' },
           ].map((s, i) => (
             <AnimatedSection key={s.n} delay={i * 0.12}>
               <div
@@ -623,7 +623,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
             >
-              Un agente. Cualquier rol.
+              Un agente.<br />Cualquier rol.
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
               Elige el escenario, llama y experimenta. Recepcionista, vendedor, tomador de pedidos,
