@@ -1,0 +1,15 @@
+name: Cron — Recordatorios Diarios (9am CST)
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recordatorios WhatsApp citas de mañana
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/appointment-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

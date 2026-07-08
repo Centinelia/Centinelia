@@ -1,0 +1,25 @@
+name: Cron — Tareas Semanales (lunes 8am CST)
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reporte semanal a clientes
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/weekly-summary" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Limpiar recordings antiguos (>7 días)
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/cleanup-recordings" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Eliminar registros sin pagar (>7 días)
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/cleanup-pending" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

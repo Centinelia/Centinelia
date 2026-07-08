@@ -1,0 +1,20 @@
+name: Cron — Llamadas Salientes (cada 5 min)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  outbound:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Contactos y recordatorios programados
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/outbound/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Campanas activas
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/outbound-campaigns" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
