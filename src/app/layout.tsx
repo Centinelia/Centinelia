@@ -26,11 +26,11 @@ export const metadata: Metadata = {
     template: '%s | Centinelia',
   },
   description:
-    'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y toma pedidos, sin que tú estés presente. Desde $1,990/mes.',
+    'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y realiza llamadas salientes, sin que tú estés presente. Desde $2,997/mes.',
   keywords: [
     'agente de voz IA', 'inteligencia artificial para negocios', 'recepcionista virtual',
     'atención telefónica automatizada', 'chatbot de voz', 'agenda citas automática',
-    'captura de leads por teléfono', 'Centinelia', 'México',
+    'captura de leads por teléfono', 'llamadas salientes IA', 'Centinelia', 'México',
   ],
   authors: [{ name: 'Centinelia', url: BASE_URL }],
   creator: 'Centinelia',
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     siteName: 'Centinelia',
     title: 'Centinelia: Tu negocio nunca pierde una llamada',
     description:
-      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y toma pedidos, desde $1,990/mes.',
+      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y realiza llamadas salientes, desde $2,997/mes.',
     images: [
       {
         url: '/og-image.png?v=2',
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Centinelia: Tu negocio nunca pierde una llamada',
     description:
-      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Desde $1,990/mes.',
+      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Entrantes y salientes, desde $2,997/mes.',
     images: ['/og-image.png?v=2'],
   },
 };
@@ -82,7 +82,7 @@ const organizationSchema = {
   name: 'Centinelia',
   url: BASE_URL,
   logo: `${BASE_URL}/logo-icon.png`,
-  description: 'Agentes de voz con inteligencia artificial que atienden las llamadas de tu negocio 24/7. Captura leads, agenda citas y toma pedidos, desde $1,990/mes.',
+  description: 'Agentes de voz con inteligencia artificial que atienden las llamadas de tu negocio 24/7. Captura leads, agenda citas, toma pedidos y realiza llamadas salientes, desde $2,997/mes.',
   contactPoint: {
     '@type': 'ContactPoint',
     telephone: '+52-81-1633-3559',
