@@ -800,7 +800,7 @@ export default function LandingPage() {
                     </div>
                     <div className="text-right">
                       {t.popular && (
-                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold mb-1.5"
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold mb-1.5"
                           style={{ background: '#6C3BFF', color: '#fff' }}>
                           <Star size={8} style={{ fill: '#fff' }} /> Más usado
                         </span>
