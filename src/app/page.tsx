@@ -472,13 +472,10 @@ export default function LandingPage() {
             </MeerkatReveal>
           </div>
 
-          {/* Mobile: suricata absoluta derecha, desborda hacia tarjetas */}
-          <div className="lg:hidden relative mb-4" style={{ minHeight: 160 }}>
-            <MeerkatReveal className="agent-float absolute" style={{ bottom: -50, right: -5, width: 145, height: 145, zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}>
-              <Image src="/agent-f2.png" alt="" fill sizes="145px"
-                style={{ objectFit: 'contain', objectPosition: 'top center' }} />
-            </MeerkatReveal>
-            <div style={{ paddingRight: 122 }}>
+          {/* Mobile: heading + meerkat peeking over top-right card */}
+          {/* Mobile heading: grid 2-col reserva espacio para el meerkat sin paddingRight */}
+          <div className="lg:hidden mb-4" style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
+            <div>
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
                 Capacidades
               </p>
@@ -492,11 +489,10 @@ export default function LandingPage() {
                 Tu agente aprende sobre tu negocio y comienza a atender llamadas en menos de 24 horas.
               </p>
             </div>
+            <div />{/* espacio reservado para meerkat */}
           </div>
 
-          {/* Tarjetas, z-index:1 cubre los pies de la suricata */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:mt-12"
-            style={{ position: 'relative', zIndex: 1 }}>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:mt-12">
             {FEATURES.map((f, i) => (
               <AnimatedSection key={f.title} delay={i * 0.07}>
                 <div
@@ -505,16 +501,39 @@ export default function LandingPage() {
                     background:  f.cardBg ?? C.surface,
                     border:      `1px solid ${f.cardBorder ?? C.border}`,
                     boxShadow:   '0 2px 16px rgba(108,59,255,0.05)',
+                    position:    'relative',
                   }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: `${f.color}22`, border: `1px solid ${f.color}44` }}
-                  >
-                    {f.icon}
+                  {i === 1 && (
+                    <div
+                      className="block lg:hidden"
+                      style={{
+                        position: 'absolute',
+                        top: -130,
+                        right: 8,
+                        width: 130,
+                        height: 155,
+                        zIndex: 0,
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <MeerkatReveal style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <Image src="/agent-f2.png" alt="" fill sizes="130px"
+                          style={{ objectFit: 'contain', objectPosition: 'top center' }} />
+                      </MeerkatReveal>
+                    </div>
+                  )}
+                  <div className="relative" style={{ zIndex: 1 }}>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                      style={{ background: `${f.color}22`, border: `1px solid ${f.color}44` }}
+                    >
+                      {f.icon}
+                    </div>
+                    <h3 className="font-semibold mb-2" style={{ color: C.text }}>{f.title}</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{f.desc}</p>
                   </div>
-                  <h3 className="font-semibold mb-2" style={{ color: C.text }}>{f.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{f.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -751,11 +770,11 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-5">
             {MINUTE_TIERS.map((t, i) => (
               <AnimatedSection key={t.id} delay={i * 0.08}>
               <div
-                className="rounded-xl sm:rounded-2xl p-3 sm:p-6 flex flex-col h-full relative overflow-hidden"
+                className="rounded-2xl p-5 sm:p-6 flex flex-col h-full relative overflow-hidden"
                 style={{
                   background: t.popular ? 'linear-gradient(145deg, rgba(108,59,255,0.2), rgba(108,59,255,0.08))' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${t.popular ? 'rgba(108,59,255,0.5)' : 'rgba(255,255,255,0.09)'}`,
@@ -766,8 +785,49 @@ export default function LandingPage() {
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
                     background: 'linear-gradient(90deg, #6C3BFF, #9B6DFF88)' }} />
                 )}
+
+                {/* Mobile layout — horizontal split: minutes left, price right */}
+                <div className="sm:hidden">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="font-bold text-base mb-1" style={{ color: '#fff' }}>{t.label}</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                          {fmt(t.minutes)}
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {t.popular && (
+                        <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold mb-1.5"
+                          style={{ background: '#6C3BFF', color: '#fff' }}>
+                          <Star size={8} style={{ fill: '#fff' }} /> Más usado
+                        </span>
+                      )}
+                      <div className="flex items-baseline gap-0.5 justify-end">
+                        <span className="text-xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
+                          ${fmt(t.price)}
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/registro?tier=${t.id}`}
+                    className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+                    style={{
+                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
+                      color: '#fff',
+                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
+                    }}
+                  >
+                    Seleccionar
+                  </Link>
+                </div>
+
                 {/* Desktop layout */}
-                <div className="hidden sm:block">
+                <div className="hidden sm:flex sm:flex-col sm:flex-1">
                   <div className="flex items-center justify-between mb-4">
                     <p className="font-bold text-base" style={{ color: '#fff' }}>{t.label}</p>
                     {t.popular && (
@@ -802,35 +862,6 @@ export default function LandingPage() {
                     }}
                   >
                     Seleccionar
-                  </Link>
-                </div>
-
-                {/* Mobile layout — compact 3-col */}
-                <div className="sm:hidden flex flex-col gap-1.5">
-                  <p className="font-bold text-[11px] leading-none" style={{ color: 'rgba(255,255,255,0.7)' }}>{t.label}</p>
-                  <div>
-                    <span className="text-xl font-bold tabular-nums leading-none" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                      {fmt(t.minutes)}
-                    </span>
-                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>min</span>
-                  </div>
-                  <div className="w-full h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-                  <div>
-                    <span className="text-[11px] font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                      ${fmt(t.price)}
-                    </span>
-                    <span className="text-[9px] ml-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
-                  </div>
-                  <Link
-                    href={`/registro?tier=${t.id}`}
-                    className="block text-center py-1.5 rounded-lg text-[10px] font-semibold transition-all hover:opacity-90 mt-0.5"
-                    style={{
-                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
-                      color: '#fff',
-                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
-                    }}
-                  >
-                    Elegir
                   </Link>
                 </div>
               </div>
