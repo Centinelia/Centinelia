@@ -465,7 +465,7 @@ export default function LandingPage() {
 
             {/* Suricata flotante */}
             <MeerkatReveal className="agent-float relative flex-shrink-0 pointer-events-none select-none"
-              style={{ width: 280, height: 360, marginBottom: -160, zIndex: 2 }}>
+              style={{ width: 280, height: 360, marginBottom: -160 }}>
               <Image src="/agent-f2.png" alt="" fill sizes="280px"
                 style={{ objectFit: 'contain', objectPosition: 'top center' }} />
             </MeerkatReveal>
