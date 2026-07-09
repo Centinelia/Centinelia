@@ -20,7 +20,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Que es Centinelia?',
-        a: 'Centinelia es un servicio de agentes de voz con inteligencia artificial para negocios mexicanos. En lugar de perder llamadas por falta de personal, tu negocio tiene un equipo de hasta 6 agentes especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menu ("marque 1 para ventas"), es una conversacion natural con IA.',
+        a: 'Centinelia es un servicio de agentes de voz con inteligencia artificial para negocios mexicanos. En lugar de perder llamadas por falta de personal, tu negocio tiene un equipo de agentes especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menu ("marque 1 para ventas"), es una conversacion natural con IA.',
       },
       {
         q: '¿Como funciona?',
@@ -74,7 +74,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Los agentes se pueden comunicar entre si?',
-        a: 'Si. Cada cuenta puede tener hasta 6 agentes especializados (recepcionista, vendedor, cobrador, etc.) que se transfieren llamadas en vivo y se dejan mensajes entre si en "La Oficina", el feed interno del portal. Si el recepcionista recibe una llamada que necesita al ejecutivo de ventas, lo transfiere en vivo.',
+        a: 'Si. Puedes tener tantos agentes especializados como necesites (recepcionista, vendedor, cobrador, etc.) y se transfieren llamadas en vivo. Tambien se dejan mensajes entre si en "La Oficina", el feed interno del portal. Si el recepcionista recibe una llamada que necesita al ejecutivo de ventas, lo transfiere en vivo.',
       },
       {
         q: '¿Cuantas llamadas puede atender al mismo tiempo?',
@@ -100,7 +100,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto cuesta Centinelia?',
-        a: 'Hay tres planes: Plan Basico desde $1,990 MXN/mes (recepcionista 24/7, 200 minutos), Plan Comercial desde $3,490 MXN/mes (agendamiento, transferencias, WhatsApp, 500 minutos), y Plan Pro desde $6,490 MXN/mes (llamadas salientes, pedidos, multiidioma, memoria de cliente, 1,000 minutos). Cada plan tiene una cuota de instalacion unica. Plan Empresarial bajo cotizacion.',
+        a: 'Hay dos planes con tres tiers de minutos cada uno. Plan Comercial (agendamiento, transferencias, WhatsApp): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Plan Pro (todo el Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Comercial y $14,990 MXN para Pro. Plan Empresarial bajo cotizacion.',
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
@@ -108,11 +108,11 @@ const CATEGORIES = [
       },
       {
         q: '¿Que son los minutos incluidos?',
-        a: 'Cada plan incluye un numero de minutos de llamada al mes (200, 500 o 1,000). Cada minuto de llamada (entrante o saliente) consume minutos del plan. Si se agotan, puedes comprar paquetes adicionales desde el portal: 100 min por $1,200 MXN, 250 min por $3,000 MXN, o 500 min por $6,000 MXN.',
+        a: 'Cada tier incluye minutos de llamada al mes: Starter 300 min, Growth 600 min, Scale 1,200 min. Cada minuto de llamada (entrante o saliente) consume del saldo mensual. La tasa es $9.99 MXN/min dentro del plan; los minutos extra fuera del plan se cobran a $12.99 MXN/min.',
       },
       {
         q: '¿Que pasa con los minutos no usados?',
-        a: 'No acumulan al mes siguiente. El plan renueva cada mes con los minutos incluidos desde cero. Si tu negocio tiene picos de llamadas muy variables, el Plan Pro puede ser mejor que comprar paquetes adicionales frecuentemente.',
+        a: 'No acumulan al mes siguiente. El plan renueva cada mes con los minutos incluidos desde cero.',
       },
       {
         q: '¿Hay contrato de permanencia?',
@@ -190,7 +190,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Mis datos y los de mis clientes estan seguros?',
-        a: 'Si. Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. El acceso al portal requiere autenticacion. Los datos de llamadas y leads son de tu negocio y no se comparten con terceros ni se usan para entrenar modelos.',
+        a: 'Si. Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. El acceso al portal requiere autenticacion. Los datos de llamadas y leads pertenecen a tu negocio y no se comparten con terceros ni se usan para entrenar modelos.',
       },
       {
         q: '¿Las llamadas se graban?',

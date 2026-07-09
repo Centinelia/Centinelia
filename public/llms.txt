@@ -21,7 +21,7 @@ Ubicacion: Monterrey, Nuevo Leon, Mexico
 - Multiidioma: espanol e ingles en la misma llamada, deteccion automatica (Plan Pro)
 - Promotor de resenas Google: envia link automaticamente despues de cada llamada exitosa
 - Aprendizaje supervisado: el agente extrae aprendizajes de cada llamada que el dueno puede aprobar para incorporar a la base de conocimiento
-- Equipo coordinado: hasta 6 agentes especializados que se comunican y delegan trabajo entre si
+- Equipo coordinado: tantos agentes especializados como el negocio necesite, que se comunican y delegan trabajo entre si
 
 ## Para quien es Centinelia
 
@@ -31,7 +31,7 @@ No es para: call centers masivos, negocios sin telefono como punto de contacto, 
 
 ## Equipo de agentes especializados
 
-Cada cuenta puede configurar hasta 6 agentes con roles distintos:
+Cada cuenta puede configurar tantos agentes como necesite, con roles distintos:
 
 - **Recepcionista**: atiende llamadas entrantes, agenda citas, captura leads
 - **Ejecutivo de ventas**: realiza llamadas salientes a prospectos nuevos
@@ -42,31 +42,27 @@ Cada cuenta puede configurar hasta 6 agentes con roles distintos:
 
 Los agentes se transfieren llamadas entre si en tiempo real: si el cliente necesita a un especialista, el recepcionista lo transfiere en vivo sin que el cliente cuelgue.
 
-## Precios (precios de lanzamiento para primeros clientes)
+## Precios
 
-Todos los planes incluyen cuota de instalacion unica y minutos mensuales incluidos.
+Todos los planes incluyen cuota de instalacion unica y minutos mensuales incluidos. Tasa: $9.99 MXN/min incluido, $12.99 MXN/min extra.
 
-| Plan | Precio mensual | Instalacion | Minutos |
-|------|---------------|-------------|---------|
-| Basico (Recepcionista) | $1,990 MXN | $4,990 MXN | 200 min |
-| Comercial | $3,490 MXN | $7,990 MXN | 500 min |
-| Pro | $6,490 MXN | $12,990 MXN | 1,000 min |
-| Empresarial | Cotizacion personalizada | — | — |
+| Plan | Tier | Precio mensual | Instalacion | Minutos |
+|------|------|---------------|-------------|---------|
+| Comercial | Starter | $2,997 MXN | $8,990 MXN | 300 min |
+| Comercial | Growth | $5,994 MXN | $8,990 MXN | 600 min |
+| Comercial | Scale | $11,988 MXN | $8,990 MXN | 1,200 min |
+| Pro | Starter | $2,997 MXN | $14,990 MXN | 300 min |
+| Pro | Growth | $5,994 MXN | $14,990 MXN | 600 min |
+| Pro | Scale | $11,988 MXN | $14,990 MXN | 1,200 min |
+| Empresarial | — | Cotizacion personalizada | — | — |
 
-Minutos adicionales disponibles desde el portal:
-- 100 min: $1,200 MXN
-- 250 min: $3,000 MXN
-- 500 min: $6,000 MXN
-
-Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al final del ciclo de facturación.
+Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al final del ciclo de facturacion.
 
 ## Que incluye cada plan
 
-**Plan Basico:** Recepcionista 24/7, captura de leads, 200 min/mes
+**Plan Comercial:** Recepcionista 24/7, captura de leads, agendamiento de citas, transferencia inteligente, escalacion WhatsApp, resenas Google automaticas, portal con reportes y horas pico
 
-**Plan Comercial:** Todo el Basico + agendamiento de citas, transferencia inteligente, escalacion WhatsApp, resenas Google automaticas, portal con reportes y horas pico
-
-**Plan Pro:** Todo el Comercial + llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, voz personalizable, grabaciones, hasta 3 llamadas simultaneas
+**Plan Pro:** Todo el Comercial + llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, grabaciones, hasta 3 llamadas simultaneas
 
 **Plan Empresarial:** Todo el Pro + integracion POS/CRM, multiples sucursales, numero dedicado, soporte prioritario
 
@@ -74,9 +70,8 @@ Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al fin
 
 - Cal.com (API directa, el agente crea la cita en tiempo real)
 - Google Calendar, Calendly (el agente captura datos y envia link por WhatsApp)
-- WhatsApp (Twilio para escalacion)
+- WhatsApp (escalacion y mensajeria saliente)
 - Stripe (facturacion y portal de cliente)
-- Supabase (base de datos)
 - Notion (gestion de conocimiento interna)
 
 ## Tecnologia
@@ -85,13 +80,12 @@ Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al fin
 - LLM: Claude de Anthropic (claude-3-5-haiku para tiempo real)
 - Transcripcion: Deepgram nova-2 con deteccion automatica de idioma
 - Voces: ElevenLabs (texto a voz de alta fidelidad)
-- Backend: Next.js 15 / Vercel
-- Base de datos: Supabase (PostgreSQL)
+- Backend: Next.js / Vercel
 - Pagos: Stripe
 
 ## Como funciona tecnicamente
 
-1. El negocio recibe un numero de telefono dedicado (Vapi/Twilio)
+1. El negocio recibe un numero de telefono dedicado (gestionado via Vapi)
 2. Cuando llega una llamada, Vapi crea una sesion con el LLM de Anthropic
 3. El agente usa el system prompt configurado + base de conocimiento del negocio
 4. Al terminar la llamada, el webhook extrae leads, aprendizajes y genera mensajes para el equipo
@@ -101,7 +95,7 @@ El portal del cliente es accesible desde cualquier dispositivo. No se requiere a
 
 ## Diferenciadores clave vs competidores
 
-- **Equipo real, no un bot**: hasta 6 agentes especializados que colaboran entre si, no un solo chatbot de voz
+- **Equipo real, no un bot**: tantos agentes especializados como el negocio necesite, que colaboran entre si, no un solo chatbot de voz
 - **Aprendizaje continuo**: el sistema extrae aprendizajes de cada llamada; el dueno los aprueba y el agente los incorpora
 - **Activo en menos de 24 horas**: sin integraciones complejas para el plan basico
 - **Precios en MXN**: pensado para el mercado mexicano, no conversion de USD
@@ -135,7 +129,7 @@ Si, el agente puede transferir en vivo a cualquier numero configurado. Tambien p
 Plan Comercial: 1 llamada simultanea. Plan Pro: hasta 3. Plan Empresarial: segun volumen.
 
 **¿Mis datos y los de mis clientes estan seguros?**
-Los datos se almacenan en Supabase con cifrado en transito y en reposo. Cumple con la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP).
+Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. Cumple con la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP).
 
 **¿Funciona para restaurantes?**
 Si. El agente puede tomar reservaciones, informar sobre el menu, horarios y ubicacion, y tomar pedidos para llevar (Plan Pro).
