@@ -85,7 +85,7 @@ export default function LegalPage() {
 
         {/* Mobile sidebar nav */}
         <div className="lg:hidden">
-          <MobileSideNav sections={TOC.map(t => ({ id: t.href.replace('#', ''), label: t.label }))} />
+          <MobileSideNav sections={TOC.map(t => ({ id: t.href.replace('#', ''), label: t.label }))} side="right" />
         </div>
 
         {/* Desktop 2-col: sticky sidebar + content */}
