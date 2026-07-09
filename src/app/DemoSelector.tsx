@@ -176,7 +176,7 @@ export default function DemoSelector({ demoPhone, demoPhoneHref }: Props) {
   return (
     <div>
       <p className="text-center text-sm mb-5" style={{ color: 'rgba(26,10,59,0.45)' }}>
-        Elige el rol de tu empleado
+        Contrata un:
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {SCENARIOS.map(s => {
