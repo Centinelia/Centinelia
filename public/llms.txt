@@ -150,7 +150,7 @@ Si, en el Plan Empresarial. Contactar a hola@centinelia.mx para cotizacion.
 No. Centinelia te asigna un numero nuevo que puedes publicar o configurar como desvio desde tu numero actual.
 
 **¿Que pasa con los minutos no usados?**
-No acumulan. El plan renueva cada mes con los minutos incluidos.
+Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de los minutos incluidos en tu plan. Al llegar al tope, los excedentes se pierden.
 
 ## Contacto
 

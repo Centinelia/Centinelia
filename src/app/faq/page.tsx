@@ -112,7 +112,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que pasa con los minutos no usados?',
-        a: 'No acumulan al mes siguiente. El plan renueva cada mes con los minutos incluidos desde cero.',
+        a: 'Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de tu plan. Si tienes 300 min en Starter y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden.',
       },
       {
         q: '¿Hay contrato de permanencia?',
