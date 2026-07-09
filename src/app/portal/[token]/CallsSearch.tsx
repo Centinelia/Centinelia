@@ -17,10 +17,11 @@ const OUTCOME_LABELS: Record<string, string> = {
   other:              'Otro',
 };
 
-export default function CallsSearch({ calls, isPro, callerNames = {} }: {
+export default function CallsSearch({ calls, isPro, callerNames = {}, token }: {
   calls: VoiceCall[];
   isPro: boolean;
   callerNames?: Record<string, string>;
+  token?: string;
 }) {
   const [query,      setQuery]      = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -118,6 +119,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {} }: {
                   call={call}
                   isPro={isPro}
                   clientName={callerNames[(call.caller_number ?? '').replace(/\D/g, '')]}
+                  token={token}
                 />
               ))
           }

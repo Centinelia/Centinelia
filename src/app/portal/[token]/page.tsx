@@ -587,6 +587,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
               </div>
 
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contrato de servicios</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Descarga un contrato tipo con el branding de tu negocio listo para firmar con tus clientes.
+                </p>
+                <a
+                  href={`/api/portal/${token}/pdf/contrato`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)', textDecoration: 'none' }}>
+                  <ExternalLink size={14} /> Descargar contrato PDF
+                </a>
+              </div>
+
             </div>
           )}
 
@@ -653,7 +668,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </p>
                   </div>
                 ) : (
-                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} />
+                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
                 )}
               </div>
             </div>
@@ -954,6 +969,32 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </a>
                 </div>
               )}
+
+              {/* Reporte mensual PDF */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con tu branding: llamadas, resultados, minutos y horas pico.</p>
+                {(() => {
+                  const now = new Date();
+                  const y = now.getFullYear(), m = now.getMonth() + 1;
+                  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
+                  const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
+                        <ChevronRight size={12} /> {label(y, m)}
+                      </a>
+                      <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
+                        <ChevronRight size={12} /> {label(prev.y, prev.m)}
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
 
               {/* Ledger */}
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>

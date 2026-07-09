@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ShoppingBag, Filter, Truck, Store, Pencil, X, Check, Loader2, Download } from 'lucide-react';
+import { ShoppingBag, Filter, Truck, Store, Pencil, X, Check, Loader2, Download, FileText } from 'lucide-react';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
 
 type OrderStatus = 'nuevo' | 'en_proceso' | 'listo' | 'entregado' | 'cancelado';
@@ -207,11 +207,18 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
                       <Pencil size={13} />
                     </button>
                   </div>
-                  {/* Bottom: date + status select */}
+                  {/* Bottom: date + status select + PDF */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                       {new Date(order.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    <div className="flex items-center gap-2">
+                      <a href={`/api/portal/${token}/pdf/orden/${order.id}`} target="_blank" rel="noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-opacity hover:opacity-70"
+                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                        <FileText size={10} /> PDF
+                      </a>
                     <select value={status} disabled={updatingStatus === order.id}
                       onChange={e => updateStatus(order.id, e.target.value as OrderStatus)}
                       onClick={e => e.stopPropagation()}
@@ -221,6 +228,7 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
                         <option key={val} value={val}>{cfg.label}</option>
                       ))}
                     </select>
+                    </div>
                   </div>
                 </div>
               </div>

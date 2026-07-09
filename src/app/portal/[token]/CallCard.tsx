@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Clock, X } from 'lucide-react';
+import { Download, Clock, X, FileText } from 'lucide-react';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   lead_created:       { label: 'Lead',        color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'  },
@@ -89,7 +89,7 @@ function RecordingPlayer({ url, createdAt }: { url: string; createdAt: string })
   );
 }
 
-export default function CallCard({ call, isPro, clientName }: { call: Call; isPro?: boolean; clientName?: string }) {
+export default function CallCard({ call, isPro, clientName, token }: { call: Call; isPro?: boolean; clientName?: string; token?: string }) {
   const [open, setOpen] = useState(false);
   const outcome    = OUTCOME_LABELS[call.outcome] ?? OUTCOME_LABELS.other;
   const showRec    = isPro && !!call.recording_url;
@@ -206,6 +206,35 @@ export default function CallCard({ call, isPro, clientName }: { call: Call; isPr
                     style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)',
                       border: '1px solid var(--c-border)', maxHeight: 220 }}>
                     {call.transcript}
+                  </div>
+                </div>
+              )}
+
+              {/* PDF Downloads */}
+              {token && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-3)' }}>
+                    Documentos
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={`/api/portal/${token}/pdf/llamada/${call.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                      <FileText size={12} /> Resumen PDF
+                    </a>
+                    {['lead_created', 'info_provided'].includes(call.outcome) && (
+                      <a
+                        href={`/api/portal/${token}/pdf/cotizacion/${call.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                        <FileText size={12} /> Cotización PDF
+                      </a>
+                    )}
                   </div>
                 </div>
               )}
