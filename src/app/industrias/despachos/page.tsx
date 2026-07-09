@@ -59,48 +59,48 @@ const FEATURES = [
 const OUTBOUND_CASES = [
   {
     title: 'Tus documentos están listos para firma',
-    desc: 'El agente notifica al cliente cuando un trámite avanzó y necesita su atención. Sin recordatorios manuales, sin procesos atascados por falta de seguimiento.',
+    desc: 'Tu empleado notifica al cliente cuando un trámite avanzó y necesita su atención. Sin recordatorios manuales, sin procesos atascados por falta de seguimiento.',
   },
   {
     title: '¿Todavía le interesa? El recontacto que cierra',
-    desc: 'A los 30 días de un prospecto sin respuesta, el agente hace el seguimiento. Muchos casos se cierran en ese segundo intento que nadie tiene tiempo de hacer.',
+    desc: 'A los 30 días de un prospecto sin respuesta, tu empleado hace el seguimiento. Muchos casos se cierran en ese segundo intento que nadie tiene tiempo de hacer.',
   },
   {
     title: 'Novedad en tu caso',
-    desc: 'Cuando hay un avance importante, el agente informa al cliente de inmediato. El cliente se siente atendido; tú no interrumpes lo que estás haciendo.',
+    desc: 'Cuando hay un avance importante, tu empleado informa al cliente de inmediato. El cliente se siente atendido; tú no interrumpes lo que estás haciendo.',
   },
 ];
 
 const TESTIMONIALS = [
   {
-    quote: 'Cuando estoy en audiencia o con un cliente no puedo contestar. Ahora el agente recibe al prospecto, le explica mis servicios y agenda la consulta. Cuando salgo ya tengo una cita esperándome.',
+    quote: 'Cuando estoy en audiencia o con un cliente no puedo contestar. Ahora tu empleado recibe al prospecto, le explica mis servicios y agenda la consulta. Cuando salgo ya tengo una cita esperándome.',
     author: 'Abogado litigante, despacho independiente, Monterrey',
   },
   {
-    quote: 'El 80% de las llamadas eran para preguntar precios o si llevamos declaraciones anuales. El agente responde todo eso y solo me pasa los prospectos que ya quieren agendar. Recuperé horas de mi semana.',
+    quote: 'El 80% de las llamadas eran para preguntar precios o si llevamos declaraciones anuales. Tu empleado responde todo eso y solo me pasa los prospectos que ya quieren agendar. Recuperé horas de mi semana.',
     author: 'Contador público, despacho fiscal, CDMX',
   },
   {
-    quote: 'Pensaba que mis clientes esperarían. Pero varios me dijeron que llamaron a tres agencias y la mía fue la única que contestó de inmediato. El agente hizo la diferencia.',
+    quote: 'Pensaba que mis clientes esperarían. Pero varios me dijeron que llamaron a tres agencias y la mía fue la única que contestó de inmediato. Tu empleado hizo la diferencia.',
     author: 'Directora de agencia de marketing, Guadalajara',
   },
 ];
 
 const FAQS = [
   {
-    q: '¿El agente puede explicar mis áreas de práctica o servicios específicos?',
-    a: 'Sí. Le proporcionas la información de tu despacho, áreas, tipos de casos que manejas, honorarios generales, y el agente la usa para responder con precisión.',
+    q: '¿Puede explicar mis áreas de práctica o servicios específicos?',
+    a: 'Sí. Le proporcionas la información de tu despacho, áreas, tipos de casos que manejas, honorarios generales, y tu empleado la usa para responder con precisión.',
   },
   {
-    q: '¿Puede el agente filtrar casos que no me interesen?',
-    a: 'Sí. Le puedes indicar qué tipos de consultas no atiendes y el agente lo comunica con respeto, evitándote perder tiempo en casos que no vas a tomar.',
+    q: '¿Puede filtrar casos que no me interesen?',
+    a: 'Sí. Le puedes indicar qué tipos de consultas no atiendes y tu empleado lo comunica con respeto, evitándote perder tiempo en casos que no vas a tomar.',
   },
   {
     q: '¿La información que comparten los prospectos es confidencial?',
-    a: 'Los datos capturados se almacenan de forma segura y solo tú tienes acceso desde tu portal. El agente no comparte información entre clientes.',
+    a: 'Los datos capturados se almacenan de forma segura y solo tú tienes acceso desde tu portal. Tu empleado no comparte información entre clientes.',
   },
   {
-    q: '¿Puedo configurar que el agente solo agende con ciertos requisitos previos?',
+    q: '¿Puedo configurar que solo agende con ciertos requisitos previos?',
     a: 'Sí. Puedes indicarle que solo agende consultas si el prospecto cumple ciertos criterios, como tipo de caso o presupuesto mínimo.',
   },
 ];
@@ -144,7 +144,7 @@ export default function DespachosPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/registro" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-              Activar mi agente <ArrowRight size={15} />
+              Activar mi empleado <ArrowRight size={15} />
             </Link>
             <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.82)', border: '1px solid rgba(255,255,255,0.2)' }}>
               <Phone size={14} /> Habla con un asesor
@@ -188,10 +188,10 @@ export default function DespachosPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
-                Una recepcionista que califica prospectos y agenda mientras trabajas
+                Tu empleado telefónico IA que califica prospectos y agenda mientras trabajas
               </h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>
-                Centinelia configura un agente entrenado con la información de tu despacho. Sabe qué casos manejas, tus honorarios generales y cómo calificar a un prospecto antes de pasártelo.
+                Centinelia configura un empleado telefónico IA entrenado con la información de tu despacho. Sabe qué casos manejas, tus honorarios generales y cómo calificar a un prospecto antes de pasártelo.
               </p>
               <ul className="space-y-3">
                 {FEATURES.map((f, i) => (
@@ -212,7 +212,7 @@ export default function DespachosPage() {
                     <Briefcase size={20} color="#fff" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm" style={{ color: C.text }}>Agente activo ahora mismo</p>
+                    <p className="font-semibold text-sm" style={{ color: C.text }}>Empleado activo ahora mismo</p>
                     <p className="text-xs" style={{ color: C.textSub }}>Despacho jurídico ejemplo · 7:45 pm</p>
                   </div>
                 </div>
@@ -240,13 +240,13 @@ export default function DespachosPage() {
       <section style={{ background: C.bg, padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection className="mb-10">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>El agente también llama</p>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>Tu empleado también llama</p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-16 items-end">
               <h2 className="font-bold" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
                 Seguimiento automático que cierra más casos
               </h2>
               <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>
-                Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para dar seguimiento, reactivar prospectos y mantener a tus clientes informados.
+                Además de atender llamadas entrantes, tu empleado puede hacer llamadas salientes para dar seguimiento, reactivar prospectos y mantener a tus clientes informados.
               </p>
             </div>
           </AnimatedSection>
@@ -333,7 +333,7 @@ export default function DespachosPage() {
             <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}>Tu despacho abierto para nuevos clientes las 24 horas</h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.58)', lineHeight: 1.7 }}>Activo en menos de 24 horas. Sin contratos de permanencia. Plan Comercial desde $2,997/mes.</p>
             <Link href="/registro" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-              Activar mi agente ahora <ArrowRight size={15} />
+              Activar mi empleado ahora <ArrowRight size={15} />
             </Link>
           </AnimatedSection>
         </div>

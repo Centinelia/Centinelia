@@ -19,12 +19,12 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const WELCOME: Message = {
   role:    'assistant',
-  content: '¡Hola! Soy el asistente de Centinelia 👋\n\n¿Tienes dudas sobre los planes, el precio o cómo funciona el agente de voz? Pregúntame lo que sea.',
+  content: '¡Hola! Soy el asistente de Centinelia 👋\n\n¿Tienes dudas sobre los planes, el precio o cómo funciona tu empleado telefónico IA? Pregúntame lo que sea.',
 };
 
 const QUICK_QUESTIONS = [
   '¿Cuánto cuesta el plan Estándar?',
-  '¿En cuánto tiempo se activa el agente?',
+  '¿En cuánto tiempo se activa el empleado?',
   '¿Cómo se usan los minutos?',
 ];
 

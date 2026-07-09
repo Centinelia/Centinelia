@@ -17,7 +17,7 @@ const AGENT_TYPES: {
     key:      'comercial',
     label:    'Comercial',
     setupFee: 8990,
-    features: ['Recepcionista 24/7', 'Captura de leads', 'Agendamiento de citas', 'Transferencia inteligente', 'Escalación a WhatsApp'],
+    features: ['Atención 24/7', 'Captura de leads', 'Agendamiento de citas', 'Transferencia inteligente', 'Escalación a WhatsApp'],
     color:    '#3b82f6',
   },
   {
@@ -102,7 +102,7 @@ export default function UpgradePlanSection({
     <div className="flex flex-col gap-5">
       {/* Agent type */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-3)' }}>Tipo de agente</p>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-3)' }}>Tipo de empleado</p>
         <div className="flex flex-col gap-2">
           {AGENT_TYPES.map((t) => {
             const isCurrent  = t.key === currentPlan;

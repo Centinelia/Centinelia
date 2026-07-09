@@ -65,49 +65,49 @@ const FEATURES = [
 const OUTBOUND_CASES = [
   {
     title: 'Recordatorio de cita, el día anterior',
-    desc: 'El agente llama a cada paciente 24 horas antes para confirmar su cita. Los no-shows cuestan más que cualquier suscripción mensual.',
+    desc: 'Tu empleado llama a cada paciente 24 horas antes para confirmar su cita. Los no-shows cuestan más que cualquier suscripción mensual.',
   },
   {
     title: 'Cancelación aprovechada al instante',
-    desc: 'Cuando un paciente cancela, el agente llama a quienes estaban en lista de espera. Ese hueco se llena antes de que lo notes.',
+    desc: 'Cuando un paciente cancela, tu empleado llama a quienes estaban en lista de espera. Ese hueco se llena antes de que lo notes.',
   },
   {
     title: 'Seguimiento post-consulta',
-    desc: 'Dos días después de un procedimiento, el agente pregunta cómo se siente el paciente. Fideliza, detecta situaciones a tiempo y genera reseñas positivas.',
+    desc: 'Dos días después de un procedimiento, tu empleado pregunta cómo se siente el paciente. Fideliza, detecta situaciones a tiempo y genera reseñas positivas.',
   },
 ];
 
 const TESTIMONIALS = [
   {
-    quote: 'Antes perdíamos citas porque nadie contestaba después de las 7pm. Ahora el agente las agenda solo y yo las veo en el portal al día siguiente.',
+    quote: 'Antes perdíamos citas porque nadie contestaba después de las 7pm. Ahora tu empleado las agenda solo y yo las veo en el portal al día siguiente.',
     author: 'Médico general, consultorio privado, Monterrey',
   },
   {
-    quote: 'Mis pacientes llaman para preguntar el precio de la consulta a toda hora. El agente les responde al momento y les agenda si quieren. Ya no dependo de que alguien esté en el escritorio.',
+    quote: 'Mis pacientes llaman para preguntar el precio de la consulta a toda hora. Tu empleado les responde al momento y les agenda si quieren. Ya no dependo de que alguien esté en el escritorio.',
     author: 'Dentista, clínica dental, CDMX',
   },
   {
-    quote: 'Pensé que mis pacientes iban a notar que era una IA, pero la mayoría pregunta por citas y listo. El que sí pregunta, el agente le dice la verdad y no ha pasado nada.',
+    quote: 'Pensé que mis pacientes iban a notar que era una IA, pero la mayoría pregunta por citas y listo. El que sí pregunta, tu empleado le dice la verdad y no ha pasado nada.',
     author: 'Psicóloga, consultorio, Guadalajara',
   },
 ];
 
 const FAQS = [
   {
-    q: '¿Puede el agente manejar cancelaciones de último momento?',
-    a: 'Sí. El agente acepta cancelaciones y puede ofrecer reagendar en el momento. Tú recibes una notificación inmediata con el hueco disponible.',
+    q: '¿Puede manejar cancelaciones de último momento?',
+    a: 'Sí. Tu empleado acepta cancelaciones y puede ofrecer reagendar en el momento. Tú recibes una notificación inmediata con el hueco disponible.',
   },
   {
     q: '¿Funciona si tenemos varios doctores y horarios distintos?',
-    a: 'Sí. Puedes configurar disponibilidad por doctor o por servicio. El agente consulta el calendario en tiempo real y solo ofrece horarios disponibles.',
+    a: 'Sí. Puedes configurar disponibilidad por doctor o por servicio. Tu empleado consulta el calendario en tiempo real y solo ofrece horarios disponibles.',
   },
   {
     q: '¿Qué pasa si un paciente llama por algo urgente o de emergencia?',
-    a: 'El agente detecta urgencias y puede transferir la llamada de inmediato a tu número personal o enviar una alerta por WhatsApp para que atiendas tú directamente.',
+    a: 'Tu empleado detecta urgencias y puede transferir la llamada de inmediato a tu número personal o enviar una alerta por WhatsApp para que atiendas tú directamente.',
   },
   {
-    q: '¿El agente puede manejar información médica sensible?',
-    a: 'El agente no accede ni almacena expedientes médicos. Su función es logística: agendar, informar y capturar datos de contacto. La información clínica sigue siendo tuya.',
+    q: '¿Puede manejar información médica sensible?',
+    a: 'Tu empleado no accede ni almacena expedientes médicos. Su función es logística: agendar, informar y capturar datos de contacto. La información clínica sigue siendo tuya.',
   },
 ];
 
@@ -148,7 +148,7 @@ export default function ClinicasPage() {
             </span>
           </h1>
           <p className="mb-8 max-w-xl mx-auto" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
-            Atiende llamadas, agenda citas y captura pacientes las 24 horas, sin que tu recepcionista necesite estar presente.
+            Atiende llamadas, agenda citas y captura pacientes las 24 horas, sin necesidad de una recepcionista.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -156,7 +156,7 @@ export default function ClinicasPage() {
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
             >
-              Activar mi agente <ArrowRight size={15} />
+              Activar mi empleado <ArrowRight size={15} />
             </Link>
             <a
               href="tel:+528116333559"
@@ -204,10 +204,10 @@ export default function ClinicasPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
-                Un recepcionista que nunca falta, nunca se cansa y siempre contesta
+                Tu empleado telefónico IA que nunca falta, nunca se cansa y siempre contesta
               </h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>
-                Centinelia configura un agente de voz entrenado con la información de tu consultorio. Sabe tus precios, tus horarios, tus servicios, y habla como parte de tu equipo.
+                Centinelia configura un empleado telefónico IA entrenado con la información de tu consultorio. Sabe tus precios, tus horarios, tus servicios, y habla como parte de tu equipo.
               </p>
               <ul className="space-y-3">
                 {FEATURES.map((f, i) => (
@@ -232,7 +232,7 @@ export default function ClinicasPage() {
                     <CalendarDays size={20} color="#fff" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm" style={{ color: C.text }}>Agente activo ahora mismo</p>
+                    <p className="font-semibold text-sm" style={{ color: C.text }}>Empleado activo ahora mismo</p>
                     <p className="text-xs" style={{ color: C.textSub }}>Clínica Dental ejemplo · Monterrey</p>
                   </div>
                 </div>
@@ -264,13 +264,13 @@ export default function ClinicasPage() {
       <section style={{ background: C.bg, padding: '80px 24px' }}>
         <div className="max-w-5xl mx-auto">
           <AnimatedSection className="mb-10">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>El agente también llama</p>
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>Tu empleado también llama</p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-16 items-end">
               <h2 className="font-bold" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
                 Reduce no-shows sin levantar el teléfono
               </h2>
               <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>
-                Además de atender llamadas entrantes, el agente puede hacer llamadas salientes para confirmar, dar seguimiento y fidelizar pacientes.
+                Además de atender llamadas entrantes, tu empleado puede hacer llamadas salientes para confirmar, dar seguimiento y fidelizar pacientes.
               </p>
             </div>
           </AnimatedSection>
@@ -365,7 +365,7 @@ export default function ClinicasPage() {
               className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
             >
-              Activar mi agente ahora <ArrowRight size={15} />
+              Activar mi empleado ahora <ArrowRight size={15} />
             </Link>
           </AnimatedSection>
         </div>

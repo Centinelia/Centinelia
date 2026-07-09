@@ -23,7 +23,7 @@ export default function PendienteContent() {
 
         <h1 className="text-2xl font-bold text-white mb-2">¡Pago confirmado!</h1>
         <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          Tu agente de voz está siendo configurado. En unos minutos recibirás un correo con acceso a tu portal.
+          Tu empleado telefónico IA está siendo configurado. En unos minutos recibirás un correo con acceso a tu portal.
         </p>
 
         {/* Steps */}
@@ -35,7 +35,7 @@ export default function PendienteContent() {
           <div className="flex flex-col gap-4">
             <Step n={1} icon={<Mail size={15} />} title="Revisa tu correo" desc="Te enviamos un enlace para configurar tu contraseña de acceso al portal." done />
             <Step n={2} icon={<Clock size={15} />} title="Asignación de número" desc="En las próximas horas habilitamos tu número de teléfono dedicado." />
-            <Step n={3} icon={<span className="text-sm">⚡</span>} title="Tu agente entra en línea" desc="Te avisamos por WhatsApp cuando el agente esté listo para atender llamadas." />
+            <Step n={3} icon={<span className="text-sm">⚡</span>} title="Tu empleado entra en línea" desc="Te avisamos por WhatsApp cuando tu empleado esté listo para atender llamadas." />
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 const ITEMS: { icon: LucideIcon; label: string }[] = [
-  { icon: Phone,          label: 'Recepcionista 24/7' },
+  { icon: Phone,          label: 'Atención 24/7' },
   { icon: ArrowLeftRight, label: 'Transferencia inteligente' },
   { icon: Globe,          label: 'Multiidioma ES + EN' },
   { icon: Cpu,            label: 'Inteligencia Artificial' },

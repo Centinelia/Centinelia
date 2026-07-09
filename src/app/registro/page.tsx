@@ -65,7 +65,7 @@ const AGENT_PLANS: AgentPlanDef[] = [
     id: 'comercial', label: 'Comercial', setupFee: 8990, color: '#6C3BFF',
     description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
     features: [
-      { label: 'Recepcionista 24/7', desc: 'Contesta a cualquier hora con el nombre y la información de tu negocio.' },
+      { label: 'Atención telefónica 24/7', desc: 'Contesta a cualquier hora con el nombre y la información de tu negocio.' },
       { label: 'Captura de leads', desc: 'Obtiene nombre, teléfono y necesidad de cada prospecto automáticamente.' },
       { label: 'Agendamiento de citas', desc: 'Confirma, modifica y cancela citas durante la llamada.' },
       { label: 'Transferencia inteligente', desc: 'Transfiere a tu celular cuando el cliente necesita hablar con alguien.' },
@@ -78,7 +78,7 @@ const AGENT_PLANS: AgentPlanDef[] = [
     id: 'pro', label: 'Pro', setupFee: 14990, color: '#9B6DFF', recommended: true,
     description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
-      { label: 'Todo el plan Comercial', desc: 'Recepcionista 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
+      { label: 'Todo el plan Comercial', desc: 'Atención 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
       { label: 'Hasta 3 llamadas simultáneas', desc: 'Tu agente atiende hasta 3 llamadas al mismo tiempo sin dar señal de ocupado.' },
       { label: 'Llamadas salientes y devolución automática', desc: 'Llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas automáticamente.' },
       { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los manda a tu WhatsApp.' },
@@ -89,11 +89,11 @@ const AGENT_PLANS: AgentPlanDef[] = [
   },
   {
     id: 'empresarial', label: 'Empresarial', setupFee: 0, color: '#f59e0b', custom: true,
-    description: 'Múltiples agentes y sucursales, integraciones POS/CRM y SLA dedicado.',
+    description: 'Múltiples empleados y sucursales, integraciones POS/CRM y SLA dedicado.',
     features: [
       { label: 'Todo el plan Pro', desc: 'Todas las capacidades del plan Pro más las siguientes.' },
       { label: 'Integración con tu sistema', desc: 'Conectamos el agente con tu POS, CRM o calendario en tiempo real.' },
-      { label: 'Múltiples agentes / sucursales', desc: 'Un agente independiente por sucursal con su propio portal.' },
+      { label: 'Múltiples empleados / sucursales', desc: 'Un empleado independiente por sucursal con su propio portal.' },
       { label: 'SLA y soporte dedicado', desc: 'Tiempo de respuesta garantizado y línea directa con el equipo técnico.' },
     ],
   },
@@ -452,16 +452,16 @@ function RegistroInner() {
         {/* ── STEP 1: Plan ──────────────────────────────────────────────────── */}
         {step === 1 && (
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Configura tu agente</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">Configura tu empleado telefónico IA</h1>
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Dos decisiones: tu tipo de agente (pago único) y tus minutos al mes.
+              Dos decisiones: el perfil de tu empleado (pago único) y tus minutos al mes.
             </p>
 
             {/* ── Sección A: Tipo de agente ─────────────── */}
             <div className="mb-3">
               <p className="text-xs font-semibold tracking-widest uppercase"
                 style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Paso 1 — Tipo de agente
+                Paso 1 — Tu empleado
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>
                 Pago único de instalación
@@ -623,7 +623,7 @@ function RegistroInner() {
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Tu negocio</h1>
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              El agente usará esta información para atender tus llamadas.
+              Tu empleado usará esta información para atender tus llamadas.
             </p>
 
             <div className="flex flex-col gap-5">
@@ -666,7 +666,7 @@ function RegistroInner() {
               <div>
                 <label style={labelStyle}>
                   Describe tu negocio brevemente *
-                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(el agente lo usa para responder preguntas)</span>
+                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(tu empleado lo usa para responder preguntas)</span>
                 </label>
                 <textarea
                   value={businessDesc}
@@ -688,7 +688,7 @@ function RegistroInner() {
               <div>
                 <label style={labelStyle}>
                   Teléfono del negocio *
-                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(el agente lo menciona en llamadas)</span>
+                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(tu empleado lo menciona en llamadas)</span>
                 </label>
                 <div className="relative">
                   <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
@@ -704,7 +704,7 @@ function RegistroInner() {
               {(plan === 'pro' || plan === 'empresarial') && (
                 <div>
                   <label style={labelStyle}>
-                    Nombre del agente
+                    Nombre de tu empleado
                     <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(opcional, default: Centinelia)</span>
                   </label>
                   <input

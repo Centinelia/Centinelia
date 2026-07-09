@@ -14,31 +14,31 @@ const C = {
 const FAQS = [
   {
     q: '¿Suena natural o robótico?',
-    a: 'El agente usa voces de ElevenLabs, la misma tecnología que usan estudios de doblaje y plataformas globales. La mayoría de los clientes no notan la diferencia. Si quieres comprobarlo antes de contratar, llama al agente demo.',
+    a: 'Tu empleado usa voces de ElevenLabs, la misma tecnología que usan estudios de doblaje y plataformas globales. La mayoría de los clientes no notan la diferencia. Si quieres comprobarlo antes de contratar, llama al empleado demo.',
   },
   {
-    q: '¿Qué pasa si el agente no sabe responder algo?',
-    a: 'El agente reconoce sus límites. Si no tiene la información, lo dice con honestidad y ofrece tomar los datos del cliente para que el equipo le llame de regreso. Nunca inventa respuestas ni da información incorrecta.',
+    q: '¿Qué pasa si no sabe responder algo?',
+    a: 'Tu empleado reconoce sus límites. Si no tiene la información, lo dice con honestidad y ofrece tomar los datos del cliente para que el equipo le llame de regreso. Nunca inventa respuestas ni da información incorrecta.',
   },
   {
     q: '¿Cuánto tiempo tarda en estar activo?',
-    a: 'Menos de 24 horas. Después de contratar, accedes al portal, agregas la información de tu negocio (horarios, servicios, precios, FAQs) y el agente queda listo. No necesitas saber de tecnología.',
+    a: 'Menos de 24 horas. Después de contratar, accedes al portal, agregas la información de tu negocio (horarios, servicios, precios, FAQs) y tu empleado queda listo. No necesitas saber de tecnología.',
   },
   {
     q: '¿Funciona para mi tipo de negocio?',
-    a: 'Funciona para cualquier negocio que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, academias y más. El agente aprende sobre tu negocio específico, no es un bot genérico.',
+    a: 'Funciona para cualquier negocio que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, academias y más. Tu empleado aprende sobre tu negocio específico, no es un bot genérico.',
   },
   {
     q: '¿Puedo cancelar cuando quiera?',
     a: 'Sí, sin penalizaciones ni trámites. No hay contratos de permanencia. Si decides cancelar, el servicio termina al final del ciclo de facturación.',
   },
   {
-    q: '¿Qué pasa si el agente comete un error?',
+    q: '¿Qué pasa si comete un error?',
     a: 'Tienes acceso a las grabaciones y transcripciones de cada llamada desde tu portal. Si algo no quedó bien, lo ajustas en la configuración en tiempo real y el cambio se aplica en minutos.',
   },
   {
     q: '¿Mis clientes van a saber que están hablando con una IA?',
-    a: 'El agente habla de forma natural y no menciona proactivamente que es un asistente automatizado. Si algún cliente pregunta directamente, el agente responde con honestidad. Puedes personalizar el nombre y la voz del agente para que se sienta parte de tu equipo.',
+    a: 'Tu empleado habla de forma natural y no menciona proactivamente que es un asistente automatizado. Si algún cliente pregunta directamente, responde con honestidad. Puedes personalizar el nombre y la voz de tu empleado para que se sienta parte de tu equipo.',
   },
 ];
 

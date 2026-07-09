@@ -24,7 +24,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Citas + info',
     badgeColor: '#2563eb',
     opening:    'Hola, quiero agendar una consulta y preguntar por los costos.',
-    hint:       'El agente tomará tus datos, buscará disponibilidad y confirmará la cita. También responde preguntas sobre servicios, precios y doctores disponibles.',
+    hint:       'Tu empleado tomará tus datos, buscará disponibilidad y confirmará la cita. También responde preguntas sobre servicios, precios y doctores disponibles.',
   },
   {
     id:         'pedidos',
@@ -34,7 +34,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Pedidos + entregas',
     badgeColor: '#d97706',
     opening:    'Hola, quiero hacer un pedido para llevar.',
-    hint:       'Pide lo que quieras del menú. El agente capturará cada producto, preguntará si es para llevar o a domicilio, confirmará la dirección y cerrará el pedido.',
+    hint:       'Pide lo que quieras del menú. Tu empleado capturará cada producto, preguntará si es para llevar o a domicilio, confirmará la dirección y cerrará el pedido.',
   },
   {
     id:         'vendedor',
@@ -44,7 +44,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Leads + calificación',
     badgeColor: '#059669',
     opening:    'Hola, busco a alguien que me ayude con marketing digital para mi empresa.',
-    hint:       'El agente te calificará como prospecto: preguntará sobre tu negocio, presupuesto y urgencia. Así convierte llamadas frías en leads calificados.',
+    hint:       'Tu empleado te calificará como prospecto: preguntará sobre tu negocio, presupuesto y urgencia. Así convierte llamadas frías en leads calificados.',
   },
   {
     id:         'seguimiento',
@@ -54,7 +54,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Callbacks + recontacto',
     badgeColor: '#7c3aed',
     opening:    'Actúa como si me regresaras una llamada perdida de ayer.',
-    hint:       'Verás cómo el agente retoma el contacto, se disculpa por no haber contestado antes y lleva la conversación desde cero. Así funciona la devolución automática de llamadas perdidas.',
+    hint:       'Verás cómo tu empleado retoma el contacto, se disculpa por no haber contestado antes y lleva la conversación desde cero. Así funciona la devolución automática de llamadas perdidas.',
   },
   {
     id:         'citas',
@@ -64,7 +64,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Agendar + modificar + cancelar',
     badgeColor: '#e11d48',
     opening:    'Necesito cambiar mi cita del jueves a la próxima semana.',
-    hint:       'El agente manejará la modificación, encontrará un nuevo horario disponible y lo confirmará. También puede cancelar citas o crear nuevas desde cero.',
+    hint:       'Tu empleado manejará la modificación, encontrará un nuevo horario disponible y lo confirmará. También puede cancelar citas o crear nuevas desde cero.',
   },
   {
     id:         'libre',
@@ -74,7 +74,7 @@ const SCENARIOS: Scenario[] = [
     badge:      'Personalizable al 100%',
     badgeColor: '#6C3BFF',
     opening:    'Actúa como si fueras la recepcionista de [tu negocio]. Voy a llamar como cliente.',
-    hint:       'Dile qué negocio quieres que simule y empieza a interactuar. El agente se adapta al instante: industria, tono, servicios, precios. Todo lo que le digas, lo adopta.',
+    hint:       'Dile qué negocio quieres que simule y empieza a interactuar. Tu empleado se adapta al instante: industria, tono, servicios, precios. Todo lo que le digas, lo adopta.',
   },
 ];
 
@@ -176,7 +176,7 @@ export default function DemoSelector({ demoPhone, demoPhoneHref }: Props) {
   return (
     <div>
       <p className="text-center text-sm mb-5" style={{ color: 'rgba(26,10,59,0.45)' }}>
-        Elige el rol que quieres que tome el agente
+        Elige el rol de tu empleado
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {SCENARIOS.map(s => {

@@ -9,12 +9,12 @@ import IndustryFooter from '@/app/industrias/IndustryFooter';
 const BASE_URL = 'https://www.centinelia.mx';
 
 export const metadata: Metadata = {
-  title: 'Centinelia por Industria, Agente de Voz IA para tu Giro',
-  description: 'Elige tu industria y descubre cómo Centinelia atiende llamadas, agenda citas y captura leads 24/7, adaptado a clínicas, restaurantes, despachos, inmobiliarias y tiendas.',
+  title: 'Centinelia por Industria | Empleado Telefónico IA para tu Negocio',
+  description: 'Elige tu industria y descubre cómo tu empleado telefónico IA atiende y realiza llamadas, agenda citas y captura leads las 24 horas, sin vacaciones ni horarios.',
   alternates: { canonical: `${BASE_URL}/industrias` },
   openGraph: {
-    title: 'Centinelia por Industria | Agente de Voz IA',
-    description: 'Elige tu industria y descubre cómo Centinelia atiende llamadas 24/7 adaptado a tu negocio.',
+    title: 'Centinelia por Industria | Empleado Telefónico IA',
+    description: 'Elige tu industria y descubre cómo tu empleado telefónico IA atiende y realiza llamadas 24/7 adaptado a tu negocio.',
     url: `${BASE_URL}/industrias`,
     images: [{ url: '/og-image.png?v=2', width: 1200, height: 630 }],
   },
@@ -86,7 +86,7 @@ export default function IndustriasPage() {
             </span>
           </h1>
           <p style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
-            Centinelia se adapta a tu giro. Elige tu industria para ver cómo funciona en la práctica.
+            Tu empleado telefónico IA se adapta a tu industria. Elige tu giro para ver cómo trabaja en la práctica.
           </p>
         </div>
       </section>
@@ -179,7 +179,7 @@ export default function IndustriasPage() {
               >
                 <p className="font-bold text-white" style={{ fontSize: '1rem' }}>¿No encuentras tu giro?</p>
                 <p className="text-sm leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.78)' }}>
-                  Centinelia funciona para cualquier negocio que reciba llamadas. Platica con nosotros y lo configuramos a tu medida.
+                  Tu empleado telefónico IA funciona para cualquier negocio que reciba o necesite hacer llamadas. Platica con nosotros y lo configuramos a tu medida.
                 </p>
                 <Link
                   href="/registro"
