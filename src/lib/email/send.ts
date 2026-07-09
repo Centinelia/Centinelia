@@ -318,14 +318,35 @@ export function empresarialConfirmationHtml(opts: {
 
 // ── Client-facing shell (appears to come from the business) ───────────────────
 
-function clientShell(businessName: string, body: string) {
-  const BG      = '#F8F7FF';
-  const CARD    = '#FFFFFF';
-  const BORDER  = 'rgba(108,59,255,0.10)';
-  const TEXT    = '#1A0A3B';
-  const SUB     = 'rgba(26,10,59,0.6)';
-  const MUTE    = 'rgba(26,10,59,0.35)';
-  const ACCENT  = '#6C3BFF';
+export interface EmailBranding {
+  logoUrl:    string | null;
+  brandColor: string;
+  footerText: string | null;
+  senderName: string;
+}
+
+function clientShell(branding: EmailBranding, body: string) {
+  const color  = branding.brandColor || '#6C3BFF';
+  const BG     = '#F8F7FF';
+  const CARD   = '#FFFFFF';
+  const BORDER = 'rgba(108,59,255,0.10)';
+  const TEXT   = '#1A0A3B';
+  const SUB    = 'rgba(26,10,59,0.6)';
+  const MUTE   = 'rgba(26,10,59,0.35)';
+
+  const headerContent = branding.logoUrl
+    ? `<img src="${branding.logoUrl}" alt="${branding.senderName}" style="max-height:56px;max-width:200px;display:inline-block;object-fit:contain">`
+    : `<span style="font-size:18px;font-weight:800;color:${TEXT}">${branding.senderName}</span>`;
+
+  const footerExtra = branding.footerText
+    ? `<p style="color:${MUTE};font-size:11px;margin:0 0 6px;line-height:1.7">${branding.footerText}</p>`
+    : '';
+
+  const renderedBody = body
+    .replace(/\{\{TEXT\}\}/g, TEXT)
+    .replace(/\{\{SUB\}\}/g, SUB)
+    .replace(/\{\{ACCENT\}\}/g, color)
+    .replace(/\{\{BORDER\}\}/g, BORDER);
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -335,15 +356,18 @@ function clientShell(businessName: string, body: string) {
 </head>
 <body style="margin:0;padding:0;background:${BG};font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:540px;margin:0 auto;padding:32px 16px 48px">
-    <div style="text-align:center;margin-bottom:24px">
-      <span style="font-size:20px;font-weight:800;color:${TEXT}">${businessName}</span>
+    <div style="text-align:center;padding:20px 0 16px">
+      ${headerContent}
     </div>
     <div style="background:${CARD};border:1px solid ${BORDER};border-radius:16px;padding:32px">
-      ${body.replace(/\{\{TEXT\}\}/g, TEXT).replace(/\{\{SUB\}\}/g, SUB).replace(/\{\{ACCENT\}\}/g, ACCENT).replace(/\{\{BORDER\}\}/g, BORDER)}
+      ${renderedBody}
     </div>
-    <p style="text-align:center;margin:20px 0 0;font-size:11px;color:${MUTE}">
-      Enviado a través de <a href="https://www.centinelia.mx" style="color:${MUTE};text-decoration:none">Centinelia</a>
-    </p>
+    <div style="text-align:center;padding:16px 0 0">
+      ${footerExtra}
+      <p style="color:${MUTE};font-size:11px;margin:0;line-height:1.7">
+        Enviado a través de <a href="https://www.centinelia.mx" style="color:${MUTE};text-decoration:none">Centinelia</a>
+      </p>
+    </div>
   </div>
 </body>
 </html>`;
@@ -352,6 +376,7 @@ function clientShell(businessName: string, body: string) {
 // ── Appointment confirmation to caller ────────────────────────────────────────
 
 export function appointmentConfirmationToClientHtml(opts: {
+  branding?:    EmailBranding;
   businessName: string;
   agentName:    string;
   clientName:   string | null;
@@ -360,6 +385,7 @@ export function appointmentConfirmationToClientHtml(opts: {
   servicio:     string | null;
   phone:        string | null;
 }) {
+  const branding = opts.branding ?? { logoUrl: null, brandColor: '#6C3BFF', footerText: null, senderName: opts.businessName };
   const greeting = opts.clientName ? `Hola, ${opts.clientName}` : 'Hola';
 
   const dateStr = (() => {
@@ -378,7 +404,7 @@ export function appointmentConfirmationToClientHtml(opts: {
     ? `<p style="color:{{SUB}};font-size:13px;line-height:1.7;margin:20px 0 0">¿Necesitas cambiar tu cita? Llámanos al <strong>${opts.phone}</strong>.</p>`
     : '';
 
-  return clientShell(opts.businessName, `
+  return clientShell(branding, `
     <div style="text-align:center;margin-bottom:20px">
       <span style="display:inline-block;background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:20px;padding:6px 16px;color:{{ACCENT}};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Cita confirmada</span>
     </div>
@@ -395,12 +421,14 @@ export function appointmentConfirmationToClientHtml(opts: {
 // ── Lead follow-up to caller ──────────────────────────────────────────────────
 
 export function leadFollowUpToClientHtml(opts: {
+  branding?:    EmailBranding;
   businessName: string;
   agentName:    string;
   clientName:   string | null;
   servicio:     string | null;
   phone:        string | null;
 }) {
+  const branding = opts.branding ?? { logoUrl: null, brandColor: '#6C3BFF', footerText: null, senderName: opts.businessName };
   const greeting = opts.clientName ? `Hola, ${opts.clientName}` : 'Hola';
   const serviceLine = opts.servicio
     ? `<p style="color:{{SUB}};font-size:14px;line-height:1.7;margin:0 0 16px">Recibimos tu solicitud sobre <strong style="color:{{TEXT}}">${opts.servicio}</strong>. Un miembro de nuestro equipo se comunicará contigo a la brevedad.</p>`
@@ -410,7 +438,7 @@ export function leadFollowUpToClientHtml(opts: {
     ? `<p style="color:{{SUB}};font-size:13px;line-height:1.7;margin:0">Si prefieres, puedes llamarnos directamente al <strong>${opts.phone}</strong>.</p>`
     : '';
 
-  return clientShell(opts.businessName, `
+  return clientShell(branding, `
     <div style="text-align:center;margin-bottom:20px">
       <span style="display:inline-block;background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:20px;padding:6px 16px;color:{{ACCENT}};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Recibimos tu mensaje</span>
     </div>

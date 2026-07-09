@@ -47,10 +47,11 @@ import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
 import LearningsSection          from './LearningsSection';
 import TeamFeed                  from './TeamFeed';
+import EmailSettings             from './EmailSettings';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos' | 'equipo';
+type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos' | 'equipo' | 'correos';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -272,6 +273,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     { id: 'resumen',       label: 'Resumen' },
     { id: 'actividad',     label: 'Actividad' },
     { id: 'minutos',       label: 'Minutos' },
+    { id: 'correos',       label: 'Correos' },
     { id: 'integraciones', label: 'Integraciones' },
     { id: 'contrato',      label: 'Contrato' },
   ];
@@ -555,6 +557,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
               </div>
 
+            </div>
+          )}
+
+          {/* ── CORREOS ──────────────────────────────────────────────────── */}
+          {tab === 'correos' && (
+            <div className="flex flex-col gap-5">
+              <EmailSettings token={token} />
             </div>
           )}
 

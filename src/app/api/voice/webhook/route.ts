@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         // Fetch agent email + portal token (used in the email CTA)
         const { data: agentForEmail } = await supabase
           .from('voice_agents')
-          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number')
+          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number, email_from, email_logo_url, email_brand_color, email_footer_text, email_domain_verified')
           .eq('id', resolvedAgentId)
           .single();
 
@@ -270,9 +270,18 @@ export async function POST(req: NextRequest) {
         // 2d. Email to caller — only when they provided their email during the call
         if (structured?.email && agentForEmail?.business_name &&
             ['appointment_booked', 'lead_created'].includes(outcome)) {
-          const senderName = agentForEmail.agent_name ?? agentForEmail.business_name;
-          const fromAddr   = `${agentForEmail.business_name} <notificaciones@centinelia.mx>`;
-          const phone      = agentForEmail.phone_number ?? null;
+          const senderName  = agentForEmail.agent_name ?? agentForEmail.business_name;
+          const verifiedFrom = (agentForEmail as any).email_domain_verified && (agentForEmail as any).email_from
+            ? (agentForEmail as any).email_from
+            : 'notificaciones@centinelia.mx';
+          const fromAddr    = `${agentForEmail.business_name} <${verifiedFrom}>`;
+          const phone       = agentForEmail.phone_number ?? null;
+          const branding    = {
+            logoUrl:    (agentForEmail as any).email_logo_url    ?? null,
+            brandColor: (agentForEmail as any).email_brand_color ?? '#6C3BFF',
+            footerText: (agentForEmail as any).email_footer_text ?? null,
+            senderName: agentForEmail.business_name,
+          };
 
           if (outcome === 'appointment_booked') {
             sendEmail({
@@ -280,6 +289,7 @@ export async function POST(req: NextRequest) {
               from:    fromAddr,
               subject: `Tu cita en ${agentForEmail.business_name} está confirmada`,
               html:    appointmentConfirmationToClientHtml({
+                branding,
                 businessName: agentForEmail.business_name,
                 agentName:    senderName,
                 clientName:   structured.nombre    ?? null,
@@ -295,6 +305,7 @@ export async function POST(req: NextRequest) {
               from:    fromAddr,
               subject: `Gracias por contactar a ${agentForEmail.business_name}`,
               html:    leadFollowUpToClientHtml({
+                branding,
                 businessName: agentForEmail.business_name,
                 agentName:    senderName,
                 clientName:   structured.nombre  ?? null,
