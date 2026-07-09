@@ -4,6 +4,7 @@ import Image from 'next/image';
 import {
   Phone, BarChart3, PhoneOff, TrendingDown, PhoneOutgoing,
   Clock, Check, ArrowRight, Play, Target, Rocket, Star,
+  ShoppingBag, MessageCircle, Users,
 } from 'lucide-react';
 import LandingNav from './LandingNav';
 import LandingWidgets from './LandingWidgets';
@@ -628,6 +629,107 @@ export default function LandingPage() {
           <div style={{ marginTop: 40, marginLeft: -20, marginRight: -20 }}>
             <Marquee />
           </div>
+        </div>
+      </section>
+
+      {/* ── CAPACIDAD EMPRESARIAL ───────────────────────────────────────── */}
+      <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <div style={{
+            position: 'absolute',
+            width: 900, height: 700,
+            top: -200, left: '50%', transform: 'translateX(-50%)',
+            background: 'radial-gradient(circle, rgba(108,59,255,0.14) 0%, transparent 65%)',
+          }} />
+        </div>
+
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
+
+          <AnimatedSection className="text-center mb-14">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: '#9B6DFF' }}>
+              La diferencia que cambia todo
+            </p>
+            <h2
+              className="font-bold tracking-tight mb-5"
+              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff', lineHeight: 1.1 }}
+            >
+              No contratas uno.<br />Contratas los que necesites.
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.48)', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
+              Mientras tu competencia tiene una recepcionista que descansa, enferma y renuncia,
+              tú puedes tener un equipo completo activo al mismo tiempo. Sin contratar a nadie.
+            </p>
+          </AnimatedSection>
+
+          {/* Employee grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+            {([
+              { role: 'Recepcionista',       desc: 'Atiende y filtra todas las entrantes',     Icon: Phone,          color: '#6C3BFF' },
+              { role: 'Vendedor',            desc: 'Califica prospectos y agenda citas',        Icon: Rocket,         color: '#9B6DFF' },
+              { role: 'Tomador de pedidos',  desc: 'Registra órdenes en cada llamada',         Icon: ShoppingBag,    color: '#f59e0b' },
+              { role: 'Cobrador',            desc: 'Recupera cartera sin fricción',             Icon: Target,         color: '#22c55e' },
+              { role: 'Seguimiento',         desc: 'Llama de regreso y da seguimiento',        Icon: PhoneOutgoing,  color: '#3b82f6' },
+              { role: 'Soporte',             desc: 'Resuelve dudas y retiene clientes',        Icon: MessageCircle,  color: '#a855f7' },
+            ] as const).map(({ role, desc, Icon, color }, i) => (
+              <AnimatedSection key={role} delay={i * 0.07}>
+                <div
+                  className="rounded-2xl h-full"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.09)',
+                    padding: '20px 16px',
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${color}18`, border: `1px solid ${color}30` }}
+                    >
+                      <Icon size={14} color={color} />
+                    </div>
+                    <span
+                      className="text-[10px] font-bold"
+                      style={{ color: '#4ade80', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 99, padding: '2px 8px' }}
+                    >
+                      ACTIVO
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold mb-1" style={{ color: '#fff' }}>{role}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>{desc}</p>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          {/* Tagline card */}
+          <AnimatedSection delay={0.42}>
+            <div
+              className="rounded-2xl text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(108,59,255,0.18) 0%, rgba(155,109,255,0.08) 100%)',
+                border: '1px solid rgba(108,59,255,0.35)',
+                padding: 'clamp(24px, 4vw, 40px) clamp(20px, 5vw, 48px)',
+              }}
+            >
+              <p className="text-sm mb-3" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                Todos activos al mismo tiempo. Las 24 horas. Sin nómina.
+              </p>
+              <p
+                className="font-extrabold tracking-tight"
+                style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: '#fff', lineHeight: 1.1 }}
+              >
+                Contrata capacidad,{' '}
+                <span style={{
+                  background: 'linear-gradient(135deg, #9B6DFF 0%, #C4A8FF 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  no personal.
+                </span>
+              </p>
+            </div>
+          </AnimatedSection>
+
         </div>
       </section>
 
