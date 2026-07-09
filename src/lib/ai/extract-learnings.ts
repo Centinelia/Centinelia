@@ -63,13 +63,26 @@ Responde SOLO con un JSON array de strings en español mexicano:`,
   }
   if (!learnings.length) return;
 
-  await supabase.from('agent_learnings').insert(
-    learnings.slice(0, 3).map(content => ({
-      agent_id:     agentId,
-      portal_email: portalEmail,
-      vapi_call_id: vapiCallId,
-      content:      content.trim().slice(0, 500),
-      status:       'pending',
+  const items = learnings.slice(0, 3).map(content => ({
+    agent_id:     agentId,
+    portal_email: portalEmail,
+    vapi_call_id: vapiCallId,
+    content:      content.trim().slice(0, 500),
+    status:       'pending',
+  }));
+
+  await supabase.from('agent_learnings').insert(items);
+
+  // Mirror learnings into team feed so the team sees what the agent picked up
+  await supabase.from('agent_messages').insert(
+    items.map(item => ({
+      portal_email:  portalEmail,
+      from_agent_id: agentId,
+      to_agent_id:   null,
+      vapi_call_id:  vapiCallId,
+      type:          'learning',
+      content:       item.content,
+      metadata:      {},
     })),
   );
 }
