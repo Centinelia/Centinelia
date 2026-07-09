@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Building2, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Building2, ArrowRight, RefreshCw } from 'lucide-react';
+
+const POLL_MS = 15_000;
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor:     'Ejecutivo de ventas',
@@ -71,17 +73,34 @@ function timeAgo(iso: string): string {
 }
 
 export default function TeamFeed({ token }: { token: string }) {
-  const [messages, setMessages] = useState<FeedMessage[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const [messages,    setMessages]    = useState<FeedMessage[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const knownIds = useRef<Set<string>>(new Set());
 
-  const load = useCallback(() => {
-    fetch(`/api/portal/${token}/team-feed`)
-      .then(r => r.json())
-      .then(d => { setMessages(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    try {
+      const r = await fetch(`/api/portal/${token}/team-feed`);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+      const hadMessages = knownIds.current.size > 0;
+      const newOnes = hadMessages ? d.filter((m: FeedMessage) => !knownIds.current.has(m.id)) : [];
+      d.forEach((m: FeedMessage) => knownIds.current.add(m.id));
+      if (!hadMessages || newOnes.length > 0) setMessages(d);
+      setLastUpdated(new Date());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [token]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const id = setInterval(() => load(), POLL_MS);
+    return () => clearInterval(id);
+  }, [load]);
 
   return (
     <div>
@@ -94,6 +113,21 @@ export default function TeamFeed({ token }: { token: string }) {
         <span className="text-xs" style={{ color: 'var(--c-text-sub)' }}>
           · comunicación del equipo
         </span>
+        <div className="ml-auto flex items-center gap-2">
+          {lastUpdated && (
+            <span className="text-xs" style={{ color: 'var(--c-text-sub)' }}>
+              {timeAgo(lastUpdated.toISOString())}
+            </span>
+          )}
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="flex items-center justify-center rounded-lg transition-opacity disabled:opacity-40"
+            style={{ width: 28, height: 28, background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          >
+            <RefreshCw size={13} style={{ color: 'var(--c-text-sub)', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+          </button>
+        </div>
       </div>
 
       {loading && (
