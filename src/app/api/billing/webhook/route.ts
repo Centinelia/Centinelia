@@ -432,6 +432,7 @@ export async function POST(req: NextRequest) {
         active:                 false,
         billing_status:         'cancelado',
         stripe_subscription_id: null,
+        cancelled_at:           new Date().toISOString(),
       }).eq('id', agentId);
 
       const { data: agent } = await supabase

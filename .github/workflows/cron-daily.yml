@@ -13,3 +13,8 @@ jobs:
         run: |
           curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/appointment-reminders" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      - name: Purgar datos de cuentas canceladas hace 30+ días
+        run: |
+          curl -fsS -X GET "${{ secrets.APP_URL }}/api/cron/cleanup-cancelled" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

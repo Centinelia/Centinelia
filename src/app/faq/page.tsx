@@ -446,13 +446,15 @@ export default function FaqPage() {
             textAlign: 'center',
           }}
         >
-          <p style={{ fontSize: 12, color: C.textMute }}>
-            <Link href="/" style={{ color: C.textMute, textDecoration: 'none' }}>Centinelia</Link>
-            {' · '}
-            <Link href="/legal" style={{ color: C.textMute, textDecoration: 'none' }}>Legal</Link>
-            {' · '}
-            <a href="mailto:hola@centinelia.mx" style={{ color: C.textMute, textDecoration: 'none' }}>hola@centinelia.mx</a>
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <Link href="https://www.centinelia.mx" style={{ display: 'flex', alignItems: 'center' }}>
+              <Image src="/logo-icon.png" alt="Centinelia" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain', opacity: 0.4 }} />
+            </Link>
+            <span style={{ fontSize: 12, color: C.textMute }}>·</span>
+            <Link href="/legal" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>Legal</Link>
+            <span style={{ fontSize: 12, color: C.textMute }}>·</span>
+            <a href="mailto:hola@centinelia.mx" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>hola@centinelia.mx</a>
+          </div>
         </footer>
       </div>
     </>
