@@ -237,7 +237,7 @@ export async function POST(req: NextRequest) {
         // Fetch agent email + portal token (used in the email CTA)
         const { data: agentForEmail } = await supabase
           .from('voice_agents')
-          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number, email_from, email_logo_url, email_brand_color, email_footer_text, email_domain_verified')
+          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number, email_from, logo_url, email_logo_url, email_brand_color, email_footer_text, email_domain_verified, brand_website, brand_address')
           .eq('id', resolvedAgentId)
           .single();
 
@@ -278,9 +278,11 @@ export async function POST(req: NextRequest) {
           const fromAddr    = `${agentForEmail.business_name} <${verifiedFrom}>`;
           const phone       = agentForEmail.phone_number ?? null;
           const branding    = {
-            logoUrl:    (agentForEmail as any).email_logo_url    ?? null,
+            logoUrl:    (agentForEmail as any).logo_url ?? (agentForEmail as any).email_logo_url ?? null,
             brandColor: (agentForEmail as any).email_brand_color ?? '#6C3BFF',
             footerText: (agentForEmail as any).email_footer_text ?? null,
+            website:    (agentForEmail as any).brand_website     ?? null,
+            address:    (agentForEmail as any).brand_address     ?? null,
             senderName: agentForEmail.business_name,
           };
 

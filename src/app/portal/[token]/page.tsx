@@ -19,6 +19,7 @@ import { redirect } from 'next/navigation';
 import PortalLogout            from './PortalLogout';
 import PauseResumeButton       from './PauseResumeButton';
 import LogoUploader            from './LogoUploader';
+import BrandKitEditor          from './BrandKitEditor';
 import BusinessSwitcher        from './BusinessSwitcher';
 import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
@@ -533,9 +534,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                 <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Aparece en el encabezado de tu portal de clientes.
+                  Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
                 </p>
                 <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
+                </p>
+                <BrandKitEditor
+                  token={token}
+                  logoUrl={(agent as any).logo_url ?? null}
+                  businessName={agent.business_name}
+                  initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
+                  initialWebsite={(agent as any).brand_website ?? ''}
+                  initialAddress={(agent as any).brand_address ?? ''}
+                  initialFooter={(agent as any).email_footer_text ?? ''}
+                />
               </div>
 
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>

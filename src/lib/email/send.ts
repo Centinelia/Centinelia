@@ -323,13 +323,15 @@ export interface EmailBranding {
   brandColor: string;
   footerText: string | null;
   senderName: string;
+  website?:   string | null;
+  address?:   string | null;
 }
 
 function clientShell(branding: EmailBranding, body: string) {
   const color  = branding.brandColor || '#6C3BFF';
   const BG     = '#F8F7FF';
   const CARD   = '#FFFFFF';
-  const BORDER = 'rgba(108,59,255,0.10)';
+  const BORDER = `${color}1A`;
   const TEXT   = '#1A0A3B';
   const SUB    = 'rgba(26,10,59,0.6)';
   const MUTE   = 'rgba(26,10,59,0.35)';
@@ -338,9 +340,10 @@ function clientShell(branding: EmailBranding, body: string) {
     ? `<img src="${branding.logoUrl}" alt="${branding.senderName}" style="max-height:56px;max-width:200px;display:inline-block;object-fit:contain">`
     : `<span style="font-size:18px;font-weight:800;color:${TEXT}">${branding.senderName}</span>`;
 
-  const footerExtra = branding.footerText
-    ? `<p style="color:${MUTE};font-size:11px;margin:0 0 6px;line-height:1.7">${branding.footerText}</p>`
-    : '';
+  const footerLines: string[] = [];
+  if (branding.footerText) footerLines.push(`<p style="color:${MUTE};font-size:11px;margin:0 0 4px;line-height:1.7">${branding.footerText}</p>`);
+  const contactParts = [branding.address, branding.website].filter(Boolean);
+  if (contactParts.length) footerLines.push(`<p style="color:${MUTE};font-size:11px;margin:0 0 4px;line-height:1.7">${contactParts.join(' · ')}</p>`);
 
   const renderedBody = body
     .replace(/\{\{TEXT\}\}/g, TEXT)
@@ -363,9 +366,9 @@ function clientShell(branding: EmailBranding, body: string) {
       ${renderedBody}
     </div>
     <div style="text-align:center;padding:16px 0 0">
-      ${footerExtra}
-      <p style="color:${MUTE};font-size:11px;margin:0;line-height:1.7">
-        Enviado a través de <a href="https://www.centinelia.mx" style="color:${MUTE};text-decoration:none">Centinelia</a>
+      ${footerLines.join('\n      ')}
+      <p style="color:rgba(26,10,59,0.22);font-size:10px;margin:0;line-height:1.7">
+        Enviado a través de <a href="https://www.centinelia.mx" style="color:rgba(26,10,59,0.3);text-decoration:none">Centinelia</a>
       </p>
     </div>
   </div>
