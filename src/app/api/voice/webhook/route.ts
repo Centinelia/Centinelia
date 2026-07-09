@@ -5,6 +5,7 @@ import { sendEmail, minutesAlertHtml, newLeadHtml } from '@/lib/email/send';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { executeAutoRefill } from '@/lib/billing/auto-refill';
+import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/customers';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -20,6 +21,43 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   switch (message.type) {
+
+    // ── Inbound call routing + context injection ─────────────────────────
+    case 'assistant-request': {
+      const inboundNumber = message.call?.phoneNumber?.number ?? '';
+      const callerNumber  = message.call?.customer?.number    ?? '';
+
+      if (!inboundNumber) return NextResponse.json({ error: 'no phone' }, { status: 400 });
+
+      const normInbound = inboundNumber.replace(/\D/g, '').slice(-10);
+      const { data: agent } = await supabase
+        .from('voice_agents')
+        .select('id, vapi_agent_id, portal_email')
+        .ilike('phone_number', `%${normInbound}`)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (!agent?.vapi_agent_id) {
+        return NextResponse.json({ error: 'agent not found' }, { status: 404 });
+      }
+
+      // Inject customer context as an additional system message if caller is known
+      let assistantOverrides: Record<string, unknown> | undefined;
+      if (callerNumber && agent.portal_email) {
+        const ctx = await getCustomerContext(agent.portal_email, callerNumber);
+        if (ctx) {
+          assistantOverrides = {
+            model: { messages: [{ role: 'system', content: ctx }] },
+          };
+        }
+      }
+
+      return NextResponse.json({
+        assistantId: agent.vapi_agent_id,
+        ...(assistantOverrides ? { assistantOverrides } : {}),
+      });
+    }
+
     case 'end-of-call-report': {
       const call = message.call;
 
@@ -238,7 +276,7 @@ export async function POST(req: NextRequest) {
       // 4. Fetch agent for notifications
       const { data: agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes')
+        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role')
         .eq('id', resolvedAgentId)
         .single();
 
@@ -371,6 +409,34 @@ export async function POST(req: NextRequest) {
         await sendWhatsApp(callerWa, reviewMsg).catch(() => null);
       }
 
+      // 10. Shared customer profile + cross-agent trigger chain
+      if (callerNumber && agent?.portal_email && durationSeconds > 5) {
+        const customerId = await upsertCustomer(
+          agent.portal_email,
+          callerNumber,
+          structured?.nombre ?? undefined,
+        );
+        if (customerId) {
+          await logInteraction({
+            customerId,
+            agentId:   resolvedAgentId,
+            agentRole: deriveAgentRole(agent),
+            type:      outcome,
+            summary:   summary ?? `${outcome} · ${Math.max(1, Math.ceil(durationSeconds / 60))} min`,
+            outcome,
+          });
+
+          if (['lead_created', 'appointment_booked', 'order_taken'].includes(outcome)) {
+            triggerCrossAgentQueue(
+              agent.portal_email,
+              resolvedAgentId,
+              callerNumber,
+              structured,
+            ).catch(err => console.error('[webhook] cross-agent queue failed:', err));
+          }
+        }
+      }
+
       // 9. Missed call recovery — call back unanswered callers automatically
       if (
         outcome === 'unanswered' &&
@@ -395,6 +461,77 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+const OUTBOUND_ROLE_LABELS: Record<string, string> = {
+  vendedor:     'Ejecutivo de ventas',
+  cotizador:    'Cotizador',
+  seguimiento:  'Agente de seguimiento',
+  recuperacion: 'Ejecutivo de recuperación',
+  cobrador:     'Cobrador',
+};
+
+function deriveAgentRole(agent: any): string {
+  if (agent.outbound_role) return OUTBOUND_ROLE_LABELS[agent.outbound_role] ?? agent.outbound_role;
+  const f = agent.features ?? {};
+  if (f.appointment_booking) return 'Recepcionista';
+  if (f.order_taking)        return 'Tomador de pedidos';
+  if (f.lead_qualification)  return 'Recepcionista';
+  return 'Recepcionista';
+}
+
+async function triggerCrossAgentQueue(
+  portalEmail:    string,
+  sourceAgentId:  string,
+  callerPhone:    string,
+  structured:     any,
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { data: peers } = await supabase
+    .from('voice_agents')
+    .select('id, features, outbound_role, agent_name')
+    .eq('portal_email', portalEmail)
+    .neq('id', sourceAgentId)
+    .eq('active', true);
+
+  if (!peers?.length) return;
+
+  const normPhone = callerPhone.replace(/\D/g, '').slice(-10);
+
+  for (const peer of peers) {
+    if (!(peer.features as any)?.outbound_calls) continue;
+
+    // Skip if this number is already in the peer's queue
+    const { data: existing } = await supabase
+      .from('outbound_contacts')
+      .select('id')
+      .eq('agent_id', peer.id)
+      .ilike('telefono', `%${normPhone}`)
+      .maybeSingle();
+
+    if (existing) continue;
+
+    const roleLabel = peer.outbound_role
+      ? (OUTBOUND_ROLE_LABELS[peer.outbound_role] ?? peer.outbound_role)
+      : (peer.agent_name?.trim() ?? 'Agente');
+
+    const motiParts: string[] = ['Derivado automáticamente por Recepcionista.'];
+    if (structured?.servicio)      motiParts.push(`Interesado en: ${structured.servicio}.`);
+    if (structured?.timeline)      motiParts.push(`Timeline: ${structured.timeline}.`);
+    if (structured?.nivel_interes) motiParts.push(`Nivel de interés: ${structured.nivel_interes}.`);
+    if (structured?.presupuesto)   motiParts.push(`Presupuesto: ${structured.presupuesto}.`);
+
+    await supabase.from('outbound_contacts').insert({
+      agent_id: peer.id,
+      nombre:   structured?.nombre ?? null,
+      telefono: callerPhone,
+      motivo:   motiParts.join(' '),
+      source:   'cross_agent',
+    });
+
+    console.log(`[cross-agent] Queued ${normPhone} → ${roleLabel} (agent ${peer.id})`);
+  }
 }
 
 function detectOutcome(message: any, structured: any): string {

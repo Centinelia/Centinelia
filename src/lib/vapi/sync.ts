@@ -322,7 +322,11 @@ export async function assignAssistantToPhone(
     return false;
   }
 
-  const patch: Record<string, unknown> = { assistantId: vapiAssistantId };
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`;
+  const patch: Record<string, unknown> = {
+    assistantId: vapiAssistantId,
+    serverUrl:   webhookUrl,
+  };
   if (concurrencyLimit !== undefined) patch.concurrencyLimit = concurrencyLimit;
 
   const res = await fetch(`${VAPI_URL}/phone-number/${phone.id}`, {
