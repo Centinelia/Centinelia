@@ -9,12 +9,13 @@ export type MinutesPlan = MinutesTier; // alias kept for DB field compatibility
 export interface FeaturePlanConfig {
   label:       string;
   setupFee:    number;
+  aiOpsLimit:  number;
   setupPriceId: () => string;
 }
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  comercial: { label: 'Comercial', setupFee: 8990,  setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
-  pro:       { label: 'Pro',       setupFee: 14990, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+  comercial: { label: 'Comercial', setupFee: 8990,  aiOpsLimit:  50, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
+  pro:       { label: 'Pro',       setupFee: 14990, aiOpsLimit: 250, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
 // ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────

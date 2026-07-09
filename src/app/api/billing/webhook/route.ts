@@ -2,6 +2,7 @@
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, WA_MESSAGES_PLAN_CONFIG, waMsgsPlanFromPriceId } from '@/lib/billing/plans';
+import { resetAiOps, setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
@@ -187,6 +188,7 @@ export async function POST(req: NextRequest) {
           minutes_reset_date: nextResetDate(),
           updated_at:        new Date().toISOString(),
         }, { onConflict: 'portal_email' });
+        await setAiOpsLimit(activationEmail, FEATURE_PLAN_CONFIG[featurePlan].aiOpsLimit);
       }
 
       await supabase.from('minutes_ledger').insert({
@@ -361,6 +363,9 @@ export async function POST(req: NextRequest) {
           source:      'rollover',
         });
       }
+
+      // Reset AI ops counter on monthly renewal
+      if (renewalEmail) await resetAiOps(renewalEmail);
 
       // Re-associate Vapi on renewal (in case agents were paused for overage)
       if (renewalEmail) {

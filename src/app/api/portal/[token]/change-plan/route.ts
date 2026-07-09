@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
@@ -86,12 +87,22 @@ export async function POST(req: NextRequest, { params }: Params) {
     proration_behavior: 'none',
   });
 
+  const { data: updatedAgent } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agent.id)
+    .single();
+
   await supabase.from('voice_agents').update({
-    plan:         newPlan,
-    features:     PLAN_FEATURES[newPlan],
-    minutes_plan: newTier,
+    plan:             newPlan,
+    features:         PLAN_FEATURES[newPlan],
+    minutes_plan:     newTier,
     minutes_included: MONTHLY_CONFIG[newPlan][newTier].minutes,
   }).eq('id', agent.id);
+
+  if (to_plan && to_plan !== currentPlan && updatedAgent?.portal_email) {
+    await setAiOpsLimit(updatedAgent.portal_email, FEATURE_PLAN_CONFIG[newPlan].aiOpsLimit);
+  }
 
   return NextResponse.json({ success: true });
 }

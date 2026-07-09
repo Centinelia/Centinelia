@@ -168,6 +168,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     ? new Date(minutesResetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
     : 'N/A';
 
+  const aiOpsUsed  = (agent.ai_ops_used  as number | null) ?? 0;
+  const aiOpsLimit = (agent.ai_ops_limit as number | null) ?? 0;
+  const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
+  const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
+
   const supportWhatsApp    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '';
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
   const centineliReviewUrl = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
@@ -829,6 +834,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </p>
                 )}
               </div>
+
+              {/* AI Ops */}
+              {aiOpsLimit > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
+                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
+                    <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                  </div>
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                    <span>Se renueva el {resetDate}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Averages */}
               {allCalls.length > 0 && (
