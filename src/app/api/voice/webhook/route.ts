@@ -8,6 +8,7 @@ import { executeAutoRefill } from '@/lib/billing/auto-refill';
 import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/customers';
 import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
 import { generateTeamMessage } from '@/lib/ai/generate-team-message';
+import { addCallEntry } from '@/lib/notion/client';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -327,7 +328,7 @@ export async function POST(req: NextRequest) {
       // 4. Fetch agent for notifications
       const { data: agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role, knowledge_base')
+        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role, knowledge_base, notion_access_token, notion_db_id')
         .eq('id', resolvedAgentId)
         .single();
 
@@ -511,6 +512,33 @@ export async function POST(req: NextRequest) {
           structured,
           callerNumber,
         }).catch(err => console.error('[webhook] team-message failed:', err));
+      }
+
+      // 13. Notion CRM — log call when the account has Notion connected and a CRM database set
+      const notionToken = (agent as any)?.notion_access_token as string | null;
+      const notionDbId  = (agent as any)?.notion_db_id        as string | null;
+      if (notionToken && notionDbId && outcome !== 'unanswered') {
+        const TIPO_MAP: Record<string, string> = {
+          lead_created:       'Lead',
+          appointment_booked: 'Cita',
+          order_taken:        'Pedido',
+        };
+        const callDate = rawEndedAt
+          ? new Date(rawEndedAt).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+
+        addCallEntry({
+          accessToken: notionToken,
+          dbId:        notionDbId,
+          nombre:      structured?.nombre ?? null,
+          tipo:        TIPO_MAP[outcome] ?? 'Llamada',
+          fecha:       callDate,
+          telefono:    callerNumber || null,
+          servicio:    structured?.servicio ?? structured?.pedido_items ?? null,
+          resumen:     summary,
+          outcome,
+          accion:      structured?.acciones_pendientes ?? null,
+        }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
       }
 
       // 9. Missed call recovery — call back unanswered callers automatically

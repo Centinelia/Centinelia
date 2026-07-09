@@ -35,6 +35,7 @@ import LiveNotifications       from './LiveNotifications';
 import SupportChat             from './SupportChat';
 import CallsSearch             from './CallsSearch';
 import IntegrationsSection     from './IntegrationsSection';
+import NotionSection            from './NotionSection';
 import PortalTabNav           from './PortalTabNav';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
@@ -984,6 +985,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </p>
                 <IntegrationsSection token={token} plan={agent.plan as Plan} />
               </div>
+              <NotionSection token={token} />
             </div>
           )}
 
