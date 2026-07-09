@@ -421,7 +421,7 @@ export default function FaqPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Link href="https://www.centinelia.mx" style={{ display: 'flex', alignItems: 'center' }}>
-              <Image src="/logo-icon.png" alt="Centinelia" width={36} height={36} style={{ width: 36, height: 36, objectFit: 'contain' }} />
+              <Image src="/logo.png" alt="Centinelia" width={120} height={32} style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
             </Link>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               <Link href="/legal" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>Legal</Link>
