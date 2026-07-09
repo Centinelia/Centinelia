@@ -6,33 +6,42 @@ export interface OpsResult {
   limit: number;
 }
 
-// Checks and atomically increments the AI ops counter for an account.
+// Checks and atomically increments the AI ops counter for an account pool.
 // Call before any non-call AI operation (email processing, doc analysis, etc.).
-// Returns ok:false if the monthly limit is reached — the caller must abort.
-export async function consumeAiOp(portalEmail: string): Promise<OpsResult> {
+// Pass the specific agent doing the work — pool total is derived from the whole account.
+// Returns ok:false if the monthly pool limit is reached — the caller must abort.
+export async function consumeAiOp(agentId: string): Promise<OpsResult> {
   const supabase = createAdminClient();
 
-  const { data: agent } = await supabase
+  // Fetch the acting agent + its account's portal_email
+  const { data: actor } = await supabase
     .from('voice_agents')
-    .select('id, ai_ops_used, ai_ops_limit')
-    .eq('portal_email', portalEmail)
-    .order('created_at', { ascending: true })
-    .limit(1)
+    .select('id, portal_email, ai_ops_used, ai_ops_limit')
+    .eq('id', agentId)
     .single();
 
-  if (!agent) return { ok: false, used: 0, limit: 0 };
+  if (!actor?.portal_email) return { ok: false, used: 0, limit: 0 };
 
-  const used  = agent.ai_ops_used  ?? 0;
-  const limit = agent.ai_ops_limit ?? 100;
+  // Account-level pool: sum all agents in the same account
+  const { data: siblings } = await supabase
+    .from('voice_agents')
+    .select('ai_ops_used, ai_ops_limit')
+    .eq('portal_email', actor.portal_email);
 
-  if (used >= limit) return { ok: false, used, limit };
+  const totalUsed  = (siblings ?? []).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+  const totalLimit = (siblings ?? []).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
 
+  if (totalLimit === 0 || totalUsed >= totalLimit) {
+    return { ok: false, used: totalUsed, limit: totalLimit };
+  }
+
+  // Increment this specific agent's counter
   await supabase
     .from('voice_agents')
-    .update({ ai_ops_used: used + 1 })
-    .eq('id', agent.id);
+    .update({ ai_ops_used: ((actor.ai_ops_used as number) ?? 0) + 1 })
+    .eq('id', agentId);
 
-  return { ok: true, used: used + 1, limit };
+  return { ok: true, used: totalUsed + 1, limit: totalLimit };
 }
 
 // Resets ops counter for all agents in the account. Called on monthly renewal.
@@ -44,11 +53,12 @@ export async function resetAiOps(portalEmail: string): Promise<void> {
     .eq('portal_email', portalEmail);
 }
 
-// Sets the ops limit for all agents in the account. Called on plan change.
-export async function setAiOpsLimit(portalEmail: string, limit: number): Promise<void> {
+// Sets the per-agent ops limit for all agents in the account. Called on plan change.
+// Pool total = limit × number of agents.
+export async function setAiOpsLimit(portalEmail: string, limitPerAgent: number): Promise<void> {
   const supabase = createAdminClient();
   await supabase
     .from('voice_agents')
-    .update({ ai_ops_limit: limit })
+    .update({ ai_ops_limit: limitPerAgent })
     .eq('portal_email', portalEmail);
 }

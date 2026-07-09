@@ -171,8 +171,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   const inboxAddress = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
 
-  const aiOpsUsed  = (agent.ai_ops_used  as number | null) ?? 0;
-  const aiOpsLimit = (agent.ai_ops_limit as number | null) ?? 0;
+  // AI ops: account-level pool (SUM of all agents in account)
+  const { data: opsAgents } = agent.portal_email
+    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
+    : { data: null };
+  const aiOpsUsed  = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
 
