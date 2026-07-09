@@ -208,7 +208,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = []) {
       optimizeStreamingLatency: 3,
       chunkPlan: {
         enabled: true,
-        minCharacters: 80,
+        minCharacters: 50,
         punctuationBoundaries: ['.', '!', '?'],
       },
     },
