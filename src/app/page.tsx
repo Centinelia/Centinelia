@@ -30,36 +30,36 @@ const FEATURES: {
   {
     icon:  <Phone size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
-    title: 'Atención telefónica 24/7',
+    title: 'Recepcionista 24/7',
     desc:  'Contesta cada llamada sin importar la hora, captura el lead, agenda la cita y toma el pedido. Sin llamadas en espera, sin llamadas perdidas.',
   },
   {
     icon:  <PhoneOutgoing size={20} color="#9B6DFF" />,
     color: '#9B6DFF',
-    title: 'Llamadas salientes',
-    desc:  'Llama de regreso a quien no contestó, confirma citas y da seguimiento a prospectos. Sin que tengas que marcar un número.',
+    title: 'Ejecutivo de ventas',
+    desc:  'Llama a prospectos, confirma citas y reactiva clientes dormidos. Tu fuerza de ventas siempre activa, sin que marques un solo número.',
     cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(155,109,255,0.05) 100%)',
     cardBorder: 'rgba(155,109,255,0.35)',
   },
   {
     icon:  <Target size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
-    title: 'Seguimiento automático',
-    desc:  'Cuando un prospecto no contesta, tu empleado vuelve a llamar. Trabaja cada lead hasta cerrarlo o hasta agotar los intentos que tú defines.',
+    title: 'Agente de seguimiento',
+    desc:  'Cuando un prospecto no contesta, vuelve a llamar hasta cerrarlo o agotar los intentos que defines. Ningún lead se queda sin respuesta.',
   },
   {
     icon:  <Rocket size={20} color="#9B6DFF" />,
     color: '#9B6DFF',
-    title: 'Campañas salientes',
-    desc:  'Ejecuta campañas de llamadas para reactivar clientes, cobrar, encuestar o confirmar citas masivas. Un solo empleado que trabaja como todo un equipo.',
+    title: 'Ejecutivo de recuperación',
+    desc:  'Reactiva clientes dormidos, gestiona cobros y confirma citas en volumen. El trabajo de un equipo entero de cobranza, sin la nómina.',
     cardBg: 'linear-gradient(145deg, rgba(108,59,255,0.2) 0%, rgba(108,59,255,0.06) 100%)',
     cardBorder: 'rgba(108,59,255,0.36)',
   },
   {
     icon:  <BarChart3 size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
-    title: 'Portal de reportes',
-    desc:  'Todo lo que hace queda registrado: llamadas, leads, citas y minutos. Monitoreas el desempeño de tu empleado en tiempo real desde tu portal.',
+    title: 'Supervisor de desempeño',
+    desc:  'Registra cada llamada, lead, cita y minuto. Sabes exactamente cómo trabaja tu equipo en tiempo real, desde cualquier dispositivo.',
   },
   {
     icon: (
@@ -71,8 +71,8 @@ const FEATURES: {
       </svg>
     ),
     color: '#4285F4',
-    title: 'Reseñas Google automáticas',
-    desc:  'Después de cada llamada exitosa, manda el link de reseña de Google por WhatsApp. Tu empleado construye tu reputación sin que tengas que pedírselo.',
+    title: 'Promotor de reputación',
+    desc:  'Después de cada llamada exitosa, manda el link de reseña de Google por WhatsApp. Tu reputación crece sola, sin que tengas que pedírselo a nadie.',
     cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(108,59,255,0.05) 100%)',
     cardBorder: 'rgba(155,109,255,0.35)',
   },
@@ -285,8 +285,8 @@ export default function LandingPage() {
               className="mb-8 leading-relaxed"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Atiende y realiza llamadas a tus clientes las 24 horas,
-              sin vacaciones, sin incapacidades, sin horarios.
+              Recepcionista, vendedor, cobrador, seguimiento: todos activos
+              al mismo tiempo, las 24 horas, sin nómina.
             </p>
 
             {/* CTAs */}
@@ -536,7 +536,7 @@ export default function LandingPage() {
           <div className="hidden lg:flex items-end gap-10 mb-0">
             <AnimatedSection className="flex-1">
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                Lo que hace tu empleado
+                Lo que puede hacer tu equipo
               </p>
               <h2
                 className="font-bold tracking-tight mb-4"
@@ -562,7 +562,7 @@ export default function LandingPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
               <div>
                 <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                  Lo que hace tu empleado
+                  Lo que puede hacer tu equipo
                 </p>
                 <h2
                   className="font-bold tracking-tight mb-3"
@@ -1156,17 +1156,17 @@ export default function LandingPage() {
         >
           <AnimatedSection>
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu empleado te espera
+              Tu equipo te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(1.8rem, 6vw, 2.8rem)', color: '#fff' }}>
-              Mientras tú atiendes tu negocio,<br />tu empleado atiende el teléfono.
+              Mientras tú atiendes tu negocio,<br />tu equipo atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
               Tu empleado puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Contratar mi empleado <ArrowRight size={15} />
+                Armar mi equipo <ArrowRight size={15} />
               </Link>
               <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Phone size={14} /> Habla con un asesor
@@ -1185,17 +1185,17 @@ export default function LandingPage() {
         >
           <AnimatedSection style={{ maxWidth: 520 }}>
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu empleado te espera
+              Tu equipo te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', color: '#fff', lineHeight: 1.1 }}>
-              Mientras tú atiendes<br />tu negocio, tu empleado<br />atiende el teléfono.
+              Mientras tú atiendes<br />tu negocio, tu equipo<br />atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420 }}>
               Tu empleado puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.
             </p>
             <div className="flex items-start gap-3">
               <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Contratar mi empleado <ArrowRight size={15} />
+                Armar mi equipo <ArrowRight size={15} />
               </Link>
               <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Phone size={14} /> Habla con un asesor

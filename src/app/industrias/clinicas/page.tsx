@@ -148,7 +148,7 @@ export default function ClinicasPage() {
             </span>
           </h1>
           <p className="mb-8 max-w-xl mx-auto" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
-            Atiende llamadas, agenda citas y captura pacientes las 24 horas, sin necesidad de una recepcionista.
+            Tu Asistente de clínica atiende llamadas, agenda citas y captura pacientes las 24 horas, sin que nadie falte.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -156,7 +156,7 @@ export default function ClinicasPage() {
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
             >
-              Activar mi empleado <ArrowRight size={15} />
+              Contratar mi Asistente <ArrowRight size={15} />
             </Link>
             <a
               href="tel:+528116333559"
@@ -204,7 +204,7 @@ export default function ClinicasPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <h2 className="font-bold mb-4" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: C.text }}>
-                Tu empleado telefónico IA que nunca falta, nunca se cansa y siempre contesta
+                Tu Asistente de clínica: nunca falta, nunca se cansa y siempre contesta
               </h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>
                 Centinelia configura un empleado telefónico IA entrenado con la información de tu consultorio. Sabe tus precios, tus horarios, tus servicios, y habla como parte de tu equipo.
@@ -232,7 +232,7 @@ export default function ClinicasPage() {
                     <CalendarDays size={20} color="#fff" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm" style={{ color: C.text }}>Empleado activo ahora mismo</p>
+                    <p className="font-semibold text-sm" style={{ color: C.text }}>Asistente de clínica activo</p>
                     <p className="text-xs" style={{ color: C.textSub }}>Clínica Dental ejemplo · Monterrey</p>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function ClinicasPage() {
               className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
             >
-              Activar mi empleado ahora <ArrowRight size={15} />
+              Contratar mi Asistente de clínica <ArrowRight size={15} />
             </Link>
           </AnimatedSection>
         </div>
