@@ -1,0 +1,176 @@
+# Centinelia
+
+> Agentes de voz con inteligencia artificial que atienden las llamadas de tu negocio 24/7 en Mexico.
+
+Centinelia es un SaaS mexicano que provee equipos de agentes de voz con IA para pequenas y medianas empresas. Los agentes contestan llamadas entrantes, realizan llamadas salientes, capturan leads, agendan citas, toman pedidos y se transfieren llamadas entre si en tiempo real. Hablan espanol e ingles con voces naturales generadas por ElevenLabs.
+
+Sitio web: https://www.centinelia.mx
+Demo: llama al +52 (81) 2188 8490
+Ubicacion: Monterrey, Nuevo Leon, Mexico
+
+## Que hace Centinelia
+
+- Recepcionista 24/7: contesta cada llamada sin importar la hora, sin llamadas en espera ni perdidas
+- Captura automatica de leads: nombre, telefono y necesidad del cliente registrados despues de cada llamada
+- Agendamiento de citas: integracion con Cal.com, Google Calendar y Calendly; el agente consulta disponibilidad en tiempo real
+- Llamadas salientes automaticas: seguimiento a prospectos, confirmacion de citas, reactivacion de clientes
+- Transferencia inteligente: deriva la llamada al humano o al agente especialista correcto segun el contexto
+- Escalacion a WhatsApp: cuando el cliente prefiere continuar por mensajeria
+- Toma de pedidos por telefono (Plan Pro)
+- Memoria de cliente: recuerda informacion de llamadas anteriores (Plan Pro)
+- Multiidioma: espanol e ingles en la misma llamada, deteccion automatica (Plan Pro)
+- Promotor de resenas Google: envia link automaticamente despues de cada llamada exitosa
+- Aprendizaje supervisado: el agente extrae aprendizajes de cada llamada que el dueno puede aprobar para incorporar a la base de conocimiento
+- Equipo coordinado: hasta 6 agentes especializados que se comunican y delegan trabajo entre si
+
+## Para quien es Centinelia
+
+Negocios mexicanos que reciben llamadas y no quieren perderlas: clinicas, restaurantes, despachos legales, inmobiliarias, tiendas, academias, consultorios medicos, talleres mecanicos y cualquier PyME con flujo de llamadas entrantes o salientes.
+
+No es para: call centers masivos, negocios sin telefono como punto de contacto, o empresas que necesitan integracion con sistemas ERP enterprise (eso es Plan Empresarial con cotizacion).
+
+## Equipo de agentes especializados
+
+Cada cuenta puede configurar hasta 6 agentes con roles distintos:
+
+- **Recepcionista**: atiende llamadas entrantes, agenda citas, captura leads
+- **Ejecutivo de ventas**: realiza llamadas salientes a prospectos nuevos
+- **Agente de seguimiento**: llama a prospectos que no contestaron, hace hasta N intentos configurables
+- **Ejecutivo de recuperacion**: reactiva clientes dormidos, gestiona cobros
+- **Cobrador**: especializado en recuperacion de cartera vencida
+- **Supervisor de desempeno**: monitorea metricas, genera reportes de llamadas
+
+Los agentes se transfieren llamadas entre si en tiempo real: si el cliente necesita a un especialista, el recepcionista lo transfiere en vivo sin que el cliente cuelgue.
+
+## Precios (precios de lanzamiento para primeros clientes)
+
+Todos los planes incluyen cuota de instalacion unica y minutos mensuales incluidos.
+
+| Plan | Precio mensual | Instalacion | Minutos |
+|------|---------------|-------------|---------|
+| Basico (Recepcionista) | $1,990 MXN | $4,990 MXN | 200 min |
+| Comercial | $3,490 MXN | $7,990 MXN | 500 min |
+| Pro | $6,490 MXN | $12,990 MXN | 1,000 min |
+| Empresarial | Cotizacion personalizada | — | — |
+
+Minutos adicionales disponibles desde el portal:
+- 100 min: $1,200 MXN
+- 250 min: $3,000 MXN
+- 500 min: $6,000 MXN
+
+Sin contratos de permanencia. Cancela cuando quieras, el servicio termina al final del ciclo de facturación.
+
+## Que incluye cada plan
+
+**Plan Basico:** Recepcionista 24/7, captura de leads, 200 min/mes
+
+**Plan Comercial:** Todo el Basico + agendamiento de citas, transferencia inteligente, escalacion WhatsApp, resenas Google automaticas, portal con reportes y horas pico
+
+**Plan Pro:** Todo el Comercial + llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, voz personalizable, grabaciones, hasta 3 llamadas simultaneas
+
+**Plan Empresarial:** Todo el Pro + integracion POS/CRM, multiples sucursales, numero dedicado, soporte prioritario
+
+## Integraciones
+
+- Cal.com (API directa, el agente crea la cita en tiempo real)
+- Google Calendar, Calendly (el agente captura datos y envia link por WhatsApp)
+- WhatsApp (Twilio para escalacion)
+- Stripe (facturacion y portal de cliente)
+- Supabase (base de datos)
+- Notion (gestion de conocimiento interna)
+
+## Tecnologia
+
+- Orquestacion de voz: Vapi.ai
+- LLM: Claude de Anthropic (claude-3-5-haiku para tiempo real)
+- Transcripcion: Deepgram nova-2 con deteccion automatica de idioma
+- Voces: ElevenLabs (texto a voz de alta fidelidad)
+- Backend: Next.js 15 / Vercel
+- Base de datos: Supabase (PostgreSQL)
+- Pagos: Stripe
+
+## Como funciona tecnicamente
+
+1. El negocio recibe un numero de telefono dedicado (Vapi/Twilio)
+2. Cuando llega una llamada, Vapi crea una sesion con el LLM de Anthropic
+3. El agente usa el system prompt configurado + base de conocimiento del negocio
+4. Al terminar la llamada, el webhook extrae leads, aprendizajes y genera mensajes para el equipo
+5. Todo aparece en el portal del cliente en tiempo real
+
+El portal del cliente es accesible desde cualquier dispositivo. No se requiere app.
+
+## Diferenciadores clave vs competidores
+
+- **Equipo real, no un bot**: hasta 6 agentes especializados que colaboran entre si, no un solo chatbot de voz
+- **Aprendizaje continuo**: el sistema extrae aprendizajes de cada llamada; el dueno los aprueba y el agente los incorpora
+- **Activo en menos de 24 horas**: sin integraciones complejas para el plan basico
+- **Precios en MXN**: pensado para el mercado mexicano, no conversion de USD
+- **Espanol nativo**: entrenado en espanol mexicano, no traduccion de un producto gringo
+- **Sin contratos**: mes a mes, cancela cuando quieras
+
+## Preguntas frecuentes
+
+**¿Suena natural o robotico?**
+Usa voces de ElevenLabs, la misma tecnologia que usan estudios de doblaje globales. La mayoria de los clientes no notan la diferencia.
+
+**¿Que pasa si el agente no sabe responder algo?**
+El agente lo dice con honestidad y ofrece tomar los datos del cliente para que el equipo le llame de regreso. Nunca inventa respuestas.
+
+**¿Cuanto tiempo tarda en estar activo?**
+Menos de 24 horas. No necesitas saber de tecnologia.
+
+**¿Puede agendar citas?**
+Si, en los planes Comercial y Pro. Se integra directamente con Cal.com o envia link de Calendly/Google Calendar por WhatsApp.
+
+**¿Puede hacer llamadas salientes?**
+Si, en el Plan Pro. Seguimiento a prospectos, confirmacion de citas, cobranza.
+
+**¿Habla ingles?**
+Si, en el Plan Pro. Detecta automaticamente el idioma del cliente en la misma llamada.
+
+**¿Puede transferir la llamada a una persona real?**
+Si, el agente puede transferir en vivo a cualquier numero configurado. Tambien puede escalar por WhatsApp.
+
+**¿Cuantas llamadas puede atender al mismo tiempo?**
+Plan Comercial: 1 llamada simultanea. Plan Pro: hasta 3. Plan Empresarial: segun volumen.
+
+**¿Mis datos y los de mis clientes estan seguros?**
+Los datos se almacenan en Supabase con cifrado en transito y en reposo. Cumple con la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP).
+
+**¿Funciona para restaurantes?**
+Si. El agente puede tomar reservaciones, informar sobre el menu, horarios y ubicacion, y tomar pedidos para llevar (Plan Pro).
+
+**¿Funciona para clinicas y consultorios?**
+Si. El agente agenda citas, confirma horarios, da indicaciones de ubicacion y puede recordar pacientes frecuentes (Plan Pro).
+
+**¿Funciona para despachos legales o contables?**
+Si. El agente califica el tipo de caso, agenda consultas y deriva casos urgentes al abogado o contador de guardia.
+
+**¿Funciona para inmobiliarias?**
+Si. El agente califica al prospecto (tipo de propiedad, presupuesto, zona), agenda visitas y notifica al asesor por WhatsApp.
+
+**¿Hay descuentos para multiples sucursales?**
+Si, en el Plan Empresarial. Contactar a hola@centinelia.mx para cotizacion.
+
+**¿Necesito cambiar mi numero de telefono?**
+No. Centinelia te asigna un numero nuevo que puedes publicar o configurar como desvio desde tu numero actual.
+
+**¿Que pasa con los minutos no usados?**
+No acumulan. El plan renueva cada mes con los minutos incluidos.
+
+## Contacto
+
+- Sitio web: https://www.centinelia.mx
+- Correo: hola@centinelia.mx
+- Demo: +52 (81) 2188 8490
+- Instagram: https://www.instagram.com/centinelia.mx/
+- LinkedIn: https://www.linkedin.com/company/centinelia/
+- Facebook: https://www.facebook.com/centineliamx/
+
+## Optional
+
+Centinelia es desarrollado por Pneuma Studio (https://pneumastudio.mx), agencia de automatizacion y desarrollo web ubicada en Monterrey, Nuevo Leon, Mexico.
+
+Categoria: Software de atencion telefonica automatizada / Agentes de voz con IA / Recepcionista virtual / Business automation SaaS / Mexico
+
+Palabras clave relevantes: recepcionista IA Mexico, agente de voz inteligencia artificial, atencion telefonica automatizada PyME, contestador automatico inteligente, bot de voz para negocios Mexico, agendar citas por telefono IA, captura de leads automatica, llamadas salientes automatizadas Mexico

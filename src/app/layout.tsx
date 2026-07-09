@@ -98,6 +98,49 @@ const organizationSchema = {
   foundingLocation: { '@type': 'Place', addressCountry: 'MX' },
 };
 
+const softwareSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Centinelia',
+  url: BASE_URL,
+  description: 'Agentes de voz con inteligencia artificial que atienden las llamadas de tu negocio 24/7. Captura leads, agenda citas, toma pedidos y realiza llamadas salientes. Activo en menos de 24 horas, sin contratos de permanencia.',
+  applicationCategory: 'BusinessApplication',
+  applicationSubCategory: 'VoiceAssistant',
+  operatingSystem: 'Web',
+  inLanguage: ['es-MX', 'en'],
+  availableOnDevice: ['Desktop', 'Mobile'],
+  provider: {
+    '@type': 'Organization',
+    name: 'Centinelia',
+    url: BASE_URL,
+    areaServed: 'MX',
+  },
+  offers: [
+    { '@type': 'Offer', name: 'Plan Basico', price: '1990', priceCurrency: 'MXN', description: 'Recepcionista 24/7, captura de leads, 200 minutos incluidos' },
+    { '@type': 'Offer', name: 'Plan Comercial', price: '3490', priceCurrency: 'MXN', description: 'Agendamiento de citas, transferencia inteligente, escalacion WhatsApp, 500 minutos' },
+    { '@type': 'Offer', name: 'Plan Pro', price: '6490', priceCurrency: 'MXN', description: 'Llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, 1000 minutos' },
+  ],
+  featureList: [
+    'Recepcionista telefonica 24/7',
+    'Captura automatica de leads',
+    'Agendamiento de citas',
+    'Llamadas salientes automaticas',
+    'Transferencia inteligente a humanos',
+    'Escalacion a WhatsApp',
+    'Toma de pedidos por telefono',
+    'Memoria de cliente entre llamadas',
+    'Multiidioma espanol e ingles',
+    'Equipo de hasta 6 agentes coordinados',
+    'Grabaciones y transcripciones de llamadas',
+    'Portal de reportes en tiempo real',
+    'Aprendizaje continuo supervisado',
+    'Promotor automatico de resenas Google',
+  ],
+  screenshot: `${BASE_URL}/og-image.png`,
+  countriesSupported: 'MX',
+  isAccessibleForFree: false,
+};
+
 const faqSchema = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
@@ -125,6 +168,7 @@ export default function RootLayout({
     >
       <head>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       </head>
       <body className="min-h-full flex flex-col">

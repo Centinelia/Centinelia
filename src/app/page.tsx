@@ -1263,11 +1263,14 @@ export default function LandingPage() {
             <Link href="/industrias" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
               Industrias
             </Link>
+            <Link href="/faq" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
+              FAQ
+            </Link>
             <Link href="/registro" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
               Contratar
             </Link>
             <Link href="/portal/login" className="text-xs transition-opacity hover:opacity-70" style={{ color: C.textMute }}>
-              Portal de clientes
+              Portal
             </Link>
           </div>
         </div>
@@ -1321,6 +1324,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-5">
             <Link href="/industrias" className="text-xs transition-colors" style={{ color: C.textMute }}>
               Industrias
+            </Link>
+            <Link href="/faq" className="text-xs transition-colors" style={{ color: C.textMute }}>
+              Preguntas frecuentes
             </Link>
             <Link href="/portal/login" className="text-xs transition-colors" style={{ color: C.textMute }}>
               Portal de clientes
