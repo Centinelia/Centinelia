@@ -65,22 +65,21 @@ export default function MobileNav() {
         ))}
       </div>
 
-      {/* Tab handle */}
+      {/* Tab handle — half-moon shape */}
       <button
         onClick={() => setOpen(o => !o)}
         aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
         style={{
           position:     'absolute',
           top:          '50%',
-          right:        -32,
+          right:        -36,
           transform:    'translateY(-50%)',
-          width:        32,
+          width:        36,
           height:       72,
-          background:   '#FFFFFF',
-          border:       '1px solid rgba(108,59,255,0.15)',
-          borderLeft:   'none',
-          borderRadius: '0 10px 10px 0',
-          boxShadow:    '2px 0 8px rgba(26,10,59,0.08)',
+          background:   '#6C3BFF',
+          border:       'none',
+          borderRadius: '0 50px 50px 0',
+          boxShadow:    '3px 0 12px rgba(108,59,255,0.35)',
           display:      'flex',
           alignItems:   'center',
           justifyContent: 'center',
@@ -89,8 +88,8 @@ export default function MobileNav() {
         }}
       >
         {open
-          ? <ChevronLeft  size={16} color="#9B6DFF" />
-          : <ChevronRight size={16} color="#9B6DFF" />
+          ? <ChevronLeft  size={16} color="#FFFFFF" />
+          : <ChevronRight size={16} color="#FFFFFF" />
         }
       </button>
 

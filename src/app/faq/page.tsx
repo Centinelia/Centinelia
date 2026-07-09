@@ -302,39 +302,6 @@ export default function FaqPage() {
             </p>
           </div>
 
-          {/* Jump links */}
-          <nav
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              marginBottom: 52,
-              padding: '16px 20px',
-              background: C.surface,
-              borderRadius: 14,
-              border: `1px solid ${C.border}`,
-            }}
-          >
-            {CATEGORIES.map(cat => (
-              <a
-                key={cat.id}
-                href={`#${cat.id}`}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: C.textSub,
-                  textDecoration: 'none',
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  border: `1px solid ${C.border}`,
-                  transition: 'color 0.15s',
-                }}
-              >
-                {cat.title}
-              </a>
-            ))}
-          </nav>
-
           {/* Categories */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 56 }}>
             {CATEGORIES.map(cat => (
