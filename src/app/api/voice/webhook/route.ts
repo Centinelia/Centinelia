@@ -6,6 +6,8 @@ import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { executeAutoRefill } from '@/lib/billing/auto-refill';
 import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/customers';
+import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
+import { generateTeamMessage } from '@/lib/ai/generate-team-message';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -276,7 +278,7 @@ export async function POST(req: NextRequest) {
       // 4. Fetch agent for notifications
       const { data: agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role')
+        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role, knowledge_base')
         .eq('id', resolvedAgentId)
         .single();
 
@@ -435,6 +437,31 @@ export async function POST(req: NextRequest) {
             ).catch(err => console.error('[webhook] cross-agent queue failed:', err));
           }
         }
+      }
+
+      // 11. Extract learnings from transcript (fire-and-forget, only for substantive calls)
+      if (transcript && durationSeconds >= 120 && agent?.portal_email && outcome !== 'unanswered') {
+        extractAndSaveLearnings({
+          agentId:       resolvedAgentId,
+          portalEmail:   agent.portal_email,
+          vapiCallId:    call?.id ?? null,
+          transcript,
+          knowledgeBase: (agent as any).knowledge_base ?? null,
+        }).catch(err => console.error('[webhook] extract-learnings failed:', err));
+      }
+
+      // 12. Post to team feed for meaningful outcomes (fire-and-forget)
+      if (agent?.portal_email && !['unanswered', 'other'].includes(outcome)) {
+        generateTeamMessage({
+          portalEmail:   agent.portal_email,
+          fromAgentId:   resolvedAgentId,
+          fromAgentRole: deriveAgentRole(agent),
+          vapiCallId:    call?.id ?? null,
+          outcome,
+          summary,
+          structured,
+          callerNumber,
+        }).catch(err => console.error('[webhook] team-message failed:', err));
       }
 
       // 9. Missed call recovery — call back unanswered callers automatically

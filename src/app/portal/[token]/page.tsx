@@ -45,10 +45,12 @@ import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
+import LearningsSection          from './LearningsSection';
+import TeamFeed                  from './TeamFeed';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos';
+type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos' | 'equipo';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -264,6 +266,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'agentes',       label: 'Agentes' },
     { id: 'negocio',       label: 'Negocio' },
+    { id: 'equipo',        label: 'Equipo' },
     { id: 'entrantes',     label: 'Entrantes' },
     ...(agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
     { id: 'resumen',       label: 'Resumen' },
@@ -552,6 +555,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
               </div>
 
+            </div>
+          )}
+
+          {/* ── EQUIPO ───────────────────────────────────────────────────── */}
+          {tab === 'equipo' && (
+            <div className="flex flex-col gap-8">
+              <TeamFeed token={token} />
+              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: '2rem' }}>
+                <LearningsSection token={token} />
+              </div>
             </div>
           )}
 
