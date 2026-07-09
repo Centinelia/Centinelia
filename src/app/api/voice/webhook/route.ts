@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
-import { sendEmail, minutesAlertHtml, newLeadHtml } from '@/lib/email/send';
+import { sendEmail, minutesAlertHtml, newLeadHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { executeAutoRefill } from '@/lib/billing/auto-refill';
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         // Fetch agent email + portal token (used in the email CTA)
         const { data: agentForEmail } = await supabase
           .from('voice_agents')
-          .select('client_email, business_name, portal_token, notify_email')
+          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number')
           .eq('id', resolvedAgentId)
           .single();
 
@@ -265,6 +265,44 @@ export async function POST(req: NextRequest) {
               portalUrl,
             }),
           }).catch(console.error);
+        }
+
+        // 2d. Email to caller — only when they provided their email during the call
+        if (structured?.email && agentForEmail?.business_name &&
+            ['appointment_booked', 'lead_created'].includes(outcome)) {
+          const senderName = agentForEmail.agent_name ?? agentForEmail.business_name;
+          const fromAddr   = `${agentForEmail.business_name} <notificaciones@centinelia.mx>`;
+          const phone      = agentForEmail.phone_number ?? null;
+
+          if (outcome === 'appointment_booked') {
+            sendEmail({
+              to:      structured.email,
+              from:    fromAddr,
+              subject: `Tu cita en ${agentForEmail.business_name} está confirmada`,
+              html:    appointmentConfirmationToClientHtml({
+                businessName: agentForEmail.business_name,
+                agentName:    senderName,
+                clientName:   structured.nombre    ?? null,
+                citaFecha:    structured.cita_fecha ?? null,
+                citaHora:     structured.cita_hora  ?? null,
+                servicio:     structured.servicio   ?? null,
+                phone,
+              }),
+            }).catch(console.error);
+          } else {
+            sendEmail({
+              to:      structured.email,
+              from:    fromAddr,
+              subject: `Gracias por contactar a ${agentForEmail.business_name}`,
+              html:    leadFollowUpToClientHtml({
+                businessName: agentForEmail.business_name,
+                agentName:    senderName,
+                clientName:   structured.nombre  ?? null,
+                servicio:     structured.servicio ?? null,
+                phone,
+              }),
+            }).catch(console.error);
+          }
         }
       }
 

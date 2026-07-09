@@ -89,6 +89,7 @@ export async function sendEmail(opts: {
   to:      string;
   subject: string;
   html:    string;
+  from?:   string;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.warn('Email not configured, missing RESEND_API_KEY'); return false; }
@@ -96,7 +97,7 @@ export async function sendEmail(opts: {
   const res = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ from: FROM, to: [opts.to], subject: opts.subject, html: opts.html }),
+    body:    JSON.stringify({ from: opts.from ?? FROM, to: [opts.to], subject: opts.subject, html: opts.html }),
   });
 
   if (!res.ok) { console.error('Email send error:', await res.text()); return false; }
@@ -312,5 +313,111 @@ export function empresarialConfirmationHtml(opts: {
       </p>
     `, true)}
     ${btn('Responder este correo →', `mailto:${opts.contactEmail}`, false)}
+  `);
+}
+
+// ── Client-facing shell (appears to come from the business) ───────────────────
+
+function clientShell(businessName: string, body: string) {
+  const BG      = '#F8F7FF';
+  const CARD    = '#FFFFFF';
+  const BORDER  = 'rgba(108,59,255,0.10)';
+  const TEXT    = '#1A0A3B';
+  const SUB     = 'rgba(26,10,59,0.6)';
+  const MUTE    = 'rgba(26,10,59,0.35)';
+  const ACCENT  = '#6C3BFF';
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:${BG};font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:540px;margin:0 auto;padding:32px 16px 48px">
+    <div style="text-align:center;margin-bottom:24px">
+      <span style="font-size:20px;font-weight:800;color:${TEXT}">${businessName}</span>
+    </div>
+    <div style="background:${CARD};border:1px solid ${BORDER};border-radius:16px;padding:32px">
+      ${body.replace(/\{\{TEXT\}\}/g, TEXT).replace(/\{\{SUB\}\}/g, SUB).replace(/\{\{ACCENT\}\}/g, ACCENT).replace(/\{\{BORDER\}\}/g, BORDER)}
+    </div>
+    <p style="text-align:center;margin:20px 0 0;font-size:11px;color:${MUTE}">
+      Enviado a través de <a href="https://www.centinelia.mx" style="color:${MUTE};text-decoration:none">Centinelia</a>
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+// ── Appointment confirmation to caller ────────────────────────────────────────
+
+export function appointmentConfirmationToClientHtml(opts: {
+  businessName: string;
+  agentName:    string;
+  clientName:   string | null;
+  citaFecha:    string | null;
+  citaHora:     string | null;
+  servicio:     string | null;
+  phone:        string | null;
+}) {
+  const greeting = opts.clientName ? `Hola, ${opts.clientName}` : 'Hola';
+
+  const dateStr = (() => {
+    if (!opts.citaFecha) return null;
+    const d = new Date(opts.citaFecha + 'T12:00:00');
+    return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  })();
+
+  const rows = [
+    dateStr       && `<tr><td style="padding:10px 0;border-bottom:1px solid {{BORDER}};color:rgba(26,10,59,0.4);font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;width:90px">Fecha</td><td style="padding:10px 0;border-bottom:1px solid {{BORDER}};color:{{TEXT}};font-size:14px;font-weight:600">${dateStr}</td></tr>`,
+    opts.citaHora && `<tr><td style="padding:10px 0;border-bottom:1px solid {{BORDER}};color:rgba(26,10,59,0.4);font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;width:90px">Hora</td><td style="padding:10px 0;border-bottom:1px solid {{BORDER}};color:{{TEXT}};font-size:14px;font-weight:600">${opts.citaHora} h</td></tr>`,
+    opts.servicio && `<tr><td style="padding:10px 0;color:rgba(26,10,59,0.4);font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;width:90px">Servicio</td><td style="padding:10px 0;color:{{TEXT}};font-size:14px">${opts.servicio}</td></tr>`,
+  ].filter(Boolean).join('');
+
+  const contactLine = opts.phone
+    ? `<p style="color:{{SUB}};font-size:13px;line-height:1.7;margin:20px 0 0">¿Necesitas cambiar tu cita? Llámanos al <strong>${opts.phone}</strong>.</p>`
+    : '';
+
+  return clientShell(opts.businessName, `
+    <div style="text-align:center;margin-bottom:20px">
+      <span style="display:inline-block;background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:20px;padding:6px 16px;color:{{ACCENT}};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Cita confirmada</span>
+    </div>
+    <h1 style="color:{{TEXT}};font-size:20px;font-weight:700;margin:0 0 6px;text-align:center">${greeting}</h1>
+    <p style="color:{{SUB}};font-size:14px;margin:0 0 24px;text-align:center">Tu cita en <strong>${opts.businessName}</strong> quedó registrada.</p>
+    <div style="background:rgba(108,59,255,0.04);border:1px solid rgba(108,59,255,0.12);border-radius:12px;padding:4px 20px;margin-bottom:16px">
+      <table style="width:100%;border-collapse:collapse">${rows}</table>
+    </div>
+    ${contactLine}
+    <p style="color:rgba(26,10,59,0.35);font-size:12px;margin:24px 0 0">— ${opts.agentName}, ${opts.businessName}</p>
+  `);
+}
+
+// ── Lead follow-up to caller ──────────────────────────────────────────────────
+
+export function leadFollowUpToClientHtml(opts: {
+  businessName: string;
+  agentName:    string;
+  clientName:   string | null;
+  servicio:     string | null;
+  phone:        string | null;
+}) {
+  const greeting = opts.clientName ? `Hola, ${opts.clientName}` : 'Hola';
+  const serviceLine = opts.servicio
+    ? `<p style="color:{{SUB}};font-size:14px;line-height:1.7;margin:0 0 16px">Recibimos tu solicitud sobre <strong style="color:{{TEXT}}">${opts.servicio}</strong>. Un miembro de nuestro equipo se comunicará contigo a la brevedad.</p>`
+    : `<p style="color:{{SUB}};font-size:14px;line-height:1.7;margin:0 0 16px">Recibimos tu solicitud. Un miembro de nuestro equipo se comunicará contigo a la brevedad.</p>`;
+
+  const contactLine = opts.phone
+    ? `<p style="color:{{SUB}};font-size:13px;line-height:1.7;margin:0">Si prefieres, puedes llamarnos directamente al <strong>${opts.phone}</strong>.</p>`
+    : '';
+
+  return clientShell(opts.businessName, `
+    <div style="text-align:center;margin-bottom:20px">
+      <span style="display:inline-block;background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:20px;padding:6px 16px;color:{{ACCENT}};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Recibimos tu mensaje</span>
+    </div>
+    <h1 style="color:{{TEXT}};font-size:20px;font-weight:700;margin:0 0 6px;text-align:center">${greeting}</h1>
+    <p style="color:{{SUB}};font-size:14px;margin:0 0 20px;text-align:center">Gracias por contactar a <strong>${opts.businessName}</strong>.</p>
+    ${serviceLine}
+    ${contactLine}
+    <p style="color:rgba(26,10,59,0.35);font-size:12px;margin:24px 0 0">— ${opts.agentName}, ${opts.businessName}</p>
   `);
 }
