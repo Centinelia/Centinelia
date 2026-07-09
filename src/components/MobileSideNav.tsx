@@ -20,11 +20,11 @@ export default function MobileSideNav({
     <div
       style={{
         position:      'fixed',
-        top:           0,
+        top:           '50%',
+        transform:     'translateY(-50%)',
         ...(isLeft
           ? { left:  open ? 0 : -200 }
           : { right: open ? 0 : -200 }),
-        height:        '100dvh',
         width:         200,
         zIndex:        50,
         transition:    isLeft ? 'left 0.25s ease' : 'right 0.25s ease',
@@ -34,17 +34,16 @@ export default function MobileSideNav({
       {/* Panel */}
       <div
         style={{
-          height:         '100%',
           background:     '#FFFFFF',
-          ...(isLeft
-            ? { borderRight: '1px solid rgba(108,59,255,0.12)', padding: '0 0 0 20px' }
-            : { borderLeft:  '1px solid rgba(108,59,255,0.12)', padding: '0 20px 0 20px' }),
+          borderRadius:   isLeft ? '0 14px 14px 0' : '14px 0 0 14px',
+          border:         '1px solid rgba(108,59,255,0.12)',
+          ...(isLeft ? { borderLeft: 'none' } : { borderRight: 'none' }),
           boxShadow:      open
             ? isLeft ? '4px 0 24px rgba(26,10,59,0.10)' : '-4px 0 24px rgba(26,10,59,0.10)'
             : 'none',
+          padding:        '20px 20px',
           display:        'flex',
           flexDirection:  'column',
-          justifyContent: 'center',
         }}
       >
         <p style={{ fontSize: 10, fontWeight: 700, color: '#9B6DFF', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>
@@ -77,10 +76,10 @@ export default function MobileSideNav({
         style={{
           position:       'absolute',
           top:            '50%',
+          transform:      'translateY(-50%)',
           ...(isLeft
             ? { right: -36, borderRadius: '0 50px 50px 0' }
             : { left:  -36, borderRadius: '50px 0 0 50px' }),
-          transform:      'translateY(-50%)',
           width:          36,
           height:         72,
           background:     '#6C3BFF',
@@ -105,12 +104,7 @@ export default function MobileSideNav({
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{
-            position: 'fixed',
-            inset:    0,
-            ...(isLeft ? { left: 200 } : { right: 200 }),
-            zIndex:   -1,
-          }}
+          style={{ position: 'fixed', inset: 0, zIndex: -1 }}
         />
       )}
     </div>
