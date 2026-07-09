@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLAN_MINUTES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
-import { createVapiAssistant, assignAssistantToPhone } from '@/lib/vapi/sync';
+import { createVapiAssistant, assignAssistantToPhone, resyncPeerAgents } from '@/lib/vapi/sync';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import type { Plan, VoiceAgent } from '@/types/agent';
 
@@ -101,6 +101,9 @@ export async function POST(req: NextRequest) {
     if (agent.phone_number) {
       await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
     }
+
+    // 5. Push transfer tools to all sibling agents now that this one is in DB
+    resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
   }
 
   return NextResponse.json({ ...agent, vapi_agent_id: vapiAssistantId }, { status: 201 });

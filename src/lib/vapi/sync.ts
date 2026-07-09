@@ -1,4 +1,5 @@
-﻿import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
 
 const VAPI_URL = 'https://api.vapi.ai';
@@ -11,10 +12,76 @@ function headers() {
   };
 }
 
-async function createVapiTools(agent: VoiceAgent): Promise<string[]> {
+// ─── Team peer types ──────────────────────────────────────────────────────────
+
+interface TeamPeer {
+  id: string;
+  vapi_agent_id: string;
+  agent_name: string | null;
+  outbound_role: string | null;
+  features: Record<string, boolean>;
+}
+
+const OUTBOUND_ROLE_META: Record<string, { label: string; desc: string }> = {
+  vendedor:     { label: 'Ejecutivo de ventas',       desc: 'presenta precios, cierra ventas y resuelve dudas sobre contratar' },
+  seguimiento:  { label: 'Agente de seguimiento',     desc: 'da seguimiento a prospectos y reactiva clientes interesados' },
+  recuperacion: { label: 'Ejecutivo de recuperación', desc: 'recupera clientes inactivos y gestiona renovaciones' },
+  cobrador:     { label: 'Cobrador',                  desc: 'gestiona pagos pendientes y acuerdos de pago' },
+  soporte:      { label: 'Agente de soporte',         desc: 'resuelve dudas técnicas, quejas y problemas post-venta' },
+};
+
+function peerToolName(peer: TeamPeer): string {
+  const name = (peer.agent_name || 'especialista')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+  return `transferir_a_${name}`;
+}
+
+function peerRoleLabel(peer: TeamPeer): string {
+  if (peer.outbound_role && OUTBOUND_ROLE_META[peer.outbound_role]) {
+    return OUTBOUND_ROLE_META[peer.outbound_role].label;
+  }
+  const f = peer.features ?? {};
+  if (f.order_taking)        return 'Tomador de pedidos';
+  if (f.appointment_booking) return 'Recepcionista';
+  return 'Especialista';
+}
+
+function peerRoleDesc(peer: TeamPeer): string {
+  if (peer.outbound_role && OUTBOUND_ROLE_META[peer.outbound_role]) {
+    return OUTBOUND_ROLE_META[peer.outbound_role].desc;
+  }
+  const f = peer.features ?? {};
+  if (f.order_taking)        return 'toma pedidos de clientes';
+  if (f.appointment_booking) return 'agenda citas y atiende consultas';
+  return 'atiende solicitudes especializadas';
+}
+
+async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
+  if (!agent.portal_email) return [];
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('voice_agents')
+      .select('id, vapi_agent_id, agent_name, outbound_role, features')
+      .eq('portal_email', agent.portal_email)
+      .eq('active', true)
+      .neq('id', agent.id);
+
+    return (data ?? []).filter((p): p is TeamPeer => !!p.vapi_agent_id);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Tool creation ────────────────────────────────────────────────────────────
+
+async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promise<string[]> {
   const base = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools`;
   const id = agent.id;
-  const tools = [];
+  const tools: Record<string, unknown>[] = [];
 
   if (agent.features.lead_qualification) {
     tools.push({
@@ -106,7 +173,6 @@ async function createVapiTools(agent: VoiceAgent): Promise<string[]> {
   }
 
   if (agent.features.smart_transfer) {
-    // Step 1, notify owner via WhatsApp before the transfer
     tools.push({
       type: 'function',
       function: {
@@ -125,7 +191,6 @@ async function createVapiTools(agent: VoiceAgent): Promise<string[]> {
       server: { url: `${base}/notificar-transferencia?agent_id=${id}` },
     });
 
-    // Step 2, native Vapi call transfer (only if a transfer number is configured)
     if (agent.transfer_number) {
       tools.push({
         type: 'transferCall',
@@ -166,6 +231,33 @@ async function createVapiTools(agent: VoiceAgent): Promise<string[]> {
     });
   }
 
+  // One transferCall tool per active team peer — enables live agent-to-agent routing
+  for (const peer of peers) {
+    const toolName  = peerToolName(peer);
+    const roleLabel = peerRoleLabel(peer);
+    const roleDesc  = peerRoleDesc(peer);
+    const peerName  = peer.agent_name || roleLabel;
+    tools.push({
+      type: 'transferCall',
+      function: {
+        name: toolName,
+        description: `Transfiere la llamada a ${peerName} (${roleLabel}): ${roleDesc}. Úsalo cuando el cliente necesite este especialista.`,
+        parameters: {
+          type: 'object',
+          properties: {
+            motivo: { type: 'string', description: 'Motivo breve de la transferencia' },
+          },
+          required: ['motivo'],
+        },
+      },
+      destinations: [{
+        type: 'assistant',
+        assistantId: peer.vapi_agent_id,
+        message: `Con gusto, te comunico con ${peerName} ahora mismo.`,
+      }],
+    });
+  }
+
   const ids: string[] = [];
   for (const tool of tools) {
     const res = await fetch(`${VAPI_URL}/tool`, {
@@ -177,21 +269,42 @@ async function createVapiTools(agent: VoiceAgent): Promise<string[]> {
       const data = await res.json();
       if (data.id) ids.push(data.id);
     } else {
-      console.error('Vapi createTool error:', tool.function.name, await res.text());
+      const fn = (tool.function as Record<string, unknown>)?.name ?? 'unknown';
+      console.error('Vapi createTool error:', fn, await res.text());
     }
   }
   return ids;
 }
 
-function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = []) {
+// ─── Assistant config builder ─────────────────────────────────────────────────
+
+function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = []) {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
+
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: buildSystemPrompt(agent) },
+  ];
+
+  if (peers.length > 0) {
+    const lines = [
+      'EQUIPO DE ESPECIALISTAS (transferencia en tiempo real):',
+      ...peers.map(p => {
+        const label    = peerRoleLabel(p);
+        const toolName = peerToolName(p);
+        const peerName = p.agent_name || label;
+        return `- ${peerName} (${label}): ${peerRoleDesc(p)}. Herramienta: ${toolName}.`;
+      }),
+      'Si el cliente solicita algo que corresponde a un especialista, transfiérelo de inmediato con la herramienta indicada. No le hagas esperar ni expliques el proceso técnico.',
+    ];
+    messages.push({ role: 'system', content: lines.join('\n') });
+  }
 
   return {
     name: `${agentName}, ${agent.business_name}`,
     model: {
       provider: 'anthropic',
       model: 'claude-3-5-haiku-20241022',
-      messages: [{ role: 'system', content: buildSystemPrompt(agent) }],
+      messages,
       temperature: 0.4,
       maxTokens: 300,
       ...(toolIds.length > 0 ? { toolIds } : {}),
@@ -273,12 +386,54 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = []) {
   };
 }
 
+// ─── Exported sync functions ──────────────────────────────────────────────────
+
+// Internal: sync one agent without triggering cascade (prevents infinite loops)
+async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
+  const peers   = await fetchTeamPeers(agent);
+  const toolIds = await createVapiTools(agent, peers);
+  const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
+    method: 'PATCH',
+    headers: headers(),
+    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers)),
+  });
+  if (!res.ok) {
+    console.error('Vapi syncAgent error:', await res.text());
+    return false;
+  }
+  return true;
+}
+
+// Exported: resync all peer agents that share the same portal_email.
+// Call this AFTER the DB already has the new/updated agent's vapi_agent_id saved.
+export async function resyncPeerAgents(portalEmail: string | null | undefined, excludeAgentId: string): Promise<void> {
+  if (!portalEmail) return;
+  try {
+    const supabase = createAdminClient();
+    const { data: peers } = await supabase
+      .from('voice_agents')
+      .select('*')
+      .eq('portal_email', portalEmail)
+      .eq('active', true)
+      .neq('id', excludeAgentId)
+      .not('vapi_agent_id', 'is', null);
+
+    if (!peers?.length) return;
+    await Promise.allSettled(
+      peers.map(p => syncAgentToVapi(p.vapi_agent_id, p as VoiceAgent)),
+    );
+  } catch (e) {
+    console.error('resyncPeerAgents error:', e);
+  }
+}
+
 export async function createVapiAssistant(agent: VoiceAgent): Promise<string | null> {
-  const toolIds = await createVapiTools(agent);
+  const peers   = await fetchTeamPeers(agent);
+  const toolIds = await createVapiTools(agent, peers);
   const res = await fetch(`${VAPI_URL}/assistant`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(agent, toolIds)),
+    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers)),
   });
   if (!res.ok) {
     console.error('Vapi createAssistant error:', await res.text());
@@ -286,24 +441,14 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
   }
   const data = await res.json();
   return data.id ?? null;
+  // Callers must save the returned ID to DB and then call resyncPeerAgents()
 }
 
 export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
-  // Fetch existing tool IDs to avoid recreating tools on every update
-  const existing = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, { headers: headers() });
-  const existingData = existing.ok ? await existing.json() : null;
-  const existingToolIds: string[] = existingData?.model?.toolIds ?? [];
-
-  const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
-    method: 'PATCH',
-    headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(agent, existingToolIds)),
-  });
-  if (!res.ok) {
-    console.error('Vapi updateAssistant error:', await res.text());
-    return false;
-  }
-  return true;
+  const ok = await syncAgentToVapi(vapiAssistantId, agent);
+  // Fire-and-forget: push the updated tool list to all sibling agents
+  if (ok) resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
+  return ok;
 }
 
 export async function assignAssistantToPhone(
@@ -311,7 +456,6 @@ export async function assignAssistantToPhone(
   vapiAssistantId: string,
   concurrencyLimit?: number,
 ): Promise<boolean> {
-  // Find the Vapi phone number ID by number
   const listRes = await fetch(`${VAPI_URL}/phone-number`, { headers: headers() });
   if (!listRes.ok) return false;
 

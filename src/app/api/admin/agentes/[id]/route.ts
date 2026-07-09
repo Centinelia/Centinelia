@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createVapiAssistant, updateVapiAssistant, assignAssistantToPhone } from '@/lib/vapi/sync';
+import { createVapiAssistant, updateVapiAssistant, assignAssistantToPhone, resyncPeerAgents } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
 import { PLAN_CONCURRENT_CALLS } from '@/types/agent';
 
@@ -96,6 +96,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         if (agent.phone_number) {
           await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
         }
+
+        resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
       }
     }
   }

@@ -5,7 +5,7 @@ import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextRese
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
 import { pauseVapiAgent, resumeVapiAgent } from '@/lib/vapi/control';
-import { createVapiAssistant } from '@/lib/vapi/sync';
+import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
 import type { VoiceAgent } from '@/types/agent';
 import { PLAN_FEATURES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
@@ -219,6 +219,7 @@ export async function POST(req: NextRequest) {
           vapiId = await createVapiAssistant(fullAgent);
           if (vapiId) {
             await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', agentId);
+            resyncPeerAgents(fullAgent.portal_email, agentId).catch(console.error);
           }
         }
 
