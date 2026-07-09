@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { RefreshCw, RotateCcw, Zap, CreditCard, Phone, SlidersHorizontal } from 'lucide-react';
+import { RefreshCw, RotateCcw, Zap, CreditCard, Phone, SlidersHorizontal, BatteryCharging } from 'lucide-react';
 
-type Source = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada';
+type Source = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'auto_recarga';
 
 interface Entry {
   id:          string;
@@ -17,8 +17,9 @@ const SOURCE_META: Record<Source, { icon: React.ReactNode; color: string; label:
   rollover:     { icon: <RotateCcw size={11} />,        color: '#a855f7', label: 'Rollover' },
   extra_compra: { icon: <Zap size={11} />,              color: '#f59e0b', label: 'Compra extra' },
   activacion:   { icon: <CreditCard size={11} />,       color: '#3b82f6', label: 'Activación' },
-  ajuste:       { icon: <SlidersHorizontal size={11} />,color: '#22c55e', label: 'Ajuste' },
-  llamada:      { icon: <Phone size={11} />,            color: '#6b7280', label: 'Llamada' },
+  ajuste:       { icon: <SlidersHorizontal size={11} />, color: '#22c55e', label: 'Ajuste' },
+  llamada:      { icon: <Phone size={11} />,             color: '#6b7280', label: 'Llamada' },
+  auto_recarga: { icon: <BatteryCharging size={11} />,   color: '#6C3BFF', label: 'Auto-recarga' },
 };
 
 function fmtDate(iso: string) {

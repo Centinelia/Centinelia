@@ -44,13 +44,13 @@ const FEATURES: {
     icon:  <Target size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
     title: 'Seguimiento automático',
-    desc:  'Cuando un prospecto no contesta, tu agente vuelve a llamar. Trabaja cada lead hasta cerrarlo o hasta agotar los intentos que tú defines.',
+    desc:  'Cuando un prospecto no contesta, tu empleado vuelve a llamar. Trabaja cada lead hasta cerrarlo o hasta agotar los intentos que tú defines.',
   },
   {
     icon:  <Rocket size={20} color="#9B6DFF" />,
     color: '#9B6DFF',
     title: 'Campañas salientes',
-    desc:  'Ejecuta campañas de llamadas para reactivar clientes, cobrar, encuestar o confirmar citas masivas. Un solo agente que trabaja como todo un equipo.',
+    desc:  'Ejecuta campañas de llamadas para reactivar clientes, cobrar, encuestar o confirmar citas masivas. Un solo empleado que trabaja como todo un equipo.',
     cardBg: 'linear-gradient(145deg, rgba(108,59,255,0.2) 0%, rgba(108,59,255,0.06) 100%)',
     cardBorder: 'rgba(108,59,255,0.36)',
   },
@@ -58,7 +58,7 @@ const FEATURES: {
     icon:  <BarChart3 size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
     title: 'Portal de reportes',
-    desc:  'Todo lo que hace queda registrado: llamadas, leads, citas y minutos. Monitoreas el desempeño de tu agente en tiempo real desde tu portal.',
+    desc:  'Todo lo que hace queda registrado: llamadas, leads, citas y minutos. Monitoreas el desempeño de tu empleado en tiempo real desde tu portal.',
   },
   {
     icon: (
@@ -71,7 +71,7 @@ const FEATURES: {
     ),
     color: '#4285F4',
     title: 'Reseñas Google automáticas',
-    desc:  'Después de cada llamada exitosa, manda el link de reseña de Google por WhatsApp. Tu agente construye tu reputación sin que tengas que pedírselo.',
+    desc:  'Después de cada llamada exitosa, manda el link de reseña de Google por WhatsApp. Tu empleado construye tu reputación sin que tengas que pedírselo.',
     cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(108,59,255,0.05) 100%)',
     cardBorder: 'rgba(155,109,255,0.35)',
   },
@@ -148,7 +148,7 @@ const DIFFERENTIATORS = [
   {
     num: '∞',
     title: 'Recibe y hace llamadas, sin límite',
-    desc: 'Atiende todas las entrantes en paralelo y llama de regreso a quien no contestó. Un solo agente que trabaja en ambas direcciones, al mismo tiempo.',
+    desc: 'Atiende todas las entrantes en paralelo y llama de regreso a quien no contestó. Un solo empleado que trabaja en ambas direcciones, al mismo tiempo.',
   },
   {
     num: '24/7',
@@ -509,7 +509,7 @@ export default function LandingPage() {
                 "¿Y si mis llamadas aumentan cada mes?"
               </p>
               <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>
-                Si tus minutos suben, es porque tu agente atendió más clientes, agendó más citas o capturó más leads.
+                Si tus minutos suben, es porque tu empleado atendió más clientes, agendó más citas o capturó más leads.
                 Es el único costo que crece junto con tus ingresos, no con tu nómina.
               </p>
             </div>
@@ -535,7 +535,7 @@ export default function LandingPage() {
           <div className="hidden lg:flex items-end gap-10 mb-0">
             <AnimatedSection className="flex-1">
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                Lo que hace tu agente
+                Lo que hace tu empleado
               </p>
               <h2
                 className="font-bold tracking-tight mb-4"
@@ -544,7 +544,7 @@ export default function LandingPage() {
                 Recibe, llama, agenda<br />y vende por ti
               </h2>
               <p style={{ color: C.textSub }}>
-                Tu agente aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
+                Tu empleado aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
               </p>
             </AnimatedSection>
 
@@ -561,7 +561,7 @@ export default function LandingPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
               <div>
                 <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                  Lo que hace tu agente
+                  Lo que hace tu empleado
                 </p>
                 <h2
                   className="font-bold tracking-tight mb-3"
@@ -570,7 +570,7 @@ export default function LandingPage() {
                   Recibe, llama, agenda<br />y vende por ti
                 </h2>
                 <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                  Tu agente aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
+                  Tu empleado aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
                 </p>
               </div>
               <div />{/* espacio reservado para meerkat */}
@@ -637,22 +637,22 @@ export default function LandingPage() {
 
         <AnimatedSection className="mb-12 lg:mb-16">
           <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-            Cómo contratar tu agente
+            Cómo contratar tu empleado
           </p>
           <h2
             className="font-bold tracking-tight"
             style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
           >
-            Tu agente, en línea en 3 pasos
+            Tu empleado, en línea en 3 pasos
           </h2>
         </AnimatedSection>
 
         {/* Editorial numbered list — unique layout vs 3-col cards elsewhere */}
         <div className="lg:pr-72">
           {[
-            { n: '01', title: 'Elige tu agente y tus minutos',  desc: 'Selecciona el tipo de agente que necesita tu negocio y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
-            { n: '02', title: 'Configura tu agente',             desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu agente.' },
-            { n: '03', title: 'Recibe y realiza llamadas',       desc: 'Tu número queda activo en horas. Tu agente atiende llamadas entrantes, llama de regreso a los que no contestaron y ejecuta campañas salientes. Tú solo monitoreas desde el portal.' },
+            { n: '01', title: 'Elige tu empleado y tus minutos',  desc: 'Selecciona el tipo de empleado que necesita tu negocio y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
+            { n: '02', title: 'Configura tu empleado',             desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu empleado.' },
+            { n: '03', title: 'Recibe y realiza llamadas',         desc: 'Tu número queda activo en horas. Tu empleado atiende llamadas entrantes, llama de regreso a los que no contestaron y ejecuta campañas salientes. Tú solo monitoreas desde el portal.' },
           ].map((s, i) => (
             <AnimatedSection key={s.n} delay={i * 0.12}>
               <div
@@ -710,7 +710,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
             >
-              Un agente.<br />Cualquier rol.
+              Tu empleado.<br />Cualquier rol.
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
               Elige el escenario, llama y experimenta. Vendedor, tomador de pedidos,
@@ -751,7 +751,7 @@ export default function LandingPage() {
               El precio correcto<br />para tu negocio
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Una compra única por tu agente, más una mensualidad según los minutos que uses.
+              Una compra única por tu empleado, más una mensualidad según los minutos que uses.
             </p>
           </AnimatedSection>
 
@@ -763,7 +763,7 @@ export default function LandingPage() {
                 Paso 1 · Pago único
               </span>
               <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
-                Elige tu tipo de agente
+                Elige tu tipo de empleado
               </h3>
             </div>
           </AnimatedSection>
@@ -976,10 +976,10 @@ export default function LandingPage() {
             <div className="flex-1 min-w-0 xl:pr-44">
               <p className="font-bold leading-tight" style={{ color: '#fff', fontSize: '1rem' }}>Empresarial</p>
               <p className="text-sm hidden sm:block mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                Múltiples agentes y sucursales, integración con tu POS o CRM, flujos a medida y SLA dedicado.
+                Múltiples empleados y sucursales, integración con tu POS o CRM, flujos a medida y SLA dedicado.
               </p>
               <p className="text-xs sm:hidden mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Múltiples agentes · POS/CRM · SLA dedicado
+                Múltiples empleados · POS/CRM · SLA dedicado
               </p>
             </div>
             <Link
@@ -1054,17 +1054,17 @@ export default function LandingPage() {
         >
           <AnimatedSection>
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu agente te espera
+              Tu empleado te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(1.8rem, 6vw, 2.8rem)', color: '#fff' }}>
-              Mientras tú atiendes tu negocio,<br />tu agente atiende el teléfono.
+              Mientras tú atiendes tu negocio,<br />tu empleado atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
-              Tu agente puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
+              Tu empleado puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Contratar mi agente <ArrowRight size={15} />
+                Contratar mi empleado <ArrowRight size={15} />
               </Link>
               <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Phone size={14} /> Habla con un asesor
@@ -1083,17 +1083,17 @@ export default function LandingPage() {
         >
           <AnimatedSection style={{ maxWidth: 520 }}>
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu agente te espera
+              Tu empleado te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', color: '#fff', lineHeight: 1.1 }}>
-              Mientras tú atiendes<br />tu negocio, tu agente<br />atiende el teléfono.
+              Mientras tú atiendes<br />tu negocio, tu empleado<br />atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420 }}>
-              Tu agente puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.
+              Tu empleado puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.
             </p>
             <div className="flex items-start gap-3">
               <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Contratar mi agente <ArrowRight size={15} />
+                Contratar mi empleado <ArrowRight size={15} />
               </Link>
               <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Phone size={14} /> Habla con un asesor

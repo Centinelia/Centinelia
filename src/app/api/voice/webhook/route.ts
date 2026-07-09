@@ -4,6 +4,7 @@ import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, minutesAlertHtml, newLeadHtml } from '@/lib/email/send';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
+import { executeAutoRefill } from '@/lib/billing/auto-refill';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
       // 4. Fetch agent for notifications
       const { data: agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url')
+        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes')
         .eq('id', resolvedAgentId)
         .single();
 
@@ -305,7 +306,22 @@ export async function POST(req: NextRequest) {
         await sendWhatsApp(agent.transfer_whatsapp, msg);
       }
 
-      // 6. Auto-pause at 100%
+      // 6. Auto-refill: trigger when remaining just crossed below threshold this call
+      if (
+        agent?.auto_refill_enabled &&
+        agent?.stripe_customer_id &&
+        included > 0
+      ) {
+        const threshold     = (agent as any).auto_refill_threshold ?? 50;
+        const remaining     = included - used;
+        const prevRemaining = remaining + minutes; // balance before this call
+        if (prevRemaining >= threshold && remaining < threshold) {
+          const refill = await executeAutoRefill(resolvedAgentId).catch(() => ({ ok: false }));
+          if (refill.ok) included += (agent as any).auto_refill_minutes ?? 100;
+        }
+      }
+
+      // 7. Auto-pause at 100%
       if (agent?.active && used >= included) {
         if (agent.portal_email) {
           const { data: accountAgents } = await supabase
@@ -332,8 +348,9 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // 7. Warning at 80%
-      if (agent?.active && pct >= 80 && (pct - (minutes / included) * 100) < 80) {
+      // 8. Warning at 80% (uses updated included if auto-refill fired)
+      const pctAfterRefill = included > 0 ? (used / included) * 100 : 0;
+      if (agent?.active && pctAfterRefill >= 80 && (pctAfterRefill - (minutes / included) * 100) < 80) {
         const warnMsg = `📊 *Aviso de minutos, ${agent.business_name}*\n\nHas usado el *${Math.round(pct)}%* de tus ${included} minutos incluidos (${used} usados).\n\nContacta a tu asesor de Centinelia si necesitas ampliar tu plan antes de que el agente se pause automáticamente.`;
         if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, warnMsg);
         if (agent.client_email) {

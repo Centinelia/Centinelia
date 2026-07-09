@@ -44,6 +44,7 @@ import PortalOutboundSection     from './PortalOutboundSection';
 import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
+import AutoRefillSection         from './AutoRefillSection';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -835,6 +836,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 )}
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
                 <BuyMinutesSection token={token} />
+              </div>
+
+              {/* Auto-refill */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Recarga tu saldo automáticamente cuando bajen de un umbral.</p>
+                <AutoRefillSection token={token} />
               </div>
 
               {/* Cambiar plan */}
