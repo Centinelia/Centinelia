@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import MobileSideNav from '@/components/MobileSideNav';
 
 export const metadata: Metadata = {
   title: 'Legal — Centinelia',
@@ -82,20 +83,10 @@ export default function LegalPage() {
           aceptas lo establecido aquí.
         </p>
 
-        {/* Mobile TOC pills */}
-        <nav className="flex flex-col gap-1 mt-7 lg:hidden">
-          {TOC.map((link, i) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium"
-              style={{ background: '#fff', border: `1px solid ${C.border}`, color: C.text, textDecoration: 'none' }}
-            >
-              <span>{link.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.accent }}>0{i + 1}</span>
-            </a>
-          ))}
-        </nav>
+        {/* Mobile sidebar nav */}
+        <div className="lg:hidden">
+          <MobileSideNav sections={TOC.map(t => ({ id: t.href.replace('#', ''), label: t.label }))} />
+        </div>
 
         {/* Desktop 2-col: sticky sidebar + content */}
         <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-16 lg:items-start" style={{ marginTop: 32 }}>

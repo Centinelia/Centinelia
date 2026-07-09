@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import MobileNav from './MobileNav';
+import MobileSideNav from '@/components/MobileSideNav';
 
 export const metadata: Metadata = {
   title: 'Preguntas frecuentes',
@@ -245,7 +245,7 @@ export default function FaqPage() {
       <div style={{ background: C.bg, minHeight: '100vh' }}>
         {/* Mobile sidebar nav — hidden on lg+ via CSS */}
         <div className="lg:hidden">
-          <MobileNav />
+          <MobileSideNav sections={CATEGORIES.map(c => ({ id: c.id, label: c.title }))} />
         </div>
 
         {/* Nav */}
