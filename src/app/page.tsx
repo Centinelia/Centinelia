@@ -662,45 +662,71 @@ export default function LandingPage() {
             </p>
           </AnimatedSection>
 
-          {/* Employee grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
-            {([
-              { role: 'Recepcionista',       desc: 'Atiende y filtra todas las entrantes',     Icon: Phone,          color: '#6C3BFF' },
-              { role: 'Vendedor',            desc: 'Califica prospectos y agenda citas',        Icon: Rocket,         color: '#9B6DFF' },
-              { role: 'Tomador de pedidos',  desc: 'Registra órdenes en cada llamada',         Icon: ShoppingBag,    color: '#f59e0b' },
-              { role: 'Cobrador',            desc: 'Recupera cartera sin fricción',             Icon: Target,         color: '#22c55e' },
-              { role: 'Seguimiento',         desc: 'Llama de regreso y da seguimiento',        Icon: PhoneOutgoing,  color: '#3b82f6' },
-              { role: 'Soporte',             desc: 'Resuelve dudas y retiene clientes',        Icon: MessageCircle,  color: '#a855f7' },
-            ] as const).map(({ role, desc, Icon, color }, i) => (
-              <AnimatedSection key={role} delay={i * 0.07}>
-                <div
-                  className="rounded-2xl h-full"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.09)',
-                    padding: '20px 16px',
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${color}18`, border: `1px solid ${color}30` }}
-                    >
-                      <Icon size={14} color={color} />
-                    </div>
-                    <span
-                      className="text-[10px] font-bold"
-                      style={{ color: '#4ade80', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 99, padding: '2px 8px' }}
-                    >
-                      ACTIVO
+          {/* Manifiesto de escala */}
+          <AnimatedSection delay={0.1}>
+            <div
+              className="rounded-2xl text-center mb-8"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                padding: 'clamp(36px, 6vw, 64px) clamp(24px, 5vw, 56px)',
+              }}
+            >
+              <p
+                className="font-extrabold tracking-tight"
+                style={{ fontSize: 'clamp(1.45rem, 4.5vw, 2.8rem)', lineHeight: 1.2, marginBottom: '2rem' }}
+              >
+                <span style={{ color: '#fff' }}>Una empresa. </span>
+                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Seis empleados. </span>
+                <span style={{
+                  background: 'linear-gradient(135deg, #9B6DFF 0%, #C4A8FF 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  Cero nómina.
+                </span>
+              </p>
+
+              <div style={{ width: 40, height: 1, background: 'rgba(108,59,255,0.4)', margin: '0 auto 2rem' }} />
+
+              <p
+                className="font-semibold"
+                style={{
+                  fontSize: 'clamp(0.95rem, 2.2vw, 1.2rem)',
+                  color: 'rgba(255,255,255,0.6)',
+                  lineHeight: 2,
+                  maxWidth: 500,
+                  margin: '0 auto 2rem',
+                }}
+              >
+                {[
+                  'Recepcionista',
+                  'Ejecutivo comercial',
+                  'Agente de cobranza',
+                  'Agente de seguimiento',
+                  'Asistente de clínica',
+                  'Supervisor de desempeño',
+                ].map((role, i, arr) => (
+                  <span key={role}>
+                    {role}
+                    <span style={{ color: '#6C3BFF' }}>
+                      {i < arr.length - 1 ? '. ' : '.'}
                     </span>
-                  </div>
-                  <p className="text-sm font-semibold mb-1" style={{ color: '#fff' }}>{role}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.42)' }}>{desc}</p>
-                </div>
-              </AnimatedSection>
-            ))}
-          </div>
+                  </span>
+                ))}
+              </p>
+
+              <p style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.25)',
+              }}>
+                Todos disponibles desde el día uno.
+              </p>
+            </div>
+          </AnimatedSection>
 
           {/* Tagline card */}
           <AnimatedSection delay={0.42}>
