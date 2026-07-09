@@ -446,14 +446,15 @@ export default function FaqPage() {
             textAlign: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <Link href="https://www.centinelia.mx" style={{ display: 'flex', alignItems: 'center' }}>
-              <Image src="/logo-icon.png" alt="Centinelia" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain', opacity: 0.4 }} />
+              <Image src="/logo-icon.png" alt="Centinelia" width={36} height={36} style={{ width: 36, height: 36, objectFit: 'contain' }} />
             </Link>
-            <span style={{ fontSize: 12, color: C.textMute }}>·</span>
-            <Link href="/legal" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>Legal</Link>
-            <span style={{ fontSize: 12, color: C.textMute }}>·</span>
-            <a href="mailto:hola@centinelia.mx" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>hola@centinelia.mx</a>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <Link href="/legal" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>Legal</Link>
+              <span style={{ fontSize: 12, color: C.textMute }}>·</span>
+              <a href="mailto:hola@centinelia.mx" style={{ fontSize: 12, color: C.textMute, textDecoration: 'none' }}>hola@centinelia.mx</a>
+            </div>
           </div>
         </footer>
       </div>
