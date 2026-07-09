@@ -134,7 +134,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto tiempo tarda en estar activo?',
-        a: 'Menos de 24 horas para los planes Basico y Comercial. El proceso es: contratas, recibes acceso al portal, agregas la informacion de tu negocio, el equipo de Centinelia finaliza la configuracion y activa el numero. No necesitas hacer nada tecnico.',
+        a: 'Menos de 24 horas. El proceso es: contratas, recibes acceso al portal, agregas la informacion de tu negocio, el equipo de Centinelia finaliza la configuracion y activa el numero. No necesitas hacer nada tecnico.',
       },
       {
         q: '¿Necesito saber de tecnologia para configurarlo?',
