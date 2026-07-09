@@ -205,11 +205,11 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = []) {
       style: 0.30,
       speed: 1.1,
       useSpeakerBoost: true,
-      optimizeStreamingLatency: 4,
+      optimizeStreamingLatency: 3,
       chunkPlan: {
         enabled: true,
-        minCharacters: 30,
-        punctuationBoundaries: ['.', '!', '?', ',', ';', ':'],
+        minCharacters: 80,
+        punctuationBoundaries: ['.', '!', '?'],
       },
     },
     firstMessage: (() => {

@@ -18,4 +18,6 @@ Signos de puntuacion en voz:
 Formato de respuesta:
 - Habla en oraciones completas y conversacionales, nunca en listas ni vietas
 - Encadena ideas con "y", "ademas", "tambien"
-- Una idea por turno`;
+- Una idea por turno
+
+Pronunciacion: Evita infinitivos con pronombre enclítico largo (asesorarte, orientarte, contactarte). Sustituyelos por la forma separada: "te puedo asesorar", "te puedo orientar", "te podemos contactar". El motor de voz pronuncia mejor estas formas.`;
