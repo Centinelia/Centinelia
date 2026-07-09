@@ -559,11 +559,12 @@ export default function LandingPage() {
 
           {/* Mobile: heading 2-col reserva espacio para la meerkat que asoma desde card[1] */}
           <div className="lg:hidden mb-4">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 138px' }}>
+            {/* Label fuera del grid para que siempre ocupe ancho completo */}
+            <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: C.accent }}>
+              Lo que puede hacer tu equipo
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px' }}>
               <div>
-                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                  Lo que puede hacer tu equipo
-                </p>
                 <h2
                   className="font-bold tracking-tight mb-3"
                   style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
