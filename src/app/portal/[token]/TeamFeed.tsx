@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Building2, ArrowRight, RefreshCw } from 'lucide-react';
+import { Building2, ArrowRight, RefreshCw, Paperclip } from 'lucide-react';
 
 const POLL_MS = 15_000;
 
@@ -18,6 +18,7 @@ const TYPE_CFG: Record<string, { label: string; color: string; bg: string }> = {
   task:     { label: 'Tarea',     color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   learning: { label: 'Aprendí',   color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
   insight:  { label: 'Observé',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  email:    { label: 'Correo',    color: '#06b6d4', bg: 'rgba(6,182,212,0.12)'  },
 };
 
 const COLORS = [
@@ -31,10 +32,22 @@ function pickColor(id: string | null): string {
   return COLORS[hash % COLORS.length];
 }
 
+function pickColorFromString(s: string): string {
+  const hash = s.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return COLORS[hash % COLORS.length];
+}
+
 interface AgentRef {
   agent_name:    string | null;
   business_name: string;
   outbound_role: string | null;
+}
+
+interface Attachment {
+  name: string;
+  url:  string;
+  type: string;
+  size: number;
 }
 
 interface FeedMessage {
@@ -49,7 +62,7 @@ interface FeedMessage {
   to_agent:      AgentRef | null;
 }
 
-function label(a: AgentRef | null): string {
+function agentLabel(a: AgentRef | null): string {
   if (!a) return 'Sistema';
   if (a.agent_name) return a.agent_name;
   if (a.outbound_role && ROLE_LABELS[a.outbound_role]) return ROLE_LABELS[a.outbound_role];
@@ -70,6 +83,12 @@ function timeAgo(iso: string): string {
   if (hrs < 24)   return `${hrs}h`;
   const days = Math.floor(hrs / 24);
   return days === 1 ? 'ayer' : `${days}d`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024)        return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function TeamFeed({ token }: { token: string }) {
@@ -148,10 +167,22 @@ export default function TeamFeed({ token }: { token: string }) {
       {!loading && messages.length > 0 && (
         <div className="space-y-3">
           {messages.map(msg => {
-            const from  = msg.from_agent;
-            const to    = msg.to_agent;
-            const cfg   = TYPE_CFG[msg.type] ?? TYPE_CFG.handoff;
-            const color = pickColor(msg.from_agent_id);
+            const isEmail   = msg.type === 'email';
+            const fromAgent = msg.from_agent;
+            const toAgent   = msg.to_agent;
+            const cfg       = TYPE_CFG[msg.type] ?? TYPE_CFG.handoff;
+
+            const senderName = isEmail
+              ? (msg.metadata.from_name as string | null) ?? 'Remitente'
+              : agentLabel(fromAgent);
+            const senderRole = isEmail ? 'Externo' : roleTag(fromAgent);
+            const color      = isEmail
+              ? pickColorFromString(senderName)
+              : pickColor(msg.from_agent_id);
+
+            const attachments = isEmail
+              ? ((msg.metadata.attachments as Attachment[] | null) ?? [])
+              : [];
 
             return (
               <div
@@ -169,31 +200,33 @@ export default function TeamFeed({ token }: { token: string }) {
                       border: `1px solid ${color}40`,
                     }}
                   >
-                    {label(from).charAt(0).toUpperCase()}
+                    {senderName.charAt(0).toUpperCase()}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Header row */}
                     <div className="flex items-center flex-wrap gap-1.5 mb-2">
                       <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-                        {label(from)}
+                        {senderName}
                       </span>
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded-md"
-                        style={{
-                          background: 'var(--c-bg)',
-                          color:      'var(--c-text-sub)',
-                          border:     '1px solid var(--c-border)',
-                        }}
-                      >
-                        {roleTag(from)}
-                      </span>
+                      {senderRole && (
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded-md"
+                          style={{
+                            background: 'var(--c-bg)',
+                            color:      'var(--c-text-sub)',
+                            border:     '1px solid var(--c-border)',
+                          }}
+                        >
+                          {senderRole}
+                        </span>
+                      )}
 
-                      {to && (
+                      {toAgent && !isEmail && (
                         <>
                           <ArrowRight size={11} style={{ color: 'var(--c-text-sub)' }} />
                           <span className="text-xs font-medium" style={{ color: cfg.color }}>
-                            {label(to)}
+                            {agentLabel(toAgent)}
                           </span>
                         </>
                       )}
@@ -217,6 +250,30 @@ export default function TeamFeed({ token }: { token: string }) {
                     <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>
                       {msg.content}
                     </p>
+
+                    {/* Attachments */}
+                    {attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {attachments.map((att, i) => (
+                          <a
+                            key={i}
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs no-underline transition-opacity hover:opacity-80"
+                            style={{
+                              background: 'rgba(6,182,212,0.08)',
+                              border:     '1px solid rgba(6,182,212,0.25)',
+                              color:      '#06b6d4',
+                            }}
+                          >
+                            <Paperclip size={11} />
+                            <span className="max-w-[140px] truncate">{att.name}</span>
+                            <span style={{ opacity: 0.6 }}>· {formatBytes(att.size)}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

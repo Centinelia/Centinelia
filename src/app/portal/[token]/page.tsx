@@ -48,6 +48,7 @@ import AutoRefillSection         from './AutoRefillSection';
 import LearningsSection          from './LearningsSection';
 import TeamFeed                  from './TeamFeed';
 import EmailSettings             from './EmailSettings';
+import { inboxAddressFor }       from '@/lib/email/inbox';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -167,6 +168,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const resetDate       = minutesResetDate
     ? new Date(minutesResetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
     : 'N/A';
+
+  const inboxAddress = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
 
   const aiOpsUsed  = (agent.ai_ops_used  as number | null) ?? 0;
   const aiOpsLimit = (agent.ai_ops_limit as number | null) ?? 0;
@@ -568,6 +571,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── CORREOS ──────────────────────────────────────────────────── */}
           {tab === 'correos' && (
             <div className="flex flex-col gap-5">
+              {/* Inbox address */}
+              {inboxAddress && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada del equipo</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Los correos enviados a esta dirección aparecen en La Oficina. Compártela con quienes necesiten enviar trabajo al equipo de agentes.
+                  </p>
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl select-all cursor-text font-mono text-sm"
+                    style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  >
+                    <Mail size={14} style={{ color: '#06b6d4', flexShrink: 0 }} />
+                    {inboxAddress}
+                  </div>
+                </div>
+              )}
               <EmailSettings token={token} />
             </div>
           )}
