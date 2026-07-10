@@ -9,6 +9,7 @@ import ThemeToggle                      from '@/components/ThemeToggle';
 import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 import SupportChat                      from '../SupportChat';
+import PortalSidebar                    from '../PortalSidebar';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
 
@@ -27,7 +28,7 @@ export default async function AgentesLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email')
+    .select('business_name, logo_url, portal_email, features')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -38,16 +39,24 @@ export default async function AgentesLayout({
   const lookupEmail = session?.portalEmail ?? agent.portal_email ?? null;
 
   const { data: clientAgents } = lookupEmail
-    ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token').eq('portal_email', lookupEmail)
+    ? await supabase
+        .from('voice_agents')
+        .select('business_name, logo_url, portal_token, role, features')
+        .eq('portal_email', lookupEmail)
     : { data: [] };
 
+  const allClientAgents = clientAgents ?? [];
+
   const businessGroups = [...new Map(
-    (clientAgents ?? []).map((a: any) => [a.business_name, { // eslint-disable-line @typescript-eslint/no-explicit-any
+    allClientAgents.map((a: any) => [a.business_name, { // eslint-disable-line @typescript-eslint/no-explicit-any
       business_name: a.business_name,
       logo_url:      a.logo_url ?? null,
       first_token:   a.portal_token,
     }])
   ).values()];
+
+  const hasOpsAgent  = allClientAgents.some((a: any) => !!(a.role as string | null)); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const showOutbound = !!(agent.features as any)?.outbound_calls; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -81,9 +90,15 @@ export default async function AgentesLayout({
           <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Agentes</span>
         </div>
 
-        {/* Body */}
+        {/* Body: sidebar + content */}
         <div className="flex min-h-[calc(100vh-53px)]">
-          <div className="flex-1 min-w-0 px-4 sm:px-8 py-6 max-w-5xl">
+          <PortalSidebar
+            token={token}
+            currentTab="agentes"
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+          />
+          <div className="flex-1 min-w-0 px-4 sm:px-6 py-6">
             {children}
           </div>
         </div>

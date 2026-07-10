@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Plus, Clock } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Clock } from 'lucide-react';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -17,7 +17,6 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect } from 'next/navigation';
 
 import PortalLogout            from './PortalLogout';
-import PauseResumeButton       from './PauseResumeButton';
 import LogoUploader            from './LogoUploader';
 import BrandKitEditor          from './BrandKitEditor';
 import BusinessSwitcher        from './BusinessSwitcher';
@@ -64,10 +63,6 @@ interface Props {
 
 const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
 const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
-const OUTBOUND_ROLE_LABELS: Record<string, string> = {
-  vendedor: 'Vendedor', cotizador: 'Cotizador', seguimiento: 'Seguimiento',
-  recuperacion: 'Recuperación', cobrador: 'Cobrador',
-};
 
 const FEED_OUTCOME: Record<string, { label: string; color: string; bg: string }> = {
   lead_created:       { label: 'Lead',       color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'   },
@@ -749,159 +744,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── CUENTA ───────────────────────────────────────────────────── */}
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
-              {/* Agents */}
-              <Link
-                href={`/registro?back=/portal/${token}`}
-                className="flex items-center justify-between px-5 py-4 rounded-xl transition-all group"
-                style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)' }}>
-                    <Plus size={16} color="#9B6DFF" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: '#9B6DFF' }}>Agregar otro agente</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                      Usa el mismo correo para que aparezca aquí automáticamente
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={16} style={{ color: '#6C3BFF', flexShrink: 0 }} />
-              </Link>
-
-              {businessGroups.length === 0 && (
-                <div className="flex flex-col items-center gap-3 py-14 rounded-xl"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                    style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                    <PhoneCall size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
-                  </div>
-                  <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin agentes asociados a tu cuenta</p>
-                  <p className="text-xs text-center px-10" style={{ color: 'var(--c-text-3)' }}>
-                    Contrata tu primer agente usando el mismo correo y aparecerá aquí automáticamente.
-                  </p>
-                </div>
-              )}
-
-              {businessGroups.map(group => (
-                <div key={group.business_name} className="rounded-xl overflow-hidden"
-                  style={{ border: '1px solid var(--c-border)' }}>
-
-                  {/* Business header */}
-                  <div className="flex items-center gap-4 px-5 py-4"
-                    style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                      {group.logo_url
-                        ? <img src={group.logo_url} alt={group.business_name} className="w-full h-full object-contain p-1" />
-                        : <span className="text-sm font-bold" style={{ color: 'var(--c-text-3)' }}>
-                            {group.business_name.slice(0, 2).toUpperCase()}
-                          </span>
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{group.business_name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                        {group.agents.length} {group.agents.length === 1 ? 'agente' : 'agentes'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Agents */}
-                  {group.agents.map((a: any, i: number) => {
-                    const isBillingPaused = !a.active && a.billing_status === 'pago_fallido';
-                    const isClientPaused  = !!(a.client_paused) && !isBillingPaused;
-                    const isInactive      = !a.active && !isBillingPaused && !isClientPaused;
-                    const isCurrent       = a.portal_token === token;
-                    const isOnline        = a.active && !isClientPaused && !isBillingPaused;
-
-                    let statusLabel = 'Activo';
-                    let statusColor = '#16a34a';
-                    let statusBg    = 'rgba(34,197,94,0.1)';
-                    if (isBillingPaused) { statusLabel = 'Pago pendiente'; statusColor = '#dc2626'; statusBg = 'rgba(239,68,68,0.08)'; }
-                    else if (isClientPaused) { statusLabel = 'Pausado'; statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
-                    else if (isInactive) { statusLabel = 'Inactivo'; statusColor = '#6b7280'; statusBg = 'rgba(107,114,128,0.1)'; }
-
-                    return (
-                      <div key={a.id} className="flex items-center gap-3 px-4 py-3"
-                        style={{
-                          background: 'var(--c-surface-2)',
-                          borderTop:  i > 0 ? '1px solid var(--c-divider)' : undefined,
-                        }}>
-
-                        {/* Status dot */}
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'animate-pulse' : ''}`}
-                          style={{ background: isOnline ? '#22c55e' : isBillingPaused ? '#ef4444' : '#6b7280' }} />
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                              {a.agent_name?.trim() || 'Centinelia'}
-                            </span>
-                            {(() => { const pc = PLAN_COLORS[a.plan] ?? '#6b7280'; return (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
-                                {PLAN_LABELS[a.plan] ?? a.plan}
-                              </span>
-                            ); })()}
-                            {a.role && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
-                                {a.role}
-                              </span>
-                            )}
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                              style={{ background: statusBg, color: statusColor }}>
-                              {statusLabel}
-                            </span>
-                            {a.outbound_role && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
-                                {OUTBOUND_ROLE_LABELS[a.outbound_role] ?? a.outbound_role}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
-                            <Phone size={10} />
-                            {a.phone_number ?? <span style={{ fontStyle: 'italic' }}>Sin número asignado</span>}
-                          </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {!isCurrent && (
-                            <Link
-                              href={`/portal/${a.portal_token}`}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                              Ver portal
-                            </Link>
-                          )}
-                          <Link
-                            href={`/portal/${a.portal_token}/configurar`}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                            style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                            Configurar
-                          </Link>
-                          {!isBillingPaused
-                            ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                            : (
-                              <a
-                                href={`/api/billing/portal-session?token=${a.portal_token}`}
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                                style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                                Resolver pago →
-                              </a>
-                            )
-                          }
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-
               {/* Minutes & billing */}
               <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
