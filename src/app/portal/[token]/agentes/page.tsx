@@ -98,7 +98,7 @@ export default async function AgentesPage({ params }: Props) {
       )}
 
       {/* Agent cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {agents.map(a => {
           const color           = agentColor(a.id);
           const initial         = ((a.agent_name as string | null)?.trim() || (a.business_name as string)).charAt(0).toUpperCase();
@@ -116,7 +116,7 @@ export default async function AgentesPage({ params }: Props) {
 
           return (
             <div key={a.id}
-              className="rounded-2xl p-4 flex flex-col items-center justify-between aspect-square"
+              className="rounded-2xl p-4 flex flex-col items-center gap-3"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
               {/* Avatar */}
