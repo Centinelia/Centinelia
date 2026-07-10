@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveInboxToken, parseSenderName, parseToToken } from '@/lib/email/inbox';
+import { processInboxEmail } from '@/lib/ops/inbox-processor';
 
 interface StoredAttachment {
   name: string;
@@ -59,14 +60,17 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Find the first agent of this account to deliver to
-  const { data: agent } = await supabase
+  // Find the ops agent (with role) or fall back to first agent
+  const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id')
+    .select('id, role, knowledge_base, role_knowledge_base, business_name, client_email, portal_token, agent_name')
     .eq('portal_email', portalEmail)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single();
+    .order('created_at', { ascending: true });
+
+  if (!agents?.length) return NextResponse.json({ ok: true });
+
+  const opsAgent = agents.find(a => a.role) ?? agents[0];
+  const agent    = { id: opsAgent.id };
 
   if (!agent) return NextResponse.json({ ok: true });
 
@@ -115,6 +119,26 @@ export async function POST(req: NextRequest) {
       attachments:      storedAttachments,
     },
   });
+
+  // Ops AI processing (non-blocking — returns 200 immediately)
+  const ownerEmail = opsAgent.client_email;
+  if (ownerEmail) {
+    processInboxEmail({
+      agentId:       opsAgent.id,
+      source:        'sendgrid',
+      emailFrom:     from,
+      emailSubject:  subject,
+      emailBody:     text,
+      attachments:   storedAttachments,
+      agentName:     (opsAgent.agent_name as string | null) ?? 'Centinelia',
+      businessName:  opsAgent.business_name as string,
+      knowledgeBase: opsAgent.knowledge_base as string | null,
+      roleKB:        opsAgent.role_knowledge_base as string | null,
+      agentRole:     opsAgent.role as string | null,
+      ownerEmail,
+      portalToken:   opsAgent.portal_token as string,
+    }).catch(err => console.error('[ops] inbox-processor error:', err));
+  }
 
   return NextResponse.json({ ok: true });
 }

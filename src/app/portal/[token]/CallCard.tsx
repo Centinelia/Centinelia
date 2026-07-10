@@ -210,32 +210,20 @@ export default function CallCard({ call, isPro, clientName, token }: { call: Cal
                 </div>
               )}
 
-              {/* PDF Downloads */}
-              {token && (
+              {/* Cotización PDF — solo para leads e informativos */}
+              {token && ['lead_created', 'info_provided'].includes(call.outcome) && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-3)' }}>
                     Documentos
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={`/api/portal/${token}/pdf/llamada/${call.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
-                      <FileText size={12} /> Resumen PDF
-                    </a>
-                    {['lead_created', 'info_provided'].includes(call.outcome) && (
-                      <a
-                        href={`/api/portal/${token}/pdf/cotizacion/${call.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
-                        <FileText size={12} /> Cotización PDF
-                      </a>
-                    )}
-                  </div>
+                  <a
+                    href={`/api/portal/${token}/pdf/cotizacion/${call.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                    <FileText size={12} /> Cotización PDF
+                  </a>
                 </div>
               )}
             </div>

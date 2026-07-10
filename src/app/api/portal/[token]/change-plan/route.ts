@@ -70,8 +70,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         to_plan:         newPlan,
         to_minutes_plan: newTier,
       },
-      success_url: `${appUrl}/portal/${token}?tab=minutos&upgrade=ok`,
-      cancel_url:  `${appUrl}/portal/${token}?tab=minutos`,
+      success_url: `${appUrl}/portal/${token}?tab=cuenta&upgrade=ok`,
+      cancel_url:  `${appUrl}/portal/${token}?tab=cuenta`,
       locale:      'es',
     });
     return NextResponse.json({ url: session.url });
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }).eq('id', agent.id);
 
   if (to_plan && to_plan !== currentPlan && updatedAgent?.portal_email) {
-    await setAiOpsLimit(updatedAgent.portal_email, FEATURE_PLAN_CONFIG[newPlan].aiOpsLimit);
+    await setAiOpsLimit(updatedAgent.portal_email, MONTHLY_CONFIG[newPlan][newTier].aiOps);
   }
 
   return NextResponse.json({ success: true });

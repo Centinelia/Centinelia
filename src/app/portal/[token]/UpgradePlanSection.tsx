@@ -189,7 +189,7 @@ export default function UpgradePlanSection({
                   {isCurrent && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium mr-1"
                     style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>Actual</span>}
                   <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
-                    {t.minutes} min · ${cfg.mxn.toLocaleString('es-MX')}/mes
+                    {t.minutes} min{cfg.aiOps > 0 ? ` · ${cfg.aiOps} ops` : ''} · ${cfg.mxn.toLocaleString('es-MX')}/mes
                   </span>
                   <ChevronDown size={14} style={{ color: 'var(--c-text-3)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginLeft: 4 }} />
                 </button>

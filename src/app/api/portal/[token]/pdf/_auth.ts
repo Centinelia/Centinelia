@@ -15,7 +15,7 @@ export async function getAgentForPdf(token: string): Promise<{
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, portal_email, business_name, phone_number, logo_url, email_logo_url, email_brand_color, email_footer_text, brand_website, brand_address')
+    .select('id, portal_email, business_name, phone_number, logo_url, email_logo_url, email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
     .eq('portal_token', token)
     .single();
 

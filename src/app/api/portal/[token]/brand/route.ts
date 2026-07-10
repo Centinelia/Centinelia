@@ -17,17 +17,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!agent?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await req.json() as {
-    email_brand_color?: string;
-    email_footer_text?: string;
-    brand_website?:     string;
-    brand_address?:     string;
+    email_brand_color?:    string;
+    email_footer_text?:    string;
+    brand_website?:        string;
+    brand_address?:        string;
+    brand_color_secondary?: string;
   };
 
   const patch: Record<string, string | null> = {};
-  if ('email_brand_color' in body) patch.email_brand_color = body.email_brand_color ?? null;
-  if ('email_footer_text' in body) patch.email_footer_text = body.email_footer_text ?? null;
-  if ('brand_website'     in body) patch.brand_website     = body.brand_website     ?? null;
-  if ('brand_address'     in body) patch.brand_address     = body.brand_address     ?? null;
+  if ('email_brand_color'    in body) patch.email_brand_color    = body.email_brand_color    ?? null;
+  if ('email_footer_text'    in body) patch.email_footer_text    = body.email_footer_text    ?? null;
+  if ('brand_website'        in body) patch.brand_website        = body.brand_website        ?? null;
+  if ('brand_address'        in body) patch.brand_address        = body.brand_address        ?? null;
+  if ('brand_color_secondary' in body) patch.brand_color_secondary = body.brand_color_secondary ?? null;
 
   if (!Object.keys(patch).length) return NextResponse.json({ ok: true });
 

@@ -6,6 +6,7 @@ export type { WaMessagesPlan };
 export type Plan = 'comercial' | 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
 
+
 // ─── Feature flags ────────────────────────────────────────────────────────────
 
 export interface AgentFeatures {
@@ -74,6 +75,8 @@ export interface VoiceAgent {
   website_knowledge?: string;     // contenido extraído del sitio web (servidor lo llena)
   agent_name?: string;            // nombre propio del agente (solo Pro, default: Centinelia)
   giro_template?: string;         // template de industria: restaurante, consultorio, estetica, agencia, retail, general
+  role?: string;                  // segundo rol del agente — nombre libre definido por el usuario (ej: "Procesador de facturas")
+  role_knowledge_base?: string;   // base de conocimiento específica del segundo rol
   portal_token?: string;          // UUID único para el portal del cliente
   portal_email?: string;          // email del cliente; todos los agentes con el mismo email comparten el pool de minutos
   minutes_plan?: MinutesPlan;

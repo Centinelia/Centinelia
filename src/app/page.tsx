@@ -138,11 +138,11 @@ const AGENT_TYPES: {
 ];
 
 const MINUTE_TIERS: {
-  id: string; label: string; minutes: number; price: number; popular?: boolean;
+  id: string; label: string; minutes: number; ops: number; price: number; popular?: boolean;
 }[] = [
-  { id: 'starter', label: 'Starter', minutes: 300,  price: 2997 },
-  { id: 'growth',  label: 'Growth',  minutes: 600,  price: 5994, popular: true },
-  { id: 'scale',   label: 'Scale',   minutes: 1200, price: 11988 },
+  { id: 'starter', label: 'Starter', minutes: 300,  ops: 100, price: 2997 },
+  { id: 'growth',  label: 'Growth',  minutes: 600,  ops: 200, price: 5994, popular: true },
+  { id: 'scale',   label: 'Scale',   minutes: 1200, ops: 300, price: 11988 },
 ];
 
 const DIFFERENTIATORS = [
@@ -1013,6 +1013,9 @@ export default function LandingPage() {
                         </span>
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                       </div>
+                      <p className="text-xs mt-1" style={{ color: 'rgba(155,109,255,0.6)' }}>
+                        {t.ops} ops <span style={{ color: 'rgba(255,255,255,0.25)' }}>· Pro</span>
+                      </p>
                     </div>
                     <div className="text-right">
                       {t.popular && (
@@ -1058,6 +1061,9 @@ export default function LandingPage() {
                       {fmt(t.minutes)}
                     </span>
                     <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
+                    <p className="text-xs mt-1.5" style={{ color: 'rgba(155,109,255,0.65)' }}>
+                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· solo Plan Pro</span>
+                    </p>
                   </div>
                   <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
                     style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>

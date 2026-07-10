@@ -79,6 +79,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const [resyncOk, setResyncOk]           = useState(false);
   const [voiceId, setVoiceId]             = useState<string | null>((agent as any).elevenlabs_voice_id ?? null);
   const [tab, setTab]                     = useState<Tab>(initialTab);
+  const [role, setRole]                   = useState<string>((agent as any).role ?? '');
   const [plan, setPlan]                   = useState<Plan>(agent.plan);
   const [features, setFeatures]           = useState<AgentFeatures>(agent.features);
   const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
@@ -140,6 +141,8 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
       transfer_number:        fd.get('transfer_number'),
       transfer_whatsapp:      fd.get('transfer_whatsapp'),
       calendar_url:           fd.get('calendar_url'),
+      role,
+      role_knowledge_base: fd.get('role_knowledge_base'),
       plan,
       features,
       business_hours:         hoursEnabled ? businessHours : null,
@@ -191,6 +194,22 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
 
         {/* ── Tab: Información ─────────────────────────────────────────── */}
         <div className={tab !== 'info' ? 'hidden' : 'flex flex-col gap-6'}>
+
+          <Section title="Segundo rol">
+            <div>
+              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>Nombre del rol</label>
+              <input
+                type="text"
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                placeholder="Ej: Procesador de facturas, Coordinador de juntas…"
+                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--c-text)', fontSize: 14, width: '100%', outline: 'none' }}
+              />
+              <p className="text-xs mt-1.5" style={{ color: 'var(--c-text-3)' }}>
+                Opcional. El comportamiento se define en la base de conocimiento del agente.
+              </p>
+            </div>
+          </Section>
 
           <Section title="Plan">
             <div className="grid grid-cols-2 gap-3">
@@ -304,7 +323,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             <VoiceSelector selected={voiceId} onChange={setVoiceId} />
           </Section>
 
-          <Section title="Base de conocimiento">
+          <Section title="Base de conocimiento general">
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
               Servicios, productos, precios, horarios y preguntas frecuentes del negocio.
               Mientras más detallada, mejor responderá el agente.
@@ -313,6 +332,17 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               defaultValue={agent.knowledge_base ?? ''}
               placeholder={`SERVICIOS:\n- Ejemplo: $150\n\nFAQs:\n¿Aceptan tarjeta? Sí.`} />
           </Section>
+
+          {(agent as any).role && (
+            <Section title={`Base de conocimiento: ${(agent as any).role}`}>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                Procedimientos, reglas y contexto específico para que el agente actúe como <strong>{(agent as any).role}</strong>.
+              </p>
+              <Field label="Instrucciones del rol" name="role_knowledge_base" textarea rows={12}
+                defaultValue={(agent as any).role_knowledge_base ?? ''}
+                placeholder={`PROCEDIMIENTO:\n1. Revisar el documento.\n2. Comparar contra criterios.\n3. Escalar si hay discrepancia.\n\nLÍMITES:\n- Hasta $10,000: aprobación automática.`} />
+            </Section>
+          )}
         </div>
 
         {/* ── Tab: Funciones ───────────────────────────────────────────── */}

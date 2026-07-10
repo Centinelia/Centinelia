@@ -28,11 +28,11 @@ export async function GET(req: NextRequest) {
   try {
     const session = await stripe.billingPortal.sessions.create({
       customer:   agent.stripe_customer_id,
-      return_url: `${appUrl}/portal/${token}?tab=minutos`,
+      return_url: `${appUrl}/portal/${token}?tab=cuenta`,
     });
     return NextResponse.redirect(session.url);
   } catch (err) {
     console.error('Stripe billing portal error:', err);
-    return NextResponse.redirect(`${appUrl}/portal/${token}?tab=minutos&billing_error=1`);
+    return NextResponse.redirect(`${appUrl}/portal/${token}?tab=cuenta&billing_error=1`);
   }
 }

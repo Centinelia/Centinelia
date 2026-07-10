@@ -14,8 +14,8 @@ export interface FeaturePlanConfig {
 }
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  comercial: { label: 'Comercial', setupFee: 8990,  aiOpsLimit:  50, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
-  pro:       { label: 'Pro',       setupFee: 14990, aiOpsLimit: 250, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+  comercial: { label: 'Comercial', setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
+  pro:       { label: 'Pro',       setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
 // ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────
@@ -33,22 +33,23 @@ export const MINUTES_RATE_EXTRA   = 12.99;
 export interface MonthlyPlanConfig {
   label:     string;
   minutes:   number;
+  aiOps:     number;
   mxn:       number; // total monthly (base + minutes)
   priceId:   () => string;
 }
 
 export const MONTHLY_CONFIG: Record<Plan, Record<MinutesTier, MonthlyPlanConfig>> = {
   comercial: {
-    starter:    { label: 'Starter',    minutes: 300,  mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
-    enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
+    starter:    { label: 'Starter',    minutes: 300,  aiOps:   0, mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  aiOps:   0, mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, aiOps:   0, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
+    enterprise: { label: 'Enterprise', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
   },
   pro: {
-    starter:    { label: 'Starter',    minutes: 300,  mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, mxn: 11988, priceId: () => process.env.STRIPE_PRO_SCALE! },
-    enterprise: { label: 'Enterprise', minutes: 0,    mxn: 0,     priceId: () => '' },
+    starter:    { label: 'Starter',    minutes: 300,  aiOps: 100, mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
+    growth:     { label: 'Growth',     minutes: 600,  aiOps: 200, mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
+    scale:      { label: 'Scale',      minutes: 1200, aiOps: 300, mxn: 11988, priceId: () => process.env.STRIPE_PRO_SCALE! },
+    enterprise: { label: 'Enterprise', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
   },
 };
 

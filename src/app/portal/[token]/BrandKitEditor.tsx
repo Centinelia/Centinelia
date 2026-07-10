@@ -4,13 +4,14 @@ import { useState, useTransition } from 'react';
 import { Check, Loader2, Palette } from 'lucide-react';
 
 interface Props {
-  token:        string;
-  logoUrl:      string | null;
-  businessName: string;
-  initialColor:   string;
-  initialWebsite: string;
-  initialAddress: string;
-  initialFooter:  string;
+  token:               string;
+  logoUrl:             string | null;
+  businessName:        string;
+  initialColor:        string;
+  initialColorSecondary: string;
+  initialWebsite:      string;
+  initialAddress:      string;
+  initialFooter:       string;
 }
 
 const PRESET_COLORS = [
@@ -21,14 +22,15 @@ const PRESET_COLORS = [
 
 export default function BrandKitEditor({
   token, logoUrl, businessName,
-  initialColor, initialWebsite, initialAddress, initialFooter,
+  initialColor, initialColorSecondary, initialWebsite, initialAddress, initialFooter,
 }: Props) {
-  const [color,   setColor]   = useState(initialColor   || '#6C3BFF');
-  const [website, setWebsite] = useState(initialWebsite || '');
-  const [address, setAddress] = useState(initialAddress || '');
-  const [footer,  setFooter]  = useState(initialFooter  || '');
-  const [saved,   setSaved]   = useState(false);
-  const [saving,  startSave]  = useTransition();
+  const [color,    setColor]    = useState(initialColor          || '#6C3BFF');
+  const [color2,   setColor2]   = useState(initialColorSecondary || '');
+  const [website,  setWebsite]  = useState(initialWebsite        || '');
+  const [address,  setAddress]  = useState(initialAddress        || '');
+  const [footer,   setFooter]   = useState(initialFooter         || '');
+  const [saved,    setSaved]    = useState(false);
+  const [saving,   startSave]   = useTransition();
 
   function save() {
     setSaved(false);
@@ -37,10 +39,11 @@ export default function BrandKitEditor({
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          email_brand_color: color,
-          email_footer_text: footer   || null,
-          brand_website:     website  || null,
-          brand_address:     address  || null,
+          email_brand_color:     color,
+          brand_color_secondary: color2  || null,
+          email_footer_text:     footer  || null,
+          brand_website:         website || null,
+          brand_address:         address || null,
         }),
       });
       setSaved(true);
@@ -83,6 +86,47 @@ export default function BrandKitEditor({
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color }} />
           <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color}</code>
+        </div>
+      </div>
+
+      {/* ── Color secundario ── */}
+      <div>
+        <p className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          Color secundario <span className="normal-case font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>(opcional)</span>
+        </p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {PRESET_COLORS.map(c => (
+            <button
+              key={c}
+              onClick={() => setColor2(color2 === c ? '' : c)}
+              title={c}
+              className="w-7 h-7 rounded-lg transition-transform hover:scale-110 flex-shrink-0"
+              style={{
+                background:    c,
+                outline:       color2 === c ? `2.5px solid ${c}` : 'none',
+                outlineOffset: '2px',
+                border:        '1px solid rgba(0,0,0,0.1)',
+              }}
+            />
+          ))}
+          <label
+            title="Color personalizado"
+            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+            style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
+            <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
+            <input type="color" value={color2 || '#000000'} onChange={e => setColor2(e.target.value)}
+              className="sr-only" />
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          {color2
+            ? <>
+                <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color2 }} />
+                <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color2}</code>
+                <button onClick={() => setColor2('')} className="text-xs ml-1" style={{ color: 'var(--c-text-3)' }}>Quitar</button>
+              </>
+            : <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Ninguno — se usará el color principal</span>
+          }
         </div>
       </div>
 
@@ -135,6 +179,7 @@ export default function BrandKitEditor({
         logoUrl={logoUrl}
         businessName={businessName}
         color={color}
+        color2={color2}
         address={address}
         website={website}
         footer={footer}
@@ -162,14 +207,16 @@ export default function BrandKitEditor({
 
 // ── Inline email preview ────────────────────────────────────────────────────
 
-function EmailPreview({ logoUrl, businessName, color, address, website, footer }: {
+function EmailPreview({ logoUrl, businessName, color, color2, address, website, footer }: {
   logoUrl:      string | null;
   businessName: string;
   color:        string;
+  color2:       string;
   address:      string;
   website:      string;
   footer:       string;
 }) {
+  const accent = color2 || color;
   const BORDER = `${color}22`;
   const TEXT   = '#1A0A3B';
   const SUB    = 'rgba(26,10,59,0.55)';
@@ -198,7 +245,7 @@ function EmailPreview({ logoUrl, businessName, color, address, website, footer }
           </div>
           <p style={{ color: TEXT, fontSize: 14, fontWeight: 700, margin: '0 0 4px', textAlign: 'center' }}>Hola, María</p>
           <p style={{ color: SUB, fontSize: 12, margin: '0 0 14px', textAlign: 'center' }}>Tu cita en <strong>{businessName}</strong> quedó registrada.</p>
-          <div style={{ background: `${color}08`, border: `1px solid ${color}18`, borderRadius: 10, padding: '10px 16px', fontSize: 12 }}>
+          <div style={{ background: `${accent}08`, border: `1px solid ${accent}18`, borderRadius: 10, padding: '10px 16px', fontSize: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${BORDER}`, paddingBottom: 8, marginBottom: 8 }}>
               <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Fecha</span>
               <span style={{ color: TEXT, fontWeight: 600 }}>Lunes 14 de julio, 2026</span>

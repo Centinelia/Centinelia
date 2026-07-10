@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
           minutes_reset_date: nextResetDate(),
           updated_at:        new Date().toISOString(),
         }, { onConflict: 'portal_email' });
-        await setAiOpsLimit(activationEmail, FEATURE_PLAN_CONFIG[featurePlan].aiOpsLimit);
+        await setAiOpsLimit(activationEmail, minutesCfg.aiOps);
       }
 
       await supabase.from('minutes_ledger').insert({

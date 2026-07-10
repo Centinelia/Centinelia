@@ -255,8 +255,8 @@ export function minutesAlertHtml(opts: {
     ${badge(isPaused ? 'Agente pausado' : `${Math.round(opts.pct)}% de minutos usados`, alertColor)}
     ${heading(opts.businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">${bodyText}</p>
-    ${btn('Comprar más minutos →', `${opts.portalUrl}?tab=minutos`)}
-    ${btn('Ampliar mi plan →', `${opts.portalUrl}?tab=minutos#suscripcion`, false)}
+    ${btn('Comprar más minutos →', `${opts.portalUrl}?tab=cuenta`)}
+    ${btn('Ampliar mi plan →', `${opts.portalUrl}?tab=cuenta#suscripcion`, false)}
   `);
 }
 

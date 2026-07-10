@@ -79,7 +79,7 @@ export default function BusinessSwitcher({
             return (
               <button
                 key={opt.business_name}
-                onClick={() => { router.push(`/portal/${opt.first_token}?tab=agentes`); setOpen(false); }}
+                onClick={() => { router.push(`/portal/${opt.first_token}?tab=inicio`); setOpen(false); }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--c-surface-2)]"
               >
                 <BizAvatar name={opt.business_name} logo_url={opt.logo_url} size={7} />

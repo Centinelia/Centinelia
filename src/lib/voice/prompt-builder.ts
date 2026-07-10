@@ -148,6 +148,14 @@ ${agent.website_knowledge.trim()}
 Usa esta información como referencia complementaria. Si hay algún conflicto con la base de conocimiento anterior, la base de conocimiento tiene prioridad.`);
   }
 
+  // ── Role knowledge base ────────────────────────────────────────────────────
+  if (agent.role?.trim() && agent.role_knowledge_base?.trim()) {
+    blocks.push(`ROL ESPECIALIZADO — ${agent.role.toUpperCase()}:
+${agent.role_knowledge_base.trim()}
+
+Esta es tu base de conocimiento específica para tu función como ${agent.role}. Úsala cuando el cliente o una tarea requiera de esta especialización. Tiene prioridad sobre información general cuando el tema sea de tu rol.`);
+  }
+
   // ── Custom transfer rules ─────────────────────────────────────────────────
   if (agent.transfer_rules?.trim()) {
     blocks.push(`REGLAS DE TRANSFERENCIA PERSONALIZADAS:\n${agent.transfer_rules.trim()}`);
