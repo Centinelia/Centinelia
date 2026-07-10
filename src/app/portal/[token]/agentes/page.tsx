@@ -5,7 +5,7 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import { Phone, Settings2, Briefcase, Plus, Bot, LayoutDashboard, Zap } from 'lucide-react';
+import { Phone, Settings2, Briefcase, Plus, Bot, Zap } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
@@ -188,14 +188,6 @@ export default async function AgentesPage({ params }: Props) {
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-2"
                 style={{ borderTop: '1px solid var(--c-border)' }}>
-                <Link
-                  href={`/portal/${a.portal_token as string}?tab=inicio`}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
-                >
-                  <LayoutDashboard size={11} />
-                  Ver portal
-                </Link>
                 <Link
                   href={`/portal/${a.portal_token as string}/configurar`}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
