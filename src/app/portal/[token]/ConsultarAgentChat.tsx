@@ -1,7 +1,27 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, FileText, Download } from 'lucide-react';
+
+const FILE_URL_RE = /https?:\/\/[^\s]+\.(?:pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|zip|txt|csv|mp3|mp4|webm|wav|ogg)(?:\?[^\s]*)?/gi;
+
+type ContentPart = string | { url: string; name: string };
+
+function parseContent(text: string): ContentPart[] {
+  const parts: ContentPart[] = [];
+  let last = 0;
+  FILE_URL_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = FILE_URL_RE.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const url = match[0];
+    const name = decodeURIComponent(url.split('/').pop()?.split('?')[0] || 'archivo');
+    parts.push({ url, name });
+    last = match.index + url.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
 
 const COLORS = [
   '#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b',
@@ -223,27 +243,59 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
                 </div>
               )}
               <div
-                className="max-w-[78%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
+                className="max-w-[78%] rounded-2xl text-sm leading-relaxed"
                 style={
                   msg.role === 'user'
                     ? {
                         background:              'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
                         color:                   '#fff',
                         borderBottomRightRadius: 4,
+                        padding:                 '10px 14px',
                       }
                     : {
                         background:             'var(--c-bg)',
                         color:                  'var(--c-text)',
                         border:                 '1px solid var(--c-border)',
                         borderBottomLeftRadius: 4,
+                        padding:                '10px 14px',
                       }
                 }
               >
-                {msg.content || (
-                  <span className="flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                    <Loader2 size={11} className="animate-spin" /> Pensando…
-                  </span>
-                )}
+                {!msg.content
+                  ? (
+                    <span className="flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                      <Loader2 size={11} className="animate-spin" /> Pensando…
+                    </span>
+                  )
+                  : msg.role === 'user'
+                  ? <span className="whitespace-pre-wrap">{msg.content}</span>
+                  : (
+                    <div className="flex flex-col gap-2">
+                      {parseContent(msg.content).map((part, pi) =>
+                        typeof part === 'string' ? (
+                          <span key={pi} className="whitespace-pre-wrap">{part}</span>
+                        ) : (
+                          <a
+                            key={pi}
+                            href={part.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 no-underline self-start"
+                            style={{
+                              background: 'rgba(108,59,255,0.1)',
+                              color:      '#9B6DFF',
+                              border:     '1px solid rgba(108,59,255,0.25)',
+                            }}
+                          >
+                            <FileText size={11} />
+                            <span className="max-w-[220px] truncate">{part.name}</span>
+                            <Download size={10} style={{ opacity: 0.7, flexShrink: 0 }} />
+                          </a>
+                        )
+                      )}
+                    </div>
+                  )
+                }
               </div>
             </div>
           ))}

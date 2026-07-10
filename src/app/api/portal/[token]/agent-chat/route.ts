@@ -83,7 +83,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { data: inbox } = await supabase
     .from('ops_inbox')
-    .select('email_from, email_subject, category, ai_summary, status, created_at')
+    .select('id, email_from, email_subject, category, ai_summary, status, attachments, created_at')
     .eq('agent_id', agent.id)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -91,9 +91,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (inbox?.length) {
     const lines = inbox.map(i => {
       const date = new Date(i.created_at as string).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
-      return `- ${date} | ${(i.category as string) || 'general'} | De: ${i.email_from} | ${i.email_subject} | [${i.status}] ${(i.ai_summary as string) || ''}`;
+      const atts = (i.attachments as { name: string; url: string }[] | null) ?? [];
+      const attStr = atts.length
+        ? ` | Adjuntos: ${atts.map(a => `${a.name} → ${a.url}`).join(', ')}`
+        : '';
+      return `- [ID:${i.id}] ${date} | ${(i.category as string) || 'general'} | De: ${i.email_from} | ${i.email_subject} | [${i.status}] ${(i.ai_summary as string) || ''}${attStr}`;
     });
-    sections.push(`# Bandeja de entrada (últimos 10)\n${lines.join('\n')}`);
+    sections.push(`# Bandeja de entrada (últimos 10)\n${lines.join('\n')}\n\nCuando menciones un adjunto, incluye la URL exacta para que el dueño pueda descargarlo.`);
   }
 
   const { data: meetings } = await supabase
