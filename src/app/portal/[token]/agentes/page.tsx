@@ -116,25 +116,25 @@ export default async function AgentesPage({ params }: Props) {
 
           return (
             <div key={a.id}
-              className="rounded-2xl p-4 flex flex-col items-center gap-2.5"
+              className="rounded-2xl p-3.5 flex flex-col items-center gap-2"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
-              {/* Avatar — centrado, grande */}
+              {/* Avatar */}
               <AgentAvatarPicker
                 token={a.portal_token as string}
                 avatarSrc={avatarSrc}
                 initial={initial}
                 color={color}
-                size={72}
+                size={56}
               />
 
-              {/* Nombre + rol */}
-              <div className="flex flex-col items-center gap-0.5 text-center">
-                <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+              {/* Nombre + rol + meta (todo compacto) */}
+              <div className="flex flex-col items-center gap-0.5 text-center w-full">
+                <span className="font-semibold text-sm leading-tight" style={{ color: 'var(--c-text)' }}>
                   {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                 </span>
                 {hasRole && (
-                  <span className="text-xs font-medium" style={{ color: roleColor }}>
+                  <span className="text-[11px] font-medium leading-tight" style={{ color: roleColor }}>
                     {a.role as string}
                   </span>
                 )}
@@ -150,35 +150,25 @@ export default async function AgentesPage({ params }: Props) {
                       style={{ background: 'currentColor' }} />
                     {statusLabel}
                   </span>
+                  <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                    <Bot size={10} />
+                    {callCount}
+                  </span>
+                  {hasRole && (
+                    <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                      <Zap size={10} />
+                      {(a.ai_ops_used as number) ?? 0}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Stats */}
-              <div className="flex items-center justify-center gap-3 text-xs flex-wrap"
-                style={{ color: 'var(--c-text-3)', borderTop: '1px solid var(--c-border)', paddingTop: 10, width: '100%' }}>
-                {(a.phone_number as string | null) && (
-                  <span className="flex items-center gap-1">
-                    <Phone size={11} />
-                    {a.phone_number as string}
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Bot size={11} />
-                  {callCount} llam/mes
-                </span>
-                {hasRole && (
-                  <span className="flex items-center gap-1">
-                    <Zap size={11} />
-                    {(a.ai_ops_used as number) ?? 0} ops/mes
-                  </span>
-                )}
-              </div>
-
               {/* Actions */}
-              <div className="flex items-center gap-1.5 w-full">
+              <div className="flex items-center gap-1.5 w-full pt-1.5"
+                style={{ borderTop: '1px solid var(--c-border)' }}>
                 <Link
                   href={`/portal/${a.portal_token as string}/configurar`}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-80"
                   style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
                 >
                   <Settings2 size={11} />
@@ -187,7 +177,7 @@ export default async function AgentesPage({ params }: Props) {
                 {hasRole && (
                   <Link
                     href={`/portal/${a.portal_token as string}/oficina`}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-80"
                     style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}
                   >
                     <Briefcase size={11} />
@@ -200,7 +190,7 @@ export default async function AgentesPage({ params }: Props) {
                   : (
                     <a
                       href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-80"
                       style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
                       Pago →
                     </a>
