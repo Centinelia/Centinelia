@@ -124,7 +124,7 @@ export default async function AgentesPage({ params }: Props) {
                 token={a.portal_token as string}
                 avatarSrc={avatarSrc}
                 initial={initial}
-                color={color}
+                color={hasRole ? roleColor : color}
                 size={148}
               />
 
