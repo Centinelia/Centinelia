@@ -48,11 +48,11 @@ export function BrandedDoc({ brand, docType, subtitle, children, filename }: {
         <View style={[S.spaceBetween, { marginBottom: 24, paddingBottom: 14, borderBottomWidth: 2, borderBottomColor: accent }]}>
           <View>
             {brand.logoUrl
-              ? <Image src={brand.logoUrl} style={{ height: 34, maxWidth: 140 }} />
+              ? <Image src={brand.logoUrl} style={{ height: 42, maxWidth: 160, objectFit: 'contain' } as any} />
               : <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold' }}>{brand.businessName}</Text>
             }
             {brand.logoUrl && (
-              <Text style={{ fontSize: 9, color: '#6b7280', marginTop: 3 }}>{brand.businessName}</Text>
+              <Text style={{ fontSize: 9, color: '#6b7280', marginTop: 4 }}>{brand.businessName}</Text>
             )}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

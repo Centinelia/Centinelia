@@ -4,6 +4,26 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import type { BrandKit } from '@/lib/brand/kit';
 
+// Pre-fetch logo and convert to a PNG base64 data URI so react-pdf never
+// has to do a live network request (which often fails with Supabase redirects
+// and breaks on WebP images that react-pdf can't decode).
+async function logoToDataUri(url: string | null): Promise<string | null> {
+  if (!url) return null;
+  try {
+    // Supabase image transform endpoint: swap /object/ → /render/image/ and
+    // request PNG so react-pdf always gets a format it can handle.
+    const fetchUrl = url.includes('/storage/v1/object/')
+      ? url.replace('/storage/v1/object/', '/storage/v1/render/image/') + '?format=png&quality=90&width=400'
+      : url;
+    const res = await fetch(fetchUrl, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    return `data:image/png;base64,${Buffer.from(buf).toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function getAgentForPdf(token: string): Promise<{
   agent: Record<string, unknown>;
   brand: BrandKit;
@@ -20,7 +40,16 @@ export async function getAgentForPdf(token: string): Promise<{
     .single();
 
   if (!agent) return null;
-  return { agent: agent as Record<string, unknown>, brand: brandKitFromAgent(agent as Record<string, unknown>) };
+
+  const rawLogoUrl = (agent.logo_url as string | null) ?? (agent.email_logo_url as string | null) ?? null;
+  const logoDataUri = await logoToDataUri(rawLogoUrl);
+
+  const brand: BrandKit = {
+    ...brandKitFromAgent(agent as Record<string, unknown>),
+    logoUrl: logoDataUri,
+  };
+
+  return { agent: agent as Record<string, unknown>, brand };
 }
 
 export function pdfResponse(buffer: Buffer, filename: string) {
