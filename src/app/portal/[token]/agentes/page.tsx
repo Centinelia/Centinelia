@@ -5,9 +5,9 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import Image                           from 'next/image';
 import { Phone, Settings2, Briefcase, Plus, Bot, Zap } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
+import AgentAvatarPicker               from '../AgentAvatarPicker';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -124,13 +124,12 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Agent header */}
               <div className="flex items-start gap-3">
-                <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden relative"
-                  style={{ background: `${color}20`, border: `1px solid ${color}35` }}>
-                  {avatarSrc
-                    ? <Image src={avatarSrc} alt="" fill sizes="44px" style={{ objectFit: 'contain', padding: 2 }} />
-                    : <span className="w-full h-full flex items-center justify-center text-base font-bold" style={{ color }}>{initial}</span>
-                  }
-                </div>
+                <AgentAvatarPicker
+                  token={a.portal_token as string}
+                  avatarSrc={avatarSrc}
+                  initial={initial}
+                  color={color}
+                />
                 <div className="flex-1 min-w-0 min-h-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
