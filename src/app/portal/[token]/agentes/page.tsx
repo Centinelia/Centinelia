@@ -15,7 +15,7 @@ function agentColor(id: string) {
   return COLORS[hash % COLORS.length];
 }
 
-const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
+const PLAN_LABELS: Record<string, string> = { comercial: 'Agente Comercial', pro: 'Ejecutivo Senior' };
 const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 interface Props { params: Promise<{ token: string }> }

@@ -15,16 +15,16 @@ const AGENT_TYPES: {
 }[] = [
   {
     key:      'comercial',
-    label:    'Comercial',
+    label:    'Agente Comercial',
     setupFee: 8990,
     features: ['Atención 24/7', 'Captura de leads', 'Agendamiento de citas', 'Transferencia inteligente', 'Escalación a WhatsApp'],
     color:    '#3b82f6',
   },
   {
     key:      'pro',
-    label:    'Pro',
+    label:    'Ejecutivo Senior',
     setupFee: 14990,
-    features: ['Todo lo de Comercial', 'Toma de pedidos', 'Memoria de cliente', 'Voz personalizable', 'Multiidioma (ES + EN)'],
+    features: ['Todo lo de Agente Comercial', 'Toma de pedidos', 'Memoria de cliente', 'Voz personalizable', 'Multiidioma (ES + EN)'],
     color:    '#a855f7',
   },
 ];

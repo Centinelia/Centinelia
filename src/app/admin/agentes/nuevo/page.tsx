@@ -341,14 +341,14 @@ export default function NuevoAgentePage() {
             <div className="p-3 rounded-lg leading-relaxed"
               style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                En <strong style={{ color: 'var(--c-text)' }}>Plan Comercial</strong> el agente
+                En <strong style={{ color: 'var(--c-text)' }}>Agente Comercial</strong> el agente
                 siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
-                Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span> puedes
+                Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Ejecutivo Senior</span> puedes
                 asignarle un nombre personalizado.
               </p>
             </div>
             <Field label="Nombre del agente" name="agent_name"
-              placeholder={plan === 'pro' ? 'Ej: Sofía, Carlos, Luna…' : 'Disponible en Plan Pro'}
+              placeholder={plan === 'pro' ? 'Ej: Sofía, Carlos, Luna…' : 'Disponible en Ejecutivo Senior'}
               disabled={plan !== 'pro'} />
           </Section>
 
@@ -396,7 +396,7 @@ export default function NuevoAgentePage() {
           <Section title={plan === 'pro' ? 'Funciones adicionales' : 'Funciones Pro'}>
             {plan === 'comercial' && (
               <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                Disponibles al cambiar a <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span>.
+                Disponibles al cambiar a <span style={{ color: '#a855f7', fontWeight: 600 }}>Ejecutivo Senior</span>.
               </p>
             )}
             <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${plan === 'pro' ? 'var(--c-border)' : 'rgba(168,85,247,0.15)'}` }}>

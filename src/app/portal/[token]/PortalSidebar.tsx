@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  LayoutDashboard, Phone, PhoneOutgoing, Briefcase,
+  LayoutDashboard, Phone, PhoneCall, PhoneOutgoing, Briefcase,
   Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot,
 } from 'lucide-react';
 
-type SubItem = { label: string; id: string };
-type Section = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; directHref?: string };
+type SubItem    = { label: string; id: string };
+type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
+type Section    = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
 interface Props {
   token:        string;
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound }: Props) {
+  const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
 
   const toggle = (id: string) =>
@@ -34,21 +37,28 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     },
     {
       id: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
-      items: [
-        { label: 'Registro de llamadas', id: 'registro' },
-        { label: 'Leads capturados',     id: 'leads' },
-        { label: 'Pedidos',              id: 'pedidos' },
-        { label: 'Citas',                id: 'citas' },
+      toggleOnly: true,
+      items: [],
+      subSections: [
+        {
+          label: 'Entrantes', id: 'entrantes', icon: <PhoneCall size={12} />,
+          items: [
+            { label: 'Registro de llamadas', id: 'registro' },
+            { label: 'Leads capturados',     id: 'leads' },
+            { label: 'Pedidos',              id: 'pedidos' },
+            { label: 'Citas',                id: 'citas' },
+          ],
+        },
+        ...(showOutbound ? [{
+          label: 'Salientes', id: 'salientes', icon: <PhoneOutgoing size={12} />,
+          items: [
+            { label: 'Llamadas salientes', id: 'llamadas-sal' },
+            { label: 'Campañas',           id: 'campanas' },
+            { label: 'Contactos',          id: 'contactos' },
+          ],
+        }] : []),
       ],
     },
-    ...(showOutbound ? [{
-      id: 'salientes', label: 'Salientes', icon: <PhoneOutgoing size={14} />,
-      items: [
-        { label: 'Llamadas salientes', id: 'llamadas-sal' },
-        { label: 'Campañas',           id: 'campanas' },
-        { label: 'Contactos',          id: 'contactos' },
-      ],
-    }] as Section[] : []),
     ...(hasOpsAgent ? [{
       id: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
       directHref: `/portal/${token}/oficina`,
@@ -88,25 +98,27 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Mis agentes',      id: 'agentes' },
-        { label: 'Minutos y uso',    id: 'minutos' },
-        { label: 'Plan y cambios',   id: 'plan' },
-        { label: 'Facturación',      id: 'facturacion' },
-        { label: 'Contrato',         id: 'contrato' },
+        { label: 'Mis agentes',   id: 'agentes' },
+        { label: 'Minutos y uso', id: 'minutos' },
+        { label: 'Plan y cambios',id: 'plan' },
+        { label: 'Facturación',   id: 'facturacion' },
+        { label: 'Contrato',      id: 'contrato' },
       ],
     },
   ];
+
+  const hasChildren = (s: Section) => s.items.length > 0 || (s.subSections?.length ?? 0) > 0;
 
   return (
     <aside
       className="hidden md:flex flex-col w-52 shrink-0"
       style={{
-        borderRight:  '1px solid var(--c-border)',
-        background:   'var(--c-modal)',
-        position:     'sticky',
-        top:          53,
-        height:       'calc(100vh - 53px)',
-        overflowY:    'auto',
+        borderRight: '1px solid var(--c-border)',
+        background:  'var(--c-modal)',
+        position:    'sticky',
+        top:         53,
+        height:      'calc(100vh - 53px)',
+        overflowY:   'auto',
       }}
     >
       <nav className="flex flex-col py-2 px-2">
@@ -116,38 +128,50 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
           return (
             <div key={section.id} className="mb-0.5">
               <div className="flex items-center gap-0.5">
-                <Link
-                  href={section.directHref ?? `/portal/${token}?tab=${section.id}`}
-                  onClick={() => {
-                    if (!openIds.includes(section.id))
-                      setOpenIds(prev => [...prev, section.id]);
-                  }}
-                  className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                  style={{
-                    background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',
-                    color:      isActive ? '#9B6DFF' : 'var(--c-text-2)',
-                  }}
-                >
-                  <span style={{ opacity: isActive ? 1 : 0.55, flexShrink: 0 }}>{section.icon}</span>
-                  {section.label}
-                </Link>
-                {section.items.length > 0 && (
+                {section.toggleOnly ? (
                   <button
                     onClick={() => toggle(section.id)}
-                    className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                    style={{ color: 'var(--c-text-3)', flexShrink: 0 }}
-                    aria-label={isOpen ? 'Colapsar' : 'Expandir'}
+                    className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all text-left"
+                    style={{
+                      background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',
+                      color:      isActive ? '#9B6DFF' : 'var(--c-text-2)',
+                    }}
                   >
-                    {isOpen
-                      ? <ChevronDown size={11} />
-                      : <ChevronRight size={11} />
-                    }
+                    <span style={{ opacity: isActive ? 1 : 0.55, flexShrink: 0 }}>{section.icon}</span>
+                    <span className="flex-1">{section.label}</span>
+                    {isOpen ? <ChevronDown size={11} style={{ color: 'var(--c-text-3)', opacity: 0.7, flexShrink: 0 }} /> : <ChevronRight size={11} style={{ color: 'var(--c-text-3)', opacity: 0.7, flexShrink: 0 }} />}
                   </button>
+                ) : (
+                  <>
+                    <Link
+                      href={section.directHref ?? `/portal/${token}?tab=${section.id}`}
+                      onClick={() => { if (!openIds.includes(section.id)) setOpenIds(prev => [...prev, section.id]); }}
+                      className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                      style={{
+                        background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',
+                        color:      isActive ? '#9B6DFF' : 'var(--c-text-2)',
+                      }}
+                    >
+                      <span style={{ opacity: isActive ? 1 : 0.55, flexShrink: 0 }}>{section.icon}</span>
+                      {section.label}
+                    </Link>
+                    {hasChildren(section) && (
+                      <button
+                        onClick={() => toggle(section.id)}
+                        className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                        style={{ color: 'var(--c-text-3)', flexShrink: 0 }}
+                      >
+                        {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
-              {isOpen && section.items.length > 0 && (
+              {isOpen && (
                 <div className="mt-0.5 mb-1 pl-2 flex flex-col gap-0.5">
+
+                  {/* Flat items (most sections) */}
                   {section.items.map(item => (
                     <Link
                       key={item.id}
@@ -157,13 +181,59 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                       style={{ color: 'var(--c-text-3)' }}
                     >
-                      <span
-                        className="w-1 h-1 rounded-full flex-shrink-0"
-                        style={{ background: 'currentColor', opacity: 0.45 }}
-                      />
+                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
                       {item.label}
                     </Link>
                   ))}
+
+                  {/* Sub-sections (llamadas: Entrantes / Salientes) */}
+                  {section.subSections?.map(sub => {
+                    const subHref   = `/portal/${token}/llamadas/${sub.id}`;
+                    const isSubActive = pathname === subHref || pathname.startsWith(subHref + '/');
+                    const subOpenKey  = `${section.id}-${sub.id}`;
+                    const subOpen     = openIds.includes(subOpenKey) || isSubActive;
+                    return (
+                      <div key={sub.id}>
+                        <div className="flex items-center gap-0.5">
+                          <Link
+                            href={subHref}
+                            onClick={() => { if (!openIds.includes(subOpenKey)) setOpenIds(prev => [...prev, subOpenKey]); }}
+                            className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            style={{
+                              background: isSubActive ? 'rgba(108,59,255,0.1)' : 'transparent',
+                              color:      isSubActive ? '#9B6DFF' : 'var(--c-text-2)',
+                            }}
+                          >
+                            <span style={{ opacity: isSubActive ? 1 : 0.6, flexShrink: 0 }}>{sub.icon}</span>
+                            {sub.label}
+                          </Link>
+                          <button
+                            onClick={() => toggle(subOpenKey)}
+                            className="flex items-center justify-center w-6 h-6 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                            style={{ color: 'var(--c-text-3)', flexShrink: 0 }}
+                          >
+                            {subOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                          </button>
+                        </div>
+                        {subOpen && (
+                          <div className="pl-2 flex flex-col gap-0.5 mt-0.5">
+                            {sub.items.map(item => (
+                              <Link
+                                key={item.id}
+                                href={`${subHref}#${item.id}`}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
+                                style={{ color: 'var(--c-text-3)' }}
+                              >
+                                <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
+                                {item.label}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
                 </div>
               )}
             </div>

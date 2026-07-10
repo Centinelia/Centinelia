@@ -177,7 +177,7 @@ export default function VoiceSelector({
   const [voices, setVoices]   = useState<ElevenVoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState<string | null>(null);
-  const [open, setOpen]       = useState<Record<string, boolean>>({ female: true, male: false, other: false });
+  const [open, setOpen]       = useState<Record<string, boolean>>({ female: false, male: false, other: false });
   const audioRef              = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -186,13 +186,6 @@ export default function VoiceSelector({
       .then(d => {
         const list: ElevenVoice[] = d.voices ?? [];
         setVoices(list);
-        // Open the group that contains the selected voice
-        if (selected) {
-          const v = list.find(x => x.voice_id === selected);
-          const g = v?.labels.gender?.toLowerCase();
-          const groupKey = g === 'female' ? 'female' : g === 'male' ? 'male' : 'other';
-          setOpen({ female: false, male: false, other: false, [groupKey]: true });
-        }
       })
       .finally(() => setLoading(false));
   }, [selected]);
@@ -266,16 +259,19 @@ export default function VoiceSelector({
 
   return (
     <div className="flex flex-col gap-3">
-      {groups.map(group => (
+      {groups.map(group => {
+        const hasSelected = group.voices.some(v => v.voice_id === selected);
+        const selectedVoice = hasSelected ? group.voices.find(v => v.voice_id === selected) : null;
+        return (
         <div key={group.key} className="rounded-xl overflow-hidden"
-          style={{ border: '1px solid var(--c-border)' }}>
+          style={{ border: hasSelected && !open[group.key] ? '1px solid #6C3BFF' : '1px solid var(--c-border)' }}>
 
           {/* Collapsible header */}
           <button
             type="button"
             onClick={() => toggle(group.key)}
             className="w-full flex items-center gap-2 px-4 py-3 transition-colors"
-            style={{ background: 'var(--c-surface-2)' }}
+            style={{ background: hasSelected && !open[group.key] ? 'rgba(108,59,255,0.06)' : 'var(--c-surface-2)' }}
           >
             <span className="text-sm">{group.emoji}</span>
             <span className="text-xs font-semibold tracking-widest uppercase flex-1 text-left"
@@ -286,8 +282,13 @@ export default function VoiceSelector({
               style={{ background: 'var(--c-surface)', color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
               {group.voices.length}
             </span>
+            {hasSelected && !open[group.key] && selectedVoice && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                {getBaseName(selectedVoice)}
+              </span>
+            )}
             <ChevronDown size={14} style={{
-              color: 'var(--c-text-3)',
+              color: hasSelected && !open[group.key] ? '#9B6DFF' : 'var(--c-text-3)',
               transform: open[group.key] ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'transform 0.2s',
             }} />
@@ -310,7 +311,8 @@ export default function VoiceSelector({
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

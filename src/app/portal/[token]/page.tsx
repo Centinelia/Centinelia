@@ -32,7 +32,7 @@ import ContractSection         from './ContractSection';
 import CollapsibleSection      from './CollapsibleSection';
 import PeakHoursChart          from './PeakHoursChart';
 import LiveNotifications       from './LiveNotifications';
-import SupportChat             from './SupportChat';
+
 import CallsSearch             from './CallsSearch';
 import IntegrationsSection     from './IntegrationsSection';
 import NotionSection            from './NotionSection';
@@ -61,7 +61,7 @@ interface Props {
   searchParams: Promise<{ tab?: string; period?: string }>;
 }
 
-const PLAN_LABELS: Record<string, string> = { comercial: 'Comercial', pro: 'Pro' };
+const PLAN_LABELS: Record<string, string> = { comercial: 'Agente Comercial', pro: 'Ejecutivo Senior' };
 const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 const FEED_OUTCOME: Record<string, { label: string; color: string; bg: string }> = {
@@ -87,8 +87,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
 
-  if (tab === 'oficina') redirect(`/portal/${token}/oficina`);
-  if (tab === 'agentes') redirect(`/portal/${token}/agentes`);
+  if (tab === 'oficina')   redirect(`/portal/${token}/oficina`);
+  if (tab === 'agentes')   redirect(`/portal/${token}/agentes`);
+  if (tab === 'llamadas' || tab === 'salientes') redirect(`/portal/${token}/llamadas`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
   const cookieStore    = await cookies();
@@ -277,12 +278,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const activeOutboundCampaigns = showOutbound ? (outboundCampaigns as any[]).filter((c: any) => c.status === 'active').length  : 0;
   const lastCampaignRunAt       = showOutbound ? ((outboundCampaigns as any[]).find((c: any) => c.last_run_at)?.last_run_at ?? null) : null;
 
-  const hasOpsAgent = (allClientAgents as any[]).some((a: any) => a.role);
+  const hasOpsAgent = (allClientAgents as any[]).some((a: any) => a.role) || !!(agent as any).role;
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'inicio',        label: 'Inicio' },
     { id: 'llamadas',      label: 'Llamadas' },
-    ...(showOutbound || agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
     ...(hasOpsAgent ? [{ id: 'oficina' as Tab, label: 'Oficina' }] : []),
     { id: 'agentes' as Tab, label: 'Agentes' },
     { id: 'negocio',       label: 'Negocio' },
@@ -332,7 +332,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             token={token}
             currentTab={tab}
             hasOpsAgent={hasOpsAgent}
-            showOutbound={showOutbound}
+            showOutbound={showOutbound || agent.plan === 'pro'}
           />
 
           {/* Main content column */}
@@ -382,7 +382,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className="px-4 sm:px-6 py-6 max-w-4xl w-full mx-auto md:mx-0" style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'llamadas' || tab === 'salientes' ? '' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
@@ -517,94 +517,91 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           )}
 
           {/* ── LLAMADAS ─────────────────────────────────────────────────── */}
-          {tab === 'llamadas' && (
-            <div className="flex flex-col gap-5">
-              {/* KPI strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />} value={String(calls.length)} label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
-                <KpiCard icon={<Clock size={16} color="#6b7280" />} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
-                {showLeads && leads.length > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />} value={String(leads.length)} label="Leads" sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
-              </div>
+          {(tab === 'llamadas' || tab === 'salientes') && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
-              {/* Call list */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                    <PhoneCall size={13} /> Llamadas recientes
-                  </h2>
-                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                </div>
-                {calls.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 gap-3">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                      <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+              {/* ── Columna entrantes ── */}
+              <div className="flex flex-col gap-4">
+                <p className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                  <PhoneCall size={13} /> Entrantes
+                </p>
+
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                      Llamadas recientes
+                    </h2>
+                    <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+                  </div>
+                  {calls.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 gap-3">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                        style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                        <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+                      </div>
+                      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
                     </div>
-                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
-                    <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
-                      En cuanto llegue la primera llamada aparecerá aquí automáticamente.
-                    </p>
-                  </div>
-                ) : (
-                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
-                )}
+                  ) : (
+                    <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
+                  )}
+                </div>
+
+                {(showLeads || showOrders || showAppts) && (() => {
+                  const visibleSections = (
+                    [
+                      showOrders && orders.length > 0 && { count: orders.length, el: (
+                        <CollapsibleSection key="orders" title="Pedidos" icon={<ShoppingBag size={14} />} defaultOpen count={orders.length}>
+                          <PortalOrdersSection initialOrders={orders as any} token={token} isPro={agent.plan === 'pro'} />
+                        </CollapsibleSection>
+                      )},
+                      showAppts && appts.length > 0 && { count: appts.length, el: (
+                        <CollapsibleSection key="appts" title="Citas" icon={<CalendarDays size={14} />} defaultOpen count={appts.length}>
+                          <PortalAppointmentsSection initialAppointments={appts as any} token={token} label="cita" isPro={agent.plan === 'pro'} />
+                        </CollapsibleSection>
+                      )},
+                      showLeads && leads.length > 0 && { count: leads.length, el: (
+                        <CollapsibleSection key="leads" title="Leads" icon={<Users size={14} />} defaultOpen count={leads.length}>
+                          <PortalLeadsSection initialLeads={leads as any} token={token} isPro={agent.plan === 'pro'}
+                            filename={`leads-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+                        </CollapsibleSection>
+                      )},
+                    ] as ({ count: number; el: React.ReactNode } | false)[]
+                  ).filter((s): s is { count: number; el: React.ReactNode } => !!s)
+                   .sort((a, b) => b.count - a.count);
+                  if (visibleSections.length === 0) return null;
+                  return (
+                    <div className="flex flex-col gap-3 pt-2">
+                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
+                      {visibleSections.map(s => s.el)}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Captured: leads / orders / appts */}
-              {(showLeads || showOrders || showAppts) && (() => {
-                const visibleSections = (
-                  [
-                    showOrders && orders.length > 0 && { count: orders.length, el: (
-                      <CollapsibleSection key="orders" title="Pedidos" icon={<ShoppingBag size={14} />} defaultOpen count={orders.length}>
-                        <PortalOrdersSection initialOrders={orders as any} token={token} isPro={agent.plan === 'pro'} />
-                      </CollapsibleSection>
-                    )},
-                    showAppts && appts.length > 0 && { count: appts.length, el: (
-                      <CollapsibleSection key="appts" title="Citas" icon={<CalendarDays size={14} />} defaultOpen count={appts.length}>
-                        <PortalAppointmentsSection initialAppointments={appts as any} token={token} label="cita" isPro={agent.plan === 'pro'} />
-                      </CollapsibleSection>
-                    )},
-                    showLeads && leads.length > 0 && { count: leads.length, el: (
-                      <CollapsibleSection key="leads" title="Leads" icon={<Users size={14} />} defaultOpen count={leads.length}>
-                        <PortalLeadsSection initialLeads={leads as any} token={token} isPro={agent.plan === 'pro'}
-                          filename={`leads-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                      </CollapsibleSection>
-                    )},
-                  ] as ({ count: number; el: React.ReactNode } | false)[]
-                ).filter((s): s is { count: number; el: React.ReactNode } => !!s)
-                 .sort((a, b) => b.count - a.count);
-
-                if (visibleSections.length === 0) return null;
-                return (
-                  <div className="flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)', paddingTop: '1.5rem' }}>
-                    <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
-                    {visibleSections.map(s => s.el)}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* ── SALIENTES ────────────────────────────────────────────────── */}
-          {tab === 'salientes' && (
-            <div className="flex flex-col gap-6">
-              <OutboundToggles
-                token={token}
-                initOutbound={!!(agent.features as any)?.outbound_calls}
-                initMissedCallRecovery={!!(agent as any).missed_call_recovery}
-              />
-              {(agent.features as any)?.outbound_calls && (
-                <>
-                  <OutboundSection
+              {/* ── Columna salientes ── */}
+              {(showOutbound || agent.plan === 'pro') && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                    <PhoneOutgoing size={13} /> Salientes
+                  </p>
+                  <OutboundToggles
                     token={token}
-                    initialContacts={contactOutbound as any[]}
-                    initialCampaigns={outboundCampaigns as any[]}
-                    agents={allClientAgents
-                      .filter(a => !!(a.features as any)?.outbound_calls)
-                      .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+                    initOutbound={!!(agent.features as any)?.outbound_calls}
+                    initMissedCallRecovery={!!(agent as any).missed_call_recovery}
                   />
-                </>
+                  {(agent.features as any)?.outbound_calls && (
+                    <OutboundSection
+                      token={token}
+                      initialContacts={contactOutbound as any[]}
+                      initialCampaigns={outboundCampaigns as any[]}
+                      agents={allClientAgents
+                        .filter(a => !!(a.features as any)?.outbound_calls)
+                        .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+                    />
+                  )}
+                </div>
               )}
+
             </div>
           )}
 
@@ -953,7 +950,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           </div>{/* /main content column */}
         </div>{/* /body flex */}
 
-        <SupportChat />
         <LiveNotifications token={token} />
       </div>
 

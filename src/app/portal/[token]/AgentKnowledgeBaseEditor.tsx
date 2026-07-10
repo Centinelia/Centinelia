@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, Brain, BookOpen } from 'lucide-react';
+import { Check, Loader2, Brain, BookOpen, ChevronDown } from 'lucide-react';
 
 const SOFT = 5_000;
 const HARD = 10_000;
@@ -61,6 +61,7 @@ export default function AgentKnowledgeBaseEditor({
   const [roleColor,     setRoleColor]     = useState(initialRoleColor || '#6C3BFF');
   const [roleKb,        setRoleKb]        = useState(initialRoleKb);
   const [learnings,     setLearnings]     = useState(initialLearnings);
+  const [colorOpen,      setColorOpen]      = useState(false);
   const [savingRoleName, setSavingRoleName] = useState(false);
   const [savedRoleName,  setSavedRoleName]  = useState(false);
   const [savingRole,    setSavingRole]    = useState(false);
@@ -130,25 +131,33 @@ export default function AgentKnowledgeBaseEditor({
           </button>
         </div>
 
-        {/* Color del rol */}
-        <div className="flex items-center gap-2 pt-1">
-          <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Color:</span>
-          <div className="flex items-center gap-1.5">
-            {ROLE_COLORS.map(c => (
-              <button
-                key={c}
-                onClick={() => pickColor(c)}
-                className="w-5 h-5 rounded-full transition-transform hover:scale-110 flex items-center justify-center flex-shrink-0"
-                style={{ background: c, outline: roleColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2 }}
-                aria-label={c}
-              >
-                {roleColor === c && <Check size={10} color="#fff" strokeWidth={3} />}
-              </button>
-            ))}
-          </div>
-          <span className="text-xs font-medium ml-1" style={{ color: roleColor }}>
-            {role.trim() || 'Vista previa'}
-          </span>
+        {/* Color del rol — collapsible */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setColorOpen(p => !p)}
+            className="flex items-center gap-2 text-xs"
+            style={{ color: 'var(--c-text-4)' }}
+          >
+            <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: roleColor }} />
+            <span>Color: <span style={{ color: roleColor }}>{role.trim() || 'Vista previa'}</span></span>
+            <ChevronDown size={12} style={{ color: 'var(--c-text-4)', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          </button>
+          {colorOpen && (
+            <div className="flex items-center gap-1.5 mt-2">
+              {ROLE_COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => pickColor(c)}
+                  className="w-5 h-5 rounded-full transition-transform hover:scale-110 flex items-center justify-center flex-shrink-0"
+                  style={{ background: c, outline: roleColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2 }}
+                  aria-label={c}
+                >
+                  {roleColor === c && <Check size={10} color="#fff" strokeWidth={3} />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -161,17 +170,17 @@ export default function AgentKnowledgeBaseEditor({
       {/* Section 1: Instrucciones del rol */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <BookOpen size={13} style={{ color: '#f59e0b' }} />
-          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
+          <BookOpen size={13} style={{ color: roleColor }} />
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: roleColor }}>
             Instrucciones del rol
           </p>
           <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-            style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+            style={{ background: `${roleColor}1f`, color: roleColor, border: `1px solid ${roleColor}40` }}>
             {role}
           </span>
         </div>
         <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Procedimientos, reglas, límites de aprobación y contactos clave que el agente usa en su rol de <strong style={{ color: '#f59e0b' }}>{role}</strong>.
+          Procedimientos, reglas, límites de aprobación y contactos clave que el agente usa en su rol de <strong style={{ color: roleColor }}>{role}</strong>.
         </p>
         <textarea
           value={roleKb}
@@ -179,10 +188,10 @@ export default function AgentKnowledgeBaseEditor({
           rows={10}
           placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del dueño.`}
           className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--c-text)', minHeight: 180 }}
+          style={{ background: 'var(--c-input-bg)', border: `1px solid ${roleColor}4d`, color: 'var(--c-text)', minHeight: 180 }}
         />
         <CharBar value={roleKb} />
-        <SaveButton saving={savingRole} saved={savedRole} accent="#f59e0b" onSave={() => save('role_knowledge_base', roleKb, setSavingRole, setSavedRole)} />
+        <SaveButton saving={savingRole} saved={savedRole} accent={roleColor} onSave={() => save('role_knowledge_base', roleKb, setSavingRole, setSavedRole)} />
       </div>
 
       {/* Divider */}

@@ -172,8 +172,8 @@ export const PLAN_MINUTES: Record<Plan, number> = {
 };
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  comercial: 'Comercial',
-  pro:       'Pro',
+  comercial: 'Agente Comercial',
+  pro:       'Ejecutivo Senior',
 };
 
 export const PLAN_CONCURRENT_CALLS: Record<Plan, number> = {

@@ -62,7 +62,7 @@ type AgentPlanDef = {
 
 const AGENT_PLANS: AgentPlanDef[] = [
   {
-    id: 'comercial', label: 'Comercial', setupFee: 8990, color: '#6C3BFF',
+    id: 'comercial', label: 'Agente Comercial', setupFee: 8990, color: '#6C3BFF',
     description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
     features: [
       { label: 'Atención telefónica 24/7', desc: 'Contesta a cualquier hora con el nombre y la información de tu negocio.' },
@@ -75,10 +75,10 @@ const AGENT_PLANS: AgentPlanDef[] = [
     ],
   },
   {
-    id: 'pro', label: 'Pro', setupFee: 14990, color: '#9B6DFF', recommended: true,
+    id: 'pro', label: 'Ejecutivo Senior', setupFee: 14990, color: '#9B6DFF', recommended: true,
     description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
-      { label: 'Todo el plan Comercial', desc: 'Atención 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
+      { label: 'Todo el Agente Comercial', desc: 'Atención 24/7, leads, citas, transferencia, escalación, reseñas y portal.' },
       { label: 'Hasta 3 llamadas simultáneas', desc: 'Tu agente atiende hasta 3 llamadas al mismo tiempo sin dar señal de ocupado.' },
       { label: 'Llamadas salientes y devolución automática', desc: 'Llama a tus contactos para confirmar citas, hacer seguimiento y devuelve las llamadas perdidas automáticamente.' },
       { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los manda a tu WhatsApp.' },
@@ -91,7 +91,7 @@ const AGENT_PLANS: AgentPlanDef[] = [
     id: 'empresarial', label: 'Empresarial', setupFee: 0, color: '#f59e0b', custom: true,
     description: 'Múltiples empleados y sucursales, integraciones POS/CRM y SLA dedicado.',
     features: [
-      { label: 'Todo el plan Pro', desc: 'Todas las capacidades del plan Pro más las siguientes.' },
+      { label: 'Todo el Ejecutivo Senior', desc: 'Todas las capacidades del Ejecutivo Senior más las siguientes.' },
       { label: 'Integración con tu sistema', desc: 'Conectamos el agente con tu POS, CRM o calendario en tiempo real.' },
       { label: 'Múltiples empleados / sucursales', desc: 'Un empleado independiente por sucursal con su propio portal.' },
       { label: 'SLA y soporte dedicado', desc: 'Tiempo de respuesta garantizado y línea directa con el equipo técnico.' },

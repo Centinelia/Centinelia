@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, Loader2, Palette } from 'lucide-react';
+import { Check, Loader2, Palette, ChevronDown } from 'lucide-react';
 
 interface Props {
   token:               string;
@@ -29,6 +29,8 @@ export default function BrandKitEditor({
   const [website,  setWebsite]  = useState(initialWebsite        || '');
   const [address,  setAddress]  = useState(initialAddress        || '');
   const [footer,   setFooter]   = useState(initialFooter         || '');
+  const [colorOpen,  setColorOpen]  = useState(false);
+  const [color2Open, setColor2Open] = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [saving,   startSave]   = useTransition();
 
@@ -56,78 +58,96 @@ export default function BrandKitEditor({
 
       {/* ── Color de marca ── */}
       <div>
-        <p className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-          Color de marca
-        </p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {PRESET_COLORS.map(c => (
-            <button
-              key={c}
-              onClick={() => setColor(c)}
-              title={c}
-              className="w-7 h-7 rounded-lg transition-transform hover:scale-110 flex-shrink-0"
-              style={{
-                background:  c,
-                outline:     color === c ? `2.5px solid ${c}` : 'none',
-                outlineOffset: '2px',
-                border:      '1px solid rgba(0,0,0,0.1)',
-              }}
-            />
-          ))}
-          <label
-            title="Color personalizado"
-            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-            style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
-            <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
-            <input type="color" value={color} onChange={e => setColor(e.target.value)}
-              className="sr-only" />
-          </label>
-        </div>
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setColorOpen(p => !p)}
+          className="flex items-center gap-2 w-full text-left"
+        >
           <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color }} />
+          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: 'var(--c-text-3)' }}>
+            Color de marca
+          </p>
           <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color}</code>
-        </div>
+          <ChevronDown size={13} style={{ color: 'var(--c-text-3)', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+        </button>
+        {colorOpen && (
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {PRESET_COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  title={c}
+                  className="w-7 h-7 rounded-lg transition-transform hover:scale-110 flex-shrink-0"
+                  style={{
+                    background:  c,
+                    outline:     color === c ? `2.5px solid ${c}` : 'none',
+                    outlineOffset: '2px',
+                    border:      '1px solid rgba(0,0,0,0.1)',
+                  }}
+                />
+              ))}
+              <label
+                title="Color personalizado"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
+                <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
+                <input type="color" value={color} onChange={e => setColor(e.target.value)}
+                  className="sr-only" />
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Color secundario ── */}
       <div>
-        <p className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-          Color secundario <span className="normal-case font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>(opcional)</span>
-        </p>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {PRESET_COLORS.map(c => (
-            <button
-              key={c}
-              onClick={() => setColor2(color2 === c ? '' : c)}
-              title={c}
-              className="w-7 h-7 rounded-lg transition-transform hover:scale-110 flex-shrink-0"
-              style={{
-                background:    c,
-                outline:       color2 === c ? `2.5px solid ${c}` : 'none',
-                outlineOffset: '2px',
-                border:        '1px solid rgba(0,0,0,0.1)',
-              }}
-            />
-          ))}
-          <label
-            title="Color personalizado"
-            className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-            style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
-            <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
-            <input type="color" value={color2 || '#000000'} onChange={e => setColor2(e.target.value)}
-              className="sr-only" />
-          </label>
-        </div>
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setColor2Open(p => !p)}
+          className="flex items-center gap-2 w-full text-left"
+        >
+          <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color2 || 'var(--c-border)', border: color2 ? 'none' : '1px dashed var(--c-text-4)' }} />
+          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: 'var(--c-text-3)' }}>
+            Color secundario <span className="normal-case font-normal ml-1">(opcional)</span>
+          </p>
           {color2
-            ? <>
-                <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color2 }} />
-                <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color2}</code>
-                <button onClick={() => setColor2('')} className="text-xs ml-1" style={{ color: 'var(--c-text-3)' }}>Quitar</button>
-              </>
-            : <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Ninguno — se usará el color principal</span>
+            ? <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color2}</code>
+            : <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>ninguno</span>
           }
-        </div>
+          <ChevronDown size={13} style={{ color: 'var(--c-text-3)', transform: color2Open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+        </button>
+        {color2Open && (
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {PRESET_COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColor2(color2 === c ? '' : c)}
+                  title={c}
+                  className="w-7 h-7 rounded-lg transition-transform hover:scale-110 flex-shrink-0"
+                  style={{
+                    background:    c,
+                    outline:       color2 === c ? `2.5px solid ${c}` : 'none',
+                    outlineOffset: '2px',
+                    border:        '1px solid rgba(0,0,0,0.1)',
+                  }}
+                />
+              ))}
+              <label
+                title="Color personalizado"
+                className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
+                <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
+                <input type="color" value={color2 || '#000000'} onChange={e => setColor2(e.target.value)}
+                  className="sr-only" />
+              </label>
+            </div>
+            {color2 && (
+              <button onClick={() => setColor2('')} className="text-xs" style={{ color: 'var(--c-text-3)' }}>Quitar color secundario</button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Datos de contacto ── */}

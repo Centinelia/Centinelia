@@ -55,19 +55,19 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Puede agendar citas?',
-        a: 'Si, en los planes Comercial y Pro. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y envia el link de confirmacion por WhatsApp). El cliente sale de la llamada con su cita confirmada.',
+        a: 'Si, en Agente Comercial y Ejecutivo Senior. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y envia el link de confirmacion por WhatsApp). El cliente sale de la llamada con su cita confirmada.',
       },
       {
         q: '¿Puede hacer llamadas salientes?',
-        a: 'Si, en el Plan Pro. El agente puede llamar a prospectos para hacer seguimiento, confirmar citas antes del dia, reactivar clientes que no han comprado en tiempo, o gestionar cobros. El dueno define la lista de numeros y el agente llama automaticamente.',
+        a: 'Si, en el Ejecutivo Senior. El agente puede llamar a prospectos para hacer seguimiento, confirmar citas antes del dia, reactivar clientes que no han comprado en tiempo, o gestionar cobros. El dueno define la lista de numeros y el agente llama automaticamente.',
       },
       {
         q: '¿Puede tomar pedidos por telefono?',
-        a: 'Si, en el Plan Pro. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y negocios similares.',
+        a: 'Si, en el Ejecutivo Senior. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y negocios similares.',
       },
       {
         q: '¿Habla ingles?',
-        a: 'Si, en el Plan Pro. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para negocios en zonas turisticas o con clientela internacional.',
+        a: 'Si, en el Ejecutivo Senior. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para negocios en zonas turisticas o con clientela internacional.',
       },
       {
         q: '¿Puede transferir la llamada a una persona real?',
@@ -79,7 +79,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Cuantas llamadas puede atender al mismo tiempo?',
-        a: 'Plan Comercial: 1 llamada simultanea. Plan Pro: hasta 3 llamadas en paralelo. Plan Empresarial: segun volumen, sin limite practico. Si tu negocio recibe muchas llamadas al mismo tiempo, el plan adecuado es Pro o Empresarial.',
+        a: 'Agente Comercial: 1 llamada simultanea. Ejecutivo Senior: hasta 3 llamadas en paralelo. Plan Empresarial: segun volumen, sin limite practico. Si tu negocio recibe muchas llamadas al mismo tiempo, el plan adecuado es Ejecutivo Senior o Empresarial.',
       },
       {
         q: '¿Que pasa si el agente no sabe responder algo?',
@@ -101,7 +101,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto cuesta Centinelia?',
-        a: 'Hay dos planes con tres tiers de minutos cada uno. Plan Comercial (agendamiento, transferencias, WhatsApp): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Plan Pro (todo el Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Comercial y $14,990 MXN para Pro. Plan Empresarial bajo cotizacion.',
+        a: 'Hay dos planes con tres tiers de minutos cada uno. Agente Comercial (agendamiento, transferencias, WhatsApp): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Ejecutivo Senior (todo el Agente Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Agente Comercial y $14,990 MXN para Ejecutivo Senior. Plan Empresarial bajo cotizacion.',
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
@@ -161,11 +161,11 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Funciona para restaurantes?',
-        a: 'Si. El agente informa sobre el menu, horarios, ubicacion y estacionamiento. Puede tomar reservaciones (Plan Comercial) y pedidos para llevar o entrega (Plan Pro). Despues de la llamada, manda automaticamente el link de resena de Google al cliente.',
+        a: 'Si. El agente informa sobre el menu, horarios, ubicacion y estacionamiento. Puede tomar reservaciones (Agente Comercial) y pedidos para llevar o entrega (Ejecutivo Senior). Despues de la llamada, manda automaticamente el link de resena de Google al cliente.',
       },
       {
         q: '¿Funciona para clinicas y consultorios?',
-        a: 'Si. El agente agenda consultas con el medico o especialista correcto segun el tipo de padecimiento, confirma citas el dia anterior para reducir no-shows, da indicaciones de ubicacion y puede recordar a pacientes frecuentes sus datos previos (Plan Pro).',
+        a: 'Si. El agente agenda consultas con el medico o especialista correcto segun el tipo de padecimiento, confirma citas el dia anterior para reducir no-shows, da indicaciones de ubicacion y puede recordar a pacientes frecuentes sus datos previos (Ejecutivo Senior).',
       },
       {
         q: '¿Funciona para despachos legales o contables?',
@@ -177,11 +177,11 @@ const CATEGORIES = [
       },
       {
         q: '¿Funciona para tiendas o negocios de retail?',
-        a: 'Si. El agente puede informar sobre productos, precios, disponibilidad, horarios y sucursales. En el Plan Pro puede tomar pedidos telefonicos y registrar los datos de entrega.',
+        a: 'Si. El agente puede informar sobre productos, precios, disponibilidad, horarios y sucursales. En el Ejecutivo Senior puede tomar pedidos telefonicos y registrar los datos de entrega.',
       },
       {
         q: '¿Funciona para academias o escuelas?',
-        a: 'Si. El agente puede informar sobre cursos, horarios, precios e inscripciones, y transferir a un asesor cuando el prospecto esta listo para inscribirse. Tambien puede confirmar horarios de clases y recordar fechas de pago a alumnos activos (Plan Pro).',
+        a: 'Si. El agente puede informar sobre cursos, horarios, precios e inscripciones, y transferir a un asesor cuando el prospecto esta listo para inscribirse. Tambien puede confirmar horarios de clases y recordar fechas de pago a alumnos activos (Ejecutivo Senior).',
       },
     ],
   },
@@ -195,7 +195,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Las llamadas se graban?',
-        a: 'Si, en el Plan Pro. Las grabaciones son accesibles solo desde tu portal. Si un cliente pregunta durante la llamada si esta siendo grabada, el agente responde con honestidad que si. En planes sin grabacion, igual se generan transcripciones de texto.',
+        a: 'Si, en el Ejecutivo Senior. Las grabaciones son accesibles solo desde tu portal. Si un cliente pregunta durante la llamada si esta siendo grabada, el agente responde con honestidad que si. En planes sin grabacion, igual se generan transcripciones de texto.',
       },
       {
         q: '¿Centinelia cumple con la LFPDPPP?',

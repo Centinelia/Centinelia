@@ -6,6 +6,37 @@ import { notionClient } from '@/lib/notion/client';
 
 export const dynamic = 'force-dynamic';
 
+const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
+  name: 'create_contract_draft',
+  description: 'Crea un borrador de contrato de prestación de servicios para un cliente específico, basado en la plantilla del negocio. Úsala cuando el dueño te pida generar un contrato para un cliente, o cuando la conversación (llamada/correo) haya resultado en un acuerdo comercial.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      client_name:  { type: 'string', description: 'Nombre completo del cliente o razón social' },
+      client_email: { type: 'string', description: 'Correo electrónico del cliente' },
+      client_rfc:   { type: 'string', description: 'RFC del cliente (si se conoce)' },
+      client_phone: { type: 'string', description: 'Teléfono del cliente (si se conoce)' },
+      clause_overrides: {
+        type: 'array',
+        description: 'Ajustes a cláusulas específicas respecto a la plantilla base',
+        items: {
+          type: 'object',
+          properties: {
+            id:      { type: 'string', description: 'ID de la cláusula (ej: vigencia, monto, pago)' },
+            enabled: { type: 'boolean', description: 'Si la cláusula debe incluirse' },
+            body:    { type: 'string',  description: 'Texto personalizado de la cláusula' },
+          },
+          required: ['id'],
+        },
+      },
+      notes:       { type: 'string', description: 'Notas internas para el dueño sobre este contrato' },
+      source_type: { type: 'string', enum: ['llamada', 'correo', 'manual'], description: 'Origen del contrato' },
+      source_ref:  { type: 'string', description: 'Referencia al origen (ej: ID de llamada, asunto de correo)' },
+    },
+    required: [],
+  },
+};
+
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -165,6 +196,8 @@ El dueño del negocio te está consultando directamente. Tienes acceso completo 
 
 Responde como un agente inteligente que conoce profundamente el negocio. Usa los datos disponibles para dar respuestas precisas y concretas. Cita fechas y nombres cuando los tengas. Si la información no está en tu contexto, dilo con claridad.
 
+Cuando el dueño te pida generar un contrato para un cliente, usa la herramienta create_contract_draft. Si la llamada o correo mencionan cláusulas específicas que difieren de la plantilla base, ajústalas en clause_overrides.
+
 Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pida más detalle.
 
 ## Contexto operativo
@@ -172,28 +205,142 @@ Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pi
 ${context}`;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const typedMessages = (messages as { role: 'user' | 'assistant'; content: string }[]).slice(-20);
 
-  const stream = client.messages.stream({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system,
-    messages:   (messages as { role: 'user' | 'assistant'; content: string }[]).slice(-20),
-  });
+  type AssistantBlock =
+    | { type: 'text'; text: string }
+    | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
 
   const readable = new ReadableStream({
     async start(controller) {
+      const enc = new TextEncoder();
+      const send = (text: string) =>
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ text })}\n\n`));
+
       try {
+        const stream = client.messages.stream({
+          model:      'claude-sonnet-4-6',
+          max_tokens: 2048,
+          system,
+          tools:      [CREATE_CONTRACT_DRAFT_TOOL],
+          messages:   typedMessages,
+        });
+
+        const assistantBlocks: AssistantBlock[] = [];
+        let toolInputBuffer = '';
+        let pendingToolId: string | null = null;
+        let pendingToolName: string | null = null;
+
         for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            controller.enqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`)
-            );
+          if (chunk.type === 'content_block_start') {
+            if (chunk.content_block.type === 'text') {
+              assistantBlocks.push({ type: 'text', text: '' });
+            } else if (chunk.content_block.type === 'tool_use') {
+              pendingToolId   = chunk.content_block.id;
+              pendingToolName = chunk.content_block.name;
+              toolInputBuffer = '';
+              assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
+            }
+          } else if (chunk.type === 'content_block_delta') {
+            if (chunk.delta.type === 'text_delta') {
+              send(chunk.delta.text);
+              const last = assistantBlocks.at(-1);
+              if (last?.type === 'text') last.text += chunk.delta.text;
+            } else if (chunk.delta.type === 'input_json_delta') {
+              toolInputBuffer += chunk.delta.partial_json;
+            }
+          } else if (chunk.type === 'content_block_stop' && pendingToolId) {
+            try {
+              const parsed = JSON.parse(toolInputBuffer) as Record<string, unknown>;
+              const last = assistantBlocks.at(-1);
+              if (last?.type === 'tool_use') last.input = parsed;
+            } catch { /* malformed — keep empty input */ }
+          } else if (
+            chunk.type === 'message_delta' &&
+            chunk.delta.stop_reason === 'tool_use' &&
+            pendingToolId &&
+            pendingToolName === 'create_contract_draft'
+          ) {
+            // Execute the tool
+            const toolInput = (() => {
+              try { return JSON.parse(toolInputBuffer) as Record<string, unknown>; }
+              catch { return {}; }
+            })();
+            const last = assistantBlocks.at(-1);
+            if (last?.type === 'tool_use') last.input = toolInput;
+
+            // Load template clauses for this agent
+            const { data: tpl } = await supabase
+              .from('contract_templates').select('clauses').eq('agent_id', agent.id).single();
+
+            const DEFAULT_CLAUSE_IDS = ['partes','objeto','vigencia','contraprestacion','pago','confidencialidad','propiedad','responsabilidad','terminacion','jurisdiccion','aceptacion'];
+            type Clause = { id: string; title: string; body: string; required: boolean; enabled: boolean };
+            let baseClauses: Clause[] = (tpl?.clauses as Clause[] | null) ?? [];
+
+            // If no custom template, use defaults from contract-template route (inline minimal set)
+            if (!baseClauses.length) {
+              baseClauses = DEFAULT_CLAUSE_IDS.map(id => ({
+                id, title: id.toUpperCase(), body: '', required: ['partes','objeto','vigencia','contraprestacion','jurisdiccion','aceptacion'].includes(id), enabled: true,
+              }));
+            }
+
+            // Apply clause_overrides
+            const overrides = (toolInput.clause_overrides ?? []) as { id: string; enabled?: boolean; body?: string }[];
+            const finalClauses = baseClauses.map(c => {
+              const ov = overrides.find(o => o.id === c.id);
+              if (!ov) return c;
+              return {
+                ...c,
+                ...(ov.enabled !== undefined && !c.required ? { enabled: ov.enabled } : {}),
+                ...(ov.body !== undefined ? { body: ov.body } : {}),
+              };
+            });
+
+            const { data: draft, error: draftError } = await supabase
+              .from('contract_drafts')
+              .insert({
+                agent_id:     agent.id,
+                client_name:  (toolInput.client_name  as string | null) ?? null,
+                client_email: (toolInput.client_email as string | null) ?? null,
+                client_rfc:   (toolInput.client_rfc   as string | null) ?? null,
+                client_phone: (toolInput.client_phone as string | null) ?? null,
+                clauses:      finalClauses,
+                notes:        (toolInput.notes        as string | null) ?? null,
+                source_type:  (toolInput.source_type  as string | null) ?? 'llamada',
+                source_ref:   (toolInput.source_ref   as string | null) ?? null,
+                status:       'borrador',
+              })
+              .select('id')
+              .single();
+
+            const toolResult = draftError
+              ? { ok: false, error: draftError.message }
+              : { ok: true, draft_id: draft!.id, message: `Borrador creado correctamente con ID ${draft!.id}. El dueño puede verlo en la sección Contratos → Borradores de la Oficina.` };
+
+            // Second streaming call with tool result
+            const stream2 = client.messages.stream({
+              model:      'claude-sonnet-4-6',
+              max_tokens: 1024,
+              system,
+              messages: [
+                ...typedMessages,
+                { role: 'assistant' as const, content: assistantBlocks as Anthropic.ContentBlock[] },
+                { role: 'user' as const, content: [{ type: 'tool_result' as const, tool_use_id: pendingToolId, content: JSON.stringify(toolResult) }] },
+              ],
+            });
+
+            for await (const chunk2 of stream2) {
+              if (chunk2.type === 'content_block_delta' && chunk2.delta.type === 'text_delta') {
+                send(chunk2.delta.text);
+              }
+            }
           }
         }
-        controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+
+        controller.enqueue(enc.encode('data: [DONE]\n\n'));
       } catch {
         controller.enqueue(
-          new TextEncoder().encode(`data: ${JSON.stringify({ error: 'Error generando respuesta' })}\n\n`)
+          enc.encode(`data: ${JSON.stringify({ error: 'Error generando respuesta' })}\n\n`)
         );
       } finally {
         controller.close();

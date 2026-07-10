@@ -86,8 +86,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Owner bypass: transfer_number / transfer_whatsapp always get through regardless of hours
+  const normCaller   = phoneNumber.replace(/\D/g, '').slice(-10);
+  const normTransfer = (typedAgent.transfer_number   ?? '').replace(/\D/g, '').slice(-10);
+  const normWa       = (typedAgent.transfer_whatsapp ?? '').replace(/\D/g, '').slice(-10);
+  const isOwner = normCaller.length >= 7 && (
+    (normTransfer && normCaller === normTransfer) ||
+    (normWa       && normCaller === normWa)
+  );
+
   // Check business hours, respond with closed message if outside schedule
-  if (!isWithinBusinessHours(typedAgent.business_hours, typedAgent.timezone)) {
+  if (!isOwner && !isWithinBusinessHours(typedAgent.business_hours, typedAgent.timezone)) {
     const next = typedAgent.business_hours ? nextOpenTime(typedAgent.business_hours, typedAgent.timezone) : null;
     const closedMsg = next
       ? `Gracias por llamar a ${typedAgent.business_name}. En este momento estamos cerrados. Puedes llamarnos de nuevo ${next}. ¡Hasta luego!`

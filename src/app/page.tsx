@@ -106,7 +106,7 @@ const AGENT_TYPES: {
   meerkatDesk: string; meerkatDeskBottom: number;
 }[] = [
   {
-    id: 'comercial', name: 'Comercial', setupFee: 8990, color: '#6C3BFF',
+    id: 'comercial', name: 'Agente Comercial', setupFee: 8990, color: '#6C3BFF',
     description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
     features: [
       'Atención telefónica 24/7',
@@ -121,10 +121,10 @@ const AGENT_TYPES: {
     meerkatDesk: '/meerkat-transparente-11.png', meerkatDeskBottom: 66,
   },
   {
-    id: 'pro', name: 'Pro', setupFee: 14990, color: '#9B6DFF', popular: true,
+    id: 'pro', name: 'Ejecutivo Senior', setupFee: 14990, color: '#9B6DFF', popular: true,
     description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
     features: [
-      'Todo el plan Comercial',
+      'Todo el Agente Comercial',
       'Hasta 3 llamadas simultáneas',
       'Llamadas salientes y devolución automática',
       'Toma de pedidos por teléfono',
@@ -271,7 +271,7 @@ export default function LandingPage() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor:  'transparent',
               }}>
-                telefónico IA.
+                telefónico.
               </span>
             </h1>
 
@@ -310,7 +310,7 @@ export default function LandingPage() {
                   border:     '1px solid rgba(255,255,255,0.2)',
                 }}
               >
-                <Play size={13} style={{ fill: 'currentColor' }} /> Prueba la demo
+                <Play size={13} style={{ fill: 'currentColor' }} /> Conoce a tu próximo empleado
               </a>
             </div>
 
@@ -1062,7 +1062,7 @@ export default function LandingPage() {
                     </span>
                     <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                     <p className="text-xs mt-1.5" style={{ color: 'rgba(155,109,255,0.65)' }}>
-                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· solo Plan Pro</span>
+                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· solo Ejecutivo Senior</span>
                     </p>
                   </div>
                   <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"

@@ -237,6 +237,47 @@ export default async function AnalyticsPage({ searchParams }: Props) {
         <KpiCard icon={<TrendingUp size={18} />} label="Tasa de conversión" value={`${conversionRate}%`} color="#f59e0b" />
       </div>
 
+      {/* Capacity projection */}
+      <div className="mb-6 p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            Capacidad proyectada
+          </h2>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF' }}>
+            Planificación: minutos → conversaciones
+          </span>
+        </div>
+        {avgDuration === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas registradas en el periodo. Acumula datos para ver la proyección.</p>
+        ) : (
+          <>
+            <p className="text-sm mb-4" style={{ color: 'var(--c-text-2)' }}>
+              Duración promedio actual:{' '}
+              <strong style={{ color: 'var(--c-text)' }}>
+                {Math.floor(avgDuration / 60)}m {avgDuration % 60}s
+              </strong>
+              {' '}· basado en {totalCalls} llamada{totalCalls !== 1 ? 's' : ''} ({period ? `últimos ${period} días` : 'últimos 12 meses'})
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { tier: 'Starter', minutes: 300 },
+                { tier: 'Growth',  minutes: 600 },
+                { tier: 'Scale',   minutes: 1200 },
+              ].map(({ tier, minutes }) => {
+                const convs = Math.floor((minutes * 60) / avgDuration);
+                return (
+                  <div key={tier} className="rounded-lg p-3 text-center" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                    <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>{tier} · {minutes} min</div>
+                    <div className="text-2xl font-bold" style={{ color: '#6C3BFF' }}>~{convs.toLocaleString('es-MX')}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>conversaciones/mes</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Calls chart */}
         <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

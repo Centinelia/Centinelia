@@ -207,7 +207,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
             {openDropdown === 'plan' && (
               <div className="absolute top-full left-0 mt-1 z-20 rounded-xl overflow-hidden min-w-[120px]"
                 style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                {([['todos', 'Todos'], ['comercial', 'Comercial'], ['pro', 'Pro']] as [PlanFilter, string][]).map(([v, label]) => (
+                {([['todos', 'Todos'], ['comercial', 'Agente Comercial'], ['pro', 'Ejecutivo Senior']] as [PlanFilter, string][]).map(([v, label]) => (
                   <button key={v} type="button"
                     onClick={() => { setPlanFilter(v); setOpenDropdown(null); }}
                     className="w-full text-left px-4 py-2.5 text-xs transition-colors"

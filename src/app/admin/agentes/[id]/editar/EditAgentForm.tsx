@@ -304,14 +304,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             <div className="p-3 rounded-lg leading-relaxed"
               style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                En <strong style={{ color: 'var(--c-text)' }}>Plan Comercial</strong> el agente
+                En <strong style={{ color: 'var(--c-text)' }}>Agente Comercial</strong> el agente
                 siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
-                Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span> puedes
+                Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Ejecutivo Senior</span> puedes
                 asignarle un nombre personalizado.
               </p>
             </div>
             <Field label="Nombre del agente" name="agent_name"
-              placeholder={plan === 'pro' ? 'Ej: Sofía, Carlos, Luna…' : 'Disponible en Plan Pro'}
+              placeholder={plan === 'pro' ? 'Ej: Sofía, Carlos, Luna…' : 'Disponible en Ejecutivo Senior'}
               defaultValue={agent.agent_name ?? ''}
               disabled={plan !== 'pro'} />
           </Section>
@@ -384,7 +384,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               </p>
               {plan === 'comercial' && (
                 <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>
-                  Disponibles al cambiar a <span style={{ color: '#a855f7', fontWeight: 600 }}>Plan Pro</span>.
+                  Disponibles al cambiar a <span style={{ color: '#a855f7', fontWeight: 600 }}>Ejecutivo Senior</span>.
                 </p>
               )}
               <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${plan === 'pro' ? 'var(--c-border)' : 'rgba(168,85,247,0.15)'}` }}>
@@ -599,7 +599,7 @@ function ProToggleRow({ label, desc, isPro, active, accentColor, onToggle }: {
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-sm" style={{ color: active ? 'var(--c-text)' : 'var(--c-text-3)' }}>
           {label}
-          {!isPro && <span className="ml-2 text-xs" style={{ color: '#a855f7' }}>Solo Plan Pro</span>}
+          {!isPro && <span className="ml-2 text-xs" style={{ color: '#a855f7' }}>Solo Ejecutivo Senior</span>}
         </p>
         <p className="text-xs mt-0.5" style={{ color: active ? accentColor : 'var(--c-text-3)' }}>{desc}</p>
       </div>

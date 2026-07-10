@@ -8,7 +8,7 @@ import { ThemeProvider }                from '@/components/ThemeProvider';
 import ThemeToggle                      from '@/components/ThemeToggle';
 import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
-import SupportChat                      from '../SupportChat';
+
 import PortalSidebar                    from '../PortalSidebar';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
@@ -103,7 +103,6 @@ export default async function AgentesLayout({
           </div>
         </div>
 
-        <SupportChat />
       </div>
     </ThemeProvider>
   );

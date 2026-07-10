@@ -14,8 +14,8 @@ export interface FeaturePlanConfig {
 }
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  comercial: { label: 'Comercial', setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
-  pro:       { label: 'Pro',       setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+  comercial: { label: 'Agente Comercial',  setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
+  pro:       { label: 'Ejecutivo Senior', setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
 // ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────

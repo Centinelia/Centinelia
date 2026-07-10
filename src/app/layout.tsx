@@ -117,8 +117,8 @@ const softwareSchema = {
   },
   offers: [
     { '@type': 'Offer', name: 'Plan Basico', price: '1990', priceCurrency: 'MXN', description: 'Recepcionista 24/7, captura de leads, 200 minutos incluidos' },
-    { '@type': 'Offer', name: 'Plan Comercial', price: '3490', priceCurrency: 'MXN', description: 'Agendamiento de citas, transferencia inteligente, escalacion WhatsApp, 500 minutos' },
-    { '@type': 'Offer', name: 'Plan Pro', price: '6490', priceCurrency: 'MXN', description: 'Llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, 1000 minutos' },
+    { '@type': 'Offer', name: 'Agente Comercial', price: '3490', priceCurrency: 'MXN', description: 'Agendamiento de citas, transferencia inteligente, escalacion WhatsApp, 500 minutos' },
+    { '@type': 'Offer', name: 'Ejecutivo Senior', price: '6490', priceCurrency: 'MXN', description: 'Llamadas salientes, toma de pedidos, memoria de cliente, multiidioma, 1000 minutos' },
   ],
   featureList: [
     'Recepcionista telefonica 24/7',

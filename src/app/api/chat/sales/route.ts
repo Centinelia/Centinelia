@@ -21,7 +21,7 @@ Una misma cuenta puede tener varios agentes, cada uno con su propio rol. Los rec
 
 Todos los precios en MXN + IVA (16%). La instalación es un pago único; la mensualidad depende del paquete de minutos elegido.
 
-**Plan Comercial — $8,990 instalación (única vez)**
+**Agente Comercial — $8,990 instalación (única vez)**
 - Atención telefónica 24/7
 - Captura automática de leads (nombre, teléfono, interés)
 - Agendamiento de citas (Cal.com directo o link por WhatsApp)
@@ -32,8 +32,8 @@ Todos los precios en MXN + IVA (16%). La instalación es un pago único; la mens
 
 Ideal para consultorios, estéticas, agencias y negocios de servicios.
 
-**Plan Pro — $14,990 instalación (única vez)** ⭐ más popular
-- Todo lo del Plan Comercial
+**Ejecutivo Senior — $14,990 instalación (única vez)** ⭐ más popular
+- Todo lo del Agente Comercial
 - Hasta 3 llamadas simultáneas
 - Toma de pedidos por teléfono con registro automático
 - Devolución automática de llamadas perdidas
@@ -55,7 +55,7 @@ Ideal para restaurantes con pedidos, negocios con operaciones internas o que qui
 
 Ideal para franquicias, empresas con múltiples sucursales o sistemas propios.
 
-## Paquetes de minutos mensuales (se elige al contratar, aplica a Comercial y Pro)
+## Paquetes de minutos mensuales (se elige al contratar, aplica a Agente Comercial y Ejecutivo Senior)
 
 | Paquete | Minutos/mes | Ops IA/mes | Precio/mes |
 |---------|-------------|------------|------------|
@@ -66,16 +66,16 @@ Ideal para franquicias, empresas con múltiples sucursales o sistemas propios.
 Los minutos se reinician cada mes. El paquete se puede cambiar cuando se quiera desde el portal.
 
 Ejemplos de primer cobro (instalación + primer mes, + IVA):
-- Comercial Starter: $8,990 + $2,997 = $11,987
-- Comercial Growth: $8,990 + $5,994 = $14,984
-- Pro Starter: $14,990 + $2,997 = $17,987
-- Pro Growth: $14,990 + $5,994 = $20,984
+- Agente Comercial Starter: $8,990 + $2,997 = $11,987
+- Agente Comercial Growth: $8,990 + $5,994 = $14,984
+- Ejecutivo Senior Starter: $14,990 + $2,997 = $17,987
+- Ejecutivo Senior Growth: $14,990 + $5,994 = $20,984
 
 ## Qué son las "ops IA"
 
-Las ops (operaciones de IA) son el recurso que consumen los agentes de oficina: cada vez que el agente procesa un correo, revisa un contrato, transcribe una junta o genera un reporte, consume una op. Los planes Básico y Pro incluyen ops; el Comercial no incluye agentes de oficina.
+Las ops (operaciones de IA) son el recurso que consumen los agentes de oficina: cada vez que el agente procesa un correo, revisa un contrato, transcribe una junta o genera un reporte, consume una op. El Ejecutivo Senior incluye ops; el Agente Comercial no incluye agentes de oficina.
 
-## La Oficina — módulo de operaciones (Plan Pro y Empresarial)
+## La Oficina — módulo de operaciones (Ejecutivo Senior y Empresarial)
 
 La Oficina es el centro de operaciones internasse IA dentro del portal. Incluye:
 
@@ -126,7 +126,7 @@ Centinelia asigna un número local (con lada de la ciudad del negocio). El dueñ
 
 "¿Es complicado de configurar?": No. Llenan el formulario, pagan y el equipo de Centinelia configura todo. El dueño solo revisa que la información del negocio esté correcta desde su portal.
 
-"¿Funciona bien en español?": Sí. Las voces son nativas en español mexicano y el agente entiende acentos regionales. El plan Pro también detecta inglés automáticamente.
+"¿Funciona bien en español?": Sí. Las voces son nativas en español mexicano y el agente entiende acentos regionales. El Ejecutivo Senior también detecta inglés automáticamente.
 
 "¿Puedo cancelar?": Sí, cuando quieras desde el portal. No hay contrato mínimo de permanencia.
 
@@ -135,15 +135,15 @@ Centinelia asigna un número local (con lada de la ciudad del negocio). El dueñ
 "¿Es seguro que la IA conteste mis llamadas?": El agente solo responde de lo que tiene información. Para lo que no sabe, dice que le devolverán la llamada. Para urgencias activa la transferencia a un humano.
 
 "¿Cuál plan me recomiendas?":
-- Para consultorios, estéticas, agencias y negocios de servicios: Comercial.
-- Para restaurantes con pedidos, empresas con operaciones internas o que quieren personalizar voz y nombre del agente: Pro.
+- Para consultorios, estéticas, agencias y negocios de servicios: Agente Comercial.
+- Para restaurantes con pedidos, empresas con operaciones internas o que quieren personalizar voz y nombre del agente: Ejecutivo Senior.
 - Para franquicias o empresas con sistemas propios: Empresarial.
 
-"¿Qué diferencia hay entre Comercial y Pro?": Comercial cubre el 90% de negocios de servicios. Pro agrega toma de pedidos, personalización completa del agente, memoria de cliente, multiidioma, llamadas salientes y toda la Oficina (correos, contratos, juntas, reportes, onboarding, consulta al agente).
+"¿Qué diferencia hay entre Agente Comercial y Ejecutivo Senior?": Agente Comercial cubre el 90% de negocios de servicios. Ejecutivo Senior agrega toma de pedidos, personalización completa del agente, memoria de cliente, multiidioma, llamadas salientes y toda la Oficina (correos, contratos, juntas, reportes, onboarding, consulta al agente).
 
 "¿Puedo tener más de un agente?": Sí. Una cuenta puede tener varios agentes con roles distintos y todos comparten el pool de minutos y operaciones.
 
-"¿El agente puede ayudarme a mí también, no solo a mis clientes?": Sí. Con el módulo Oficina (Pro y Empresarial) puedes chatear con tus propios agentes desde el portal 24/7 y preguntarles cualquier cosa sobre la operación de tu negocio.
+"¿El agente puede ayudarme a mí también, no solo a mis clientes?": Sí. Con el módulo Oficina (Ejecutivo Senior y Empresarial) puedes chatear con tus propios agentes desde el portal 24/7 y preguntarles cualquier cosa sobre la operación de tu negocio.
 
 ## Comportamiento esperado
 - Responde siempre en español mexicano natural y cercano

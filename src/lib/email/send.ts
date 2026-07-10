@@ -421,6 +421,39 @@ export function appointmentConfirmationToClientHtml(opts: {
   `);
 }
 
+// ── Contract to client ────────────────────────────────────────────────────────
+
+export function contractToClientHtml(opts: {
+  branding:     EmailBranding;
+  businessName: string;
+  clientName:   string | null;
+  clauses:      { title: string; body: string }[];
+}) {
+  const greeting = opts.clientName ? `Hola, ${opts.clientName}` : 'Hola';
+  const clauseBlocks = opts.clauses.map(c => `
+    <div style="margin-bottom:20px">
+      <p style="color:rgba(26,10,59,0.4);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px">${c.title}</p>
+      <p style="color:{{TEXT}};font-size:13px;line-height:1.75;margin:0;white-space:pre-wrap">${c.body.replace(/\n/g, '<br>')}</p>
+    </div>
+  `).join('<hr style="border:none;border-top:1px solid {{BORDER}};margin:16px 0">');
+
+  return clientShell(opts.branding, `
+    <div style="text-align:center;margin-bottom:20px">
+      <span style="display:inline-block;background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:20px;padding:6px 16px;color:{{ACCENT}};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Contrato de servicios</span>
+    </div>
+    <h1 style="color:{{TEXT}};font-size:20px;font-weight:700;margin:0 0 6px;text-align:center">${greeting}</h1>
+    <p style="color:{{SUB}};font-size:14px;margin:0 0 24px;text-align:center">
+      A continuación encontrarás el contrato de prestación de servicios con <strong>${opts.businessName}</strong>.
+    </p>
+    <div style="background:rgba(26,10,59,0.03);border:1px solid {{BORDER}};border-radius:12px;padding:24px;margin-bottom:16px">
+      ${clauseBlocks}
+    </div>
+    <p style="color:rgba(26,10,59,0.35);font-size:12px;margin:16px 0 0;text-align:center">
+      Para cualquier duda sobre este contrato, responde directamente a este correo.
+    </p>
+  `);
+}
+
 // ── Lead follow-up to caller ──────────────────────────────────────────────────
 
 export function leadFollowUpToClientHtml(opts: {

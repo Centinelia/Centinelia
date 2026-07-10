@@ -90,7 +90,7 @@ export default function SupportChat() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-4 z-50 flex flex-col overflow-hidden"
+          className="fixed bottom-20 left-4 z-50 flex flex-col overflow-hidden"
           style={{
             width: 'min(360px, calc(100vw - 32px))',
             height: 480,
@@ -215,7 +215,7 @@ export default function SupportChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all"
+        className="fixed bottom-4 left-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all"
         style={{
           background: open ? 'rgba(108,59,255,0.9)' : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
           boxShadow: '0 8px 32px rgba(108,59,255,0.45)',

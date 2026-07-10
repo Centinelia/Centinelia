@@ -8,7 +8,7 @@ import { ThemeProvider }                from '@/components/ThemeProvider';
 import ThemeToggle                      from '@/components/ThemeToggle';
 import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
-import SupportChat                      from '../SupportChat';
+
 import OficinaSidebar                   from './OficinaSidebar';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
@@ -150,7 +150,6 @@ export default async function OficinaLayout({
           </div>
         </div>
 
-        <SupportChat />
       </div>
     </ThemeProvider>
   );

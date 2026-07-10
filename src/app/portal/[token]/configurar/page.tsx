@@ -15,10 +15,10 @@ import NotificationsToggle       from '../NotificationsToggle';
 import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
-import SupportChat               from '../SupportChat';
+
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 
-const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
+const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Ejecutivo Senior' };
 const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
 
 interface Props {
@@ -44,8 +44,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const agentName    = agent.agent_name?.trim() || 'Centinelia';
   const planColor    = PLAN_COLORS[agent.plan] ?? '#6b7280';
   const planLabel    = PLAN_LABELS[agent.plan] ?? agent.plan;
-  const features     = (agent.features ?? {}) as Record<string, boolean>;
-  const showOutbound = process.env.NODE_ENV === 'development' ? true : !!features.outbound_calls;
+  const features     = (agent.features ?? {}) as Record<string, unknown>;
+  const roleColor    = (features.role_color as string) || '#6C3BFF';
+  const agentRole    = (agent as any).role?.trim() ?? '';
+  const showOutbound = process.env.NODE_ENV === 'development' ? true : !!(features.outbound_calls);
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -73,16 +75,22 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.2)' }}>
-              <Settings size={16} color="#6C3BFF" />
+              style={{ background: `${roleColor}1a`, border: `1px solid ${roleColor}33` }}>
+              <Settings size={16} color={roleColor} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <AgentNameEditor token={token} initialName={agentName} />
                 <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
                   style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}>
                   {planLabel}
                 </span>
+                {agentRole && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                    style={{ background: `${roleColor}1f`, color: roleColor, border: `1px solid ${roleColor}40` }}>
+                    {agentRole}
+                  </span>
+                )}
               </div>
               <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
                 {agent.business_name}
@@ -105,6 +113,22 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
             </div>
           )}
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Base de conocimiento del agente
+            </h2>
+            <p className="text-xs mb-5" style={{ color: 'var(--c-text-2)' }}>
+              Define el rol de este agente y las instrucciones específicas que usará en campo.
+            </p>
+            <AgentKnowledgeBaseEditor
+              token={token}
+              initialRole={(agent as any).role ?? ''}
+              initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
+              initialRoleKb={(agent as any).role_knowledge_base ?? ''}
+              initialLearnings={(agent as any).role_learnings ?? ''}
+            />
+          </div>
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -136,22 +160,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           </div>
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Base de conocimiento del agente
-            </h2>
-            <p className="text-xs mb-5" style={{ color: 'var(--c-text-2)' }}>
-              Define el rol de este agente y las instrucciones específicas que usará en campo.
-            </p>
-            <AgentKnowledgeBaseEditor
-              token={token}
-              initialRole={(agent as any).role ?? ''}
-              initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
-              initialRoleKb={(agent as any).role_knowledge_base ?? ''}
-              initialLearnings={(agent as any).role_learnings ?? ''}
-            />
-          </div>
-
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <ResyncButton token={token} />
           </div>
 
@@ -175,7 +183,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           </div>
         </div>
 
-        <SupportChat />
       </div>
     </ThemeProvider>
   );
