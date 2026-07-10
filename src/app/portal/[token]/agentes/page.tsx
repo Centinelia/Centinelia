@@ -40,7 +40,7 @@ export default async function AgentesPage({ params }: Props) {
   const { data: agentsRaw } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, outbound_role, features, business_name')
+        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name')
         .eq('portal_email', lookupEmail)
         .order('created_at', { ascending: true })
     : { data: [] };
