@@ -5,7 +5,8 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import { Phone, Settings2, Briefcase, Plus, Bot, LayoutDashboard } from 'lucide-react';
+import { Phone, Settings2, Briefcase, Plus, Bot, LayoutDashboard, Zap } from 'lucide-react';
+import PauseResumeButton               from '../PauseResumeButton';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -40,7 +41,7 @@ export default async function AgentesPage({ params }: Props) {
   const { data: agentsRaw } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name')
+        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used')
         .eq('portal_email', lookupEmail)
         .order('created_at', { ascending: true })
     : { data: [] };
@@ -106,7 +107,6 @@ export default async function AgentesPage({ params }: Props) {
           const planColor       = PLAN_COLORS[(a.plan as string) ?? ''] ?? '#6b7280';
           const hasRole         = !!((a.role as string | null)?.trim());
           const callCount       = callCountMap[a.id] ?? 0;
-          const isCurrent       = (a.portal_token as string) === token;
 
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
           const statusColor = isBillingPaused ? '#dc2626' : isClientPaused ? '#f59e0b' : isOnline ? '#16a34a' : '#6b7280';
@@ -116,7 +116,7 @@ export default async function AgentesPage({ params }: Props) {
               className="rounded-2xl p-5 flex flex-col gap-4"
               style={{
                 background: 'var(--c-surface)',
-                border: `1px solid ${isCurrent ? color + '45' : 'var(--c-border)'}`,
+                border: '1px solid var(--c-border)',
               }}>
 
               {/* Agent header */}
@@ -125,17 +125,11 @@ export default async function AgentesPage({ params }: Props) {
                   style={{ background: `${color}20`, color, border: `1px solid ${color}35` }}>
                   {initial}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 min-h-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
                       {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                     </span>
-                    {isCurrent && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                        style={{ background: `${color}15`, color }}>
-                        actual
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {(a.plan as string | null) && (
@@ -157,6 +151,21 @@ export default async function AgentesPage({ params }: Props) {
                     </span>
                   </div>
                 </div>
+
+                {/* Pause / billing button — top right */}
+                <div className="flex-shrink-0">
+                  {!isBillingPaused
+                    ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                    : (
+                      <a
+                        href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        Resolver pago →
+                      </a>
+                    )
+                  }
+                </div>
               </div>
 
               {/* Quick stats */}
@@ -171,6 +180,12 @@ export default async function AgentesPage({ params }: Props) {
                   <Bot size={11} />
                   {callCount} llamadas este mes
                 </span>
+                {hasRole && (
+                  <span className="flex items-center gap-1">
+                    <Zap size={11} />
+                    {(a.ai_ops_used as number) ?? 0} ops este mes
+                  </span>
+                )}
               </div>
 
               {/* Action buttons */}
