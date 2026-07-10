@@ -90,6 +90,16 @@ export default function AgentKnowledgeBaseEditor({
     if (res.ok) { setSavedRoleName(true); setTimeout(() => setSavedRoleName(false), 2500); }
   };
 
+  const pickColor = async (c: string) => {
+    setRoleColor(c);
+    setSavedRoleName(false);
+    await fetch(`/api/portal/${token}/settings`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role_color: c }),
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -124,7 +134,7 @@ export default function AgentKnowledgeBaseEditor({
             {ROLE_COLORS.map(c => (
               <button
                 key={c}
-                onClick={() => { setRoleColor(c); setSavedRoleName(false); }}
+                onClick={() => pickColor(c)}
                 className="w-5 h-5 rounded-full transition-transform hover:scale-110 flex items-center justify-center flex-shrink-0"
                 style={{ background: c, outline: roleColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2 }}
                 aria-label={c}
