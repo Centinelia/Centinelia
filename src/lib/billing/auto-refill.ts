@@ -31,19 +31,29 @@ export async function executeAutoRefill(
   const pm  = pms.data[0];
   if (!pm) return { ok: false, error: 'no_payment_method' };
 
+  // Idempotency key: one charge per agent per hour-window.
+  // Retries within the same hour reuse the key → Stripe returns the original
+  // result instead of creating a second PaymentIntent.
+  const now    = new Date();
+  const window = `${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}${now.getUTCHours()}`;
+  const idempotencyKey = `auto_refill_${agentId}_${window}`;
+
   // Off-session charge — does NOT redirect the customer
   let pi;
   try {
-    pi = await stripe.paymentIntents.create({
-      amount:         amountMxn * 100,
-      currency:       'mxn',
-      customer:       agent.stripe_customer_id,
-      payment_method: pm.id,
-      confirm:        true,
-      off_session:    true,
-      description:    `Auto-recarga ${minutes} min · ${agent.business_name}`,
-      metadata: { type: 'auto_refill', agent_id: agentId, minutes: String(minutes) },
-    });
+    pi = await stripe.paymentIntents.create(
+      {
+        amount:         amountMxn * 100,
+        currency:       'mxn',
+        customer:       agent.stripe_customer_id,
+        payment_method: pm.id,
+        confirm:        true,
+        off_session:    true,
+        description:    `Auto-recarga ${minutes} min · ${agent.business_name}`,
+        metadata: { type: 'auto_refill', agent_id: agentId, minutes: String(minutes) },
+      },
+      { idempotencyKey },
+    );
   } catch (err: any) {
     return { ok: false, error: err?.message ?? 'stripe_error' };
   }
