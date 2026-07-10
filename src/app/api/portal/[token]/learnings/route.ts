@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     .from('agent_learnings')
     .select(`
       id, content, status, created_at, vapi_call_id, agent_id,
-      voice_agents!agent_id(agent_name, business_name, outbound_role)
+      voice_agents!agent_id(agent_name, business_name, role)
     `)
     .eq('portal_email', agent.portal_email)
     .order('created_at', { ascending: false })

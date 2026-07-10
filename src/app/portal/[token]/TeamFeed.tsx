@@ -40,7 +40,7 @@ function pickColorFromString(s: string): string {
 interface AgentRef {
   agent_name:    string | null;
   business_name: string;
-  outbound_role: string | null;
+  role:          string | null;
 }
 
 interface Attachment {
@@ -65,13 +65,12 @@ interface FeedMessage {
 function agentLabel(a: AgentRef | null): string {
   if (!a) return 'Sistema';
   if (a.agent_name) return a.agent_name;
-  if (a.outbound_role && ROLE_LABELS[a.outbound_role]) return ROLE_LABELS[a.outbound_role];
   return a.business_name;
 }
 
 function roleTag(a: AgentRef | null): string {
   if (!a) return '';
-  if (a.outbound_role && ROLE_LABELS[a.outbound_role]) return ROLE_LABELS[a.outbound_role];
+  if (a.role?.trim()) return a.role.trim();
   return 'Recepcionista';
 }
 

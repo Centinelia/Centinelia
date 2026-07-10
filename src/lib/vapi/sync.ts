@@ -18,17 +18,9 @@ interface TeamPeer {
   id: string;
   vapi_agent_id: string;
   agent_name: string | null;
-  outbound_role: string | null;
+  role: string | null;
   features: Record<string, boolean>;
 }
-
-const OUTBOUND_ROLE_META: Record<string, { label: string; desc: string }> = {
-  vendedor:     { label: 'Ejecutivo de ventas',       desc: 'presenta precios, cierra ventas y resuelve dudas sobre contratar' },
-  seguimiento:  { label: 'Agente de seguimiento',     desc: 'da seguimiento a prospectos y reactiva clientes interesados' },
-  recuperacion: { label: 'Ejecutivo de recuperación', desc: 'recupera clientes inactivos y gestiona renovaciones' },
-  cobrador:     { label: 'Cobrador',                  desc: 'gestiona pagos pendientes y acuerdos de pago' },
-  soporte:      { label: 'Agente de soporte',         desc: 'resuelve dudas técnicas, quejas y problemas post-venta' },
-};
 
 function peerToolName(peer: TeamPeer): string {
   const name = (peer.agent_name || 'especialista')
@@ -40,9 +32,7 @@ function peerToolName(peer: TeamPeer): string {
 }
 
 function peerRoleLabel(peer: TeamPeer): string {
-  if (peer.outbound_role && OUTBOUND_ROLE_META[peer.outbound_role]) {
-    return OUTBOUND_ROLE_META[peer.outbound_role].label;
-  }
+  if (peer.role?.trim()) return peer.role.trim();
   const f = peer.features ?? {};
   if (f.order_taking)        return 'Tomador de pedidos';
   if (f.appointment_booking) return 'Recepcionista';
@@ -50,9 +40,7 @@ function peerRoleLabel(peer: TeamPeer): string {
 }
 
 function peerRoleDesc(peer: TeamPeer): string {
-  if (peer.outbound_role && OUTBOUND_ROLE_META[peer.outbound_role]) {
-    return OUTBOUND_ROLE_META[peer.outbound_role].desc;
-  }
+  if (peer.role?.trim()) return `especialista en ${peer.role.trim().toLowerCase()}`;
   const f = peer.features ?? {};
   if (f.order_taking)        return 'toma pedidos de clientes';
   if (f.appointment_booking) return 'agenda citas y atiende consultas';
@@ -65,7 +53,7 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from('voice_agents')
-      .select('id, vapi_agent_id, agent_name, outbound_role, features')
+      .select('id, vapi_agent_id, agent_name, role, features')
       .eq('portal_email', agent.portal_email)
       .eq('active', true)
       .neq('id', agent.id);

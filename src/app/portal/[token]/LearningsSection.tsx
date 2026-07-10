@@ -3,18 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Check, X, Clock } from 'lucide-react';
 
-const ROLE_LABELS: Record<string, string> = {
-  vendedor:     'Ejecutivo de ventas',
-  cotizador:    'Cotizador',
-  seguimiento:  'Agente de seguimiento',
-  recuperacion: 'Ejecutivo de recuperación',
-  cobrador:     'Cobrador',
-};
-
 interface AgentRef {
   agent_name:    string | null;
   business_name: string;
-  outbound_role: string | null;
+  role:          string | null;
 }
 
 interface Learning {
@@ -31,7 +23,6 @@ function agentLabel(l: Learning): string {
   const va = l.voice_agents;
   if (!va) return 'Agente';
   if (va.agent_name) return va.agent_name;
-  if (va.outbound_role && ROLE_LABELS[va.outbound_role]) return ROLE_LABELS[va.outbound_role];
   return va.business_name;
 }
 

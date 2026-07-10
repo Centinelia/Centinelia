@@ -102,23 +102,14 @@ export async function generateTeamMessage(opts: {
 
     // Route handoffs to the right peer when identifiable
     let toAgentId: string | null = null;
-    if (outcome === 'lead_created') {
+    // Route to any active peer with a defined role
+    if (outcome === 'lead_created' || outcome === 'appointment_booked') {
       const { data: peer } = await supabase
         .from('voice_agents')
         .select('id')
         .eq('portal_email', portalEmail)
-        .eq('outbound_role', 'vendedor')
         .eq('active', true)
-        .neq('id', fromAgentId)
-        .maybeSingle();
-      toAgentId = peer?.id ?? null;
-    } else if (outcome === 'appointment_booked') {
-      const { data: peer } = await supabase
-        .from('voice_agents')
-        .select('id')
-        .eq('portal_email', portalEmail)
-        .eq('outbound_role', 'seguimiento')
-        .eq('active', true)
+        .not('role', 'is', null)
         .neq('id', fromAgentId)
         .maybeSingle();
       toAgentId = peer?.id ?? null;

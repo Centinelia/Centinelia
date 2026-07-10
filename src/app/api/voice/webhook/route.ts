@@ -578,7 +578,7 @@ const OUTBOUND_ROLE_LABELS: Record<string, string> = {
 };
 
 function deriveAgentRole(agent: any): string {
-  if (agent.outbound_role) return OUTBOUND_ROLE_LABELS[agent.outbound_role] ?? agent.outbound_role;
+  if (agent.role?.trim()) return agent.role.trim();
   const f = agent.features ?? {};
   if (f.appointment_booking) return 'Recepcionista';
   if (f.order_taking)        return 'Tomador de pedidos';
@@ -596,7 +596,7 @@ async function triggerCrossAgentQueue(
 
   const { data: peers } = await supabase
     .from('voice_agents')
-    .select('id, features, outbound_role, agent_name')
+    .select('id, features, role, agent_name')
     .eq('portal_email', portalEmail)
     .neq('id', sourceAgentId)
     .eq('active', true);
@@ -618,9 +618,7 @@ async function triggerCrossAgentQueue(
 
     if (existing) continue;
 
-    const roleLabel = peer.outbound_role
-      ? (OUTBOUND_ROLE_LABELS[peer.outbound_role] ?? peer.outbound_role)
-      : (peer.agent_name?.trim() ?? 'Agente');
+    const roleLabel = (peer as any).role?.trim() || peer.agent_name?.trim() || 'Agente';
 
     const motiParts: string[] = ['Derivado automáticamente por Recepcionista.'];
     if (structured?.servicio)      motiParts.push(`Interesado en: ${structured.servicio}.`);

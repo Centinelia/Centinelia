@@ -20,8 +20,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     .from('agent_messages')
     .select(`
       id, type, content, metadata, created_at, from_agent_id, to_agent_id,
-      from_agent:voice_agents!from_agent_id(agent_name, business_name, outbound_role),
-      to_agent:voice_agents!to_agent_id(agent_name, business_name, outbound_role)
+      from_agent:voice_agents!from_agent_id(agent_name, business_name, role),
+      to_agent:voice_agents!to_agent_id(agent_name, business_name, role)
     `)
     .eq('portal_email', agent.portal_email)
     .order('created_at', { ascending: false })

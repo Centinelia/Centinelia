@@ -17,7 +17,6 @@ import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import SupportChat               from '../SupportChat';
 import OutboundInstructionsEditor    from '../OutboundInstructionsEditor';
-import OutboundRoleSelector          from '../OutboundRoleSelector';
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 
 const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
@@ -128,19 +127,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                 Llamadas salientes
               </h2>
-              <div className="mb-5 pb-5" style={{ borderBottom: '1px solid var(--c-border)' }}>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-3)' }}>
-                  Rol del agente
-                </p>
-                <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
-                  Etiqueta este agente según el tipo de llamadas que hace. Aparece en el selector al programar salientes.
-                </p>
-                <OutboundRoleSelector
-                  token={token}
-                  initialRole={(agent as any).outbound_role ?? null}
-                />
-              </div>
-
               <OutboundInstructionsEditor
                 token={token}
                 initialValue={(agent as any).outbound_knowledge_base ?? ''}
