@@ -17,9 +17,10 @@ interface Props {
   avatarSrc: string | null;
   initial:   string;
   color:     string;
+  size?:     number;
 }
 
-export default function AgentAvatarPicker({ token, avatarSrc, initial, color }: Props) {
+export default function AgentAvatarPicker({ token, avatarSrc, initial, color, size = 44 }: Props) {
   const router  = useRouter();
   const [open,    setOpen]    = useState(false);
   const [current, setCurrent] = useState(avatarSrc);
@@ -44,16 +45,22 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color }: 
       {/* Avatar button */}
       <button
         onClick={() => setOpen(true)}
-        className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden relative group"
-        style={{ background: `${color}20`, border: `1px solid ${color}35` }}
+        className="flex-shrink-0 overflow-hidden relative group"
+        style={{
+          width: size, height: size,
+          borderRadius: size * 0.27,
+          background: `${color}20`,
+          border: `1px solid ${color}35`,
+        }}
       >
         {current
-          ? <Image src={current} alt="" fill sizes="44px" style={{ objectFit: 'contain', padding: 2 }} />
-          : <span className="w-full h-full flex items-center justify-center text-base font-bold" style={{ color }}>{initial}</span>
+          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', padding: size * 0.05 }} />
+          : <span className="w-full h-full flex items-center justify-center font-bold"
+              style={{ color, fontSize: size * 0.36 }}>{initial}</span>
         }
         <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: 'rgba(0,0,0,0.45)', borderRadius: 10 }}>
-          <Pencil size={13} color="#fff" />
+          style={{ background: 'rgba(0,0,0,0.45)', borderRadius: size * 0.27 }}>
+          <Pencil size={size * 0.28} color="#fff" />
         </span>
       </button>
 
