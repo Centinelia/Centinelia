@@ -128,7 +128,7 @@ export default async function AgentesPage({ params }: Props) {
                 size={52}
               />
 
-              {/* Nombre + rol + meta */}
+              {/* Nombre + rol + badges */}
               <div className="flex flex-col items-center gap-0.5 text-center w-full">
                 <span className="font-semibold text-xs leading-tight" style={{ color: 'var(--c-text)' }}>
                   {(a.agent_name as string | null)?.trim() || 'Centinelia'}
@@ -153,9 +153,23 @@ export default async function AgentesPage({ params }: Props) {
                 </div>
               </div>
 
+              {/* Stats */}
+              <div className="flex items-center justify-center gap-2 w-full py-1.5 flex-wrap"
+                style={{ borderTop: '1px solid var(--c-border)', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                <span className="flex items-center gap-0.5 text-[10px]">
+                  <Bot size={10} />
+                  {callCount} llam/mes
+                </span>
+                {hasRole && (
+                  <span className="flex items-center gap-0.5 text-[10px]">
+                    <Zap size={10} />
+                    {(a.ai_ops_used as number) ?? 0} ops/mes
+                  </span>
+                )}
+              </div>
+
               {/* Actions */}
-              <div className="flex items-center gap-1 w-full pt-2"
-                style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1 w-full">
                 <Link
                   href={`/portal/${a.portal_token as string}/configurar`}
                   className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-medium transition-opacity hover:opacity-80"
