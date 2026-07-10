@@ -125,7 +125,7 @@ export default async function AgentesPage({ params }: Props) {
                 avatarSrc={avatarSrc}
                 initial={initial}
                 color={color}
-                size={110}
+                size={148}
               />
 
               {/* Nombre + rol + badges */}
