@@ -129,34 +129,32 @@ export default async function AgentesPage({ params }: Props) {
               />
 
               {/* Info — derecha */}
-              <div className="flex flex-col justify-between flex-1 min-w-0 gap-2">
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
 
-                {/* Nombre + rol + badges */}
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold text-base leading-tight truncate" style={{ color: 'var(--c-text)' }}>
-                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+                <span className="font-bold text-base leading-tight truncate" style={{ color: 'var(--c-text)' }}>
+                  {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+                </span>
+
+                {hasRole && (
+                  <span className="text-sm font-medium leading-tight" style={{ color: roleColor }}>
+                    {a.role as string}
                   </span>
-                  {hasRole && (
-                    <span className="text-sm font-medium leading-tight" style={{ color: roleColor }}>
-                      {a.role as string}
+                )}
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(a.plan as string | null) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
+                      {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
                     </span>
                   )}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {(a.plan as string | null) && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
-                        {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1 text-xs" style={{ color: statusColor }}>
-                      <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
-                        style={{ background: 'currentColor' }} />
-                      {statusLabel}
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-1 text-xs" style={{ color: statusColor }}>
+                    <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
+                      style={{ background: 'currentColor' }} />
+                    {statusLabel}
+                  </span>
                 </div>
 
-                {/* Stats */}
                 <div className="flex items-center gap-3 flex-wrap" style={{ color: 'var(--c-text-3)' }}>
                   <span className="flex items-center gap-1 text-xs">
                     <Bot size={12} />
@@ -170,8 +168,7 @@ export default async function AgentesPage({ params }: Props) {
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap pt-1" style={{ borderTop: '1px solid var(--c-border)' }}>
                   <Link
                     href={`/portal/${a.portal_token as string}/configurar`}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
