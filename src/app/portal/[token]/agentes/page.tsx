@@ -126,22 +126,19 @@ export default async function AgentesPage({ params }: Props) {
                   {initial}
                 </div>
                 <div className="flex-1 min-w-0 min-h-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
-                      {(a.agent_name as string | null)?.trim() || 'Centinelia'}
-                    </span>
-                  </div>
+                  <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+                  </span>
+                  {hasRole && (
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+                      {a.role as string}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {(a.plan as string | null) && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                         style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
                         {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
-                      </span>
-                    )}
-                    {hasRole && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                        style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }}>
-                        {a.role as string}
                       </span>
                     )}
                     <span className="flex items-center gap-1 text-[10px]" style={{ color: statusColor }}>
