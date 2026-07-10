@@ -41,6 +41,9 @@ export async function consumeAiOp(agentId: string): Promise<OpsResult> {
     .update({ ai_ops_used: ((actor.ai_ops_used as number) ?? 0) + 1 })
     .eq('id', agentId);
 
+  // Log for historical ranking queries
+  supabase.from('ai_ops_log').insert({ agent_id: agentId, portal_email: actor.portal_email }).then(() => {});
+
   return { ok: true, used: totalUsed + 1, limit: totalLimit };
 }
 
