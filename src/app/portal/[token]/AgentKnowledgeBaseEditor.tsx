@@ -37,18 +37,26 @@ function SaveButton({ saving, saved, onSave, accent }: { saving: boolean; saved:
   );
 }
 
+const ROLE_COLORS = [
+  '#6C3BFF', '#3b82f6', '#22c55e', '#f59e0b',
+  '#ef4444', '#a855f7', '#06b6d4', '#ec4899',
+];
+
 export default function AgentKnowledgeBaseEditor({
   token,
   initialRole,
+  initialRoleColor,
   initialRoleKb,
   initialLearnings,
 }: {
-  token:            string;
-  initialRole:      string;
-  initialRoleKb:    string;
-  initialLearnings: string;
+  token:             string;
+  initialRole:       string;
+  initialRoleColor:  string;
+  initialRoleKb:     string;
+  initialLearnings:  string;
 }) {
   const [role,          setRole]          = useState(initialRole);
+  const [roleColor,     setRoleColor]     = useState(initialRoleColor || '#6C3BFF');
   const [roleKb,        setRoleKb]        = useState(initialRoleKb);
   const [learnings,     setLearnings]     = useState(initialLearnings);
   const [savingRoleName, setSavingRoleName] = useState(false);
@@ -58,7 +66,7 @@ export default function AgentKnowledgeBaseEditor({
   const [savingLearn,   setSavingLearn]   = useState(false);
   const [savedLearn,    setSavedLearn]    = useState(false);
 
-  const save = async (field: 'role' | 'role_knowledge_base' | 'role_learnings', val: string, setSaving: (b: boolean) => void, setSaved: (b: boolean) => void) => {
+  const save = async (field: 'role_knowledge_base' | 'role_learnings', val: string, setSaving: (b: boolean) => void, setSaved: (b: boolean) => void) => {
     setSaving(true);
     setSaved(false);
     const res = await fetch(`/api/portal/${token}/settings`, {
@@ -68,6 +76,18 @@ export default function AgentKnowledgeBaseEditor({
     });
     setSaving(false);
     if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+  };
+
+  const saveRoleName = async () => {
+    setSavingRoleName(true);
+    setSavedRoleName(false);
+    const res = await fetch(`/api/portal/${token}/settings`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role, role_color: roleColor }),
+    });
+    setSavingRoleName(false);
+    if (res.ok) { setSavedRoleName(true); setTimeout(() => setSavedRoleName(false), 2500); }
   };
 
   return (
@@ -88,13 +108,34 @@ export default function AgentKnowledgeBaseEditor({
             style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
           />
           <button
-            onClick={() => save('role', role, setSavingRoleName, setSavedRoleName)}
+            onClick={saveRoleName}
             disabled={savingRoleName}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50 shrink-0"
             style={{ background: savedRoleName ? '#22c55e' : 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: savedRoleName ? '#fff' : '#9B6DFF' }}
           >
             {savingRoleName ? <Loader2 size={12} className="animate-spin" /> : savedRoleName ? <><Check size={12} />Guardado</> : 'Guardar'}
           </button>
+        </div>
+
+        {/* Color del rol */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Color:</span>
+          <div className="flex items-center gap-1.5">
+            {ROLE_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => { setRoleColor(c); setSavedRoleName(false); }}
+                className="w-5 h-5 rounded-full transition-transform hover:scale-110 flex items-center justify-center flex-shrink-0"
+                style={{ background: c, outline: roleColor === c ? `2px solid ${c}` : 'none', outlineOffset: 2 }}
+                aria-label={c}
+              >
+                {roleColor === c && <Check size={10} color="#fff" strokeWidth={3} />}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs font-medium ml-1" style={{ color: roleColor }}>
+            {role.trim() || 'Vista previa'}
+          </span>
         </div>
       </div>
 
