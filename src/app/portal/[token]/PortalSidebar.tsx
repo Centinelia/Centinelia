@@ -36,6 +36,20 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     {
+      id: 'negocio', label: 'Negocio', icon: <Building2 size={14} />,
+      items: [
+        { label: 'Logo y branding',      id: 'branding' },
+        { label: 'Base de conocimiento', id: 'conocimiento' },
+        { label: 'Horarios',             id: 'horarios' },
+        { label: 'Sitio web y reseñas',  id: 'sitio' },
+      ],
+    },
+    {
+      id: 'agentes', label: 'Agentes', icon: <Bot size={14} />,
+      directHref: `/portal/${token}/agentes`,
+      items: [],
+    },
+    {
       id: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
       toggleOnly: true,
       items: [],
@@ -72,20 +86,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Consultar agente',   id: 'chat' },
       ],
     }] as Section[] : []),
-    {
-      id: 'agentes', label: 'Agentes', icon: <Bot size={14} />,
-      directHref: `/portal/${token}/agentes`,
-      items: [],
-    },
-    {
-      id: 'negocio', label: 'Negocio', icon: <Building2 size={14} />,
-      items: [
-        { label: 'Logo y branding',      id: 'branding' },
-        { label: 'Base de conocimiento', id: 'conocimiento' },
-        { label: 'Horarios',             id: 'horarios' },
-        { label: 'Sitio web y reseñas',  id: 'sitio' },
-      ],
-    },
     {
       id: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
       items: [
