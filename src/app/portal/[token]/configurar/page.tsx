@@ -172,7 +172,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <AgentKnowledgeBaseEditor
               token={token}
               initialRole={(agent as any).role ?? ''}
-              initialRoleColor={(agent as any).role_color ?? ''}
+              initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
               initialRoleKb={(agent as any).role_knowledge_base ?? ''}
               initialLearnings={(agent as any).role_learnings ?? ''}
             />

@@ -41,7 +41,7 @@ export default async function AgentesPage({ params }: Props) {
   const { data: agentsRaw } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, agent_name, role, role_color, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used')
+        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used')
         .eq('portal_email', lookupEmail)
         .order('created_at', { ascending: true })
     : { data: [] };
@@ -106,7 +106,7 @@ export default async function AgentesPage({ params }: Props) {
           const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
           const planColor       = PLAN_COLORS[(a.plan as string) ?? ''] ?? '#6b7280';
           const hasRole         = !!((a.role as string | null)?.trim());
-          const roleColor       = (a.role_color as string | null)?.trim() || '#6C3BFF';
+          const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
           const callCount       = callCountMap[a.id] ?? 0;
 
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';

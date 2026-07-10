@@ -19,15 +19,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .from('voice_agents').select('id, vapi_agent_id, portal_email, features').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
-  // Feature flags live inside the features JSONB column — merge instead of flat update
-  const featureFlagKeys = ['outbound_calls'];
-  const featureFlagUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureFlagKeys.includes(k)));
-  if (Object.keys(featureFlagUpdate).length > 0) {
-    const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureFlagUpdate };
+  // Keys stored inside the features JSONB column — merge instead of flat update
+  const featureJsonKeys = ['outbound_calls', 'role_color'];
+  const featureJsonUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureJsonKeys.includes(k)));
+  if (Object.keys(featureJsonUpdate).length > 0) {
+    const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureJsonUpdate };
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'role_knowledge_base', 'role_learnings', 'role', 'role_color', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
+  const allowed = ['business_hours', 'knowledge_base', 'role_knowledge_base', 'role_learnings', 'role', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
