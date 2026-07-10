@@ -16,8 +16,9 @@ import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import SupportChat               from '../SupportChat';
-import OutboundInstructionsEditor from '../OutboundInstructionsEditor';
-import OutboundRoleSelector from '../OutboundRoleSelector';
+import OutboundInstructionsEditor    from '../OutboundInstructionsEditor';
+import OutboundRoleSelector          from '../OutboundRoleSelector';
+import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 
 const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
 const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
@@ -56,12 +57,12 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <Link
-              href={`/portal/${token}?tab=agentes`}
+              href={`/portal/${token}?tab=cuenta`}
               className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
               style={{ color: 'var(--c-text-2)' }}
             >
               <ChevronLeft size={16} />
-              Agentes
+              Cuenta
             </Link>
             <div className="flex items-center gap-1.5">
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
@@ -158,6 +159,21 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               token={token}
               initWhatsApp={(agent as any).notify_whatsapp ?? true}
               initEmail={(agent as any).notify_email ?? true}
+            />
+          </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Base de conocimiento del agente
+            </h2>
+            <p className="text-xs mb-5" style={{ color: 'var(--c-text-2)' }}>
+              Define el rol de este agente y las instrucciones específicas que usará en campo.
+            </p>
+            <AgentKnowledgeBaseEditor
+              token={token}
+              initialRole={(agent as any).role ?? ''}
+              initialRoleKb={(agent as any).role_knowledge_base ?? ''}
+              initialLearnings={(agent as any).role_learnings ?? ''}
             />
           </div>
 

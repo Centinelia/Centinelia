@@ -45,9 +45,10 @@ function timeAgo(iso: string): string {
 }
 
 export default function LearningsSection({ token }: { token: string }) {
-  const [learnings, setLearnings] = useState<Learning[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [acting,    setActing]    = useState<Record<string, boolean>>({});
+  const [learnings, setLearnings]   = useState<Learning[]>([]);
+  const [loading,   setLoading]     = useState(true);
+  const [acting,    setActing]      = useState<Record<string, boolean>>({});
+  const [edited,    setEdited]      = useState<Record<string, string>>({});
 
   const load = useCallback(() => {
     fetch(`/api/portal/${token}/learnings`)
@@ -60,14 +61,15 @@ export default function LearningsSection({ token }: { token: string }) {
 
   async function act(id: string, action: 'approve' | 'reject') {
     setActing(p => ({ ...p, [id]: true }));
+    const content = edited[id];
     await fetch(`/api/portal/${token}/learnings/${id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ action }),
+      body:    JSON.stringify({ action, ...(content !== undefined ? { content } : {}) }),
     });
     setLearnings(prev =>
       prev.map(l => l.id === id
-        ? { ...l, status: action === 'approve' ? 'approved' : 'rejected' }
+        ? { ...l, status: action === 'approve' ? 'approved' : 'rejected', content: content ?? l.content }
         : l,
       ),
     );
@@ -145,9 +147,13 @@ export default function LearningsSection({ token }: { token: string }) {
                 </span>
               </div>
 
-              <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--c-text)' }}>
-                {l.content}
-              </p>
+              <textarea
+                rows={3}
+                value={edited[l.id] ?? l.content}
+                onChange={e => setEdited(p => ({ ...p, [l.id]: e.target.value }))}
+                className="w-full text-sm leading-relaxed mb-4 rounded-lg px-3 py-2 resize-y outline-none"
+                style={{ background: 'var(--c-bg)', border: '1px solid rgba(108,59,255,0.2)', color: 'var(--c-text)', fontFamily: 'inherit' }}
+              />
 
               <div className="flex gap-2">
                 <button

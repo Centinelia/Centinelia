@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
+  const allowed = ['business_hours', 'knowledge_base', 'role_knowledge_base', 'role_learnings', 'role', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });

@@ -38,7 +38,10 @@ import CallsSearch             from './CallsSearch';
 import IntegrationsSection     from './IntegrationsSection';
 import NotionSection            from './NotionSection';
 import PortalTabNav           from './PortalTabNav';
+import PortalSidebar          from './PortalSidebar';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
+import NotionSchemasSection   from './NotionSchemasSection';
+import TeamsSection           from './TeamsSection';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
@@ -47,14 +50,12 @@ import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
-import LearningsSection          from './LearningsSection';
-import TeamFeed                  from './TeamFeed';
 import EmailSettings             from './EmailSettings';
 import { inboxAddressFor }       from '@/lib/email/inbox';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'agentes' | 'negocio' | 'entrantes' | 'resumen' | 'actividad' | 'minutos' | 'contrato' | 'integraciones' | 'salientes' | 'contactos' | 'equipo' | 'correos';
+type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'negocio' | 'integraciones' | 'cuenta';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -88,8 +89,10 @@ const FEED_TYPE_CFG: Record<string, { label: string; color: string; bg: string }
 export default async function ClientPortalPage({ params, searchParams }: Props) {
   const { token }          = await params;
   const { tab: tabParam, period } = await searchParams;
-  const tab: Tab           = (tabParam as Tab) ?? 'agentes';
+  const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
+
+  if (tab === 'oficina') redirect(`/portal/${token}/oficina`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
   const cookieStore    = await cookies();
@@ -112,7 +115,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: clientAgents } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, outbound_role, stripe_customer_id')
+        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, outbound_role, role, stripe_customer_id')
         .eq('portal_email', lookupEmail)
     : { data: [] };
   const allClientAgents = clientAgents ?? [];
@@ -278,18 +281,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const activeOutboundCampaigns = showOutbound ? (outboundCampaigns as any[]).filter((c: any) => c.status === 'active').length  : 0;
   const lastCampaignRunAt       = showOutbound ? ((outboundCampaigns as any[]).find((c: any) => c.last_run_at)?.last_run_at ?? null) : null;
 
+  const hasOpsAgent = (allClientAgents as any[]).some((a: any) => a.role);
+
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'agentes',       label: 'Agentes' },
+    { id: 'inicio',        label: 'Inicio' },
+    { id: 'llamadas',      label: 'Llamadas' },
+    ...(showOutbound || agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
+    ...(hasOpsAgent ? [{ id: 'oficina' as Tab, label: 'Oficina' }] : []),
     { id: 'negocio',       label: 'Negocio' },
-    { id: 'equipo',        label: 'Equipo' },
-    { id: 'entrantes',     label: 'Entrantes' },
-    ...(agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
-    { id: 'resumen',       label: 'Resumen' },
-    { id: 'actividad',     label: 'Actividad' },
-    { id: 'minutos',       label: 'Minutos' },
-    { id: 'correos',       label: 'Correos' },
     { id: 'integraciones', label: 'Integraciones' },
-    { id: 'contrato',      label: 'Contrato' },
+    { id: 'cuenta',        label: 'Cuenta' },
   ];
 
   return (
@@ -299,8 +300,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
         {/* Header */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'relative', zIndex: 10 }}>
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
+          <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <BusinessSwitcher
               current={{
                 business_name: agent.business_name,
@@ -328,18 +329,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           </div>
         </div>
 
-        {/* Tab nav */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)', position: 'relative', zIndex: 9 }}>
-          <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            <div className="relative">
-              <PortalTabNav token={token} currentTab={tab} tabs={TABS} />
+        {/* Body: sidebar + main */}
+        <div className="flex min-h-[calc(100vh-53px)]">
+          <PortalSidebar
+            token={token}
+            currentTab={tab}
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+          />
+
+          {/* Main content column */}
+          <div className="flex-1 min-w-0 flex flex-col">
+
+            {/* Tab nav — mobile only */}
+            <div className="md:hidden" style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)', position: 'sticky', top: 53, zIndex: 9 }}>
+              <div className="px-4 sm:px-6">
+                <PortalTabNav token={token} currentTab={tab} tabs={TABS} />
+              </div>
             </div>
-          </div>
-        </div>
 
         {/* Alerts */}
         {(!agent.active || minutesPct > 80) && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 flex flex-col gap-2">
+          <div className="px-4 sm:px-6 pt-4 flex flex-col gap-2 max-w-4xl w-full mx-auto md:mx-0">
             {billingPaused && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
@@ -374,308 +385,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="px-4 sm:px-6 py-6 max-w-4xl w-full mx-auto md:mx-0" style={{ position: 'relative', zIndex: 1 }}>
 
-          {/* ── AGENTES ──────────────────────────────────────────────────── */}
-          {tab === 'agentes' && (
-            <div className="flex flex-col gap-5">
-              {/* Add agent CTA */}
-              <Link
-                href={`/registro?back=/portal/${token}`}
-                className="flex items-center justify-between px-5 py-4 rounded-xl transition-all group"
-                style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)' }}>
-                    <Plus size={16} color="#9B6DFF" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: '#9B6DFF' }}>Agregar otro agente</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                      Usa el mismo correo para que aparezca aquí automáticamente
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={16} style={{ color: '#6C3BFF', flexShrink: 0 }} />
-              </Link>
-
-              {businessGroups.length === 0 && (
-                <div className="flex flex-col items-center gap-3 py-14 rounded-xl"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                    style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                    <PhoneCall size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
-                  </div>
-                  <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin agentes asociados a tu cuenta</p>
-                  <p className="text-xs text-center px-10" style={{ color: 'var(--c-text-3)' }}>
-                    Contrata tu primer agente usando el mismo correo y aparecerá aquí automáticamente.
-                  </p>
-                </div>
-              )}
-
-              {businessGroups.map(group => (
-                <div key={group.business_name} className="rounded-xl overflow-hidden"
-                  style={{ border: '1px solid var(--c-border)' }}>
-
-                  {/* Business header */}
-                  <div className="flex items-center gap-4 px-5 py-4"
-                    style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                      {group.logo_url
-                        ? <img src={group.logo_url} alt={group.business_name} className="w-full h-full object-contain p-1" />
-                        : <span className="text-sm font-bold" style={{ color: 'var(--c-text-3)' }}>
-                            {group.business_name.slice(0, 2).toUpperCase()}
-                          </span>
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{group.business_name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                        {group.agents.length} {group.agents.length === 1 ? 'agente' : 'agentes'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Agents */}
-                  {group.agents.map((a: any, i: number) => {
-                    const isBillingPaused = !a.active && a.billing_status === 'pago_fallido';
-                    const isClientPaused  = !!(a.client_paused) && !isBillingPaused;
-                    const isInactive      = !a.active && !isBillingPaused && !isClientPaused;
-                    const isCurrent       = a.portal_token === token;
-                    const isOnline        = a.active && !isClientPaused && !isBillingPaused;
-
-                    let statusLabel = 'Activo';
-                    let statusColor = '#16a34a';
-                    let statusBg    = 'rgba(34,197,94,0.1)';
-                    if (isBillingPaused) { statusLabel = 'Pago pendiente'; statusColor = '#dc2626'; statusBg = 'rgba(239,68,68,0.08)'; }
-                    else if (isClientPaused) { statusLabel = 'Pausado'; statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
-                    else if (isInactive) { statusLabel = 'Inactivo'; statusColor = '#6b7280'; statusBg = 'rgba(107,114,128,0.1)'; }
-
-                    return (
-                      <div key={a.id} className="flex items-center gap-3 px-4 py-3"
-                        style={{
-                          background: 'var(--c-surface-2)',
-                          borderTop:  i > 0 ? '1px solid var(--c-divider)' : undefined,
-                        }}>
-
-                        {/* Status dot */}
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'animate-pulse' : ''}`}
-                          style={{ background: isOnline ? '#22c55e' : isBillingPaused ? '#ef4444' : '#6b7280' }} />
-
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                              {a.agent_name?.trim() || 'Centinelia'}
-                            </span>
-                            {(() => { const pc = PLAN_COLORS[a.plan] ?? '#6b7280'; return (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
-                                {PLAN_LABELS[a.plan] ?? a.plan}
-                              </span>
-                            ); })()}
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                              style={{ background: statusBg, color: statusColor }}>
-                              {statusLabel}
-                            </span>
-                            {a.outbound_role && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
-                                {OUTBOUND_ROLE_LABELS[a.outbound_role] ?? a.outbound_role}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
-                            <Phone size={10} />
-                            {a.phone_number ?? <span style={{ fontStyle: 'italic' }}>Sin número asignado</span>}
-                          </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {!isCurrent && (
-                            <Link
-                              href={`/portal/${a.portal_token}`}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                              Ver portal
-                            </Link>
-                          )}
-                          <Link
-                            href={`/portal/${a.portal_token}/configurar`}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                            style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                            Configurar
-                          </Link>
-                          {!isBillingPaused
-                            ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                            : (
-                              <a
-                                href={`/api/billing/portal-session?token=${a.portal_token}`}
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                                style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                                Resolver pago →
-                              </a>
-                            )
-                          }
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── NEGOCIO ──────────────────────────────────────────────────── */}
-          {tab === 'negocio' && (
-            <div className="flex flex-col gap-5">
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
-                </p>
-                <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
-                </p>
-                <BrandKitEditor
-                  token={token}
-                  logoUrl={(agent as any).logo_url ?? null}
-                  businessName={agent.business_name}
-                  initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
-                  initialWebsite={(agent as any).brand_website ?? ''}
-                  initialAddress={(agent as any).brand_address ?? ''}
-                  initialFooter={(agent as any).email_footer_text ?? ''}
-                />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
-                </p>
-                <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
-                </p>
-                <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Define los días y horarios en que tu agente está disponible para atender llamadas.
-                </p>
-                <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
-                </p>
-                <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contrato de servicios</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Descarga un contrato tipo con el branding de tu negocio listo para firmar con tus clientes.
-                </p>
-                <a
-                  href={`/api/portal/${token}/pdf/contrato`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)', textDecoration: 'none' }}>
-                  <ExternalLink size={14} /> Descargar contrato PDF
-                </a>
-              </div>
-
-            </div>
-          )}
-
-          {/* ── CORREOS ──────────────────────────────────────────────────── */}
-          {tab === 'correos' && (
-            <div className="flex flex-col gap-5">
-              {/* Inbox address */}
-              {inboxAddress && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada del equipo</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Los correos enviados a esta dirección aparecen en La Oficina. Compártela con quienes necesiten enviar trabajo al equipo de agentes.
-                  </p>
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl select-all cursor-text font-mono text-sm"
-                    style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-                  >
-                    <Mail size={14} style={{ color: '#06b6d4', flexShrink: 0 }} />
-                    {inboxAddress}
-                  </div>
-                </div>
-              )}
-              <EmailSettings token={token} />
-            </div>
-          )}
-
-          {/* ── EQUIPO ───────────────────────────────────────────────────── */}
-          {tab === 'equipo' && (
-            <div className="flex flex-col gap-8">
-              <TeamFeed token={token} />
-              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: '2rem' }}>
-                <LearningsSection token={token} />
-              </div>
-            </div>
-          )}
-
-          {/* ── ENTRANTES ────────────────────────────────────────────────── */}
-          {tab === 'entrantes' && (
-            <div className="flex flex-col gap-5">
-              {/* KPI strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />} value={String(calls.length)} label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
-                <KpiCard icon={<Clock size={16} color="#6b7280" />} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
-                {showLeads && leads.length > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />} value={String(leads.length)} label="Leads" sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
-              </div>
-
-              {/* Call list */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                    <PhoneCall size={13} /> Llamadas recientes
-                  </h2>
-                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                </div>
-                {calls.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 gap-3">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                      <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
-                    </div>
-                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
-                    <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
-                      En cuanto llegue la primera llamada aparecerá aquí automáticamente.
-                    </p>
-                  </div>
-                ) : (
-                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── RESUMEN ──────────────────────────────────────────────────── */}
-          {tab === 'resumen' && (
+          {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
+          {tab === 'inicio' && (
             <div className="flex flex-col gap-5">
               {isFirstTime && (
                 <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
@@ -693,14 +406,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* Period filter — first, affects all numbers below */}
+              {/* Period filter */}
               <div className="flex items-center gap-2">
                 <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
                 <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
                     const active = (period ?? '') === param;
                     return (
-                      <Link key={param} href={param ? `/portal/${token}?tab=resumen&period=${param}` : `/portal/${token}?tab=resumen`}
+                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                         style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
                         {label}
@@ -802,25 +515,46 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
+
             </div>
           )}
 
-          {/* ── ACTIVIDAD ────────────────────────────────────────────────── */}
-          {tab === 'actividad' && (
+          {/* ── LLAMADAS ─────────────────────────────────────────────────── */}
+          {tab === 'llamadas' && (
             <div className="flex flex-col gap-5">
-              {!showLeads && !showOrders && !showAppts ? (
-                /* Features not enabled for this agent */
-                <div className="flex flex-col items-center py-12 gap-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="relative" style={{ width: 140, height: 200 }}>
-                    <Image src="/agent-duo-stand.png" alt="" fill sizes="140px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                  </div>
-                  <div className="text-center px-8">
-                    <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Captura de leads, citas y pedidos no está activa</p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Estas funciones se habilitan según la configuración de tu agente.</p>
-                  </div>
+              {/* KPI strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />} value={String(calls.length)} label="Llamadas" sub={`prom. ${avgDuration} min`} valueColor="#6C3BFF" accentColor="#6C3BFF" />
+                <KpiCard icon={<Clock size={16} color="#6b7280" />} value={`${totalHours}h`} label="Tiempo atendido" valueColor="var(--c-text)" accentColor="#6b7280" />
+                {showLeads && leads.length > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />} value={String(leads.length)} label="Leads" sub={`${calls.length > 0 ? Math.round((leads.length / calls.length) * 100) : 0}% conv.`} valueColor="#22c55e" accentColor="#22c55e" />}
+              </div>
+
+              {/* Call list */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                    <PhoneCall size={13} /> Llamadas recientes
+                  </h2>
+                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
                 </div>
-              ) : (() => {
+                {calls.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                      <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
+                    <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
+                      En cuanto llegue la primera llamada aparecerá aquí automáticamente.
+                    </p>
+                  </div>
+                ) : (
+                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
+                )}
+              </div>
+
+              {/* Captured: leads / orders / appts */}
+              {(showLeads || showOrders || showAppts) && (() => {
                 const visibleSections = (
                   [
                     showOrders && orders.length > 0 && { count: orders.length, el: (
@@ -843,170 +577,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 ).filter((s): s is { count: number; el: React.ReactNode } => !!s)
                  .sort((a, b) => b.count - a.count);
 
-                if (visibleSections.length === 0) return (
-                  /* Features enabled, no data yet */
-                  <div className="flex flex-col items-center py-12 gap-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <div className="relative" style={{ width: 72, height: 100 }}>
-                      <Image src="/agent-f2.png" alt="" fill sizes="72px"
-                        style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                    </div>
-                    <div className="text-center px-8">
-                      <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Aún no hay actividad registrada</p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Los leads, citas y pedidos que el agente capture aparecerán aquí.</p>
-                    </div>
-                  </div>
-                );
-
+                if (visibleSections.length === 0) return null;
                 return (
-                  <>
-                    <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Todos los registros desde el inicio</p>
+                  <div className="flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)', paddingTop: '1.5rem' }}>
+                    <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
                     {visibleSections.map(s => s.el)}
-                  </>
+                  </div>
                 );
               })()}
-            </div>
-          )}
-
-          {/* ── MINUTOS ──────────────────────────────────────────────────── */}
-          {tab === 'minutos' && (
-            <div className="flex flex-col gap-5">
-              {/* Usage card */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
-                <div className="flex items-end gap-2 mb-2">
-                  <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
-                  <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
-                </div>
-                <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                  <div className="h-3 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
-                </div>
-                <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                  <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
-                  <span>Se renueva el {resetDate}</span>
-                </div>
-                {rolloverMinutes > 0 && (
-                  <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
-                    {planBaseMinutes} base + {rolloverMinutes} del mes anterior
-                  </p>
-                )}
-              </div>
-
-              {/* AI Ops */}
-              {aiOpsLimit > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
-                  <div className="flex items-end gap-2 mb-2">
-                    <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
-                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
-                  </div>
-                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                    <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
-                  </div>
-                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                    <span>Se renueva el {resetDate}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Averages */}
-              {allCalls.length > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                  <div className="grid grid-cols-3 gap-3">
-                    <StatBox label="Por día"   value={`${avgMinPerDay} min`} />
-                    <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                    <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                  </div>
-                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
-                </div>
-              )}
-
-              {/* Buy extra — border/urgency scales with usage */}
-              <div className="rounded-xl p-5" style={{
-                background:       minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
-                border:           minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
-                backdropFilter:   'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-              }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
-                {minutesPct >= 70 && (
-                  <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                    <AlertTriangle size={11} />
-                    {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
-                  </p>
-                )}
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
-                <BuyMinutesSection token={token} />
-              </div>
-
-              {/* Auto-refill */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Recarga tu saldo automáticamente cuando bajen de un umbral.</p>
-                <AutoRefillSection token={token} />
-              </div>
-
-              {/* Cambiar plan */}
-              {agent.plan && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
-                  <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
-                </div>
-              )}
-
-              {/* Facturación */}
-              {hasStripe && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Facturación</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Actualiza tu método de pago, descarga facturas o cancela tu suscripción.</p>
-                  <a
-                    href={`/api/billing/portal-session?token=${token}`}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)', color: '#C4A8FF', textDecoration: 'none' }}
-                  >
-                    Portal de facturación →
-                  </a>
-                </div>
-              )}
-
-              {/* Reporte mensual PDF */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con tu branding: llamadas, resultados, minutos y horas pico.</p>
-                {(() => {
-                  const now = new Date();
-                  const y = now.getFullYear(), m = now.getMonth() + 1;
-                  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-                  const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-                  return (
-                    <div className="flex flex-wrap gap-2">
-                      <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
-                        <ChevronRight size={12} /> {label(y, m)}
-                      </a>
-                      <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
-                        <ChevronRight size={12} /> {label(prev.y, prev.m)}
-                      </a>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Ledger */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
-                <div className="relative">
-                  <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
-                    <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-                    style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
-                </div>
-              </div>
             </div>
           )}
 
@@ -1033,6 +611,86 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             </div>
           )}
 
+          {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
+          {/* ── NEGOCIO ──────────────────────────────────────────────────── */}
+          {tab === 'negocio' && (
+            <div className="flex flex-col gap-5">
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
+                </p>
+                <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
+                </p>
+                <BrandKitEditor
+                  token={token}
+                  logoUrl={(agent as any).logo_url ?? null}
+                  businessName={agent.business_name}
+                  initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
+                  initialColorSecondary={(agent as any).brand_color_secondary ?? ''}
+                  initialWebsite={(agent as any).brand_website ?? ''}
+                  initialAddress={(agent as any).brand_address ?? ''}
+                  initialFooter={(agent as any).email_footer_text ?? ''}
+                />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
+                </p>
+                <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
+                </p>
+                <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
+              </div>
+
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Define los días y horarios en que tu agente está disponible para atender llamadas.
+                </p>
+                <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
+                </p>
+                <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contrato de servicios</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Descarga un contrato tipo con el branding de tu negocio listo para firmar con tus clientes.
+                </p>
+                <a
+                  href={`/api/portal/${token}/pdf/contrato`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)', textDecoration: 'none' }}>
+                  <ExternalLink size={14} /> Descargar contrato PDF
+                </a>
+              </div>
+
+            </div>
+          )}
+
           {/* ── INTEGRACIONES ────────────────────────────────────────────── */}
           {tab === 'integraciones' && (
             <div className="flex flex-col gap-5">
@@ -1044,17 +702,346 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <IntegrationsSection token={token} plan={agent.plan as Plan} />
               </div>
               <NotionSection token={token} />
+              {(agent as any).notion_access_token && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Validación de bases de datos</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Define la estructura esperada de tus bases de datos. El agente revisa cada semana que todo esté en orden y te avisa si hay entradas con campos vacíos o valores incorrectos.
+                  </p>
+                  <NotionSchemasSection token={token} />
+                </div>
+              )}
+              {hasOpsAgent && (
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
+                  <div className="px-5 pt-5 pb-1" style={{ background: 'var(--c-surface)' }}>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Microsoft Teams</h2>
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                      Conecta Teams vía Power Automate para que el agente lea y responda mensajes automáticamente.
+                    </p>
+                  </div>
+                  <div className="px-5 pb-5" style={{ background: 'var(--c-surface)' }}>
+                    <TeamsSection token={token} />
+                  </div>
+                </div>
+              )}
+              {/* Email */}
+              {inboxAddress && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada del equipo</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Los correos enviados a esta dirección aparecen en La Oficina. Compártela con quienes necesiten enviar trabajo al equipo de agentes.
+                  </p>
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl select-all cursor-text font-mono text-sm"
+                    style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  >
+                    <Mail size={14} style={{ color: '#06b6d4', flexShrink: 0 }} />
+                    {inboxAddress}
+                  </div>
+                </div>
+              )}
+              <EmailSettings token={token} />
             </div>
           )}
 
-          {/* ── CONTRATO ─────────────────────────────────────────────────── */}
-          {tab === 'contrato' && (
-            <ContractSection
-              token={token}
-              businessName={agent.business_name}
-              signedAt={agent.contract_accepted_at ?? null}
-              contractPreviewUrl={`/portal/${token}/contrato`}
-            />
+          {/* ── CUENTA ───────────────────────────────────────────────────── */}
+          {tab === 'cuenta' && (
+            <div className="flex flex-col gap-5">
+              {/* Agents */}
+              <Link
+                href={`/registro?back=/portal/${token}`}
+                className="flex items-center justify-between px-5 py-4 rounded-xl transition-all group"
+                style={{ background: 'rgba(108,59,255,0.06)', border: '1px dashed rgba(108,59,255,0.35)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)' }}>
+                    <Plus size={16} color="#9B6DFF" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: '#9B6DFF' }}>Agregar otro agente</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                      Usa el mismo correo para que aparezca aquí automáticamente
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={16} style={{ color: '#6C3BFF', flexShrink: 0 }} />
+              </Link>
+
+              {businessGroups.length === 0 && (
+                <div className="flex flex-col items-center gap-3 py-14 rounded-xl"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                    style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                    <PhoneCall size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin agentes asociados a tu cuenta</p>
+                  <p className="text-xs text-center px-10" style={{ color: 'var(--c-text-3)' }}>
+                    Contrata tu primer agente usando el mismo correo y aparecerá aquí automáticamente.
+                  </p>
+                </div>
+              )}
+
+              {businessGroups.map(group => (
+                <div key={group.business_name} className="rounded-xl overflow-hidden"
+                  style={{ border: '1px solid var(--c-border)' }}>
+
+                  {/* Business header */}
+                  <div className="flex items-center gap-4 px-5 py-4"
+                    style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0"
+                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                      {group.logo_url
+                        ? <img src={group.logo_url} alt={group.business_name} className="w-full h-full object-contain p-1" />
+                        : <span className="text-sm font-bold" style={{ color: 'var(--c-text-3)' }}>
+                            {group.business_name.slice(0, 2).toUpperCase()}
+                          </span>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{group.business_name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                        {group.agents.length} {group.agents.length === 1 ? 'agente' : 'agentes'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Agents */}
+                  {group.agents.map((a: any, i: number) => {
+                    const isBillingPaused = !a.active && a.billing_status === 'pago_fallido';
+                    const isClientPaused  = !!(a.client_paused) && !isBillingPaused;
+                    const isInactive      = !a.active && !isBillingPaused && !isClientPaused;
+                    const isCurrent       = a.portal_token === token;
+                    const isOnline        = a.active && !isClientPaused && !isBillingPaused;
+
+                    let statusLabel = 'Activo';
+                    let statusColor = '#16a34a';
+                    let statusBg    = 'rgba(34,197,94,0.1)';
+                    if (isBillingPaused) { statusLabel = 'Pago pendiente'; statusColor = '#dc2626'; statusBg = 'rgba(239,68,68,0.08)'; }
+                    else if (isClientPaused) { statusLabel = 'Pausado'; statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
+                    else if (isInactive) { statusLabel = 'Inactivo'; statusColor = '#6b7280'; statusBg = 'rgba(107,114,128,0.1)'; }
+
+                    return (
+                      <div key={a.id} className="flex items-center gap-3 px-4 py-3"
+                        style={{
+                          background: 'var(--c-surface-2)',
+                          borderTop:  i > 0 ? '1px solid var(--c-divider)' : undefined,
+                        }}>
+
+                        {/* Status dot */}
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? 'animate-pulse' : ''}`}
+                          style={{ background: isOnline ? '#22c55e' : isBillingPaused ? '#ef4444' : '#6b7280' }} />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                              {a.agent_name?.trim() || 'Centinelia'}
+                            </span>
+                            {(() => { const pc = PLAN_COLORS[a.plan] ?? '#6b7280'; return (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: `${pc}18`, color: pc, border: `1px solid ${pc}30` }}>
+                                {PLAN_LABELS[a.plan] ?? a.plan}
+                              </span>
+                            ); })()}
+                            {a.role && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                {a.role}
+                              </span>
+                            )}
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                              style={{ background: statusBg, color: statusColor }}>
+                              {statusLabel}
+                            </span>
+                            {a.outbound_role && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
+                                {OUTBOUND_ROLE_LABELS[a.outbound_role] ?? a.outbound_role}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                            <Phone size={10} />
+                            {a.phone_number ?? <span style={{ fontStyle: 'italic' }}>Sin número asignado</span>}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {!isCurrent && (
+                            <Link
+                              href={`/portal/${a.portal_token}`}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                              style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+                              Ver portal
+                            </Link>
+                          )}
+                          <Link
+                            href={`/portal/${a.portal_token}/configurar`}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                            style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                            Configurar
+                          </Link>
+                          {!isBillingPaused
+                            ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                            : (
+                              <a
+                                href={`/api/billing/portal-session?token=${a.portal_token}`}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                                style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                Resolver pago →
+                              </a>
+                            )
+                          }
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Minutes & billing */}
+              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
+                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
+                    <div className="h-3 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+                  </div>
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
+                    <span>Se renueva el {resetDate}</span>
+                  </div>
+                  {rolloverMinutes > 0 && (
+                    <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
+                      {planBaseMinutes} base + {rolloverMinutes} del mes anterior
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {aiOpsLimit > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
+                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
+                  </div>
+                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
+                    <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                  </div>
+                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                    <span>Se renueva el {resetDate}</span>
+                  </div>
+                </div>
+              )}
+
+              {allCalls.length > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
+                  <div className="grid grid-cols-3 gap-3">
+                    <StatBox label="Por día"   value={`${avgMinPerDay} min`} />
+                    <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                    <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                  </div>
+                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
+                </div>
+              )}
+
+              <div className="rounded-xl p-5" style={{
+                background:       minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
+                border:           minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
+                backdropFilter:   'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+              }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
+                {minutesPct >= 70 && (
+                  <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                    <AlertTriangle size={11} />
+                    {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
+                  </p>
+                )}
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
+                <BuyMinutesSection token={token} />
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Recarga tu saldo automáticamente cuando bajen de un umbral.</p>
+                <AutoRefillSection token={token} />
+              </div>
+
+              {agent.plan && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
+                  <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
+                </div>
+              )}
+
+              {hasStripe && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Facturación</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Actualiza tu método de pago, descarga facturas o cancela tu suscripción.</p>
+                  <a
+                    href={`/api/billing/portal-session?token=${token}`}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)', color: '#C4A8FF', textDecoration: 'none' }}
+                  >
+                    Portal de facturación →
+                  </a>
+                </div>
+              )}
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con tu branding: llamadas, resultados, minutos y horas pico.</p>
+                {(() => {
+                  const now = new Date();
+                  const y = now.getFullYear(), m = now.getMonth() + 1;
+                  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
+                  const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
+                        <ChevronRight size={12} /> {label(y, m)}
+                      </a>
+                      <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
+                        <ChevronRight size={12} /> {label(prev.y, prev.m)}
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
+                <div className="relative">
+                  <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                    <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+                    style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
+                </div>
+              </div>
+
+              {/* Contract */}
+              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <ContractSection
+                  token={token}
+                  businessName={agent.business_name}
+                  signedAt={agent.contract_accepted_at ?? null}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
+                />
+              </div>
+            </div>
           )}
         </div>
 
@@ -1118,7 +1105,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </a>
             </span>
           </div>
-        </div>
+        </div>{/* /footer */}
+          </div>{/* /main content column */}
+        </div>{/* /body flex */}
 
         <SupportChat />
         <LiveNotifications token={token} />

@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token, id } = await params;
-  const { action } = (await req.json()) as { action: 'approve' | 'reject' };
+  const { action, content: editedContent } = (await req.json()) as { action: 'approve' | 'reject'; content?: string };
   if (action !== 'approve' && action !== 'reject') {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
@@ -37,25 +37,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   }
 
-  // Approve: append to the agent's knowledge base and sync to Vapi
+  // Approve: append to the agent's role_learnings and sync to Vapi
+  const finalContent = editedContent?.trim() || learning.content;
+
   const { data: agent } = await supabase
     .from('voice_agents').select('*').eq('id', learning.agent_id).single();
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
 
-  const separator = agent.knowledge_base?.trim() ? '\n\n' : '';
-  const newKb     = `${agent.knowledge_base ?? ''}${separator}• ${learning.content}`;
+  const existing      = (agent as any).role_learnings ?? '';
+  const separator     = existing.trim() ? '\n\n' : '';
+  const newLearnings  = `${existing}${separator}• ${finalContent}`;
 
   await Promise.all([
-    supabase.from('voice_agents').update({ knowledge_base: newKb }).eq('id', agent.id),
+    supabase.from('voice_agents').update({ role_learnings: newLearnings }).eq('id', agent.id),
     supabase.from('agent_learnings')
       .update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', id),
-    // Post to team feed so the learning appears in La Oficina
     supabase.from('agent_messages').insert({
       portal_email:  tokenAgent.portal_email,
       from_agent_id: agent.id,
       to_agent_id:   null,
       type:          'learning',
-      content:       learning.content,
+      content:       finalContent,
       metadata:      {},
     }),
   ]);
@@ -63,7 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (agent.vapi_agent_id) {
     updateVapiAssistant(
       agent.vapi_agent_id,
-      { ...agent, knowledge_base: newKb } as VoiceAgent,
+      { ...agent, role_learnings: newLearnings } as VoiceAgent,
     ).catch(console.error);
   }
 
