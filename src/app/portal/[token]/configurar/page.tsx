@@ -16,7 +16,6 @@ import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import SupportChat               from '../SupportChat';
-import OutboundInstructionsEditor    from '../OutboundInstructionsEditor';
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 
 const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Pro' };
@@ -121,18 +120,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               initSpeechStyle={(agent as any).speech_style ?? 'usted'}
             />
           </div>
-
-          {showOutbound && (
-            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-              <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Llamadas salientes
-              </h2>
-              <OutboundInstructionsEditor
-                token={token}
-                initialValue={(agent as any).outbound_knowledge_base ?? ''}
-              />
-            </div>
-          )}
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
             <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>

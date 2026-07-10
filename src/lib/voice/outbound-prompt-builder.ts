@@ -112,9 +112,9 @@ Si nadie contesta, ofrece que alguien le llame de regreso y toma sus datos.`);
     blocks.push(`INSTRUCCIONES DE ESTA CAMPAÑA:\n${campaignInstructions.trim()}`);
   }
 
-  // ── General outbound instructions (agent-level default) ───────────────────
-  if (agent.outbound_knowledge_base?.trim()) {
-    blocks.push(`INSTRUCCIONES GENERALES PARA LLAMADAS SALIENTES:\n${agent.outbound_knowledge_base.trim()}`);
+  // ── Role knowledge base ───────────────────────────────────────────────────
+  if (agent.role?.trim() && (agent as any).role_knowledge_base?.trim()) {
+    blocks.push(`ROL — ${agent.role.toUpperCase()}:\n${(agent as any).role_knowledge_base.trim()}`);
   }
 
   // ── Business knowledge (reference) ────────────────────────────────────────
