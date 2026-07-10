@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, Loader2, Brain, BookOpen } from 'lucide-react';
 
 const SOFT = 5_000;
@@ -55,6 +56,7 @@ export default function AgentKnowledgeBaseEditor({
   initialRoleKb:     string;
   initialLearnings:  string;
 }) {
+  const router = useRouter();
   const [role,          setRole]          = useState(initialRole);
   const [roleColor,     setRoleColor]     = useState(initialRoleColor || '#6C3BFF');
   const [roleKb,        setRoleKb]        = useState(initialRoleKb);
@@ -98,6 +100,7 @@ export default function AgentKnowledgeBaseEditor({
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ role_color: c }),
     });
+    router.refresh();
   };
 
   return (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Check } from 'lucide-react';
 
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function AgentCustomization({ token, initGreeting, initTransferRules, initSpeechStyle, initAvatar }: Props) {
+  const router = useRouter();
   const [greeting,      setGreeting]      = useState(initGreeting);
   const [transferRules, setTransferRules] = useState(initTransferRules);
   const [speechStyle,   setSpeechStyle]   = useState<'tu' | 'usted'>(initSpeechStyle);
@@ -37,6 +39,7 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ avatar: next }),
     });
+    router.refresh();
   }
 
   async function saveSpeechStyle(value: 'tu' | 'usted') {
