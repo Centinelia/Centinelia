@@ -6,12 +6,10 @@ import Image from 'next/image';
 import { Check } from 'lucide-react';
 
 const MEERKATS = [
-  '/agent-f1.png', '/agent-f2.png',
-  '/agent-m1.png', '/agent-m2.png', '/agent-m3.png', '/agent-m4.png',
+  '/agent-f1.png',
+  '/agent-m1.png', '/agent-m2.png', '/agent-m3.png',
   '/agent-blazer.png', '/agent-bowtie.png',
-  '/agent-headset.png', '/agent-headset2.png',
-  '/agent-money.png', '/agent-suit-phone.png',
-  '/meerkat-transparente-07.png', '/meerkat-transparente-11.png',
+  '/agent-headset.png',
 ];
 
 interface Props {
@@ -84,7 +82,7 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
         <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '0 0 10px' }}>
           Elige un meerkat como foto de perfil. Aparecerá en tu tarjeta de agente.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           {MEERKATS.map(src => {
             const active = avatar === src;
             return (

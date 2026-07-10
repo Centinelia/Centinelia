@@ -57,12 +57,12 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <Link
-              href={`/portal/${token}?tab=cuenta`}
+              href={`/portal/${token}/agentes`}
               className="flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
               style={{ color: 'var(--c-text-2)' }}
             >
               <ChevronLeft size={16} />
-              Cuenta
+              Mis agentes
             </Link>
             <div className="flex items-center gap-1.5">
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
