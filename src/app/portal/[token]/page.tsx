@@ -55,7 +55,7 @@ import { inboxAddressFor }       from '@/lib/email/inbox';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'negocio' | 'integraciones' | 'cuenta';
+type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -93,6 +93,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const days               = period ? parseInt(period) : undefined;
 
   if (tab === 'oficina') redirect(`/portal/${token}/oficina`);
+  if (tab === 'agentes') redirect(`/portal/${token}/agentes`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
   const cookieStore    = await cookies();
@@ -288,6 +289,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     { id: 'llamadas',      label: 'Llamadas' },
     ...(showOutbound || agent.plan === 'pro' ? [{ id: 'salientes' as Tab, label: 'Salientes' }] : []),
     ...(hasOpsAgent ? [{ id: 'oficina' as Tab, label: 'Oficina' }] : []),
+    { id: 'agentes' as Tab, label: 'Agentes' },
     { id: 'negocio',       label: 'Negocio' },
     { id: 'integraciones', label: 'Integraciones' },
     { id: 'cuenta',        label: 'Cuenta' },

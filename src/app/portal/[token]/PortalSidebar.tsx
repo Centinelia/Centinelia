@@ -4,11 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import {
   LayoutDashboard, Phone, PhoneOutgoing, Briefcase,
-  Building2, Link2, CircleUser, ChevronDown, ChevronRight,
+  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot,
 } from 'lucide-react';
 
 type SubItem = { label: string; id: string };
-type Section = { id: string; label: string; icon: React.ReactNode; items: SubItem[] };
+type Section = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; directHref?: string };
 
 interface Props {
   token:        string;
@@ -51,6 +51,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     }] as Section[] : []),
     ...(hasOpsAgent ? [{
       id: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
+      directHref: `/portal/${token}/oficina`,
       items: [
         { label: 'Actividad',          id: '' },
         { label: 'Bandeja de entrada', id: 'bandeja' },
@@ -61,6 +62,11 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Consultar agente',   id: 'chat' },
       ],
     }] as Section[] : []),
+    {
+      id: 'agentes', label: 'Agentes', icon: <Bot size={14} />,
+      directHref: `/portal/${token}/agentes`,
+      items: [],
+    },
     {
       id: 'negocio', label: 'Negocio', icon: <Building2 size={14} />,
       items: [
@@ -111,9 +117,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
             <div key={section.id} className="mb-0.5">
               <div className="flex items-center gap-0.5">
                 <Link
-                  href={section.id === 'oficina'
-                    ? `/portal/${token}/oficina`
-                    : `/portal/${token}?tab=${section.id}`}
+                  href={section.directHref ?? `/portal/${token}?tab=${section.id}`}
                   onClick={() => {
                     if (!openIds.includes(section.id))
                       setOpenIds(prev => [...prev, section.id]);
@@ -127,20 +131,22 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                   <span style={{ opacity: isActive ? 1 : 0.55, flexShrink: 0 }}>{section.icon}</span>
                   {section.label}
                 </Link>
-                <button
-                  onClick={() => toggle(section.id)}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                  style={{ color: 'var(--c-text-3)', flexShrink: 0 }}
-                  aria-label={isOpen ? 'Colapsar' : 'Expandir'}
-                >
-                  {isOpen
-                    ? <ChevronDown size={11} />
-                    : <ChevronRight size={11} />
-                  }
-                </button>
+                {section.items.length > 0 && (
+                  <button
+                    onClick={() => toggle(section.id)}
+                    className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                    style={{ color: 'var(--c-text-3)', flexShrink: 0 }}
+                    aria-label={isOpen ? 'Colapsar' : 'Expandir'}
+                  >
+                    {isOpen
+                      ? <ChevronDown size={11} />
+                      : <ChevronRight size={11} />
+                    }
+                  </button>
+                )}
               </div>
 
-              {isOpen && (
+              {isOpen && section.items.length > 0 && (
                 <div className="mt-0.5 mb-1 pl-2 flex flex-col gap-0.5">
                   {section.items.map(item => (
                     <Link
