@@ -120,6 +120,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               initGreeting={(agent as any).first_message ?? ''}
               initTransferRules={(agent as any).transfer_rules ?? ''}
               initSpeechStyle={(agent as any).speech_style ?? 'usted'}
+              initAvatar={((agent as any).features as any)?.avatar ?? ''}
             />
           </div>
 

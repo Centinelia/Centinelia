@@ -1,21 +1,43 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Check } from 'lucide-react';
+
+const MEERKATS = [
+  '/agent-f1.png', '/agent-f2.png',
+  '/agent-m1.png', '/agent-m2.png', '/agent-m3.png', '/agent-m4.png',
+  '/agent-blazer.png', '/agent-bowtie.png',
+  '/agent-headset.png', '/agent-headset2.png',
+  '/agent-money.png', '/agent-suit-phone.png',
+  '/meerkat-transparente-07.png', '/meerkat-transparente-11.png',
+];
 
 interface Props {
   token:              string;
   initGreeting:       string;
   initTransferRules:  string;
   initSpeechStyle:    'tu' | 'usted';
+  initAvatar:         string;
 }
 
-export default function AgentCustomization({ token, initGreeting, initTransferRules, initSpeechStyle }: Props) {
+export default function AgentCustomization({ token, initGreeting, initTransferRules, initSpeechStyle, initAvatar }: Props) {
   const [greeting,      setGreeting]      = useState(initGreeting);
   const [transferRules, setTransferRules] = useState(initTransferRules);
   const [speechStyle,   setSpeechStyle]   = useState<'tu' | 'usted'>(initSpeechStyle);
+  const [avatar,        setAvatar]        = useState(initAvatar);
   const [saved,         setSaved]         = useState<'greeting' | 'rules' | 'speech' | null>(null);
   const [saving,        setSaving]        = useState<'greeting' | 'rules' | 'speech' | null>(null);
+
+  async function pickAvatar(src: string) {
+    const next = avatar === src ? '' : src;
+    setAvatar(next);
+    await fetch(`/api/portal/${token}/settings`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ avatar: next }),
+    });
+  }
 
   async function saveSpeechStyle(value: 'tu' | 'usted') {
     setSaving('speech');
@@ -50,6 +72,45 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Avatar meerkat picker */}
+      <div>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--c-text-3)', marginBottom: 6 }}>
+          Avatar del agente
+        </label>
+        <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '0 0 10px' }}>
+          Elige un meerkat como foto de perfil. Aparecerá en tu tarjeta de agente.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+          {MEERKATS.map(src => {
+            const active = avatar === src;
+            return (
+              <button
+                key={src}
+                onClick={() => pickAvatar(src)}
+                style={{
+                  position:     'relative',
+                  aspectRatio:  '1',
+                  borderRadius: 10,
+                  overflow:     'hidden',
+                  border:       `2px solid ${active ? '#6C3BFF' : 'var(--c-border)'}`,
+                  background:   active ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
+                  cursor:       'pointer',
+                  padding:      0,
+                  transition:   'border-color 0.15s',
+                }}
+              >
+                <Image src={src} alt="" fill sizes="64px" style={{ objectFit: 'contain', padding: 4 }} />
+                {active && (
+                  <div style={{ position: 'absolute', top: 3, right: 3, width: 14, height: 14, borderRadius: '50%', background: '#6C3BFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Check size={9} color="#fff" strokeWidth={3} />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Speech style toggle */}
       <div>

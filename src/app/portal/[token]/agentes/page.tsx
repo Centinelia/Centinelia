@@ -5,6 +5,7 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
+import Image                           from 'next/image';
 import { Phone, Settings2, Briefcase, Plus, Bot, Zap } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 
@@ -107,6 +108,7 @@ export default async function AgentesPage({ params }: Props) {
           const planColor       = PLAN_COLORS[(a.plan as string) ?? ''] ?? '#6b7280';
           const hasRole         = !!((a.role as string | null)?.trim());
           const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
+          const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
           const callCount       = callCountMap[a.id] ?? 0;
 
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
@@ -122,9 +124,12 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Agent header */}
               <div className="flex items-start gap-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0"
-                  style={{ background: `${color}20`, color, border: `1px solid ${color}35` }}>
-                  {initial}
+                <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden relative"
+                  style={{ background: `${color}20`, border: `1px solid ${color}35` }}>
+                  {avatarSrc
+                    ? <Image src={avatarSrc} alt="" fill sizes="44px" style={{ objectFit: 'contain', padding: 2 }} />
+                    : <span className="w-full h-full flex items-center justify-center text-base font-bold" style={{ color }}>{initial}</span>
+                  }
                 </div>
                 <div className="flex-1 min-w-0 min-h-0">
                   <div className="flex items-center gap-2 flex-wrap">

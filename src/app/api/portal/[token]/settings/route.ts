@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
   // Keys stored inside the features JSONB column — merge instead of flat update
-  const featureJsonKeys = ['outbound_calls', 'role_color'];
+  const featureJsonKeys = ['outbound_calls', 'role_color', 'avatar'];
   const featureJsonUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureJsonKeys.includes(k)));
   if (Object.keys(featureJsonUpdate).length > 0) {
     const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureJsonUpdate };
