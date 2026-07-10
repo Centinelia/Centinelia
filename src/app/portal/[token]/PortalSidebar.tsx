@@ -58,6 +58,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Contratos',          id: 'contratos' },
         { label: 'Juntas',             id: 'juntas' },
         { label: 'Onboarding',         id: 'onboarding' },
+        { label: 'Consultar agente',   id: 'chat' },
       ],
     }] as Section[] : []),
     {

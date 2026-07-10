@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft } from 'lucide-react';
+import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare } from 'lucide-react';
 
 interface Props {
   token:   string;
@@ -10,12 +10,13 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { href: '',            label: 'Actividad',             icon: Activity,    badgeKey: ''          },
-  { href: '/bandeja',    label: 'Bandeja de entrada',   icon: Inbox,       badgeKey: 'bandeja'   },
-  { href: '/reportes',   label: 'Reportes automáticos', icon: BarChart2,   badgeKey: ''          },
-  { href: '/contratos',  label: 'Contratos',            icon: FileText,    badgeKey: 'contratos' },
-  { href: '/juntas',     label: 'Juntas',               icon: Mic,         badgeKey: 'juntas'    },
-  { href: '/onboarding', label: 'Onboarding',           icon: UserCheck,   badgeKey: ''          },
+  { href: '',            label: 'Actividad',             icon: Activity,      badgeKey: ''          },
+  { href: '/bandeja',    label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja'   },
+  { href: '/reportes',   label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: ''          },
+  { href: '/contratos',  label: 'Contratos',             icon: FileText,      badgeKey: 'contratos' },
+  { href: '/juntas',     label: 'Juntas',                icon: Mic,           badgeKey: 'juntas'    },
+  { href: '/onboarding', label: 'Onboarding',            icon: UserCheck,     badgeKey: ''          },
+  { href: '/chat',       label: 'Consultar agente',      icon: MessageSquare, badgeKey: ''          },
 ];
 
 export default function OficinaSidebar({ token, badges = {} }: Props) {
