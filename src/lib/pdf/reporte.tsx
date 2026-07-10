@@ -16,9 +16,23 @@ export interface ReporteData {
 
 function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <View style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, alignItems: 'center' }}>
-      <Text style={{ fontSize: 28, fontFamily: 'Helvetica-Bold', color }}>{value}</Text>
-      <Text style={[S.label, { marginBottom: 0, textAlign: 'center', marginTop: 4 }]}>{label}</Text>
+    <View style={{
+      flex: 1,
+      borderWidth: 1,
+      borderColor: '#e5e7eb',
+      borderRadius: 8,
+      overflow: 'hidden',
+    }}>
+      {/* colored top accent */}
+      <View style={{ height: 3, backgroundColor: color }} />
+      <View style={{ paddingVertical: 14, paddingHorizontal: 10, alignItems: 'center' }}>
+        <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color, lineHeight: 1 }}>
+          {value}
+        </Text>
+        <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginTop: 5, letterSpacing: 0.5 }}>
+          {label.toUpperCase()}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -45,15 +59,17 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
       {/* Minutes */}
       <View style={S.section}>
         <SectionTitle title="Consumo de minutos" color={accent} />
-        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14 }}>
-          <View style={[S.row, { justifyContent: 'space-between', marginBottom: 8 }]}>
+        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 16 }}>
+          <View style={[S.row, { justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }]}>
             <Text style={S.value}>{data.minutesUsed} de {data.minutesTotal} minutos usados</Text>
-            <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: barCol }}>{pct}%</Text>
+            <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: barCol }}>{pct}%</Text>
           </View>
-          {/* Progress bar */}
-          <View style={{ height: 8, backgroundColor: '#f3f4f6', borderRadius: 4 }}>
-            <View style={{ height: 8, width: `${pct}%`, backgroundColor: barCol, borderRadius: 4 }} />
+          <View style={{ height: 7, backgroundColor: '#f3f4f6', borderRadius: 4 }}>
+            <View style={{ height: 7, width: `${pct}%`, backgroundColor: barCol, borderRadius: 4 }} />
           </View>
+          <Text style={[S.muted, { marginTop: 6 }]}>
+            {data.minutesTotal - data.minutesUsed} minutos disponibles
+          </Text>
         </View>
       </View>
 
@@ -89,9 +105,18 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
           <SectionTitle title="Horas pico de llamadas" color={accent} />
           <View style={[S.row, { gap: 8, flexWrap: 'wrap' }]}>
             {data.topHours.map(({ hour, count }) => (
-              <View key={hour} style={{ alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6, padding: 8, minWidth: 48 }}>
-                <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: accent }}>{count}</Text>
-                <Text style={S.muted}>{String(hour).padStart(2, '0')}:00</Text>
+              <View key={hour} style={{
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: '#e5e7eb',
+                borderRadius: 6,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                minWidth: 52,
+                backgroundColor: `${accent}06`,
+              }}>
+                <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: accent, lineHeight: 1 }}>{count}</Text>
+                <Text style={[S.muted, { marginTop: 4 }]}>{String(hour).padStart(2, '0')}:00</Text>
               </View>
             ))}
           </View>
