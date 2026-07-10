@@ -130,22 +130,22 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Nombre + rol + badges */}
               <div className="flex flex-col items-center gap-1 text-center w-full">
-                <span className="font-bold text-base leading-tight" style={{ color: 'var(--c-text)' }}>
+                <span className="font-bold text-base sm:text-xl leading-tight" style={{ color: 'var(--c-text)' }}>
                   {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                 </span>
                 {hasRole && (
-                  <span className="text-sm font-medium" style={{ color: roleColor }}>
+                  <span className="text-sm sm:text-base font-medium" style={{ color: roleColor }}>
                     {a.role as string}
                   </span>
                 )}
                 <div className="flex items-center gap-1.5 flex-wrap justify-center mt-1">
                   {(a.plan as string | null) && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    <span className="text-xs sm:text-sm px-2 py-0.5 rounded-full font-medium"
                       style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
                       {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
                     </span>
                   )}
-                  <span className="flex items-center gap-1 text-xs" style={{ color: statusColor }}>
+                  <span className="flex items-center gap-1 text-xs sm:text-sm" style={{ color: statusColor }}>
                     <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
                       style={{ background: 'currentColor' }} />
                     {statusLabel}
@@ -155,13 +155,13 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Stats */}
               <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
-                <span className="flex items-center gap-1 text-sm">
-                  <Bot size={13} />
+                <span className="flex items-center gap-1 text-sm sm:text-base">
+                  <Bot size={14} />
                   {callCount} llam/mes
                 </span>
                 {hasRole && (
-                  <span className="flex items-center gap-1 text-sm">
-                    <Zap size={13} />
+                  <span className="flex items-center gap-1 text-sm sm:text-base">
+                    <Zap size={14} />
                     {(a.ai_ops_used as number) ?? 0} ops/mes
                   </span>
                 )}
