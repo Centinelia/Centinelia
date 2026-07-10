@@ -116,90 +116,92 @@ export default async function AgentesPage({ params }: Props) {
 
           return (
             <div key={a.id}
-              className="rounded-2xl p-4 flex flex-col items-center gap-3"
+              className="rounded-2xl p-4 flex gap-4"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
-              {/* Avatar */}
+              {/* Avatar — izquierda */}
               <AgentAvatarPicker
                 token={a.portal_token as string}
                 avatarSrc={avatarSrc}
                 initial={initial}
                 color={color}
-                size={52}
+                size={72}
               />
 
-              {/* Nombre + rol + badges */}
-              <div className="flex flex-col items-center gap-0.5 text-center w-full">
-                <span className="font-semibold text-xs leading-tight" style={{ color: 'var(--c-text)' }}>
-                  {(a.agent_name as string | null)?.trim() || 'Centinelia'}
-                </span>
-                {hasRole && (
-                  <span className="text-[10px] font-medium leading-tight" style={{ color: roleColor }}>
-                    {a.role as string}
+              {/* Info — derecha */}
+              <div className="flex flex-col justify-between flex-1 min-w-0 gap-2">
+
+                {/* Nombre + rol + badges */}
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-base leading-tight truncate" style={{ color: 'var(--c-text)' }}>
+                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                   </span>
-                )}
-                <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
-                  {(a.plan as string | null) && (
-                    <span className="text-[9px] px-1 py-0.5 rounded-full font-medium"
-                      style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
-                      {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
+                  {hasRole && (
+                    <span className="text-sm font-medium leading-tight" style={{ color: roleColor }}>
+                      {a.role as string}
                     </span>
                   )}
-                  <span className="flex items-center gap-0.5 text-[9px]" style={{ color: statusColor }}>
-                    <span className={`w-1 h-1 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
-                      style={{ background: 'currentColor' }} />
-                    {statusLabel}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(a.plan as string | null) && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
+                        {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs" style={{ color: statusColor }}>
+                      <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
+                        style={{ background: 'currentColor' }} />
+                      {statusLabel}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Stats */}
-              <div className="flex items-center justify-center gap-2 w-full py-1.5 flex-wrap"
-                style={{ borderTop: '1px solid var(--c-border)', borderBottom: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-                <span className="flex items-center gap-0.5 text-[10px]">
-                  <Bot size={10} />
-                  {callCount} llam/mes
-                </span>
-                {hasRole && (
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <Zap size={10} />
-                    {(a.ai_ops_used as number) ?? 0} ops/mes
+                {/* Stats */}
+                <div className="flex items-center gap-3 flex-wrap" style={{ color: 'var(--c-text-3)' }}>
+                  <span className="flex items-center gap-1 text-xs">
+                    <Bot size={12} />
+                    {callCount} llam/mes
                   </span>
-                )}
-              </div>
+                  {hasRole && (
+                    <span className="flex items-center gap-1 text-xs">
+                      <Zap size={12} />
+                      {(a.ai_ops_used as number) ?? 0} ops/mes
+                    </span>
+                  )}
+                </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-1 w-full">
-                <Link
-                  href={`/portal/${a.portal_token as string}/configurar`}
-                  className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-medium transition-opacity hover:opacity-80"
-                  style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
-                >
-                  <Settings2 size={10} />
-                  Configurar
-                </Link>
-                {hasRole && (
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <Link
-                    href={`/portal/${a.portal_token as string}/oficina`}
-                    className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-medium transition-opacity hover:opacity-80"
-                    style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}
+                    href={`/portal/${a.portal_token as string}/configurar`}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
                   >
-                    <Briefcase size={10} />
-                    Oficina
+                    <Settings2 size={11} />
+                    Configurar
                   </Link>
-                )}
-                <div className="flex-1" />
-                {!isBillingPaused
-                  ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                  : (
-                    <a
-                      href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                      className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg text-[10px] font-medium transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                      Pago →
-                    </a>
-                  )
-                }
+                  {hasRole && (
+                    <Link
+                      href={`/portal/${a.portal_token as string}/oficina`}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}
+                    >
+                      <Briefcase size={11} />
+                      Oficina
+                    </Link>
+                  )}
+                  {!isBillingPaused
+                    ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                    : (
+                      <a
+                        href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        Resolver pago →
+                      </a>
+                    )
+                  }
+                </div>
               </div>
             </div>
           );
