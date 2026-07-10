@@ -127,14 +127,16 @@ export default async function AgentesPage({ params }: Props) {
                   {initial}
                 </div>
                 <div className="flex-1 min-w-0 min-h-0">
-                  <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
-                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
-                  </span>
-                  {hasRole && (
-                    <p className="text-xs mt-0.5 truncate font-medium" style={{ color: roleColor }}>
-                      {a.role as string}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+                      {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+                    </span>
+                    {hasRole && (
+                      <span className="text-xs font-medium" style={{ color: roleColor }}>
+                        {a.role as string}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {(a.plan as string | null) && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
