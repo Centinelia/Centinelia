@@ -116,7 +116,7 @@ export default async function AgentesPage({ params }: Props) {
 
           return (
             <div key={a.id}
-              className="rounded-2xl p-3 flex flex-col items-center justify-between aspect-square"
+              className="rounded-2xl p-3 flex flex-col items-center gap-2"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
               {/* Avatar */}
@@ -162,7 +162,7 @@ export default async function AgentesPage({ params }: Props) {
                   style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
                 >
                   <Settings2 size={10} />
-                  Config
+                  Configurar
                 </Link>
                 {hasRole && (
                   <Link
