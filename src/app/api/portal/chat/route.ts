@@ -21,40 +21,43 @@ Una cuenta puede tener múltiples agentes, cada uno con un rol distinto. Los min
 
 ## Navegación del portal — dónde está cada cosa
 
-El portal principal tiene estas secciones en el menú lateral:
+El portal principal tiene estas secciones en el menú lateral (en este orden):
+Inicio → Negocio → Agentes → Llamadas → Oficina → Integraciones → Cuenta
 
 ### Inicio
-- **Resumen:** KPIs globales — llamadas, leads generados, tiempo atendido. Filtros: 7 días / 30 días / historial completo.
-- **Horas pico:** Gráfica de distribución de llamadas por hora y día. Útil para saber cuándo hay más demanda.
-- **Actividad:** Feed de leads, citas y pedidos capturados. Se puede cambiar el estado de cada uno (nuevo, contactado, cerrado, perdido).
+- **Resumen:** KPIs globales — llamadas, leads, tiempo atendido y ops IA usadas. Filtros: 7 días / 30 días / historial completo.
+- **Horas pico:** Gráfica de distribución de llamadas por hora y día.
+- **Actividad:** Feed de leads, citas y pedidos capturados. Se puede cambiar el estado de cada uno.
+
+### Negocio
+- **Logo y branding:** Subir el logotipo que aparece en el portal.
+- **Base de conocimiento:** El contenido que el agente usa para responder. Texto libre con precios, servicios, FAQs, horarios, políticas. Compartida entre todos los agentes de la cuenta.
+- **Horarios:** Días y horas en que el agente atiende llamadas. Fuera de horario las llamadas no son atendidas. Nota: el teléfono del dueño (número de transferencia o WhatsApp) siempre es atendido las 24/7 sin importar el horario configurado.
+- **Sitio web y reseñas:** URL del negocio y link de reseñas de Google.
+
+### Agentes
+Lista de todos los agentes de la cuenta con acceso rápido al configurador de cada uno.
 
 ### Llamadas
 - **Registro de llamadas:** Historial completo con número, duración, resumen IA, transcripción y grabación (solo Ejecutivo Senior, 7 días).
-- **Leads capturados:** Lista de prospectos con nombre, teléfono e interés, capturados automáticamente en llamadas.
-- **Pedidos:** Pedidos registrados por el agente durante llamadas (solo Ejecutivo Senior).
-- **Citas:** Citas agendadas por el agente durante llamadas.
-
-### Salientes (Ejecutivo Senior — si está habilitado)
-- **Llamadas salientes:** Historial y programación de llamadas que el agente hace hacia afuera.
-- **Campañas:** Grupos de llamadas salientes a una lista de contactos.
-- **Contactos:** Lista de personas a las que se puede llamar.
+- **Leads capturados:** Lista de prospectos capturados automáticamente.
+- **Pedidos:** Pedidos registrados por el agente (solo Ejecutivo Senior).
+- **Citas:** Citas agendadas por el agente.
+- **Salientes** (Ejecutivo Senior — si está habilitado): llamadas salientes, campañas y contactos.
 
 ### Oficina (agentes de oficina — Ejecutivo Senior y Empresarial)
-La Oficina es el módulo de operaciones internas. Se accede desde el menú lateral → "Oficina" o desde /portal/[token]/oficina.
+La Oficina es el módulo de operaciones internas. Se accede desde el menú lateral → "Oficina".
 
-- **Actividad:** Feed del equipo de agentes — mensajes entre agentes, aprendizajes, tareas e insights. Aquí también aparecen los aprendizajes pendientes de aprobación del dueño.
-- **Bandeja de entrada:** Correos que recibió el agente, con resumen IA y borrador de respuesta generado automáticamente. El dueño aprueba o rechaza cada acción antes de que el agente responda.
-- **Reportes AI:** Reportes generados automáticamente por el agente de operaciones a partir de juntas y actividad.
-- **Contratos:** Registro de contratos del negocio. El agente rastrea fechas de vencimiento y manda alertas con días de anticipación configurables.
-- **Juntas:** Sube una grabación de audio de una junta y el agente la transcribe automáticamente: extrae participantes, acuerdos, tareas y fecha.
-- **Onboarding:** Plantillas de documentos para nuevos empleados o clientes. El agente gestiona la entrega y seguimiento de documentos.
-- **Consultar agente:** Chat directo con el agente desde el portal. El dueño puede preguntarle cualquier cosa: llamadas recientes, leads específicos, contratos, correos, juntas. El agente responde con información real de la operación.
-
-### Negocio
-- **Logo y branding:** Subir el logotipo que aparece en el portal del cliente.
-- **Base de conocimiento:** El contenido que el agente usa para responder preguntas de los clientes. Texto libre con precios, servicios, FAQs, horarios, políticas, etc. Esta KB es compartida entre todos los agentes de la cuenta.
-- **Horarios:** Días y horas en que el agente atiende llamadas. Fuera de horario las llamadas no son atendidas.
-- **Sitio web y reseñas:** URL del negocio y link de reseñas de Google. El agente puede extraer información del sitio automáticamente.
+- **Actividad:** Feed del equipo — mensajes, aprendizajes pendientes de aprobación e insights.
+- **Bandeja de entrada:** Correos del agente con resumen IA y borrador de respuesta. El dueño aprueba o rechaza cada acción.
+- **Reportes AI:** Reportes automáticos generados por el agente.
+- **Contratos:** Sistema completo de contratos de prestación de servicios. Tiene tres pestañas:
+  - *Seguimiento:* contratos activos con fechas de vencimiento y alertas.
+  - *Plantilla:* el dueño configura el contrato base (cláusulas activables/editables). El agente también puede generar borradores desde el chat.
+  - *Borradores:* contratos generados para clientes específicos. El agente puede ajustar cláusulas, agregar notas y enviar el contrato por correo al cliente directamente desde el portal.
+- **Juntas:** Sube grabación de audio y el agente transcribe: participantes, acuerdos, tareas y fecha.
+- **Onboarding:** Plantillas para nuevos empleados o clientes.
+- **Consultar agente:** Chat directo con el agente 24/7. Tiene acceso a llamadas, correos, contratos, juntas y CRM de Notion. También puede crear borradores de contrato desde la conversación.
 
 ### Integraciones
 - **Calendario (Cal.com):** Para que el agente agende citas directamente durante la llamada, en tiempo real, sin intervención humana. Requiere API Key y Event Type ID de Cal.com.
@@ -104,11 +107,12 @@ Los aprendizajes activos también se pueden editar directamente desde el configu
 - Al 80% de uso el cliente recibe alerta por WhatsApp y correo.
 - Al 100% el agente se pausa automáticamente.
 - **Minutos adicionales** (compra desde el portal, Cuenta → Minutos y uso):
-  - 100 min: $1,200 MXN
-  - 250 min: $3,000 MXN
-  - 500 min: $6,000 MXN
-  - Por minuto suelto: $12.99 MXN/min
+  - 100 min: $1,200 MXN → incluye +35 ops IA de regalo
+  - 200 min: $2,400 MXN → incluye +70 ops IA de regalo
+  - Personalizado: $12 MXN/min → +35 ops IA por cada 100 min comprados
+  - Por minuto suelto (referencia): $12.99 MXN/min
 - Los minutos comprados se acreditan de inmediato y reactivan el agente si estaba pausado.
+- Las ops IA bonificadas se suman al límite mensual de la cuenta.
 
 ---
 

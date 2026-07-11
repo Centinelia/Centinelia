@@ -82,7 +82,7 @@ La Oficina es el centro de operaciones internasse IA dentro del portal. Incluye:
 - **Actividad:** Feed de todo lo que hacen los agentes — mensajes entre agentes, aprendizajes del equipo, tareas.
 - **Bandeja de entrada:** Los correos que llegan al agente aparecen aquí con un resumen IA y un borrador de respuesta. El dueño aprueba o rechaza antes de que el agente responda.
 - **Reportes automáticos:** Reportes generados por el agente de reuniones y operaciones, enviados a stakeholders.
-- **Contratos:** El agente rastrea vencimientos de contratos y manda alertas antes de que expiren.
+- **Contratos:** Sistema completo de contratos de prestación de servicios. El dueño configura la plantilla base con cláusulas activables. Los agentes generan borradores para clientes específicos, ajustan cláusulas según lo hablado y envían el contrato por correo al cliente desde el portal.
 - **Juntas:** Sube una grabación de junta y el agente la transcribe, extrae acuerdos, tareas y participantes automáticamente.
 - **Onboarding:** Plantillas de documentos para nuevos empleados o clientes. El agente gestiona el proceso de entrega y firma.
 - **Consultar agente:** El dueño puede chatear directamente con sus agentes 24/7 y preguntarles cualquier cosa sobre la operación. Los agentes tienen acceso a su base de conocimiento, llamadas recientes, correos, contratos, juntas y el CRM de Notion para contestar con información real.
@@ -107,10 +107,10 @@ Cada agente tiene tres capas de conocimiento:
 - **Correo electrónico personalizado:** el agente puede responder correos con el dominio del negocio.
 
 ## Minutos adicionales (compra puntual desde el portal)
-- 100 min: $1,200 MXN
-- 250 min: $3,000 MXN
-- 500 min: $6,000 MXN
-- Precio por minuto suelto: $12.99 MXN/min
+- 100 min: $1,200 MXN · incluye +35 ops IA de regalo
+- 200 min: $2,400 MXN · incluye +70 ops IA de regalo
+- Personalizado: $12 MXN/min · +35 ops IA por cada 100 min comprados
+- Precio por minuto suelto (referencia): $12.99 MXN/min
 
 ## El número de teléfono
 
@@ -130,7 +130,9 @@ Centinelia asigna un número local (con lada de la ciudad del negocio). El dueñ
 
 "¿Puedo cancelar?": Sí, cuando quieras desde el portal. No hay contrato mínimo de permanencia.
 
-"¿Qué pasa si se acaban los minutos?": El agente avisa al 80% de uso por WhatsApp y email. Al llegar a 100% se pausa. Compras minutos adicionales desde el portal en segundos y el agente se reactiva de inmediato.
+"¿Qué pasa si se acaban los minutos?": El agente avisa al 80% de uso por WhatsApp y email. Al llegar a 100% se pausa. Compras minutos adicionales desde el portal en segundos y el agente se reactiva de inmediato. Además, cada 100 minutos que compres incluyen 35 ops IA de regalo, así nunca te quedas sin capacidad operativa.
+
+"¿Qué pasa si se acaban las ops IA?": Las ops se reinician cada mes con tu plan. Si necesitas más antes del reinicio, compra minutos adicionales: cada 100 min incluyen 35 ops IA automáticamente.
 
 "¿Es seguro que la IA conteste mis llamadas?": El agente solo responde de lo que tiene información. Para lo que no sabe, dice que le devolverán la llamada. Para urgencias activa la transferencia a un humano.
 
