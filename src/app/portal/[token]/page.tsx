@@ -525,8 +525,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              </div>{/* end two-column grid */}
-            </div>{/* end flex-col wrapper */}
+              </div>
+            </div>
           )}
 
           {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
