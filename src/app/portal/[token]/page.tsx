@@ -384,134 +384,140 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className="px-4 sm:px-6 py-6 w-full md:mx-0 max-w-4xl" style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' && showOutbound ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
-            <div className="flex flex-col gap-5">
-              {isFirstTime && (
-                <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
-                  style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                  <div className="relative flex-shrink-0" style={{ width: 72, height: 100 }}>
-                    <Image src="/agent-m1.png" alt="" fill sizes="72px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                  </div>
-                  <div className="pb-1">
-                    <p className="text-sm font-semibold mb-1" style={{ color: '#6C3BFF' }}>¡Tu equipo está listo!</p>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-                      En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className={showOutbound ? 'grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start' : 'flex flex-col gap-5'}>
 
-              {/* Period filter */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
-                <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
-                    const active = (period ?? '') === param;
-                    return (
-                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* KPI cards */}
-              <div className={`grid ${kpiGridClass} gap-3`}>
-                <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}     value={String(calls.length)}        label="Llamadas"        sub={`prom. ${avgDuration} min`}                                                                                  valueColor="#6C3BFF"       accentColor="#6C3BFF"  />
-                <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalHours}h`}            label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
-                {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
-                {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
-                {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
-                {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
-                {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Ops IA" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
-              </div>
-
-              {/* Peak hours */}
-              {calls.length > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Horas pico
-                  </h2>
-                  <PeakHoursChart hourCounts={hourCounts} />
-                </div>
-              )}
-
-              {/* Activity feed */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                  Actividad reciente
-                </h2>
-                {resumenFeed.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 gap-3">
-                    <div className="relative" style={{ width: 64, height: 88 }}>
-                      <Image src="/agent-f2.png" alt="" fill sizes="64px"
+              {/* ── Main column ── */}
+              <div className="flex flex-col gap-5">
+                {isFirstTime && (
+                  <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
+                    style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                    <div className="relative flex-shrink-0" style={{ width: 72, height: 100 }}>
+                      <Image src="/agent-m1.png" alt="" fill sizes="72px"
                         style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
                     </div>
-                    <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
+                    <div className="pb-1">
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#6C3BFF' }}>¡Tu equipo está listo!</p>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                        En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col">
-                    {resumenFeed.map((item, idx) => {
-                      const cfg = item.type === 'call'
-                        ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
-                        : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
+                )}
+
+                {/* Period filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
+                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
+                      const active = (period ?? '') === param;
                       return (
-                        <div key={`${item.type}-${item.id}`}
-                          className="flex items-center gap-3 py-2.5"
-                          style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: cfg.bg, color: cfg.color }}>
-                            {item.type === 'call'  && <Phone        size={12} />}
-                            {item.type === 'lead'  && <Users        size={12} />}
-                            {item.type === 'order' && <ShoppingBag  size={12} />}
-                            {item.type === 'appt'  && <CalendarDays size={12} />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
-                              {item.label}
-                            </span>
-                            {item.sub && (
-                              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
-                            )}
-                          </div>
-                          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                            style={{ background: cfg.bg, color: cfg.color }}>
-                            {cfg.label}
-                          </span>
-                          <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
-                            {fmtRelative(item.created_at)}
-                          </span>
-                        </div>
+                        <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
+                          {label}
+                        </Link>
                       );
                     })}
                   </div>
+                </div>
+
+                {/* KPI cards */}
+                <div className={`grid ${kpiGridClass} gap-3`}>
+                  <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}     value={String(calls.length)}        label="Llamadas"        sub={`prom. ${avgDuration} min`}                                                                                  valueColor="#6C3BFF"       accentColor="#6C3BFF"  />
+                  <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalHours}h`}            label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
+                  {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
+                  {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
+                  {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
+                  {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
+                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Ops IA" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
+                </div>
+
+                {/* Peak hours */}
+                {calls.length > 0 && (
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                      Horas pico
+                    </h2>
+                    <PeakHoursChart hourCounts={hourCounts} />
+                  </div>
                 )}
+
+                {/* Activity feed */}
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Actividad reciente
+                  </h2>
+                  {resumenFeed.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 gap-3">
+                      <div className="relative" style={{ width: 64, height: 88 }}>
+                        <Image src="/agent-f2.png" alt="" fill sizes="64px"
+                          style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                      </div>
+                      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      {resumenFeed.map((item, idx) => {
+                        const cfg = item.type === 'call'
+                          ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
+                          : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
+                        return (
+                          <div key={`${item.type}-${item.id}`}
+                            className="flex items-center gap-3 py-2.5"
+                            style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: cfg.bg, color: cfg.color }}>
+                              {item.type === 'call'  && <Phone        size={12} />}
+                              {item.type === 'lead'  && <Users        size={12} />}
+                              {item.type === 'order' && <ShoppingBag  size={12} />}
+                              {item.type === 'appt'  && <CalendarDays size={12} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
+                                {item.label}
+                              </span>
+                              {item.sub && (
+                                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                              style={{ background: cfg.bg, color: cfg.color }}>
+                              {cfg.label}
+                            </span>
+                            <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
+                              {fmtRelative(item.created_at)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Outbound snapshot */}
+              {/* ── Right column: Outbound sidebar (desktop only) ── */}
               {showOutbound && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                      <PhoneOutgoing size={13} /> Salientes
-                    </h2>
-                    <Link href={`/portal/${token}?tab=salientes`}
-                      className="text-xs transition-opacity hover:opacity-70"
-                      style={{ color: '#9B6DFF' }}>
-                      Ver salientes →
-                    </Link>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
-                    <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
-                    <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
+                <div className="lg:sticky lg:top-6 flex flex-col gap-4">
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                        <PhoneOutgoing size={13} /> Salientes
+                      </h2>
+                      <Link href={`/portal/${token}/llamadas/salientes`}
+                        className="text-xs transition-opacity hover:opacity-70"
+                        style={{ color: '#9B6DFF' }}>
+                        Ver →
+                      </Link>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
+                      <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
+                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
+                    </div>
                   </div>
                 </div>
               )}
