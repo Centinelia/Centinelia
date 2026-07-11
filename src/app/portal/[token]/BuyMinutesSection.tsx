@@ -66,7 +66,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
             >
               <span className="text-sm font-bold">{pkg.label}</span>
               <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${pkg.price.toLocaleString('es-MX')} MXN</span>
-              <span className="text-[10px] mt-1 font-medium" style={{ color: '#06b6d4' }}>+{ops} ops IA</span>
+              <span className="text-[10px] mt-1 font-medium" style={{ color: '#6C3BFF' }}>+{ops} ops IA</span>
             </button>
           );
         })}
@@ -83,6 +83,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
         >
           <span className="text-sm font-bold">Personalizado</span>
           <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_MIN}/min</span>
+          <span className="text-[10px] mt-1 font-medium" style={{ color: '#6C3BFF' }}>+35 ops c/100 min</span>
         </button>
       </div>
 
@@ -110,7 +111,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
             </span>
           )}
           {ops > 0 && (
-            <span className="text-[10px] font-medium flex-shrink-0" style={{ color: '#06b6d4' }}>+{ops} ops</span>
+            <span className="text-[10px] font-medium flex-shrink-0" style={{ color: '#6C3BFF' }}>+{ops} ops</span>
           )}
         </div>
       )}
