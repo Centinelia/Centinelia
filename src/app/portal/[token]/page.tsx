@@ -388,42 +388,45 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
-            <div className={showOutbound ? 'grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start' : 'flex flex-col gap-5'}>
+            <div className="flex flex-col gap-5">
+              {isFirstTime && (
+                <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
+                  style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                  <div className="relative flex-shrink-0" style={{ width: 72, height: 100 }}>
+                    <Image src="/agent-m1.png" alt="" fill sizes="72px"
+                      style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                  </div>
+                  <div className="pb-1">
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#6C3BFF' }}>¡Tu equipo está listo!</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                      En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Period filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
+                <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
+                    const active = (period ?? '') === param;
+                    return (
+                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Two-column layout from KPIs down when outbound is active */}
+              <div className={showOutbound ? 'grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start' : 'contents'}>
 
               {/* ── Main column ── */}
               <div className="flex flex-col gap-5">
-                {isFirstTime && (
-                  <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
-                    style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                    <div className="relative flex-shrink-0" style={{ width: 72, height: 100 }}>
-                      <Image src="/agent-m1.png" alt="" fill sizes="72px"
-                        style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                    </div>
-                    <div className="pb-1">
-                      <p className="text-sm font-semibold mb-1" style={{ color: '#6C3BFF' }}>¡Tu equipo está listo!</p>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-                        En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Period filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
-                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
-                      const active = (period ?? '') === param;
-                      return (
-                        <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
-                          {label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {/* KPI cards */}
                 <div className={`grid ${kpiGridClass} gap-3`}>
@@ -499,6 +502,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
+              </div>{/* end main column */}
+
               {/* ── Right column: Outbound sidebar (desktop only) ── */}
               {showOutbound && (
                 <div className="lg:sticky lg:top-6 flex flex-col gap-4">
@@ -522,7 +527,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-            </div>
+              </div>{/* end two-column grid */}
+            </div>{/* end flex-col wrapper */}
           )}
 
           {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
