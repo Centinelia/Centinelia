@@ -117,7 +117,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         background:  'var(--c-modal)',
         position:    'sticky',
         top:         53,
-        height:      'calc(100vh - 118px)',
+        height:      'calc(100vh - 110px)',
         overflowY:   'auto',
       }}
     >

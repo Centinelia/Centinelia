@@ -802,8 +802,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           )}
         </div>
 
+        <div className="flex-1" />
+
         {/* Footer */}
-        <div className="mt-1 px-4 sm:px-6 pt-2 pb-20 sm:pb-4" style={{ borderTop: '1px solid var(--c-border)', position: 'relative', zIndex: 1 }}>
+        <div className="px-4 sm:px-6 pt-2 pb-20 sm:pb-4" style={{ borderTop: '1px solid var(--c-border)', position: 'relative', zIndex: 1 }}>
 
           {/* Review badge, absolute in the pb space, same pattern as landing footer */}
           {centineliReviewUrl && (
