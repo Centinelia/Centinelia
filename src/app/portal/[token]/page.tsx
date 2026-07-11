@@ -384,7 +384,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' && showOutbound ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${(tab === 'inicio' && showOutbound) || tab === 'negocio' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
@@ -532,64 +532,70 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
           {/* ── NEGOCIO ──────────────────────────────────────────────────── */}
           {tab === 'negocio' && (
-            <div className="flex flex-col gap-5">
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
-                </p>
-                <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+
+              {/* Main column */}
+              <div className="flex flex-col gap-5">
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
+                  </p>
+                  <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
+                </div>
+
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
+                  </p>
+                  <BrandKitEditor
+                    token={token}
+                    logoUrl={(agent as any).logo_url ?? null}
+                    businessName={agent.business_name}
+                    agentName={agent.agent_name ?? agent.business_name}
+                    initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
+                    initialColorSecondary={(agent as any).brand_color_secondary ?? ''}
+                    initialWebsite={(agent as any).brand_website ?? ''}
+                    initialAddress={(agent as any).brand_address ?? ''}
+                    initialFooter={(agent as any).email_footer_text ?? ''}
+                  />
+                </div>
+
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
+                  </p>
+                  <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
+                </div>
+
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
+                  </p>
+                  <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
+                </div>
+
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
+                  </p>
+                  <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
+                </div>
               </div>
 
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
-                </p>
-                <BrandKitEditor
-                  token={token}
-                  logoUrl={(agent as any).logo_url ?? null}
-                  businessName={agent.business_name}
-                  agentName={agent.agent_name ?? agent.business_name}
-                  initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
-                  initialColorSecondary={(agent as any).brand_color_secondary ?? ''}
-                  initialWebsite={(agent as any).brand_website ?? ''}
-                  initialAddress={(agent as any).brand_address ?? ''}
-                  initialFooter={(agent as any).email_footer_text ?? ''}
-                />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
-                </p>
-                <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
-                </p>
-                <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
-              </div>
-
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Define los días y horarios en que tu agente está disponible para atender llamadas.
-                </p>
-                <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
-                </p>
-                <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
+              {/* Right column — Horario de atención */}
+              <div className="lg:sticky lg:top-6">
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                    Define los días y horarios en que tu agente está disponible para atender llamadas.
+                  </p>
+                  <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
+                </div>
               </div>
 
             </div>
