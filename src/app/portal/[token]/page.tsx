@@ -550,6 +550,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   token={token}
                   logoUrl={(agent as any).logo_url ?? null}
                   businessName={agent.business_name}
+                  agentName={agent.agent_name ?? agent.business_name}
                   initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
                   initialColorSecondary={(agent as any).brand_color_secondary ?? ''}
                   initialWebsite={(agent as any).brand_website ?? ''}

@@ -7,6 +7,7 @@ interface Props {
   token:               string;
   logoUrl:             string | null;
   businessName:        string;
+  agentName:           string;
   initialColor:        string;
   initialColorSecondary: string;
   initialWebsite:      string;
@@ -21,7 +22,7 @@ const PRESET_COLORS = [
 ];
 
 export default function BrandKitEditor({
-  token, logoUrl, businessName,
+  token, logoUrl, businessName, agentName,
   initialColor, initialColorSecondary, initialWebsite, initialAddress, initialFooter,
 }: Props) {
   const [color,    setColor]    = useState(initialColor          || '#6C3BFF');
@@ -276,7 +277,7 @@ function EmailPreview({ logoUrl, businessName, color, color2, address, website, 
             </div>
           </div>
           <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 11, margin: '14px 0 0' }}>
-            — Agente IA, {businessName}
+            — {agentName}, {businessName}
           </p>
         </div>
 
