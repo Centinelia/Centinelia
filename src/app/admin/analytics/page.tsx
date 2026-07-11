@@ -124,6 +124,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
     { data: calls },
     { data: agents },
     { data: leads },
+    { data: opsLog },
   ] = await Promise.all([
     supabase.from('voice_calls')
       .select('id, outcome, duration_seconds, created_at, agent_id')
@@ -133,17 +134,25 @@ export default async function AnalyticsPage({ searchParams }: Props) {
     supabase.from('leads_voice')
       .select('id, created_at, agent_id')
       .gte('created_at', leadsSince),
+    supabase.from('ai_ops_log')
+      .select('created_at')
+      .gte('created_at', since ?? cap12),
   ]);
 
   const allCalls  = calls  ?? [];
   const allAgents = agents ?? [];
   const allLeads  = leads  ?? [];
+  const allOps    = opsLog ?? [];
 
   const totalCalls     = allCalls.length;
   const totalDuration  = allCalls.reduce((s, c) => s + (c.duration_seconds ?? 0), 0);
   const avgDuration    = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
   const totalLeads     = allLeads.length;
   const conversionRate = totalCalls > 0 ? ((totalLeads / totalCalls) * 100).toFixed(1) : '0';
+
+  const totalOps      = allOps.length;
+  const periodDays    = days ?? 365;
+  const avgOpsPerDay  = totalOps > 0 ? totalOps / periodDays : 0;
 
   const mrr = allAgents
     .filter(a => a.active && a.minutes_plan)
@@ -239,43 +248,94 @@ export default async function AnalyticsPage({ searchParams }: Props) {
 
       {/* Capacity projection */}
       <div className="mb-6 p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-            Capacidad proyectada
-          </h2>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF' }}>
-            Planificación: minutos → conversaciones
-          </span>
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-5" style={{ color: 'var(--c-text-3)' }}>
+          Capacidad proyectada
+        </h2>
+
+        {/* Minutes → Conversations */}
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF' }}>
+              Minutos → conversaciones
+            </span>
+          </div>
+          {avgDuration === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas registradas en el periodo. Acumula datos para ver la proyección.</p>
+          ) : (
+            <>
+              <p className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
+                Duración promedio:{' '}
+                <strong style={{ color: 'var(--c-text)' }}>
+                  {Math.floor(avgDuration / 60)}m {avgDuration % 60}s
+                </strong>
+                {' '}· {totalCalls} llamada{totalCalls !== 1 ? 's' : ''} ({period ? `últimos ${period} días` : 'últimos 12 meses'})
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { tier: 'Starter', minutes: 300 },
+                  { tier: 'Growth',  minutes: 600 },
+                  { tier: 'Scale',   minutes: 1200 },
+                ].map(({ tier, minutes }) => {
+                  const convs = Math.floor((minutes * 60) / avgDuration);
+                  return (
+                    <div key={tier} className="rounded-lg p-3 text-center" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>{tier} · {minutes} min</div>
+                      <div className="text-2xl font-bold" style={{ color: '#6C3BFF' }}>~{convs.toLocaleString('es-MX')}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>conversaciones/mes</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
-        {avgDuration === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas registradas en el periodo. Acumula datos para ver la proyección.</p>
-        ) : (
-          <>
-            <p className="text-sm mb-4" style={{ color: 'var(--c-text-2)' }}>
-              Duración promedio actual:{' '}
-              <strong style={{ color: 'var(--c-text)' }}>
-                {Math.floor(avgDuration / 60)}m {avgDuration % 60}s
-              </strong>
-              {' '}· basado en {totalCalls} llamada{totalCalls !== 1 ? 's' : ''} ({period ? `últimos ${period} días` : 'últimos 12 meses'})
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { tier: 'Starter', minutes: 300 },
-                { tier: 'Growth',  minutes: 600 },
-                { tier: 'Scale',   minutes: 1200 },
-              ].map(({ tier, minutes }) => {
-                const convs = Math.floor((minutes * 60) / avgDuration);
-                return (
-                  <div key={tier} className="rounded-lg p-3 text-center" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                    <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>{tier} · {minutes} min</div>
-                    <div className="text-2xl font-bold" style={{ color: '#6C3BFF' }}>~{convs.toLocaleString('es-MX')}</div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>conversaciones/mes</div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+
+        <div style={{ borderTop: '1px solid var(--c-border)', marginBottom: '1.25rem' }} />
+
+        {/* Ops → Tasks */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
+              Ops IA → tareas por mes
+            </span>
+          </div>
+          {totalOps === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin ops registradas en el periodo. Activa agentes de oficina para acumular datos.</p>
+          ) : (
+            <>
+              <p className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
+                Promedio actual:{' '}
+                <strong style={{ color: 'var(--c-text)' }}>
+                  {avgOpsPerDay < 1 ? avgOpsPerDay.toFixed(2) : avgOpsPerDay.toFixed(1)} ops/día
+                </strong>
+                {' '}· {totalOps.toLocaleString('es-MX')} ops en {period ? `${period} días` : 'últimos 12 meses'}
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { tier: 'Básico',    opsLimit: 100 },
+                  { tier: 'Estándar',  opsLimit: 500 },
+                  { tier: 'Ilimitado', opsLimit: 1000 },
+                ].map(({ tier, opsLimit }) => {
+                  const days30 = Math.floor(opsLimit / (avgOpsPerDay * 30));
+                  const tasksPerMonth = Math.min(opsLimit, Math.floor(avgOpsPerDay * 30));
+                  return (
+                    <div key={tier} className="rounded-lg p-3 text-center" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                      <div className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>{tier} · {opsLimit} ops</div>
+                      <div className="text-2xl font-bold" style={{ color: '#06b6d4' }}>
+                        ~{tasksPerMonth < opsLimit ? tasksPerMonth.toLocaleString('es-MX') : opsLimit.toLocaleString('es-MX')}
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+                        {tasksPerMonth >= opsLimit
+                          ? 'límite alcanzado en 30 días'
+                          : `tareas/mes · sobran ${(opsLimit - tasksPerMonth).toLocaleString('es-MX')} ops`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
