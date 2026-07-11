@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, ExternalLink, Clock, Zap } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -589,21 +589,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
                 </p>
                 <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contrato de servicios</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Descarga un contrato tipo con el branding de tu negocio listo para firmar con tus clientes.
-                </p>
-                <a
-                  href={`/api/portal/${token}/pdf/contrato`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)', textDecoration: 'none' }}>
-                  <ExternalLink size={14} /> Descargar contrato PDF
-                </a>
               </div>
 
             </div>
