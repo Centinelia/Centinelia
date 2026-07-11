@@ -294,7 +294,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
-      <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+      <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
         {/* Ambient orb, top center */}
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
@@ -329,7 +329,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         </div>
 
         {/* Body: sidebar + main */}
-        <div className="flex min-h-[calc(100vh-53px)]">
+        <div className="flex flex-1 min-h-0">
           <PortalSidebar
             token={token}
             currentTab={tab}
@@ -802,10 +802,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           )}
         </div>
 
-        <div className="flex-1" />
+          </div>{/* /main content column */}
+        </div>{/* /body flex */}
 
-        {/* Footer */}
-        <div className="px-4 sm:px-6 pt-2 pb-20 sm:pb-4" style={{ borderTop: '1px solid var(--c-border)', position: 'relative', zIndex: 1 }}>
+        {/* Footer — outside body flex so sidebar fills exactly to this border-top */}
+        <div className="px-4 sm:px-6 pt-2 pb-20 sm:pb-4 shrink-0" style={{ borderTop: '1px solid var(--c-border)', position: 'relative', zIndex: 1 }}>
 
           {/* Review badge, absolute in the pb space, same pattern as landing footer */}
           {centineliReviewUrl && (
@@ -865,8 +866,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             </span>
           </div>
         </div>{/* /footer */}
-          </div>{/* /main content column */}
-        </div>{/* /body flex */}
 
         <LiveNotifications token={token} />
       </div>
