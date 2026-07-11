@@ -500,8 +500,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   )}
                 </div>
-              </div>
-
               </div>{/* end main column */}
 
               {/* ── Right column: Outbound sidebar (desktop only) ── */}
