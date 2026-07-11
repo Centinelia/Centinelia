@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
         const { data: agent } = await supabase
           .from('voice_agents')
-          .select('minutes_included, phone_number, vapi_agent_id, portal_email')
+          .select('minutes_included, phone_number, vapi_agent_id, portal_email, ai_ops_limit')
           .eq('id', agentId)
           .single();
 
@@ -141,10 +141,19 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Bonus ops: 35 ops per 100 extra minutes purchased
+        const bonusOps = Math.floor(minutes / 100) * 35;
+        if (bonusOps > 0) {
+          await supabase
+            .from('voice_agents')
+            .update({ ai_ops_limit: ((agent?.ai_ops_limit as number) ?? 0) + bonusOps })
+            .eq('id', agentId);
+        }
+
         await supabase.from('minutes_ledger').insert({
           agent_id:    agentId,
           amount:      minutes,
-          description: `Compra de ${minutes} minutos extra`,
+          description: `Compra de ${minutes} minutos extra${bonusOps > 0 ? ` · +${bonusOps} ops IA incluidas` : ''}`,
           source:      'extra_compra',
         });
         break;
