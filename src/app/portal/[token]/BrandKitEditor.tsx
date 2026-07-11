@@ -199,6 +199,7 @@ export default function BrandKitEditor({
       <EmailPreview
         logoUrl={logoUrl}
         businessName={businessName}
+        agentName={agentName}
         color={color}
         color2={color2}
         address={address}
@@ -228,9 +229,10 @@ export default function BrandKitEditor({
 
 // ── Inline email preview ────────────────────────────────────────────────────
 
-function EmailPreview({ logoUrl, businessName, color, color2, address, website, footer }: {
+function EmailPreview({ logoUrl, businessName, agentName, color, color2, address, website, footer }: {
   logoUrl:      string | null;
   businessName: string;
+  agentName:    string;
   color:        string;
   color2:       string;
   address:      string;
