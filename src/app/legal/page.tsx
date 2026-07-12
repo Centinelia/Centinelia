@@ -21,6 +21,7 @@ const C = {
 const TOC = [
   { href: '#terminos',    label: 'Términos y Condiciones' },
   { href: '#privacidad',  label: 'Aviso de Privacidad' },
+  { href: '#seguridad',   label: 'Medidas de Seguridad' },
   { href: '#grabaciones', label: 'Grabación de Llamadas' },
   { href: '#lncl',        label: 'Uso Responsable / LNCL' },
 ];
@@ -57,7 +58,7 @@ function Item({ children }: { children: React.ReactNode }) {
 }
 
 export default function LegalPage() {
-  const updatedAt = '6 de julio de 2026';
+  const updatedAt = '11 de julio de 2026';
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
@@ -241,15 +242,83 @@ export default function LegalPage() {
               </Clause>
 
               <P>
-                Para el detalle completo consulta nuestro{' '}
+                Puedes consultar la{' '}
                 <Link href="/privacidad-datos" style={{ color: C.accent }}>
-                  aviso de privacidad completo
-                </Link>.
+                  versión en lenguaje sencillo
+                </Link>{' '}
+                de este aviso si prefieres una explicación sin términos jurídicos.
               </P>
             </Section>
 
-            {/* ── 3. Grabación de llamadas ───────────────────────────────────────── */}
-            <Section id="grabaciones" title="3. Grabación y Transcripción de Llamadas">
+            {/* ── 3. Medidas de Seguridad Técnica ───────────────────────────────── */}
+            <Section id="seguridad" title="3. Medidas de Seguridad Técnica">
+              <P>
+                Centinelia implementa las siguientes medidas de seguridad técnica y organizacional
+                para proteger los datos personales que trata, conforme a lo establecido en el
+                artículo 19 de la LFPDPPP y su Reglamento.
+              </P>
+
+              <Clause title="Cifrado en tránsito y en reposo">
+                <Item>Todas las comunicaciones entre el navegador del Cliente y los servidores de Centinelia se realizan
+                  exclusivamente mediante HTTPS con HSTS (<em>HTTP Strict Transport Security</em>),
+                  lo que impide conexiones sin cifrado incluso si el usuario introduce una URL sin &ldquo;https&rdquo;.</Item>
+                <Item>Las bases de datos están alojadas en Supabase (AWS), que aplica cifrado AES-256 en reposo
+                  a nivel de almacenamiento.</Item>
+              </Clause>
+
+              <Clause title="Autenticación y control de acceso">
+                <Item>Las contraseñas del portal de clientes se almacenan con hashing PBKDF2-SHA256 a 100,000 iteraciones
+                  con salt único por cuenta, estándar equivalente al recomendado por NIST SP 800-132.</Item>
+                <Item>Las sesiones se gestionan mediante tokens firmados con HMAC-SHA256 y fecha de vencimiento;
+                  cualquier alteración invalida la sesión de forma inmediata.</Item>
+                <Item>Las comparaciones de tokens de autenticación se realizan mediante operaciones de tiempo constante
+                  para prevenir ataques de temporización (<em>timing attacks</em>).</Item>
+                <Item>Cada solicitud a la API verifica que el usuario autenticado sea propietario del recurso
+                  que solicita (control de acceso por objeto).</Item>
+              </Clause>
+
+              <Clause title="Pagos">
+                <Item>Los pagos son procesados en su totalidad por Stripe Inc., certificado PCI DSS Nivel 1.
+                  Centinelia nunca recibe, transmite ni almacena números de tarjeta, fechas de vencimiento
+                  ni códigos de seguridad.</Item>
+              </Clause>
+
+              <Clause title="Protección de la infraestructura">
+                <Item>Se aplican cabeceras de seguridad HTTP en todas las respuestas: Content Security Policy (CSP),
+                  X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy.</Item>
+                <Item>El agente de IA tiene restricciones técnicas que impiden que sea utilizado para acceder
+                  a recursos internos de red (<em>SSRF protection</em>).</Item>
+                <Item>Se aplican límites de peticiones por sesión (<em>rate limiting</em>) en todos los
+                  endpoints sensibles para prevenir abuso y denegación de servicio.</Item>
+                <Item>Las entradas que recibe el sistema están validadas en formato y longitud antes de ser
+                  procesadas o enviadas a APIs de terceros.</Item>
+              </Clause>
+
+              <Clause title="Proveedores de infraestructura">
+                <P>
+                  Centinelia utiliza los siguientes subencargados para operar el servicio, todos con sus
+                  propias certificaciones de seguridad:
+                </P>
+                <Item><strong>Supabase / AWS</strong> — base de datos y almacenamiento de archivos.</Item>
+                <Item><strong>Vercel</strong> — alojamiento y entrega de la aplicación web.</Item>
+                <Item><strong>Stripe</strong> — procesamiento de pagos (PCI DSS Nivel 1).</Item>
+                <Item><strong>Vapi / Twilio / ElevenLabs</strong> — infraestructura de voz y telefonía.</Item>
+                <Item><strong>Anthropic / OpenAI</strong> — modelos de inteligencia artificial.</Item>
+                <Item><strong>Upstash</strong> — control de tasas de peticiones (Redis).</Item>
+              </Clause>
+
+              <Clause title="Incidentes de seguridad">
+                <P>
+                  En caso de que Centinelia detecte o tenga conocimiento de una vulneración de datos que
+                  afecte a Clientes, se comprometería a notificarles en un plazo no mayor a 72 horas
+                  desde que el incidente sea confirmado, informando la naturaleza de los datos comprometidos
+                  y las medidas adoptadas.
+                </P>
+              </Clause>
+            </Section>
+
+            {/* ── 4. Grabación de llamadas ───────────────────────────────────────── */}
+            <Section id="grabaciones" title="4. Grabación y Transcripción de Llamadas">
               <P>
                 El agente puede estar configurado para grabar y transcribir las llamadas. Las grabaciones
                 quedan disponibles en el portal del Cliente y se conservan por hasta 12 meses.
@@ -271,8 +340,8 @@ export default function LegalPage() {
               </Clause>
             </Section>
 
-            {/* ── 4. Uso Responsable / LNCL ──────────────────────────────────────── */}
-            <Section id="lncl" title="4. Uso Responsable y Lista Nacional de No Llamar (LNCL)">
+            {/* ── 5. Uso Responsable / LNCL ──────────────────────────────────────── */}
+            <Section id="lncl" title="5. Uso Responsable y Lista Nacional de No Llamar (LNCL)">
               <P>
                 Esta sección aplica especialmente a Clientes que usan la funcionalidad de llamadas salientes.
               </P>

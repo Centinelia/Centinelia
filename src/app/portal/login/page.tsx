@@ -53,7 +53,7 @@ function LoginForm() {
             <Image src="/logo-icon.png" alt="Centinelia" width={68} height={68} style={{ width: 68, height: 68, objectFit: 'contain' }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: '#FAFBFF', fontFamily: 'var(--font-sora)' }}>Centinelia</h1>
-          <p className="text-sm mt-1.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Portal del cliente</p>
+          <p className="text-sm mt-1.5" style={{ color: 'var(--c-text-3)' }}>Portal del cliente</p>
         </div>
 
         <form
@@ -79,7 +79,7 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Correo electrónico</label>
+            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>Correo electrónico</label>
             <input
               type="email"
               autoComplete="email"
@@ -93,7 +93,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Contraseña</label>
+            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>Contraseña</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'}
@@ -109,7 +109,7 @@ function LoginForm() {
                 type="button"
                 onClick={() => setShowPw(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors"
-                style={{ color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ color: 'var(--c-text-2)', background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>

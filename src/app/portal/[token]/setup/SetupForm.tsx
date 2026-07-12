@@ -48,7 +48,7 @@ export default function SetupForm({ token, businessName }: { token: string; busi
             <Image src="/logo-icon.png" alt="Centinelia" width={72} height={72} className="mx-auto" />
           </div>
           <h1 className="text-xl font-bold text-white">Crea tu cuenta</h1>
-          <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
             Portal de {businessName}
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function SetupForm({ token, businessName }: { token: string; busi
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
 
             <div>
-              <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>
                 Correo electrónico
               </label>
               <input
@@ -73,7 +73,7 @@ export default function SetupForm({ token, businessName }: { token: string; busi
             </div>
 
             <div>
-              <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>
                 Contraseña <span style={{ color: 'rgba(255,255,255,0.3)' }}>(mín. 8 caracteres)</span>
               </label>
               <div className="relative">
@@ -95,7 +95,7 @@ export default function SetupForm({ token, businessName }: { token: string; busi
             </div>
 
             <div>
-              <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>
                 Confirmar contraseña
               </label>
               <input
@@ -125,7 +125,7 @@ export default function SetupForm({ token, businessName }: { token: string; busi
             </button>
           </div>
 
-          <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          <p className="text-center text-xs" style={{ color: 'var(--c-text-3)' }}>
             ¿Ya tienes cuenta?{' '}
             <a href="/portal/login" style={{ color: 'rgba(155,109,255,0.7)' }}>
               Inicia sesión

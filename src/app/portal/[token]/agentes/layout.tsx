@@ -28,7 +28,7 @@ export default async function AgentesLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email, features')
+    .select('business_name, logo_url, portal_email, features, stripe_customer_id, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -57,6 +57,21 @@ export default async function AgentesLayout({
 
   const hasOpsAgent  = allClientAgents.some((a: any) => !!(a.role as string | null)); // eslint-disable-line @typescript-eslint/no-explicit-any
   const showOutbound = !!(agent.features as any)?.outbound_calls; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const hasStripe    = !!(agent as any).stripe_customer_id;
+
+  // Usage data
+  const { data: acctMins } = lookupEmail
+    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', lookupEmail).single()
+    : { data: null };
+  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
+  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
+  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
+
+  const { data: opsAgents } = lookupEmail
+    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
+    : { data: null };
+  const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -97,6 +112,11 @@ export default async function AgentesLayout({
             currentTab="agentes"
             hasOpsAgent={hasOpsAgent}
             showOutbound={showOutbound}
+            hasStripe={hasStripe}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
           />
           <div className="flex-1 min-w-0 px-4 sm:px-6 py-6">
             {children}

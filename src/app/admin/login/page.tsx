@@ -2,12 +2,13 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 
 function LoginForm() {
   const params = useSearchParams();
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw]     = useState(false);
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
@@ -43,7 +44,7 @@ function LoginForm() {
             <Image src="/logo-icon.png" alt="Centinelia" width={68} height={68} style={{ width: 68, height: 68, objectFit: 'contain' }} />
           </div>
           <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-sora)' }}>Centinelia</h1>
-          <p className="text-sm mt-1.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Panel de administración</p>
+          <p className="text-sm mt-1.5" style={{ color: 'var(--c-text-3)' }}>Panel de administración</p>
         </div>
 
         <form
@@ -59,22 +60,32 @@ function LoginForm() {
           }}
         >
           <div>
-            <label className="block text-xs mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoFocus
-              required
-              placeholder="••••••••"
-              className="w-full rounded-xl px-4 py-3 text-sm"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border:     `1px solid ${error ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                color:      '#e2e8f0',
-                outline:    'none',
-              }}
-            />
+            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-2)' }}>Contraseña</label>
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoFocus
+                required
+                placeholder="••••••••"
+                className="w-full rounded-xl px-4 py-3 pr-10 text-sm"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border:     `1px solid ${error ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color:      '#e2e8f0',
+                  outline:    'none',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors"
+                style={{ color: 'var(--c-text-2)', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
             {error && <p className="text-xs mt-2" style={{ color: '#f87171' }}>{error}</p>}
           </div>
 

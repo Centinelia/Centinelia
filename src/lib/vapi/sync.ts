@@ -219,6 +219,86 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     });
   }
 
+  // ── Owner ops tools (available to all agents) ────────────────────────────────
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'enviar_correo',
+      description: 'Envía un correo electrónico a cualquier persona en nombre del dueño. Puede incluir un archivo de Drive/OneDrive como adjunto si el dueño lo pide. Úsala cuando el dueño te pida enviar un correo durante la llamada.',
+      parameters: {
+        type: 'object',
+        properties: {
+          to:                   { type: 'string', description: 'Dirección de correo del destinatario' },
+          subject:              { type: 'string', description: 'Asunto del correo' },
+          body:                 { type: 'string', description: 'Cuerpo del correo' },
+          attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive/OneDrive obtenido de buscar_archivo (opcional)' },
+          attachment_file_name: { type: 'string', description: 'Nombre del archivo adjunto con extensión (opcional)' },
+          attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (opcional)' },
+        },
+        required: ['to', 'subject', 'body'],
+      },
+    },
+    server: { url: `${base}/enviar-correo?agent_id=${id}` },
+  });
+
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'crear_documento',
+      description: 'Genera un documento PDF con el logo y colores del negocio y lo envía al correo del dueño. Usa template_type="proposal" para propuestas (incluye cliente y precio), "letter" para cartas formales, "general" para cualquier otro documento.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title:          { type: 'string', description: 'Título del documento' },
+          content:        { type: 'string', description: 'Contenido. Usa # para secciones y ## para subsecciones.' },
+          filename:       { type: 'string', description: 'Nombre del archivo sin extensión' },
+          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter'], description: 'Tipo de template' },
+          client_name:    { type: 'string', description: 'Nombre del cliente (proposal)' },
+          client_email:   { type: 'string', description: 'Correo del cliente (proposal)' },
+          total_price:    { type: 'string', description: 'Precio total destacado. Ej: "$50,000 MXN" (proposal)' },
+          validity_days:  { type: 'number', description: 'Días de validez (proposal)' },
+          recipient_name: { type: 'string', description: 'Nombre del destinatario (letter)' },
+        },
+        required: ['title', 'content'],
+      },
+    },
+    server: { url: `${base}/crear-documento?agent_id=${id}` },
+  });
+
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'llamar_a',
+      description: 'Realiza una llamada telefónica saliente a un número en nombre del dueño. Úsala cuando el dueño pida llamar a alguien durante la conversación.',
+      parameters: {
+        type: 'object',
+        properties: {
+          numero:  { type: 'string', description: 'Número de teléfono con código de país. Ej: +5218113333333' },
+          nombre:  { type: 'string', description: 'Nombre del contacto a llamar' },
+          mensaje: { type: 'string', description: 'Motivo de la llamada o mensaje para el contacto' },
+        },
+        required: ['numero', 'mensaje'],
+      },
+    },
+    server: { url: `${base}/llamar-a?agent_id=${id}` },
+  });
+
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'buscar_archivo',
+      description: 'Busca un archivo en Google Drive o OneDrive del dueño. Úsala cuando el dueño pida buscar un documento durante la llamada.',
+      parameters: {
+        type: 'object',
+        properties: {
+          busqueda: { type: 'string', description: 'Nombre o descripción del archivo a buscar' },
+        },
+        required: ['busqueda'],
+      },
+    },
+    server: { url: `${base}/buscar-archivo?agent_id=${id}` },
+  });
+
   // One transferCall tool per active team peer — enables live agent-to-agent routing
   for (const peer of peers) {
     const toolName  = peerToolName(peer);

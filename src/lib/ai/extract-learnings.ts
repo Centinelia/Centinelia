@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -20,6 +21,9 @@ export async function extractAndSaveLearnings(opts: {
     .eq('agent_id', agentId)
     .eq('status', 'pending');
   if ((count ?? 0) >= 10) return;
+
+  const opsResult = await consumeAiOp(agentId, 1);
+  if (!opsResult.ok) return;
 
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',

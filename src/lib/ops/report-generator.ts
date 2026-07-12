@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -139,6 +140,12 @@ ${customInstructions ? `INSTRUCCIONES ADICIONALES:\n${customInstructions}\n\n` :
 4. Terminar con 1-2 recomendaciones concretas
 
 Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
+
+    const opsResult = await consumeAiOp(agent.id as string, 1);
+    if (!opsResult.ok) {
+      await supabase.from('ops_report_runs').update({ status: 'error', error: 'ops_limit_reached' }).eq('id', run.id);
+      return { ok: false, error: 'ops_limit_reached' };
+    }
 
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',

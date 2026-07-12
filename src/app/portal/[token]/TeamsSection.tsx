@@ -102,8 +102,8 @@ export default function TeamsSection({ token }: { token: string }) {
         <form onSubmit={saveEmail} className="flex flex-col gap-3">
           <div>
             <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
-              Correo de tu esposa en Teams
-              <span className="font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>(evita que el agente responda sus propios mensajes)</span>
+              Tu correo en Teams
+              <span className="font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>(evita que el agente responda tus propios mensajes)</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -149,14 +149,14 @@ export default function TeamsSection({ token }: { token: string }) {
         {showSetup && (
           <div className="px-5 pb-5" style={{ borderTop: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
             <p className="text-xs mt-4 mb-4" style={{ color: 'var(--c-text-2)' }}>
-              Entra a <strong>make.powerautomate.com</strong> con la cuenta de Microsoft de tu esposa y crea un flujo nuevo (Automated cloud flow).
+              Entra a <strong>make.powerautomate.com</strong> con tu cuenta de Microsoft y crea un flujo nuevo (Automated cloud flow).
             </p>
 
             {[
               {
                 n: 1,
                 title: 'Trigger: mensaje nuevo en Teams',
-                body: `Busca "Microsoft Teams" y elige el trigger:\n"When a new chat message is added"\n\nConecta con la cuenta de Microsoft de tu esposa. Selecciona el chat específico que quieres monitorear (o déjalo en "All" para todos).`,
+                body: `Busca "Microsoft Teams" y elige el trigger:\n"When a new chat message is added"\n\nConecta con tu cuenta de Microsoft. Selecciona el chat específico que quieres monitorear (o déjalo en "All" para todos).`,
               },
               {
                 n: 2,
@@ -171,13 +171,13 @@ export default function TeamsSection({ token }: { token: string }) {
               },
               {
                 n: 4,
-                title: 'Responder como ella (sin que se vea que es bot)',
-                body: `Agrega la acción "Microsoft Teams - Post a message in a chat or channel".\n\nPost as: User  ← IMPORTANTE: elige "User", no "Flow bot"\nPost in: Chat with message sender\n\nMessage: @{body('HTTP')['reply']}\n\nCon "User" seleccionado y la conexión hecha con la cuenta de tu esposa, el mensaje sale con su nombre y foto de perfil. Sus compañeros no ven ninguna diferencia.\n\nNota: Power Automate pedirá que autorice la conexión de Teams con su cuenta de Microsoft la primera vez.`,
+                title: 'Responder como tú (sin que se vea que es bot)',
+                body: `Agrega la acción "Microsoft Teams - Post a message in a chat or channel".\n\nPost as: User  ← IMPORTANTE: elige "User", no "Flow bot"\nPost in: Chat with message sender\n\nMessage: @{body('HTTP')['reply']}\n\nCon "User" seleccionado y la conexión hecha con tu cuenta, el mensaje sale con tu nombre y foto de perfil. Tus contactos no ven ninguna diferencia.\n\nNota: Power Automate pedirá que autorices la conexión de Teams con tu cuenta de Microsoft la primera vez.`,
               },
               {
                 n: 5,
                 title: 'Guardar y probar',
-                body: `Guarda el flujo. Pídele a alguien de confianza que le mande un mensaje de prueba.\nDebe aparecer la respuesta en segundos, con el nombre y foto de ella.\n\nSi el mensaje sale como "Flow bot" en lugar de su nombre, ve a la acción del paso 4, haz clic en los tres puntos → "My connections" y asegúrate de que la conexión de Teams sea la de su cuenta personal, no una compartida.`,
+                body: `Guarda el flujo. Pídele a alguien de confianza que te mande un mensaje de prueba.\nDebe aparecer la respuesta en segundos, con tu nombre y foto de perfil.\n\nSi el mensaje sale como "Flow bot" en lugar de tu nombre, ve a la acción del paso 4, haz clic en los tres puntos → "My connections" y asegúrate de que la conexión de Teams sea tu cuenta personal, no una compartida.`,
               },
             ].map(step => (
               <div key={step.n} className="flex gap-3 mb-4">

@@ -86,18 +86,27 @@ function statPill(label: string, color: string) {
 // ── sendEmail ─────────────────────────────────────────────────────────────────
 
 export async function sendEmail(opts: {
-  to:      string;
-  subject: string;
-  html:    string;
-  from?:   string;
+  to:           string;
+  subject:      string;
+  html:         string;
+  from?:        string;
+  attachments?: { filename: string; content: string }[]; // content = base64
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.warn('Email not configured, missing RESEND_API_KEY'); return false; }
 
+  const payload: Record<string, unknown> = {
+    from:    opts.from ?? FROM,
+    to:      [opts.to],
+    subject: opts.subject,
+    html:    opts.html,
+  };
+  if (opts.attachments?.length) payload.attachments = opts.attachments;
+
   const res = await fetch('https://api.resend.com/emails', {
     method:  'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ from: opts.from ?? FROM, to: [opts.to], subject: opts.subject, html: opts.html }),
+    body:    JSON.stringify(payload),
   });
 
   if (!res.ok) { console.error('Email send error:', await res.text()); return false; }

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -47,15 +48,18 @@ export async function checkExpiringContracts(): Promise<{ alerted: number }> {
     // Generate renewal draft if not already present
     let renewalDraft = contract.renewal_draft as string | null;
     if (!renewalDraft) {
-      renewalDraft = await generateRenewalDraft({
-        contractName:  contract.name as string,
-        contractType:  contract.contract_type as string,
-        counterparty:  contract.counterparty as string | null,
-        daysLeft,
-        businessName:  agent.business_name as string,
-        knowledgeBase: agent.knowledge_base as string | null,
-      });
-      await supabase.from('ops_contracts').update({ renewal_draft: renewalDraft }).eq('id', contract.id);
+      const opsResult = await consumeAiOp(contract.agent_id as string, 1);
+      if (opsResult.ok) {
+        renewalDraft = await generateRenewalDraft({
+          contractName:  contract.name as string,
+          contractType:  contract.contract_type as string,
+          counterparty:  contract.counterparty as string | null,
+          daysLeft,
+          businessName:  agent.business_name as string,
+          knowledgeBase: agent.knowledge_base as string | null,
+        });
+        await supabase.from('ops_contracts').update({ renewal_draft: renewalDraft }).eq('id', contract.id);
+      }
     }
 
     const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';

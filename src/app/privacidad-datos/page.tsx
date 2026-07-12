@@ -36,7 +36,7 @@ function Item({ children }: { children: React.ReactNode }) {
 }
 
 export default function PrivacidadDatos() {
-  const updatedAt = '29 de junio de 2026';
+  const updatedAt = '11 de julio de 2026';
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
@@ -150,7 +150,41 @@ export default function PrivacidadDatos() {
           </Item>
         </Section>
 
-        <Section title="6. Contacto">
+        <Section title="6. Cómo protegemos tu información">
+          <Item>
+            <strong>Todo viaja cifrado.</strong> La conexión entre tu navegador y nuestros servidores
+            usa HTTPS con HSTS, por lo que nunca se transmite información en texto abierto.
+          </Item>
+          <Item>
+            <strong>Contraseñas irrecuperables.</strong> Guardamos tus contraseñas con un algoritmo
+            de hashing de grado bancario (PBKDF2, 100,000 iteraciones). Nadie en Centinelia puede
+            leer tu contraseña, ni siquiera nosotros.
+          </Item>
+          <Item>
+            <strong>Sesiones firmadas.</strong> Cada vez que inicias sesión generamos una firma
+            criptográfica única. Si alguien intenta alterar la sesión, se invalida de inmediato.
+          </Item>
+          <Item>
+            <strong>Pagos fuera de nuestro alcance.</strong> Tu tarjeta la maneja Stripe directamente.
+            Nosotros nunca vemos ni guardamos ese número.
+          </Item>
+          <Item>
+            <strong>Acceso verificado por solicitud.</strong> Cada acción en la plataforma verifica
+            que quien la pide sea el dueño legítimo de ese dato o recurso.
+          </Item>
+          <Item>
+            <strong>Límites automáticos.</strong> Tenemos controles que detectan usos inusuales
+            y bloquean intentos de acceso masivo o automatizado.
+          </Item>
+          <p style={{ fontSize: 14, color: C.textMute, lineHeight: 1.65, marginTop: 12, marginBottom: 0 }}>
+            Si quieres ver el detalle técnico y legal de estas medidas, está en nuestra{' '}
+            <Link href="/legal#seguridad" style={{ color: C.accent, textDecoration: 'none' }}>
+              página Legal → Medidas de Seguridad Técnica
+            </Link>.
+          </p>
+        </Section>
+
+        <Section title="7. Contacto">
           <p style={{ fontSize: 15, color: C.textSub, lineHeight: 1.65 }}>
             Si tienes dudas sobre cómo manejamos tu información, escríbenos:{' '}
             <a href="mailto:hola@centinelia.mx" style={{ color: C.accent, textDecoration: 'none' }} className="hover:opacity-80 transition-opacity">

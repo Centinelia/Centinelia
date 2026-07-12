@@ -85,6 +85,7 @@ La Oficina es el centro de operaciones internasse IA dentro del portal. Incluye:
 - **Contratos:** Sistema completo de contratos de prestación de servicios. El dueño configura la plantilla base con cláusulas activables. Los agentes generan borradores para clientes específicos, ajustan cláusulas según lo hablado y envían el contrato por correo al cliente desde el portal.
 - **Juntas:** Sube una grabación de junta y el agente la transcribe, extrae acuerdos, tareas y participantes automáticamente.
 - **Onboarding:** Plantillas de documentos para nuevos empleados o clientes. El agente gestiona el proceso de entrega y firma.
+- **Investigación:** Pestaña dedicada con 6 tipos de búsqueda especializados sin costo en ops: Leads (busca en web, Facebook, LinkedIn y portales de clasificados e inmuebles), Competidores (empresas del nicho con precios y servicios), Mercado (tendencias y estadísticas), Regulaciones (permisos, normas NOM, trámites COFEPRIS/SAT/IMSS), Noticias (actividad reciente), General (búsqueda libre). También se puede pedir investigación al agente vía chat (7-13 ops): en ese caso, el agente busca Y lee el contenido real de los sitios más relevantes para entregar un reporte con datos concretos. Las búsquedas se contextualizan automáticamente al giro del negocio del cliente: en competidores el sistema excluye al propio negocio de los resultados, y en leads, mercado, regulaciones y noticias inyecta el giro registrado para que los resultados sean específicos a su industria y no genéricos.
 - **Consultar agente:** El dueño puede chatear directamente con sus agentes 24/7 y preguntarles cualquier cosa sobre la operación. Los agentes tienen acceso a su base de conocimiento, llamadas recientes, correos, contratos, juntas y el CRM de Notion para contestar con información real.
 
 ## Sistema de aprendizaje del agente
@@ -97,6 +98,10 @@ Cada agente tiene tres capas de conocimiento:
 1. **KB del negocio:** información general (precios, servicios, FAQs). Compartida entre todos los agentes.
 2. **Instrucciones del rol:** procedimientos específicos del rol del agente (límites de aprobación, contactos clave, flujos de trabajo). Cada agente la define por separado.
 3. **Aprendizajes activos:** lo que el agente ha aprendido en campo y fue aprobado por el dueño.
+
+## Próximamente
+
+- **Chatbots de texto:** Agentes de WhatsApp y chat web para los clientes del negocio (ventas y soporte por escrito). Si el prospecto pregunta, confirma que está en desarrollo y que pueden dejar su contacto para que les avisemos.
 
 ## Integraciones disponibles
 

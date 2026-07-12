@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { approvalEmailHtml } from '@/lib/ops/approval-email';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -106,25 +107,28 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     invoiceDiscrepancy: null,
   };
 
-  try {
-    const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 800,
-      system:     systemPrompt,
-      messages:   [{ role: 'user', content: userPrompt }],
-    });
-    const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}';
-    const parsed = JSON.parse(text);
-    result = {
-      category:           parsed.category           ?? 'otro',
-      summary:            parsed.summary             ?? 'Email recibido.',
-      draft:              parsed.draft               ?? null,
-      invoiceData:        parsed.invoice_data        ?? null,
-      invoiceValid:       parsed.invoice_valid       ?? null,
-      invoiceDiscrepancy: parsed.invoice_discrepancy ?? null,
-    };
-  } catch (err) {
-    console.error('[ops/inbox-processor] AI parse error:', err);
+  const opsResult = await consumeAiOp(agentId, 1);
+  if (opsResult.ok) {
+    try {
+      const msg = await anthropic.messages.create({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: userPrompt }],
+      });
+      const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}';
+      const parsed = JSON.parse(text);
+      result = {
+        category:           parsed.category           ?? 'otro',
+        summary:            parsed.summary             ?? 'Email recibido.',
+        draft:              parsed.draft               ?? null,
+        invoiceData:        parsed.invoice_data        ?? null,
+        invoiceValid:       parsed.invoice_valid       ?? null,
+        invoiceDiscrepancy: parsed.invoice_discrepancy ?? null,
+      };
+    } catch (err) {
+      console.error('[ops/inbox-processor] AI parse error:', err);
+    }
   }
 
   const supabase = createAdminClient();

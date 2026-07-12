@@ -1,10 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { rateLimit, limiters } from '@/lib/ratelimit';
+import { createElement } from 'react';
+import { renderToBuffer } from '@react-pdf/renderer';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { notionClient } from '@/lib/notion/client';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { sendEmail } from '@/lib/email/send';
+import { brandKitFromAgent } from '@/lib/brand/kit';
+import { GenericDocPDF } from '@/lib/pdf/doc';
+import { triggerOutboundCall } from '@/lib/vapi/outbound';
+import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew } from '@/lib/email/gmail';
+import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew } from '@/lib/email/outlook';
+import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
+import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
+import { scrapeWebsite } from '@/lib/scrape/website';
 
 export const dynamic = 'force-dynamic';
+
+// ── SSRF guard ────────────────────────────────────────────────────────────────
+
+function isPrivateUrl(rawUrl: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(rawUrl);
+    if (!['http:', 'https:'].includes(protocol)) return true;
+    const h = hostname.toLowerCase().replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+    if (h === 'localhost' || h === '0.0.0.0' || h === '::1') return true;
+    if (h.endsWith('.local') || h.endsWith('.internal') || h.endsWith('.localhost')) return true;
+    const ipv4 = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (ipv4) {
+      const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+      if (a === 10) return true;
+      if (a === 172 && b >= 16 && b <= 31) return true;
+      if (a === 192 && b === 168) return true;
+      if (a === 127) return true;
+      if (a === 169 && b === 254) return true;
+      if (a === 0) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+// ── Tool definitions ──────────────────────────────────────────────────────────
 
 const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
   name: 'create_contract_draft',
@@ -37,6 +77,142 @@ const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
   },
 };
 
+const SEND_EMAIL_TOOL: Anthropic.Tool = {
+  name: 'send_email',
+  description: 'Envía un correo electrónico a cualquier destinatario en nombre del negocio. Puede incluir un archivo adjunto de Google Drive o OneDrive. Úsala cuando el dueño te pida enviar un correo, con o sin adjunto.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      to:                   { type: 'string', description: 'Dirección de correo del destinatario' },
+      subject:              { type: 'string', description: 'Asunto del correo' },
+      body:                 { type: 'string', description: 'Cuerpo del correo en texto. Puedes usar saltos de línea.' },
+      cc:                   { type: 'string', description: 'Dirección en copia (opcional)' },
+      attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive/OneDrive a adjuntar (obtenido de search_files). Opcional.' },
+      attachment_file_name: { type: 'string', description: 'Nombre del archivo adjunto con extensión. Ej: propuesta-acme.pdf' },
+      attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (de search_files). Ej: application/vnd.google-apps.document' },
+    },
+    required: ['to', 'subject', 'body'],
+  },
+};
+
+const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
+  name: 'create_document',
+  description: 'Genera un documento PDF con branding del negocio (logo y colores). Elige el template correcto según el tipo: "proposal" para propuestas de servicios/cotizaciones, "letter" para cartas formales, "general" para cualquier otro documento. Úsala cuando el dueño pida redactar o generar cualquier documento.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      title:         { type: 'string', description: 'Título del documento (aparece en el encabezado)' },
+      content:       { type: 'string', description: 'Contenido completo. Usa # para secciones principales y ## para subsecciones.' },
+      filename:      { type: 'string', description: 'Nombre del archivo sin extensión. Usa guiones, sin espacios.' },
+      template_type: { type: 'string', enum: ['general', 'proposal', 'letter'], description: '"proposal" para propuestas/cotizaciones con sección de cliente y precio destacado. "letter" para cartas formales con destinatario. "general" para cualquier otro documento.' },
+      client_name:   { type: 'string', description: 'Nombre del cliente (solo para template proposal)' },
+      client_email:  { type: 'string', description: 'Correo del cliente (solo para template proposal)' },
+      total_price:   { type: 'string', description: 'Precio total destacado. Ej: "$50,000 MXN" (solo para template proposal)' },
+      validity_days: { type: 'number', description: 'Días de validez de la propuesta (solo para template proposal)' },
+      recipient_name:  { type: 'string', description: 'Nombre del destinatario (solo para template letter)' },
+      recipient_email: { type: 'string', description: 'Correo del destinatario (solo para template letter)' },
+    },
+    required: ['title', 'content'],
+  },
+};
+
+const TRIGGER_CALL_TOOL: Anthropic.Tool = {
+  name: 'trigger_outbound_call',
+  description: 'Realiza una llamada telefónica saliente a un número específico usando el agente de voz. Úsala cuando el dueño pida llamar a alguien.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      phone_number: { type: 'string', description: 'Número de teléfono con código de país. Ej: +5218113333333' },
+      contact_name: { type: 'string', description: 'Nombre del contacto (opcional pero recomendado)' },
+      message:      { type: 'string', description: 'Motivo de la llamada o mensaje que el agente debe transmitir' },
+    },
+    required: ['phone_number', 'message'],
+  },
+};
+
+const SEARCH_FILES_TOOL: Anthropic.Tool = {
+  name: 'search_files',
+  description: 'Busca archivos en Google Drive o OneDrive del dueño del negocio. Úsala cuando el dueño pida buscar un documento o archivo en su almacenamiento en la nube.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'Nombre o descripción del archivo a buscar' },
+    },
+    required: ['query'],
+  },
+};
+
+const READ_FILE_TOOL: Anthropic.Tool = {
+  name: 'read_file',
+  description: 'Lee el contenido de un archivo de Google Drive o OneDrive. Úsala después de search_files cuando el dueño quiera ver el contenido de un archivo específico.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      file_id:   { type: 'string', description: 'ID del archivo obtenido de search_files' },
+      file_name: { type: 'string', description: 'Nombre del archivo para referencia' },
+      mime_type: { type: 'string', description: 'Tipo MIME del archivo (de search_files)' },
+    },
+    required: ['file_id', 'file_name'],
+  },
+};
+
+const SEARCH_LEADS_TOOL: Anthropic.Tool = {
+  name: 'search_leads',
+  description: 'Busca información en internet para cualquier tipo de investigación. Usa research_type para aplicar la estrategia correcta: cada tipo tiene sus propias queries especializadas. Úsala ante cualquier consulta de investigación: "busca leads de X en Y", "investiga competidores de Z", "qué regulaciones hay para abrir una clínica", "noticias sobre el sector X".',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      topic: {
+        type: 'string',
+        description: 'Qué buscar. Ej: "personas que quieren vender su casa", "despachos contables", "abrir una farmacia".',
+      },
+      location: {
+        type: 'string',
+        description: 'Ciudad o zona geográfica. Ej: "Monterrey", "CDMX". Opcional.',
+      },
+      keywords: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Palabras clave adicionales. Opcional.',
+      },
+      research_type: {
+        type: 'string',
+        enum: ['leads', 'competidores', 'mercado', 'regulaciones', 'noticias', 'general'],
+        description: '"leads": rastrea web + Facebook + LinkedIn + portales de clasificados e inmuebles. "competidores": empresas del nicho con precios y servicios. "mercado": tendencias, estadísticas y oportunidades del sector. "regulaciones": permisos, leyes, normas NOM, trámites COFEPRIS/SAT/IMSS. "noticias": actividad reciente. "general": búsqueda libre. Si el dueño pide leads o prospectos usa "leads". Por defecto "general".',
+      },
+    },
+    required: ['topic'],
+  },
+};
+
+const READ_URL_TOOL: Anthropic.Tool = {
+  name: 'read_url',
+  description: 'Lee el contenido completo de una URL específica. Úsala después de search_leads para leer los 2-3 resultados más prometedores y obtener datos reales: contacto, precios, servicios, información detallada. No la uses en redes sociales (Facebook, LinkedIn, X/Twitter, Instagram, TikTok) que bloquean el acceso — para esas, usa el título y descripción del resultado de búsqueda.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      url:     { type: 'string', description: 'URL completa a leer. Ej: https://empresa.com/contacto' },
+      purpose: { type: 'string', description: 'Para qué necesitas leer esta URL. Ej: "obtener datos de contacto del lead", "ver precios del competidor"' },
+    },
+    required: ['url'],
+  },
+};
+
+const ALL_TOOLS = [
+  CREATE_CONTRACT_DRAFT_TOOL,
+  SEND_EMAIL_TOOL,
+  CREATE_DOCUMENT_TOOL,
+  TRIGGER_CALL_TOOL,
+  SEARCH_FILES_TOOL,
+  READ_FILE_TOOL,
+  SEARCH_LEADS_TOOL,
+  READ_URL_TOOL,
+];
+
+const SOCIAL_DOMAINS = ['facebook.com', 'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'tiktok.com'];
+
+// ── Route ─────────────────────────────────────────────────────────────────────
+
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -45,6 +221,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
+
+  // Rate limit per portal token (10 msgs/min)
+  const limited = await rateLimit(req, limiters.agentChat, token);
+  if (limited) return limited;
+
   const { messages, agentId } = await req.json() as {
     messages: { role: string; content: string }[];
     agentId?: string;
@@ -52,6 +233,15 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'Invalid messages' }, { status: 400 });
+  }
+
+  // Payload size guard
+  if (messages.length > 50) {
+    return NextResponse.json({ error: 'Too many messages' }, { status: 400 });
+  }
+  const totalChars = messages.reduce((sum, m) => sum + String(m.content ?? '').length, 0);
+  if (totalChars > 100_000) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -66,6 +256,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!accountAgent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+  // IDOR guard: session must belong to the same account as the URL token
+  if (accountAgent.portal_email && auth.portalEmail && accountAgent.portal_email !== auth.portalEmail) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const targetQuery = agentId
     ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
@@ -196,7 +391,19 @@ El dueño del negocio te está consultando directamente. Tienes acceso completo 
 
 Responde como un agente inteligente que conoce profundamente el negocio. Usa los datos disponibles para dar respuestas precisas y concretas. Cita fechas y nombres cuando los tengas. Si la información no está en tu contexto, dilo con claridad.
 
-Cuando el dueño te pida generar un contrato para un cliente, usa la herramienta create_contract_draft. Si la llamada o correo mencionan cláusulas específicas que difieren de la plantilla base, ajústalas en clause_overrides.
+Herramientas disponibles:
+- create_contract_draft: cuando el dueño pida generar un contrato para un cliente.
+- send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
+- create_document: cuando el dueño pida generar un documento. Usa template_type="proposal" para propuestas/cotizaciones (incluye cliente y precio), "letter" para cartas formales, "general" para todo lo demás. El PDF lleva automáticamente el logo y colores del negocio.
+- trigger_outbound_call: cuando el dueño pida llamar a un número de teléfono.
+- search_files: cuando el dueño pida buscar un archivo en Google Drive o OneDrive.
+- read_file: cuando el dueño quiera ver el contenido de un archivo de Drive o OneDrive (usar después de search_files).
+- search_leads: para cualquier investigación en internet. Usa research_type para aplicar la estrategia correcta: "leads" para prospectos (rastrea todos los canales), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo tiene sus propias queries especializadas.
+- read_url: úsala SIEMPRE después de search_leads para leer el contenido de los 2-3 resultados más prometedores. Así obtienes datos reales (contacto, precios, servicios) en lugar de solo títulos. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) que bloquean scrapers — para esas, usa el título y descripción del resultado de búsqueda.
+
+Cuando el dueño pida investigación: llama search_leads, luego read_url en 2-3 URLs relevantes, luego presenta un resumen completo y estructurado con lo que encontraste.
+
+Usa las herramientas de inmediato cuando el dueño te lo pida, sin pedir confirmación adicional.
 
 Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pida más detalle.
 
@@ -204,8 +411,20 @@ Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pi
 
 ${context}`;
 
+  // 3 ops per initial Sonnet call
+  const opsResult = await consumeAiOp(agent.id as string, 3);
+  if (!opsResult.ok) {
+    return NextResponse.json({ error: 'ops_limit_reached', used: opsResult.used, limit: opsResult.limit }, { status: 429 });
+  }
+
+  // Append low-ops alert to system prompt when running critically low
+  const opsRemain = Math.max(0, opsResult.limit - opsResult.used);
+  const opsLow    = opsResult.limit > 0 && opsRemain <= Math.max(20, opsResult.limit * 0.15);
+  const systemWithAlert = opsLow
+    ? system + `\n\nAVISO INTERNO DE USO: Quedan solo ${opsRemain} ops disponibles este mes (de ${opsResult.limit}). AL INICIO DE ESTA RESPUESTA, antes de atender lo que pida el dueño, menciona brevemente en una sola frase que las ops están casi agotadas y que puede comprar más desde Cuenta → Minutos y uso. Luego responde normalmente.`
+    : system;
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const typedMessages = (messages as { role: 'user' | 'assistant'; content: string }[]).slice(-20);
 
   type AssistantBlock =
     | { type: 'text'; text: string }
@@ -218,58 +437,98 @@ ${context}`;
         controller.enqueue(enc.encode(`data: ${JSON.stringify({ text })}\n\n`));
 
       try {
-        const stream = client.messages.stream({
-          model:      'claude-sonnet-4-6',
-          max_tokens: 2048,
-          system,
-          tools:      [CREATE_CONTRACT_DRAFT_TOOL],
-          messages:   typedMessages,
-        });
+        let conversationMessages: Anthropic.MessageParam[] = (
+          messages as { role: 'user' | 'assistant'; content: string }[]
+        ).slice(-20);
 
-        const assistantBlocks: AssistantBlock[] = [];
-        let toolInputBuffer = '';
-        let pendingToolId: string | null = null;
-        let pendingToolName: string | null = null;
+        let readUrlCount = 0;
+        let callCount    = 0;
+        const MAX_CALLS  = 6;
 
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_start') {
-            if (chunk.content_block.type === 'text') {
-              assistantBlocks.push({ type: 'text', text: '' });
-            } else if (chunk.content_block.type === 'tool_use') {
-              pendingToolId   = chunk.content_block.id;
-              pendingToolName = chunk.content_block.name;
-              toolInputBuffer = '';
-              assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
+        while (callCount < MAX_CALLS) {
+          // Charge 2 ops for every call after the first (first was charged above)
+          if (callCount > 0) {
+            consumeAiOp(agent.id as string, 2).catch(() => {});
+          }
+          callCount++;
+
+          const stream = client.messages.stream({
+            model:      'claude-sonnet-4-6',
+            max_tokens: 2048,
+            system:     callCount === 1 ? systemWithAlert : system,
+            tools:      ALL_TOOLS,
+            messages:   conversationMessages,
+          });
+
+          const assistantBlocks: AssistantBlock[] = [];
+          let toolInputBuffer  = '';
+          let pendingToolId:   string | null = null;
+          let pendingToolName: string | null = null;
+          let didToolUse = false;
+
+          for await (const chunk of stream) {
+            if (chunk.type === 'content_block_start') {
+              if (chunk.content_block.type === 'text') {
+                assistantBlocks.push({ type: 'text', text: '' });
+              } else if (chunk.content_block.type === 'tool_use') {
+                pendingToolId   = chunk.content_block.id;
+                pendingToolName = chunk.content_block.name;
+                toolInputBuffer = '';
+                assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
+              }
+            } else if (chunk.type === 'content_block_delta') {
+              if (chunk.delta.type === 'text_delta') {
+                send(chunk.delta.text);
+                const last = assistantBlocks.at(-1);
+                if (last?.type === 'text') last.text += chunk.delta.text;
+              } else if (chunk.delta.type === 'input_json_delta') {
+                toolInputBuffer += chunk.delta.partial_json;
+              }
+            } else if (chunk.type === 'content_block_stop' && pendingToolId) {
+              try {
+                const parsed = JSON.parse(toolInputBuffer) as Record<string, unknown>;
+                const last = assistantBlocks.at(-1);
+                if (last?.type === 'tool_use') last.input = parsed;
+              } catch { /* malformed — keep empty input */ }
+            } else if (
+              chunk.type === 'message_delta' &&
+              chunk.delta.stop_reason === 'tool_use' &&
+              pendingToolId
+            ) {
+              didToolUse = true;
             }
-          } else if (chunk.type === 'content_block_delta') {
-            if (chunk.delta.type === 'text_delta') {
-              send(chunk.delta.text);
-              const last = assistantBlocks.at(-1);
-              if (last?.type === 'text') last.text += chunk.delta.text;
-            } else if (chunk.delta.type === 'input_json_delta') {
-              toolInputBuffer += chunk.delta.partial_json;
-            }
-          } else if (chunk.type === 'content_block_stop' && pendingToolId) {
-            try {
-              const parsed = JSON.parse(toolInputBuffer) as Record<string, unknown>;
-              const last = assistantBlocks.at(-1);
-              if (last?.type === 'tool_use') last.input = parsed;
-            } catch { /* malformed — keep empty input */ }
-          } else if (
-            chunk.type === 'message_delta' &&
-            chunk.delta.stop_reason === 'tool_use' &&
-            pendingToolId &&
-            pendingToolName === 'create_contract_draft'
-          ) {
-            // Execute the tool
-            const toolInput = (() => {
-              try { return JSON.parse(toolInputBuffer) as Record<string, unknown>; }
-              catch { return {}; }
-            })();
-            const last = assistantBlocks.at(-1);
-            if (last?.type === 'tool_use') last.input = toolInput;
+          }
 
-            // Load template clauses for this agent
+          // No tool use → text was already streamed, we're done
+          if (!didToolUse) break;
+
+          const toolInput = (() => {
+            try { return JSON.parse(toolInputBuffer) as Record<string, unknown>; }
+            catch { return {} as Record<string, unknown>; }
+          })();
+          const lastBlock = assistantBlocks.at(-1);
+          if (lastBlock?.type === 'tool_use') lastBlock.input = toolInput;
+
+          // ── Execute the requested tool ────────────────────────────────────
+          let toolResult: unknown;
+
+          if (pendingToolName === 'read_url') {
+            const url = toolInput.url as string;
+            if (readUrlCount >= 3) {
+              toolResult = { ok: false, error: 'Límite de 3 lecturas por investigación alcanzado.' };
+            } else if (isPrivateUrl(url)) {
+              toolResult = { ok: false, error: 'URL no permitida.' };
+            } else if (SOCIAL_DOMAINS.some(d => url.includes(d))) {
+              toolResult = { ok: false, error: 'Red social detectada — bloquean scrapers. Usa el título y descripción del resultado de búsqueda en cambio.' };
+            } else {
+              readUrlCount++;
+              const content = await scrapeWebsite(url);
+              toolResult = content
+                ? { ok: true, url, content, chars: content.length }
+                : { ok: false, url, error: 'No se pudo leer este sitio (timeout o acceso bloqueado).' };
+            }
+
+          } else if (pendingToolName === 'create_contract_draft') {
             const { data: tpl } = await supabase
               .from('contract_templates').select('clauses').eq('agent_id', agent.id).single();
 
@@ -277,14 +536,12 @@ ${context}`;
             type Clause = { id: string; title: string; body: string; required: boolean; enabled: boolean };
             let baseClauses: Clause[] = (tpl?.clauses as Clause[] | null) ?? [];
 
-            // If no custom template, use defaults from contract-template route (inline minimal set)
             if (!baseClauses.length) {
               baseClauses = DEFAULT_CLAUSE_IDS.map(id => ({
                 id, title: id.toUpperCase(), body: '', required: ['partes','objeto','vigencia','contraprestacion','jurisdiccion','aceptacion'].includes(id), enabled: true,
               }));
             }
 
-            // Apply clause_overrides
             const overrides = (toolInput.clause_overrides ?? []) as { id: string; enabled?: boolean; body?: string }[];
             const finalClauses = baseClauses.map(c => {
               const ov = overrides.find(o => o.id === c.id);
@@ -313,28 +570,254 @@ ${context}`;
               .select('id')
               .single();
 
-            const toolResult = draftError
+            toolResult = draftError
               ? { ok: false, error: draftError.message }
               : { ok: true, draft_id: draft!.id, message: `Borrador creado correctamente con ID ${draft!.id}. El dueño puede verlo en la sección Contratos → Borradores de la Oficina.` };
 
-            // Second streaming call with tool result
-            const stream2 = client.messages.stream({
-              model:      'claude-sonnet-4-6',
-              max_tokens: 1024,
-              system,
-              messages: [
-                ...typedMessages,
-                { role: 'assistant' as const, content: assistantBlocks as Anthropic.ContentBlock[] },
-                { role: 'user' as const, content: [{ type: 'tool_result' as const, tool_use_id: pendingToolId, content: JSON.stringify(toolResult) }] },
-              ],
-            });
+          } else if (pendingToolName === 'send_email') {
+            const to              = toolInput.to               as string;
+            const subject         = toolInput.subject           as string;
+            const body            = toolInput.body              as string;
+            const cc              = toolInput.cc                as string | undefined;
+            const attFileId       = toolInput.attachment_file_id   as string | undefined;
+            const attFileName     = toolInput.attachment_file_name as string | undefined;
+            const attMimeType     = toolInput.attachment_mime_type as string | undefined;
+            const businessName    = agent.business_name as string;
 
-            for await (const chunk2 of stream2) {
-              if (chunk2.type === 'content_block_delta' && chunk2.delta.type === 'text_delta') {
-                send(chunk2.delta.text);
+            const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
+              ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
+              <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${businessName}</p>
+            </body></html>`;
+
+            let attachment: { filename: string; content: Buffer; mimeType: string } | undefined;
+            if (attFileId) {
+              const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
+              if (emailInt) {
+                let tok = emailInt.access_token as string;
+                const exp = emailInt.token_expires_at ? new Date(emailInt.token_expires_at as string) : null;
+                if (!exp || exp.getTime() - Date.now() < 5 * 60 * 1000) {
+                  try {
+                    const refreshed = emailInt.provider === 'gmail'
+                      ? await gmailRefreshToken(emailInt.refresh_token as string)
+                      : await outlookRefreshToken(emailInt.refresh_token as string);
+                    tok = refreshed.access_token;
+                    await supabase.from('email_integrations').update({ access_token: tok, token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString() }).eq('id', emailInt.id as string);
+                  } catch { /* use existing */ }
+                }
+                const dl = emailInt.provider === 'gmail'
+                  ? await gmailDownloadDriveFile(tok, attFileId, attMimeType ?? '')
+                  : await outlookDownloadFile(tok, attFileId, attMimeType ?? '');
+                if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
               }
             }
+
+            let sent = false;
+            if (!sent) {
+              const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
+              if (emailInt) {
+                let tok = emailInt.access_token as string;
+                const exp = emailInt.token_expires_at ? new Date(emailInt.token_expires_at as string) : null;
+                if (!exp || exp.getTime() - Date.now() < 5 * 60 * 1000) {
+                  try {
+                    const refreshed = emailInt.provider === 'gmail'
+                      ? await gmailRefreshToken(emailInt.refresh_token as string)
+                      : await outlookRefreshToken(emailInt.refresh_token as string);
+                    tok = refreshed.access_token;
+                    await supabase.from('email_integrations').update({ access_token: tok, token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString() }).eq('id', emailInt.id as string);
+                  } catch { /* use existing */ }
+                }
+                try {
+                  if (emailInt.provider === 'gmail') await gmailSendNew(tok, to, subject, body, attachment);
+                  else await outlookSendNew(tok, to, subject, body, attachment);
+                  if (cc) {
+                    if (emailInt.provider === 'gmail') await gmailSendNew(tok, cc, subject, body);
+                    else await outlookSendNew(tok, cc, subject, body);
+                  }
+                  sent = true;
+                } catch { /* fall through */ }
+              }
+            }
+
+            if (!sent) {
+              const resendAtts = attachment ? [{ filename: attachment.filename, content: attachment.content.toString('base64') }] : undefined;
+              const ok = await sendEmail({ to, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>`, attachments: resendAtts });
+              if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>` });
+              sent = ok;
+            }
+
+            const attNote = attachment ? ` con adjunto "${attachment.filename}"` : '';
+            toolResult = sent
+              ? { ok: true, message: `Correo enviado a ${to}${cc ? ` (CC: ${cc})` : ''}${attNote} con asunto "${subject}".` }
+              : { ok: false, error: 'Error al enviar el correo. Verifica la dirección e intenta de nuevo.' };
+
+          } else if (pendingToolName === 'create_document') {
+            try {
+              const brand        = brandKitFromAgent(agent as Record<string, unknown>);
+              const title        = toolInput.title         as string;
+              const content      = toolInput.content       as string;
+              const templateType = (toolInput.template_type as string | undefined) ?? 'general';
+              const slug         = ((toolInput.filename as string | null) ?? title)
+                .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+              const filename = `${slug}-${Date.now()}.pdf`;
+              const path     = `${agent.id}/${filename}`;
+
+              let pdfElement: React.ReactElement;
+              if (templateType === 'proposal') {
+                pdfElement = createElement(ProposalPDF, {
+                  brand, title, content,
+                  clientName:   toolInput.client_name   as string | undefined,
+                  clientEmail:  toolInput.client_email  as string | undefined,
+                  totalPrice:   toolInput.total_price   as string | undefined,
+                  validityDays: toolInput.validity_days as number | undefined,
+                });
+              } else if (templateType === 'letter') {
+                pdfElement = createElement(LetterPDF, {
+                  brand, content,
+                  recipientName:  toolInput.recipient_name  as string | undefined,
+                  recipientEmail: toolInput.recipient_email as string | undefined,
+                });
+              } else {
+                pdfElement = createElement(GenericDocPDF, { brand, title, content });
+              }
+
+              const pdfBuffer = await renderToBuffer(pdfElement as any);
+
+              const { error: uploadErr } = await supabase.storage
+                .from('agent-documents')
+                .upload(path, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+              if (uploadErr) {
+                toolResult = { ok: false, error: `Error al subir el documento: ${uploadErr.message}` };
+              } else {
+                const { data: signed } = await supabase.storage
+                  .from('agent-documents')
+                  .createSignedUrl(path, 3600);
+                toolResult = {
+                  ok:        true,
+                  url:       signed?.signedUrl ?? null,
+                  file_id:   path,
+                  filename:  filename,
+                  mime_type: 'application/pdf',
+                  message:   `Documento "${title}" generado como PDF. URL de descarga (válida 1 hora): ${signed?.signedUrl}`,
+                };
+              }
+            } catch (err) {
+              toolResult = { ok: false, error: `Error al generar el documento: ${String(err)}` };
+            }
+
+          } else if (pendingToolName === 'trigger_outbound_call') {
+            const phone  = toolInput.phone_number as string;
+            const name   = (toolInput.contact_name as string | null) ?? undefined;
+            const motivo = toolInput.message as string;
+
+            if (!(agent.features as any)?.outbound_calls) {
+              toolResult = { ok: false, error: 'Este agente no tiene llamadas salientes habilitadas. Actívalas en la configuración del agente.' };
+            } else if (!agent.vapi_agent_id) {
+              toolResult = { ok: false, error: 'El agente no está sincronizado con Vapi. Usa el botón Resincronizar en el portal.' };
+            } else {
+              const callResult = await triggerOutboundCall({
+                agent:          agent as any,
+                customerNumber: phone,
+                customerName:   name,
+                motivo,
+              });
+              toolResult = callResult.ok
+                ? { ok: true, callId: callResult.callId, message: `Llamada iniciada a ${phone}${name ? ` (${name})` : ''}. ID de llamada: ${callResult.callId}` }
+                : { ok: false, error: callResult.error };
+            }
+
+          } else if (pendingToolName === 'search_files' || pendingToolName === 'read_file') {
+            const { data: integration } = await supabase
+              .from('email_integrations')
+              .select('*')
+              .eq('agent_id', agent.id)
+              .single();
+
+            if (!integration) {
+              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
+            } else {
+              let accessToken = integration.access_token as string;
+              const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
+              if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
+                try {
+                  const refreshed = integration.provider === 'gmail'
+                    ? await gmailRefreshToken(integration.refresh_token as string)
+                    : await outlookRefreshToken(integration.refresh_token as string);
+                  accessToken = refreshed.access_token;
+                  await supabase.from('email_integrations').update({
+                    access_token:     refreshed.access_token,
+                    token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+                  }).eq('id', integration.id as string);
+                } catch { /* use existing token */ }
+              }
+
+              if (pendingToolName === 'search_files') {
+                const query = toolInput.query as string;
+                const files = integration.provider === 'gmail'
+                  ? await gmailSearchDriveFiles(accessToken, query)
+                  : await outlookSearchFiles(accessToken, query);
+                toolResult = files.length
+                  ? { ok: true, files, message: `Encontré ${files.length} archivo(s): ${files.map(f => `${f.name} (id: ${f.id}, tipo: ${f.mimeType})`).join(', ')}` }
+                  : { ok: true, files: [], message: `No encontré archivos que coincidan con "${toolInput.query}".` };
+
+              } else {
+                const fileId   = toolInput.file_id   as string;
+                const fileName = toolInput.file_name  as string;
+                const mimeType = (toolInput.mime_type as string | undefined) ?? '';
+                if (!fileId || fileId.length > 500 || /[<>"'`\\]/.test(fileId)) {
+                  toolResult = { ok: false, error: 'ID de archivo inválido.' };
+                } else {
+                  const content = integration.provider === 'gmail'
+                    ? await gmailReadDriveFile(accessToken, fileId, mimeType)
+                    : await outlookReadFile(accessToken, fileId);
+                  const preview = content.slice(0, 8000);
+                  toolResult = content
+                    ? { ok: true, file_name: fileName, content: preview, truncated: content.length > 8000 }
+                    : { ok: false, error: `No se pudo leer el archivo "${fileName}". Verifica que sea un documento de texto.` };
+                }
+              }
+            }
+
+          } else if (pendingToolName === 'search_leads') {
+            if (!process.env.BRAVE_SEARCH_API_KEY) {
+              toolResult = { ok: false, error: 'Búsqueda web no configurada. Agrega BRAVE_SEARCH_API_KEY al entorno.' };
+            } else {
+              const topic        = toolInput.topic         as string;
+              const location     = (toolInput.location     as string | undefined) ?? '';
+              const keywords     = (toolInput.keywords     as string[] | undefined) ?? [];
+              const researchType = ((toolInput.research_type as string | undefined) ?? 'general') as ResearchType;
+
+              const queries = buildQueries(topic, location, researchType, keywords, {
+                name:        agent.business_name as string,
+                description: (agent.business_description as string | null) ?? undefined,
+              });
+              const results = await searchMultiple(queries, 8);
+
+              if (!results.length) {
+                toolResult = { ok: true, leads: [], message: `No encontré resultados para "${topic}"${location ? ` en ${location}` : ''}. Intenta con palabras clave diferentes o amplía la zona.` };
+              } else {
+                const leadsText = results.slice(0, 20).map((r, i) =>
+                  `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description}`
+                ).join('\n\n');
+                toolResult = {
+                  ok:    true,
+                  count: results.length,
+                  leads: results.slice(0, 20),
+                  message: `Encontré ${results.length} resultado(s) para "${topic}"${location ? ` en ${location}` : ''}. Ahora lee los 2-3 más prometedores con read_url para obtener información detallada.\n\n${leadsText}`,
+                };
+              }
+            }
+
+          } else {
+            toolResult = { ok: false, error: `Herramienta desconocida: ${pendingToolName}` };
           }
+
+          // Extend conversation with this tool turn
+          conversationMessages = [
+            ...conversationMessages,
+            { role: 'assistant' as const, content: assistantBlocks as Anthropic.ContentBlock[] },
+            { role: 'user' as const, content: [{ type: 'tool_result' as const, tool_use_id: pendingToolId!, content: JSON.stringify(toolResult) }] },
+          ];
         }
 
         controller.enqueue(enc.encode('data: [DONE]\n\n'));

@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, CreditCard, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -50,6 +50,7 @@ import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
 import EmailSettings             from './EmailSettings';
+import EmailOAuthSection         from './EmailOAuthSection';
 import { inboxAddressFor }       from '@/lib/email/inbox';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
@@ -167,9 +168,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
   const planBaseMinutes = agent.minutes_plan ? (MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier]?.minutes ?? minutesIncluded) : minutesIncluded;
   const rolloverMinutes = Math.max(0, minutesIncluded - planBaseMinutes);
-  const resetDate       = minutesResetDate
-    ? new Date(minutesResetDate + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
-    : 'N/A';
+  const resetDate = (() => {
+    if (!minutesResetDate) return 'N/A';
+    const d = new Date(minutesResetDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    while (d < today) d.setMonth(d.getMonth() + 1);
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+  })();
 
   const inboxAddress = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
 
@@ -294,7 +299,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
-      <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+      <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
         {/* Ambient orb, top center */}
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
@@ -316,25 +321,23 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             />
             <div className="flex items-center gap-1.5 shrink-0">
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
-              {hasStripe && (
-                <a href={`/api/billing/portal-session?token=${token}`}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                  style={{ background: '#6C3BFF', color: '#fff' }}>
-                  <CreditCard size={13} /><span className="hidden sm:inline">Suscripción</span>
-                </a>
-              )}
               <PortalLogout />
             </div>
           </div>
         </div>
 
         {/* Body: sidebar + main */}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1">
           <PortalSidebar
             token={token}
             currentTab={tab}
             hasOpsAgent={hasOpsAgent}
             showOutbound={showOutbound || agent.plan === 'pro'}
+            hasStripe={hasStripe}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
           />
 
           {/* Main content column */}
@@ -384,7 +387,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${(tab === 'inicio' && showOutbound) || tab === 'negocio' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' || tab === 'negocio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
@@ -422,8 +425,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
-              {/* Two-column layout from KPIs down when outbound is active */}
-              <div className={showOutbound ? 'grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start' : 'contents'}>
+              {/* Two-column layout from KPIs down */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
 
               {/* ── Main column ── */}
               <div className="flex flex-col gap-5">
@@ -502,9 +505,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>{/* end main column */}
 
-              {/* ── Right column: Outbound sidebar (desktop only) ── */}
-              {showOutbound && (
-                <div className="lg:sticky lg:top-6 flex flex-col gap-4">
+              {/* ── Right column ── */}
+              <div className="flex flex-col gap-4">
+                {showOutbound && (
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
@@ -522,8 +525,34 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
                     </div>
                   </div>
+                )}
+
+                {/* Reporte mensual */}
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con llamadas, resultados, minutos y horas pico.</p>
+                  {(() => {
+                    const now = new Date();
+                    const y = now.getFullYear(), m = now.getMonth() + 1;
+                    const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
+                    const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                    return (
+                      <div className="flex flex-col gap-2">
+                        <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
+                          <ChevronRight size={12} /> {label(y, m)}
+                        </a>
+                        <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
+                          <ChevronRight size={12} /> {label(prev.y, prev.m)}
+                        </a>
+                      </div>
+                    );
+                  })()}
                 </div>
-              )}
+              </div>
 
               </div>
             </div>
@@ -588,7 +617,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               {/* Right column — Horario de atención */}
-              <div className="lg:sticky lg:top-6">
+              <div>
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
@@ -634,12 +663,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
-              {/* Email */}
+              {/* Email OAuth */}
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
+                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+                  Conecta tu cuenta de Gmail u Outlook para que el agente lea y gestione tu bandeja de entrada directamente.
+                </p>
+                <EmailOAuthSection token={token} />
+              </div>
               {inboxAddress && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada del equipo</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Los correos enviados a esta dirección aparecen en La Oficina. Compártela con quienes necesiten enviar trabajo al equipo de agentes.
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada por reenvío</h2>
+                  <p className="text-xs mb-3" style={{ color: 'var(--c-text-2)' }}>
+                    Alternativa sin OAuth: configura el reenvío automático en tu correo empresarial hacia esta dirección y los mensajes llegarán a La Oficina.
                   </p>
                   <div
                     className="flex items-center gap-3 px-4 py-3 rounded-xl select-all cursor-text font-mono text-sm"
@@ -657,139 +693,109 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── CUENTA ───────────────────────────────────────────────────── */}
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
-              {/* Minutes & billing */}
-              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
-                  <div className="flex items-end gap-2 mb-2">
-                    <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
-                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+
+                {/* ── Left column ── */}
+                <div className="flex flex-col gap-5">
+                  {/* Minutes & billing */}
+                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                    {allCalls.length > 0 && (
+                      <div className="rounded-xl p-5 mb-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                        <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
+                        <div className="grid grid-cols-3 gap-3">
+                          <StatBox label="Por día"   value={`${avgMinPerDay} min`} />
+                          <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                          <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                        </div>
+                        <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
+                      </div>
+                    )}
+                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                      <div className="flex items-end gap-2 mb-2">
+                        <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
+                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
+                      </div>
+                      <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
+                        <div className="h-3 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+                      </div>
+                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                        <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
+                        <span>Se renueva el {resetDate}</span>
+                      </div>
+                      {rolloverMinutes > 0 && (
+                        <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
+                          {planBaseMinutes} base + {rolloverMinutes} del mes anterior
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                    <div className="h-3 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+
+                  {aiOpsLimit > 0 && (
+                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
+                      <div className="flex items-end gap-2 mb-2">
+                        <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
+                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
+                      </div>
+                      <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
+                        <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                      </div>
+                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                        <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                        <span>Se renueva el {resetDate}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl p-5" style={{
+                    background:     minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
+                    border:         minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
+                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  }}>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
+                    {minutesPct >= 70 && (
+                      <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                        <AlertTriangle size={11} />
+                        {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
+                      </p>
+                    )}
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
+                    <BuyMinutesSection token={token} />
+
+                    <div style={{ borderTop: '1px solid var(--c-border)', margin: '16px -20px', paddingLeft: 20, paddingRight: 20 }} />
+
+                    <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
+                    <AutoRefillSection token={token} />
                   </div>
-                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
-                    <span>Se renueva el {resetDate}</span>
-                  </div>
-                  {rolloverMinutes > 0 && (
-                    <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
-                      {planBaseMinutes} base + {rolloverMinutes} del mes anterior
-                    </p>
+
+                  {agent.plan && (
+                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
+                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
+                      <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {aiOpsLimit > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
-                  <div className="flex items-end gap-2 mb-2">
-                    <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
-                    <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
-                  </div>
-                  <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                    <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
-                  </div>
-                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                    <span>Se renueva el {resetDate}</span>
-                  </div>
-                </div>
-              )}
-
-              {allCalls.length > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                  <div className="grid grid-cols-3 gap-3">
-                    <StatBox label="Por día"   value={`${avgMinPerDay} min`} />
-                    <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                    <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                  </div>
-                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
-                </div>
-              )}
-
-              <div className="rounded-xl p-5" style={{
-                background:       minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
-                border:           minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
-                backdropFilter:   'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-              }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
-                {minutesPct >= 70 && (
-                  <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                    <AlertTriangle size={11} />
-                    {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
-                  </p>
-                )}
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
-                <BuyMinutesSection token={token} />
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Recarga tu saldo automáticamente cuando bajen de un umbral.</p>
-                <AutoRefillSection token={token} />
-              </div>
-
-              {agent.plan && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
-                  <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
-                </div>
-              )}
-
-              {hasStripe && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Facturación</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Actualiza tu método de pago, descarga facturas o cancela tu suscripción.</p>
-                  <a
-                    href={`/api/billing/portal-session?token=${token}`}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-                    style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.3)', color: '#C4A8FF', textDecoration: 'none' }}
-                  >
-                    Portal de facturación →
-                  </a>
-                </div>
-              )}
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con tu branding: llamadas, resultados, minutos y horas pico.</p>
-                {(() => {
-                  const now = new Date();
-                  const y = now.getFullYear(), m = now.getMonth() + 1;
-                  const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-                  const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-                  return (
-                    <div className="flex flex-wrap gap-2">
-                      <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
-                        <ChevronRight size={12} /> {label(y, m)}
-                      </a>
-                      <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
-                        <ChevronRight size={12} /> {label(prev.y, prev.m)}
-                      </a>
+                {/* ── Right column — Historial de minutos ── */}
+                <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
+                    <div className="relative">
+                      <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                        <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+                        style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                     </div>
-                  );
-                })()}
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
-                <div className="relative">
-                  <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
-                    <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-                    style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                 </div>
+
               </div>
 
-              {/* Contract */}
+              {/* Contract — full width below grid */}
               <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                 <ContractSection
                   token={token}
@@ -805,65 +811,100 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           </div>{/* /main content column */}
         </div>{/* /body flex */}
 
-        {/* Footer — outside body flex so sidebar fills exactly to this border-top */}
-        <div className="px-4 sm:px-6 pt-2 pb-20 sm:pb-4 shrink-0" style={{ borderTop: '1px solid var(--c-border)', position: 'relative', zIndex: 1 }}>
+        {/* Footer */}
+        <div className="px-4 sm:px-6 pt-3 pb-20 sm:pb-4 shrink-0" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <div className="max-w-4xl mx-auto">
 
-          {/* Review badge, absolute in the pb space, same pattern as landing footer */}
-          {centineliReviewUrl && (
-            <a
-              href={centineliReviewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sm:hidden flex items-center gap-1.5 rounded-full text-[11px] whitespace-nowrap"
-              style={{
-                position:             'absolute',
-                bottom:               25,
-                left:                 '50%',
-                transform:            'translateX(-50%)',
-                padding:              '6px 14px',
-                background:           'var(--c-surface)',
-                border:               '1px solid var(--c-border)',
-                boxShadow:            '0 2px 12px rgba(0,0,0,0.18)',
-                color:                'var(--c-text-3)',
-                textDecoration:       'none',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              ¿Qué tal funciona Centinelia?
-            </a>
-          )}
-
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {supportWhatsApp && (
-                <a href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`} target="_blank" rel="noopener noreferrer"
+            {/* ── Desktop: icons | review badge | powered by ── */}
+            <div className="hidden sm:flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                {supportWhatsApp && (
+                  <a href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`} target="_blank" rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                    style={{ background: '#22c55e', color: '#fff', flexShrink: 0 }}
+                    aria-label="WhatsApp">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                  </a>
+                )}
+                <a href={`mailto:${supportEmail}`}
                   className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                  style={{ background: '#22c55e', color: '#fff', flexShrink: 0 }}
-                  aria-label="WhatsApp">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)', flexShrink: 0 }}
+                  aria-label="Soporte">
+                  <Mail size={14} />
+                </a>
+              </div>
+              {centineliReviewUrl && (
+                <a href={centineliReviewUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full text-[11px] whitespace-nowrap transition-opacity hover:opacity-80"
+                  style={{ padding: '5px 13px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', textDecoration: 'none' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
+                  ¿Qué tal funciona Centinelia?
                 </a>
               )}
-              <a href={`mailto:${supportEmail}`}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)', flexShrink: 0 }}
-                aria-label="Soporte">
-                <Mail size={14} />
-              </a>
+              <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                Powered by{' '}
+                <a href="https://pneumastudio.mx" target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--c-text-4)' }} className="hover:opacity-80 transition-opacity">
+                  Pneuma Studio
+                </a>
+              </span>
             </div>
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-              Powered by{' '}
-              <a href="https://pneumastudio.mx" target="_blank" rel="noopener noreferrer"
-                style={{ color: 'var(--c-text-4)' }} className="hover:opacity-80 transition-opacity">
-                Pneuma Studio
-              </a>
-            </span>
+
+            {/* ── Mobile: icons + powered by / review badge centered ── */}
+            <div className="sm:hidden flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {supportWhatsApp && (
+                    <a href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`} target="_blank" rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ background: '#22c55e', color: '#fff', flexShrink: 0 }}
+                      aria-label="WhatsApp">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                    </a>
+                  )}
+                  <a href={`mailto:${supportEmail}`}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)', flexShrink: 0 }}
+                    aria-label="Soporte">
+                    <Mail size={14} />
+                  </a>
+                </div>
+                <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                  Powered by{' '}
+                  <a href="https://pneumastudio.mx" target="_blank" rel="noopener noreferrer"
+                    style={{ color: 'var(--c-text-4)' }} className="hover:opacity-80 transition-opacity">
+                    Pneuma Studio
+                  </a>
+                </span>
+              </div>
+              {centineliReviewUrl && (
+                <div className="flex justify-center">
+                  <a href={centineliReviewUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-full text-[11px] whitespace-nowrap transition-opacity hover:opacity-80"
+                    style={{ padding: '5px 13px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', textDecoration: 'none' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                    </svg>
+                    ¿Qué tal funciona Centinelia?
+                  </a>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>{/* /footer */}
 

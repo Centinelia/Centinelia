@@ -118,7 +118,7 @@ export default function SupportChat() {
               <p className="text-sm font-semibold" style={{ color: '#E2D9FF' }}>Soporte Centinelia</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>En línea</p>
+                <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</p>
               </div>
             </div>
             <button

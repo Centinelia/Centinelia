@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Send, Loader2, FileText, Download } from 'lucide-react';
+import { X, Send, Loader2, FileText, Download, Zap } from 'lucide-react';
 
 const FILE_URL_RE = /https?:\/\/[^\s]+\.(?:pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|zip|txt|csv|mp3|mp4|webm|wav|ogg)(?:\?[^\s]*)?/gi;
 
@@ -211,6 +211,10 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
               <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</span>
+              <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                <Zap size={9} style={{ color: '#9B6DFF' }} />
+                3–13 ops/msg
+              </span>
               <button
                 onClick={() => setOpen(false)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--c-surface-2)]"

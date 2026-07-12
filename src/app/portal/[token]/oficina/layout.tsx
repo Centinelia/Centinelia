@@ -31,7 +31,7 @@ export default async function OficinaLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email')
+    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -40,6 +40,21 @@ export default async function OficinaLayout({
     redirect('/portal/login');
 
   const lookupEmail = session?.portalEmail ?? agent.portal_email ?? null;
+
+  // Usage data — account-level pool
+  const { data: acctMins } = lookupEmail
+    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', lookupEmail).single()
+    : { data: null };
+  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
+  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
+  const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
+
+  const { data: opsAgents } = lookupEmail
+    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
+    : { data: null };
+  const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
+  const hasStripe  = !!(agent as any).stripe_customer_id;
 
   // Business switcher options
   const { data: clientAgents } = lookupEmail
@@ -144,7 +159,15 @@ export default async function OficinaLayout({
 
         {/* Body */}
         <div className="flex min-h-[calc(100vh-53px)]">
-          <OficinaSidebar token={token} badges={badges} />
+          <OficinaSidebar
+            token={token}
+            badges={badges}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
+          />
           <div className="flex-1 min-w-0 px-4 sm:px-6 py-6 max-w-4xl">
             {children}
           </div>

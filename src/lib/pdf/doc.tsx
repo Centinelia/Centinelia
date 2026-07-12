@@ -117,6 +117,109 @@ export function OutcomeBadge({ outcome, color }: { outcome: string; color: strin
   );
 }
 
+// ── Generic document (from agent chat tool) ───────────────────────────────────
+
+export function GenericDocPDF({ brand, title, content }: {
+  brand:   BrandKit;
+  title:   string;
+  content: string;
+}) {
+  const today = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const paragraphs = content.split('\n').filter(p => p.trim());
+
+  return (
+    <BrandedDoc brand={brand} docType={title} subtitle={today}>
+      <View style={S.section}>
+        {paragraphs.map((para, i) => {
+          const isH1 = para.startsWith('# ');
+          const isH2 = para.startsWith('## ');
+          const text  = para.replace(/^#{1,2}\s/, '');
+          if (isH1) return <Text key={i} style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: brand.color || '#6C3BFF', marginTop: i > 0 ? 14 : 0, marginBottom: 6 }}>{text}</Text>;
+          if (isH2) return <Text key={i} style={[S.valueBold, { fontSize: 11, marginTop: i > 0 ? 10 : 0, marginBottom: 5 }]}>{text}</Text>;
+          return <Text key={i} style={[S.value, { marginBottom: 5 }]}>{text}</Text>;
+        })}
+      </View>
+    </BrandedDoc>
+  );
+}
+
+export function ProposalPDF({ brand, title, content, clientName, clientEmail, totalPrice, validityDays }: {
+  brand:        BrandKit;
+  title:        string;
+  content:      string;
+  clientName?:  string;
+  clientEmail?: string;
+  totalPrice?:  string;
+  validityDays?: number;
+}) {
+  const today  = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const accent = brand.color || '#6C3BFF';
+  const paragraphs = content.split('\n').filter(p => p.trim());
+
+  return (
+    <BrandedDoc brand={brand} docType={title} subtitle={`Propuesta • ${today}`}>
+      {(clientName || clientEmail) && (
+        <View style={{ borderWidth: 1, borderColor: `${accent}40`, borderRadius: 6, padding: 12, marginBottom: 18 }}>
+          <Text style={[S.label, { color: accent, marginBottom: 6 }]}>Preparado para</Text>
+          {clientName  && <Text style={S.valueBold}>{clientName}</Text>}
+          {clientEmail && <Text style={[S.muted, { marginTop: 2 }]}>{clientEmail}</Text>}
+        </View>
+      )}
+      <View style={S.section}>
+        {paragraphs.map((para, i) => {
+          const isH1 = para.startsWith('# ');
+          const isH2 = para.startsWith('## ');
+          const text  = para.replace(/^#{1,2}\s/, '');
+          if (isH1) return <Text key={i} style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: accent, marginTop: i > 0 ? 14 : 0, marginBottom: 6 }}>{text}</Text>;
+          if (isH2) return <Text key={i} style={[S.valueBold, { fontSize: 11, marginTop: i > 0 ? 10 : 0, marginBottom: 5 }]}>{text}</Text>;
+          return <Text key={i} style={[S.value, { marginBottom: 5 }]}>{text}</Text>;
+        })}
+      </View>
+      {totalPrice && (
+        <View style={{ borderWidth: 2, borderColor: accent, borderRadius: 8, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={[S.label, { color: accent }]}>Inversión total</Text>
+            <Text style={{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: accent }}>{totalPrice}</Text>
+          </View>
+          {validityDays !== undefined && (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={S.muted}>Validez</Text>
+              <Text style={S.value}>{validityDays} días</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </BrandedDoc>
+  );
+}
+
+export function LetterPDF({ brand, content, recipientName, recipientEmail }: {
+  brand:          BrandKit;
+  content:        string;
+  recipientName?: string;
+  recipientEmail?: string;
+}) {
+  const today      = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const paragraphs = content.split('\n').filter(p => p.trim());
+
+  return (
+    <BrandedDoc brand={brand} docType="Carta" subtitle={today}>
+      {(recipientName || recipientEmail) && (
+        <View style={{ marginBottom: 22 }}>
+          {recipientName  && <Text style={S.value}>{recipientName}</Text>}
+          {recipientEmail && <Text style={[S.muted, { marginTop: 2 }]}>{recipientEmail}</Text>}
+          <View style={[S.divider, { marginTop: 10 }]} />
+        </View>
+      )}
+      <View style={S.section}>
+        {paragraphs.map((para, i) => (
+          <Text key={i} style={[S.value, { marginBottom: 10, textAlign: 'justify' }]}>{para}</Text>
+        ))}
+      </View>
+    </BrandedDoc>
+  );
+}
+
 export function todayStr() {
   return new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 }

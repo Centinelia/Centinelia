@@ -78,7 +78,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-            style={{ color: 'rgba(255,255,255,0.35)' }}
+            style={{ color: 'var(--c-text-3)' }}
           >
             <LogOut size={13} />
             Cerrar sesión

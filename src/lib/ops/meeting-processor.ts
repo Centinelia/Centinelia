@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
 
 const anthropic = new Anthropic();
 
@@ -51,6 +52,20 @@ export async function processMeetingAudio(opts: {
 
     const elData   = await elRes.json();
     const transcript: string = elData.text ?? elData.transcript ?? '';
+
+    // Ops cost scales with transcript length (1 op per ~2,500 chars, max 6)
+    const meetingOps = Math.min(6, Math.max(1, Math.ceil((transcript.length || 1) / 2500)));
+    const opsResult  = await consumeAiOp(agentId, meetingOps);
+
+    if (!opsResult.ok) {
+      await supabase.from('ops_meetings').update({
+        status:       'done',
+        transcript,
+        meeting_data: { title, date: new Date().toISOString().slice(0, 10), participants, summary: '(Ops agotadas — sin análisis IA)', decisions: [], action_items: [], next_steps: '' },
+        processed_at: new Date().toISOString(),
+      }).eq('id', meetingId);
+      return;
+    }
 
     // Extract structured data with Claude
     const msg = await anthropic.messages.create({

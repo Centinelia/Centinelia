@@ -127,7 +127,22 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const systemPrompt = buildSystemPrompt(typedAgent) + callerContext;
+  // Check remaining minutes (for owner low-balance alert)
+  let minutesRemain = Infinity;
+  let minutesIncluded = 0;
+  if (isOwner) {
+    const { data: acctMins } = typedAgent.portal_email
+      ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', typedAgent.portal_email).single()
+      : { data: null };
+    minutesIncluded = acctMins?.minutes_included ?? (typedAgent as any).minutes_included ?? 0;
+    const minutesUsed = acctMins?.minutes_used ?? (typedAgent as any).minutes_used ?? 0;
+    minutesRemain = Math.max(0, minutesIncluded - minutesUsed);
+  }
+  const LOW_MINS_THRESHOLD = Math.max(30, minutesIncluded * 0.20);
+  const minsLow = isOwner && minutesIncluded > 0 && minutesRemain <= LOW_MINS_THRESHOLD;
+
+  const systemPrompt = buildSystemPrompt(typedAgent) + callerContext +
+    (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
   const tools = buildTools(typedAgent);
 
   const defaultGreeting = typedAgent.speech_style === 'tu'

@@ -23,14 +23,26 @@ export default async function ConsultarPage({ params }: Props) {
     .single();
   if (!account) notFound();
 
-  const { data: agents } = account.portal_email
-    ? await supabase
-        .from('voice_agents')
-        .select('id, agent_name, role, business_name')
-        .eq('portal_email', account.portal_email)
-        .eq('active', true)
-        .order('created_at', { ascending: true })
-    : { data: [] };
+  const [{ data: raw }, { data: opsAgents }] = await Promise.all([
+    account.portal_email
+      ? supabase.from('voice_agents').select('id, agent_name, role, business_name, features').eq('portal_email', account.portal_email).order('created_at', { ascending: true })
+      : { data: [] },
+    account.portal_email
+      ? supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', account.portal_email)
+      : { data: [] },
+  ]);
 
-  return <ConsultarAgentChat token={token} agents={(agents ?? []) as AgentOption[]} />;
+  const agents: AgentOption[] = (raw ?? []).map((a: any) => ({
+    id:            a.id,
+    agent_name:    a.agent_name,
+    role:          a.role,
+    business_name: a.business_name,
+    avatar_url:    (a.features?.avatar     as string | null) ?? null,
+    role_color:    (a.features?.role_color as string | null) ?? null,
+  }));
+
+  const opsUsed  = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_used  ?? 0), 0);
+  const opsLimit = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
+
+  return <ConsultarAgentChat token={token} agents={agents} opsUsed={opsUsed} opsLimit={opsLimit} />;
 }

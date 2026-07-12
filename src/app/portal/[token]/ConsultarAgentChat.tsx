@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, FileText, Download } from 'lucide-react';
+import { Send, Loader2, FileText, Download, Zap } from 'lucide-react';
 
 const FILE_URL_RE = /https?:\/\/[^\s]+\.(?:pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|zip|txt|csv|mp3|mp4|webm|wav|ogg)(?:\?[^\s]*)?/gi;
 
@@ -38,6 +38,8 @@ export interface AgentOption {
   agent_name:    string | null;
   role:          string | null;
   business_name: string;
+  avatar_url?:   string | null;
+  role_color?:   string | null;
 }
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -52,11 +54,13 @@ function welcomeMsg(agent: AgentOption): Message {
 }
 
 interface Props {
-  token:  string;
-  agents: AgentOption[];
+  token:    string;
+  agents:   AgentOption[];
+  opsUsed?: number;
+  opsLimit?: number;
 }
 
-export default function ConsultarAgentChat({ token, agents }: Props) {
+export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }: Props) {
   const [selectedId, setSelectedId]   = useState<string>(agents[0]?.id ?? '');
   const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
   const [input, setInput]             = useState('');
@@ -97,9 +101,12 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
       });
 
       if (!res.ok || !res.body) {
+        const errMsg = res.status === 429
+          ? 'Tu cuenta alcanzó el límite de operaciones IA este mes. Compra más ops desde Cuenta → Minutos y uso.'
+          : 'Ocurrió un error. Intenta de nuevo.';
         setChatHistory(prev => ({
           ...prev,
-          [selectedId]: [...next, { role: 'assistant', content: 'Ocurrió un error. Intenta de nuevo.' }],
+          [selectedId]: [...next, { role: 'assistant', content: errMsg }],
         }));
         return;
       }
@@ -163,7 +170,7 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
     );
   }
 
-  const color   = agentColor(selectedAgent.id);
+  const color   = selectedAgent.role_color || agentColor(selectedAgent.id);
   const initial = (selectedAgent.agent_name?.trim() || selectedAgent.business_name).charAt(0).toUpperCase();
 
   return (
@@ -187,10 +194,13 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
                 }}
               >
                 <span
-                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                  style={{ background: `${c}25`, color: c }}
+                  className="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
+                  style={{ background: `${c}25` }}
                 >
-                  {(a.agent_name?.trim() || a.business_name).charAt(0).toUpperCase()}
+                  {a.avatar_url
+                    ? <img src={a.avatar_url} alt="" className="w-full h-full object-contain" />
+                    : <span className="text-[9px] font-bold" style={{ color: c }}>{(a.agent_name?.trim() || a.business_name).charAt(0).toUpperCase()}</span>
+                  }
                 </span>
                 {a.agent_name?.trim() || a.business_name}
                 {a.role && <span style={{ opacity: 0.55 }}>· {a.role}</span>}
@@ -211,10 +221,13 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
           style={{ borderBottom: '1px solid var(--c-border)', background: `${color}08` }}
         >
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-            style={{ background: `${color}20`, color, border: `1px solid ${color}35` }}
+            className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+            style={{ background: `${color}20`, border: `1px solid ${color}35` }}
           >
-            {initial}
+            {selectedAgent.avatar_url
+              ? <img src={selectedAgent.avatar_url} alt="" className="w-full h-full object-contain p-0.5" />
+              : <span className="text-sm font-bold" style={{ color }}>{initial}</span>
+            }
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
@@ -224,9 +237,17 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
               <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{selectedAgent.role}</p>
             )}
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-            <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {opsLimit !== undefined && opsLimit > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                {(opsLimit - (opsUsed ?? 0))} ops restantes
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <Zap size={10} style={{ color: '#9B6DFF' }} />
+              3–13 ops/msg
+            </span>
           </div>
         </div>
 
@@ -236,10 +257,13 @@ export default function ConsultarAgentChat({ token, agents }: Props) {
             <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-                  style={{ background: `${color}20`, color, border: `1px solid ${color}30` }}
+                  className="w-7 h-7 rounded-lg flex-shrink-0 mt-0.5 overflow-hidden flex items-center justify-center"
+                  style={{ background: `${color}20`, border: `1px solid ${color}30` }}
                 >
-                  {initial}
+                  {selectedAgent.avatar_url
+                    ? <img src={selectedAgent.avatar_url} alt="" className="w-full h-full object-contain" />
+                    : <span className="text-xs font-bold" style={{ color }}>{initial}</span>
+                  }
                 </div>
               )}
               <div

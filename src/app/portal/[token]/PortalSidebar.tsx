@@ -5,21 +5,27 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Phone, PhoneCall, PhoneOutgoing, Briefcase,
-  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot,
+  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot, CreditCard,
 } from 'lucide-react';
+import { uColor } from '@/lib/portal/utils';
 
 type SubItem    = { label: string; id: string };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
 type Section    = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
 interface Props {
-  token:        string;
-  currentTab:   string;
-  hasOpsAgent:  boolean;
-  showOutbound: boolean;
+  token:            string;
+  currentTab:       string;
+  hasOpsAgent:      boolean;
+  showOutbound:     boolean;
+  hasStripe?:       boolean;
+  minutesRemain?:   number;
+  minutesIncluded?: number;
+  aiOpsUsed?:       number;
+  aiOpsLimit?:      number;
 }
 
-export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound }: Props) {
+export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0 }: Props) {
   const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
 
@@ -101,7 +107,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Mis agentes',   id: 'agentes' },
         { label: 'Minutos y uso', id: 'minutos' },
         { label: 'Plan y cambios',id: 'plan' },
-        { label: 'Facturación',   id: 'facturacion' },
         { label: 'Contrato',      id: 'contrato' },
       ],
     },
@@ -117,8 +122,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         background:  'var(--c-modal)',
         position:    'sticky',
         top:         53,
-        height:      '100%',
-        maxHeight:   'calc(100vh - 53px)',
+        height:      'calc(100vh - 53px)',
         overflowY:   'auto',
       }}
     >
@@ -180,7 +184,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                         ? `/portal/${token}/oficina${item.id ? `/${item.id}` : ''}`
                         : `/portal/${token}?tab=${section.id}#${item.id}`}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-                      style={{ color: 'var(--c-text-3)' }}
+                      style={{ color: 'var(--c-text-2)' }}
                     >
                       <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
                       {item.label}
@@ -223,7 +227,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                                 key={item.id}
                                 href={`${subHref}#${item.id}`}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-                                style={{ color: 'var(--c-text-3)' }}
+                                style={{ color: 'var(--c-text-2)' }}
                               >
                                 <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
                                 {item.label}
@@ -241,6 +245,61 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
           );
         })}
       </nav>
+
+      {/* Usage widget */}
+      {minutesIncluded > 0 && (() => {
+        const minPct  = Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100);
+        const opsPct  = aiOpsLimit > 0 ? Math.min(Math.round((aiOpsUsed / aiOpsLimit) * 100), 100) : 0;
+        const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
+        return (
+          <Link
+            href={`/portal/${token}?tab=cuenta#minutos`}
+            className="block px-3 py-3 mt-auto shrink-0 hover:opacity-80 transition-opacity"
+            style={{ borderTop: '1px solid var(--c-border)' }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>Uso del mes</p>
+            {/* Minutes */}
+            <div className="mb-2">
+              <div className="flex justify-between mb-1">
+                <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
+                <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(minPct) }}>
+                  {minutesRemain} restantes
+                </span>
+              </div>
+              <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
+                <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999, transition: 'width 0.4s' }} />
+              </div>
+            </div>
+            {/* Ops */}
+            {aiOpsLimit > 0 && (
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Ops IA</span>
+                  <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>
+                    {opsRemain} restantes
+                  </span>
+                </div>
+                <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
+                  <div style={{ width: `${opsPct}%`, height: '100%', background: uColor(opsPct), borderRadius: 9999, transition: 'width 0.4s' }} />
+                </div>
+              </div>
+            )}
+          </Link>
+        );
+      })()}
+
+      {hasStripe && (
+        <div className="px-2 py-3 shrink-0" style={{ borderTop: minutesIncluded > 0 ? 'none' : '1px solid var(--c-border)', marginTop: minutesIncluded > 0 ? 0 : 'auto' }}>
+          <a
+            href={`/api/billing/portal-session?token=${token}`}
+            className="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80 w-full"
+            style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', textDecoration: 'none' }}
+          >
+            <CreditCard size={14} style={{ flexShrink: 0 }} />
+            Suscripción
+          </a>
+        </div>
+      )}
     </aside>
   );
 }

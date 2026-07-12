@@ -5,7 +5,7 @@ import { MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { Plan, MinutesTier } from '@/lib/billing/plans';
 import {
   AlertTriangle, ArrowRight, DollarSign,
-  Users, PhoneCall, UserPlus,
+  Users, PhoneCall, UserPlus, Server, Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,6 +21,9 @@ export default async function DashboardPage() {
     { data: calls14d },
     { data: lastCallsData },
     { data: acctMinsData },
+    { data: opsData },
+    vapiAccount,
+    twilioBalance,
   ] = await Promise.all([
     supabase.from('voice_agents')
       .select('id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, created_at, portal_email')
@@ -34,7 +37,32 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(1000),
     supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included'),
+    supabase.from('voice_agents')
+      .select('ai_ops_used, ai_ops_limit')
+      .neq('id', process.env.DEMO_AGENT_ID ?? ''),
+    fetch('https://api.vapi.ai/account', {
+      headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
+      next:    { revalidate: 0 },
+    }).then(r => r.ok ? r.json() : null).catch(() => null),
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+      ? fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Balance.json`,
+          { headers: { Authorization: `Basic ${Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')}` }, next: { revalidate: 0 } }
+        ).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null),
   ]);
+
+  // Infra stats
+  const totalOpsUsed  = (opsData ?? []).reduce((s: number, a: any) => s + (a.ai_ops_used  ?? 0), 0);
+  const totalOpsLimit = (opsData ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
+  // Estimated Claude cost: Haiku ~$0.0024 per op (1,500 input + 300 output tokens avg)
+  const estimatedClaudeCost = totalOpsUsed * 0.0024;
+
+  const vapiBalance   = typeof vapiAccount?.balance   === 'number' ? vapiAccount.balance   : null;
+  const twilioBalance2 = typeof twilioBalance?.balance === 'string' ? parseFloat(twilioBalance.balance) : null;
+
+  const VAPI_LOW_THRESHOLD   = 20;  // USD
+  const TWILIO_LOW_THRESHOLD = 10;  // USD
 
   const agents    = (agentsData ?? []) as any[];
   const calls     = (calls14d   ?? []) as any[];
@@ -210,6 +238,81 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Infra monitor */}
+      <div className="mb-6">
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+          Infraestructura
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+          {/* Vapi */}
+          <div className="p-4 rounded-xl flex items-start gap-3" style={{
+            background: vapiBalance === null ? 'var(--c-surface)' : vapiBalance < VAPI_LOW_THRESHOLD ? 'rgba(239,68,68,0.06)' : 'var(--c-surface)',
+            border:     vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--c-border)',
+          }}>
+            <Server size={15} style={{ color: vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '#ef4444' : '#a855f7', flexShrink: 0, marginTop: 2 }} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Vapi — saldo</p>
+              {vapiBalance !== null ? (
+                <>
+                  <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: vapiBalance < VAPI_LOW_THRESHOLD ? '#ef4444' : 'var(--c-text)' }}>
+                    ${vapiBalance.toFixed(2)} USD
+                  </p>
+                  {vapiBalance < VAPI_LOW_THRESHOLD && (
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#ef4444' }}>
+                      <AlertTriangle size={10} /> Saldo bajo — recargar
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-4)' }}>No disponible</p>
+              )}
+            </div>
+          </div>
+
+          {/* Twilio */}
+          <div className="p-4 rounded-xl flex items-start gap-3" style={{
+            background: twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? 'rgba(239,68,68,0.06)' : 'var(--c-surface)',
+            border:     twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--c-border)',
+          }}>
+            <Server size={15} style={{ color: twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#ef4444' : '#e11d48', flexShrink: 0, marginTop: 2 }} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Twilio — saldo</p>
+              {twilioBalance2 !== null ? (
+                <>
+                  <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#ef4444' : 'var(--c-text)' }}>
+                    ${twilioBalance2.toFixed(2)} USD
+                  </p>
+                  {twilioBalance2 < TWILIO_LOW_THRESHOLD && (
+                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#ef4444' }}>
+                      <AlertTriangle size={10} /> Saldo bajo — recargar
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-4)' }}>No disponible</p>
+              )}
+            </div>
+          </div>
+
+          {/* Claude / Ops */}
+          <div className="p-4 rounded-xl flex items-start gap-3" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <Zap size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Claude — ops este mes</p>
+              <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: 'var(--c-text)' }}>
+                {totalOpsUsed.toLocaleString('es-MX')}
+                <span className="text-sm font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>ops</span>
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
+                Costo estimado: ~${estimatedClaudeCost.toFixed(2)} USD
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
 
       {/* Bottom grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -12,8 +12,12 @@ import { addCallEntry } from '@/lib/notion/client';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
-  if (vapiSecret && req.nextUrl.searchParams.get('secret') !== vapiSecret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (vapiSecret) {
+    const headerSecret = req.headers.get('x-vapi-secret');
+    const querySecret  = req.nextUrl.searchParams.get('secret');
+    if (headerSecret !== vapiSecret && querySecret !== vapiSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   const body = await req.json();

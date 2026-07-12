@@ -17,6 +17,9 @@ export const limiters = {
 
   // Expensive scraping: 3 requests per 5 minutes per token
   scrape: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, '5 m'), prefix: 'rl:scrape' }),
+
+  // Agent chat (Sonnet, billed per op): 10 messages per minute per portal token
+  agentChat: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, '1 m'), prefix: 'rl:agent-chat' }),
 };
 
 function getIp(req: NextRequest): string {

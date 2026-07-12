@@ -36,7 +36,7 @@ export default function AdminNav() {
             href={href}
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
             style={{
-              color: active ? '#9B6DFF' : 'rgba(255,255,255,0.45)',
+              color: active ? '#9B6DFF' : 'var(--c-text-2)',
               background: active ? 'rgba(108,59,255,0.12)' : 'transparent',
               fontWeight: active ? 600 : 400,
             }}
@@ -56,7 +56,7 @@ export default function AdminNav() {
               href="/admin/configuracion"
               className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
               style={{
-                color: active ? '#9B6DFF' : 'rgba(255,255,255,0.45)',
+                color: active ? '#9B6DFF' : 'var(--c-text-2)',
                 background: active ? 'rgba(108,59,255,0.12)' : 'transparent',
                 fontWeight: active ? 600 : 400,
               }}
