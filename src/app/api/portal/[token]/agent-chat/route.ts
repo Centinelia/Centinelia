@@ -11,8 +11,7 @@ import { sendEmail } from '@/lib/email/send';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
-import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew, gmailUploadToDrive, gmailListDriveFolder, gmailMoveDriveFile, gmailRenameDriveFile } from '@/lib/email/gmail';
-import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew, outlookUploadToOneDrive, outlookListFolder, outlookMoveFile, outlookRenameFile } from '@/lib/email/outlook';
+import { getConnector, type IntegrationRow } from '@/lib/connectors';
 import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { scrapeWebsite } from '@/lib/scrape/website';
@@ -614,67 +613,35 @@ ${context}`;
               : { ok: true, draft_id: draft!.id, message: `Borrador creado correctamente con ID ${draft!.id}. El dueño puede verlo en la sección Contratos → Borradores de la Oficina.` };
 
           } else if (pendingToolName === 'send_email') {
-            const to              = toolInput.to               as string;
-            const subject         = toolInput.subject           as string;
-            const body            = toolInput.body              as string;
-            const cc              = toolInput.cc                as string | undefined;
-            const attFileId       = toolInput.attachment_file_id   as string | undefined;
-            const attFileName     = toolInput.attachment_file_name as string | undefined;
-            const attMimeType     = toolInput.attachment_mime_type as string | undefined;
-            const businessName    = agent.business_name as string;
+            const to           = toolInput.to                    as string;
+            const subject      = toolInput.subject               as string;
+            const body         = toolInput.body                  as string;
+            const cc           = toolInput.cc                    as string | undefined;
+            const attFileId    = toolInput.attachment_file_id    as string | undefined;
+            const attFileName  = toolInput.attachment_file_name  as string | undefined;
+            const attMimeType  = toolInput.attachment_mime_type  as string | undefined;
+            const businessName = agent.business_name as string;
 
             const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
               ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
               <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${businessName}</p>
             </body></html>`;
 
+            const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
             let attachment: { filename: string; content: Buffer; mimeType: string } | undefined;
-            if (attFileId) {
-              const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
-              if (emailInt) {
-                let tok = emailInt.access_token as string;
-                const exp = emailInt.token_expires_at ? new Date(emailInt.token_expires_at as string) : null;
-                if (!exp || exp.getTime() - Date.now() < 5 * 60 * 1000) {
-                  try {
-                    const refreshed = emailInt.provider === 'gmail'
-                      ? await gmailRefreshToken(emailInt.refresh_token as string)
-                      : await outlookRefreshToken(emailInt.refresh_token as string);
-                    tok = refreshed.access_token;
-                    await supabase.from('email_integrations').update({ access_token: tok, token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString() }).eq('id', emailInt.id as string);
-                  } catch { /* use existing */ }
-                }
-                const dl = emailInt.provider === 'gmail'
-                  ? await gmailDownloadDriveFile(tok, attFileId, attMimeType ?? '')
-                  : await outlookDownloadFile(tok, attFileId, attMimeType ?? '');
+            let sent = false;
+
+            if (emailInt) {
+              const conn = await getConnector(emailInt as IntegrationRow, supabase);
+              if (attFileId) {
+                const dl = await conn.files.download(attFileId, attMimeType ?? '');
                 if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
               }
-            }
-
-            let sent = false;
-            if (!sent) {
-              const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
-              if (emailInt) {
-                let tok = emailInt.access_token as string;
-                const exp = emailInt.token_expires_at ? new Date(emailInt.token_expires_at as string) : null;
-                if (!exp || exp.getTime() - Date.now() < 5 * 60 * 1000) {
-                  try {
-                    const refreshed = emailInt.provider === 'gmail'
-                      ? await gmailRefreshToken(emailInt.refresh_token as string)
-                      : await outlookRefreshToken(emailInt.refresh_token as string);
-                    tok = refreshed.access_token;
-                    await supabase.from('email_integrations').update({ access_token: tok, token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString() }).eq('id', emailInt.id as string);
-                  } catch { /* use existing */ }
-                }
-                try {
-                  if (emailInt.provider === 'gmail') await gmailSendNew(tok, to, subject, body, attachment);
-                  else await outlookSendNew(tok, to, subject, body, attachment);
-                  if (cc) {
-                    if (emailInt.provider === 'gmail') await gmailSendNew(tok, cc, subject, body);
-                    else await outlookSendNew(tok, cc, subject, body);
-                  }
-                  sent = true;
-                } catch { /* fall through */ }
-              }
+              try {
+                await conn.email.send(to, subject, body, attachment);
+                if (cc) await conn.email.send(cc, subject, body);
+                sent = true;
+              } catch { /* fall through to Resend */ }
             }
 
             if (!sent) {
@@ -777,60 +744,31 @@ ${context}`;
             }
 
           } else if (pendingToolName === 'save_to_drive') {
-            const storagePath = toolInput.file_id  as string;
-            const filename    = toolInput.filename  as string;
+            const storagePath = toolInput.file_id    as string;
+            const filename    = toolInput.filename   as string;
             const folderName  = (toolInput.folder_name as string | undefined) ?? undefined;
 
-            const { data: integration } = await supabase
-              .from('email_integrations')
-              .select('provider, access_token, refresh_token, token_expires_at, id')
-              .eq('agent_id', agent.id)
-              .single();
+            const { data: driveInt } = await supabase
+              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
 
-            if (!integration) {
+            if (!driveInt) {
               toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
             } else {
-              // Download PDF from Supabase Storage
               const { data: fileBlob, error: dlErr } = await supabase.storage
-                .from('agent-documents')
-                .download(storagePath);
+                .from('agent-documents').download(storagePath);
 
               if (dlErr || !fileBlob) {
                 toolResult = { ok: false, error: 'No se pudo descargar el documento desde almacenamiento. Verifica que fue generado correctamente.' };
               } else {
                 const buffer = Buffer.from(await fileBlob.arrayBuffer());
-
-                // Refresh token if needed
-                let accessToken = integration.access_token as string;
-                const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
-                if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
-                  try {
-                    const refreshed = integration.provider === 'gmail'
-                      ? await gmailRefreshToken(integration.refresh_token as string)
-                      : await outlookRefreshToken(integration.refresh_token as string);
-                    accessToken = refreshed.access_token;
-                    await supabase.from('email_integrations').update({
-                      access_token:     refreshed.access_token,
-                      token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-                    }).eq('id', integration.id as string);
-                  } catch { /* use existing */ }
-                }
-
                 try {
-                  if (integration.provider === 'gmail') {
-                    const result = await gmailUploadToDrive(accessToken, filename, buffer, 'application/pdf', folderName);
-                    if (!result) {
-                      toolResult = { ok: false, error: 'Permisos insuficientes en Google Drive. El dueño debe reconectar su cuenta de Gmail desde Integraciones → Correo para otorgar permisos de escritura.' };
-                    } else {
-                      toolResult = { ok: true, id: result.id, name: result.name, link: result.webViewLink, message: `Documento "${result.name}" guardado en Google Drive${folderName ? ` (carpeta: ${folderName})` : ''}. Ver en Drive: ${result.webViewLink}` };
-                    }
+                  const conn   = await getConnector(driveInt as IntegrationRow, supabase);
+                  const result = await conn.files.upload(filename, buffer, 'application/pdf', folderName);
+                  if (!result) {
+                    toolResult = { ok: false, error: 'Permisos insuficientes en Drive. El dueño debe reconectar su correo desde Integraciones → Correo para otorgar permisos de escritura.' };
                   } else {
-                    const result = await outlookUploadToOneDrive(accessToken, filename, buffer, 'application/pdf', folderName);
-                    if (!result) {
-                      toolResult = { ok: false, error: 'Permisos insuficientes en OneDrive. El dueño debe reconectar su cuenta de Outlook desde Integraciones → Correo para otorgar permisos de escritura.' };
-                    } else {
-                      toolResult = { ok: true, id: result.id, name: result.name, link: result.webUrl, message: `Documento "${result.name}" guardado en OneDrive${folderName ? ` (carpeta: ${folderName})` : ''}. Ver en OneDrive: ${result.webUrl}` };
-                    }
+                    const provider = driveInt.provider === 'gmail' ? 'Google Drive' : 'OneDrive';
+                    toolResult = { ok: true, id: result.id, name: result.name, link: result.link, message: `Documento "${result.name}" guardado en ${provider}${folderName ? ` (carpeta: ${folderName})` : ''}. Ver: ${result.link}` };
                   }
                 } catch (err) {
                   toolResult = { ok: false, error: `Error al subir a Drive: ${String(err)}` };
@@ -839,42 +777,20 @@ ${context}`;
             }
 
           } else if (pendingToolName === 'organize_files') {
-            const { data: integration } = await supabase
-              .from('email_integrations')
-              .select('provider, access_token, refresh_token, token_expires_at, id')
-              .eq('agent_id', agent.id)
-              .single();
+            const { data: orgInt } = await supabase
+              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
 
-            if (!integration) {
+            if (!orgInt) {
               toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Integraciones → Correo.' };
             } else {
-              // Refresh token if needed
-              let accessToken = integration.access_token as string;
-              const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
-              if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
-                try {
-                  const refreshed = integration.provider === 'gmail'
-                    ? await gmailRefreshToken(integration.refresh_token as string)
-                    : await outlookRefreshToken(integration.refresh_token as string);
-                  accessToken = refreshed.access_token;
-                  await supabase.from('email_integrations').update({
-                    access_token:     refreshed.access_token,
-                    token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-                  }).eq('id', integration.id as string);
-                } catch { /* use existing */ }
-              }
-
-              const action     = toolInput.action     as string;
-              const isGmail    = integration.provider === 'gmail';
-
+              const conn   = await getConnector(orgInt as IntegrationRow, supabase);
+              const action = toolInput.action as string;
               try {
                 if (action === 'list') {
                   const folderId = (toolInput.folder_id as string | undefined) ?? undefined;
-                  const items = isGmail
-                    ? await gmailListDriveFolder(accessToken, folderId)
-                    : await outlookListFolder(accessToken, folderId);
+                  const items    = await conn.files.list(folderId);
                   if (!items.length) {
-                    toolResult = { ok: true, items: [], message: `La carpeta está vacía.` };
+                    toolResult = { ok: true, items: [], message: 'La carpeta está vacía.' };
                   } else {
                     const lines = items.map(f => `- ${f.isFolder ? '[carpeta]' : '[archivo]'} ${f.name} (id: ${f.id}${f.isFolder ? '' : `, tipo: ${f.mimeType}`})`).join('\n');
                     toolResult = { ok: true, items, message: `Encontré ${items.length} elemento(s):\n${lines}` };
@@ -886,58 +802,33 @@ ${context}`;
                   if (!fileId || !destination) {
                     toolResult = { ok: false, error: 'Se requieren file_id y destination para mover.' };
                   } else {
-                    const ok = isGmail
-                      ? await gmailMoveDriveFile(accessToken, fileId, destination)
-                      : await outlookMoveFile(accessToken, fileId, destination);
+                    const ok = await conn.files.move(fileId, destination);
                     toolResult = ok
                       ? { ok: true, message: `Archivo movido a la carpeta "${destination}" correctamente.` }
-                      : { ok: false, error: `No se pudo mover el archivo. Verifica que el ID sea correcto y que tengas permisos.` };
+                      : { ok: false, error: 'No se pudo mover el archivo. Verifica que el ID sea correcto y que tengas permisos.' };
                   }
 
                 } else if (action === 'rename') {
-                  const fileId  = toolInput.file_id  as string;
-                  const newName = toolInput.new_name  as string;
+                  const fileId  = toolInput.file_id as string;
+                  const newName = toolInput.new_name as string;
                   if (!fileId || !newName) {
                     toolResult = { ok: false, error: 'Se requieren file_id y new_name para renombrar.' };
                   } else {
-                    const ok = isGmail
-                      ? await gmailRenameDriveFile(accessToken, fileId, newName)
-                      : await outlookRenameFile(accessToken, fileId, newName);
+                    const ok = await conn.files.rename(fileId, newName);
                     toolResult = ok
                       ? { ok: true, message: `Elemento renombrado a "${newName}" correctamente.` }
-                      : { ok: false, error: `No se pudo renombrar. Verifica que el ID sea correcto y que tengas permisos.` };
+                      : { ok: false, error: 'No se pudo renombrar. Verifica que el ID sea correcto y que tengas permisos.' };
                   }
 
                 } else if (action === 'create_folder') {
                   const folderName = toolInput.folder_name as string;
                   if (!folderName) {
                     toolResult = { ok: false, error: 'Se requiere folder_name para crear una carpeta.' };
-                  } else if (isGmail) {
-                    // gmailFindOrCreateFolder is internal — use upload trick: upload nothing, just create folder
-                    const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
-                      method:  'POST',
-                      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                      body:    JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json() as { id: string; name: string };
-                      toolResult = { ok: true, id: data.id, name: data.name, message: `Carpeta "${folderName}" creada en Google Drive.` };
-                    } else {
-                      toolResult = { ok: false, error: `No se pudo crear la carpeta en Google Drive.` };
-                    }
                   } else {
-                    // OneDrive: POST to root/children
-                    const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-                      method:  'POST',
-                      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                      body:    JSON.stringify({ name: folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'rename' }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json() as { id: string; name: string; webUrl: string };
-                      toolResult = { ok: true, id: data.id, name: data.name, message: `Carpeta "${folderName}" creada en OneDrive.` };
-                    } else {
-                      toolResult = { ok: false, error: `No se pudo crear la carpeta en OneDrive.` };
-                    }
+                    const result = await conn.files.createFolder(folderName);
+                    toolResult = result
+                      ? { ok: true, id: result.id, name: result.name, message: `Carpeta "${result.name}" creada correctamente.` }
+                      : { ok: false, error: 'No se pudo crear la carpeta.' };
                   }
 
                 } else {
@@ -949,49 +840,29 @@ ${context}`;
             }
 
           } else if (pendingToolName === 'search_files' || pendingToolName === 'read_file') {
-            const { data: integration } = await supabase
-              .from('email_integrations')
-              .select('*')
-              .eq('agent_id', agent.id)
-              .single();
+            const { data: filesInt } = await supabase
+              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
 
-            if (!integration) {
+            if (!filesInt) {
               toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
             } else {
-              let accessToken = integration.access_token as string;
-              const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
-              if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
-                try {
-                  const refreshed = integration.provider === 'gmail'
-                    ? await gmailRefreshToken(integration.refresh_token as string)
-                    : await outlookRefreshToken(integration.refresh_token as string);
-                  accessToken = refreshed.access_token;
-                  await supabase.from('email_integrations').update({
-                    access_token:     refreshed.access_token,
-                    token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-                  }).eq('id', integration.id as string);
-                } catch { /* use existing token */ }
-              }
+              const conn = await getConnector(filesInt as IntegrationRow, supabase);
 
               if (pendingToolName === 'search_files') {
                 const query = toolInput.query as string;
-                const files = integration.provider === 'gmail'
-                  ? await gmailSearchDriveFiles(accessToken, query)
-                  : await outlookSearchFiles(accessToken, query);
+                const files = await conn.files.search(query);
                 toolResult = files.length
                   ? { ok: true, files, message: `Encontré ${files.length} archivo(s): ${files.map(f => `${f.name} (id: ${f.id}, tipo: ${f.mimeType})`).join(', ')}` }
-                  : { ok: true, files: [], message: `No encontré archivos que coincidan con "${toolInput.query}".` };
+                  : { ok: true, files: [], message: `No encontré archivos que coincidan con "${query}".` };
 
               } else {
-                const fileId   = toolInput.file_id   as string;
-                const fileName = toolInput.file_name  as string;
+                const fileId   = toolInput.file_id  as string;
+                const fileName = toolInput.file_name as string;
                 const mimeType = (toolInput.mime_type as string | undefined) ?? '';
                 if (!fileId || fileId.length > 500 || /[<>"'`\\]/.test(fileId)) {
                   toolResult = { ok: false, error: 'ID de archivo inválido.' };
                 } else {
-                  const content = integration.provider === 'gmail'
-                    ? await gmailReadDriveFile(accessToken, fileId, mimeType)
-                    : await outlookReadFile(accessToken, fileId);
+                  const content = await conn.files.read(fileId, mimeType);
                   const preview = content.slice(0, 8000);
                   toolResult = content
                     ? { ok: true, file_name: fileName, content: preview, truncated: content.length > 8000 }

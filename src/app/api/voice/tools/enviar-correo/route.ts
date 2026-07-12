@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { gmailSendNew, gmailRefreshToken, gmailDownloadDriveFile } from '@/lib/email/gmail';
-import { outlookSendNew, outlookRefreshToken, outlookDownloadFile } from '@/lib/email/outlook';
+import { getConnector, type IntegrationRow, type Attachment } from '@/lib/connectors';
 import { sendEmail } from '@/lib/email/send';
 
 export async function POST(req: NextRequest) {
@@ -14,7 +13,7 @@ export async function POST(req: NextRequest) {
   const args = body.toolCallList?.[0]?.function?.arguments ?? body;
   const {
     to, subject, body: emailBody,
-    attachment_file_id: attFileId,
+    attachment_file_id:   attFileId,
     attachment_file_name: attFileName,
     attachment_mime_type: attMimeType,
   } = args as { to: string; subject: string; body: string; attachment_file_id?: string; attachment_file_name?: string; attachment_mime_type?: string };
@@ -42,43 +41,19 @@ export async function POST(req: NextRequest) {
     .eq('agent_id', agent_id)
     .single();
 
-  // Helper: get fresh access token
-  async function getFreshToken(): Promise<string> {
-    if (!integration) return '';
-    let tok = integration.access_token as string;
-    const exp = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
-    if (!exp || exp.getTime() - Date.now() < 5 * 60 * 1000) {
-      try {
-        const refreshed = integration.provider === 'gmail'
-          ? await gmailRefreshToken(integration.refresh_token as string)
-          : await outlookRefreshToken(integration.refresh_token as string);
-        tok = refreshed.access_token;
-        await supabase.from('email_integrations').update({
-          access_token:     tok,
-          token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-        }).eq('id', integration.id);
-      } catch { /* use existing */ }
-    }
-    return tok;
-  }
-
-  // Download attachment from Drive/OneDrive if requested
-  let attachment: { filename: string; content: Buffer; mimeType: string } | undefined;
-  if (attFileId && integration) {
-    const tok = await getFreshToken();
-    const dl = integration.provider === 'gmail'
-      ? await gmailDownloadDriveFile(tok, attFileId, attMimeType ?? '')
-      : await outlookDownloadFile(tok, attFileId, attMimeType ?? '');
-    if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
-  }
-
+  let attachment: Attachment | undefined;
   let sent = false;
 
   if (integration) {
-    const tok = await getFreshToken();
+    const conn = await getConnector(integration as IntegrationRow, supabase);
+
+    if (attFileId) {
+      const dl = await conn.files.download(attFileId, attMimeType ?? '');
+      if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
+    }
+
     try {
-      if (integration.provider === 'gmail') await gmailSendNew(tok, to, subject, emailBody, attachment);
-      else await outlookSendNew(tok, to, subject, emailBody, attachment);
+      await conn.email.send(to, subject, emailBody, attachment);
       sent = true;
     } catch { /* fall through to Resend */ }
   }
