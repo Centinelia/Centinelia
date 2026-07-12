@@ -4,7 +4,8 @@ const GMAIL_SCOPES     = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/drive.readonly',  // read existing files
+  'https://www.googleapis.com/auth/drive.file',       // create/upload new files
 ].join(' ');
 
 export function gmailAuthUrl(state: string): string {
@@ -260,6 +261,74 @@ export async function gmailReadDriveFile(accessToken: string, fileId: string, mi
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) return '';
   return res.text();
+}
+
+export interface DriveUploadResult {
+  id:          string;
+  name:        string;
+  webViewLink: string;
+}
+
+async function gmailFindOrCreateFolder(accessToken: string, name: string): Promise<string> {
+  const q = encodeURIComponent(`name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (searchRes.ok) {
+    const data = await searchRes.json();
+    if (data.files?.[0]?.id) return data.files[0].id as string;
+  }
+  // Create folder
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder' }),
+  });
+  const folder = await createRes.json();
+  return folder.id as string;
+}
+
+export async function gmailUploadToDrive(
+  accessToken: string,
+  filename:    string,
+  content:     Buffer,
+  mimeType:    string,
+  folderName?: string,
+): Promise<DriveUploadResult | null> {
+  const metadata: Record<string, unknown> = { name: filename };
+  if (folderName) {
+    const folderId = await gmailFindOrCreateFolder(accessToken, folderName);
+    metadata.parents = [folderId];
+  }
+
+  const boundary = `drive_upload_${Date.now()}`;
+  const body = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(metadata) + `\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`
+    ),
+    content,
+    Buffer.from(`\r\n--${boundary}--`),
+  ]);
+
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+    {
+      method:  'POST',
+      headers: {
+        Authorization:  `Bearer ${accessToken}`,
+        'Content-Type': `multipart/related; boundary="${boundary}"`,
+      },
+      body,
+    },
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    if (res.status === 403 && err.includes('insufficientPermissions')) return null;
+    throw new Error(`Drive upload failed (${res.status}): ${err}`);
+  }
+  return res.json() as Promise<DriveUploadResult>;
 }
 
 function callbackUrl(provider: string): string {

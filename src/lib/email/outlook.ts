@@ -1,7 +1,7 @@
 const GRAPH_BASE    = 'https://graph.microsoft.com/v1.0';
 const TENANT        = 'common';
 const AUTH_BASE     = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
-const OUTLOOK_SCOPES = 'Mail.Read Mail.Send Files.Read offline_access User.Read';
+const OUTLOOK_SCOPES = 'Mail.Read Mail.Send Files.ReadWrite offline_access User.Read';
 
 export function outlookAuthUrl(state: string): string {
   const p = new URLSearchParams({
@@ -185,6 +185,45 @@ export async function outlookReadFile(accessToken: string, fileId: string): Prom
     return res.text();
   }
   return '[Archivo binario — no se puede leer como texto]';
+}
+
+export interface OneDriveUploadResult {
+  id:     string;
+  name:   string;
+  webUrl: string;
+}
+
+export async function outlookUploadToOneDrive(
+  accessToken: string,
+  filename:    string,
+  content:     Buffer,
+  mimeType:    string,
+  folderPath?: string,
+): Promise<OneDriveUploadResult | null> {
+  // OneDrive creates intermediate folders automatically with this path syntax
+  const path = folderPath
+    ? `${folderPath.replace(/^\/+|\/+$/g, '')}/${filename}`
+    : filename;
+
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const res = await fetch(
+    `${GRAPH_BASE}/me/drive/root:/${encodedPath}:/content?@microsoft.graph.conflictBehavior=rename`,
+    {
+      method:  'PUT',
+      headers: {
+        Authorization:  `Bearer ${accessToken}`,
+        'Content-Type': mimeType,
+      },
+      body: content,
+    },
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    if (res.status === 403) return null; // missing Files.ReadWrite scope
+    throw new Error(`OneDrive upload failed (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  return { id: data.id, name: data.name, webUrl: data.webUrl };
 }
 
 function stripHtml(html: string): string {

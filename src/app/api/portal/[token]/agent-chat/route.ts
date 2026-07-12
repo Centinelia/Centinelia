@@ -11,8 +11,8 @@ import { sendEmail } from '@/lib/email/send';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
-import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew } from '@/lib/email/gmail';
-import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew } from '@/lib/email/outlook';
+import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew, gmailUploadToDrive } from '@/lib/email/gmail';
+import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew, outlookUploadToOneDrive } from '@/lib/email/outlook';
 import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { scrapeWebsite } from '@/lib/scrape/website';
@@ -198,10 +198,25 @@ const READ_URL_TOOL: Anthropic.Tool = {
   },
 };
 
+const SAVE_TO_DRIVE_TOOL: Anthropic.Tool = {
+  name: 'save_to_drive',
+  description: 'Guarda un documento generado en Google Drive o OneDrive del dueño. Úsala después de create_document cuando el dueño quiera que el archivo quede en su Drive, o cuando pida explícitamente guardar algo en la nube. Puede crear la carpeta de destino automáticamente si no existe.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      file_id:     { type: 'string', description: 'storage_path del documento generado (campo file_id de create_document). Ej: "uuid/nombre-1234567890.pdf"' },
+      filename:    { type: 'string', description: 'Nombre del archivo en Drive/OneDrive, con extensión. Ej: "Propuesta Acme 2026.pdf"' },
+      folder_name: { type: 'string', description: 'Carpeta de destino en Drive/OneDrive. Se crea si no existe. Ej: "Propuestas 2026". Omite si quiere guardarlo en la raíz.' },
+    },
+    required: ['file_id', 'filename'],
+  },
+};
+
 const ALL_TOOLS = [
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
   CREATE_DOCUMENT_TOOL,
+  SAVE_TO_DRIVE_TOOL,
   TRIGGER_CALL_TOOL,
   SEARCH_FILES_TOOL,
   READ_FILE_TOOL,
@@ -395,6 +410,7 @@ Herramientas disponibles:
 - create_contract_draft: cuando el dueño pida generar un contrato para un cliente.
 - send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
 - create_document: cuando el dueño pida generar un documento. Usa template_type="proposal" para propuestas/cotizaciones (incluye cliente y precio), "letter" para cartas formales, "general" para todo lo demás. El PDF lleva automáticamente el logo y colores del negocio.
+- save_to_drive: después de create_document, si el dueño quiere guardar el PDF en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió create_document. Si da un folder_name, la carpeta se crea automáticamente si no existe.
 - trigger_outbound_call: cuando el dueño pida llamar a un número de teléfono.
 - search_files: cuando el dueño pida buscar un archivo en Google Drive o OneDrive.
 - read_file: cuando el dueño quiera ver el contenido de un archivo de Drive o OneDrive (usar después de search_files).
@@ -735,6 +751,68 @@ ${context}`;
               toolResult = callResult.ok
                 ? { ok: true, callId: callResult.callId, message: `Llamada iniciada a ${phone}${name ? ` (${name})` : ''}. ID de llamada: ${callResult.callId}` }
                 : { ok: false, error: callResult.error };
+            }
+
+          } else if (pendingToolName === 'save_to_drive') {
+            const storagePath = toolInput.file_id  as string;
+            const filename    = toolInput.filename  as string;
+            const folderName  = (toolInput.folder_name as string | undefined) ?? undefined;
+
+            const { data: integration } = await supabase
+              .from('email_integrations')
+              .select('provider, access_token, refresh_token, token_expires_at, id')
+              .eq('agent_id', agent.id)
+              .single();
+
+            if (!integration) {
+              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
+            } else {
+              // Download PDF from Supabase Storage
+              const { data: fileBlob, error: dlErr } = await supabase.storage
+                .from('agent-documents')
+                .download(storagePath);
+
+              if (dlErr || !fileBlob) {
+                toolResult = { ok: false, error: 'No se pudo descargar el documento desde almacenamiento. Verifica que fue generado correctamente.' };
+              } else {
+                const buffer = Buffer.from(await fileBlob.arrayBuffer());
+
+                // Refresh token if needed
+                let accessToken = integration.access_token as string;
+                const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
+                if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
+                  try {
+                    const refreshed = integration.provider === 'gmail'
+                      ? await gmailRefreshToken(integration.refresh_token as string)
+                      : await outlookRefreshToken(integration.refresh_token as string);
+                    accessToken = refreshed.access_token;
+                    await supabase.from('email_integrations').update({
+                      access_token:     refreshed.access_token,
+                      token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+                    }).eq('id', integration.id as string);
+                  } catch { /* use existing */ }
+                }
+
+                try {
+                  if (integration.provider === 'gmail') {
+                    const result = await gmailUploadToDrive(accessToken, filename, buffer, 'application/pdf', folderName);
+                    if (!result) {
+                      toolResult = { ok: false, error: 'Permisos insuficientes en Google Drive. El dueño debe reconectar su cuenta de Gmail desde Integraciones → Correo para otorgar permisos de escritura.' };
+                    } else {
+                      toolResult = { ok: true, id: result.id, name: result.name, link: result.webViewLink, message: `Documento "${result.name}" guardado en Google Drive${folderName ? ` (carpeta: ${folderName})` : ''}. Ver en Drive: ${result.webViewLink}` };
+                    }
+                  } else {
+                    const result = await outlookUploadToOneDrive(accessToken, filename, buffer, 'application/pdf', folderName);
+                    if (!result) {
+                      toolResult = { ok: false, error: 'Permisos insuficientes en OneDrive. El dueño debe reconectar su cuenta de Outlook desde Integraciones → Correo para otorgar permisos de escritura.' };
+                    } else {
+                      toolResult = { ok: true, id: result.id, name: result.name, link: result.webUrl, message: `Documento "${result.name}" guardado en OneDrive${folderName ? ` (carpeta: ${folderName})` : ''}. Ver en OneDrive: ${result.webUrl}` };
+                    }
+                  }
+                } catch (err) {
+                  toolResult = { ok: false, error: `Error al subir a Drive: ${String(err)}` };
+                }
+              }
             }
 
           } else if (pendingToolName === 'search_files' || pendingToolName === 'read_file') {
