@@ -7,14 +7,21 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { notionClient } from '@/lib/notion/client';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { sendEmail } from '@/lib/email/send';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
-import { getConnector, type IntegrationRow } from '@/lib/connectors';
 import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
+import {
+  executeSendEmail,
+  executeSaveToDrive,
+  executeOrganizeFiles,
+  executeSearchFiles,
+  executeReadFile,
+} from '@/lib/services/connector-tools';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { scrapeWebsite } from '@/lib/scrape/website';
+import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
+import { SUPPORT_EMAIL, SUPPORT_WA } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -443,6 +450,14 @@ Cuando el dueño pida investigación: llama search_leads, luego read_url en 2-3 
 
 Usa las herramientas de inmediato cuando el dueño te lo pida, sin pedir confirmación adicional.
 
+## Cuando una herramienta falla por falta de integración
+
+Si al ejecutar una herramienta el resultado indica que una integración no está disponible, no está habilitada o la plataforma no la soporta, informa al dueño con claridad y sugiérele que contacte a Centinelia para orientación:
+- Correo: ${SUPPORT_EMAIL}
+- WhatsApp: ${SUPPORT_WA}
+
+No prometas que la integración se habilitará: la disponibilidad depende de si la plataforma permite ese tipo de integración con Centinelia. Si el error indica que el dueño puede resolverlo desde el portal (ej. conectar su correo en Integraciones), indícale el paso a seguir sin mencionar a Centinelia.
+
 ## Autonomía y toma de decisiones
 
 Actúa ÚNICAMENTE cuando el dueño te lo pida de forma explícita en este chat, o cuando un evento directo lo active (correo entrante, llamada registrada, tarea asignada). Nunca tomes iniciativas propias aunque identifiques algo que creas que "debería hacerse".
@@ -561,6 +576,22 @@ ${context}`;
           // ── Execute the requested tool ────────────────────────────────────
           let toolResult: unknown;
 
+          // ── Policy check for capability-gated tools ───────────────────────
+          const toolCapability = pendingToolName ? TOOL_CAPABILITIES[pendingToolName] : undefined;
+          let policyBlocked = false;
+          if (toolCapability) {
+            const policy = await checkPolicy({
+              agentId:    agent.id as string,
+              capability: toolCapability,
+              action:     `${toolCapability}.${pendingToolName}`,
+              supabase,
+            });
+            if (!policy.allowed) {
+              toolResult    = { ok: false, error: policy.message };
+              policyBlocked = true;
+            }
+          }
+
           if (pendingToolName === 'read_url') {
             const url = toolInput.url as string;
             if (readUrlCount >= 3) {
@@ -623,49 +654,18 @@ ${context}`;
               ? { ok: false, error: draftError.message }
               : { ok: true, draft_id: draft!.id, message: `Borrador creado correctamente con ID ${draft!.id}. El dueño puede verlo en la sección Contratos → Borradores de la Oficina.` };
 
-          } else if (pendingToolName === 'send_email') {
-            const to           = toolInput.to                    as string;
-            const subject      = toolInput.subject               as string;
-            const body         = toolInput.body                  as string;
-            const cc           = toolInput.cc                    as string | undefined;
-            const attFileId    = toolInput.attachment_file_id    as string | undefined;
-            const attFileName  = toolInput.attachment_file_name  as string | undefined;
-            const attMimeType  = toolInput.attachment_mime_type  as string | undefined;
-            const businessName = agent.business_name as string;
-
-            const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
-              ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
-              <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${businessName}</p>
-            </body></html>`;
-
-            const { data: emailInt } = await supabase.from('email_integrations').select('*').eq('agent_id', agent.id).single();
-            let attachment: { filename: string; content: Buffer; mimeType: string } | undefined;
-            let sent = false;
-
-            if (emailInt) {
-              const conn = await getConnector(emailInt as IntegrationRow, supabase);
-              if (attFileId) {
-                const dl = await conn.files.download(attFileId, attMimeType ?? '');
-                if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
-              }
-              try {
-                await conn.email.send(to, subject, body, attachment);
-                if (cc) await conn.email.send(cc, subject, body);
-                sent = true;
-              } catch { /* fall through to Resend */ }
-            }
-
-            if (!sent) {
-              const resendAtts = attachment ? [{ filename: attachment.filename, content: attachment.content.toString('base64') }] : undefined;
-              const ok = await sendEmail({ to, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>`, attachments: resendAtts });
-              if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>` });
-              sent = ok;
-            }
-
-            const attNote = attachment ? ` con adjunto "${attachment.filename}"` : '';
-            toolResult = sent
-              ? { ok: true, message: `Correo enviado a ${to}${cc ? ` (CC: ${cc})` : ''}${attNote} con asunto "${subject}".` }
-              : { ok: false, error: 'Error al enviar el correo. Verifica la dirección e intenta de nuevo.' };
+          } else if (!policyBlocked && pendingToolName === 'send_email') {
+            toolResult = await executeSendEmail({
+              agentId:      agent.id as string,
+              to:           toolInput.to          as string,
+              subject:      toolInput.subject      as string,
+              body:         toolInput.body         as string,
+              businessName: agent.business_name   as string,
+              cc:           toolInput.cc           as string | undefined,
+              attFileId:    toolInput.attachment_file_id   as string | undefined,
+              attFileName:  toolInput.attachment_file_name as string | undefined,
+              attMimeType:  toolInput.attachment_mime_type as string | undefined,
+            }, supabase);
 
           } else if (pendingToolName === 'create_document') {
             try {
@@ -734,13 +734,13 @@ ${context}`;
               toolResult = { ok: false, error: `Error al generar el documento: ${String(err)}` };
             }
 
-          } else if (pendingToolName === 'trigger_outbound_call') {
+          } else if (!policyBlocked && pendingToolName === 'trigger_outbound_call') {
             const phone  = toolInput.phone_number as string;
             const name   = (toolInput.contact_name as string | null) ?? undefined;
             const motivo = toolInput.message as string;
 
             if (!(agent.features as any)?.outbound_calls) {
-              toolResult = { ok: false, error: 'Este agente no tiene llamadas salientes habilitadas. Actívalas en la configuración del agente.' };
+              toolResult = { ok: false, error: 'Las llamadas salientes no están habilitadas para este agente. Actívalas desde el portal en Llamadas → Salientes.' };
             } else if (!agent.vapi_agent_id) {
               toolResult = { ok: false, error: 'El agente no está sincronizado con Vapi. Usa el botón Resincronizar en el portal.' };
             } else {
@@ -755,133 +755,44 @@ ${context}`;
                 : { ok: false, error: callResult.error };
             }
 
-          } else if (pendingToolName === 'save_to_drive') {
-            const storagePath = toolInput.file_id    as string;
-            const filename    = toolInput.filename   as string;
-            const folderName  = (toolInput.folder_name as string | undefined) ?? undefined;
+          } else if (!policyBlocked && pendingToolName === 'save_to_drive') {
+            toolResult = await executeSaveToDrive(
+              agent.id     as string,
+              toolInput.file_id    as string,
+              toolInput.filename   as string,
+              toolInput.folder_name as string | undefined,
+              supabase,
+            );
 
-            const { data: driveInt } = await supabase
-              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
+          } else if (!policyBlocked && pendingToolName === 'organize_files') {
+            toolResult = await executeOrganizeFiles(
+              agent.id as string,
+              {
+                action:      toolInput.action      as string,
+                folderId:    toolInput.folder_id   as string | undefined,
+                fileId:      toolInput.file_id     as string | undefined,
+                destination: toolInput.destination as string | undefined,
+                newName:     toolInput.new_name    as string | undefined,
+                folderName:  toolInput.folder_name as string | undefined,
+              },
+              supabase,
+            );
 
-            if (!driveInt) {
-              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
-            } else {
-              const { data: fileBlob, error: dlErr } = await supabase.storage
-                .from('agent-documents').download(storagePath);
+          } else if (!policyBlocked && pendingToolName === 'search_files') {
+            toolResult = await executeSearchFiles(
+              agent.id as string,
+              toolInput.query as string,
+              supabase,
+            );
 
-              if (dlErr || !fileBlob) {
-                toolResult = { ok: false, error: 'No se pudo descargar el documento desde almacenamiento. Verifica que fue generado correctamente.' };
-              } else {
-                const buffer = Buffer.from(await fileBlob.arrayBuffer());
-                try {
-                  const conn   = await getConnector(driveInt as IntegrationRow, supabase);
-                  const result = await conn.files.upload(filename, buffer, 'application/pdf', folderName);
-                  if (!result) {
-                    toolResult = { ok: false, error: 'Permisos insuficientes en Drive. El dueño debe reconectar su correo desde Integraciones → Correo para otorgar permisos de escritura.' };
-                  } else {
-                    const provider = driveInt.provider === 'gmail' ? 'Google Drive' : 'OneDrive';
-                    toolResult = { ok: true, id: result.id, name: result.name, link: result.link, message: `Documento "${result.name}" guardado en ${provider}${folderName ? ` (carpeta: ${folderName})` : ''}. Ver: ${result.link}` };
-                  }
-                } catch (err) {
-                  toolResult = { ok: false, error: `Error al subir a Drive: ${String(err)}` };
-                }
-              }
-            }
-
-          } else if (pendingToolName === 'organize_files') {
-            const { data: orgInt } = await supabase
-              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
-
-            if (!orgInt) {
-              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Integraciones → Correo.' };
-            } else {
-              const conn   = await getConnector(orgInt as IntegrationRow, supabase);
-              const action = toolInput.action as string;
-              try {
-                if (action === 'list') {
-                  const folderId = (toolInput.folder_id as string | undefined) ?? undefined;
-                  const items    = await conn.files.list(folderId);
-                  if (!items.length) {
-                    toolResult = { ok: true, items: [], message: 'La carpeta está vacía.' };
-                  } else {
-                    const lines = items.map(f => `- ${f.isFolder ? '[carpeta]' : '[archivo]'} ${f.name} (id: ${f.id}${f.isFolder ? '' : `, tipo: ${f.mimeType}`})`).join('\n');
-                    toolResult = { ok: true, items, message: `Encontré ${items.length} elemento(s):\n${lines}` };
-                  }
-
-                } else if (action === 'move') {
-                  const fileId      = toolInput.file_id    as string;
-                  const destination = toolInput.destination as string;
-                  if (!fileId || !destination) {
-                    toolResult = { ok: false, error: 'Se requieren file_id y destination para mover.' };
-                  } else {
-                    const ok = await conn.files.move(fileId, destination);
-                    toolResult = ok
-                      ? { ok: true, message: `Archivo movido a la carpeta "${destination}" correctamente.` }
-                      : { ok: false, error: 'No se pudo mover el archivo. Verifica que el ID sea correcto y que tengas permisos.' };
-                  }
-
-                } else if (action === 'rename') {
-                  const fileId  = toolInput.file_id as string;
-                  const newName = toolInput.new_name as string;
-                  if (!fileId || !newName) {
-                    toolResult = { ok: false, error: 'Se requieren file_id y new_name para renombrar.' };
-                  } else {
-                    const ok = await conn.files.rename(fileId, newName);
-                    toolResult = ok
-                      ? { ok: true, message: `Elemento renombrado a "${newName}" correctamente.` }
-                      : { ok: false, error: 'No se pudo renombrar. Verifica que el ID sea correcto y que tengas permisos.' };
-                  }
-
-                } else if (action === 'create_folder') {
-                  const folderName = toolInput.folder_name as string;
-                  if (!folderName) {
-                    toolResult = { ok: false, error: 'Se requiere folder_name para crear una carpeta.' };
-                  } else {
-                    const result = await conn.files.createFolder(folderName);
-                    toolResult = result
-                      ? { ok: true, id: result.id, name: result.name, message: `Carpeta "${result.name}" creada correctamente.` }
-                      : { ok: false, error: 'No se pudo crear la carpeta.' };
-                  }
-
-                } else {
-                  toolResult = { ok: false, error: `Acción desconocida: ${action}` };
-                }
-              } catch (err) {
-                toolResult = { ok: false, error: `Error al organizar archivos: ${String(err)}` };
-              }
-            }
-
-          } else if (pendingToolName === 'search_files' || pendingToolName === 'read_file') {
-            const { data: filesInt } = await supabase
-              .from('email_integrations').select('*').eq('agent_id', agent.id).single();
-
-            if (!filesInt) {
-              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Ajustes → Correo.' };
-            } else {
-              const conn = await getConnector(filesInt as IntegrationRow, supabase);
-
-              if (pendingToolName === 'search_files') {
-                const query = toolInput.query as string;
-                const files = await conn.files.search(query);
-                toolResult = files.length
-                  ? { ok: true, files, message: `Encontré ${files.length} archivo(s): ${files.map(f => `${f.name} (id: ${f.id}, tipo: ${f.mimeType})`).join(', ')}` }
-                  : { ok: true, files: [], message: `No encontré archivos que coincidan con "${query}".` };
-
-              } else {
-                const fileId   = toolInput.file_id  as string;
-                const fileName = toolInput.file_name as string;
-                const mimeType = (toolInput.mime_type as string | undefined) ?? '';
-                if (!fileId || fileId.length > 500 || /[<>"'`\\]/.test(fileId)) {
-                  toolResult = { ok: false, error: 'ID de archivo inválido.' };
-                } else {
-                  const content = await conn.files.read(fileId, mimeType);
-                  const preview = content.slice(0, 8000);
-                  toolResult = content
-                    ? { ok: true, file_name: fileName, content: preview, truncated: content.length > 8000 }
-                    : { ok: false, error: `No se pudo leer el archivo "${fileName}". Verifica que sea un documento de texto.` };
-                }
-              }
-            }
+          } else if (!policyBlocked && pendingToolName === 'read_file') {
+            toolResult = await executeReadFile(
+              agent.id as string,
+              toolInput.file_id  as string,
+              toolInput.file_name as string,
+              (toolInput.mime_type as string | undefined) ?? '',
+              supabase,
+            );
 
           } else if (pendingToolName === 'search_leads') {
             if (!process.env.BRAVE_SEARCH_API_KEY) {

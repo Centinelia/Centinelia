@@ -10,6 +10,8 @@ import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 
 import PortalSidebar                    from '../PortalSidebar';
+import NotificationBell                 from '../NotificationBell';
+import PortalFooter                     from '../PortalFooter';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
 
@@ -86,7 +88,8 @@ export default async function AgentesLayout({
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+              <NotificationBell token={token} />
+              <ThemeToggle />
               <PortalLogout />
             </div>
           </div>
@@ -118,8 +121,11 @@ export default async function AgentesLayout({
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-          <div className="flex-1 min-w-0 px-4 sm:px-6 py-6">
-            {children}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="px-4 sm:px-6 py-6 flex-1">
+              {children}
+            </div>
+            <PortalFooter />
           </div>
         </div>
 

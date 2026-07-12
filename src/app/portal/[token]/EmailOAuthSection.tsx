@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle } from 'lucide-react';
 
 interface Integration {
   id:           string;
@@ -9,6 +9,7 @@ interface Integration {
   email:        string;
   auto_reply:   boolean;
   last_sync_at: string | null;
+  needs_reauth: boolean;
 }
 
 const PROVIDERS = [
@@ -122,9 +123,14 @@ export default function EmailOAuthSection({ token }: { token: string }) {
                 ) : (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{provider.description}</p>
                 )}
-                {connected?.last_sync_at && (
+                {connected && !connected.needs_reauth && connected.last_sync_at && (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>
                     Última sync: {new Date(connected.last_sync_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                  </p>
+                )}
+                {connected?.needs_reauth && (
+                  <p className="text-xs mt-0.5 font-semibold flex items-center gap-1" style={{ color: '#f59e0b' }}>
+                    <AlertTriangle size={10} /> Requiere reconexion
                   </p>
                 )}
               </div>
@@ -170,7 +176,25 @@ export default function EmailOAuthSection({ token }: { token: string }) {
               </div>
             </div>
 
-            {connected && (
+            {connected && connected.needs_reauth && (
+              <div className="mt-3 pt-3 px-3 py-3 rounded-lg flex flex-col gap-2"
+                style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                    La sesion expiro o fue revocada. El agente no puede leer ni responder correos hasta que reconectes la cuenta.
+                  </p>
+                </div>
+                <a
+                  href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}`}
+                  className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: '#f59e0b', color: '#000', textDecoration: 'none' }}
+                >
+                  <Mail size={11} /> Reconectar {provider.label}
+                </a>
+              </div>
+            )}
+            {connected && !connected.needs_reauth && (
               <div className="mt-3 pt-3 flex items-start gap-2 rounded-lg px-3 py-2"
                 style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
                 {connected.auto_reply
@@ -178,8 +202,8 @@ export default function EmailOAuthSection({ token }: { token: string }) {
                   : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
                 <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                   {connected.auto_reply
-                    ? 'El agente responde automáticamente a los correos entrantes usando el borrador generado por IA, sin requerir tu aprobación.'
-                    : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibirás un correo para aprobar o descartar la respuesta del agente.'}
+                    ? 'El agente responde automaticamente a los correos entrantes usando el borrador generado por IA, sin requerir tu aprobacion.'
+                    : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibiras un correo para aprobar o descartar la respuesta del agente.'}
                 </p>
               </div>
             )}

@@ -10,3 +10,8 @@ export const VAPI_VOICE_MAX_TOKENS = 300;
 
 /** Max email body chars stored in the DB. Keeps rows small; body beyond this is dropped. */
 export const EMAIL_BODY_TRUNCATE_CHARS = 8000;
+
+// ── Support / Contact ─────────────────────────────────────────────────────────
+
+export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL    ?? 'hola@centinelia.mx';
+export const SUPPORT_WA    = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '+52 811 633 3559';

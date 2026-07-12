@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceAgent } from '@/types/agent';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
@@ -69,22 +69,19 @@ export async function POST(req: NextRequest) {
     case 'end-of-call-report': {
       const call = message.call;
 
-      // Log structure on first path to diagnose payload format issues
       console.log('[webhook] end-of-call-report received. call.id:', call?.id,
         '| message.assistantId:', message.assistantId,
         '| call.assistantId:', call?.assistantId,
         '| message.assistant?.metadata:', JSON.stringify(message.assistant?.metadata),
         '| call?.assistant?.metadata:', JSON.stringify(call?.assistant?.metadata));
 
-      // agent_id: try every known path across Vapi versions
       const agentId: string =
-        message.assistant?.metadata?.agent_id   ??  // standard
-        call?.assistant?.metadata?.agent_id      ??  // nested in call
-        call?.metadata?.agent_id                 ??  // call-level metadata
-        message.metadata?.agent_id               ??  // top-level metadata
+        message.assistant?.metadata?.agent_id   ??
+        call?.assistant?.metadata?.agent_id      ??
+        call?.metadata?.agent_id                 ??
+        message.metadata?.agent_id               ??
         '';
 
-      // Fallback: look up by Vapi assistant ID (works across all payload versions)
       let resolvedAgentId = agentId;
       const vapiAssistantId =
         call?.assistantId       ??
@@ -109,14 +106,12 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      // Duration: call.startedAt/endedAt may not be in webhook payload, also check message level
       const rawStartedAt = call?.startedAt ?? message.startedAt;
       const rawEndedAt   = call?.endedAt   ?? message.endedAt;
       const startedAt    = rawStartedAt ? new Date(rawStartedAt).getTime() : 0;
       const endedAt      = rawEndedAt   ? new Date(rawEndedAt).getTime()   : 0;
       const durationSeconds = startedAt && endedAt ? Math.round((endedAt - startedAt) / 1000) : 0;
 
-      // Analysis: may live at message.analysis or call.analysis
       const analysis     = message.analysis ?? call?.analysis ?? null;
       const structured   = analysis?.structuredData ?? null;
       const rawOutcome   = detectOutcome(message, structured);
@@ -145,7 +140,7 @@ export async function POST(req: NextRequest) {
         acciones_pendientes:  structured?.acciones_pendientes ?? null,
       });
 
-      // 2. Save lead from structured data
+      // 2. Save lead
       if (structured?.nombre && structured?.tipo_contacto !== 'informacion') {
         if (['lead', 'cita', 'pedido'].includes(structured.tipo_contacto ?? '') ||
             structured.servicio || structured.pedido_items) {
@@ -164,14 +159,28 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2c-pre-outbound. Auto-add caller to outbound_contacts for future campaigns.
-      // Only for inbound calls answered for more than 5 seconds.
-      const callTypeRaw  = call?.type ?? '';
-      const isInboundCall = !callTypeRaw || callTypeRaw === 'inboundPhoneCall';
+      // 2b. Save appointment
+      if (structured?.tipo_contacto === 'cita' || structured?.cita_fecha) {
+        const telefono = structured.cita_telefono ?? structured.whatsapp ?? callerNumber ?? null;
+        const fechaIso = structured.cita_fecha && /^\d{4}-\d{2}-\d{2}$/.test(structured.cita_fecha)
+          ? structured.cita_fecha
+          : null;
+        await supabase.from('appointments_voice').insert({
+          agent_id:   resolvedAgentId,
+          nombre:     structured.nombre    ?? null,
+          telefono,
+          servicio:   structured.servicio  ?? null,
+          fecha:      structured.cita_fecha ?? null,
+          hora:       structured.cita_hora  ?? null,
+          fecha_iso:  fechaIso,
+          status:     'confirmada',
+        });
+      }
 
+      // 2c. Outbound contact upsert (race-safe — unique constraint on agent_id,telefono)
+      const callTypeRaw   = call?.type ?? '';
+      const isInboundCall = !callTypeRaw || callTypeRaw === 'inboundPhoneCall';
       if (isInboundCall && callerNumber && durationSeconds > 5) {
-        // Upsert instead of check-then-insert to prevent race-condition duplicates.
-        // Requires unique constraint on (agent_id, telefono) — see supabase/fix-outbound-contacts-race.sql
         await supabase.from('outbound_contacts').upsert({
           agent_id: resolvedAgentId,
           nombre:   structured?.nombre ?? null,
@@ -180,7 +189,6 @@ export async function POST(req: NextRequest) {
           source:   'llamada_entrante',
         }, { onConflict: 'agent_id,telefono', ignoreDuplicates: true });
 
-        // Backfill nombre if we captured one and the existing row didn't have it
         if (structured?.nombre) {
           await supabase.from('outbound_contacts')
             .update({ nombre: structured.nombre })
@@ -190,8 +198,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2c-pre. Save minimal caller profile so future calls can greet by name.
-      // Only when a nombre was captured AND no existing profile exists for this number.
+      // 2d. Caller profile for future context injection
       if (structured?.nombre && callerNumber) {
         const normCaller = callerNumber.replace(/\D/g, '').slice(-10);
         const { data: existingProfile } = await supabase
@@ -213,134 +220,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2b. Save appointment when tipo_contacto === 'cita'
-      if (structured?.tipo_contacto === 'cita' || structured?.cita_fecha) {
-        const telefono = structured.cita_telefono ?? structured.whatsapp ?? callerNumber ?? null;
-        // cita_fecha should be YYYY-MM-DD from structuredData; validate before storing
-        const fechaIso = structured.cita_fecha && /^\d{4}-\d{2}-\d{2}$/.test(structured.cita_fecha)
-          ? structured.cita_fecha
-          : null;
-        await supabase.from('appointments_voice').insert({
-          agent_id:   resolvedAgentId,
-          nombre:     structured.nombre    ?? null,
-          telefono,
-          servicio:   structured.servicio  ?? null,
-          fecha:      structured.cita_fecha ?? null,
-          hora:       structured.cita_hora  ?? null,
-          fecha_iso:  fechaIso,
-          status:     'confirmada',
-        });
-      }
-
-      // 2c. Lead email notification to business owner
-      const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
-      if (notifyOutcomes.includes(outcome)) {
-        // Fetch agent email + portal token (used in the email CTA)
-        const { data: _agentForEmail } = await supabase
-          .from('voice_agents')
-          .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number, email_from, logo_url, email_logo_url, email_brand_color, email_footer_text, email_domain_verified, brand_website, brand_address')
-          .eq('id', resolvedAgentId)
-          .single();
-        const agentForEmail = _agentForEmail as VoiceAgent | null;
-
-        if (agentForEmail?.client_email && (agentForEmail.notify_email ?? true)) {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-          const portalUrl = `${appUrl}/portal/${agentForEmail.portal_token}`;
-          const outcomeSubjects: Record<string, string> = {
-            lead_created:       '🎯 Nuevo lead capturado',
-            appointment_booked: '📅 Cita agendada',
-            order_taken:        '🛒 Nuevo pedido',
-            transferred:        '📞 Llamada transferida',
-            info_provided:      'ℹ️ Llamada informativa',
-          };
-          await sendEmail({
-            to:      agentForEmail.client_email,
-            subject: `${outcomeSubjects[outcome] ?? '📱 Llamada'}, ${agentForEmail.business_name}`,
-            html:    newLeadHtml({
-              businessName:  agentForEmail.business_name,
-              callerNumber,
-              nombre:        structured?.nombre   ?? null,
-              servicio:      structured?.servicio ?? structured?.pedido_items ?? null,
-              whatsapp:      structured?.whatsapp ?? null,
-              email:         structured?.email    ?? null,
-              summary,
-              outcome,
-              portalUrl,
-            }),
-          }).catch(console.error);
-        }
-
-        // 2d. Email to caller — only when they provided their email during the call
-        if (structured?.email && agentForEmail?.business_name &&
-            ['appointment_booked', 'lead_created'].includes(outcome)) {
-          const senderName  = agentForEmail.agent_name ?? agentForEmail.business_name;
-          const verifiedFrom = agentForEmail.email_domain_verified && agentForEmail.email_from
-            ? agentForEmail.email_from
-            : 'notificaciones@centinelia.mx';
-          const fromAddr    = `${agentForEmail.business_name} <${verifiedFrom}>`;
-          const phone       = agentForEmail.phone_number ?? null;
-          const branding    = {
-            logoUrl:    agentForEmail.logo_url ?? agentForEmail.email_logo_url ?? null,
-            brandColor: agentForEmail.email_brand_color ?? '#6C3BFF',
-            footerText: agentForEmail.email_footer_text ?? null,
-            website:    agentForEmail.brand_website     ?? null,
-            address:    agentForEmail.brand_address     ?? null,
-            senderName: agentForEmail.business_name,
-          };
-
-          if (outcome === 'appointment_booked') {
-            sendEmail({
-              to:      structured.email,
-              from:    fromAddr,
-              subject: `Tu cita en ${agentForEmail.business_name} está confirmada`,
-              html:    appointmentConfirmationToClientHtml({
-                branding,
-                businessName: agentForEmail.business_name,
-                agentName:    senderName,
-                clientName:   structured.nombre    ?? null,
-                citaFecha:    structured.cita_fecha ?? null,
-                citaHora:     structured.cita_hora  ?? null,
-                servicio:     structured.servicio   ?? null,
-                phone,
-              }),
-            }).catch(console.error);
-          } else {
-            sendEmail({
-              to:      structured.email,
-              from:    fromAddr,
-              subject: `Gracias por contactar a ${agentForEmail.business_name}`,
-              html:    leadFollowUpToClientHtml({
-                branding,
-                businessName: agentForEmail.business_name,
-                agentName:    senderName,
-                clientName:   structured.nombre  ?? null,
-                servicio:     structured.servicio ?? null,
-                phone,
-              }),
-            }).catch(console.error);
-          }
-        }
-      }
-
-      // 3. Update minutes, only if the call was successfully logged
       if (callInsertError) {
         console.error('webhook: voice_calls insert failed, skipping minutes increment', callInsertError);
         break;
       }
+
       const minutes = Math.ceil(durationSeconds / 60) || 1;
 
-      // 4. Fetch agent for notifications
+      // 3. Fetch agent once — covers minutes critical path + all deferred notifications
       const { data: _agent } = await supabase
         .from('voice_agents')
-        .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role, knowledge_base, notion_access_token, notion_db_id')
+        .select('*')
         .eq('id', resolvedAgentId)
         .single();
       const agent = _agent as VoiceAgent | null;
 
-      // 5. Increment minutes — account-level if portal_email, per-agent for demo/standalone
+      // 4. Increment minutes — account-level if portal_email, per-agent for demo/standalone
       let used         = 0;
       let included     = 0;
-      let resetDateStr = ',';
+      let resetDateStr = '';
 
       if (agent?.portal_email) {
         await supabase.rpc('increment_account_minutes_used', { p_portal_email: agent.portal_email, minutes });
@@ -363,61 +261,22 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const pct = included > 0 ? (used / included) * 100 : 0;
-
-      // 5. WhatsApp call summary to owner, runs before auto-pause so it always fires
-      if (agent?.transfer_whatsapp && (agent.notify_whatsapp ?? true)) {
-        const outcomeLabels: Record<string, string> = {
-          lead_created:       '🎯 Nuevo lead',
-          appointment_booked: '📅 Cita agendada',
-          order_taken:        '🛒 Pedido tomado',
-          transferred:        '📞 Transferida',
-          info_provided:      'ℹ️ Info proporcionada',
-          escalated_whatsapp: '💬 Escalada a WhatsApp',
-          missed:             '📵 Llamada perdida',
-          other:              '📱 Llamada terminada',
-        };
-        const mins = Math.max(1, Math.ceil(durationSeconds / 60));
-        const cleanSummary = summary
-          ? summary.replace(/#{1,6}\s*/g, '').replace(/\*\*(.*?)\*\*/g, '*$1*').trim()
-          : null;
-        const interesEmoji = structured?.nivel_interes === 'alto'
-          ? '🔥 Alto'
-          : structured?.nivel_interes === 'medio'
-          ? '🟡 Medio'
-          : structured?.nivel_interes === 'bajo'
-          ? '🔵 Bajo'
-          : null;
-
-        const msg = [
-          `🟣 *Centinelia* · ${agent.business_name}`,
-          '━━━━━━━━━━━━━━━━━━━',
-          `${outcomeLabels[outcome] ?? '📱 Llamada'} · ⏱ ${mins} min`,
-          callerNumber ? `📞 ${callerNumber}` : null,
-          interesEmoji ? `🎯 Interés: ${interesEmoji}` : null,
-          cleanSummary ? `\n${cleanSummary}` : null,
-          structured?.acciones_pendientes ? `\n✅ *Pendiente:* ${structured.acciones_pendientes}` : null,
-        ].filter(Boolean).join('\n');
-        await sendWhatsApp(agent.transfer_whatsapp, msg);
-      }
-
-      // 6. Auto-refill: trigger when remaining just crossed below threshold this call
-      if (
-        agent?.auto_refill_enabled &&
-        agent?.stripe_customer_id &&
-        included > 0
-      ) {
-        const threshold     = agent?.auto_refill_threshold ?? 50;
+      // 5. Auto-refill: trigger when remaining just crossed below threshold this call
+      let includedAfterRefill = included;
+      if (agent?.auto_refill_enabled && agent?.stripe_customer_id && included > 0) {
+        const threshold     = agent.auto_refill_threshold ?? 50;
         const remaining     = included - used;
-        const prevRemaining = remaining + minutes; // balance before this call
+        const prevRemaining = remaining + minutes;
         if (prevRemaining >= threshold && remaining < threshold) {
           const refill = await executeAutoRefill(resolvedAgentId).catch(() => ({ ok: false }));
-          if (refill.ok) included += agent?.auto_refill_minutes ?? 100;
+          if (refill.ok) includedAfterRefill += agent.auto_refill_minutes ?? 100;
         }
       }
 
-      // 7. Auto-pause at 100%
-      if (agent?.active && used >= included) {
+      // 6. Auto-pause: update DB + Vapi synchronously; notifications deferred via after()
+      let agentWasPaused = false;
+      if (agent?.active && used >= includedAfterRefill) {
+        agentWasPaused = true;
         if (agent.portal_email) {
           const { data: accountAgents } = await supabase
             .from('voice_agents').select('id, phone_number').eq('portal_email', agent.portal_email).eq('active', true);
@@ -431,136 +290,255 @@ export async function POST(req: NextRequest) {
           await supabase.from('voice_agents').update({ active: false }).eq('id', resolvedAgentId);
           if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
         }
-        const pauseMsg = `⚠️ *Límite de minutos alcanzado, ${agent.business_name}*\n\nTu agente de voz ha sido *pausado automáticamente* al haber utilizado los ${included} minutos de tu plan.\n\nContacta a tu asesor de Centinelia para reactivar el servicio o adquirir minutos adicionales.`;
-        if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, pauseMsg);
-        if (agent.client_email) {
-          await sendEmail({
-            to: agent.client_email,
-            subject: `⚠️ Agente pausado, ${agent.business_name}`,
-            html: minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included, resetDate: resetDateStr, portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx'}/portal/${agent.portal_token}` }),
-          }).catch(console.error);
+      }
+
+      const pct    = includedAfterRefill > 0 ? (used / includedAfterRefill) * 100 : 0;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+
+      // ── All notifications and AI tasks run after the HTTP response ─────
+      after(async () => {
+        // A. Pause notifications — skip everything else when paused
+        if (agentWasPaused && agent) {
+          const pauseMsg = `⚠️ *Límite de minutos alcanzado, ${agent.business_name}*\n\nTu agente de voz ha sido *pausado automáticamente* al haber utilizado los ${includedAfterRefill} minutos de tu plan.\n\nContacta a tu asesor de Centinelia para reactivar el servicio o adquirir minutos adicionales.`;
+          if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, pauseMsg).catch(console.error);
+          if (agent.client_email) {
+            await sendEmail({
+              to:      agent.client_email,
+              subject: `⚠️ Agente pausado, ${agent.business_name}`,
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct: 100, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${agent.portal_token}` }),
+            }).catch(console.error);
+          }
+          return;
         }
-        break;
-      }
 
-      // 8. Warning at 80% (uses updated included if auto-refill fired)
-      const pctAfterRefill = included > 0 ? (used / included) * 100 : 0;
-      if (agent?.active && pctAfterRefill >= 80 && (pctAfterRefill - (minutes / included) * 100) < 80) {
-        const warnMsg = `📊 *Aviso de minutos, ${agent.business_name}*\n\nHas usado el *${Math.round(pct)}%* de tus ${included} minutos incluidos (${used} usados).\n\nContacta a tu asesor de Centinelia si necesitas ampliar tu plan antes de que el agente se pause automáticamente.`;
-        if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, warnMsg);
-        if (agent.client_email) {
-          await sendEmail({
-            to: agent.client_email,
-            subject: `📊 Aviso: ${Math.round(pct)}% de minutos usados, ${agent.business_name}`,
-            html: minutesAlertHtml({ businessName: agent.business_name, pct, used, included, resetDate: resetDateStr, portalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx'}/portal/${agent.portal_token}` }),
-          }).catch(console.error);
+        // B. WhatsApp call summary to owner
+        if (agent?.transfer_whatsapp && (agent.notify_whatsapp ?? true)) {
+          const outcomeLabels: Record<string, string> = {
+            lead_created:       '🎯 Nuevo lead',
+            appointment_booked: '📅 Cita agendada',
+            order_taken:        '🛒 Pedido tomado',
+            transferred:        '📞 Transferida',
+            info_provided:      'ℹ️ Info proporcionada',
+            escalated_whatsapp: '💬 Escalada a WhatsApp',
+            missed:             '📵 Llamada perdida',
+            other:              '📱 Llamada terminada',
+          };
+          const mins = Math.max(1, Math.ceil(durationSeconds / 60));
+          const cleanSummary = summary
+            ? summary.replace(/#{1,6}\s*/g, '').replace(/\*\*(.*?)\*\*/g, '*$1*').trim()
+            : null;
+          const interesEmoji = structured?.nivel_interes === 'alto'
+            ? '🔥 Alto'
+            : structured?.nivel_interes === 'medio'
+            ? '🟡 Medio'
+            : structured?.nivel_interes === 'bajo'
+            ? '🔵 Bajo'
+            : null;
+          const msg = [
+            `🟣 *Centinelia* · ${agent.business_name}`,
+            '━━━━━━━━━━━━━━━━━━━',
+            `${outcomeLabels[outcome] ?? '📱 Llamada'} · ⏱ ${mins} min`,
+            callerNumber ? `📞 ${callerNumber}` : null,
+            interesEmoji ? `🎯 Interés: ${interesEmoji}` : null,
+            cleanSummary ? `\n${cleanSummary}` : null,
+            structured?.acciones_pendientes ? `\n✅ *Pendiente:* ${structured.acciones_pendientes}` : null,
+          ].filter(Boolean).join('\n');
+          await sendWhatsApp(agent.transfer_whatsapp, msg).catch(console.error);
         }
-      }
 
-      // 8. Review request to caller (if agent has google_review_url and call was substantive)
-      const reviewUrl = agent?.google_review_url ?? null;
-      const callerWa  = structured?.whatsapp ?? callerNumber;
-      const goodCall  = ['info_provided', 'appointment_booked', 'lead_created', 'order_taken'].includes(outcome);
-      if (reviewUrl && callerWa && goodCall && durationSeconds >= 60) {
-        const reviewMsg = `¡Hola! Gracias por contactar a *${agent?.business_name}*. Si le atendimos bien, nos ayudaría mucho dejar una reseña en Google 🙏\n\n${reviewUrl}`;
-        await sendWhatsApp(callerWa, reviewMsg).catch(() => null);
-      }
-
-      // 10. Shared customer profile + cross-agent trigger chain
-      if (callerNumber && agent?.portal_email && durationSeconds > 5) {
-        const customerId = await upsertCustomer(
-          agent.portal_email,
-          callerNumber,
-          structured?.nombre ?? undefined,
-        );
-        if (customerId) {
-          await logInteraction({
-            customerId,
-            agentId:   resolvedAgentId,
-            agentRole: deriveAgentRole(agent),
-            type:      outcome,
-            summary:   summary ?? `${outcome} · ${Math.max(1, Math.ceil(durationSeconds / 60))} min`,
-            outcome,
-          });
-
-          if (['lead_created', 'appointment_booked', 'order_taken'].includes(outcome)) {
-            triggerCrossAgentQueue(
-              agent.portal_email,
-              resolvedAgentId,
-              callerNumber,
-              structured,
-            ).catch(err => console.error('[webhook] cross-agent queue failed:', err));
+        // C. 80% usage warning
+        const pctBefore = includedAfterRefill > 0 ? ((used - minutes) / includedAfterRefill) * 100 : 0;
+        if (agent?.active && pct >= 80 && pctBefore < 80) {
+          const warnMsg = `📊 *Aviso de minutos, ${agent.business_name}*\n\nHas usado el *${Math.round(pct)}%* de tus ${includedAfterRefill} minutos incluidos (${used} usados).\n\nContacta a tu asesor de Centinelia si necesitas ampliar tu plan antes de que el agente se pause automáticamente.`;
+          if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, warnMsg).catch(console.error);
+          if (agent.client_email) {
+            await sendEmail({
+              to:      agent.client_email,
+              subject: `📊 Aviso: ${Math.round(pct)}% de minutos usados, ${agent.business_name}`,
+              html:    minutesAlertHtml({ businessName: agent.business_name, pct, used, included: includedAfterRefill, resetDate: resetDateStr, portalUrl: `${appUrl}/portal/${agent.portal_token}` }),
+            }).catch(console.error);
           }
         }
-      }
 
-      // 11. Extract learnings from transcript (fire-and-forget, only for substantive calls)
-      if (transcript && durationSeconds >= 120 && agent?.portal_email && outcome !== 'unanswered') {
-        extractAndSaveLearnings({
-          agentId:       resolvedAgentId,
-          portalEmail:   agent.portal_email,
-          vapiCallId:    call?.id ?? null,
-          transcript,
-          knowledgeBase: agent?.knowledge_base ?? null,
-        }).catch(err => console.error('[webhook] extract-learnings failed:', err));
-      }
+        // D. Owner notification email
+        const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
+        if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome)) {
+          const portalUrl = `${appUrl}/portal/${agent.portal_token}`;
+          const outcomeSubjects: Record<string, string> = {
+            lead_created:       '🎯 Nuevo lead capturado',
+            appointment_booked: '📅 Cita agendada',
+            order_taken:        '🛒 Nuevo pedido',
+            transferred:        '📞 Llamada transferida',
+            info_provided:      'ℹ️ Llamada informativa',
+          };
+          await sendEmail({
+            to:      agent.client_email,
+            subject: `${outcomeSubjects[outcome] ?? '📱 Llamada'}, ${agent.business_name}`,
+            html:    newLeadHtml({
+              businessName:  agent.business_name,
+              callerNumber,
+              nombre:        structured?.nombre   ?? null,
+              servicio:      structured?.servicio ?? structured?.pedido_items ?? null,
+              whatsapp:      structured?.whatsapp ?? null,
+              email:         structured?.email    ?? null,
+              summary,
+              outcome,
+              portalUrl,
+            }),
+          }).catch(console.error);
 
-      // 12. Post to team feed for meaningful outcomes (fire-and-forget)
-      if (agent?.portal_email && !['unanswered', 'other'].includes(outcome)) {
-        generateTeamMessage({
-          portalEmail:   agent.portal_email,
-          fromAgentId:   resolvedAgentId,
-          fromAgentRole: deriveAgentRole(agent),
-          vapiCallId:    call?.id ?? null,
-          outcome,
-          summary,
-          structured,
-          callerNumber,
-        }).catch(err => console.error('[webhook] team-message failed:', err));
-      }
+          // E. Email to caller when they provided their email during the call
+          if (structured?.email && ['appointment_booked', 'lead_created'].includes(outcome)) {
+            const senderName   = agent.agent_name ?? agent.business_name;
+            const verifiedFrom = agent.email_domain_verified && agent.email_from
+              ? agent.email_from
+              : 'notificaciones@centinelia.mx';
+            const fromAddr     = `${agent.business_name} <${verifiedFrom}>`;
+            const phone        = agent.phone_number ?? null;
+            const branding     = {
+              logoUrl:    agent.logo_url ?? agent.email_logo_url ?? null,
+              brandColor: agent.email_brand_color ?? '#6C3BFF',
+              footerText: agent.email_footer_text ?? null,
+              website:    agent.brand_website     ?? null,
+              address:    agent.brand_address     ?? null,
+              senderName: agent.business_name,
+            };
+            if (outcome === 'appointment_booked') {
+              await sendEmail({
+                to:      structured.email,
+                from:    fromAddr,
+                subject: `Tu cita en ${agent.business_name} está confirmada`,
+                html:    appointmentConfirmationToClientHtml({
+                  branding,
+                  businessName: agent.business_name,
+                  agentName:    senderName,
+                  clientName:   structured.nombre    ?? null,
+                  citaFecha:    structured.cita_fecha ?? null,
+                  citaHora:     structured.cita_hora  ?? null,
+                  servicio:     structured.servicio   ?? null,
+                  phone,
+                }),
+              }).catch(console.error);
+            } else {
+              await sendEmail({
+                to:      structured.email,
+                from:    fromAddr,
+                subject: `Gracias por contactar a ${agent.business_name}`,
+                html:    leadFollowUpToClientHtml({
+                  branding,
+                  businessName: agent.business_name,
+                  agentName:    senderName,
+                  clientName:   structured.nombre  ?? null,
+                  servicio:     structured.servicio ?? null,
+                  phone,
+                }),
+              }).catch(console.error);
+            }
+          }
+        }
 
-      // 13. Notion CRM — log call when the account has Notion connected and a CRM database set
-      const notionToken = agent?.notion_access_token ?? null;
-      const notionDbId  = agent?.notion_db_id        ?? null;
-      if (notionToken && notionDbId && outcome !== 'unanswered') {
-        const TIPO_MAP: Record<string, string> = {
-          lead_created:       'Lead',
-          appointment_booked: 'Cita',
-          order_taken:        'Pedido',
-        };
-        const callDate = rawEndedAt
-          ? new Date(rawEndedAt).toISOString().slice(0, 10)
-          : new Date().toISOString().slice(0, 10);
+        // F. Google review request to caller
+        const reviewUrl = agent?.google_review_url ?? null;
+        const callerWa  = structured?.whatsapp ?? callerNumber;
+        const goodCall  = ['info_provided', 'appointment_booked', 'lead_created', 'order_taken'].includes(outcome);
+        if (reviewUrl && callerWa && goodCall && durationSeconds >= 60) {
+          await sendWhatsApp(callerWa, `¡Hola! Gracias por contactar a *${agent?.business_name}*. Si le atendimos bien, nos ayudaría mucho dejar una reseña en Google 🙏\n\n${reviewUrl}`).catch(() => null);
+        }
 
-        addCallEntry({
-          accessToken: notionToken,
-          dbId:        notionDbId,
-          nombre:      structured?.nombre ?? null,
-          tipo:        TIPO_MAP[outcome] ?? 'Llamada',
-          fecha:       callDate,
-          telefono:    callerNumber || null,
-          servicio:    structured?.servicio ?? structured?.pedido_items ?? null,
-          resumen:     summary,
-          outcome,
-          accion:      structured?.acciones_pendientes ?? null,
-        }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
-      }
+        // G. Customer profile + cross-agent trigger chain
+        if (callerNumber && agent?.portal_email && durationSeconds > 5) {
+          const customerId = await upsertCustomer(
+            agent.portal_email,
+            callerNumber,
+            structured?.nombre ?? undefined,
+          ).catch(() => null);
+          if (customerId) {
+            await logInteraction({
+              customerId,
+              agentId:   resolvedAgentId,
+              agentRole: deriveAgentRole(agent),
+              type:      outcome,
+              summary:   summary ?? `${outcome} · ${Math.max(1, Math.ceil(durationSeconds / 60))} min`,
+              outcome,
+            }).catch(console.error);
+            if (['lead_created', 'appointment_booked', 'order_taken'].includes(outcome)) {
+              await triggerCrossAgentQueue(
+                agent.portal_email,
+                resolvedAgentId,
+                callerNumber,
+                structured,
+              ).catch(err => console.error('[webhook] cross-agent queue failed:', err));
+            }
+          }
+        }
 
-      // 9. Missed call recovery — call back unanswered callers automatically
-      if (
-        outcome === 'unanswered' &&
-        callerNumber &&
-        agent?.missed_call_recovery &&
-        agent?.active &&
-        agent?.vapi_agent_id &&
-        agent?.phone_number
-      ) {
-        triggerOutboundCall({
-          agent:          agent!,
-          customerNumber: callerNumber,
-          isCallback:     true,
-        }).catch(err => console.error('[webhook] missed_call_recovery failed:', err));
-      }
+        // H. Extract learnings (AI — only for substantive calls)
+        if (transcript && durationSeconds >= 120 && agent?.portal_email && outcome !== 'unanswered') {
+          await extractAndSaveLearnings({
+            agentId:       resolvedAgentId,
+            portalEmail:   agent.portal_email,
+            vapiCallId:    call?.id ?? null,
+            transcript,
+            knowledgeBase: agent?.knowledge_base ?? null,
+          }).catch(err => console.error('[webhook] extract-learnings failed:', err));
+        }
+
+        // I. Team feed message (AI)
+        if (agent?.portal_email && !['unanswered', 'other'].includes(outcome)) {
+          await generateTeamMessage({
+            portalEmail:   agent.portal_email,
+            fromAgentId:   resolvedAgentId,
+            fromAgentRole: deriveAgentRole(agent),
+            vapiCallId:    call?.id ?? null,
+            outcome,
+            summary,
+            structured,
+            callerNumber,
+          }).catch(err => console.error('[webhook] team-message failed:', err));
+        }
+
+        // J. Notion CRM
+        const notionToken = agent?.notion_access_token ?? null;
+        const notionDbId  = agent?.notion_db_id        ?? null;
+        if (notionToken && notionDbId && outcome !== 'unanswered') {
+          const TIPO_MAP: Record<string, string> = {
+            lead_created:       'Lead',
+            appointment_booked: 'Cita',
+            order_taken:        'Pedido',
+          };
+          const callDate = rawEndedAt
+            ? new Date(rawEndedAt).toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10);
+          await addCallEntry({
+            accessToken: notionToken,
+            dbId:        notionDbId,
+            nombre:      structured?.nombre ?? null,
+            tipo:        TIPO_MAP[outcome] ?? 'Llamada',
+            fecha:       callDate,
+            telefono:    callerNumber || null,
+            servicio:    structured?.servicio ?? structured?.pedido_items ?? null,
+            resumen:     summary,
+            outcome,
+            accion:      structured?.acciones_pendientes ?? null,
+          }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
+        }
+
+        // K. Missed call recovery
+        if (
+          outcome === 'unanswered' &&
+          callerNumber &&
+          agent?.missed_call_recovery &&
+          agent?.active &&
+          agent?.vapi_agent_id &&
+          agent?.phone_number
+        ) {
+          await triggerOutboundCall({
+            agent:          agent!,
+            customerNumber: callerNumber,
+            isCallback:     true,
+          }).catch(err => console.error('[webhook] missed_call_recovery failed:', err));
+        }
+      });
 
       break;
     }

@@ -78,7 +78,7 @@ export default function DocumentosPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-5 sm:p-7 max-w-3xl mx-auto w-full">
+    <div id="of-documentos" className="flex flex-col gap-5 p-5 sm:p-7 max-w-3xl mx-auto w-full">
       {/* Header */}
       <div>
         <h1 className="text-sm font-semibold tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--c-text-3)' }}>

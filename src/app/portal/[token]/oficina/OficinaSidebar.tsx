@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen } from 'lucide-react';
@@ -16,20 +17,44 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { href: '',            label: 'Actividad',             icon: Activity,      badgeKey: '',          opsHint: ''              },
-  { href: '/bandeja',    label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',   opsHint: '1 op/correo'   },
-  { href: '/reportes',   label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',          opsHint: '1 op/reporte'  },
-  { href: '/contratos',  label: 'Contratos',             icon: FileText,      badgeKey: 'contratos', opsHint: '1 op/análisis' },
-  { href: '/documentos', label: 'Documentos',            icon: FolderOpen,    badgeKey: '',          opsHint: ''              },
-  { href: '/juntas',     label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',    opsHint: '1–6 ops/junta' },
-  { href: '/investigacion', label: 'Investigación',       icon: Search,        badgeKey: '',          opsHint: '0 ops aquí · 7–13 vía chat' },
-  { href: '/onboarding', label: 'Onboarding',            icon: UserCheck,     badgeKey: '',          opsHint: ''              },
-  { href: '/chat',       label: 'Consultar agente',      icon: MessageSquare, badgeKey: '',          opsHint: '3–13 ops/msg'  },
+  { href: '',               label: 'Actividad',             icon: Activity,      badgeKey: '',          opsHint: '',                            pulseId: 'of-actividad'      },
+  { href: '/bandeja',       label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',   opsHint: '1 op/correo',                 pulseId: 'of-bandeja'        },
+  { href: '/reportes',      label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',          opsHint: '1 op/reporte',                pulseId: 'of-reportes'       },
+  { href: '/contratos',     label: 'Contratos',             icon: FileText,      badgeKey: 'contratos', opsHint: '1 op/análisis',               pulseId: 'of-contratos'      },
+  { href: '/documentos',    label: 'Documentos',            icon: FolderOpen,    badgeKey: '',          opsHint: '',                            pulseId: 'of-documentos'     },
+  { href: '/juntas',        label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',    opsHint: '1–6 ops/junta',               pulseId: 'of-juntas'         },
+  { href: '/investigacion', label: 'Investigación',         icon: Search,        badgeKey: '',          opsHint: '0 ops aquí · 7–13 vía chat',  pulseId: 'of-investigacion'  },
+  { href: '/onboarding',    label: 'Onboarding',            icon: UserCheck,     badgeKey: '',          opsHint: '',                            pulseId: 'of-onboarding'     },
+  { href: '/chat',          label: 'Consultar agente',      icon: MessageSquare, badgeKey: '',          opsHint: '3–13 ops/msg',                pulseId: 'of-chat'           },
 ];
 
 export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false }: Props) {
-  const pathname = usePathname();
-  const base     = `/portal/${token}/oficina`;
+  const pathname    = usePathname();
+  const base        = `/portal/${token}/oficina`;
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingId) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (attempts > 100) { clearInterval(timer); setPendingId(null); return; }
+      const el = document.getElementById(pendingId);
+      if (!el) return;
+      clearInterval(timer);
+      setPendingId(null);
+      const rect = el.getBoundingClientRect();
+      window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
+      el.style.transition = 'box-shadow 0.15s';
+      el.style.boxShadow  = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
+      setTimeout(() => {
+        el.style.transition = 'box-shadow 1.5s ease-out';
+        el.style.boxShadow  = '';
+        setTimeout(() => { el.style.transition = ''; }, 1500);
+      }, 600);
+    }, 50);
+    return () => clearInterval(timer);
+  }, [pendingId]);
 
   return (
     <aside
@@ -71,6 +96,7 @@ export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, 
             <Link
               key={item.href}
               href={href}
+              onClick={() => setPendingId(item.pulseId)}
               className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5"
               style={{
                 background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',

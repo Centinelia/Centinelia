@@ -78,11 +78,13 @@ export default async function SalientesPage({ params }: Props) {
               <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
             </div>
 
-            <OutboundToggles
-              token={token}
-              initOutbound={!!(features.outbound_calls)}
-              initMissedCallRecovery={!!(agent as any).missed_call_recovery}
-            />
+            <div id="llamadas-sal">
+              <OutboundToggles
+                token={token}
+                initOutbound={!!(features.outbound_calls)}
+                initMissedCallRecovery={!!(agent as any).missed_call_recovery}
+              />
+            </div>
 
             {!!(features.outbound_calls) && (
               <OutboundSection

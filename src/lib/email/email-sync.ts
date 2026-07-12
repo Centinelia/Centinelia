@@ -40,7 +40,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, knowledge_base, role_knowledge_base, role')
+    .select('id, business_name, agent_name, client_email, portal_token, knowledge_base, role_knowledge_base, role, portal_email')
     .eq('id', integration.agent_id)
     .single();
 
@@ -52,9 +52,25 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const messages = await conn.email.fetchUnread(since);
 
+  const syncedAt = new Date().toISOString();
   await supabase.from('email_integrations')
-    .update({ last_sync_at: new Date().toISOString() })
+    .update({ last_sync_at: syncedAt })
     .eq('id', integration.id);
+
+  // Sync last_sync_at to integration_accounts so the portal UI shows fresh data
+  if (agent.portal_email) {
+    const { data: ia } = await supabase
+      .from('integration_accounts')
+      .select('metadata')
+      .eq('portal_email', agent.portal_email)
+      .eq('provider', integration.provider)
+      .maybeSingle();
+    const meta = (ia?.metadata as Record<string, unknown>) ?? {};
+    await supabase.from('integration_accounts')
+      .update({ metadata: { ...meta, last_sync_at: syncedAt } })
+      .eq('portal_email', agent.portal_email)
+      .eq('provider', integration.provider);
+  }
 
   for (const msg of messages) {
     // Guard against re-processing emails whose markRead silently failed on a prior sync

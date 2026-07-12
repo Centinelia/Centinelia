@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { getConnector, type IntegrationRow, type Attachment } from '@/lib/connectors';
-import { sendEmail } from '@/lib/email/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { executeSendEmail } from '@/lib/services/connector-tools';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,56 +19,25 @@ export async function POST(req: NextRequest) {
     attachment_mime_type: attMimeType,
   } = args as { to: string; subject: string; body: string; attachment_file_id?: string; attachment_file_name?: string; attachment_mime_type?: string };
 
-  if (!to || !subject || !emailBody) {
+  if (!to || !subject || !emailBody)
     return NextResponse.json({ result: 'Necesito el destinatario, asunto y cuerpo del correo.' });
-  }
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, portal_email')
+    .select('id, business_name')
     .eq('id', agent_id)
     .single();
   if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado' });
 
   const opsResult = await consumeAiOp(agent_id, 1);
-  if (!opsResult.ok) {
+  if (!opsResult.ok)
     return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para enviar correos.' });
-  }
 
-  const { data: integration } = await supabase
-    .from('email_integrations')
-    .select('*')
-    .eq('agent_id', agent_id)
-    .single();
+  const result = await executeSendEmail(
+    { agentId: agent_id, to, subject, body: emailBody, businessName: agent.business_name as string, attFileId, attFileName, attMimeType },
+    supabase,
+  );
 
-  let attachment: Attachment | undefined;
-  let sent = false;
-
-  if (integration) {
-    const conn = await getConnector(integration as IntegrationRow, supabase);
-
-    if (attFileId) {
-      const dl = await conn.files.download(attFileId, attMimeType ?? '');
-      if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
-    }
-
-    try {
-      await conn.email.send(to, subject, emailBody, attachment);
-      sent = true;
-    } catch { /* fall through to Resend */ }
-  }
-
-  if (!sent) {
-    const businessName = agent.business_name as string;
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
-      ${emailBody.split('\n').map((p: string) => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
-      <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:12px">— ${businessName}</p>
-    </body></html>`;
-    const resendAtts = attachment ? [{ filename: attachment.filename, content: attachment.content.toString('base64') }] : undefined;
-    await sendEmail({ to, subject, html, from: `${businessName} <notificaciones@centinelia.mx>`, attachments: resendAtts });
-  }
-
-  const attNote = attachment ? ` con el archivo "${attachment.filename}" adjunto` : '';
-  return NextResponse.json({ result: `Correo enviado a ${to} con asunto: "${subject}"${attNote}.` });
+  return NextResponse.json({ result: result.message ?? result.error ?? 'Error desconocido.' });
 }

@@ -19,5 +19,5 @@ export default async function OnboardingPage({ params }: Props) {
     business_name: a.business_name,
   }));
 
-  return <OnboardingSection token={token} agents={agents} />;
+  return <div id="of-onboarding"><OnboardingSection token={token} agents={agents} /></div>;
 }

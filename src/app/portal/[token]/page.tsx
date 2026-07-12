@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
@@ -33,16 +33,13 @@ import DownloadCallsCSV        from './DownloadCallsCSV';
 import ContractSection         from './ContractSection';
 import CollapsibleSection      from './CollapsibleSection';
 import PeakHoursChart          from './PeakHoursChart';
-import LiveNotifications       from './LiveNotifications';
+import NotificationBell        from './NotificationBell';
+import PortalFooter            from './PortalFooter';
 
 import CallsSearch             from './CallsSearch';
-import IntegrationsSection     from './IntegrationsSection';
-import NotionSection            from './NotionSection';
 import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
-import NotionSchemasSection   from './NotionSchemasSection';
-import TeamsSection           from './TeamsSection';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
@@ -51,9 +48,10 @@ import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
-import EmailSettings             from './EmailSettings';
-import EmailOAuthSection         from './EmailOAuthSection';
 import { inboxAddressFor }       from '@/lib/email/inbox';
+import IntegrationsHub           from './IntegrationsHub';
+import PoliciesSection          from './PoliciesSection';
+import OrgCard                  from './OrgCard';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -196,7 +194,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
     // Calls, always needed (resumen + minutos tab for allCalls)
     since
       ? supabase.from('voice_calls').select('*').eq('agent_id', agent.id).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -211,6 +209,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     supabase.from('wa_leads').select('id, nombre, customer_number, whatsapp, email, negocio, giro, servicio, presupuesto, timeline, notas, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
+    supabase.from('email_integrations').select('provider, email, needs_reauth').eq('agent_id', agent.id),
   ]);
 
   const calls             = (callsRes.data           ?? []) as VoiceCall[];
@@ -223,6 +222,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const contactWALeads    = (contactWALeadsRes.data  ?? []) as ContactWALead[];
   const contactOutbound   = (contactOutboundRes.data   ?? []) as ContactOutbound[];
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
+  const reauthAlerts      = (emailIntsRes.data ?? []).filter((i: any) => i.needs_reauth) as { provider: 'gmail' | 'outlook'; email: string }[];
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -322,6 +322,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
+              <NotificationBell token={token} />
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
@@ -407,6 +408,27 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Reauth alerts — mobile strip */}
+              {reauthAlerts.length > 0 && (
+                <div className="flex flex-col gap-2 lg:hidden">
+                  {reauthAlerts.map(alert => (
+                    <Link key={alert.provider}
+                      href={`/portal/${token}?tab=integraciones`}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-80"
+                      style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                      <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
+                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexion
+                        </p>
+                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
+                      </div>
+                      <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                    </Link>
+                  ))}
                 </div>
               )}
 
@@ -515,6 +537,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* ── Right column (desktop only) ── */}
               <div className="hidden lg:flex flex-col gap-4">
+
+
                 {showOutbound && (
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <div className="flex items-center justify-between mb-4">
@@ -622,66 +646,23 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── INTEGRACIONES ────────────────────────────────────────────── */}
           {tab === 'integraciones' && (
             <div className="flex flex-col gap-5">
-              <div id="calendario" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Calendario</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Cal.com crea la cita directamente durante la llamada. Calendly y Google Calendar envían el link de reserva al cliente por WhatsApp.
-                </p>
-                <IntegrationsSection token={token} plan={agent.plan as Plan} />
-              </div>
-              <div id="notion"><NotionSection token={token} /></div>
-              {(agent as any).notion_access_token && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Validación de bases de datos</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Define la estructura esperada de tus bases de datos. El agente revisa cada semana que todo esté en orden y te avisa si hay entradas con campos vacíos o valores incorrectos.
-                  </p>
-                  <NotionSchemasSection token={token} />
-                </div>
-              )}
-              {hasOpsAgent && (
-                <div id="teams" className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
-                  <div className="px-5 pt-5 pb-1" style={{ background: 'var(--c-surface)' }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Microsoft Teams</h2>
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                      Conecta Teams vía Power Automate para que el agente lea y responda mensajes automáticamente.
-                    </p>
-                  </div>
-                  <div className="px-5 pb-5" style={{ background: 'var(--c-surface)' }}>
-                    <TeamsSection token={token} />
-                  </div>
-                </div>
-              )}
-              {/* Email OAuth */}
-              <div id="correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
-                <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                  Conecta tu cuenta de Gmail u Outlook para que el agente lea y gestione tu bandeja de entrada directamente.
-                </p>
-                <EmailOAuthSection token={token} />
-              </div>
-              {inboxAddress && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Bandeja de entrada por reenvío</h2>
-                  <p className="text-xs mb-3" style={{ color: 'var(--c-text-2)' }}>
-                    Alternativa sin OAuth: configura el reenvío automático en tu correo empresarial hacia esta dirección y los mensajes llegarán a La Oficina.
-                  </p>
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl select-all cursor-text font-mono text-sm"
-                    style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-                  >
-                    <Mail size={14} style={{ color: '#06b6d4', flexShrink: 0 }} />
-                    {inboxAddress}
-                  </div>
-                </div>
-              )}
-              <EmailSettings token={token} />
+              <IntegrationsHub
+                token={token}
+                plan={agent.plan as Plan}
+                hasOpsAgent={hasOpsAgent}
+                hasNotion={!!(agent as any).notion_access_token}
+                inboxAddress={inboxAddress}
+              />
+              <PoliciesSection token={token} />
             </div>
           )}
 
           {/* ── CUENTA ───────────────────────────────────────────────────── */}
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
+              {agent.portal_email && (
+                <OrgCard token={token} portalEmail={agent.portal_email} />
+              )}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Left column ── */}
@@ -797,107 +778,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           )}
         </div>
 
+            <PortalFooter />
           </div>{/* /main content column */}
         </div>{/* /body flex */}
 
-        {/* Footer */}
-        <div className="px-4 sm:px-6 pt-3 pb-20 sm:pb-4 shrink-0" style={{ borderTop: '1px solid var(--c-border)' }}>
-          <div className="max-w-4xl mx-auto">
-
-            {/* ── Desktop: icons | review badge | powered by ── */}
-            <div className="hidden sm:flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                {supportWhatsApp && (
-                  <a href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`} target="_blank" rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                    style={{ background: '#22c55e', color: '#fff', flexShrink: 0 }}
-                    aria-label="WhatsApp">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                    </svg>
-                  </a>
-                )}
-                <a href={`mailto:${supportEmail}`}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                  style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)', flexShrink: 0 }}
-                  aria-label="Soporte">
-                  <Mail size={14} />
-                </a>
-              </div>
-              {centineliReviewUrl && (
-                <a href={centineliReviewUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-full text-[11px] whitespace-nowrap transition-opacity hover:opacity-80"
-                  style={{ padding: '5px 13px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', textDecoration: 'none' }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  ¿Qué tal funciona Centinelia?
-                </a>
-              )}
-              <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                Powered by{' '}
-                <a href="https://pneumastudio.mx" target="_blank" rel="noopener noreferrer"
-                  style={{ color: 'var(--c-text-4)' }} className="hover:opacity-80 transition-opacity">
-                  Pneuma Studio
-                </a>
-              </span>
-            </div>
-
-            {/* ── Mobile: icons + powered by / review badge centered ── */}
-            <div className="sm:hidden flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {supportWhatsApp && (
-                    <a href={`https://wa.me/${supportWhatsApp.replace(/\D/g, '')}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`} target="_blank" rel="noopener noreferrer"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                      style={{ background: '#22c55e', color: '#fff', flexShrink: 0 }}
-                      aria-label="WhatsApp">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                    </a>
-                  )}
-                  <a href={`mailto:${supportEmail}`}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                    style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)', flexShrink: 0 }}
-                    aria-label="Soporte">
-                    <Mail size={14} />
-                  </a>
-                </div>
-                <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                  Powered by{' '}
-                  <a href="https://pneumastudio.mx" target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--c-text-4)' }} className="hover:opacity-80 transition-opacity">
-                    Pneuma Studio
-                  </a>
-                </span>
-              </div>
-              {centineliReviewUrl && (
-                <div className="flex justify-center">
-                  <a href={centineliReviewUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full text-[11px] whitespace-nowrap transition-opacity hover:opacity-80"
-                    style={{ padding: '5px 13px', background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', textDecoration: 'none' }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                    ¿Qué tal funciona Centinelia?
-                  </a>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>{/* /footer */}
-
-        <LiveNotifications token={token} />
       </div>
 
     </ThemeProvider>

@@ -9,7 +9,7 @@ interface Props { params: Promise<{ token: string }> }
 export default async function OficinaOverviewPage({ params }: Props) {
   const { token } = await params;
   return (
-    <div className="flex flex-col gap-6">
+    <div id="of-actividad" className="flex flex-col gap-6">
       <AgentRankingSection token={token} />
       <TeamFeed token={token} />
       <LearningsSection token={token} />

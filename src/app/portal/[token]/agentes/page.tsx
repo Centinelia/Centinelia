@@ -98,7 +98,7 @@ export default async function AgentesPage({ params }: Props) {
       )}
 
       {/* Agent cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {agents.map(a => {
           const color           = agentColor(a.id);
           const initial         = ((a.agent_name as string | null)?.trim() || (a.business_name as string)).charAt(0).toUpperCase();

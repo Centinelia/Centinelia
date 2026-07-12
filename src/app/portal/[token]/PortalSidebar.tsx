@@ -78,7 +78,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'agentes', label: 'Agentes', icon: <Bot size={14} />,
       directHref: `/portal/${token}/agentes`,
-      items: [],
+      items: [
+        { label: 'Mis agentes', id: 'lista-agentes' },
+      ],
     },
     {
       id: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
@@ -88,10 +90,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         {
           label: 'Entrantes', id: 'entrantes', icon: <PhoneCall size={12} />,
           items: [
-            { label: 'Registro de llamadas', id: 'registro' },
-            { label: 'Leads capturados',     id: 'leads' },
-            { label: 'Pedidos',              id: 'pedidos' },
-            { label: 'Citas',                id: 'citas' },
+            { label: 'Registro de llamadas',    id: 'registro' },
+            { label: 'Leads / Citas / Pedidos', id: 'leads-citas-pedidos' },
           ],
         },
         ...(showOutbound ? [{
@@ -121,16 +121,17 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
       items: [
+        { label: 'Correo',         id: 'correo' },
         { label: 'Calendario',     id: 'calendario' },
         { label: 'Notion CRM',     id: 'notion' },
         ...(hasOpsAgent ? [{ label: 'Microsoft Teams', id: 'teams' }] : []),
-        { label: 'Correo',         id: 'correo' },
+        { label: 'Políticas',      id: 'politicas' },
       ],
     },
     {
       id: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Mis agentes',   id: 'agentes' },
+        { label: 'Organización',  id: 'organizacion' },
         { label: 'Minutos y uso', id: 'minutos' },
         { label: 'Plan y cambios',id: 'plan' },
         { label: 'Contrato',      id: 'contrato' },
@@ -256,6 +257,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                               <Link
                                 key={item.id}
                                 href={`${subHref}#${item.id}`}
+                                scroll={false}
+                                onClick={() => { if (item.id) setPendingId(item.id); }}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                                 style={{ color: 'var(--c-text-2)' }}
                               >

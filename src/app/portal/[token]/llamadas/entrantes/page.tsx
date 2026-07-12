@@ -6,18 +6,15 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 import Link                             from 'next/link';
-import { ChevronLeft, PhoneCall, Users, ShoppingBag, CalendarDays } from 'lucide-react';
+import { ChevronLeft, PhoneCall } from 'lucide-react';
 import ThemeToggle                      from '@/components/ThemeToggle';
 import type { VoiceCall }               from '@/types/agent';
 
-import PortalLogout              from '../../PortalLogout';
-import PortalSidebar             from '../../PortalSidebar';
-import CallsSearch               from '../../CallsSearch';
-import DownloadCallsCSV          from '../../DownloadCallsCSV';
-import CollapsibleSection        from '../../CollapsibleSection';
-import PortalLeadsSection        from '../../PortalLeadsSection';
-import PortalOrdersSection       from '../../PortalOrdersSection';
-import PortalAppointmentsSection from '../../PortalAppointmentsSection';
+import PortalLogout    from '../../PortalLogout';
+import PortalSidebar   from '../../PortalSidebar';
+import CallsSearch     from '../../CallsSearch';
+import DownloadCallsCSV from '../../DownloadCallsCSV';
+import LeadsTabsSection from './LeadsTabsSection';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -66,26 +63,6 @@ export default async function EntrantesPage({ params }: Props) {
   for (const a of appts  as any[]) { if (a.telefono && a.nombre) { const k = normPhone(a.telefono); if (k && !callerNames[k]) callerNames[k] = a.nombre; } }
   for (const o of orders as any[]) { if (o.telefono && o.nombre) { const k = normPhone(o.telefono); if (k && !callerNames[k]) callerNames[k] = o.nombre; } }
 
-  const visibleCaptures = ([
-    showOrders && orders.length > 0 && { count: orders.length, el: (
-      <CollapsibleSection key="orders" title="Pedidos" icon={<ShoppingBag size={14} />} defaultOpen count={orders.length}>
-        <PortalOrdersSection initialOrders={orders as any} token={token} isPro={agent.plan === 'pro'} />
-      </CollapsibleSection>
-    )},
-    showAppts && appts.length > 0 && { count: appts.length, el: (
-      <CollapsibleSection key="appts" title="Citas" icon={<CalendarDays size={14} />} defaultOpen count={appts.length}>
-        <PortalAppointmentsSection initialAppointments={appts as any} token={token} label="cita" isPro={agent.plan === 'pro'} />
-      </CollapsibleSection>
-    )},
-    showLeads && leads.length > 0 && { count: leads.length, el: (
-      <CollapsibleSection key="leads" title="Leads" icon={<Users size={14} />} defaultOpen count={leads.length}>
-        <PortalLeadsSection initialLeads={leads as any} token={token} isPro={agent.plan === 'pro'}
-          filename={`leads-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-      </CollapsibleSection>
-    )},
-  ] as ({ count: number; el: React.ReactNode } | false)[])
-    .filter((s): s is { count: number; el: React.ReactNode } => !!s)
-    .sort((a, b) => b.count - a.count);
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -137,10 +114,20 @@ export default async function EntrantesPage({ params }: Props) {
               )}
             </div>
 
-            {visibleCaptures.length > 0 && (
+            {(showLeads || showOrders || showAppts) && (
               <div className="flex flex-col gap-3">
                 <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
-                {visibleCaptures.map(s => s.el)}
+                <LeadsTabsSection
+                  token={token}
+                  isPro={agent.plan === 'pro'}
+                  leads={leads as any}
+                  orders={orders as any}
+                  appts={appts as any}
+                  showLeads={showLeads}
+                  showOrders={showOrders}
+                  showAppts={showAppts}
+                  businessName={agent.business_name}
+                />
               </div>
             )}
 

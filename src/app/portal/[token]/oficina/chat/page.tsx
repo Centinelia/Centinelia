@@ -44,5 +44,5 @@ export default async function ConsultarPage({ params }: Props) {
   const opsUsed  = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_used  ?? 0), 0);
   const opsLimit = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
 
-  return <ConsultarAgentChat token={token} agents={agents} opsUsed={opsUsed} opsLimit={opsLimit} />;
+  return <div id="of-chat"><ConsultarAgentChat token={token} agents={agents} opsUsed={opsUsed} opsLimit={opsLimit} /></div>;
 }

@@ -9,13 +9,23 @@ export default function ThemeToggle({ className }: { className?: string }) {
     <button
       onClick={toggle}
       title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      className={`p-2 rounded-lg transition-all ${className ?? ''}`}
+      className={className}
       style={{
-        color: 'rgba(255,255,255,0.45)',
-        background: 'rgba(255,255,255,0.06)',
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        width:          34,
+        height:         34,
+        borderRadius:   10,
+        background:     'var(--c-surface-2)',
+        border:         '1px solid var(--c-border)',
+        cursor:         'pointer',
+        color:          'var(--c-text-2)',
+        flexShrink:     0,
+        transition:     'background 0.15s, color 0.15s',
       }}
     >
-      {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
     </button>
   );
 }

@@ -56,8 +56,20 @@ export interface FilesConnector {
   createFolder(name: string): Promise<FolderResult | null>;
 }
 
+export interface ContactResult {
+  name:  string;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface ContactsConnector {
+  search(query: string): Promise<ContactResult[]>;
+  getByPhone(phone: string): Promise<ContactResult | null>;
+}
+
 export interface Connector {
   provider: 'google' | 'microsoft';
   email:    EmailConnector;
   files:    FilesConnector;
+  contacts?: ContactsConnector;
 }

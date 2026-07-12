@@ -1,4 +1,4 @@
-import type { Connector, EmailConnector, FilesConnector, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+import type { Connector, EmailConnector, FilesConnector, ContactsConnector, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
 
 const GMAIL = 'https://www.googleapis.com/gmail/v1/users/me';
 const DRIVE = 'https://www.googleapis.com/drive/v3';
@@ -154,6 +154,8 @@ class GoogleFiles implements FilesConnector {
       url = `${DRIVE}/files/${fileId}/export?mimeType=text/plain`;
     } else if (mimeType === 'application/vnd.google-apps.spreadsheet') {
       url = `${DRIVE}/files/${fileId}/export?mimeType=text/csv`;
+    } else if (mimeType === 'application/vnd.google-apps.presentation') {
+      url = `${DRIVE}/files/${fileId}/export?mimeType=text/plain`;
     } else {
       url = `${DRIVE}/files/${fileId}?alt=media`;
     }
@@ -171,6 +173,9 @@ class GoogleFiles implements FilesConnector {
     } else if (mimeType === 'application/vnd.google-apps.spreadsheet') {
       url = `${DRIVE}/files/${fileId}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`;
       contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    } else if (mimeType === 'application/vnd.google-apps.presentation') {
+      url = `${DRIVE}/files/${fileId}/export?mimeType=application/vnd.openxmlformats-officedocument.presentationml.presentation`;
+      contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
     } else {
       url = `${DRIVE}/files/${fileId}?alt=media`;
       contentType = mimeType;
@@ -288,6 +293,42 @@ class GoogleFiles implements FilesConnector {
   }
 }
 
+// ── Contacts ──────────────────────────────────────────────────────────────────
+
+const PEOPLE_SEARCH = 'https://people.googleapis.com/v1/people:searchContacts';
+
+class GoogleContacts implements ContactsConnector {
+  constructor(private tok: string) {}
+
+  private h(): Record<string, string> {
+    return { Authorization: `Bearer ${this.tok}` };
+  }
+
+  async search(query: string): Promise<ContactResult[]> {
+    const params = new URLSearchParams({
+      query,
+      readMask: 'names,emailAddresses,phoneNumbers',
+      pageSize: '10',
+    });
+    const res = await fetch(`${PEOPLE_SEARCH}?${params}`, { headers: this.h() });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.results ?? []) as Array<{ person?: Record<string, unknown> }>).map(r => {
+      const p = r.person ?? {};
+      return {
+        name:  (p.names as Array<{ displayName?: string }> | undefined)?.[0]?.displayName ?? '',
+        email: (p.emailAddresses as Array<{ value?: string }> | undefined)?.[0]?.value ?? null,
+        phone: (p.phoneNumbers as Array<{ value?: string }> | undefined)?.[0]?.value ?? null,
+      };
+    });
+  }
+
+  async getByPhone(phone: string): Promise<ContactResult | null> {
+    const results = await this.search(phone);
+    return results[0] ?? null;
+  }
+}
+
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createGoogleConnector(accessToken: string): Connector {
@@ -295,5 +336,6 @@ export function createGoogleConnector(accessToken: string): Connector {
     provider: 'google',
     email:    new GoogleEmail(accessToken),
     files:    new GoogleFiles(accessToken),
+    contacts: new GoogleContacts(accessToken),
   };
 }

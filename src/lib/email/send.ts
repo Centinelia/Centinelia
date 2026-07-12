@@ -463,6 +463,44 @@ export function contractToClientHtml(opts: {
   `);
 }
 
+// ── Reauth required ──────────────────────────────────────────────────────────
+
+export function reauthRequiredHtml(opts: {
+  businessName: string;
+  provider:     'gmail' | 'outlook';
+  email:        string;
+  lastSyncAt:   string | null;
+  portalUrl:    string;
+}) {
+  const providerLabel = opts.provider === 'gmail' ? 'Gmail' : 'Outlook';
+
+  const daysSinceSync = opts.lastSyncAt
+    ? Math.floor((Date.now() - new Date(opts.lastSyncAt).getTime()) / 86_400_000)
+    : null;
+
+  const syncNote = daysSinceSync !== null
+    ? `<p style="color:#f59e0b;font-size:13px;font-weight:600;margin:0 0 20px;text-align:center">
+        Sin sincronizar desde hace ${daysSinceSync === 1 ? '1 día' : `${daysSinceSync} días`}
+       </p>`
+    : '';
+
+  return shell(`
+    ${badge('Accion requerida', '#f59e0b')}
+    ${heading(opts.businessName, `Tu correo de ${providerLabel} perdio la conexion`)}
+    ${syncNote}
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 12px">
+      Google y Microsoft retiran el acceso periodicamente por razones de seguridad. No significa que hiciste algo mal, simplemente hay que volver a autorizar.
+    </p>
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">
+      Hasta que reconectes <strong style="color:${C.text}">${opts.email}</strong>, tu agente no puede acceder a los correos.
+    </p>
+    ${btn(`Reconectar ${providerLabel} →`, `${opts.portalUrl}?tab=integraciones`)}
+    <p style="color:${C.mute};font-size:12px;text-align:center;margin:24px 0 0;line-height:1.6">
+      Toma menos de 30 segundos. En el portal ve a <strong style="color:${C.sub}">Integraciones → Correo</strong> y haz clic en Reconectar.
+    </p>
+  `);
+}
+
 // ── Lead follow-up to caller ──────────────────────────────────────────────────
 
 export function leadFollowUpToClientHtml(opts: {

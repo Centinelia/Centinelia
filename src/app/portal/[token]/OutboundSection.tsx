@@ -698,7 +698,7 @@ export default function OutboundSection({
 
       {/* ── CONTACTOS ─────────────────────────────────────────────────────────── */}
       {activeTab === 'contactos' && (
-        <>
+        <div id="contactos" className="flex flex-col gap-5">
           {/* Header row */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -953,12 +953,12 @@ export default function OutboundSection({
               <X size={14} />{contactError}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ── CAMPAÑAS ──────────────────────────────────────────────────────────── */}
       {activeTab === 'campanas' && (
-        <>
+        <div id="campanas" className="flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -1159,7 +1159,7 @@ export default function OutboundSection({
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

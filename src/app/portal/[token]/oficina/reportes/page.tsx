@@ -20,5 +20,5 @@ export default async function ReportesPage({ params }: Props) {
     role:          a.role ?? null,
   }));
 
-  return <OpsReportsSection token={token} agents={agents} />;
+  return <div id="of-reportes"><OpsReportsSection token={token} agents={agents} /></div>;
 }

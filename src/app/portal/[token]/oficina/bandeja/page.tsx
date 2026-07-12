@@ -6,5 +6,5 @@ interface Props { params: Promise<{ token: string }> }
 
 export default async function BandejaPage({ params }: Props) {
   const { token } = await params;
-  return <OpsInboxSection token={token} />;
+  return <div id="of-bandeja"><OpsInboxSection token={token} /></div>;
 }

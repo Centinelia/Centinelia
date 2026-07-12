@@ -1,0 +1,61 @@
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+
+interface Params { params: Promise<{ token: string }> }
+
+async function resolvePortalEmail(token: string) {
+  const supabase = createAdminClient();
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('portal_token', token)
+    .single();
+  return { supabase, portalEmail: agent?.portal_email ?? null };
+}
+
+// GET — return org settings (name, plan, logo_url)
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { token } = await params;
+  const cookieStore = await cookies();
+  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { supabase, portalEmail } = await resolvePortalEmail(token);
+  if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('name, plan, logo_url, created_at')
+    .eq('portal_email', portalEmail)
+    .single();
+
+  return NextResponse.json({ org: org ?? null });
+}
+
+// PATCH — update org name and/or logo_url
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const { token } = await params;
+  const cookieStore = await cookies();
+  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json() as { name?: string; logo_url?: string };
+  const patch: Record<string, unknown> = {};
+  if (typeof body.name     === 'string') patch.name     = body.name.trim().slice(0, 100);
+  if (typeof body.logo_url === 'string') patch.logo_url = body.logo_url;
+  if (!Object.keys(patch).length)
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+
+  const { supabase, portalEmail } = await resolvePortalEmail(token);
+  if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  await supabase
+    .from('organizations')
+    .upsert({ portal_email: portalEmail, ...patch }, { onConflict: 'portal_email' });
+
+  return NextResponse.json({ ok: true });
+}
