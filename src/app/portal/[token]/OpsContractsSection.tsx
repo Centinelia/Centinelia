@@ -349,7 +349,57 @@ function PlantillaTab({ token }: { token: string }) {
     setEditingId(id);
   }
 
+  const DEFAULT_CLAUSES: Clause[] = [
+    { id: 'partes',          title: 'PARTES',                  required: true,  enabled: true, body: 'Por una parte, {nombre_prestador} (en adelante "el Prestador"), y por la otra, {nombre_cliente}{rfc_cliente ? ", con RFC " + rfc_cliente : ""} (en adelante "el Cliente").' },
+    { id: 'objeto',          title: 'OBJETO',                  required: true,  enabled: true, body: 'El Prestador se compromete a proporcionar al Cliente los siguientes servicios: {descripcion_servicios}.' },
+    { id: 'vigencia',        title: 'VIGENCIA',                required: true,  enabled: true, body: 'El presente contrato tendrá una vigencia de {vigencia}, a partir de la fecha de firma, con renovación automática salvo aviso contrario con 30 días de anticipación.' },
+    { id: 'contraprestacion',title: 'CONTRAPRESTACIÓN',        required: true,  enabled: true, body: 'El Cliente pagará al Prestador la cantidad de {monto} por los servicios descritos en la cláusula de Objeto.' },
+    { id: 'pago',            title: 'FORMA DE PAGO',           required: false, enabled: true, body: 'El pago se realizará de la siguiente manera: {forma_de_pago}. En caso de retraso, se aplicará un cargo por mora del 2% mensual sobre el saldo vencido.' },
+    { id: 'confidencialidad',title: 'CONFIDENCIALIDAD',        required: false, enabled: true, body: 'Ambas partes se comprometen a mantener la confidencialidad de toda información intercambiada durante la vigencia del contrato y por un período de 2 años posterior a su terminación.' },
+    { id: 'propiedad',       title: 'PROPIEDAD INTELECTUAL',   required: false, enabled: true, body: 'Los entregables producidos por el Prestador en el marco de este contrato serán propiedad del Cliente una vez liquidado el pago total correspondiente.' },
+    { id: 'responsabilidad', title: 'LIMITACIÓN DE RESPONSABILIDAD', required: false, enabled: true, body: 'La responsabilidad máxima del Prestador por cualquier causa se limitará al monto total pagado por el Cliente en los tres meses previos al evento que origina la reclamación.' },
+    { id: 'terminacion',     title: 'TERMINACIÓN',             required: false, enabled: true, body: 'Cualquiera de las partes podrá dar por terminado el presente contrato con un aviso previo de 30 días naturales por escrito. En caso de incumplimiento grave, la parte afectada podrá terminar el contrato de forma inmediata.' },
+    { id: 'jurisdiccion',    title: 'JURISDICCIÓN',            required: true,  enabled: true, body: 'Para la interpretación y cumplimiento del presente contrato, las partes se someten a las leyes de los Estados Unidos Mexicanos y a los tribunales de {ciudad}, renunciando a cualquier otro fuero.' },
+    { id: 'aceptacion',      title: 'ACEPTACIÓN',              required: true,  enabled: true, body: 'En señal de conformidad, las partes firman el presente contrato en la ciudad de {ciudad}, el día {fecha}.' },
+  ];
+
+  function loadDefaults() {
+    setClauses(DEFAULT_CLAUSES);
+  }
+
   if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando plantilla...</p>;
+
+  // Empty state
+  if (clauses.length === 0) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col items-center py-12 gap-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <FileText size={32} style={{ color: 'var(--c-text-3)', opacity: 0.35 }} />
+          <div className="text-center max-w-xs px-4">
+            <p className="text-sm font-semibold mb-1.5" style={{ color: 'var(--c-text-2)' }}>Plantilla vacía</p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+              Esta es la plantilla base que el agente usa para generar contratos de prestación de servicios para tus clientes.
+              Carga las cláusulas estándar y edita el texto según las necesidades de tu negocio.
+            </p>
+          </div>
+          <button
+            onClick={loadDefaults}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: '#6C3BFF', color: '#fff' }}
+          >
+            <Plus size={14} /> Cargar cláusulas estándar
+          </button>
+          <button
+            onClick={addClause}
+            className="text-xs transition-opacity hover:opacity-70"
+            style={{ color: 'var(--c-text-3)' }}
+          >
+            o agregar cláusula en blanco
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -358,7 +408,7 @@ function PlantillaTab({ token }: { token: string }) {
         <div>
           <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantilla base de contrato</p>
           <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-            El agente usará esta plantilla para generar borradores. Las cláusulas marcadas como requeridas no pueden desactivarse en el borrador.
+            El agente usará esta plantilla para generar borradores. Edita las cláusulas con el ícono de lápiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
           </p>
         </div>
         <button onClick={save} disabled={saving}

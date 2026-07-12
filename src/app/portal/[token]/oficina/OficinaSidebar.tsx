@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard } from 'lucide-react';
+import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
 interface Props {
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/bandeja',    label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',   opsHint: '1 op/correo'   },
   { href: '/reportes',   label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',          opsHint: '1 op/reporte'  },
   { href: '/contratos',  label: 'Contratos',             icon: FileText,      badgeKey: 'contratos', opsHint: '1 op/análisis' },
+  { href: '/documentos', label: 'Documentos',            icon: FolderOpen,    badgeKey: '',          opsHint: ''              },
   { href: '/juntas',     label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',    opsHint: '1–6 ops/junta' },
   { href: '/investigacion', label: 'Investigación',       icon: Search,        badgeKey: '',          opsHint: '0 ops aquí · 7–13 vía chat' },
   { href: '/onboarding', label: 'Onboarding',            icon: UserCheck,     badgeKey: '',          opsHint: ''              },

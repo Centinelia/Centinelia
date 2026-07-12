@@ -1,16 +1,18 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 const ADMIN_COOKIE = 'Centinelia_admin';
 
+// Constant-time comparison for Edge runtime (no Node.js crypto available)
 function adminTokenValid(token: string | undefined): boolean {
-  const secret = process.env.ADMIN_SECRET;
-  if (!token || !secret) return false;
-  const bufA = Buffer.from(token);
-  const bufB = Buffer.from(secret);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
+  const secret = process.env.ADMIN_SECRET ?? '';
+  const a = token ?? '';
+  const len = Math.max(a.length, secret.length);
+  let diff = a.length ^ secret.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (a.charCodeAt(i) || 0) ^ (secret.charCodeAt(i) || 0);
+  }
+  return diff === 0;
 }
 
 export async function middleware(req: NextRequest) {

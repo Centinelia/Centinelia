@@ -87,6 +87,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Bandeja de entrada', id: 'bandeja' },
         { label: 'Reportes AI',        id: 'reportes' },
         { label: 'Contratos',          id: 'contratos' },
+        { label: 'Documentos',         id: 'documentos' },
         { label: 'Juntas',             id: 'juntas' },
         { label: 'Onboarding',         id: 'onboarding' },
         { label: 'Consultar agente',   id: 'chat' },

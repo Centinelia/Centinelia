@@ -692,13 +692,24 @@ ${context}`;
                 const { data: signed } = await supabase.storage
                   .from('agent-documents')
                   .createSignedUrl(path, 3600);
+
+                // Persist record so document is accessible for 30 days from Oficina → Documentos
+                supabase.from('ops_documents').insert({
+                  agent_id:      agent.id,
+                  title,
+                  filename,
+                  storage_path:  path,
+                  template_type: templateType,
+                  expires_at:    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                }).then(() => {}).catch(() => {});
+
                 toolResult = {
                   ok:        true,
                   url:       signed?.signedUrl ?? null,
                   file_id:   path,
                   filename:  filename,
                   mime_type: 'application/pdf',
-                  message:   `Documento "${title}" generado como PDF. URL de descarga (válida 1 hora): ${signed?.signedUrl}`,
+                  message:   `Documento "${title}" generado como PDF. URL de descarga (válida 1 hora): ${signed?.signedUrl}. El documento también quedó guardado en Oficina → Documentos por 30 días.`,
                 };
               }
             } catch (err) {
