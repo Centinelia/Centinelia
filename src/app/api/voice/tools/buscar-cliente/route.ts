@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
   const { identificador } = body.toolCallList?.[0]?.function?.arguments ?? body;
 
-  if (!agent_id || !identificador) {
-    return NextResponse.json({ error: 'agent_id e identificador requeridos' }, { status: 400 });
-  }
+  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!identificador) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });
 
   const supabase = createAdminClient();
   const normId   = identificador.replace(/\D/g, '');

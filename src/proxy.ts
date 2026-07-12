@@ -46,9 +46,6 @@ export async function proxy(req: NextRequest) {
     if (pathname === '/portal/login') return NextResponse.next();
     if (/^\/portal\/[^/]+\/setup$/.test(pathname)) return NextResponse.next();
 
-    // Dev bypass: skip auth checks in local development
-    if (process.env.NODE_ENV === 'development') return NextResponse.next();
-
     const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
     const session = cookie ? await verifySession(cookie) : null;
 

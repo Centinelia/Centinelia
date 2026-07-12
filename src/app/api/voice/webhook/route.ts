@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { VoiceAgent } from '@/types/agent';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, minutesAlertHtml, newLeadHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
 import { pauseVapiAgent } from '@/lib/vapi/control';
@@ -169,27 +170,23 @@ export async function POST(req: NextRequest) {
       const isInboundCall = !callTypeRaw || callTypeRaw === 'inboundPhoneCall';
 
       if (isInboundCall && callerNumber && durationSeconds > 5) {
-        const normCaller2 = callerNumber.replace(/\D/g, '').slice(-10);
-        const { data: existingContact } = await supabase
-          .from('outbound_contacts')
-          .select('id, nombre')
-          .eq('agent_id', resolvedAgentId)
-          .ilike('telefono', `%${normCaller2}%`)
-          .limit(1)
-          .maybeSingle();
+        // Upsert instead of check-then-insert to prevent race-condition duplicates.
+        // Requires unique constraint on (agent_id, telefono) — see supabase/fix-outbound-contacts-race.sql
+        await supabase.from('outbound_contacts').upsert({
+          agent_id: resolvedAgentId,
+          nombre:   structured?.nombre ?? null,
+          telefono: callerNumber,
+          motivo:   null,
+          source:   'llamada_entrante',
+        }, { onConflict: 'agent_id,telefono', ignoreDuplicates: true });
 
-        if (!existingContact) {
-          await supabase.from('outbound_contacts').insert({
-            agent_id: resolvedAgentId,
-            nombre:   structured?.nombre ?? null,
-            telefono: callerNumber,
-            motivo:   null,
-            source:   'llamada_entrante',
-          });
-        } else if (structured?.nombre && !existingContact.nombre) {
+        // Backfill nombre if we captured one and the existing row didn't have it
+        if (structured?.nombre) {
           await supabase.from('outbound_contacts')
             .update({ nombre: structured.nombre })
-            .eq('id', existingContact.id);
+            .eq('agent_id', resolvedAgentId)
+            .eq('telefono', callerNumber)
+            .is('nombre', null);
         }
       }
 
@@ -239,11 +236,12 @@ export async function POST(req: NextRequest) {
       const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
       if (notifyOutcomes.includes(outcome)) {
         // Fetch agent email + portal token (used in the email CTA)
-        const { data: agentForEmail } = await supabase
+        const { data: _agentForEmail } = await supabase
           .from('voice_agents')
           .select('client_email, business_name, agent_name, portal_token, notify_email, phone_number, email_from, logo_url, email_logo_url, email_brand_color, email_footer_text, email_domain_verified, brand_website, brand_address')
           .eq('id', resolvedAgentId)
           .single();
+        const agentForEmail = _agentForEmail as VoiceAgent | null;
 
         if (agentForEmail?.client_email && (agentForEmail.notify_email ?? true)) {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -276,17 +274,17 @@ export async function POST(req: NextRequest) {
         if (structured?.email && agentForEmail?.business_name &&
             ['appointment_booked', 'lead_created'].includes(outcome)) {
           const senderName  = agentForEmail.agent_name ?? agentForEmail.business_name;
-          const verifiedFrom = (agentForEmail as any).email_domain_verified && (agentForEmail as any).email_from
-            ? (agentForEmail as any).email_from
+          const verifiedFrom = agentForEmail.email_domain_verified && agentForEmail.email_from
+            ? agentForEmail.email_from
             : 'notificaciones@centinelia.mx';
           const fromAddr    = `${agentForEmail.business_name} <${verifiedFrom}>`;
           const phone       = agentForEmail.phone_number ?? null;
           const branding    = {
-            logoUrl:    (agentForEmail as any).logo_url ?? (agentForEmail as any).email_logo_url ?? null,
-            brandColor: (agentForEmail as any).email_brand_color ?? '#6C3BFF',
-            footerText: (agentForEmail as any).email_footer_text ?? null,
-            website:    (agentForEmail as any).brand_website     ?? null,
-            address:    (agentForEmail as any).brand_address     ?? null,
+            logoUrl:    agentForEmail.logo_url ?? agentForEmail.email_logo_url ?? null,
+            brandColor: agentForEmail.email_brand_color ?? '#6C3BFF',
+            footerText: agentForEmail.email_footer_text ?? null,
+            website:    agentForEmail.brand_website     ?? null,
+            address:    agentForEmail.brand_address     ?? null,
             senderName: agentForEmail.business_name,
           };
 
@@ -332,11 +330,12 @@ export async function POST(req: NextRequest) {
       const minutes = Math.ceil(durationSeconds / 60) || 1;
 
       // 4. Fetch agent for notifications
-      const { data: agent } = await supabase
+      const { data: _agent } = await supabase
         .from('voice_agents')
         .select('business_name, agent_name, client_email, transfer_whatsapp, portal_token, portal_email, notify_whatsapp, notify_email, minutes_used, minutes_included, minutes_reset_date, active, phone_number, vapi_agent_id, missed_call_recovery, google_review_url, stripe_customer_id, auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, features, outbound_role, knowledge_base, notion_access_token, notion_db_id')
         .eq('id', resolvedAgentId)
         .single();
+      const agent = _agent as VoiceAgent | null;
 
       // 5. Increment minutes — account-level if portal_email, per-agent for demo/standalone
       let used         = 0;
@@ -408,12 +407,12 @@ export async function POST(req: NextRequest) {
         agent?.stripe_customer_id &&
         included > 0
       ) {
-        const threshold     = (agent as any).auto_refill_threshold ?? 50;
+        const threshold     = agent?.auto_refill_threshold ?? 50;
         const remaining     = included - used;
         const prevRemaining = remaining + minutes; // balance before this call
         if (prevRemaining >= threshold && remaining < threshold) {
           const refill = await executeAutoRefill(resolvedAgentId).catch(() => ({ ok: false }));
-          if (refill.ok) included += (agent as any).auto_refill_minutes ?? 100;
+          if (refill.ok) included += agent?.auto_refill_minutes ?? 100;
         }
       }
 
@@ -502,7 +501,7 @@ export async function POST(req: NextRequest) {
           portalEmail:   agent.portal_email,
           vapiCallId:    call?.id ?? null,
           transcript,
-          knowledgeBase: (agent as any).knowledge_base ?? null,
+          knowledgeBase: agent?.knowledge_base ?? null,
         }).catch(err => console.error('[webhook] extract-learnings failed:', err));
       }
 
@@ -521,8 +520,8 @@ export async function POST(req: NextRequest) {
       }
 
       // 13. Notion CRM — log call when the account has Notion connected and a CRM database set
-      const notionToken = (agent as any)?.notion_access_token as string | null;
-      const notionDbId  = (agent as any)?.notion_db_id        as string | null;
+      const notionToken = agent?.notion_access_token ?? null;
+      const notionDbId  = agent?.notion_db_id        ?? null;
       if (notionToken && notionDbId && outcome !== 'unanswered') {
         const TIPO_MAP: Record<string, string> = {
           lead_created:       'Lead',
@@ -557,7 +556,7 @@ export async function POST(req: NextRequest) {
         agent?.phone_number
       ) {
         triggerOutboundCall({
-          agent:          agent as any,
+          agent:          agent!,
           customerNumber: callerNumber,
           isCallback:     true,
         }).catch(err => console.error('[webhook] missed_call_recovery failed:', err));
@@ -581,9 +580,9 @@ const OUTBOUND_ROLE_LABELS: Record<string, string> = {
   cobrador:     'Cobrador',
 };
 
-function deriveAgentRole(agent: any): string {
+function deriveAgentRole(agent: Partial<VoiceAgent>): string {
   if (agent.role?.trim()) return agent.role.trim();
-  const f = agent.features ?? {};
+  const f = (agent.features ?? {}) as Partial<VoiceAgent['features']>;
   if (f.appointment_booking) return 'Recepcionista';
   if (f.order_taking)        return 'Tomador de pedidos';
   if (f.lead_qualification)  return 'Recepcionista';
@@ -598,19 +597,22 @@ async function triggerCrossAgentQueue(
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  const { data: peers } = await supabase
+  const { data: _peers } = await supabase
     .from('voice_agents')
     .select('id, features, role, agent_name')
     .eq('portal_email', portalEmail)
     .neq('id', sourceAgentId)
     .eq('active', true);
 
-  if (!peers?.length) return;
+  if (!_peers?.length) return;
+
+  type PeerRow = Pick<VoiceAgent, 'id' | 'features' | 'role' | 'agent_name'>;
+  const peers = _peers as PeerRow[];
 
   const normPhone = callerPhone.replace(/\D/g, '').slice(-10);
 
   for (const peer of peers) {
-    if (!(peer.features as any)?.outbound_calls) continue;
+    if (!peer.features?.outbound_calls) continue;
 
     // Skip if this number is already in the peer's queue
     const { data: existing } = await supabase
@@ -622,7 +624,7 @@ async function triggerCrossAgentQueue(
 
     if (existing) continue;
 
-    const roleLabel = (peer as any).role?.trim() || peer.agent_name?.trim() || 'Agente';
+    const roleLabel = peer.role?.trim() || peer.agent_name?.trim() || 'Agente';
 
     const motiParts: string[] = ['Derivado automáticamente por Recepcionista.'];
     if (structured?.servicio)      motiParts.push(`Interesado en: ${structured.servicio}.`);

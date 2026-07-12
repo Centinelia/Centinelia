@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import { isWithinBusinessHours, nextOpenTime } from '@/lib/voice/business-hours';
 import type { VoiceAgent } from '@/types/agent';
+import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 
 // Vapi calls this endpoint when a call comes in on an assigned phone number.
 // We respond with the agent configuration (system prompt + tools) for this caller.
@@ -164,7 +165,7 @@ export async function POST(req: NextRequest) {
         model: 'claude-haiku-4-5-20251001',
         messages: [{ role: 'system', content: systemPrompt }],
         temperature: 0.4,
-        maxTokens: 300,
+        maxTokens: VAPI_VOICE_MAX_TOKENS,
         tools,
       },
       voice: {
@@ -197,7 +198,7 @@ export async function POST(req: NextRequest) {
       backchannelingEnabled: true,
       backgroundDenoisingEnabled: true,
       silenceTimeoutSeconds: 10,
-      maxDurationSeconds: 1800,
+      maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
       recordingEnabled: true,
       analysisPlan: {
         summaryPrompt: 'Resume esta llamada en 2-3 oraciones en texto plano, sin markdown, sin encabezados, sin negritas: qué quería el cliente y cómo terminó la llamada.',

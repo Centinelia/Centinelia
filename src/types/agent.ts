@@ -91,9 +91,27 @@ export interface VoiceAgent {
   transfer_rules?: string;         // reglas de cuándo transferir la llamada a un humano
   google_review_url?: string;      // link de reseñas de Google del negocio
   notion_client_id?: string;      // link al cliente en Pneuma Studio CRM
+  notion_access_token?: string | null;    // Notion OAuth token for CRM integration
+  notion_db_id?: string | null;           // Notion database ID for call logging
   contract_text?: string | null;          // custom contract override (null = use template)
   contract_accepted_at?: string | null;   // ISO timestamp of client acceptance
   contract_ip?: string | null;            // IP at acceptance
+  // Email branding (custom domain sender)
+  email_from?: string | null;
+  email_domain_verified?: boolean | null;
+  logo_url?: string | null;
+  email_logo_url?: string | null;
+  email_brand_color?: string | null;
+  email_footer_text?: string | null;
+  brand_website?: string | null;
+  brand_address?: string | null;
+  // Billing
+  stripe_customer_id?: string | null;
+  auto_refill_enabled?: boolean | null;
+  auto_refill_threshold?: number | null;
+  auto_refill_minutes?: number | null;
+  // Outbound role
+  outbound_role?: string | null;
   // WhatsApp capabilities (Fase 2)
   wa_phone_number?: string;        // número Twilio asignado para WhatsApp
   capture_leads: boolean;          // capturar prospectos por WA

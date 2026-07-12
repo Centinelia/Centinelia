@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
 
@@ -10,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } =
     body.toolCallList?.[0]?.function?.arguments ?? body;
 
-  if (!agent_id) return NextResponse.json({ error: 'agent_id requerido' }, { status: 400 });
+  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const supabase = createAdminClient();
 

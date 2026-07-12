@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceAgent } from '@/types/agent';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
+import { VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function POST() {
         model: 'claude-3-5-haiku-20241022',
         messages: [{ role: 'system', content: buildSystemPrompt(agent as VoiceAgent) }],
         temperature: 0.4,
-        maxTokens: 300,
+        maxTokens: VAPI_VOICE_MAX_TOKENS,
       },
     };
     const res = await fetch(`https://api.vapi.ai/assistant/${agent.vapi_agent_id}`, {

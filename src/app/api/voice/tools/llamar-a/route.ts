@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido' });

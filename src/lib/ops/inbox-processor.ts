@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { approvalEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 
 const anthropic = new Anthropic();
 
@@ -140,7 +141,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       raw_message_id:     rawMessageId ?? null,
       email_from:         emailFrom,
       email_subject:      emailSubject,
-      email_body:         emailBody.slice(0, 8000),
+      email_body:         emailBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
       attachments,
       category:           result.category,
       ai_summary:         result.summary,

@@ -445,24 +445,6 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             />
           </CollapsibleSection>
 
-          {/* WhatsApp — solo Pro */}
-          {/* TODO: descomentar cuando se lance el canal de WhatsApp
-          <CollapsibleSection
-            id="whatsapp"
-            open={funcOpen.has('whatsapp')}
-            onToggle={() => toggleFunc('whatsapp')}
-            title={<span className="flex items-center gap-1.5"><MessageCircle size={13} />WhatsApp</span>}>
-            <ProToggleRow
-              label="Activar WhatsApp"
-              desc={waActive ? `Número activo: ${agent.phone_number}` : 'Usa el mismo número de voz para atender por WhatsApp'}
-              isPro={plan === 'pro'}
-              active={plan === 'pro' && waActive}
-              accentColor="#25D366"
-              onToggle={() => plan === 'pro' && setWaActive(v => !v)}
-            />
-          </CollapsibleSection>
-          */}
-
           {/* Horarios */}
           <CollapsibleSection
             id="horarios"

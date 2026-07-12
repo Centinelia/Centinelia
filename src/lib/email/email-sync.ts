@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector, type IntegrationRow } from '@/lib/connectors';
+import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 
 type EmailIntegration = IntegrationRow & {
   agent_id:     string;
@@ -56,6 +57,21 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
     .eq('id', integration.id);
 
   for (const msg of messages) {
+    // Guard against re-processing emails whose markRead silently failed on a prior sync
+    const { data: existing } = await supabase
+      .from('ops_inbox')
+      .select('id')
+      .eq('agent_id', agent.id)
+      .eq('raw_message_id', msg.id)
+      .maybeSingle();
+
+    if (existing) {
+      await conn.email.markRead(msg.id).catch((err) =>
+        console.error(`[email-sync] markRead retry failed for ${msg.id}:`, err)
+      );
+      continue;
+    }
+
     const { data: inboxItem } = await supabase
       .from('ops_inbox')
       .insert({
@@ -64,14 +80,16 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
         raw_message_id: msg.id,
         email_from:     msg.from,
         email_subject:  msg.subject,
-        email_body:     msg.body.slice(0, 8000),
+        email_body:     msg.body.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
         attachments:    [],
         status:         'pending',
       })
       .select('id, ai_draft, approval_token')
       .single();
 
-    await conn.email.markRead(msg.id).catch(() => {});
+    await conn.email.markRead(msg.id).catch((err) =>
+      console.error(`[email-sync] markRead failed for ${msg.id}:`, err)
+    );
 
     await processInboxEmail({
       agentId:       agent.id,

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
 
@@ -10,9 +12,8 @@ export async function POST(req: NextRequest) {
   const args = body.toolCallList?.[0]?.function?.arguments ?? body;
   const { numero_cliente, motivo } = args;
 
-  if (!agent_id || !numero_cliente) {
-    return NextResponse.json({ error: 'agent_id y numero_cliente requeridos' }, { status: 400 });
-  }
+  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!numero_cliente) return NextResponse.json({ result: 'Necesito el número del cliente para enviar el WhatsApp.' });
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     .eq('id', agent_id)
     .single();
 
-  if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+  if (!agent) return NextResponse.json({ result: 'Error de configuración.' });
 
   const digits = numero_cliente.replace(/\D/g, '');
   const waNumber = digits.startsWith('52') ? `+${digits}` : `+52${digits}`;

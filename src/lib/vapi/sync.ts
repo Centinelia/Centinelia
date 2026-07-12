@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
+import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -70,6 +71,10 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   const base = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools`;
   const id = agent.id;
   const tools: Record<string, unknown>[] = [];
+  const server = (path: string) => ({
+    url:     `${base}/${path}?agent_id=${id}`,
+    headers: { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '' },
+  });
 
   if (agent.features.lead_qualification) {
     tools.push({
@@ -92,7 +97,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['nombre', 'servicio'],
         },
       },
-      server: { url: `${base}/crear-lead?agent_id=${id}` },
+      server: server('crear-lead'),
     });
   }
 
@@ -115,7 +120,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['accion', 'nombre'],
         },
       },
-      server: { url: `${base}/agendar-cita?agent_id=${id}` },
+      server: server('agendar-cita'),
     });
   }
 
@@ -138,7 +143,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['nombre', 'items', 'tipo'],
         },
       },
-      server: { url: `${base}/registrar-pedido?agent_id=${id}` },
+      server: server('registrar-pedido'),
     });
   }
 
@@ -156,7 +161,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['identificador'],
         },
       },
-      server: { url: `${base}/buscar-cliente?agent_id=${id}` },
+      server: server('buscar-cliente'),
     });
   }
 
@@ -176,7 +181,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['motivo'],
         },
       },
-      server: { url: `${base}/notificar-transferencia?agent_id=${id}` },
+      server: server('notificar-transferencia'),
     });
 
     if (agent.transfer_number) {
@@ -215,7 +220,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
           required: ['numero_cliente'],
         },
       },
-      server: { url: `${base}/enviar-whatsapp-escalacion?agent_id=${id}` },
+      server: server('enviar-whatsapp-escalacion'),
     });
   }
 
@@ -238,7 +243,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         required: ['to', 'subject', 'body'],
       },
     },
-    server: { url: `${base}/enviar-correo?agent_id=${id}` },
+    server: server('enviar-correo'),
   });
 
   tools.push({
@@ -262,7 +267,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         required: ['title', 'content'],
       },
     },
-    server: { url: `${base}/crear-documento?agent_id=${id}` },
+    server: server('crear-documento'),
   });
 
   tools.push({
@@ -280,7 +285,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         required: ['numero', 'mensaje'],
       },
     },
-    server: { url: `${base}/llamar-a?agent_id=${id}` },
+    server: server('llamar-a'),
   });
 
   tools.push({
@@ -296,7 +301,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
         required: ['busqueda'],
       },
     },
-    server: { url: `${base}/buscar-archivo?agent_id=${id}` },
+    server: server('buscar-archivo'),
   });
 
   // One transferCall tool per active team peer — enables live agent-to-agent routing
@@ -374,7 +379,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       model: 'claude-3-5-haiku-20241022',
       messages,
       temperature: 0.4,
-      maxTokens: 300,
+      maxTokens: VAPI_VOICE_MAX_TOKENS,
       ...(toolIds.length > 0 ? { toolIds } : {}),
     },
     voice: {
@@ -414,7 +419,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     backchannelingEnabled: true,
     backgroundDenoisingEnabled: true,
     silenceTimeoutSeconds: 10,
-    maxDurationSeconds: 1800,
+    maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
     recordingEnabled: true,
     analysisPlan: {

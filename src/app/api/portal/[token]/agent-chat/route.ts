@@ -486,7 +486,8 @@ ${context}`;
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)
           if (callCount > 0) {
-            consumeAiOp(agent.id as string, 2).catch(() => {});
+            const midOps = await consumeAiOp(agent.id as string, 2);
+            if (!midOps.ok) break;
           }
           callCount++;
 
@@ -700,14 +701,15 @@ ${context}`;
                   .createSignedUrl(path, 3600);
 
                 // Persist record so document is accessible for 30 days from Oficina → Documentos
-                supabase.from('ops_documents').insert({
+                const { error: docErr } = await supabase.from('ops_documents').insert({
                   agent_id:      agent.id,
                   title,
                   filename,
                   storage_path:  path,
                   template_type: templateType,
                   expires_at:    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                }).then(() => {}, () => {});
+                });
+                if (docErr) console.error('[agent-chat] ops_documents insert failed:', docErr.message);
 
                 toolResult = {
                   ok:        true,

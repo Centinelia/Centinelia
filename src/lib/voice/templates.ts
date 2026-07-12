@@ -198,12 +198,12 @@ Tiempo de entrega: X a X semanas según el proyecto.
     orderLabel: 'producto',
     appointmentLabel: 'cita',
     kbPlaceholder: `PRODUCTOS PRINCIPALES:
-- Producto A: $XXX
-- Producto B: $XXX
-- Producto C: $XXX
+- Producto A: $150
+- Producto B: $280
+- Producto C: $95
 
 INFORMACIÓN:
-¿Tienen envío a domicilio? Sí, envío gratis en compras mayores a $XXX.
+¿Tienen envío a domicilio? Sí, envío gratis en compras mayores a $500.
 ¿Cuánto tarda el envío? 1-3 días hábiles.
 ¿Aceptan devoluciones? Sí, hasta 30 días con ticket de compra.
 ¿Tienen estacionamiento? Sí / No.
