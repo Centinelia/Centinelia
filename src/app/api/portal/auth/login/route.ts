@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     sameSite: 'lax',
     path:     '/',
     maxAge:   60 * 60 * 24 * 7,
+    domain:   process.env.NODE_ENV === 'production' ? '.centinelia.mx' : undefined,
   });
   return res;
 }

@@ -383,6 +383,26 @@ select option {
   .trust-chips { bottom: 28px; }
 }
 
+/* ── Portal sidebar anchor highlight ───────────────────────────────────── */
+/* El inset box-shadow gigante simula un overlay de color sin pisar el background inline */
+.anchor-active {
+  animation: anchor-highlight 2s ease-out forwards;
+}
+
+@keyframes anchor-highlight {
+  0%   {
+    box-shadow: 0 0 0 3px rgba(108,59,255,0.6),
+                inset 0 0 0 9999px rgba(108,59,255,0.14);
+  }
+  60%  {
+    box-shadow: 0 0 0 2px rgba(108,59,255,0.2),
+                inset 0 0 0 9999px rgba(108,59,255,0.05);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
 /* ── Feature card hover lift (light sections) ───────────────────────────── */
 .feature-card {
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;

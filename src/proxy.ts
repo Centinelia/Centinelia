@@ -18,6 +18,29 @@ function adminTokenValid(token: string | undefined): boolean {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Dev bypass: skip auth checks in local development
+  if (process.env.NODE_ENV === 'development') return NextResponse.next();
+
+  const host = req.headers.get('host') ?? '';
+
+  // ── Subdomain routing ─────────────────────────────────────────────────────
+  if (host === 'api.centinelia.mx') {
+    // Only API routes are served from this subdomain
+    if (!pathname.startsWith('/api/')) return new NextResponse('Not found', { status: 404 });
+    return NextResponse.next();
+  }
+
+  if (host === 'app.centinelia.mx') {
+    // Root → portal login
+    if (pathname === '/') return NextResponse.redirect(new URL('/portal/login', req.url));
+    // Landing pages visited from app subdomain → redirect to main domain
+    if (!pathname.startsWith('/portal') && !pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
+      const url = new URL(req.url);
+      url.host = 'centinelia.mx';
+      return NextResponse.redirect(url, { status: 301 });
+    }
+  }
+
   // ── Admin API routes (return JSON, no redirect) ───────────────────────────
   if (pathname.startsWith('/api/admin')) {
     if (pathname === '/api/admin/auth') return NextResponse.next();
@@ -69,5 +92,8 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/portal/:path*'],
+  matcher: [
+    // Skip Next.js internals and static assets; run on everything else
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)$).*)',
+  ],
 };

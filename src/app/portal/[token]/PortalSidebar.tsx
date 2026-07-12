@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -28,6 +28,30 @@ interface Props {
 export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0 }: Props) {
   const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingId) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (attempts > 100) { clearInterval(timer); setPendingId(null); return; }
+      const el = document.getElementById(pendingId);
+      if (!el) return;
+      clearInterval(timer);
+      setPendingId(null);
+      const rect = el.getBoundingClientRect();
+      window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
+      el.style.transition = 'box-shadow 0.15s';
+      el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
+      setTimeout(() => {
+        el.style.transition = 'box-shadow 1.5s ease-out';
+        el.style.boxShadow = '';
+        setTimeout(() => { el.style.transition = ''; }, 1500);
+      }, 600);
+    }, 50);
+    return () => clearInterval(timer);
+  }, [pendingId]);
 
   const toggle = (id: string) =>
     setOpenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -36,9 +60,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
-        { label: 'Resumen',    id: 'resumen' },
-        { label: 'Horas pico', id: 'horas-pico' },
-        { label: 'Actividad',  id: 'actividad' },
+        { label: 'Resumen',          id: 'resumen' },
+        { label: 'Horas pico',       id: 'horas-pico' },
+        { label: 'Actividad',        id: 'actividad' },
+        { label: 'Reporte mensual',  id: 'reporte-mensual' },
       ],
     },
     {
@@ -184,6 +209,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                       href={section.id === 'oficina'
                         ? `/portal/${token}/oficina${item.id ? `/${item.id}` : ''}`
                         : `/portal/${token}?tab=${section.id}#${item.id}`}
+                      scroll={false}
+                      onClick={() => {
+                        if (item.id) setPendingId(item.id);
+                      }}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                       style={{ color: 'var(--c-text-2)' }}
                     >

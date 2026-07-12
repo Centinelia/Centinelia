@@ -2,24 +2,34 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
 
-const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const redisConfigured =
+  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const redis = redisConfigured
+  ? new Redis({
+      url:   process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null;
+
+function makeRatelimit(limiter: Ratelimit['limiter'], prefix: string): Ratelimit | null {
+  if (!redis) return null;
+  return new Ratelimit({ redis, limiter, prefix });
+}
 
 // Sliding window limiters, one instance per policy, shared across requests
 export const limiters = {
   // Auth endpoints: 5 attempts per minute per IP
-  auth: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, '1 m'), prefix: 'rl:auth' }),
+  auth: makeRatelimit(Ratelimit.slidingWindow(5, '1 m'), 'rl:auth'),
 
   // AI chat endpoints: 20 requests per minute per IP
-  chat: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(20, '1 m'), prefix: 'rl:chat' }),
+  chat: makeRatelimit(Ratelimit.slidingWindow(20, '1 m'), 'rl:chat'),
 
   // Expensive scraping: 3 requests per 5 minutes per token
-  scrape: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, '5 m'), prefix: 'rl:scrape' }),
+  scrape: makeRatelimit(Ratelimit.slidingWindow(3, '5 m'), 'rl:scrape'),
 
   // Agent chat (Sonnet, billed per op): 10 messages per minute per portal token
-  agentChat: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, '1 m'), prefix: 'rl:agent-chat' }),
+  agentChat: makeRatelimit(Ratelimit.slidingWindow(10, '1 m'), 'rl:agent-chat'),
 };
 
 function getIp(req: NextRequest): string {
@@ -32,9 +42,10 @@ function getIp(req: NextRequest): string {
 
 export async function rateLimit(
   req: NextRequest,
-  limiter: Ratelimit,
+  limiter: Ratelimit | null,
   key?: string,
 ): Promise<NextResponse | null> {
+  if (!limiter) return null; // Redis not configured — fail open
   const id = key ?? getIp(req);
   const { success, limit, remaining, reset } = await limiter.limit(id);
 

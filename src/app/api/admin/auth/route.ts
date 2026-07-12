@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({ ok: true });
   res.cookies.set('Centinelia_admin', process.env.ADMIN_SECRET!, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure:   process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: '/',
+    maxAge:   60 * 60 * 24 * 30,
+    path:     '/',
+    domain:   process.env.NODE_ENV === 'production' ? '.centinelia.mx' : undefined,
   });
   return res;
 }

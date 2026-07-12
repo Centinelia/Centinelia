@@ -1,10 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, Mail, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
+import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours, Plan } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
@@ -236,7 +238,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   }
 
   const totalDuration  = calls.reduce((s, c) => s + (c.duration_seconds ?? 0), 0);
-  const totalHours     = (totalDuration / 3600).toFixed(1);
+  const totalMinutes   = Math.ceil(totalDuration / 60);
   const avgDuration    = calls.length > 0 ? Math.round(totalDuration / calls.length / 60) : 0;
   const pendingOrders  = orders.filter((o: any) => o.status === 'nuevo' || o.status === 'en_proceso').length;
   const confirmedAppts = appts.filter((a: any) => a.status === 'confirmada').length;
@@ -432,9 +434,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="flex flex-col gap-5">
 
                 {/* KPI cards */}
-                <div className={`grid ${kpiGridClass} gap-3`}>
+                <div id="resumen" className={`grid ${kpiGridClass} gap-3`}>
                   <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}     value={String(calls.length)}        label="Llamadas"        sub={`prom. ${avgDuration} min`}                                                                                  valueColor="#6C3BFF"       accentColor="#6C3BFF"  />
-                  <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalHours}h`}            label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
+                  <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalMinutes} min`}       label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
                   {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
                   {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
                   {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
@@ -444,7 +446,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* Peak hours */}
                 {calls.length > 0 && (
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div id="horas-pico" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                       Horas pico
                     </h2>
@@ -453,7 +455,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 )}
 
                 {/* Activity feed */}
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="actividad" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                     Actividad reciente
                   </h2>
@@ -503,10 +505,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   )}
                 </div>
+                {/* Reporte mensual — visible en mobile al final de la columna principal */}
+                <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con llamadas, resultados, minutos y horas pico.</p>
+                  <MonthReportPicker token={token} />
+                </div>
               </div>{/* end main column */}
 
-              {/* ── Right column ── */}
-              <div className="flex flex-col gap-4">
+              {/* ── Right column (desktop only) ── */}
+              <div className="hidden lg:flex flex-col gap-4">
                 {showOutbound && (
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <div className="flex items-center justify-between mb-4">
@@ -522,35 +530,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <div className="flex flex-col gap-3">
                       <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
                       <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
-                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
+                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunce'} />
                     </div>
                   </div>
                 )}
 
-                {/* Reporte mensual */}
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                {/* Reporte mensual — desktop sidebar */}
+                <div id="reporte-mensual" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con llamadas, resultados, minutos y horas pico.</p>
-                  {(() => {
-                    const now = new Date();
-                    const y = now.getFullYear(), m = now.getMonth() + 1;
-                    const prev = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-                    const label = (yr: number, mo: number) => new Date(yr, mo - 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-                    return (
-                      <div className="flex flex-col gap-2">
-                        <a href={`/api/portal/${token}/pdf/reporte?year=${y}&month=${m}`} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
-                          <ChevronRight size={12} /> {label(y, m)}
-                        </a>
-                        <a href={`/api/portal/${token}/pdf/reporte?year=${prev.y}&month=${prev.m}`} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-2)' }}>
-                          <ChevronRight size={12} /> {label(prev.y, prev.m)}
-                        </a>
-                      </div>
-                    );
-                  })()}
+                  <MonthReportPicker token={token} />
                 </div>
               </div>
 
@@ -565,7 +554,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Main column */}
               <div className="flex flex-col gap-5">
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                     Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
@@ -591,7 +580,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   />
                 </div>
 
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                     Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
@@ -599,7 +588,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
                 </div>
 
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                     Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
@@ -618,7 +607,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Right column — Horario de atención */}
               <div>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
                   <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                     Define los días y horarios en que tu agente está disponible para atender llamadas.
@@ -633,14 +622,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── INTEGRACIONES ────────────────────────────────────────────── */}
           {tab === 'integraciones' && (
             <div className="flex flex-col gap-5">
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              <div id="calendario" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                 <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Calendario</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                   Cal.com crea la cita directamente durante la llamada. Calendly y Google Calendar envían el link de reserva al cliente por WhatsApp.
                 </p>
                 <IntegrationsSection token={token} plan={agent.plan as Plan} />
               </div>
-              <NotionSection token={token} />
+              <div id="notion"><NotionSection token={token} /></div>
               {(agent as any).notion_access_token && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Validación de bases de datos</h2>
@@ -651,7 +640,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
               {hasOpsAgent && (
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
+                <div id="teams" className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
                   <div className="px-5 pt-5 pb-1" style={{ background: 'var(--c-surface)' }}>
                     <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Microsoft Teams</h2>
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
@@ -664,7 +653,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
               {/* Email OAuth */}
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              <div id="correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                 <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
                 <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
                   Conecta tu cuenta de Gmail u Outlook para que el agente lea y gestione tu bandeja de entrada directamente.
@@ -698,7 +687,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Left column ── */}
                 <div className="flex flex-col gap-5">
                   {/* Minutes & billing */}
-                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  <div id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                     {allCalls.length > 0 && (
                       <div className="rounded-xl p-5 mb-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                         <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
@@ -771,7 +760,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
 
                   {agent.plan && (
-                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div id="plan" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                       <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
                       <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
                       <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
@@ -796,7 +785,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               {/* Contract — full width below grid */}
-              <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+              <div id="contrato" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                 <ContractSection
                   token={token}
                   businessName={agent.business_name}
