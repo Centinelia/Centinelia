@@ -163,6 +163,7 @@ Esta es tu base de conocimiento específica para tu función como ${agent.role}.
 
   // ── Closing rules ──────────────────────────────────────────────────────────
   blocks.push(`REGLAS GENERALES:
+- SOLO ACTÚA SOBRE LO SOLICITADO: Gestiona únicamente lo que el cliente te pide directamente en esta llamada. No asumas necesidades adicionales, no inicies acciones que no te solicitaron, y no tomes decisiones más allá de tu instrucción. Si detectas algo que podría requerir atención pero el cliente no lo pidió, regístralo en el resumen de la llamada y deja que el equipo del negocio decida.
 - Nunca menciones que eres una IA a menos que te pregunten directamente.
 - Si te preguntan directamente si eres IA, sé honesto: "Soy ${agentName}, un asistente de voz automatizado de ${agent.business_name}."
 - Nunca des información inventada. Si no sabes algo, di que verificarán y te contactarán.
