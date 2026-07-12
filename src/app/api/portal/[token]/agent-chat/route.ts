@@ -11,8 +11,8 @@ import { sendEmail } from '@/lib/email/send';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
-import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew, gmailUploadToDrive } from '@/lib/email/gmail';
-import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew, outlookUploadToOneDrive } from '@/lib/email/outlook';
+import { gmailSearchDriveFiles, gmailReadDriveFile, gmailRefreshToken, gmailDownloadDriveFile, gmailSendNew, gmailUploadToDrive, gmailListDriveFolder, gmailMoveDriveFile, gmailRenameDriveFile } from '@/lib/email/gmail';
+import { outlookSearchFiles, outlookReadFile, outlookRefreshToken, outlookDownloadFile, outlookSendNew, outlookUploadToOneDrive, outlookListFolder, outlookMoveFile, outlookRenameFile } from '@/lib/email/outlook';
 import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { scrapeWebsite } from '@/lib/scrape/website';
@@ -212,11 +212,33 @@ const SAVE_TO_DRIVE_TOOL: Anthropic.Tool = {
   },
 };
 
+const ORGANIZE_FILES_TOOL: Anthropic.Tool = {
+  name: 'organize_files',
+  description: 'Organiza archivos en Google Drive o OneDrive: lista contenido de carpetas, mueve archivos a otra carpeta, renombra archivos/carpetas, crea carpetas nuevas. Úsala cuando el dueño pida reorganizar, ordenar o reacomodar sus archivos en la nube.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['list', 'move', 'rename', 'create_folder'],
+        description: '"list": lista archivos de una carpeta. "move": mueve un archivo a otra carpeta (se crea si no existe). "rename": cambia el nombre de un archivo o carpeta. "create_folder": crea una carpeta nueva.',
+      },
+      folder_id:      { type: 'string', description: 'ID de la carpeta a listar (action=list). Omite para listar la raíz.' },
+      file_id:        { type: 'string', description: 'ID del archivo/carpeta a mover o renombrar (actions: move, rename).' },
+      destination:    { type: 'string', description: 'Nombre de la carpeta destino (action=move). Se crea automáticamente si no existe.' },
+      new_name:       { type: 'string', description: 'Nuevo nombre del archivo o carpeta (action=rename).' },
+      folder_name:    { type: 'string', description: 'Nombre de la nueva carpeta a crear (action=create_folder).' },
+    },
+    required: ['action'],
+  },
+};
+
 const ALL_TOOLS = [
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
   CREATE_DOCUMENT_TOOL,
   SAVE_TO_DRIVE_TOOL,
+  ORGANIZE_FILES_TOOL,
   TRIGGER_CALL_TOOL,
   SEARCH_FILES_TOOL,
   READ_FILE_TOOL,
@@ -411,6 +433,7 @@ Herramientas disponibles:
 - send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
 - create_document: cuando el dueño pida generar un documento. Usa template_type="proposal" para propuestas/cotizaciones (incluye cliente y precio), "letter" para cartas formales, "general" para todo lo demás. El PDF lleva automáticamente el logo y colores del negocio.
 - save_to_drive: después de create_document, si el dueño quiere guardar el PDF en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió create_document. Si da un folder_name, la carpeta se crea automáticamente si no existe.
+- organize_files: para reorganizar Drive/OneDrive del dueño. Acciones: "list" (listar carpeta), "move" (mover archivo a otra carpeta, se crea si no existe), "rename" (renombrar archivo o carpeta), "create_folder" (crear carpeta nueva). Cuando el dueño pida ordenar archivos, empieza listando la raíz para ver qué hay, luego mueve o renombra según sus instrucciones. Cada acción consume ops.
 - trigger_outbound_call: cuando el dueño pida llamar a un número de teléfono.
 - search_files: cuando el dueño pida buscar un archivo en Google Drive o OneDrive.
 - read_file: cuando el dueño quiera ver el contenido de un archivo de Drive o OneDrive (usar después de search_files).
@@ -717,7 +740,7 @@ ${context}`;
                   storage_path:  path,
                   template_type: templateType,
                   expires_at:    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                }).then(() => {}).catch(() => {});
+                }).then(() => {}, () => {});
 
                 toolResult = {
                   ok:        true,
@@ -812,6 +835,116 @@ ${context}`;
                 } catch (err) {
                   toolResult = { ok: false, error: `Error al subir a Drive: ${String(err)}` };
                 }
+              }
+            }
+
+          } else if (pendingToolName === 'organize_files') {
+            const { data: integration } = await supabase
+              .from('email_integrations')
+              .select('provider, access_token, refresh_token, token_expires_at, id')
+              .eq('agent_id', agent.id)
+              .single();
+
+            if (!integration) {
+              toolResult = { ok: false, error: 'No tienes Google Drive ni OneDrive conectado. Conecta tu correo desde Integraciones → Correo.' };
+            } else {
+              // Refresh token if needed
+              let accessToken = integration.access_token as string;
+              const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at as string) : null;
+              if (!expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000) {
+                try {
+                  const refreshed = integration.provider === 'gmail'
+                    ? await gmailRefreshToken(integration.refresh_token as string)
+                    : await outlookRefreshToken(integration.refresh_token as string);
+                  accessToken = refreshed.access_token;
+                  await supabase.from('email_integrations').update({
+                    access_token:     refreshed.access_token,
+                    token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+                  }).eq('id', integration.id as string);
+                } catch { /* use existing */ }
+              }
+
+              const action     = toolInput.action     as string;
+              const isGmail    = integration.provider === 'gmail';
+
+              try {
+                if (action === 'list') {
+                  const folderId = (toolInput.folder_id as string | undefined) ?? undefined;
+                  const items = isGmail
+                    ? await gmailListDriveFolder(accessToken, folderId)
+                    : await outlookListFolder(accessToken, folderId);
+                  if (!items.length) {
+                    toolResult = { ok: true, items: [], message: `La carpeta está vacía.` };
+                  } else {
+                    const lines = items.map(f => `- ${f.isFolder ? '[carpeta]' : '[archivo]'} ${f.name} (id: ${f.id}${f.isFolder ? '' : `, tipo: ${f.mimeType}`})`).join('\n');
+                    toolResult = { ok: true, items, message: `Encontré ${items.length} elemento(s):\n${lines}` };
+                  }
+
+                } else if (action === 'move') {
+                  const fileId      = toolInput.file_id    as string;
+                  const destination = toolInput.destination as string;
+                  if (!fileId || !destination) {
+                    toolResult = { ok: false, error: 'Se requieren file_id y destination para mover.' };
+                  } else {
+                    const ok = isGmail
+                      ? await gmailMoveDriveFile(accessToken, fileId, destination)
+                      : await outlookMoveFile(accessToken, fileId, destination);
+                    toolResult = ok
+                      ? { ok: true, message: `Archivo movido a la carpeta "${destination}" correctamente.` }
+                      : { ok: false, error: `No se pudo mover el archivo. Verifica que el ID sea correcto y que tengas permisos.` };
+                  }
+
+                } else if (action === 'rename') {
+                  const fileId  = toolInput.file_id  as string;
+                  const newName = toolInput.new_name  as string;
+                  if (!fileId || !newName) {
+                    toolResult = { ok: false, error: 'Se requieren file_id y new_name para renombrar.' };
+                  } else {
+                    const ok = isGmail
+                      ? await gmailRenameDriveFile(accessToken, fileId, newName)
+                      : await outlookRenameFile(accessToken, fileId, newName);
+                    toolResult = ok
+                      ? { ok: true, message: `Elemento renombrado a "${newName}" correctamente.` }
+                      : { ok: false, error: `No se pudo renombrar. Verifica que el ID sea correcto y que tengas permisos.` };
+                  }
+
+                } else if (action === 'create_folder') {
+                  const folderName = toolInput.folder_name as string;
+                  if (!folderName) {
+                    toolResult = { ok: false, error: 'Se requiere folder_name para crear una carpeta.' };
+                  } else if (isGmail) {
+                    // gmailFindOrCreateFolder is internal — use upload trick: upload nothing, just create folder
+                    const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
+                      method:  'POST',
+                      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                      body:    JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json() as { id: string; name: string };
+                      toolResult = { ok: true, id: data.id, name: data.name, message: `Carpeta "${folderName}" creada en Google Drive.` };
+                    } else {
+                      toolResult = { ok: false, error: `No se pudo crear la carpeta en Google Drive.` };
+                    }
+                  } else {
+                    // OneDrive: POST to root/children
+                    const res = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+                      method:  'POST',
+                      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                      body:    JSON.stringify({ name: folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'rename' }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json() as { id: string; name: string; webUrl: string };
+                      toolResult = { ok: true, id: data.id, name: data.name, message: `Carpeta "${folderName}" creada en OneDrive.` };
+                    } else {
+                      toolResult = { ok: false, error: `No se pudo crear la carpeta en OneDrive.` };
+                    }
+                  }
+
+                } else {
+                  toolResult = { ok: false, error: `Acción desconocida: ${action}` };
+                }
+              } catch (err) {
+                toolResult = { ok: false, error: `Error al organizar archivos: ${String(err)}` };
               }
             }
 

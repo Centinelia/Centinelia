@@ -15,7 +15,7 @@ function adminTokenValid(token: string | undefined): boolean {
   return diff === 0;
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin API routes (return JSON, no redirect) ───────────────────────────

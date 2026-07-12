@@ -214,7 +214,7 @@ export async function outlookUploadToOneDrive(
         Authorization:  `Bearer ${accessToken}`,
         'Content-Type': mimeType,
       },
-      body: content,
+      body: content as unknown as BodyInit,
     },
   );
   if (!res.ok) {
@@ -224,6 +224,72 @@ export async function outlookUploadToOneDrive(
   }
   const data = await res.json();
   return { id: data.id, name: data.name, webUrl: data.webUrl };
+}
+
+export interface OneDriveItem {
+  id:       string;
+  name:     string;
+  mimeType: string;
+  isFolder: boolean;
+}
+
+export async function outlookListFolder(accessToken: string, folderId?: string): Promise<OneDriveItem[]> {
+  const endpoint = folderId
+    ? `${GRAPH_BASE}/me/drive/items/${folderId}/children`
+    : `${GRAPH_BASE}/me/drive/root/children`;
+  const res = await fetch(
+    `${endpoint}?$select=id,name,file,folder&$top=100&$orderby=name`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return ((data.value ?? []) as any[]).map(f => ({
+    id:       f.id,
+    name:     f.name,
+    mimeType: f.file?.mimeType ?? (f.folder ? 'folder' : 'application/octet-stream'),
+    isFolder: !!f.folder,
+  }));
+}
+
+async function outlookFindOrCreateFolder(accessToken: string, folderName: string): Promise<string | null> {
+  // Search in root for folder by name
+  const searchRes = await fetch(
+    `${GRAPH_BASE}/me/drive/root/children?$filter=name eq '${encodeURIComponent(folderName)}' and folder ne null&$select=id`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (searchRes.ok) {
+    const data = await searchRes.json();
+    if (data.value?.[0]?.id) return data.value[0].id as string;
+  }
+  // Create folder at root
+  const createRes = await fetch(`${GRAPH_BASE}/me/drive/root/children`, {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name: folderName, folder: {}, '@microsoft.graph.conflictBehavior': 'rename' }),
+  });
+  if (!createRes.ok) return null;
+  const folder = await createRes.json();
+  return folder.id as string;
+}
+
+export async function outlookMoveFile(accessToken: string, fileId: string, destinationFolderName: string): Promise<boolean> {
+  const folderId = await outlookFindOrCreateFolder(accessToken, destinationFolderName);
+  if (!folderId) return false;
+  const res = await fetch(`${GRAPH_BASE}/me/drive/items/${fileId}`, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ parentReference: { id: folderId } }),
+  });
+  return res.ok;
+}
+
+export async function outlookRenameFile(accessToken: string, fileId: string, newName: string): Promise<boolean> {
+  const res = await fetch(`${GRAPH_BASE}/me/drive/items/${fileId}`, {
+    method:  'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name: newName }),
+  });
+  return res.ok;
 }
 
 function stripHtml(html: string): string {

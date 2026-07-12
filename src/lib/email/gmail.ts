@@ -4,8 +4,7 @@ const GMAIL_SCOPES     = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/drive.readonly',  // read existing files
-  'https://www.googleapis.com/auth/drive.file',       // create/upload new files
+  'https://www.googleapis.com/auth/drive',  // full Drive access: read, write, move, rename
 ].join(' ');
 
 export function gmailAuthUrl(state: string): string {
@@ -329,6 +328,65 @@ export async function gmailUploadToDrive(
     throw new Error(`Drive upload failed (${res.status}): ${err}`);
   }
   return res.json() as Promise<DriveUploadResult>;
+}
+
+export interface DriveItem {
+  id:       string;
+  name:     string;
+  mimeType: string;
+  isFolder: boolean;
+}
+
+export async function gmailListDriveFolder(accessToken: string, folderId?: string): Promise<DriveItem[]> {
+  const parent = folderId ? `'${folderId}'` : "'root'";
+  const q = encodeURIComponent(`${parent} in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType)&pageSize=100&orderBy=folder,name`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return ((data.files ?? []) as { id: string; name: string; mimeType: string }[]).map(f => ({
+    id:       f.id,
+    name:     f.name,
+    mimeType: f.mimeType,
+    isFolder: f.mimeType === 'application/vnd.google-apps.folder',
+  }));
+}
+
+export async function gmailMoveDriveFile(accessToken: string, fileId: string, destinationFolderName: string): Promise<boolean> {
+  // Get current parents
+  const metaRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!metaRes.ok) return false;
+  const meta = await metaRes.json();
+  const currentParents = ((meta.parents ?? []) as string[]).join(',');
+
+  const folderId = await gmailFindOrCreateFolder(accessToken, destinationFolderName);
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${folderId}&removeParents=${currentParents}&fields=id`,
+    {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({}),
+    },
+  );
+  return res.ok;
+}
+
+export async function gmailRenameDriveFile(accessToken: string, fileId: string, newName: string): Promise<boolean> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id`,
+    {
+      method:  'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: newName }),
+    },
+  );
+  return res.ok;
 }
 
 function callbackUrl(provider: string): string {
