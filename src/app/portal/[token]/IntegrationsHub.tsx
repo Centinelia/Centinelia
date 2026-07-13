@@ -10,6 +10,7 @@ import NotionSchemasSection  from './NotionSchemasSection';
 import TeamsSection          from './TeamsSection';
 import EmailOAuthSection     from './EmailOAuthSection';
 import EmailSettings         from './EmailSettings';
+import InfoTooltip           from '@/components/InfoTooltip';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -88,11 +89,11 @@ function providersByCapability(capability: string, token: string): ProviderOptio
       ];
     case 'crm':
       return [
-        { id: 'notion', name: 'Notion', description: 'CRM automático en tu workspace de Notion', icon: <NotionDot />, action: 'scroll', scrollTo: 'notion' },
+        { id: 'notion', name: 'Notion', description: 'CRM automático en tu workspace de Notion', icon: <NotionDot />, action: 'scroll', scrollTo: 'crm' },
       ];
     case 'messaging':
       return [
-        { id: 'teams', name: 'Microsoft Teams', description: 'Responde mensajes via Power Automate', icon: <TeamsDot />, action: 'scroll', scrollTo: 'teams' },
+        { id: 'teams', name: 'Microsoft Teams', description: 'Responde mensajes via Power Automate', icon: <TeamsDot />, action: 'scroll', scrollTo: 'mensajeria' },
       ];
     default:
       return [];
@@ -276,8 +277,10 @@ function Section({ id, label, description, children }: {
   return (
     <div id={id} className="rounded-xl p-5"
       style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>{label}</h2>
-      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>{description}</p>
+      <div className="flex items-center gap-1.5 mb-4">
+        <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>{label}</h2>
+        <InfoTooltip text={description} />
+      </div>
       {children}
     </div>
   );
@@ -386,7 +389,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
             <CapabilityCard
               accentBg="#fff" accentBorder="rgba(0,0,0,0.1)"
               icon={<NotionDot />}
-              label="CRM" connected={notionConnected} href="#notion"
+              label="CRM" connected={notionConnected} href="#crm"
               providers={
                 notionConnected && status.notion?.workspace_name
                   ? [<ProviderTag key="n" icon={<NotionDot />} label={status.notion.workspace_name} />]
@@ -399,7 +402,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
               <CapabilityCard
                 accentBg="#5865F2" accentBorder="rgba(88,101,242,0.4)"
                 icon={<TeamsDot />}
-                label="Mensajería" connected={teamsConnected} href="#teams"
+                label="Mensajería" connected={teamsConnected} href="#mensajeria"
                 providers={teamsConnected ? [<ProviderTag key="t" icon={<TeamsDot />} label="Microsoft Teams" />] : []}
                 onAdd={() => setOpenModal({ capability: 'messaging', label: 'Mensajería' })}
               />
@@ -440,7 +443,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
         </Section>
 
         {/* ── CRM (Notion) ───────────────────────────────────────────── */}
-        <div id="notion">
+        <div id="crm">
           <NotionSection token={token} />
         </div>
         {hasNotion && (
@@ -452,12 +455,12 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
 
         {/* ── Mensajería (Teams) ─────────────────────────────────────── */}
         {hasOpsAgent && (
-          <div id="teams" className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
+          <div id="mensajeria" className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
             <div className="px-5 pt-5 pb-1" style={{ background: 'var(--c-surface)' }}>
-              <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Mensajería</h2>
-              <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                Conecta Microsoft Teams via Power Automate para que el agente lea y responda mensajes automáticamente.
-              </p>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Mensajería</h2>
+                <InfoTooltip text="Conecta Microsoft Teams via Power Automate para que el agente lea y responda mensajes automáticamente." />
+              </div>
             </div>
             <div className="px-5 pb-5" style={{ background: 'var(--c-surface)' }}>
               <TeamsSection token={token} />

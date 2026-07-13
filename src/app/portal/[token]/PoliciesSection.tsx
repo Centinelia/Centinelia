@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Mail, FolderOpen, PhoneOutgoing, Calendar, Users2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 const CAPABILITIES_CONFIG = [
   {
@@ -30,14 +31,14 @@ const CAPABILITIES_CONFIG = [
     label:       'Calendario',
     description: 'El agente puede crear y gestionar eventos en tu calendario.',
     icon:        Calendar,
-    active:      false,
+    active:      true,
   },
   {
     capability:  'crm',
     label:       'CRM',
     description: 'El agente puede leer y escribir registros en tu CRM.',
     icon:        Users2,
-    active:      false,
+    active:      true,
   },
 ];
 
@@ -121,12 +122,12 @@ export default function PoliciesSection({ token }: { token: string }) {
     <div id="politicas">
       {/* Capability toggles */}
       <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-        <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-          Políticas de acceso
-        </h2>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-          Controla qué puede hacer el agente. Los cambios toman efecto de inmediato.
-        </p>
+        <div className="flex items-center gap-1.5 mb-4">
+          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            Políticas de acceso
+          </h2>
+          <InfoTooltip text="Controla qué puede hacer el agente. Los cambios toman efecto de inmediato." />
+        </div>
 
         {loading ? (
           <div className="flex flex-col gap-2">

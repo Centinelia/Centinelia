@@ -456,14 +456,16 @@ export default function OutboundSection({
   initialContacts,
   initialCampaigns,
   agents,
+  initialTab = 'contactos',
 }: {
   token:             string;
   initialContacts:   Contact[];
   initialCampaigns:  Campaign[];
   agents:            Agent[];
+  initialTab?:       'contactos' | 'campanas';
 }) {
   // ── Tab ──────────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'contactos' | 'campanas'>('contactos');
+  const [activeTab, setActiveTab] = useState<'contactos' | 'campanas'>(initialTab);
 
   // ── Contacts state ────────────────────────────────────────────────────────────
   const [contacts,        setContacts]        = useState<Contact[]>(initialContacts);

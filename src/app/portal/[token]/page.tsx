@@ -52,6 +52,7 @@ import { inboxAddressFor }       from '@/lib/email/inbox';
 import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
+import InfoTooltip              from '@/components/InfoTooltip';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -529,8 +530,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
                 {/* Reporte mensual — visible en mobile al final de la columna principal */}
                 <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con llamadas, resultados, minutos y horas pico.</p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                    <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                  </div>
                   <MonthReportPicker token={token} />
                 </div>
               </div>{/* end main column */}
@@ -561,8 +564,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* Reporte mensual — desktop sidebar */}
                 <div id="reporte-mensual" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Descarga el resumen del mes con llamadas, resultados, minutos y horas pico.</p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
+                    <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                  </div>
                   <MonthReportPicker token={token} />
                 </div>
               </div>
@@ -579,18 +584,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {/* Main column */}
               <div className="flex flex-col gap-5">
                 <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
+                    <InfoTooltip text="Aparece en el encabezado de tu portal de clientes y en todos los documentos generados." />
+                  </div>
                   <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
                 </div>
 
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
+                    <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente." />
+                  </div>
                   <BrandKitEditor
                     token={token}
                     logoUrl={(agent as any).logo_url ?? null}
@@ -605,26 +610,26 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
 
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                    <InfoTooltip text="Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio." />
+                  </div>
                   <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
                 </div>
 
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
+                    <InfoTooltip text="Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes." />
+                  </div>
                   <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
                 </div>
 
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
+                    <InfoTooltip text="El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
+                  </div>
                   <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
                 </div>
               </div>
@@ -632,10 +637,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {/* Right column — Horario de atención */}
               <div>
                 <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                    Define los días y horarios en que tu agente está disponible para atender llamadas.
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                    <InfoTooltip text="Define los días y horarios en que tu agente está disponible para atender llamadas." />
+                  </div>
                   <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
                 </div>
               </div>
@@ -742,8 +747,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   {agent.plan && (
                     <div id="plan" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
-                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Sube o baja de tier según las necesidades de tu negocio.</p>
+                      <div className="flex items-center gap-1.5 mb-4">
+                        <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
+                        <InfoTooltip text="Sube o baja de tier según las necesidades de tu negocio." />
+                      </div>
                       <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
                     </div>
                   )}

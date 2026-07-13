@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
-type SubItem    = { label: string; id: string };
+type SubItem    = { label: string; id: string; href?: string };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
 type Section    = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
@@ -97,9 +97,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         ...(showOutbound ? [{
           label: 'Salientes', id: 'salientes', icon: <PhoneOutgoing size={12} />,
           items: [
-            { label: 'Llamadas salientes', id: 'llamadas-sal' },
-            { label: 'Campañas',           id: 'campanas' },
-            { label: 'Contactos',          id: 'contactos' },
+            { label: 'Permisos',  id: 'llamadas-sal' },
+            { label: 'Campañas',  id: 'campanas',  href: `/portal/${token}/llamadas/salientes?view=campanas` },
+            { label: 'Contactos', id: 'contactos', href: `/portal/${token}/llamadas/salientes?view=contactos` },
           ],
         }] : []),
       ],
@@ -121,11 +121,11 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
       items: [
-        { label: 'Correo',         id: 'correo' },
-        { label: 'Calendario',     id: 'calendario' },
-        { label: 'Notion CRM',     id: 'notion' },
-        ...(hasOpsAgent ? [{ label: 'Microsoft Teams', id: 'teams' }] : []),
-        { label: 'Políticas',      id: 'politicas' },
+        { label: 'Correo',      id: 'correo' },
+        { label: 'Calendario',  id: 'calendario' },
+        { label: 'CRM',         id: 'crm' },
+        ...(hasOpsAgent ? [{ label: 'Mensajería', id: 'mensajeria' }] : []),
+        { label: 'Políticas',   id: 'politicas' },
       ],
     },
     {
@@ -256,9 +256,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                             {sub.items.map(item => (
                               <Link
                                 key={item.id}
-                                href={`${subHref}#${item.id}`}
+                                href={item.href ?? `${subHref}#${item.id}`}
                                 scroll={false}
-                                onClick={() => { if (item.id) setPendingId(item.id); }}
+                                onClick={() => { if (!item.href && item.id) setPendingId(item.id); }}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                                 style={{ color: 'var(--c-text-2)' }}
                               >
