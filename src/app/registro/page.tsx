@@ -400,7 +400,11 @@ function MeerkatCard({
             src={role.imagen!}
             alt={role.nombre}
             onError={() => setErr(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center' }}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'contain', objectPosition: 'bottom center',
+              ...(roleId === 'nia' && { transform: 'scale(1.18)', transformOrigin: 'bottom center' }),
+            }}
           />
         ) : isCustom ? (
           <div style={{ width: '100%', height: '100%', background: '#0a0618', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
