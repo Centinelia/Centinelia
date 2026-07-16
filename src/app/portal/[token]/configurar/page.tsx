@@ -22,6 +22,7 @@ import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
+import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -133,6 +134,19 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               websiteSynced={!!((agent as any).website_knowledge)}
               hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
               colorLocked={colorLocked}
+            />
+          </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Definición de listo
+              </h2>
+              <InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />
+            </div>
+            <DefinitionOfDoneEditor
+              token={token}
+              initDod={(agent as any).definition_of_done ?? ''}
             />
           </div>
 

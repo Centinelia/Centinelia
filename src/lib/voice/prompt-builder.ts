@@ -57,6 +57,14 @@ TONO Y ESTILO DE VOZ:
 - Varía la longitud de tus respuestas según el contexto. Respuestas cortas para confirmaciones; un poco más largas para explicaciones.
 - TRATO AL CLIENTE: ${agent.speech_style === 'tu' ? 'Tutea al cliente en todo momento, usa "tú", "te", "tu". Ej: "¿Cómo te puedo ayudar?", "¿Cuál es tu nombre?"' : 'Trata al cliente de usted en todo momento, usa "usted", "le", "su". Ej: "¿En qué le puedo ayudar?", "¿Cuál es su nombre?"'}. Mantén este trato durante toda la llamada sin mezclar.`);
 
+  // ── Definition of Done ────────────────────────────────────────────────────
+  const dod = (agent as unknown as Record<string, unknown>).definition_of_done as string | undefined;
+  if (dod?.trim()) {
+    blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:
+${dod.trim()}
+Esta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
+  }
+
   // ── Meerkat personality block ─────────────────────────────────────────────
   if (meerkat?.promptPersonalidad?.trim()) {
     blocks.push(meerkat.promptPersonalidad.trim());
