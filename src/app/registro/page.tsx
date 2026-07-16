@@ -394,13 +394,13 @@ function MeerkatCard({
       }}
     >
       {/* Image area */}
-      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F4F0FF' }}>
+      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#FFFFFF' }}>
         {hasImg ? (
           <img
             src={role.imagen!}
             alt={role.nombre}
             onError={() => setErr(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center', padding: '6px 6px 0' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center' }}
           />
         ) : isCustom ? (
           <div style={{ width: '100%', height: '100%', background: '#0a0618', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -434,7 +434,7 @@ function MeerkatCard({
 
       {/* Text */}
       <div style={{ padding: '10px 8px 12px', width: '100%', background: 'rgba(255,255,255,0.07)' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#fff', lineHeight: 1.2 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2 }}>
           {role.nombre}
         </div>
         {role.rol && (
@@ -655,7 +655,7 @@ function RegistroInner() {
       <div className={`${step === 4 ? 'max-w-3xl' : 'max-w-2xl'} mx-auto px-4 py-10`} style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Step indicator — 4 steps */}
-        <div className="flex items-center justify-center gap-0 mb-10">
+        <div className="flex items-center justify-center gap-0 mb-6 sm:mb-10">
           {STEP_LABELS.map((label, i) => {
             const n      = (i + 1) as 1 | 2 | 3 | 4;
             const done   = step > n;
@@ -669,15 +669,15 @@ function RegistroInner() {
                   className="flex flex-col items-center"
                   style={{ cursor: canNav ? 'pointer' : 'default', background: 'none', border: 'none', padding: 0 }}
                 >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all"
                     style={{
                       background: done ? '#6C3BFF' : active ? 'rgba(108,59,255,0.3)' : 'rgba(255,255,255,0.05)',
                       border:     `2px solid ${done || active ? '#6C3BFF' : 'rgba(255,255,255,0.1)'}`,
                       color:      done || active ? '#fff' : 'rgba(255,255,255,0.3)',
                     }}>
-                    {done ? <Check size={13} /> : n}
+                    {done ? <Check size={11} /> : n}
                   </div>
-                  <span className="text-xs mt-1.5 font-medium"
+                  <span className="text-[9px] sm:text-xs mt-1 sm:mt-1.5 font-medium"
                     style={{
                       color:              active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
                       textDecoration:     canNav ? 'underline' : 'none',
@@ -687,7 +687,7 @@ function RegistroInner() {
                   </span>
                 </button>
                 {i < 3 && (
-                  <div className="w-10 sm:w-14 h-px mx-1 mb-4"
+                  <div className="w-4 sm:w-14 h-px mx-0.5 sm:mx-1 mb-4"
                     style={{ background: step > n + 1 ? '#6C3BFF' : 'rgba(255,255,255,0.08)' }} />
                 )}
               </div>
@@ -737,7 +737,7 @@ function RegistroInner() {
                       }}
                     >
                       {/* Image */}
-                      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F4F0FF' }}>
+                      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#FFFFFF' }}>
                         <img
                           src={dir.imagen!}
                           alt={dir.nombre}
@@ -1064,7 +1064,7 @@ function RegistroInner() {
                         </div>
                       )}
                       <div className="flex flex-col items-center text-center flex-1">
-                        <div className="w-full px-4 pt-5 pb-4">
+                        <div className="w-full px-4 pt-5 pb-4" style={{ flex: 1 }}>
                           <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto mb-3 transition-all"
                             style={{ borderColor: sel ? '#6C3BFF' : 'rgba(255,255,255,0.2)', background: sel ? '#6C3BFF' : 'transparent' }}>
                             {sel && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -1108,7 +1108,7 @@ function RegistroInner() {
                         </div>
                       )}
                       <div className="flex flex-col items-center text-center flex-1">
-                        <div className="w-full px-4 pt-5 pb-4">
+                        <div className="w-full px-4 pt-5 pb-4" style={{ flex: 1 }}>
                           <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto mb-3 transition-all"
                             style={{ borderColor: sel ? roleColor : 'rgba(255,255,255,0.2)', background: sel ? roleColor : 'transparent' }}>
                             {sel && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -1131,7 +1131,8 @@ function RegistroInner() {
             <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
               {isCoordinator
                 ? 'Nox coordina sin llamadas. Las operaciones extra tienen costo adicional.'
-                : 'Minutos extra: $12.99 MXN / min · +35 ops IA por cada 100 min adicionales'
+                : <>Minutos extra: $12.99 MXN / min<br />+35 ops IA por cada 100 min adicionales</>
+
               }
             </p>
 
