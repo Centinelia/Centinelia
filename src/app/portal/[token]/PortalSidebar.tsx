@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Phone, PhoneCall, PhoneOutgoing, Briefcase,
-  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot, CreditCard,
+  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot, CreditCard, Users,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
 type SubItem    = { label: string; id: string; href?: string };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
-type Section    = { id: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
+type Section    = { id: string; moduleId?: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
 interface Props {
   token:            string;
@@ -23,9 +23,11 @@ interface Props {
   minutesIncluded?: number;
   aiOpsUsed?:       number;
   aiOpsLimit?:      number;
+  isOwner?:         boolean;
+  modules?:         string[]; // undefined = all access (owner)
 }
 
-export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0 }: Props) {
+export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, isOwner = true, modules }: Props) {
   const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -56,9 +58,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
   const toggle = (id: string) =>
     setOpenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  const sections: Section[] = [
+  const allSections: Section[] = [
     {
-      id: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
+      id: 'inicio', moduleId: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
         { label: 'Resumen',          id: 'resumen' },
         { label: 'Horas pico',       id: 'horas-pico' },
@@ -67,23 +69,24 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     {
-      id: 'negocio', label: 'Negocio', icon: <Building2 size={14} />,
+      id: 'negocio', moduleId: 'negocio', label: 'Negocio', icon: <Building2 size={14} />,
       items: [
-        { label: 'Logo y branding',      id: 'branding' },
+        { label: 'Organización',         id: 'organizacion' },
+        { label: 'Branding',             id: 'branding' },
         { label: 'Base de conocimiento', id: 'conocimiento' },
-        { label: 'Horarios',             id: 'horarios' },
         { label: 'Sitio web y reseñas',  id: 'sitio' },
+        { label: 'Horarios',             id: 'horarios' },
       ],
     },
     {
-      id: 'agentes', label: 'Agentes', icon: <Bot size={14} />,
+      id: 'agentes', moduleId: 'agentes', label: 'Empleados', icon: <Bot size={14} />,
       directHref: `/portal/${token}/agentes`,
       items: [
-        { label: 'Mis agentes', id: 'lista-agentes' },
+        { label: 'Mis empleados', id: 'lista-agentes' },
       ],
     },
     {
-      id: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
+      id: 'llamadas', moduleId: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
       toggleOnly: true,
       items: [],
       subSections: [
@@ -105,7 +108,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     ...(hasOpsAgent ? [{
-      id: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
+      id: 'oficina', moduleId: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
       directHref: `/portal/${token}/oficina`,
       items: [
         { label: 'Actividad',          id: '' },
@@ -119,7 +122,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     }] as Section[] : []),
     {
-      id: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
+      id: 'integraciones', moduleId: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
       items: [
         { label: 'Correo',      id: 'correo' },
         { label: 'Calendario',  id: 'calendario' },
@@ -129,15 +132,24 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     {
-      id: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
+      id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Organización',  id: 'organizacion' },
         { label: 'Minutos y uso', id: 'minutos' },
         { label: 'Plan y cambios',id: 'plan' },
         { label: 'Contrato',      id: 'contrato' },
       ],
     },
+    ...(isOwner ? [{
+      id: 'usuarios', label: 'Usuarios', icon: <Users size={14} />,
+      directHref: `/portal/${token}/usuarios`,
+      items: [],
+    }] as Section[] : []),
   ];
+
+  // Filter sections by allowed modules (owners see all)
+  const sections = modules
+    ? allSections.filter(s => !s.moduleId || modules.includes(s.moduleId))
+    : allSections;
 
   const hasChildren = (s: Section) => s.items.length > 0 || (s.subSections?.length ?? 0) > 0;
 

@@ -18,9 +18,10 @@ interface Props {
   initial:   string;
   color:     string;
   size?:     number;
+  locked?:   boolean;
 }
 
-export default function AgentAvatarPicker({ token, avatarSrc, initial, color, size = 44 }: Props) {
+export default function AgentAvatarPicker({ token, avatarSrc, initial, color, size = 44, locked = false }: Props) {
   const router  = useRouter();
   const [open,    setOpen]    = useState(false);
   const [current, setCurrent] = useState(avatarSrc);
@@ -38,6 +39,21 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
     setSaving(false);
     setOpen(false);
     router.refresh();
+  }
+
+  if (locked) {
+    return (
+      <div
+        className="flex-shrink-0 overflow-hidden relative"
+        style={{ width: size, height: size, borderRadius: size * 0.27, background: `${color}20`, border: `1px solid ${color}35` }}
+      >
+        {current
+          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', padding: size * 0.05 }} />
+          : <span className="w-full h-full flex items-center justify-center font-bold"
+              style={{ color, fontSize: size * 0.36 }}>{initial}</span>
+        }
+      </div>
+    );
   }
 
   return (

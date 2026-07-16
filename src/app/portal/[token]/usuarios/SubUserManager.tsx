@@ -1,0 +1,416 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { PORTAL_MODULES } from '@/lib/portal/modules';
+
+interface PortalUser {
+  id:         string;
+  email:      string;
+  name:       string | null;
+  modules:    string[];
+  is_owner:   boolean;
+  created_at: string;
+}
+
+interface Props {
+  token:        string;
+  initialUsers: PortalUser[];
+}
+
+const GROUPS = ['Portal', 'Oficina'] as const;
+
+function ModuleSelector({ selected, onChange }: { selected: string[]; onChange: (m: string[]) => void }) {
+  const toggle = (id: string) =>
+    onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+
+  const allInGroup = (g: string) => PORTAL_MODULES.filter(m => m.group === g).every(m => selected.includes(m.id as string));
+  const toggleGroup = (g: string) => {
+    const ids: string[] = PORTAL_MODULES.filter(m => m.group === g).map(m => m.id as string);
+    if (allInGroup(g)) onChange(selected.filter(id => !ids.includes(id)));
+    else onChange([...new Set([...selected, ...ids])]);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {GROUPS.map(group => (
+        <div key={group}>
+          <button
+            type="button"
+            onClick={() => toggleGroup(group)}
+            className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <div
+              className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
+              style={{
+                border:     '1px solid rgba(108,59,255,0.6)',
+                background: allInGroup(group) ? '#6C3BFF' : 'transparent',
+              }}
+            >
+              {allInGroup(group) && <Check size={9} color="#fff" />}
+            </div>
+            {group}
+          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-2">
+            {PORTAL_MODULES.filter(m => m.group === group).map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => toggle(m.id)}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left"
+                style={{
+                  background: selected.includes(m.id) ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
+                  border:     selected.includes(m.id) ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+                  color:      selected.includes(m.id) ? '#9B6DFF' : 'var(--c-text-2)',
+                }}
+              >
+                <div
+                  className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
+                  style={{
+                    border:     '1px solid rgba(108,59,255,0.5)',
+                    background: selected.includes(m.id) ? '#6C3BFF' : 'transparent',
+                  }}
+                >
+                  {selected.includes(m.id) && <Check size={8} color="#fff" />}
+                </div>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModuleChips({ modules }: { modules: string[] }) {
+  if (modules.length === 0) return <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin acceso</span>;
+  const labels = modules.map(id => PORTAL_MODULES.find(m => m.id === id)?.label ?? id);
+  const shown  = labels.slice(0, 3);
+  const rest   = labels.length - 3;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {shown.map(l => (
+        <span key={l} className="px-1.5 py-0.5 rounded text-[10px]"
+          style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+          {l}
+        </span>
+      ))}
+      {rest > 0 && (
+        <span className="px-1.5 py-0.5 rounded text-[10px]"
+          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+          +{rest}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PasswordField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 pr-9 rounded-lg text-xs"
+        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+      />
+      <button type="button" onClick={() => setShow(v => !v)}
+        className="absolute right-2 top-1/2 -translate-y-1/2"
+        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+        {show ? <EyeOff size={13} /> : <Eye size={13} />}
+      </button>
+    </div>
+  );
+}
+
+export default function SubUserManager({ token, initialUsers }: Props) {
+  const [users, setUsers]           = useState<PortalUser[]>(initialUsers);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [editId, setEditId]         = useState<string | null>(null);
+  const [error, setError]           = useState('');
+  const [saving, setSaving]         = useState(false);
+
+  // New user form
+  const [newEmail,    setNewEmail]    = useState('');
+  const [newName,     setNewName]     = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newModules,  setNewModules]  = useState<string[]>([]);
+
+  // Edit form
+  const [editName,     setEditName]     = useState('');
+  const [editModules,  setEditModules]  = useState<string[]>([]);
+  const [editPassword, setEditPassword] = useState('');
+  const [editOpen,     setEditOpen]     = useState(false);
+
+  const startEdit = (u: PortalUser) => {
+    setEditId(u.id);
+    setEditName(u.name ?? '');
+    setEditModules(u.modules);
+    setEditPassword('');
+    setEditOpen(false);
+    setError('');
+  };
+
+  const cancelEdit = () => { setEditId(null); setError(''); };
+
+  const handleAdd = async () => {
+    if (!newEmail.trim() || !newPassword.trim()) { setError('Correo y contraseña son requeridos'); return; }
+    setSaving(true); setError('');
+    try {
+      const res = await fetch(`/api/portal/${token}/users`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: newEmail.trim(), name: newName.trim() || undefined, password: newPassword, modules: newModules }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al crear usuario'); return; }
+      const { user } = await res.json();
+      setUsers(u => [...u, user]);
+      setShowAdd(false); setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]);
+    } finally { setSaving(false); }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editId) return;
+    setSaving(true); setError('');
+    try {
+      const body: Record<string, unknown> = { name: editName, modules: editModules };
+      if (editPassword.trim()) body.password = editPassword;
+      const res = await fetch(`/api/portal/${token}/users/${editId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al guardar'); return; }
+      const { user } = await res.json();
+      setUsers(u => u.map(x => x.id === user.id ? { ...x, ...user } : x));
+      setEditId(null);
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string, email: string) => {
+    if (!confirm(`¿Eliminar el acceso de ${email}?`)) return;
+    const res = await fetch(`/api/portal/${token}/users/${id}`, { method: 'DELETE' });
+    if (res.ok) setUsers(u => u.filter(x => x.id !== id));
+    else setError('Error al eliminar usuario');
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users size={16} style={{ color: '#6C3BFF' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+            Usuarios ({users.length})
+          </h2>
+        </div>
+        {!showAdd && (
+          <button
+            onClick={() => { setShowAdd(true); setError(''); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}
+          >
+            <Plus size={12} />
+            Añadir usuario
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="px-3 py-2 rounded-lg text-xs"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+          {error}
+        </div>
+      )}
+
+      {/* Add new user form */}
+      {showAdd && (
+        <div className="rounded-xl p-4 flex flex-col gap-3"
+          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
+          <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo usuario</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Correo electrónico *</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder="usuario@empresa.com"
+                className="w-full px-3 py-2 rounded-lg text-xs"
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Nombre del usuario"
+                className="w-full px-3 py-2 rounded-lg text-xs"
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Contraseña inicial *</label>
+            <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" />
+          </div>
+
+          <div>
+            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+            <ModuleSelector selected={newModules} onChange={setNewModules} />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleAdd}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+            >
+              {saving ? 'Guardando...' : 'Crear usuario'}
+            </button>
+            <button
+              onClick={() => { setShowAdd(false); setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]); setError(''); }}
+              className="px-4 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
+              style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* User list */}
+      {users.length === 0 && !showAdd && (
+        <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
+          <Users size={32} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">No hay usuarios configurados aún.</p>
+          <p className="text-xs mt-1">Añade colaboradores con acceso limitado a secciones específicas.</p>
+        </div>
+      )}
+
+      {users.map(u => (
+        <div key={u.id} className="rounded-xl overflow-hidden"
+          style={{ border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)', background: 'var(--c-surface)' }}>
+
+          {/* User header */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                  {u.name ?? u.email}
+                </p>
+                {u.is_owner && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                    style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+                    Propietario
+                  </span>
+                )}
+              </div>
+              {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
+            </div>
+            {!u.is_owner && (
+              <div className="flex items-center gap-1 shrink-0">
+                {editId !== u.id ? (
+                  <>
+                    <button
+                      onClick={() => startEdit(u)}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(u.id, u.email)}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={saving}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(34,197,94,0.1)]"
+                      style={{ background: 'none', border: 'none', color: '#22c55e', cursor: saving ? 'not-allowed' : 'pointer' }}
+                    >
+                      <Check size={13} />
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Modules chips (view mode) */}
+          {editId !== u.id && (
+            <div className="px-4 pb-3">
+              <ModuleChips modules={u.modules} />
+            </div>
+          )}
+
+          {/* Edit mode */}
+          {editId === u.id && (
+            <div className="px-4 pb-4 flex flex-col gap-3"
+              style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="pt-3">
+                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Nombre del usuario"
+                  className="w-full px-3 py-2 rounded-lg text-xs"
+                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+                <ModuleSelector selected={editModules} onChange={setEditModules} />
+              </div>
+
+              {/* Optional password change */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(v => !v)}
+                  className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                  style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer', padding: 0 }}
+                >
+                  {editOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  Cambiar contraseña
+                </button>
+                {editOpen && (
+                  <div className="mt-2">
+                    <PasswordField value={editPassword} onChange={setEditPassword} placeholder="Nueva contraseña" />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+    </div>
+  );
+}

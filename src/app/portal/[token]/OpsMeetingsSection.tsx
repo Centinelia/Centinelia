@@ -52,6 +52,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
   const [form, setForm] = useState({
     title:        '',
     participants: '',
+    instructions: '',
   });
 
   const load = useCallback(async () => {
@@ -127,10 +128,10 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       await fetch(`/api/portal/${token}/ops-meetings`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ title: form.title, participants, audio_url: publicUrl }),
+        body:    JSON.stringify({ title: form.title, participants, audio_url: publicUrl, instructions: form.instructions || undefined }),
       });
 
-      setForm({ title: '', participants: '' });
+      setForm({ title: '', participants: '', instructions: '' });
       setShowForm(false);
       if (fileRef.current) fileRef.current.value = '';
       await load();
@@ -185,6 +186,17 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
               placeholder="Ana García, Luis Mendoza, ..."
               className="w-full px-3 py-2 rounded-lg text-sm"
               style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+          </div>
+          <div>
+            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Indicaciones para el análisis (opcional)</label>
+            <textarea
+              value={form.instructions}
+              onChange={e => setForm(p => ({ ...p, instructions: e.target.value }))}
+              placeholder="Ej. Esta es una junta de ventas, prioriza los acuerdos de precio. El audio tiene ruido al inicio, ignóralo."
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            />
           </div>
           <div>
             <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Audio de la junta *</label>

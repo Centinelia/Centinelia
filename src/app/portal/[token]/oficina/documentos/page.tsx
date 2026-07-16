@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText, Download, Trash2, Clock, FileCheck, FilePlus, Mail } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface Doc {
   id:               string;
@@ -15,9 +16,12 @@ interface Doc {
 }
 
 const TYPE_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  proposal: { label: 'Propuesta',  color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)' },
-  letter:   { label: 'Carta',      color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)' },
-  general:  { label: 'Documento',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)'  },
+  proposal:    { label: 'Propuesta',  color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'  },
+  letter:      { label: 'Carta',      color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)'  },
+  general:     { label: 'Documento',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)'   },
+  excel:       { label: 'Excel',      color: '#16a34a', bg: 'rgba(22,163,74,0.1)'   },
+  word:        { label: 'Word',       color: '#2563eb', bg: 'rgba(37,99,235,0.1)'   },
+  powerpoint:  { label: 'PowerPoint', color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
 };
 
 function daysLeft(expiresAt: string): number {
@@ -81,13 +85,12 @@ export default function DocumentosPage() {
     <div id="of-documentos" className="flex flex-col gap-5 p-5 sm:p-7 max-w-3xl mx-auto w-full">
       {/* Header */}
       <div>
-        <h1 className="text-sm font-semibold tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--c-text-3)' }}>
-          <FileText size={14} /> Documentos
-        </h1>
-        <p className="text-xs mt-1.5" style={{ color: 'var(--c-text-3)' }}>
-          PDFs generados por tus agentes. Cada documento se guarda por 30 días desde su última descarga.
-          Descárgalo y guárdalo en tu Drive, Notion o donde lo necesites para conservarlo.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-sm font-semibold tracking-widest uppercase flex items-center gap-2" style={{ color: 'var(--c-text-3)' }}>
+            <FileText size={14} /> Documentos
+          </h1>
+          <InfoTooltip text="Archivos generados por tus agentes: PDFs, Excel, Word y PowerPoint. Cada archivo se guarda 30 días desde su última descarga. Descárgalo y guárdalo en tu Drive o Notion para conservarlo." />
+        </div>
       </div>
 
       {/* Info banner */}
@@ -97,7 +100,7 @@ export default function DocumentosPage() {
           <p className="text-xs font-medium" style={{ color: '#9B6DFF' }}>Retención de 30 días</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
             Descargar un documento reinicia su contador a 30 días. Los documentos que no se tocan se eliminan automáticamente al vencer.
-            Centinelia no es un almacén permanente — descarga lo que necesites guardar.
+            Centinelia no es un almacén permanente, descarga lo que necesites guardar.
           </p>
         </div>
       </div>

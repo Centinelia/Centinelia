@@ -19,7 +19,6 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect } from 'next/navigation';
 
 import PortalLogout            from './PortalLogout';
-import LogoUploader            from './LogoUploader';
 import BrandKitEditor          from './BrandKitEditor';
 import BusinessSwitcher        from './BusinessSwitcher';
 import PortalLeadsSection      from './PortalLeadsSection';
@@ -63,8 +62,6 @@ interface Props {
   searchParams: Promise<{ tab?: string; period?: string }>;
 }
 
-const PLAN_LABELS: Record<string, string> = { comercial: 'Agente Comercial', pro: 'Ejecutivo Senior' };
-const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 const FEED_OUTCOME: Record<string, { label: string; color: string; bg: string }> = {
   lead_created:       { label: 'Lead',       color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'   },
@@ -106,6 +103,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // Security: verify this agent belongs to the logged-in client
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail) {
     redirect('/portal/login');
+  }
+
+  const isOwner  = !session?.isSubUser;
+  const modules  = session?.isSubUser ? (session.modules ?? []) : undefined;
+
+  // New accounts must complete alignment setup before accessing the portal
+  if (isOwner && (agent as any).onboarding_completed === false) {
+    redirect(`/setup/${token}`);
   }
 
   // All agents for this client (same portal_email)
@@ -290,11 +295,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   const hasOpsAgent = (allClientAgents as any[]).some((a: any) => a.role) || !!(agent as any).role;
 
+  // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
+  const agentContextCards = allClientAgents.map(a => {
+    const kb   = ((a as any).knowledge_base         as string | null) ?? '';
+    const rkb  = ((a as any).role_knowledge_base    as string | null) ?? '';
+    const rl   = ((a as any).role_learnings         as string | null) ?? '';
+    const total = Math.ceil((kb.length + rkb.length + rl.length) / 4);
+    return {
+      name:   (a.agent_name?.trim() || 'Empleado'),
+      role:   ((a as any).role as string | null)?.trim() ?? null,
+      tokens: total,
+    };
+  });
+
   const TABS: { id: Tab; label: string }[] = [
     { id: 'inicio',        label: 'Inicio' },
     { id: 'llamadas',      label: 'Llamadas' },
     ...(hasOpsAgent ? [{ id: 'oficina' as Tab, label: 'Oficina' }] : []),
-    { id: 'agentes' as Tab, label: 'Agentes' },
+    { id: 'agentes' as Tab, label: 'Empleados' },
     { id: 'negocio',       label: 'Negocio' },
     { id: 'integraciones', label: 'Integraciones' },
     { id: 'cuenta',        label: 'Cuenta' },
@@ -342,6 +360,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             minutesIncluded={minutesIncluded}
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
+            isOwner={isOwner}
+            modules={modules}
           />
 
           {/* Main content column */}
@@ -536,6 +556,54 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <MonthReportPicker token={token} />
                 </div>
+
+                {/* Contexto de empleados — mobile */}
+                <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
+                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria." />
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {agentContextCards.map((a, i) => {
+                      const ctx   = Math.min(a.tokens, 32_000);
+                      const pct   = Math.round((ctx / 32_000) * 100);
+                      const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                      return (
+                        <div key={i} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                              {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                            </div>
+                            <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                              {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {aiOpsLimit > 0 && (
+                      <>
+                        <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 4 }} />
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Ops IA del mes</p>
+                            <span className="text-xs tabular-nums" style={{ color: aiOpsColor }}>
+                              {aiOpsUsed} / {aiOpsLimit}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, aiOpsPct)}%`, background: aiOpsColor }} />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
               </div>{/* end main column */}
 
               {/* ── Right column (desktop only) ── */}
@@ -557,7 +625,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <div className="flex flex-col gap-3">
                       <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
                       <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
-                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunce'} />
+                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
                     </div>
                   </div>
                 )}
@@ -570,6 +638,54 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <MonthReportPicker token={token} />
                 </div>
+
+                {/* Contexto de empleados */}
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
+                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (base de conocimiento + instrucciones de rol + aprendizajes). A más contexto, más informado está el empleado." />
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {agentContextCards.map((a, i) => {
+                      const ctx   = Math.min(a.tokens, 32_000);
+                      const pct   = Math.round((ctx / 32_000) * 100);
+                      const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                      return (
+                        <div key={i} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                              {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                            </div>
+                            <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                              {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {aiOpsLimit > 0 && (
+                      <>
+                        <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 4 }} />
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Ops IA del mes</p>
+                            <span className="text-xs tabular-nums" style={{ color: aiOpsColor }}>
+                              {aiOpsUsed} / {aiOpsLimit}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, aiOpsPct)}%`, background: aiOpsColor }} />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
               </div>
 
               </div>
@@ -583,15 +699,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Main column */}
               <div className="flex flex-col gap-5">
-                <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo del negocio</h2>
-                    <InfoTooltip text="Aparece en el encabezado de tu portal de clientes y en todos los documentos generados." />
-                  </div>
-                  <LogoUploader token={token} currentUrl={(agent as any).logo_url ?? null} />
-                </div>
+                {agent.portal_email && (
+                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={(agent as any).business_description ?? ''} />
+                )}
 
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
                     <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente." />
@@ -609,25 +721,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   />
                 </div>
 
+                <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
+                    <InfoTooltip text="Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes." />
+                  </div>
+                  <KnowledgeBaseEditor
+                    token={token}
+                    initialValue={(agent as any).knowledge_base ?? ''}
+                    websiteSynced={!!((agent as any).website_knowledge)}
+                    hasDescription={!!((agent as any).business_description?.trim())}
+                  />
+                </div>
+
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
                     <InfoTooltip text="Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio." />
                   </div>
                   <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
-                </div>
-
-                <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
-                    <InfoTooltip text="Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes." />
-                  </div>
-                  <KnowledgeBaseEditor token={token} initialValue={(agent as any).knowledge_base ?? ''} />
-                </div>
-
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas de tu negocio</h2>
+                  <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
                     <InfoTooltip text="El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
                   </div>
                   <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
@@ -665,9 +780,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── CUENTA ───────────────────────────────────────────────────── */}
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
-              {agent.portal_email && (
-                <OrgCard token={token} portalEmail={agent.portal_email} />
-              )}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Left column ── */}

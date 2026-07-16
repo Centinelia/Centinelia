@@ -12,14 +12,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const session = cookie ? await verifySession(cookie) : null;
 
-  const agentQuery = supabase
+  let agentQuery = supabase
     .from('voice_agents')
     .select('id, features')
     .eq('portal_token', token);
 
   // If session exists, scope to that email for security
   if (session?.portalEmail) {
-    agentQuery.eq('portal_email', session.portalEmail);
+    agentQuery = agentQuery.eq('portal_email', session.portalEmail);
   }
 
   const { data: agent } = await agentQuery.single();

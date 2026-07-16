@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'role_knowledge_base', 'role_learnings', 'role', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style'];
+  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'role_knowledge_base', 'role_learnings', 'role', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'directorio_interno', 'owner_passphrase'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // Business-level fields (knowledge_base) propagate to all agents of the same account
-  const businessFields = ['knowledge_base', 'business_hours'];
+  const businessFields = ['knowledge_base', 'business_hours', 'business_description', 'owner_passphrase'];
   const businessUpdate = Object.fromEntries(Object.entries(update).filter(([k]) => businessFields.includes(k)));
   if (Object.keys(businessUpdate).length > 0 && agent.portal_email) {
     const { data: siblings } = await supabase

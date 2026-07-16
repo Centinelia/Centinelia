@@ -94,7 +94,7 @@ const PAINS = [
   {
     icon:  <Clock size={22} color="#eab308" />,
     stat:  '16 h',
-    label: 'al día en promedio tu negocio está cerrado, pero tus clientes no dejan de llamar.',
+    label: 'al día en promedio tu organización está cerrada, pero tus clientes no dejan de llamar.',
     color: '#eab308',
   },
 ];
@@ -106,31 +106,19 @@ const AGENT_TYPES: {
   meerkatDesk: string; meerkatDeskBottom: number;
 }[] = [
   {
-    id: 'comercial', name: 'Agente Comercial', setupFee: 8990, color: '#6C3BFF',
-    description: 'Para negocios con flujos estándar: recepción, leads, citas y seguimiento.',
+    id: 'pro', name: 'Empleado Centinelia', setupFee: 14990, color: '#9B6DFF', popular: true,
+    description: 'Todo lo que tu organización necesita para automatizar la atención telefónica desde el primer día.',
     features: [
       'Atención telefónica 24/7',
-      'Captura de leads automática',
-      'Agendamiento de citas',
-      'Transferencia inteligente a staff',
-      'Escalación a WhatsApp',
-      'Reseñas Google automáticas',
-      'Portal con reportes y horas pico',
-    ],
-    meerkat: '/agent-plan-estandar.png', meerkatBottom: 64,
-    meerkatDesk: '/meerkat-transparente-11.png', meerkatDeskBottom: 66,
-  },
-  {
-    id: 'pro', name: 'Ejecutivo Senior', setupFee: 14990, color: '#9B6DFF', popular: true,
-    description: 'Para negocios que necesitan personalización total y capacidades avanzadas.',
-    features: [
-      'Todo el Agente Comercial',
+      'Captura de leads y agendamiento de citas',
       'Hasta 3 llamadas simultáneas',
       'Llamadas salientes y devolución automática',
       'Toma de pedidos por teléfono',
       'Multiidioma (español + inglés)',
       'Memoria de cliente entre llamadas',
-      'Flujos complejos y voz personalizable',
+      'Voz y flujos personalizables',
+      'Reseñas Google automáticas',
+      'Módulo Oficina completo',
     ],
     meerkat: '/agent-plan-pro.png', meerkatBottom: 66,
     meerkatDesk: '/meerkat-transparente-07.png', meerkatDeskBottom: 65,
@@ -164,7 +152,7 @@ const DIFFERENTIATORS = [
   {
     num: '<24h',
     title: 'En línea sin reclutamiento ni capacitación',
-    desc: 'No hay periodo de prueba ni curvas de aprendizaje. Configuras el conocimiento de tu negocio hoy y atiende mañana.',
+    desc: 'No hay periodo de prueba ni curvas de aprendizaje. Configuras el conocimiento de tu organización hoy y atiende mañana.',
   },
 ];
 
@@ -389,8 +377,8 @@ export default function LandingPage() {
                 Cada llamada perdida<br />es dinero perdido
               </h2>
               <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                Mientras tu negocio no contesta, tu competencia sí lo hace.
-                Esto le pasa a un negocio promedio cada semana:
+                Mientras tu organización no contesta, tu competencia sí lo hace.
+                Esto le pasa a una organización promedio cada semana:
               </p>
             </div>
           </div>
@@ -407,8 +395,8 @@ export default function LandingPage() {
               Cada llamada perdida<br />es dinero perdido
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: 'rgba(255,255,255,0.52)' }}>
-              Mientras tu negocio no contesta, tu competencia sí lo hace.
-              Esto le pasa a un negocio promedio cada semana:
+              Mientras tu organización no contesta, tu competencia sí lo hace.
+              Esto le pasa a una organización promedio cada semana:
             </p>
           </div>
 
@@ -545,7 +533,7 @@ export default function LandingPage() {
                 Recibe, llama, agenda<br />y vende por ti
               </h2>
               <p style={{ color: C.textSub }}>
-                Tu empleado aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
+                Tu empleado aprende sobre tu organización y está tomando llamadas en menos de 24 horas.
               </p>
             </AnimatedSection>
 
@@ -572,7 +560,7 @@ export default function LandingPage() {
                   Recibe, llama, agenda<br />y vende por ti
                 </h2>
                 <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                  Tu empleado aprende sobre tu negocio y está tomando llamadas en menos de 24 horas.
+                  Tu empleado aprende sobre tu organización y está tomando llamadas en menos de 24 horas.
                 </p>
               </div>
               <div />{/* espacio reservado para meerkat */}
@@ -742,7 +730,7 @@ export default function LandingPage() {
                 Todos activos al mismo tiempo. Las 24 horas. Sin nómina.
               </p>
               <p
-                className="font-extrabold tracking-tight"
+                className="font-extrabold tracking-tight mb-8"
                 style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: '#fff', lineHeight: 1.1 }}
               >
                 Contrata capacidad,{' '}
@@ -754,6 +742,17 @@ export default function LandingPage() {
                   no personal.
                 </span>
               </p>
+              <Link
+                href="/empleados"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
+                style={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.72)',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                }}
+              >
+                Conoce a los 8 empleados <ArrowRight size={13} />
+              </Link>
             </div>
           </AnimatedSection>
 
@@ -779,8 +778,8 @@ export default function LandingPage() {
         {/* Editorial numbered list — unique layout vs 3-col cards elsewhere */}
         <div className="lg:pr-72">
           {[
-            { n: '01', title: 'Elige tu empleado y tus minutos',  desc: 'Selecciona el tipo de empleado que necesita tu negocio y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
-            { n: '02', title: 'Configura tu empleado',             desc: 'Accede a tu portal, agrega la información de tu negocio y personaliza cómo responde tu empleado.' },
+            { n: '01', title: 'Elige tu empleado y tus minutos',  desc: 'Selecciona el tipo de empleado que necesita tu organización y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
+            { n: '02', title: 'Configura tu empleado',             desc: 'Accede a tu portal, agrega la información de tu organización y personaliza cómo responde tu empleado.' },
             { n: '03', title: 'Recibe y realiza llamadas',         desc: 'Tu número queda activo en horas. Tu empleado atiende llamadas entrantes, llama de regreso a los que no contestaron y ejecuta campañas salientes. Tú solo monitoreas desde el portal.' },
           ].map((s, i) => (
             <AnimatedSection key={s.n} delay={i * 0.12}>
@@ -843,7 +842,7 @@ export default function LandingPage() {
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
               Elige el escenario, llama y experimenta. Vendedor, tomador de pedidos,
-              soporte, seguimiento: un solo empleado configurado para lo que tu negocio necesite.
+              soporte, seguimiento: un solo empleado configurado para lo que tu organización necesite.
             </p>
           </AnimatedSection>
 
@@ -877,7 +876,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}
             >
-              El precio correcto<br />para tu negocio
+              El precio correcto<br />para tu organización
             </h2>
             <p style={{ color: 'rgba(255,255,255,0.5)' }}>
               Una compra única por tu empleado, más una mensualidad según los minutos que uses.
@@ -892,12 +891,13 @@ export default function LandingPage() {
                 Paso 1 · Pago único
               </span>
               <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
-                Elige tu tipo de empleado
+                Tu Empleado Centinelia
               </h3>
             </div>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-16">
+          <div className="flex justify-center mb-16">
+            <div className="w-full max-w-lg">
             {AGENT_TYPES.map((a, i) => (
               <AnimatedSection key={a.id} delay={i * 0.09}>
               <div
@@ -968,6 +968,7 @@ export default function LandingPage() {
               </div>
               </AnimatedSection>
             ))}
+            </div>
           </div>
 
           {/* ─── PASO 2: Minutos mensuales ──────────── */}
@@ -1062,7 +1063,7 @@ export default function LandingPage() {
                     </span>
                     <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                     <p className="text-xs mt-1.5" style={{ color: 'rgba(155,109,255,0.65)' }}>
-                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· solo Ejecutivo Senior</span>
+                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· Empleado Centinelia</span>
                     </p>
                   </div>
                   <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
@@ -1192,7 +1193,7 @@ export default function LandingPage() {
               Tu equipo te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(1.8rem, 6vw, 2.8rem)', color: '#fff' }}>
-              Mientras tú atiendes tu negocio,<br />tu equipo atiende el teléfono.
+              Mientras tú atiendes tu organización,<br />tu equipo atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
               Tu empleado puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
@@ -1221,7 +1222,7 @@ export default function LandingPage() {
               Tu equipo te espera
             </p>
             <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', color: '#fff', lineHeight: 1.1 }}>
-              Mientras tú atiendes<br />tu negocio, tu equipo<br />atiende el teléfono.
+              Mientras tú atiendes<br />tu organización, tu equipo<br />atiende el teléfono.
             </h2>
             <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420 }}>
               Tu empleado puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.

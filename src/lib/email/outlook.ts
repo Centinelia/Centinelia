@@ -1,7 +1,7 @@
 const TENANT    = 'common';
 const AUTH_BASE = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 
-export const OUTLOOK_SCOPES = 'Mail.Read Mail.Send Files.ReadWrite offline_access User.Read';
+export const OUTLOOK_SCOPES = 'Mail.Read Mail.Send Files.ReadWrite Calendars.ReadWrite offline_access User.Read';
 
 export function outlookAuthUrl(state: string): string {
   const p = new URLSearchParams({

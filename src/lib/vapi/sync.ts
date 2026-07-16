@@ -304,6 +304,129 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     server: server('buscar-archivo'),
   });
 
+  if (agent.features.helpdesk) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'crear_ticket',
+        description: 'Crea un ticket de soporte IT en la mesa de ayuda. Úsala cuando el usuario reporte un problema técnico. Asigna automáticamente al técnico según el tipo de problema.',
+        parameters: {
+          type: 'object',
+          properties: {
+            titulo:       { type: 'string', description: 'Título breve del problema reportado' },
+            categoria:    { type: 'string', enum: ['red', 'servidores', 'usuario', 'software', 'hardware', 'accesos', 'otro'], description: 'Categoría del problema' },
+            prioridad:    { type: 'string', enum: ['baja', 'normal', 'alta', 'critica'], description: 'Prioridad del ticket' },
+            descripcion:  { type: 'string', description: 'Descripción detallada del problema' },
+            caller_number: { type: 'string', description: 'Número de teléfono del usuario que llama' },
+          },
+          required: ['titulo', 'categoria', 'prioridad'],
+        },
+      },
+      server: server('crear-ticket'),
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'consultar_incidentes',
+        description: 'Consulta si hay incidentes activos en el sistema. Úsala al inicio de cada llamada de soporte para avisar al usuario sobre problemas conocidos antes de crear un ticket.',
+        parameters: {
+          type: 'object',
+          properties: {
+            tema: { type: 'string', description: 'Tema o sistema sobre el que pregunta el usuario (ej: internet, SAP, correo). Opcional.' },
+          },
+        },
+      },
+      server: server('consultar-incidentes'),
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'buscar_directorio',
+        description: 'Busca en el directorio interno quién atiende un tipo de problema específico. Úsala para referir al usuario con el técnico o área correcta.',
+        parameters: {
+          type: 'object',
+          properties: {
+            tipo_problema: { type: 'string', description: 'Tipo de problema o área que se busca (ej: red, VPN, impresoras, SAP)' },
+          },
+          required: ['tipo_problema'],
+        },
+      },
+      server: server('buscar-directorio'),
+    });
+  }
+
+  // ── Agent-to-agent tools (available when there are peers) ───────────────────
+  if (peers.length > 0) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'consultar_agente',
+        description: 'Pregunta a otro agente del equipo algo que está fuera de tu conocimiento y necesitas su respuesta para continuar la conversación. El agente consultado responde con información o criterio experto. NO ejecuta acciones — solo responde. Úsala cuando necesites información que tiene otro especialista.',
+        parameters: {
+          type: 'object',
+          properties: {
+            rol:      { type: 'string', description: 'Nombre o rol del agente a consultar. Ej: "administrativo", "técnico de redes", "recursos humanos".' },
+            tarea:    { type: 'string', description: 'Pregunta específica que le haces al agente.' },
+            contexto: { type: 'string', description: 'Contexto relevante de la conversación (opcional).' },
+          },
+          required: ['rol', 'tarea'],
+        },
+      },
+      server: server('consultar-agente'),
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'delegar_tarea',
+        description: 'Delega una tarea a otro agente del equipo para que la EJECUTE. El agente delegado toma acción real: envía correos, crea tickets, genera documentos, etc. Úsala cuando recibas una tarea que corresponde a otro especialista y que debes pasarle para que él la lleve a cabo. Espera la confirmación de lo que hizo.',
+        parameters: {
+          type: 'object',
+          properties: {
+            agente:   { type: 'string', description: 'Nombre o rol del agente que debe ejecutar la tarea. Ej: "administrativo", "técnico de redes", "recursos humanos".' },
+            tarea:    { type: 'string', description: 'Descripción detallada de la tarea a ejecutar, incluyendo toda la información necesaria (nombres, correos, teléfonos, detalles).' },
+            contexto: { type: 'string', description: 'Contexto de la conversación o solicitud original (opcional pero recomendado).' },
+          },
+          required: ['agente', 'tarea'],
+        },
+      },
+      server: server('delegar-tarea'),
+    });
+  }
+
+  // ── Surveys (always available) ──────────────────────────────────────────────
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'registrar_encuesta',
+      description: 'Registra las respuestas capturadas de una encuesta de satisfacción. Llámala en cuanto tengas al menos una respuesta y el cliente se vaya a despedir, o cuando hayas recabado todas. Puedes haber recopilado las respuestas a lo largo de toda la conversación o al final; lo que importa es registrarlas antes de cerrar la llamada.',
+      parameters: {
+        type: 'object',
+        properties: {
+          survey_id:     { type: 'string', description: 'ID de la encuesta activa (proporcionado en el prompt).' },
+          respuestas:    {
+            type: 'array',
+            description: 'Lista de respuestas, una por pregunta.',
+            items: {
+              type: 'object',
+              properties: {
+                orden: { type: 'number', description: 'Número de orden de la pregunta (1, 2, 3…).' },
+                valor: { type: 'string', description: 'Respuesta del cliente.' },
+              },
+              required: ['orden', 'valor'],
+            },
+          },
+          caller_number: { type: 'string', description: 'Número del llamante (opcional).' },
+          call_id:       { type: 'string', description: 'ID de la llamada Vapi (opcional).' },
+        },
+        required: ['survey_id', 'respuestas'],
+      },
+    },
+    server: server('registrar-encuesta'),
+  });
+
   // One transferCall tool per active team peer — enables live agent-to-agent routing
   for (const peer of peers) {
     const toolName  = peerToolName(peer);

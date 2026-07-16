@@ -99,6 +99,16 @@ Cada agente tiene tres capas de conocimiento:
 2. **Instrucciones del rol:** procedimientos específicos del rol del agente (límites de aprobación, contactos clave, flujos de trabajo). Cada agente la define por separado.
 3. **Aprendizajes activos:** lo que el agente ha aprendido en campo y fue aprobado por el dueño.
 
+## ¿El contenido que generan los empleados es bueno?
+
+Sí, y esto es importante porque el contenido que genera tu empleado representa a tu negocio.
+
+Cuando le pides que haga una propuesta, una presentación, una carta o cualquier documento, el empleado sabe exactamente cómo se ve ese tipo de documento cuando está bien hecho: una propuesta tiene que tener estructura, personalización, precios claros y un cierre; una presentación no puede tener diapositivas con párrafos largos; una carta formal tiene que tener el tono correcto. Eso no lo tienes que enseñar — ya lo sabe.
+
+Antes de entregarte el documento, el empleado lo revisa él mismo. Y si tienes más de un empleado en tu equipo, los documentos importantes — propuestas a clientes, cartas formales, presentaciones — también los revisa otro empleado de tu equipo antes de que te lleguen a ti, como si tuvieras un equipo que se corrige el trabajo entre sí.
+
+El resultado: da igual si la instrucción fue corta ("hazme una propuesta para el cliente X") o muy detallada. El documento sale a nivel profesional.
+
 ## Próximamente
 
 - **Chatbots de texto:** Agentes de WhatsApp y chat web para los clientes del negocio (ventas y soporte por escrito). Si el prospecto pregunta, confirma que está en desarrollo y que pueden dejar su contacto para que les avisemos.
@@ -148,7 +158,11 @@ Centinelia asigna un número local (con lada de la ciudad del negocio). El dueñ
 
 "¿Qué diferencia hay entre Agente Comercial y Ejecutivo Senior?": Agente Comercial cubre el 90% de negocios de servicios. Ejecutivo Senior agrega toma de pedidos, personalización completa del agente, memoria de cliente, multiidioma, llamadas salientes y toda la Oficina (correos, contratos, juntas, reportes, onboarding, consulta al agente).
 
-"¿Puedo tener más de un agente?": Sí. Una cuenta puede tener varios agentes con roles distintos y todos comparten el pool de minutos y operaciones.
+"¿Puedo tener más de un agente?": Sí. Una cuenta puede tener varios agentes con roles distintos y todos comparten el pool de minutos y operaciones. Y hay un beneficio extra: cuando tienes más de un empleado, entre ellos se revisan los documentos importantes antes de entregártelos. Es como tener un equipo que se corrige el trabajo solo.
+
+"¿Los documentos que genera el empleado son de buena calidad?": Sí. El empleado conoce exactamente cómo se ve una buena propuesta, una buena carta, una buena presentación — no tienes que enseñarle eso. Antes de entregarte el documento lo revisa él mismo, y si tienes más de un empleado en tu cuenta, también lo revisa otro antes de que llegue a tus manos. Así el contenido que le mandas a tus clientes sale siempre a nivel profesional.
+
+"¿Puedo confiarle al empleado generar propuestas para mis clientes?": Sí. Para documentos que van a tus clientes — propuestas, cartas, presentaciones — el empleado los revisa antes de entregártelos. Si tienes más de un empleado, entre ellos se pasan el trabajo para una segunda revisión. Tú lo apruebas y lo mandas; el empleado se encargó de que estuviera bien.
 
 "¿El agente puede ayudarme a mí también, no solo a mis clientes?": Sí. Con el módulo Oficina (Ejecutivo Senior y Empresarial) puedes chatear con tus propios agentes desde el portal 24/7 y preguntarles cualquier cosa sobre la operación de tu negocio.
 

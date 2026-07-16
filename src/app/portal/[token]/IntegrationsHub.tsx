@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Calendar, Mail, FolderOpen, X, ChevronRight, Plus } from 'lucide-react';
+import { Calendar, Mail, FolderOpen, X, ChevronRight, Plus, ShoppingCart } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection   from './IntegrationsSection';
@@ -412,6 +412,12 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
               accentBg="rgba(6,182,212,0.08)" accentBorder="rgba(6,182,212,0.2)"
               icon={<FolderOpen size={13} color="#06b6d4" />}
               label="Archivos" connected={false} comingSoon
+            />
+
+            <CapabilityCard
+              accentBg="rgba(255,230,0,0.12)" accentBorder="rgba(255,230,0,0.3)"
+              icon={<ShoppingCart size={13} color="#F5D000" />}
+              label="MercadoLibre" connected={false} comingSoon
             />
 
           </div>

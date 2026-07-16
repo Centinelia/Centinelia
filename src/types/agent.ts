@@ -27,6 +27,15 @@ export interface AgentFeatures {
 
   // Fase 2 — llamadas salientes (por activar cuando Phase 2 lance)
   outbound_calls: boolean;      // Permite disparar llamadas salientes desde el portal
+
+  // Vertical del cliente — controla qué secciones de Oficina se muestran
+  vertical?: 'negocio' | 'gobierno';
+
+  // IT Helpdesk — activa las tools de tickets, incidentes y directorio
+  helpdesk?: boolean;
+
+  // Nox — agente coordinador puro (sin voz, solo ops)
+  is_coordinator?: boolean;
 }
 
 // ─── Business hours ───────────────────────────────────────────────────────────
@@ -89,6 +98,7 @@ export interface VoiceAgent {
   missed_call_recovery?: boolean;       // devolver llamada automáticamente si queda sin contestar
   first_message?: string;          // primer mensaje del agente al contestar (personalizable)
   transfer_rules?: string;         // reglas de cuándo transferir la llamada a un humano
+  owner_passphrase?: string | null; // frase secreta para que el dueño/equipo se identifique desde cualquier teléfono
   google_review_url?: string;      // link de reseñas de Google del negocio
   notion_client_id?: string;      // link al cliente en Pneuma Studio CRM
   notion_access_token?: string | null;    // Notion OAuth token for CRM integration
@@ -191,7 +201,7 @@ export const PLAN_MINUTES: Record<Plan, number> = {
 
 export const PLAN_LABELS: Record<Plan, string> = {
   comercial: 'Agente Comercial',
-  pro:       'Ejecutivo Senior',
+  pro:       'Empleado Centinelia',
 };
 
 export const PLAN_CONCURRENT_CALLS: Record<Plan, number> = {
@@ -210,4 +220,7 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   client_memory:           'Memoria de cliente',
   whatsapp_escalation:     'Escalación a WhatsApp',
   outbound_calls:          'Llamadas salientes',
+  vertical:                '',
+  helpdesk:                'Mesa de ayuda IT',
+  is_coordinator:          'Coordinador de equipo',
 };

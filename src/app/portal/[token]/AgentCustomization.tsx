@@ -4,34 +4,16 @@ import { useState } from 'react';
 import { Check } from 'lucide-react';
 
 interface Props {
-  token:              string;
-  initGreeting:       string;
-  initTransferRules:  string;
-  initSpeechStyle:    'tu' | 'usted';
+  token:             string;
+  initGreeting:      string;
+  initTransferRules: string;
 }
 
-export default function AgentCustomization({ token, initGreeting, initTransferRules, initSpeechStyle }: Props) {
+export default function AgentCustomization({ token, initGreeting, initTransferRules }: Props) {
   const [greeting,      setGreeting]      = useState(initGreeting);
   const [transferRules, setTransferRules] = useState(initTransferRules);
-  const [speechStyle,   setSpeechStyle]   = useState<'tu' | 'usted'>(initSpeechStyle);
-  const [saved,         setSaved]         = useState<'greeting' | 'rules' | 'speech' | null>(null);
-  const [saving,        setSaving]        = useState<'greeting' | 'rules' | 'speech' | null>(null);
-
-  async function saveSpeechStyle(value: 'tu' | 'usted') {
-    setSaving('speech');
-    setSpeechStyle(value);
-    try {
-      await fetch(`/api/portal/${token}/settings`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ speech_style: value }),
-      });
-      setSaved('speech');
-      setTimeout(() => setSaved(null), 2000);
-    } finally {
-      setSaving(null);
-    }
-  }
+  const [saved,         setSaved]         = useState<'greeting' | 'rules' | null>(null);
+  const [saving,        setSaving]        = useState<'greeting' | 'rules' | null>(null);
 
   async function save(field: 'first_message' | 'transfer_rules', value: string, key: 'greeting' | 'rules') {
     setSaving(key);
@@ -50,42 +32,6 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-      {/* Speech style toggle */}
-      <div>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--c-text-3)', marginBottom: 6 }}>
-          Trato al cliente
-        </label>
-        <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '0 0 10px' }}>
-          ¿Cómo debe dirigirse el agente a los clientes?
-        </p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['usted', 'tu'] as const).map(opt => {
-            const active = speechStyle === opt;
-            return (
-              <button
-                key={opt}
-                onClick={() => saveSpeechStyle(opt)}
-                disabled={saving === 'speech'}
-                style={{
-                  padding:      '8px 18px',
-                  borderRadius: 10,
-                  fontSize:     13,
-                  fontWeight:   active ? 600 : 400,
-                  cursor:       saving === 'speech' ? 'not-allowed' : 'pointer',
-                  background:   active ? 'rgba(108,59,255,0.15)' : 'var(--c-surface-2)',
-                  border:       `1px solid ${active ? 'rgba(108,59,255,0.5)' : 'var(--c-border)'}`,
-                  color:        active ? '#a78bfa' : 'var(--c-text-3)',
-                  transition:   'all 0.15s',
-                }}
-              >
-                {opt === 'usted' ? 'De usted' : 'De tú'}
-              </button>
-            );
-          })}
-        </div>
-        <SaveIndicator active={saved === 'speech'} saving={saving === 'speech'} />
-      </div>
 
       <div>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--c-text-3)', marginBottom: 6 }}>
@@ -149,7 +95,7 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
   );
 }
 
-function SaveIndicator({ active, saving }: { active: boolean; saving: boolean }) {
+function SaveIndicator({ active, saving }: { active: boolean; saving: boolean | null }) {
   if (saving) {
     return <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, color: 'var(--c-text-3)', marginTop: 6 }}>Guardando…</span>;
   }

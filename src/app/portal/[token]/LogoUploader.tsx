@@ -69,31 +69,34 @@ export default function LogoUploader({ token, currentUrl, compact }: { token: st
   );
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-4">
-        <div className="w-24 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+    <div className="flex flex-col gap-2">
+      <div className="relative group" style={{ width: 96, height: 64 }}>
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={loading}
+          title={loading ? 'Subiendo…' : preview ? 'Cambiar logo' : 'Subir logo'}
+          className="w-full h-full rounded-xl overflow-hidden flex items-center justify-center relative"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', cursor: loading ? 'wait' : 'pointer', padding: 0 }}
+        >
           {preview
             ? <img src={preview} alt="Logo" className="w-full h-full object-contain p-1" />
             : <span className="text-2xl select-none opacity-30">🏢</span>
           }
-        </div>
-        <div className="flex-1">
-          <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}>PNG, JPG, SVG o WebP · máx. 2 MB</p>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Si no subes logo, se muestra el nombre del negocio</p>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <button onClick={() => inputRef.current?.click()} disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)', opacity: loading ? 0.6 : 1 }}>
-          <Upload size={14} /> {loading ? 'Subiendo…' : preview ? 'Cambiar logo' : 'Subir logo'}
+          <div
+            className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.45)' }}
+          >
+            <Upload size={15} style={{ color: '#fff' }} />
+          </div>
         </button>
         {preview && !loading && (
-          <button onClick={handleRemove}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--c-text-3)' }}>
-            <X size={13} /> Quitar
+          <button
+            onClick={handleRemove}
+            title="Quitar logo"
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}
+          >
+            <X size={10} />
           </button>
         )}
       </div>

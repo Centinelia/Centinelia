@@ -1,4 +1,4 @@
-import type { Connector, EmailConnector, FilesConnector, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+import type { Connector, EmailConnector, FilesConnector, CalendarConnector, CalendarEvent, CreateEventInput, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 
@@ -199,6 +199,78 @@ class MicrosoftFiles implements FilesConnector {
   }
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+class MicrosoftCalendar implements CalendarConnector {
+  constructor(private tok: string) {}
+
+  private h(): Record<string, string> {
+    return { Authorization: `Bearer ${this.tok}` };
+  }
+
+  async listEvents(from: Date, to: Date): Promise<CalendarEvent[]> {
+    const params = new URLSearchParams({
+      startDateTime: from.toISOString(),
+      endDateTime:   to.toISOString(),
+      $select:       'id,subject,start,end,location,bodyPreview,attendees',
+      $top:          '20',
+      $orderby:      'start/dateTime',
+    });
+    const res = await fetch(`${GRAPH}/me/calendarView?${params}`, { headers: this.h() });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.value ?? []) as any[]).map(e => ({
+      id:          e.id,
+      title:       e.subject ?? '(Sin título)',
+      start:       e.start?.dateTime ?? '',
+      end:         e.end?.dateTime   ?? '',
+      location:    e.location?.displayName,
+      description: e.bodyPreview,
+      attendees:   ((e.attendees ?? []) as { emailAddress: { address: string } }[]).map(a => a.emailAddress.address),
+    }));
+  }
+
+  async createEvent(input: CreateEventInput): Promise<CalendarEvent | null> {
+    const body: Record<string, unknown> = {
+      subject: input.title,
+      start:   { dateTime: input.start, timeZone: 'America/Monterrey' },
+      end:     { dateTime: input.end,   timeZone: 'America/Monterrey' },
+    };
+    if (input.description) body.body      = { contentType: 'Text', content: input.description };
+    if (input.location)    body.location  = { displayName: input.location };
+    if (input.attendees?.length) {
+      body.attendees = input.attendees.map(email => ({
+        emailAddress: { address: email },
+        type: 'required',
+      }));
+    }
+    const res = await fetch(`${GRAPH}/me/events`, {
+      method:  'POST',
+      headers: { ...this.h(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const e = await res.json();
+    return {
+      id:          e.id,
+      title:       e.subject ?? input.title,
+      start:       e.start?.dateTime ?? input.start,
+      end:         e.end?.dateTime   ?? input.end,
+      location:    e.location?.displayName,
+      description: input.description,
+      attendees:   input.attendees ?? [],
+    };
+  }
+
+  async deleteEvent(eventId: string): Promise<boolean> {
+    const res = await fetch(`${GRAPH}/me/events/${eventId}`, {
+      method:  'DELETE',
+      headers: this.h(),
+    });
+    return res.ok || res.status === 204;
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function stripHtml(html: string): string {
@@ -221,5 +293,6 @@ export function createMicrosoftConnector(accessToken: string): Connector {
     provider: 'microsoft',
     email:    new MicrosoftEmail(accessToken),
     files:    new MicrosoftFiles(accessToken),
+    calendar: new MicrosoftCalendar(accessToken),
   };
 }

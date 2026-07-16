@@ -2,11 +2,12 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { PLAN_FEATURES } from '@/types/agent';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, empresarialConfirmationHtml } from '@/lib/email/send';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
+import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export async function POST(req: NextRequest) {
   const {
@@ -21,7 +22,14 @@ export async function POST(req: NextRequest) {
     client_email,
     transfer_whatsapp,
     area_code,
+    meerkat_role_id,
   } = await req.json();
+
+  const meerkat = (meerkat_role_id && meerkat_role_id !== 'custom')
+    ? MEERKAT_MAP[meerkat_role_id as MeerkatRoleId] ?? null
+    : null;
+
+  const isCoordinator = !!(meerkat?.features as Record<string, unknown>)?.is_coordinator;
 
   // Common field validation
   if (!business_name?.trim())
@@ -87,12 +95,15 @@ export async function POST(req: NextRequest) {
       business_description:   business_description.trim(),
       business_phone_display: business_phone_display?.trim() ?? '',
       giro_template:          giro_template ?? 'general',
-      agent_name:             agent_name?.trim() || null,
+      agent_name:             agent_name?.trim() || meerkat?.nombre || null,
+      role:                   meerkat?.rol || null,
       transfer_whatsapp:      transfer_whatsapp.trim(),
       timezone:               'America/Monterrey',
       phone_number:           '',
       plan:                   'pro',
-      features:               PLAN_FEATURES['pro'],
+      features: meerkat
+        ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
+        : PLAN_FEATURES['pro'],
       minutes_included:       0,
       minutes_used:           0,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
@@ -132,6 +143,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Teléfono requerido' }, { status: 400 });
 
   const p = plan as Plan;
+  const monthlyConfig = isCoordinator ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[p][tier];
 
   const { data: agent, error } = await supabase
     .from('voice_agents')
@@ -144,13 +156,16 @@ export async function POST(req: NextRequest) {
       business_description:   business_description.trim(),
       business_phone_display: business_phone_display.trim(),
       giro_template:          giro_template ?? 'general',
-      agent_name:             p === 'pro' ? (agent_name?.trim() || null) : null,
+      agent_name:             agent_name?.trim() || meerkat?.nombre || null,
+      role:                   meerkat?.rol || null,
       transfer_whatsapp:      transfer_whatsapp.trim(),
       timezone:               'America/Monterrey',
       phone_number:           '',
       plan:                   p,
-      features:               PLAN_FEATURES[p],
-      minutes_included:       MONTHLY_CONFIG[p][tier].minutes,
+      features: meerkat
+        ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
+        : PLAN_FEATURES[p],
+      minutes_included:       monthlyConfig.minutes,
       minutes_plan:           tier,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
       active:                 false,
@@ -177,8 +192,8 @@ export async function POST(req: NextRequest) {
     customer:  customer.id,
     mode:      'subscription',
     line_items: [
-      { price: FEATURE_PLAN_CONFIG[p].setupPriceId(),     quantity: 1 },
-      { price: MONTHLY_CONFIG[p][tier].priceId(),         quantity: 1 },
+      { price: FEATURE_PLAN_CONFIG[p].setupPriceId(),  quantity: 1 },
+      { price: monthlyConfig.priceId(),                quantity: 1 },
     ],
     metadata: {
       agent_id:     agent.id,

@@ -15,7 +15,7 @@ export interface FeaturePlanConfig {
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
   comercial: { label: 'Agente Comercial',  setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
-  pro:       { label: 'Ejecutivo Senior', setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
+  pro:       { label: 'Empleado Centinelia', setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
 // ─── Monthly plans (minutes only + IVA, no platform base fee) ────────────────
@@ -40,29 +40,39 @@ export interface MonthlyPlanConfig {
 
 export const MONTHLY_CONFIG: Record<Plan, Record<MinutesTier, MonthlyPlanConfig>> = {
   comercial: {
-    starter:    { label: 'Starter',    minutes: 300,  aiOps:   0, mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  aiOps:   0, mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, aiOps:   0, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
-    enterprise: { label: 'Enterprise', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
+    starter:    { label: 'Esencial',    minutes: 300,  aiOps:   0, mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
+    growth:     { label: 'Profesional', minutes: 600,  aiOps:   0, mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
+    scale:      { label: 'Avanzado',    minutes: 1200, aiOps:   0, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
+    enterprise: { label: 'Empresarial', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
   },
   pro: {
-    starter:    { label: 'Starter',    minutes: 300,  aiOps: 100, mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
-    growth:     { label: 'Growth',     minutes: 600,  aiOps: 200, mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
-    scale:      { label: 'Scale',      minutes: 1200, aiOps: 300, mxn: 11988, priceId: () => process.env.STRIPE_PRO_SCALE! },
-    enterprise: { label: 'Enterprise', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
+    starter:    { label: 'Esencial',    minutes: 300,  aiOps: 100, mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
+    growth:     { label: 'Profesional', minutes: 600,  aiOps: 200, mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
+    scale:      { label: 'Avanzado',    minutes: 1200, aiOps: 300, mxn: 11988, priceId: () => process.env.STRIPE_PRO_SCALE! },
+    enterprise: { label: 'Empresarial', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
   },
 };
 
 // Flat tier config for display purposes (plan-agnostic: minutes count + label only)
 export const MINUTES_TIER_CONFIG: Record<MinutesTier, { label: string; minutes: number }> = {
-  starter:    { label: 'Starter',    minutes: 300 },
-  growth:     { label: 'Growth',     minutes: 600 },
-  scale:      { label: 'Scale',      minutes: 1200 },
-  enterprise: { label: 'Enterprise', minutes: 0 },
+  starter:    { label: 'Esencial',    minutes: 300 },
+  growth:     { label: 'Profesional', minutes: 600 },
+  scale:      { label: 'Avanzado',    minutes: 1200 },
+  enterprise: { label: 'Empresarial', minutes: 0 },
 };
 
 /** @deprecated Use MONTHLY_CONFIG[plan][tier] for pricing, MINUTES_TIER_CONFIG for display */
 export const MINUTES_PLAN_CONFIG = MINUTES_TIER_CONFIG as Record<MinutesTier, { label: string; minutes: number; mxn?: number; priceId?: () => string }>;
+
+// ─── Nox coordinator tiers (ops-only, no Vapi/minutes cost) ─────────────────
+// 500 ops/$1,997 · 1,200 ops/$3,994 · 3,000 ops/$7,994 (+ IVA)
+// Requires STRIPE_NOX_STARTER, STRIPE_NOX_GROWTH, STRIPE_NOX_SCALE price IDs
+export const NOX_MONTHLY_CONFIG: Record<MinutesTier, MonthlyPlanConfig> = {
+  starter:    { label: 'Coordinador', minutes: 0, aiOps:  500, mxn: 1997,  priceId: () => process.env.STRIPE_NOX_STARTER! },
+  growth:     { label: 'Director',    minutes: 0, aiOps: 1200, mxn: 3994,  priceId: () => process.env.STRIPE_NOX_GROWTH! },
+  scale:      { label: 'Ejecutivo',   minutes: 0, aiOps: 3000, mxn: 7994,  priceId: () => process.env.STRIPE_NOX_SCALE! },
+  enterprise: { label: 'Empresarial', minutes: 0, aiOps:    0, mxn: 0,     priceId: () => '' },
+};
 
 export function monthlyConfigFromPriceId(priceId: string): { plan: Plan; tier: MinutesTier; cfg: MonthlyPlanConfig } | null {
   for (const [plan, tiers] of Object.entries(MONTHLY_CONFIG) as [Plan, Record<MinutesTier, MonthlyPlanConfig>][]) {

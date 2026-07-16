@@ -30,7 +30,7 @@ const QUICK_QUESTIONS = [
 
 const WA_NUMBER = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
 const WA_LINK   = WA_NUMBER
-  ? `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi negocio.')}`
+  ? `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('¡Hola! Quiero saber cómo puedo contratar un agente 24/7 para mi organización.')}`
   : 'https://wa.me';
 
 // ─── Main component ───────────────────────────────────────────────────────────

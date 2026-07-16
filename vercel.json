@@ -11,6 +11,14 @@
     {
       "path": "/api/cron/contracts-check",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-team-history",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/nox-monitor",
+      "schedule": "0 * * * *"
     }
   ]
 }

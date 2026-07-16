@@ -1,7 +1,8 @@
-import type { Connector, EmailConnector, FilesConnector, ContactsConnector, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+import type { Connector, EmailConnector, FilesConnector, ContactsConnector, CalendarConnector, CalendarEvent, CreateEventInput, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
 
-const GMAIL = 'https://www.googleapis.com/gmail/v1/users/me';
-const DRIVE = 'https://www.googleapis.com/drive/v3';
+const GMAIL     = 'https://www.googleapis.com/gmail/v1/users/me';
+const DRIVE     = 'https://www.googleapis.com/drive/v3';
+const GCAL      = 'https://www.googleapis.com/calendar/v3';
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
@@ -329,6 +330,75 @@ class GoogleContacts implements ContactsConnector {
   }
 }
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+class GoogleCalendar implements CalendarConnector {
+  constructor(private tok: string) {}
+
+  private h(): Record<string, string> {
+    return { Authorization: `Bearer ${this.tok}` };
+  }
+
+  async listEvents(from: Date, to: Date): Promise<CalendarEvent[]> {
+    const params = new URLSearchParams({
+      timeMin:      from.toISOString(),
+      timeMax:      to.toISOString(),
+      singleEvents: 'true',
+      orderBy:      'startTime',
+      maxResults:   '20',
+    });
+    const res = await fetch(`${GCAL}/calendars/primary/events?${params}`, { headers: this.h() });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.items ?? []) as any[]).map(e => ({
+      id:          e.id,
+      title:       e.summary ?? '(Sin título)',
+      start:       e.start?.dateTime ?? e.start?.date ?? '',
+      end:         e.end?.dateTime   ?? e.end?.date   ?? '',
+      location:    e.location,
+      description: e.description,
+      attendees:   ((e.attendees ?? []) as { email: string }[]).map(a => a.email),
+    }));
+  }
+
+  async createEvent(input: CreateEventInput): Promise<CalendarEvent | null> {
+    const body: Record<string, unknown> = {
+      summary:     input.title,
+      start:       { dateTime: input.start, timeZone: 'America/Monterrey' },
+      end:         { dateTime: input.end,   timeZone: 'America/Monterrey' },
+    };
+    if (input.description) body.description = input.description;
+    if (input.location)    body.location    = input.location;
+    if (input.attendees?.length) {
+      body.attendees = input.attendees.map(email => ({ email }));
+    }
+    const res = await fetch(`${GCAL}/calendars/primary/events`, {
+      method:  'POST',
+      headers: { ...this.h(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    const e = await res.json();
+    return {
+      id:          e.id,
+      title:       e.summary ?? input.title,
+      start:       e.start?.dateTime ?? input.start,
+      end:         e.end?.dateTime   ?? input.end,
+      location:    e.location,
+      description: e.description,
+      attendees:   input.attendees ?? [],
+    };
+  }
+
+  async deleteEvent(eventId: string): Promise<boolean> {
+    const res = await fetch(`${GCAL}/calendars/primary/events/${eventId}`, {
+      method:  'DELETE',
+      headers: this.h(),
+    });
+    return res.ok || res.status === 204;
+  }
+}
+
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createGoogleConnector(accessToken: string): Connector {
@@ -337,5 +407,6 @@ export function createGoogleConnector(accessToken: string): Connector {
     email:    new GoogleEmail(accessToken),
     files:    new GoogleFiles(accessToken),
     contacts: new GoogleContacts(accessToken),
+    calendar: new GoogleCalendar(accessToken),
   };
 }

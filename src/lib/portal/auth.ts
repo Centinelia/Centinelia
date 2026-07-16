@@ -1,6 +1,13 @@
 ﻿export const PORTAL_COOKIE = 'Centinelia_portal';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+export interface SessionResult {
+  portalEmail: string;
+  isSubUser:   boolean;
+  userId?:     string;
+  modules?:    string[];  // undefined = owner (all access)
+}
+
 // ── Base64url helpers (Edge-compatible, no Buffer) ────────────────────────
 
 function u8ToB64url(bytes: Uint8Array): string {
@@ -57,7 +64,16 @@ export async function createSession(portalEmail: string): Promise<string> {
   return `${data}.${u8ToB64url(sig)}`;
 }
 
-export async function verifySession(cookie: string): Promise<{ portalEmail: string } | null> {
+export async function createSubUserSession(portalEmail: string, userId: string, modules: string[]): Promise<string> {
+  const exp     = Date.now() + SESSION_TTL_MS;
+  const payload = JSON.stringify({ portalEmail, userId, modules, exp });
+  const data    = `su:${u8ToB64url(new TextEncoder().encode(payload))}`;
+  const key     = await hmacKey('sign');
+  const sig     = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data)));
+  return `${data}.${u8ToB64url(sig)}`;
+}
+
+export async function verifySession(cookie: string): Promise<SessionResult | null> {
   try {
     const dot   = cookie.lastIndexOf('.');
     const data  = cookie.slice(0, dot);
@@ -65,9 +81,20 @@ export async function verifySession(cookie: string): Promise<{ portalEmail: stri
     const key   = await hmacKey('verify');
     const valid = await crypto.subtle.verify('HMAC', key, sig as unknown as ArrayBuffer, new TextEncoder().encode(data));
     if (!valid) return null;
+
+    if (data.startsWith('su:')) {
+      const bytes   = b64urlToU8(data.slice(3));
+      const parsed  = JSON.parse(new TextDecoder().decode(bytes)) as {
+        portalEmail: string; userId: string; modules: string[]; exp: number;
+      };
+      if (parsed.exp < Date.now()) return null;
+      return { portalEmail: parsed.portalEmail, isSubUser: true, userId: parsed.userId, modules: parsed.modules };
+    }
+
+    // Owner session (legacy format: portalEmail|exp)
     const [portalEmail, expStr] = data.split('|');
     if (parseInt(expStr) < Date.now()) return null;
-    return { portalEmail };
+    return { portalEmail, isSubUser: false };
   } catch {
     return null;
   }

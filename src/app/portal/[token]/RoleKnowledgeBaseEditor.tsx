@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 
 export default function RoleKnowledgeBaseEditor({
   token,
@@ -15,6 +16,9 @@ export default function RoleKnowledgeBaseEditor({
   const [value, setValue]   = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
+  const [dirty, setDirty]   = useState(false);
+
+  useDirtyWarning('kb-role', dirty);
 
   const SOFT_LIMIT = 5_000;
   const HARD_LIMIT = 10_000;
@@ -35,7 +39,7 @@ export default function RoleKnowledgeBaseEditor({
       body: JSON.stringify({ role_knowledge_base: value }),
     });
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
   };
 
   return (
@@ -45,7 +49,7 @@ export default function RoleKnowledgeBaseEditor({
       </p>
       <textarea
         value={value}
-        onChange={e => { setValue(e.target.value); setSaved(false); }}
+        onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}
         rows={10}
         placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n- Proveedor principal: proveedor@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del dueño.`}
         className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"

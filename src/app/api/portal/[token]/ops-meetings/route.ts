@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
   const body         = await req.json();
-  const { title, participants, audio_url } = body;
+  const { title, participants, audio_url, instructions } = body;
 
   if (!title || !audio_url) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 });
 
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     ownerEmail:   acct.client_email as string,
     businessName: acct.business_name as string,
     knowledgeBase: acct.knowledge_base as string | null,
+    instructions: instructions as string | undefined,
   }).catch(err => console.error('[ops-meetings] Processing error:', err));
 
   return NextResponse.json({ ok: true, id: meeting.id });

@@ -24,8 +24,9 @@ export async function processMeetingAudio(opts: {
   ownerEmail:   string;
   businessName: string;
   knowledgeBase?: string | null;
+  instructions?: string;
 }): Promise<void> {
-  const { meetingId, agentId, audioUrl, title, participants, ownerEmail, businessName, knowledgeBase } = opts;
+  const { meetingId, agentId, audioUrl, title, participants, ownerEmail, businessName, knowledgeBase, instructions } = opts;
   const supabase = createAdminClient();
 
   await supabase.from('ops_meetings').update({ status: 'processing' }).eq('id', meetingId);
@@ -78,7 +79,7 @@ export async function processMeetingAudio(opts: {
 
 Título: ${title}
 Participantes: ${participants.join(', ') || 'No especificados'}
-Fecha: ${new Date().toLocaleDateString('es-MX')}
+Fecha: ${new Date().toLocaleDateString('es-MX')}${instructions ? `\nIndicaciones del usuario: ${instructions}` : ''}
 
 TRANSCRIPCIÓN:
 ${transcript}

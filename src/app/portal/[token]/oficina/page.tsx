@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 
-import TeamFeed             from '../TeamFeed';
-import LearningsSection      from '../LearningsSection';
-import AgentRankingSection   from '../AgentRankingSection';
+import AgentRankingSection from '../AgentRankingSection';
+import ActividadFeed       from './ActividadFeed';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -11,8 +10,7 @@ export default async function OficinaOverviewPage({ params }: Props) {
   return (
     <div id="of-actividad" className="flex flex-col gap-6">
       <AgentRankingSection token={token} />
-      <TeamFeed token={token} />
-      <LearningsSection token={token} />
+      <ActividadFeed token={token} />
     </div>
   );
 }

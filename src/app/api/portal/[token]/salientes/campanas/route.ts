@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 
@@ -18,19 +19,14 @@ async function getAgent(token: string, portalEmail: string) {
 }
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const session = await verifySession(cookie);
-  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-
   const { token } = await params;
-  const agent = await getAgent(token, session.portalEmail);
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data, error } = await createAdminClient()
     .from('outbound_campaigns')
     .select('*')
-    .eq('agent_id', agent.id)
+    .in('agent_id', access.ids)
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

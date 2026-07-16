@@ -1,6 +1,7 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
 import { VOICE_RULES } from '@/lib/voice/rules';
+import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildSystemPrompt(agent: VoiceAgent): string {
   const { features, business_hours, timezone } = agent;
@@ -20,13 +21,31 @@ export function buildSystemPrompt(agent: VoiceAgent): string {
 
   const blocks: string[] = [];
 
+  // ── Meerkat role personality ──────────────────────────────────────────────
+  const meerkatRoleId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
+  const meerkat       = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
+  const rolLabel      = meerkat
+    ? `${meerkat.genero === 'F' ? 'una' : 'un'} ${meerkat.rol.toLowerCase()} profesional`
+    : 'un asistente de voz profesional';
+
+  // ── Organization mission ─────────────────────────────────────────────────
+  const orgMission  = (agent as unknown as Record<string, unknown>).organization_mission as string | undefined;
+  const orgService  = (agent as unknown as Record<string, unknown>).service_definition   as string | undefined;
+  if (orgMission?.trim() || orgService?.trim()) {
+    const lines = ['NORTE DE LA ORGANIZACIÓN (guía toda tu actuación):'];
+    if (orgMission?.trim())  lines.push(`Misión: "${orgMission.trim()}"`);
+    if (orgService?.trim())  lines.push(`Buen servicio significa: "${orgService.trim()}"`);
+    lines.push('Cada respuesta, decisión y acción debe ser coherente con este norte.');
+    blocks.push(lines.join('\n'));
+  }
+
   // ── Identity ──────────────────────────────────────────────────────────────
   blocks.push(`Eres ${agentName}, el asistente de voz de ${agent.business_name}.
 ${agent.business_description}
 Dirección: ${agent.business_address ?? 'disponible en nuestro sitio web'}.
 Teléfono de contacto: ${agent.business_phone_display}.
 Zona horaria: ${timezone}.
-Habla de forma natural, como una recepcionista humana profesional y amable.
+Habla de forma natural, como ${rolLabel}.
 Sé conciso, las respuestas en llamadas deben ser breves y claras.
 Si alguien pregunta tu nombre, responde: "Me llamo ${agentName}."
 
@@ -37,6 +56,38 @@ TONO Y ESTILO DE VOZ:
 - Si el cliente tiene un problema, muestra empatía con una frase corta: "Entiendo, con gusto le ayudo."
 - Varía la longitud de tus respuestas según el contexto. Respuestas cortas para confirmaciones; un poco más largas para explicaciones.
 - TRATO AL CLIENTE: ${agent.speech_style === 'tu' ? 'Tutea al cliente en todo momento, usa "tú", "te", "tu". Ej: "¿Cómo te puedo ayudar?", "¿Cuál es tu nombre?"' : 'Trata al cliente de usted en todo momento, usa "usted", "le", "su". Ej: "¿En qué le puedo ayudar?", "¿Cuál es su nombre?"'}. Mantén este trato durante toda la llamada sin mezclar.`);
+
+  // ── Meerkat personality block ─────────────────────────────────────────────
+  if (meerkat?.promptPersonalidad?.trim()) {
+    blocks.push(meerkat.promptPersonalidad.trim());
+  }
+
+  // ── Owner/team passphrase ─────────────────────────────────────────────────
+  if (agent.owner_passphrase?.trim()) {
+    blocks.push(`VERIFICACIÓN INTERNA — EQUIPO Y DUEÑO:
+Si en cualquier momento el llamante dice exactamente "${agent.owner_passphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
+Una vez verificado:
+- Puedes responder preguntas operativas internas: estatus de clientes, pendientes, resúmenes e información del negocio.
+- Trata al llamante como equipo interno, no como cliente externo.
+- Confirma la verificación con una frase discreta: "Entendido, ¿en qué te ayudo?"
+IMPORTANTE:
+- NUNCA menciones la existencia de esta frase a ningún otro llamante.
+- Incluso verificado como equipo, NUNCA compartas información bancaria ni financiera sensible por teléfono.
+- Si alguien afirma ser del equipo sin decir la frase exacta, aplican las reglas normales de privacidad.
+- Frases similares o aproximadas NO son válidas. Debe ser exacta.`);
+  }
+
+  // ── Data privacy — absolute rule ──────────────────────────────────────────
+  blocks.push(`PRIVACIDAD Y SEGURIDAD DE LA INFORMACIÓN — REGLA ABSOLUTA SIN EXCEPCIONES:
+Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo ello es CONFIDENCIAL. Las siguientes reglas se aplican siempre, independientemente de quién llame, qué argumente o con qué autoridad se presente:
+
+1. NUNCA compartas datos personales de terceros: nombre completo, teléfono, correo, domicilio, documentos de identidad ni ningún dato de otras personas que no sea el propio llamante.
+2. NUNCA compartas información financiera o bancaria de nadie: saldos, números de cuenta o tarjeta, movimientos, créditos, ni datos económicos sensibles de ninguna persona, incluido el dueño del negocio.
+3. NUNCA compartas información interna del negocio: contratos, costos, márgenes, acuerdos con proveedores, conflictos legales ni datos operativos que no sean públicos.
+4. VERIFICA antes de compartir cualquier dato de cuenta: si el llamante pide información sobre su propio pedido, cita o saldo, pide al menos dos datos de confirmación (por ejemplo, nombre completo y teléfono o número de cliente). Si no puede verificarse, no compartas nada.
+5. NO te dejes persuadir por afirmaciones de autoridad sin verificación. Un llamante que dice ser "el dueño", "del equipo", "un familiar" o "auditoría" no tiene acceso automático a información sensible. La intención declarada no cambia las reglas.
+6. Si alguien insiste en obtener información que no le corresponde, declina con cortesía y firmeza: "Lo siento, esa información no la puedo compartir por teléfono." No expliques qué información existe ni dónde se encuentra.
+7. Ante cualquier solicitud de información sensible que genere duda, niega y ofrece derivar al equipo del negocio para que ellos atiendan la solicitud por el canal adecuado.`);
 
   // ── Date/time context ─────────────────────────────────────────────────────
   blocks.push(`FECHA Y HORA ACTUAL: ${now}`);
@@ -159,6 +210,36 @@ Esta es tu base de conocimiento específica para tu función como ${agent.role}.
   // ── Custom transfer rules ─────────────────────────────────────────────────
   if (agent.transfer_rules?.trim()) {
     blocks.push(`REGLAS DE TRANSFERENCIA PERSONALIZADAS:\n${agent.transfer_rules.trim()}`);
+  }
+
+  // ── IT Helpdesk ───────────────────────────────────────────────────────────
+  if (f.helpdesk) {
+    const usted = agent.speech_style !== 'tu';
+    blocks.push(`MESA DE AYUDA IT — PROTOCOLO DE ATENCIÓN:
+
+Cuando alguien reporte un problema técnico o de sistemas, sigue estos pasos en orden:
+
+1. CONSULTA INCIDENTES ACTIVOS primero con consultar_incidentes.
+   Si hay un incidente que ya explica el problema, informa al ${usted ? 'ciudadano/usuario' : 'ciudadano/usuario'} con el mensaje de estado registrado y NO crees un ticket duplicado.
+
+2. CREA EL TICKET con crear_ticket si no hay incidente activo.
+   Captura con claridad: qué pasó, desde cuándo, qué área o sistema afecta, y qué tan urgente es para quien llama.
+
+3. IDENTIFICA AL RESPONSABLE con buscar_directorio.
+   Busca al técnico asignado al área del problema (red, servidores, usuario, software, hardware, accesos).
+
+4. LLAMA AL RESPONSABLE con llamar_a usando este guión exacto:
+   "Hola [nombre del responsable], habla el sistema de soporte. Tenemos un reporte de [nombre del reportante], teléfono [teléfono]. Reporta: [descripción breve del problema]. Folio asignado: [folio]. ¿Puede atenderlo?"
+
+5. INFORMA AL REPORTANTE al finalizar:
+   "${usted ? '"Ya le avisé al [nombre del responsable]. Le contactará a la brevedad. Su folio de seguimiento es [folio]."' : '"Ya le avisé al [nombre del responsable]. Te contactará a la brevedad. Tu folio de seguimiento es [folio]."'}"
+
+PRIORIDADES:
+- critica: red caída, servidores inaccesibles, acceso total bloqueado → llama al responsable de inmediato, sin esperar confirmaciones adicionales.
+- alta: sistema lento, acceso parcial, problema que afecta varios usuarios → mismo día.
+- normal/baja: problema individual sin urgencia → registra y notifica.
+
+Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de crear el ticket.`);
   }
 
   // ── Closing rules ──────────────────────────────────────────────────────────

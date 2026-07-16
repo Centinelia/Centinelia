@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen } from 'lucide-react';
+import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen, ClipboardList, Gavel, Headphones, PieChart } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
 interface Props {
@@ -14,21 +14,27 @@ interface Props {
   aiOpsUsed?:       number;
   aiOpsLimit?:      number;
   hasStripe?:       boolean;
+  vertical?:        string;
+  modules?:         string[]; // undefined = owner (all access)
 }
 
 const NAV_ITEMS = [
-  { href: '',               label: 'Actividad',             icon: Activity,      badgeKey: '',          opsHint: '',                            pulseId: 'of-actividad'      },
-  { href: '/bandeja',       label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',   opsHint: '1 op/correo',                 pulseId: 'of-bandeja'        },
-  { href: '/reportes',      label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',          opsHint: '1 op/reporte',                pulseId: 'of-reportes'       },
-  { href: '/contratos',     label: 'Contratos',             icon: FileText,      badgeKey: 'contratos', opsHint: '1 op/análisis',               pulseId: 'of-contratos'      },
-  { href: '/documentos',    label: 'Documentos',            icon: FolderOpen,    badgeKey: '',          opsHint: '',                            pulseId: 'of-documentos'     },
-  { href: '/juntas',        label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',    opsHint: '1–6 ops/junta',               pulseId: 'of-juntas'         },
-  { href: '/investigacion', label: 'Investigación',         icon: Search,        badgeKey: '',          opsHint: '0 ops aquí · 7–13 vía chat',  pulseId: 'of-investigacion'  },
-  { href: '/onboarding',    label: 'Onboarding',            icon: UserCheck,     badgeKey: '',          opsHint: '',                            pulseId: 'of-onboarding'     },
-  { href: '/chat',          label: 'Consultar agente',      icon: MessageSquare, badgeKey: '',          opsHint: '3–13 ops/msg',                pulseId: 'of-chat'           },
+  { href: '',               moduleId: 'of_actividad',           label: 'Actividad',             icon: Activity,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-actividad',           vertical: null       },
+  { href: '/bandeja',       moduleId: 'of_bandeja',             label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',            opsHint: '1 op/correo',                 pulseId: 'of-bandeja',             vertical: null       },
+  { href: '/reportes',      moduleId: 'of_reportes',            label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',                   opsHint: '1 op/reporte',                pulseId: 'of-reportes',            vertical: null       },
+  { href: '/contratos',     moduleId: 'of_contratos',           label: 'Contratos',             icon: FileText,      badgeKey: 'contratos',          opsHint: '1 op/análisis',               pulseId: 'of-contratos',           vertical: null       },
+  { href: '/documentos',    moduleId: 'of_documentos',          label: 'Documentos',            icon: FolderOpen,    badgeKey: '',                   opsHint: '',                            pulseId: 'of-documentos',          vertical: null       },
+  { href: '/juntas',        moduleId: 'of_juntas',              label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',             opsHint: '1–6 ops/junta',               pulseId: 'of-juntas',              vertical: null       },
+  { href: '/investigacion', moduleId: 'of_investigacion',       label: 'Investigación',         icon: Search,        badgeKey: '',                   opsHint: '0 ops aquí · 7–13 vía chat',  pulseId: 'of-investigacion',       vertical: null       },
+  { href: '/onboarding',    moduleId: 'of_onboarding',          label: 'Onboarding',            icon: UserCheck,     badgeKey: '',                   opsHint: '',                            pulseId: 'of-onboarding',          vertical: null       },
+  { href: '/reportes-ciudadanos', moduleId: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', icon: ClipboardList, badgeKey: 'reportesCiudadanos', opsHint: '', pulseId: 'of-reportes-ciudadanos', vertical: 'gobierno' },
+  { href: '/cabildo',       moduleId: 'of_cabildo',             label: 'Cabildo',               icon: Gavel,         badgeKey: '',                   opsHint: '',                            pulseId: 'of-cabildo',             vertical: 'gobierno' },
+  { href: '/helpdesk',      moduleId: 'of_helpdesk',            label: 'Mesa de ayuda',         icon: Headphones,    badgeKey: '',                   opsHint: '',                            pulseId: 'of-helpdesk',            vertical: null       },
+  { href: '/encuestas',     moduleId: 'of_encuestas',           label: 'Encuestas',             icon: PieChart,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-encuestas',           vertical: null       },
+  { href: '/chat',          moduleId: 'of_chat',                label: 'Consultar agente',      icon: MessageSquare, badgeKey: '',                   opsHint: '3–13 ops/msg',                pulseId: 'of-chat',                vertical: null       },
 ];
 
-export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false }: Props) {
+export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules }: Props) {
   const pathname    = usePathname();
   const base        = `/portal/${token}/oficina`;
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -84,7 +90,10 @@ export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, 
           Oficina
         </p>
 
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS
+          .filter(item => !item.vertical || item.vertical === vertical)
+          .filter(item => !modules || modules.includes(item.moduleId))
+          .map(item => {
           const href     = `${base}${item.href}`;
           const isActive = item.href === ''
             ? pathname === base || pathname === `${base}/`

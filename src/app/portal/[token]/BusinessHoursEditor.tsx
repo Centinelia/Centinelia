@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import type { BusinessHours, DaySchedule } from '@/types/agent';
 
 const DAYS: { key: keyof BusinessHours; label: string }[] = [
@@ -72,12 +73,19 @@ export default function BusinessHoursEditor({
   const [hours, setHours]     = useState<BusinessHours>(initialHours ?? DEFAULT_HOURS);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [dirty, setDirty]     = useState(false);
 
-  const toggleDay = (key: keyof BusinessHours) =>
+  useDirtyWarning('business-hours', dirty);
+
+  const toggleDay = (key: keyof BusinessHours) => {
     setHours(h => ({ ...h, [key]: { ...h[key], open: !h[key].open } }));
+    setDirty(true);
+  };
 
-  const setTime = (key: keyof BusinessHours, field: 'from' | 'to', value: string) =>
+  const setTime = (key: keyof BusinessHours, field: 'from' | 'to', value: string) => {
     setHours(h => ({ ...h, [key]: { ...h[key], [field]: value } }));
+    setDirty(true);
+  };
 
   const save = async (business_hours: BusinessHours | null) => {
     setSaving(true);
@@ -88,7 +96,7 @@ export default function BusinessHoursEditor({
       body: JSON.stringify({ business_hours }),
     });
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
   };
 
   const handleMasterToggle = () => {

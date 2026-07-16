@@ -105,7 +105,7 @@ export default async function AgentesLayout({
             Portal
           </Link>
           <span style={{ color: 'var(--c-text-4)' }}>/</span>
-          <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Agentes</span>
+          <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Empleados</span>
         </div>
 
         {/* Body: sidebar + content */}

@@ -199,3 +199,58 @@ export async function executeReadFile(
     ? { ok: true, file_name: fileName, content: preview, truncated: content.length > 8000 }
     : { ok: false, error: `No se pudo leer el archivo "${fileName}". Verifica que sea un documento de texto.` };
 }
+
+const NO_CALENDAR_ERROR = `No tienes Google Calendar ni Outlook Calendar conectado. Conéctalo desde el portal en Integraciones → Correo. Si necesitas ayuda, contacta a Centinelia: ${SUPPORT_EMAIL} o WhatsApp ${SUPPORT_WA}.`;
+
+export async function executeListCalendarEvents(
+  agentId:  string,
+  from:     Date,
+  to:       Date,
+  supabase: SupabaseClient,
+): Promise<ToolResult> {
+  const ic = await getFileConnector(agentId, supabase);
+  if (!ic?.conn.calendar) return { ok: false, error: NO_CALENDAR_ERROR };
+
+  const events = await ic.conn.calendar.listEvents(from, to);
+  if (!events.length) return { ok: true, events: [], message: 'No hay eventos en ese rango de fechas.' };
+
+  const lines = events.map(e => {
+    const start = new Date(e.start).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+    const end   = new Date(e.end).toLocaleString('es-MX', { timeStyle: 'short' });
+    const atts  = e.attendees.length ? ` | Invitados: ${e.attendees.join(', ')}` : '';
+    const loc   = e.location ? ` | ${e.location}` : '';
+    return `- [${e.id}] ${e.title} — ${start} a ${end}${loc}${atts}`;
+  }).join('\n');
+
+  return { ok: true, events, message: `${events.length} evento(s) encontrado(s):\n${lines}` };
+}
+
+export async function executeCreateCalendarEvent(
+  agentId: string,
+  input:   { title: string; start: string; end: string; description?: string; location?: string; attendees?: string[] },
+  supabase: SupabaseClient,
+): Promise<ToolResult> {
+  const ic = await getFileConnector(agentId, supabase);
+  if (!ic?.conn.calendar) return { ok: false, error: NO_CALENDAR_ERROR };
+
+  const event = await ic.conn.calendar.createEvent(input);
+  if (!event) return { ok: false, error: 'No se pudo crear el evento. Verifica los permisos de calendario.' };
+
+  const start = new Date(event.start).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' });
+  const provider = ic.integration.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar';
+  return { ok: true, event, message: `Evento "${event.title}" creado en ${provider} para el ${start}.` };
+}
+
+export async function executeDeleteCalendarEvent(
+  agentId:  string,
+  eventId:  string,
+  supabase: SupabaseClient,
+): Promise<ToolResult> {
+  const ic = await getFileConnector(agentId, supabase);
+  if (!ic?.conn.calendar) return { ok: false, error: NO_CALENDAR_ERROR };
+
+  const ok = await ic.conn.calendar.deleteEvent(eventId);
+  return ok
+    ? { ok: true,  message: 'Evento eliminado del calendario.' }
+    : { ok: false, error:   'No se pudo eliminar el evento. Verifica que el ID sea correcto.' };
+}

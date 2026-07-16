@@ -30,6 +30,9 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   client_memory:           'Recuerda información de llamadas anteriores del mismo número',
   whatsapp_escalation:     'Envía un WhatsApp al dueño si el agente no puede resolver',
   outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
+  vertical:                '',
+  helpdesk:                'Mesa de ayuda IT',
+  is_coordinator:          'Coordinador de equipo',
 };
 
 export default async function AgentDetailPage({ params }: Props) {

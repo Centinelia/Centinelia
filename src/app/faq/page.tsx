@@ -21,11 +21,11 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Que es Centinelia?',
-        a: 'Centinelia es un servicio de agentes de voz con inteligencia artificial para negocios mexicanos. En lugar de perder llamadas por falta de personal, tu negocio tiene un equipo de agentes especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menu ("marque 1 para ventas"), es una conversacion natural con IA.',
+        a: 'Centinelia es un servicio de agentes de voz con inteligencia artificial para organizaciones mexicanas. En lugar de perder llamadas por falta de personal, tu organización tiene un equipo de agentes especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menu ("marque 1 para ventas"), es una conversacion natural con IA.',
       },
       {
         q: '¿Como funciona?',
-        a: 'Contratas un plan, recibes acceso al portal, agregas la informacion de tu negocio (horarios, servicios, precios, preguntas frecuentes) y en menos de 24 horas tu agente esta activo atendiendo llamadas. Cada llamada se graba, transcribe y analiza. Los leads aparecen en tu portal en tiempo real.',
+        a: 'Contratas un plan, recibes acceso al portal, agregas la informacion de tu organización (horarios, servicios, precios, preguntas frecuentes) y en menos de 24 horas tu agente esta activo atendiendo llamadas. Cada llamada se graba, transcribe y analiza. Los leads aparecen en tu portal en tiempo real.',
       },
       {
         q: '¿Es un chatbot o un agente de voz?',
@@ -33,7 +33,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Centinelia reemplaza a mi recepcionista?',
-        a: 'Complementa o reemplaza segun el caso. Para negocios sin recepcionista, cubre la funcion completa. Para negocios que ya tienen personal, elimina las llamadas perdidas fuera de horario, los tiempos de espera y las tareas repetitivas, liberando al equipo humano para lo que realmente importa.',
+        a: 'Complementa o reemplaza segun el caso. Para organizaciones sin recepcionista, cubre la funcion completa. Para organizaciones que ya tienen personal, elimina las llamadas perdidas fuera de horario, los tiempos de espera y las tareas repetitivas, liberando al equipo humano para lo que realmente importa.',
       },
       {
         q: '¿Suena natural o robotico?',
@@ -45,7 +45,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Es un producto mexicano?',
-        a: 'Si. Centinelia es desarrollado por Pneuma Studio en Monterrey, Nuevo Leon. Los precios estan en pesos mexicanos, el soporte es en espanol y el producto esta disenado para los usos, costumbres y tipos de negocios del mercado mexicano.',
+        a: 'Si. Centinelia es desarrollado por Pneuma Studio en Monterrey, Nuevo Leon. Los precios estan en pesos mexicanos, el soporte es en espanol y el producto esta disenado para los usos, costumbres y tipos de organizaciones del mercado mexicano.',
       },
     ],
   },
@@ -63,11 +63,11 @@ const CATEGORIES = [
       },
       {
         q: '¿Puede tomar pedidos por telefono?',
-        a: 'Si, en el Ejecutivo Senior. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y negocios similares.',
+        a: 'Si, en el Ejecutivo Senior. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y comercios similares.',
       },
       {
         q: '¿Habla ingles?',
-        a: 'Si, en el Ejecutivo Senior. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para negocios en zonas turisticas o con clientela internacional.',
+        a: 'Si, en el Ejecutivo Senior. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para organizaciones en zonas turisticas o con clientela internacional.',
       },
       {
         q: '¿Puede transferir la llamada a una persona real?',
@@ -79,7 +79,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Cuantas llamadas puede atender al mismo tiempo?',
-        a: 'Agente Comercial: 1 llamada simultanea. Ejecutivo Senior: hasta 3 llamadas en paralelo. Plan Empresarial: segun volumen, sin limite practico. Si tu negocio recibe muchas llamadas al mismo tiempo, el plan adecuado es Ejecutivo Senior o Empresarial.',
+        a: 'Agente Comercial: 1 llamada simultanea. Ejecutivo Senior: hasta 3 llamadas en paralelo. Plan Empresarial: segun volumen, sin limite practico. Si tu organización recibe muchas llamadas al mismo tiempo, el plan adecuado es Ejecutivo Senior o Empresarial.',
       },
       {
         q: '¿Que pasa si el agente no sabe responder algo?',
@@ -105,7 +105,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
-        a: 'La configuracion inicial del agente: personalizacion de voz, carga de informacion del negocio, configuracion de flujos (citas, pedidos, transferencias), pruebas y ajustes antes de activar. Es un pago unico, no se cobra de nuevo a menos que el negocio cambie radicalmente.',
+        a: 'La configuracion inicial del agente: personalizacion de voz, carga de informacion de la organización, configuracion de flujos (citas, pedidos, transferencias), pruebas y ajustes antes de activar. Es un pago unico, no se cobra de nuevo a menos que la organización cambie radicalmente.',
       },
       {
         q: '¿Que son los minutos incluidos?',
@@ -135,11 +135,11 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto tiempo tarda en estar activo?',
-        a: 'Menos de 24 horas. El proceso es: contratas, recibes acceso al portal, agregas la informacion de tu negocio, el equipo de Centinelia finaliza la configuracion y activa el numero. No necesitas hacer nada tecnico.',
+        a: 'Menos de 24 horas. El proceso es: contratas, recibes acceso al portal, agregas la informacion de tu organización, el equipo de Centinelia finaliza la configuracion y activa el numero. No necesitas hacer nada tecnico.',
       },
       {
         q: '¿Necesito saber de tecnologia para configurarlo?',
-        a: 'No. El portal esta disenado para que cualquier dueno de negocio pueda actualizar la informacion del agente, revisar llamadas, ver leads y comprar minutos sin ayuda tecnica. Si quieres cambios avanzados (nuevos flujos, integraciones), el equipo de Centinelia lo hace por ti.',
+        a: 'No. El portal esta disenado para que cualquier responsable de la organización pueda actualizar la informacion del agente, revisar llamadas, ver leads y comprar minutos sin ayuda tecnica. Si quieres cambios avanzados (nuevos flujos, integraciones), el equipo de Centinelia lo hace por ti.',
       },
       {
         q: '¿Necesito cambiar mi numero de telefono?',
@@ -147,7 +147,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Que informacion necesito para configurarlo?',
-        a: 'Basicamente: nombre del negocio, horarios de atencion, servicios o productos que ofreces con precios si aplica, preguntas frecuentes de tus clientes, y el nombre y numero del responsable al que transferir llamadas urgentes. Entre mas detallada sea la informacion, mejor responde el agente.',
+        a: 'Basicamente: nombre de la organización, horarios de atencion, servicios o productos que ofreces con precios si aplica, preguntas frecuentes de tus clientes, y el nombre y numero del responsable al que transferir llamadas urgentes. Entre mas detallada sea la informacion, mejor responde el agente.',
       },
       {
         q: '¿Como se integra con mi calendario?',
@@ -176,7 +176,7 @@ const CATEGORIES = [
         a: 'Si. El agente califica al prospecto (busca compra, renta o venta; zona; presupuesto), agenda visitas a propiedades y notifica al asesor inmobiliario por WhatsApp con los datos del interesado. Ningu un lead se pierde por no contestar el telefono.',
       },
       {
-        q: '¿Funciona para tiendas o negocios de retail?',
+        q: '¿Funciona para tiendas o comercios de retail?',
         a: 'Si. El agente puede informar sobre productos, precios, disponibilidad, horarios y sucursales. En el Ejecutivo Senior puede tomar pedidos telefonicos y registrar los datos de entrega.',
       },
       {
@@ -191,7 +191,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Mis datos y los de mis clientes estan seguros?',
-        a: 'Si. Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. El acceso al portal requiere autenticacion. Los datos de llamadas y leads pertenecen a tu negocio y no se comparten con terceros ni se usan para entrenar modelos.',
+        a: 'Si. Los datos se almacenan en infraestructura en la nube con cifrado en transito y en reposo. El acceso al portal requiere autenticacion. Los datos de llamadas y leads pertenecen a tu organización y no se comparten con terceros ni se usan para entrenar modelos.',
       },
       {
         q: '¿Las llamadas se graban?',

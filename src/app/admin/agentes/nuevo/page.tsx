@@ -45,6 +45,9 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   client_memory:           'Recuerda información de llamadas anteriores del mismo número',
   whatsapp_escalation:     'Envía un WhatsApp al dueño si el agente no puede resolver',
   outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
+  vertical:                '',
+  helpdesk:                'Mesa de ayuda IT',
+  is_coordinator:          'Coordinador de equipo',
 };
 
 const KB_LABELS: Record<GiroTemplate, string> = {
@@ -464,6 +467,9 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   client_memory:           'Memoria',
   whatsapp_escalation:     'WhatsApp',
   outbound_calls:          'Salientes',
+  vertical:                '',
+  helpdesk:                'Mesa de ayuda IT',
+  is_coordinator:          'Coordinador',
 };
 
 function TimezoneSelect() {

@@ -67,9 +67,35 @@ export interface ContactsConnector {
   getByPhone(phone: string): Promise<ContactResult | null>;
 }
 
+export interface CalendarEvent {
+  id:           string;
+  title:        string;
+  start:        string;
+  end:          string;
+  location?:    string;
+  description?: string;
+  attendees:    string[];
+}
+
+export interface CreateEventInput {
+  title:        string;
+  start:        string;
+  end:          string;
+  description?: string;
+  location?:    string;
+  attendees?:   string[];
+}
+
+export interface CalendarConnector {
+  listEvents(from: Date, to: Date): Promise<CalendarEvent[]>;
+  createEvent(input: CreateEventInput): Promise<CalendarEvent | null>;
+  deleteEvent(eventId: string): Promise<boolean>;
+}
+
 export interface Connector {
-  provider: 'google' | 'microsoft';
-  email:    EmailConnector;
-  files:    FilesConnector;
+  provider:  'google' | 'microsoft';
+  email:     EmailConnector;
+  files:     FilesConnector;
   contacts?: ContactsConnector;
+  calendar?: CalendarConnector;
 }

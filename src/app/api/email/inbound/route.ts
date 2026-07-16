@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveInboxToken, parseSenderName, parseToToken } from '@/lib/email/inbox';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
+import { applyCommsRouting } from '@/lib/comms/routing';
+import { findNoxAgent, processEmailWithNox } from '@/lib/ops/nox-coordinator';
 
 interface StoredAttachment {
   name: string;
@@ -119,6 +121,30 @@ export async function POST(req: NextRequest) {
       attachments:      storedAttachments,
     },
   });
+
+  // Comms routing (non-blocking)
+  applyCommsRouting({
+    agentId:    opsAgent.id,
+    supabase,
+    fromEmail:  from,
+    subject,
+    body:       text,
+    senderName: senderName || '',
+  }).catch(err => console.error('[comms-routing] error:', err));
+
+  // Nox coordinator email routing (non-blocking)
+  findNoxAgent(portalEmail).then(nox => {
+    if (!nox || nox.id === opsAgent.id) return;
+    const sibs = (agents ?? []).filter(a => a.id !== nox.id);
+    processEmailWithNox({
+      portalEmail,
+      noxAgent:     nox,
+      siblings:     sibs.map(s => ({ id: s.id, agent_name: s.agent_name as string | null, role: s.role as string | null })),
+      emailFrom:    from,
+      emailSubject: subject,
+      emailBody:    text,
+    }).catch(err => console.error('[nox] email routing error:', err));
+  }).catch(() => {});
 
   // Ops AI processing (non-blocking — returns 200 immediately)
   const ownerEmail = opsAgent.client_email;

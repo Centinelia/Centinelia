@@ -22,11 +22,11 @@ const FAQS = [
   },
   {
     q: '¿Cuánto tiempo tarda en estar activo?',
-    a: 'Menos de 24 horas. Después de contratar, accedes al portal, agregas la información de tu negocio (horarios, servicios, precios, FAQs) y tu empleado queda listo. No necesitas saber de tecnología.',
+    a: 'Menos de 24 horas. Después de contratar, accedes al portal, agregas la información de tu organización (horarios, servicios, precios, FAQs) y tu empleado queda listo. No necesitas saber de tecnología.',
   },
   {
-    q: '¿Funciona para mi tipo de negocio?',
-    a: 'Funciona para cualquier negocio que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, academias y más. Tu empleado aprende sobre tu negocio específico, no es un bot genérico.',
+    q: '¿Funciona para mi tipo de organización?',
+    a: 'Funciona para cualquier organización que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, universidades y más. Tu empleado aprende sobre tu organización específica, no es un bot genérico.',
   },
   {
     q: '¿Puedo cancelar cuando quiera?',

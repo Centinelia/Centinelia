@@ -56,44 +56,61 @@ export async function POST(req: NextRequest) {
         .ilike('whatsapp', `%${normPhone}%`)
         .order('created_at', { ascending: false })
         .limit(1),
+      // Only load calls with actual summaries — no unanswered or empty calls worth remembering
       supabase
         .from('voice_calls')
         .select('summary, outcome, created_at')
         .eq('agent_id', typedAgent.id)
         .ilike('caller_number', `%${normPhone}%`)
+        .neq('outcome', 'unanswered')
+        .not('summary', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(3),
+        .limit(7),
     ]);
 
-    const lead     = leadRes.data?.[0] ?? null;
-    const history  = histRes.data ?? [];
+    const lead    = leadRes.data?.[0] ?? null;
+    const history = histRes.data ?? [];
 
     if (lead?.nombre || history.length > 0) {
       const parts: string[] = [];
       if (lead?.nombre)   parts.push(`Nombre: ${lead.nombre}`);
       if (lead?.negocio)  parts.push(`Negocio: ${lead.negocio}`);
       if (lead?.servicio) parts.push(`Servicio de interés previo: ${lead.servicio}`);
+
       if (history.length > 0) {
-        parts.push(`Ha llamado antes ${history.length} vez${history.length > 1 ? 'es' : ''}.`);
-        if (history[0].summary) parts.push(`Última llamada: ${history[0].summary}`);
+        parts.push(`Interacciones previas relevantes (${history.length}):`);
+        let charBudget = 2400;
+        for (const c of history) {
+          const line = `• ${new Date(c.created_at as string).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}: ${c.summary}`;
+          if (line.length > charBudget) break;
+          parts.push(line);
+          charBudget -= line.length;
+        }
       }
+
       callerName = lead?.nombre ?? '';
       if (callerName) {
         callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nNO preguntes su nombre, ya lo sabes. Salúdale por su nombre de pila y continúa la conversación naturalmente.`;
       } else {
-        // History exists but no name captured yet, don't ask again, just acknowledge naturally
-        callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\nCliente frecuente, ${history.length} llamada${history.length > 1 ? 's' : ''} previa${history.length > 1 ? 's' : ''}.\n${history[0]?.summary ? `Última llamada: ${history[0].summary}` : ''}\nSaluda cordialmente pero sí puedes preguntarle su nombre si es necesario para la solicitud.`;
+        callerContext = `\n\nCONTEXTO DEL LLAMANTE (${phoneNumber}):\n${parts.join('\n')}\nSaluda cordialmente. Puedes preguntarle su nombre si es necesario para la solicitud.`;
       }
     }
   }
 
-  // Owner bypass: transfer_number / transfer_whatsapp always get through regardless of hours
+  // Team member identification
   const normCaller   = phoneNumber.replace(/\D/g, '').slice(-10);
+  const teamNumbers  = ((typedAgent as any).team_numbers ?? []) as { number: string; name?: string; is_owner?: boolean }[];
+  const callerTeamEntry = normCaller.length >= 7
+    ? teamNumbers.find(t => t.number.replace(/\D/g, '').slice(-10) === normCaller) ?? null
+    : null;
+
+  // Owner bypass: transfer_number / transfer_whatsapp / is_owner team entry always get through
   const normTransfer = (typedAgent.transfer_number   ?? '').replace(/\D/g, '').slice(-10);
   const normWa       = (typedAgent.transfer_whatsapp ?? '').replace(/\D/g, '').slice(-10);
   const isOwner = normCaller.length >= 7 && (
     (normTransfer && normCaller === normTransfer) ||
-    (normWa       && normCaller === normWa)
+    (normWa       && normCaller === normWa)       ||
+    callerTeamEntry?.is_owner === true
   );
 
   // Check business hours, respond with closed message if outside schedule
@@ -142,7 +159,61 @@ export async function POST(req: NextRequest) {
   const LOW_MINS_THRESHOLD = Math.max(30, minutesIncluded * 0.20);
   const minsLow = isOwner && minutesIncluded > 0 && minutesRemain <= LOW_MINS_THRESHOLD;
 
-  const systemPrompt = buildSystemPrompt(typedAgent) + callerContext +
+  // Load active surveys with auto_apply and inject questions into the prompt
+  let surveyPrompt = '';
+  {
+    const { data: activeSurveys } = await supabase
+      .from('surveys')
+      .select('id, nombre, descripcion, survey_questions(id, orden, texto, tipo, opciones)')
+      .eq('agent_id', typedAgent.id)
+      .eq('activa', true)
+      .eq('auto_apply', true)
+      .limit(3);
+
+    if (activeSurveys?.length) {
+      const blocks: string[] = [];
+      for (const s of activeSurveys) {
+        const questions = ((s as Record<string, unknown>).survey_questions as Array<{ id: string; orden: number; texto: string; tipo: string; opciones: string[] | null }> | null) ?? [];
+        if (!questions.length) continue;
+        const lines = [
+          `ENCUESTA ACTIVA — "${s.nombre}"${s.descripcion ? ` (${s.descripcion})` : ''}`,
+          `ID de encuesta: ${s.id}`,
+          'Preguntas:',
+          ...questions.map(q => {
+            let hint = '';
+            if (q.tipo === 'rating_5')  hint = ' [escala 1–5]';
+            if (q.tipo === 'rating_10') hint = ' [escala 1–10]';
+            if (q.tipo === 'si_no')     hint = ' [sí / no]';
+            if (q.tipo === 'multiple' && q.opciones?.length) hint = ` [opciones: ${q.opciones.join(', ')}]`;
+            return `  ${q.orden}. ${q.texto}${hint}`;
+          }),
+          '',
+          'INSTRUCCIONES DE ENCUESTA:',
+          '- Tu objetivo es obtener la respuesta a cada pregunta durante la llamada, de la manera más natural posible.',
+          '- PREFERENCIA: Si en algún momento de la conversación surge un contexto natural para hacer una pregunta (por ejemplo, al cerrar un trámite, resolver un problema, o cuando el cliente exprese satisfacción o inconformidad), introdúcela en ese momento sin que parezca una encuesta formal. Ejemplo: si acabas de resolver un problema de acceso, puedes preguntar "¿Y en general, cómo calificaría el servicio de soporte del 1 al 5?" antes de pasar al siguiente tema.',
+          '- FALLBACK: Si no surgió un momento natural durante la llamada, pide consentimiento antes de despedirte: "Antes de cerrar, ¿le importaría contestar una breve encuesta de satisfacción? Solo son [N] preguntas." Si dice que sí, procede. Si dice que no o que tiene prisa, agradece y cierra normalmente sin insistir.',
+          '- Haz UNA pregunta a la vez y espera la respuesta. Nunca las enumeres todas de golpe.',
+          '- Lleva la cuenta internamente de qué preguntas ya tienes respondidas y cuáles faltan.',
+          '- Si el cliente no quiere participar o se despide sin responder, respeta su decisión y cierra normalmente.',
+          '- En cuanto tengas todas las respuestas posibles (o al despedirte si el cliente se niega), llama a registrar_encuesta con el survey_id y las respuestas recopiladas. No esperes a tener todas — con al menos una respuesta ya vale registrar.',
+        ];
+        blocks.push(lines.join('\n'));
+      }
+      if (blocks.length) {
+        surveyPrompt = '\n\n' + blocks.join('\n\n');
+      }
+    }
+  }
+
+  // Team caller context — overrides client context when caller is a known team member
+  let teamCallerContext = '';
+  if (callerTeamEntry) {
+    const memberRole = callerTeamEntry.is_owner ? 'el dueño' : 'un miembro del equipo';
+    const memberName = callerTeamEntry.name || 'un colaborador';
+    teamCallerContext = `\n\nCONTEXTO INTERNO: Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_name} (número registrado). Trátale como equipo interno, no como cliente externo. Puedes compartir información operativa cuando te la pidan. Tutéale en todo momento. No apliques flujo de captura de leads ni agendamiento de citas a menos que te lo pidan explícitamente.`;
+  }
+
+  const systemPrompt = buildSystemPrompt(typedAgent) + (teamCallerContext || callerContext) + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
   const tools = buildTools(typedAgent);
 
@@ -150,11 +221,14 @@ export async function POST(req: NextRequest) {
     ? `Hola, gracias por llamar a ${typedAgent.business_name}. Te habla ${agentName}. ¿En qué te puedo ayudar?`
     : `Hola, gracias por llamar a ${typedAgent.business_name}. Le habla ${agentName}. ¿En qué le puedo ayudar?`;
 
-  const firstMessage = callerName
-    ? (typedAgent.speech_style === 'tu'
-        ? `Hola ${callerName.split(' ')[0]}. ¿En qué te puedo ayudar hoy?`
-        : `Hola ${callerName.split(' ')[0]}. ¿En qué le puedo ayudar hoy?`)
-    : (typedAgent.first_message?.trim() || defaultGreeting);
+  const teamMemberName = callerTeamEntry?.name?.split(' ')[0];
+  const firstMessage = teamMemberName
+    ? `Hola ${teamMemberName}. ¿En qué te puedo ayudar?`
+    : callerName
+      ? (typedAgent.speech_style === 'tu'
+          ? `Hola ${callerName.split(' ')[0]}. ¿En qué te puedo ayudar hoy?`
+          : `Hola ${callerName.split(' ')[0]}. ¿En qué le puedo ayudar hoy?`)
+      : (typedAgent.first_message?.trim() || defaultGreeting);
 
   // Return Vapi-compatible assistant configuration
   return NextResponse.json({

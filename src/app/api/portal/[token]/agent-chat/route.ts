@@ -17,11 +17,26 @@ import {
   executeOrganizeFiles,
   executeSearchFiles,
   executeReadFile,
+  executeListCalendarEvents,
+  executeCreateCalendarEvent,
+  executeDeleteCalendarEvent,
 } from '@/lib/services/connector-tools';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
+import { loadTeamCallContext } from '@/lib/voice/team-context';
+import { generateFolio, STATUS_LABELS } from '@/lib/civic/folio';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
 import { SUPPORT_EMAIL, SUPPORT_WA } from '@/lib/constants';
+import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
+import { generateWord } from '@/lib/documents/word';
+import { generateSlides, type Slide } from '@/lib/documents/slides';
+import {
+  enhanceTextContent,
+  enhanceSlidesContent,
+  peerReviewText,
+  peerReviewSlides,
+  isCriticalDocument,
+} from '@/lib/documents/quality-enhancer';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,6 +233,99 @@ const SAVE_TO_DRIVE_TOOL: Anthropic.Tool = {
   },
 };
 
+const CREATE_FILE_TOOL: Anthropic.Tool = {
+  name: 'create_file',
+  description: 'Genera un archivo Excel (.xlsx), Word (.docx) o PowerPoint (.pptx). Úsala cuando el dueño pida crear una hoja de cálculo, tabla, reporte de datos (Excel), documento editable de texto (Word), o presentación de diapositivas (PowerPoint). Para PDFs con branding usa create_document en cambio.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      format:   { type: 'string', enum: ['excel', 'word', 'powerpoint'], description: '"excel" para hojas de cálculo y tablas de datos. "word" para documentos de texto editables. "powerpoint" para presentaciones de diapositivas.' },
+      title:    { type: 'string', description: 'Título del documento o presentación.' },
+      filename: { type: 'string', description: 'Nombre del archivo sin extensión. Usa guiones, sin espacios. Ej: reporte-ventas-julio.' },
+      // Word fields
+      content:        { type: 'string', description: 'Contenido del documento (solo para format=word). Usa # para secciones, ## subsecciones, - para listas, **texto** para negritas.' },
+      template_type:  { type: 'string', enum: ['general', 'proposal', 'letter'], description: 'Plantilla Word: "proposal" incluye campos de cliente y precio total, "letter" incluye destinatario y fecha, "general" para cualquier otro documento.' },
+      client_name:     { type: 'string', description: 'Nombre del cliente (solo format=word, template=proposal).' },
+      client_email:    { type: 'string', description: 'Correo del cliente (solo format=word, template=proposal).' },
+      total_price:     { type: 'string', description: 'Precio total. Ej: "$50,000 MXN" (solo format=word, template=proposal).' },
+      validity_days:   { type: 'number', description: 'Días de validez de la propuesta (solo format=word, template=proposal).' },
+      recipient_name:  { type: 'string', description: 'Nombre del destinatario (solo format=word, template=letter).' },
+      recipient_email: { type: 'string', description: 'Correo del destinatario (solo format=word, template=letter).' },
+      // Excel fields
+      sheets: {
+        type:        'array',
+        description: 'Hojas del Excel (solo format=excel). Cada hoja tiene nombre, encabezados y filas de datos.',
+        items: {
+          type: 'object' as const,
+          properties: {
+            name:    { type: 'string', description: 'Nombre de la hoja. Ej: "Ventas", "Leads".' },
+            headers: { type: 'array', items: { type: 'string' }, description: 'Nombres de las columnas.' },
+            rows:    { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Filas de datos. Cada fila es un arreglo de valores en el mismo orden que headers.' },
+          },
+          required: ['name', 'headers', 'rows'],
+        },
+      },
+      // PowerPoint fields
+      slides: {
+        type:        'array',
+        description: 'Diapositivas (solo format=powerpoint). La primera diapositiva de portada se genera automáticamente con el title.',
+        items: {
+          type: 'object' as const,
+          properties: {
+            title:   { type: 'string', description: 'Título de la diapositiva.' },
+            content: { type: 'string', description: 'Contenido: usa - para bullets, ## para subtítulos, o texto libre.' },
+            notes:   { type: 'string', description: 'Notas del presentador para esta diapositiva (opcional).' },
+          },
+          required: ['title', 'content'],
+        },
+      },
+    },
+    required: ['format', 'title'],
+  },
+};
+
+const LIST_CALENDAR_EVENTS_TOOL: Anthropic.Tool = {
+  name: 'list_calendar_events',
+  description: 'Consulta los eventos del calendario (Google Calendar u Outlook Calendar) del dueño en un rango de fechas. Úsala cuando te pregunten qué tienes agendado, cuándo estás disponible, o qué hay en la agenda.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      from: { type: 'string', description: 'Fecha y hora de inicio del rango en formato ISO 8601. Ej: "2026-07-14T00:00:00"' },
+      to:   { type: 'string', description: 'Fecha y hora de fin del rango en formato ISO 8601. Ej: "2026-07-20T23:59:59"' },
+    },
+    required: ['from', 'to'],
+  },
+};
+
+const CREATE_CALENDAR_EVENT_TOOL: Anthropic.Tool = {
+  name: 'create_calendar_event',
+  description: 'Crea un evento en el calendario (Google Calendar u Outlook Calendar) del dueño. Úsala cuando te pidan agendar una reunión, cita, recordatorio o cualquier evento en el calendario.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      title:       { type: 'string', description: 'Título del evento.' },
+      start:       { type: 'string', description: 'Fecha y hora de inicio en ISO 8601 con zona horaria. Ej: "2026-07-15T10:00:00"' },
+      end:         { type: 'string', description: 'Fecha y hora de fin en ISO 8601. Ej: "2026-07-15T11:00:00"' },
+      description: { type: 'string', description: 'Descripción o notas del evento. Opcional.' },
+      location:    { type: 'string', description: 'Lugar del evento (dirección o nombre del lugar). Opcional.' },
+      attendees:   { type: 'array', items: { type: 'string' }, description: 'Lista de correos de los invitados. Opcional.' },
+    },
+    required: ['title', 'start', 'end'],
+  },
+};
+
+const DELETE_CALENDAR_EVENT_TOOL: Anthropic.Tool = {
+  name: 'delete_calendar_event',
+  description: 'Elimina o cancela un evento del calendario. Úsala cuando el dueño quiera cancelar o eliminar un evento. Primero usa list_calendar_events para obtener el ID del evento.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      event_id: { type: 'string', description: 'ID del evento a eliminar (obtenido de list_calendar_events).' },
+    },
+    required: ['event_id'],
+  },
+};
+
 const ORGANIZE_FILES_TOOL: Anthropic.Tool = {
   name: 'organize_files',
   description: 'Organiza archivos en Google Drive o OneDrive: lista contenido de carpetas, mueve archivos a otra carpeta, renombra archivos/carpetas, crea carpetas nuevas. Úsala cuando el dueño pida reorganizar, ordenar o reacomodar sus archivos en la nube.',
@@ -239,17 +347,67 @@ const ORGANIZE_FILES_TOOL: Anthropic.Tool = {
   },
 };
 
+const CREATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
+  name: 'create_civic_report',
+  description: 'Registra un nuevo reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) y genera un folio de seguimiento. Úsala cuando alguien reporte un problema en la vía pública o servicios municipales.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      category:      { type: 'string', enum: ['bache', 'luminaria', 'basura', 'agua', 'ruido', 'parque', 'transporte', 'otro'], description: 'Tipo de reporte' },
+      description:   { type: 'string', description: 'Descripción del problema reportado' },
+      location_text: { type: 'string', description: 'Dirección, colonia o intersección donde se encuentra el problema' },
+      caller_name:   { type: 'string', description: 'Nombre del ciudadano (si lo proporcionó)' },
+      caller_number: { type: 'string', description: 'Número telefónico del ciudadano' },
+    },
+    required: ['category', 'description'],
+  },
+};
+
+const LOOKUP_CIVIC_REPORT_TOOL: Anthropic.Tool = {
+  name: 'lookup_civic_report',
+  description: 'Consulta el estatus de uno o varios reportes ciudadanos por folio o por número de teléfono del ciudadano.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      folio:         { type: 'string', description: 'Número de folio del reporte. Ej: REP-2026-00001' },
+      caller_number: { type: 'string', description: 'Número telefónico del ciudadano para buscar todos sus reportes' },
+    },
+    required: [],
+  },
+};
+
+const UPDATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
+  name: 'update_civic_report',
+  description: 'Actualiza el estatus o las notas internas de un reporte ciudadano. Úsala cuando el dueño quiera marcar un reporte como en proceso, resuelto o cerrado.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      folio:  { type: 'string', description: 'Folio del reporte a actualizar. Ej: REP-2026-00001' },
+      status: { type: 'string', enum: ['abierto', 'en_proceso', 'resuelto', 'cerrado'], description: 'Nuevo estatus del reporte' },
+      notes:  { type: 'string', description: 'Notas internas de seguimiento' },
+    },
+    required: ['folio'],
+  },
+};
+
 const ALL_TOOLS = [
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
   CREATE_DOCUMENT_TOOL,
+  CREATE_FILE_TOOL,
   SAVE_TO_DRIVE_TOOL,
   ORGANIZE_FILES_TOOL,
   TRIGGER_CALL_TOOL,
   SEARCH_FILES_TOOL,
   READ_FILE_TOOL,
+  LIST_CALENDAR_EVENTS_TOOL,
+  CREATE_CALENDAR_EVENT_TOOL,
+  DELETE_CALENDAR_EVENT_TOOL,
   SEARCH_LEADS_TOOL,
   READ_URL_TOOL,
+  CREATE_CIVIC_REPORT_TOOL,
+  LOOKUP_CIVIC_REPORT_TOOL,
+  UPDATE_CIVIC_REPORT_TOOL,
 ];
 
 const SOCIAL_DOMAINS = ['facebook.com', 'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'tiktok.com'];
@@ -314,6 +472,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   const agentName = (agent.agent_name as string | null)?.trim() || 'Centinelia';
   const agentRole = (agent.role as string | null)?.trim() || null;
 
+  // Peer agents — fetched once, used during quality review of critical documents
+  const { data: peerAgents } = await supabase
+    .from('voice_agents')
+    .select('id, agent_name, knowledge_base, role_knowledge_base')
+    .eq('portal_email', accountAgent.portal_email)
+    .neq('id', agent.id)
+    .limit(3);
+  const peerAgent = (peerAgents ?? []).find(p =>
+    ((p.knowledge_base as string | null)?.trim() ?? (p.role_knowledge_base as string | null)?.trim())
+  ) ?? peerAgents?.[0] ?? null;
+
   const sections: string[] = [];
 
   sections.push([
@@ -334,10 +503,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     sections.push(`# Aprendizajes del agente\n${agent.role_learnings}`);
   }
 
+  // Account-wide agent IDs for cross-agent data visibility
+  const { data: acctAgentRows } = await supabase
+    .from('voice_agents')
+    .select('id')
+    .eq('portal_email', accountAgent.portal_email)
+    .eq('active', true);
+  const acctAgentIds = (acctAgentRows ?? []).map(a => a.id as string);
+  if (!acctAgentIds.length) acctAgentIds.push(agent.id as string);
+
   const { data: calls } = await supabase
     .from('voice_calls')
     .select('caller_number, duration_seconds, summary, outcome, created_at')
-    .eq('agent_id', agent.id)
+    .in('agent_id', acctAgentIds)
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -349,6 +527,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     sections.push(`# Llamadas recientes (últimas 20)\n${lines.join('\n')}`);
   }
+
+  // Team numbers — persistent memory for specific team members, account-wide
+  const teamNumbers = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
+  const teamCtx = await loadTeamCallContext(acctAgentIds, teamNumbers, supabase);
+  if (teamCtx) sections.push(teamCtx);
 
   const { data: inbox } = await supabase
     .from('ops_inbox')
@@ -437,12 +620,16 @@ Responde como un agente inteligente que conoce profundamente el negocio. Usa los
 Herramientas disponibles:
 - create_contract_draft: cuando el dueño pida generar un contrato para un cliente.
 - send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
-- create_document: cuando el dueño pida generar un documento. Usa template_type="proposal" para propuestas/cotizaciones (incluye cliente y precio), "letter" para cartas formales, "general" para todo lo demás. El PDF lleva automáticamente el logo y colores del negocio.
-- save_to_drive: después de create_document, si el dueño quiere guardar el PDF en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió create_document. Si da un folder_name, la carpeta se crea automáticamente si no existe.
+- create_document: cuando el dueño pida generar un documento PDF con branding (logo y colores del negocio). Usa template_type="proposal" para propuestas/cotizaciones, "letter" para cartas formales, "general" para todo lo demás.
+- create_file: cuando el dueño pida un archivo Excel, Word o PowerPoint. Usa format="excel" para tablas y hojas de cálculo con datos estructurados (pasa sheets con headers y rows), format="word" para documentos de texto editables (mismo sistema de templates que create_document), format="powerpoint" para presentaciones de diapositivas (pasa slides con title y content cada una). El archivo queda disponible en Oficina → Documentos.
+- save_to_drive: después de create_document o create_file, si el dueño quiere guardar el archivo en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió el tool. Si da un folder_name, la carpeta se crea automáticamente si no existe.
 - organize_files: para reorganizar Drive/OneDrive del dueño. Acciones: "list" (listar carpeta), "move" (mover archivo a otra carpeta, se crea si no existe), "rename" (renombrar archivo o carpeta), "create_folder" (crear carpeta nueva). Cuando el dueño pida ordenar archivos, empieza listando la raíz para ver qué hay, luego mueve o renombra según sus instrucciones. Cada acción consume ops.
 - trigger_outbound_call: cuando el dueño pida llamar a un número de teléfono.
 - search_files: cuando el dueño pida buscar un archivo en Google Drive o OneDrive.
 - read_file: cuando el dueño quiera ver el contenido de un archivo de Drive o OneDrive (usar después de search_files).
+- list_calendar_events: cuando el dueño quiera ver su agenda o saber qué tiene agendado en un rango de fechas.
+- create_calendar_event: cuando el dueño pida agendar una reunión, cita o evento en su calendario de Google o Outlook.
+- delete_calendar_event: cuando el dueño quiera cancelar o eliminar un evento del calendario. Usa list_calendar_events primero para obtener el ID.
 - search_leads: para cualquier investigación en internet. Usa research_type para aplicar la estrategia correcta: "leads" para prospectos (rastrea todos los canales), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo tiene sus propias queries especializadas.
 - read_url: úsala SIEMPRE después de search_leads para leer el contenido de los 2-3 resultados más prometedores. Así obtienes datos reales (contacto, precios, servicios) en lugar de solo títulos. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) que bloquean scrapers — para esas, usa el título y descripción del resultado de búsqueda.
 
@@ -468,6 +655,14 @@ Si notas una situación que podría requerir acción pero nadie te lo ha pedido:
 
 Nunca envíes correos, hagas llamadas, modifiques archivos ni ejecutes cualquier herramienta de forma autónoma sin que el dueño te lo haya pedido explícitamente en esta sesión de chat.
 
+## Estándares de calidad para documentos
+Cuando generes contenido para create_document o create_file, aplica estos principios desde la primera versión:
+- Propuestas: estructura Problema → Solución → Entregables → Precio → CTA. Cuantifica beneficios. Personaliza con nombre del cliente. Cero clichés corporativos.
+- Cartas: apertura con nombre completo del destinatario. Máximo 3 párrafos. CTA específico al final. Sin "Por medio de la presente".
+- Presentaciones: título de cada slide = afirmación concreta, no etiqueta. Máximo 5 bullets. Una idea por slide. Datos siempre contextualizados.
+- Excel: headers específicos en Title Case. Datos representativos y reales. Filas de totales cuando hay números. Hojas separadas por dataset.
+- Todos: tono profesional sin sonar robótico. Elimina relleno. Cada párrafo debe ganar su lugar.
+
 Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pida más detalle.
 
 ## Contexto operativo
@@ -488,6 +683,19 @@ ${context}`;
     : system;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  function lastUserText(msgs: Anthropic.MessageParam[]): string {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.role !== 'user') continue;
+      if (typeof m.content === 'string') return m.content;
+      if (Array.isArray(m.content)) {
+        return (m.content as { type: string; text?: string }[])
+          .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ');
+      }
+    }
+    return '';
+  }
 
   type AssistantBlock =
     | { type: 'text'; text: string }
@@ -671,12 +879,39 @@ ${context}`;
             try {
               const brand        = brandKitFromAgent(agent as Record<string, unknown>);
               const title        = toolInput.title         as string;
-              const content      = toolInput.content       as string;
               const templateType = (toolInput.template_type as string | undefined) ?? 'general';
               const slug         = ((toolInput.filename as string | null) ?? title)
                 .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
               const filename = `${slug}-${Date.now()}.pdf`;
               const path     = `${agent.id}/${filename}`;
+
+              // ── Quality pipeline ─────────────────────────────────────────────
+              const userInstruction = lastUserText(conversationMessages);
+              const businessCtx     = [agent.knowledge_base, agent.role_knowledge_base].filter(Boolean).join('\n').slice(0, 1200) as string;
+              let content = toolInput.content as string;
+
+              const enhanceOps = await consumeAiOp(agent.id as string, 1);
+              if (enhanceOps.ok) {
+                content = await enhanceTextContent({
+                  format: 'pdf', templateType, content, userInstruction,
+                  businessName: agent.business_name as string,
+                  businessContext: businessCtx,
+                });
+
+                if (isCriticalDocument('pdf', templateType) && peerAgent) {
+                  const reviewOps = await consumeAiOp(agent.id as string, 1);
+                  if (reviewOps.ok) {
+                    const peerKb = [peerAgent.knowledge_base, peerAgent.role_knowledge_base].filter(Boolean).join('\n') as string;
+                    content = await peerReviewText({
+                      content, format: 'pdf', templateType, userInstruction,
+                      businessName: agent.business_name as string,
+                      peerName: (peerAgent.agent_name as string | null) ?? 'Agente',
+                      peerKb,
+                    });
+                  }
+                }
+              }
+              // ────────────────────────────────────────────────────────────────
 
               let pdfElement: React.ReactElement;
               if (templateType === 'proposal') {
@@ -732,6 +967,158 @@ ${context}`;
               }
             } catch (err) {
               toolResult = { ok: false, error: `Error al generar el documento: ${String(err)}` };
+            }
+
+          } else if (pendingToolName === 'create_file') {
+            try {
+              const format       = toolInput.format   as 'excel' | 'word' | 'powerpoint';
+              const fileTitle    = toolInput.title     as string;
+              const slug         = ((toolInput.filename as string | null) ?? fileTitle)
+                .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+
+              let fileBuffer: Buffer;
+              let ext: string;
+              let mimeType: string;
+              let label: string;
+
+              const brand     = brandKitFromAgent(agent as Record<string, unknown>);
+              const accentHex = (brand as any).primaryColor ?? '#6C3BFF';
+
+              // Quality pipeline context
+              const userInstructionF = lastUserText(conversationMessages);
+              const businessCtxF     = [agent.knowledge_base, agent.role_knowledge_base].filter(Boolean).join('\n').slice(0, 1200) as string;
+
+              if (format === 'excel') {
+                const rawSheets = (toolInput.sheets as ExcelSheet[] | null) ?? [{
+                  name: fileTitle.slice(0, 31),
+                  headers: ['Sin datos'],
+                  rows:    [['El agente no proporcionó datos para la hoja.']],
+                }];
+                fileBuffer = generateExcel(rawSheets);
+                ext      = 'xlsx';
+                mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                label    = 'Excel';
+
+              } else if (format === 'word') {
+                const templateType = (toolInput.template_type as 'general' | 'proposal' | 'letter' | undefined) ?? 'general';
+                let wordContent    = (toolInput.content as string | null) ?? '';
+
+                // ── Quality pipeline (Word) ─────────────────────────────────
+                const wordEnhOps = await consumeAiOp(agent.id as string, 1);
+                if (wordEnhOps.ok) {
+                  wordContent = await enhanceTextContent({
+                    format: 'word', templateType, content: wordContent, userInstruction: userInstructionF,
+                    businessName: agent.business_name as string,
+                    businessContext: businessCtxF,
+                  });
+
+                  if (isCriticalDocument('word', templateType) && peerAgent) {
+                    const wordRevOps = await consumeAiOp(agent.id as string, 1);
+                    if (wordRevOps.ok) {
+                      const peerKb = [peerAgent.knowledge_base, peerAgent.role_knowledge_base].filter(Boolean).join('\n') as string;
+                      wordContent = await peerReviewText({
+                        content: wordContent, format: 'word', templateType, userInstruction: userInstructionF,
+                        businessName: agent.business_name as string,
+                        peerName: (peerAgent.agent_name as string | null) ?? 'Agente',
+                        peerKb,
+                      });
+                    }
+                  }
+                }
+                // ────────────────────────────────────────────────────────────
+
+                fileBuffer = await generateWord({
+                  title:         fileTitle,
+                  content:       wordContent,
+                  templateType,
+                  businessName:  agent.business_name as string | undefined,
+                  accentColor:   accentHex,
+                  clientName:    toolInput.client_name    as string | undefined,
+                  clientEmail:   toolInput.client_email   as string | undefined,
+                  totalPrice:    toolInput.total_price    as string | undefined,
+                  validityDays:  toolInput.validity_days  as number | undefined,
+                  recipientName:  toolInput.recipient_name  as string | undefined,
+                  recipientEmail: toolInput.recipient_email as string | undefined,
+                });
+                ext      = 'docx';
+                mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                label    = 'Word';
+
+              } else {
+                let finalSlides = (toolInput.slides as Slide[] | null) ?? [{
+                  title:   'Contenido',
+                  content: 'El agente no proporcionó diapositivas.',
+                }];
+
+                // ── Quality pipeline (PowerPoint) ───────────────────────────
+                const pptEnhOps = await consumeAiOp(agent.id as string, 1);
+                if (pptEnhOps.ok) {
+                  finalSlides = await enhanceSlidesContent({
+                    slides: finalSlides, userInstruction: userInstructionF,
+                    businessName: agent.business_name as string,
+                    businessContext: businessCtxF,
+                  });
+
+                  if (peerAgent) {
+                    const pptRevOps = await consumeAiOp(agent.id as string, 1);
+                    if (pptRevOps.ok) {
+                      const peerKb = [peerAgent.knowledge_base, peerAgent.role_knowledge_base].filter(Boolean).join('\n') as string;
+                      finalSlides = await peerReviewSlides({
+                        slides: finalSlides, userInstruction: userInstructionF,
+                        businessName: agent.business_name as string,
+                        peerName: (peerAgent.agent_name as string | null) ?? 'Agente',
+                        peerKb,
+                      });
+                    }
+                  }
+                }
+                // ────────────────────────────────────────────────────────────
+
+                fileBuffer = await generateSlides({
+                  title:        fileTitle,
+                  slides:       finalSlides,
+                  businessName: agent.business_name as string | undefined,
+                  accentColor:  accentHex,
+                });
+                ext      = 'pptx';
+                mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+                label    = 'PowerPoint';
+              }
+
+              const filename = `${slug}-${Date.now()}.${ext}`;
+              const path     = `${agent.id}/${filename}`;
+
+              const { error: uploadErr } = await supabase.storage
+                .from('agent-documents')
+                .upload(path, fileBuffer, { contentType: mimeType, upsert: true });
+
+              if (uploadErr) {
+                toolResult = { ok: false, error: `Error al subir el archivo: ${uploadErr.message}` };
+              } else {
+                const { data: signed } = await supabase.storage
+                  .from('agent-documents')
+                  .createSignedUrl(path, 3600);
+
+                await supabase.from('ops_documents').insert({
+                  agent_id:      agent.id,
+                  title:         fileTitle,
+                  filename,
+                  storage_path:  path,
+                  template_type: format,
+                  expires_at:    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                });
+
+                toolResult = {
+                  ok:        true,
+                  url:       signed?.signedUrl ?? null,
+                  file_id:   path,
+                  filename,
+                  mime_type: mimeType,
+                  message:   `Archivo ${label} "${fileTitle}" generado. URL de descarga (válida 1 hora): ${signed?.signedUrl}. También disponible en Oficina → Documentos por 30 días.`,
+                };
+              }
+            } catch (err) {
+              toolResult = { ok: false, error: `Error al generar el archivo: ${String(err)}` };
             }
 
           } else if (!policyBlocked && pendingToolName === 'trigger_outbound_call') {
@@ -794,6 +1181,35 @@ ${context}`;
               supabase,
             );
 
+          } else if (!policyBlocked && pendingToolName === 'list_calendar_events') {
+            toolResult = await executeListCalendarEvents(
+              agent.id as string,
+              new Date(toolInput.from as string),
+              new Date(toolInput.to   as string),
+              supabase,
+            );
+
+          } else if (!policyBlocked && pendingToolName === 'create_calendar_event') {
+            toolResult = await executeCreateCalendarEvent(
+              agent.id as string,
+              {
+                title:       toolInput.title       as string,
+                start:       toolInput.start       as string,
+                end:         toolInput.end         as string,
+                description: toolInput.description as string | undefined,
+                location:    toolInput.location    as string | undefined,
+                attendees:   toolInput.attendees   as string[] | undefined,
+              },
+              supabase,
+            );
+
+          } else if (!policyBlocked && pendingToolName === 'delete_calendar_event') {
+            toolResult = await executeDeleteCalendarEvent(
+              agent.id as string,
+              toolInput.event_id as string,
+              supabase,
+            );
+
           } else if (pendingToolName === 'search_leads') {
             if (!process.env.BRAVE_SEARCH_API_KEY) {
               toolResult = { ok: false, error: 'Búsqueda web no configurada. Agrega BRAVE_SEARCH_API_KEY al entorno.' };
@@ -823,6 +1239,53 @@ ${context}`;
                 };
               }
             }
+
+          } else if (pendingToolName === 'create_civic_report') {
+            const { category, description, location_text, caller_name, caller_number } = toolInput as {
+              category?: string; description?: string; location_text?: string; caller_name?: string; caller_number?: string;
+            };
+            const folio = await generateFolio(agent.id as string, supabase);
+            const { error: crErr } = await supabase.from('civic_reports').insert({
+              agent_id:      agent.id,
+              folio,
+              category:      category      ?? 'otro',
+              description:   description   ?? null,
+              location_text: location_text ?? null,
+              caller_name:   caller_name   ?? null,
+              caller_number: caller_number ?? null,
+              status:        'abierto',
+            });
+            toolResult = crErr
+              ? { ok: false, error: 'No se pudo registrar el reporte.' }
+              : { ok: true, folio, message: `Reporte registrado con folio ${folio}.` };
+
+          } else if (pendingToolName === 'lookup_civic_report') {
+            const { folio: qFolio, caller_number: qPhone } = toolInput as { folio?: string; caller_number?: string };
+            if (!qFolio && !qPhone) {
+              toolResult = { ok: false, error: 'Proporciona folio o número de teléfono.' };
+            } else {
+              let q = supabase.from('civic_reports').select('folio,category,description,location_text,status,notes,created_at').eq('agent_id', agent.id as string);
+              if (qFolio)  q = q.eq('folio', qFolio.toUpperCase());
+              else         q = (q as any).eq('caller_number', qPhone).order('created_at', { ascending: false }).limit(5);
+              const { data: rpts } = await q;
+              const list = rpts ?? [];
+              if (!list.length) {
+                toolResult = { ok: true, reports: [], message: 'No se encontraron reportes.' };
+              } else {
+                const lines = (list as any[]).map(r => `${r.folio} | ${r.category} | ${STATUS_LABELS[r.status as keyof typeof STATUS_LABELS] ?? r.status} | ${r.description ?? ''}`);
+                toolResult = { ok: true, reports: list, message: `${list.length} reporte(s) encontrado(s):\n${lines.join('\n')}` };
+              }
+            }
+
+          } else if (pendingToolName === 'update_civic_report') {
+            const { folio: uFolio, status: uStatus, notes: uNotes } = toolInput as { folio: string; status?: string; notes?: string };
+            const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+            if (uStatus) { updates.status = uStatus; if (uStatus === 'resuelto' || uStatus === 'cerrado') updates.resolved_at = new Date().toISOString(); }
+            if (uNotes !== undefined) updates.notes = uNotes;
+            const { error: upErr } = await supabase.from('civic_reports').update(updates).eq('agent_id', agent.id as string).eq('folio', uFolio.toUpperCase());
+            toolResult = upErr
+              ? { ok: false, error: 'No se pudo actualizar el reporte.' }
+              : { ok: true, message: `Reporte ${uFolio} actualizado correctamente.` };
 
           } else {
             toolResult = { ok: false, error: `Herramienta desconocida: ${pendingToolName}` };

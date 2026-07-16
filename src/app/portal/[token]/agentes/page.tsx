@@ -5,18 +5,16 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import { Phone, Settings2, Briefcase, Plus, Bot, Zap } from 'lucide-react';
+import { Settings2, Briefcase, Bot, Zap } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
+import MeerkatPicker                   from './MeerkatPicker';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return COLORS[hash % COLORS.length];
 }
-
-const PLAN_LABELS: Record<string, string> = { comercial: 'Agente Comercial', pro: 'Ejecutivo Senior' };
-const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -70,19 +68,12 @@ export default async function AgentesPage({ params }: Props) {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Mis Agentes</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Mis Empleados</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {agents.length} {agents.length === 1 ? 'agente' : 'agentes'} · {baseAgent.business_name}
+            {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
           </p>
         </div>
-        <Link
-          href={`/registro?back=/portal/${token}`}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}
-        >
-          <Plus size={13} />
-          Agregar agente
-        </Link>
+        <MeerkatPicker token={token} />
       </div>
 
       {/* Empty state */}
@@ -93,7 +84,7 @@ export default async function AgentesPage({ params }: Props) {
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
             <Bot size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
           </div>
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin agentes en tu cuenta</p>
+          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin empleados en tu cuenta</p>
         </div>
       )}
 
@@ -105,10 +96,11 @@ export default async function AgentesPage({ params }: Props) {
           const isBillingPaused = !(a.active as boolean) && (a.billing_status as string) === 'pago_fallido';
           const isClientPaused  = !!(a.client_paused as boolean) && !isBillingPaused;
           const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
-          const planColor       = PLAN_COLORS[(a.plan as string) ?? ''] ?? '#6b7280';
           const hasRole         = !!((a.role as string | null)?.trim());
           const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
           const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
+          const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
+          const avatarLocked    = !!meerkatId && meerkatId !== 'custom';
           const callCount       = callCountMap[a.id] ?? 0;
 
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
@@ -126,6 +118,7 @@ export default async function AgentesPage({ params }: Props) {
                 initial={initial}
                 color={hasRole ? roleColor : color}
                 size={148}
+                locked={avatarLocked}
               />
 
               {/* Nombre + rol + badges */}
@@ -139,12 +132,6 @@ export default async function AgentesPage({ params }: Props) {
                   </span>
                 )}
                 <div className="flex items-center gap-1.5 flex-wrap justify-center mt-1">
-                  {(a.plan as string | null) && (
-                    <span className="text-xs sm:text-sm px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: `${planColor}15`, color: planColor, border: `1px solid ${planColor}25` }}>
-                      {PLAN_LABELS[(a.plan as string)] ?? (a.plan as string)}
-                    </span>
-                  )}
                   <span className="flex items-center gap-1 text-xs sm:text-sm" style={{ color: statusColor }}>
                     <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
                       style={{ background: 'currentColor' }} />

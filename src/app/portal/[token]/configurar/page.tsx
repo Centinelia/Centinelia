@@ -15,11 +15,12 @@ import NotificationsToggle       from '../NotificationsToggle';
 import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
+import PortalFooter              from '../PortalFooter';
+import InfoTooltip               from '@/components/InfoTooltip';
 
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
-
-const PLAN_LABELS: Record<string, string> = { basico: 'Básico', estandar: 'Estándar', pro: 'Ejecutivo Senior' };
-const PLAN_COLORS: Record<string, string> = { basico: '#6b7280', estandar: '#3b82f6', pro: '#a855f7' };
+import TeamNumbersEditor             from '../TeamNumbersEditor';
+import PassphraseEditor              from '../PassphraseEditor';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -41,13 +42,18 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     redirect('/portal/login');
   }
 
+  const isOwner = !session?.isSubUser;
+  if (isOwner && (agent as any).onboarding_completed === false) {
+    redirect(`/setup/${token}`);
+  }
+
   const agentName    = agent.agent_name?.trim() || 'Centinelia';
-  const planColor    = PLAN_COLORS[agent.plan] ?? '#6b7280';
-  const planLabel    = PLAN_LABELS[agent.plan] ?? agent.plan;
   const features     = (agent.features ?? {}) as Record<string, unknown>;
   const roleColor    = (features.role_color as string) || '#6C3BFF';
   const agentRole    = (agent as any).role?.trim() ?? '';
-  const showOutbound = process.env.NODE_ENV === 'development' ? true : !!(features.outbound_calls);
+  const meerkatId    = (features.meerkat_role_id as string | null) ?? null;
+  const colorLocked  = !!meerkatId && meerkatId !== 'custom';
+  const teamNumbers  = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
@@ -62,7 +68,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               style={{ color: 'var(--c-text-2)' }}
             >
               <ChevronLeft size={16} />
-              Mis agentes
+              Mis empleados
             </Link>
             <div className="flex items-center gap-1.5">
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
@@ -81,10 +87,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <AgentNameEditor token={token} initialName={agentName} />
-                <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                  style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}>
-                  {planLabel}
-                </span>
                 {agentRole && (
                   <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
                     style={{ background: `${roleColor}1f`, color: roleColor, border: `1px solid ${roleColor}40` }}>
@@ -103,55 +105,57 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
 
           {agent.plan === 'pro' && (
-            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-              <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Voz del agente
-              </h2>
-              <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-                Elige la voz con la que tu agente atenderá las llamadas. Usa el botón ▶ para escuchar una muestra.
-              </p>
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Voz del empleado
+                </h2>
+                <InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />
+              </div>
               <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
             </div>
           )}
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Base de conocimiento del agente
-            </h2>
-            <p className="text-xs mb-5" style={{ color: 'var(--c-text-2)' }}>
-              Define el rol de este agente y las instrucciones específicas que usará en campo.
-            </p>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Base de conocimiento
+              </h2>
+              <InfoTooltip text="Define el rol de este empleado y las instrucciones específicas que usará en campo." />
+            </div>
             <AgentKnowledgeBaseEditor
               token={token}
               initialRole={(agent as any).role ?? ''}
               initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
               initialRoleKb={(agent as any).role_knowledge_base ?? ''}
               initialLearnings={(agent as any).role_learnings ?? ''}
+              websiteSynced={!!((agent as any).website_knowledge)}
+              hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
+              colorLocked={colorLocked}
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Llamadas entrantes
-            </h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-              Ajusta cómo saluda el agente, cuándo transfiere y cómo trata a los clientes.
-            </p>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Llamadas entrantes
+              </h2>
+              <InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />
+            </div>
             <AgentCustomization
               token={token}
               initGreeting={(agent as any).first_message ?? ''}
               initTransferRules={(agent as any).transfer_rules ?? ''}
-              initSpeechStyle={(agent as any).speech_style ?? 'usted'}
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-            <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Notificaciones
-            </h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
-              Elige cómo quieres recibir la información de cada llamada.
-            </p>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Notificaciones
+              </h2>
+              <InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />
+            </div>
             <NotificationsToggle
               token={token}
               initWhatsApp={(agent as any).notify_whatsapp ?? true}
@@ -159,29 +163,35 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Números del equipo
+              </h2>
+              <InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />
+            </div>
+            <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
+          </div>
+
+          {isOwner && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Frase de verificación interna
+                </h2>
+                <InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />
+              </div>
+              <PassphraseEditor token={token} initial={(agent as any).owner_passphrase ?? ''} />
+            </div>
+          )}
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <ResyncButton token={token} />
           </div>
 
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 px-4 sm:px-6 py-4" style={{ borderTop: '1px solid var(--c-border)' }}>
-          <div className="max-w-4xl mx-auto">
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-              Powered by{' '}
-              <a
-                href="https://pneumastudio.mx"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'var(--c-text-4)' }}
-                className="hover:opacity-80 transition-opacity"
-              >
-                Pneuma Studio
-              </a>
-            </span>
-          </div>
-        </div>
+        <PortalFooter noSidebar />
 
       </div>
     </ThemeProvider>

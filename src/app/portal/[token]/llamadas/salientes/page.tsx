@@ -103,33 +103,35 @@ export default async function SalientesPage({ params, searchParams }: Props) {
             aiOpsLimit={aiOpsLimit}
           />
 
-          <div className="flex-1 min-w-0 px-4 sm:px-6 py-6 flex flex-col gap-5">
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
 
-            <div className="flex items-center gap-2">
-              <PhoneOutgoing size={15} style={{ color: '#a855f7' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
+              <div className="flex items-center gap-2">
+                <PhoneOutgoing size={15} style={{ color: '#a855f7' }} />
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
+              </div>
+
+              <div id="llamadas-sal">
+                <OutboundToggles
+                  token={token}
+                  initOutbound={!!(features.outbound_calls)}
+                  initMissedCallRecovery={!!(agent as any).missed_call_recovery}
+                />
+              </div>
+
+              {!!(features.outbound_calls) && (
+                <OutboundSection
+                  token={token}
+                  initialContacts={contactOutbound as any[]}
+                  initialCampaigns={outboundCampaigns as any[]}
+                  agents={allClientAgents
+                    .filter(a => !!(a.features as any)?.outbound_calls)
+                    .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+                  initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
+                />
+              )}
+
             </div>
-
-            <div id="llamadas-sal">
-              <OutboundToggles
-                token={token}
-                initOutbound={!!(features.outbound_calls)}
-                initMissedCallRecovery={!!(agent as any).missed_call_recovery}
-              />
-            </div>
-
-            {!!(features.outbound_calls) && (
-              <OutboundSection
-                token={token}
-                initialContacts={contactOutbound as any[]}
-                initialCampaigns={outboundCampaigns as any[]}
-                agents={allClientAgents
-                  .filter(a => !!(a.features as any)?.outbound_calls)
-                  .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
-                initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
-              />
-            )}
-
             <PortalFooter />
           </div>
         </div>

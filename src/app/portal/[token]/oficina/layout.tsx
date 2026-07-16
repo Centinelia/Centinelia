@@ -33,7 +33,7 @@ export default async function OficinaLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id')
+    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -57,6 +57,8 @@ export default async function OficinaLayout({
   const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
   const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
   const hasStripe  = !!(agent as any).stripe_customer_id;
+  const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
+  const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   // Business switcher options
   const { data: clientAgents } = lookupEmail
@@ -170,9 +172,11 @@ export default async function OficinaLayout({
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
             hasStripe={hasStripe}
+            vertical={vertical}
+            modules={modules}
           />
-          <div className="flex-1 min-w-0 flex flex-col max-w-4xl">
-            <div className="px-4 sm:px-6 py-6 flex-1">
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="max-w-4xl px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>
             <PortalFooter />

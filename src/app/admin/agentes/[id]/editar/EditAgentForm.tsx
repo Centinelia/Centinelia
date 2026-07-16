@@ -35,6 +35,9 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   client_memory:           'Recuerda información de llamadas anteriores del mismo número',
   whatsapp_escalation:     'Envía un WhatsApp al dueño si el agente no puede resolver',
   outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
+  vertical:                '',
+  helpdesk:                'Mesa de ayuda IT',
+  is_coordinator:          'Coordinador de equipo',
 };
 
 const DAYS: { key: keyof BusinessHours; label: string }[] = [
@@ -82,6 +85,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const [role, setRole]                   = useState<string>((agent as any).role ?? '');
   const [plan, setPlan]                   = useState<Plan>(agent.plan);
   const [features, setFeatures]           = useState<AgentFeatures>(agent.features);
+  const [vertical, setVertical]           = useState<'negocio' | 'gobierno'>((agent.features as any).vertical ?? 'negocio');
   const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
   const [hoursEnabled, setHoursEnabled]   = useState<boolean>(!!agent.business_hours);
   const [waActive, setWaActive]           = useState<boolean>(!!agent.wa_phone_number);
@@ -144,7 +148,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
       role,
       role_knowledge_base: fd.get('role_knowledge_base'),
       plan,
-      features,
+      features: { ...features, vertical },
       business_hours:         hoursEnabled ? businessHours : null,
       minutes_included:       PLAN_MINUTES[plan],
       wa_phone_number:        plan === 'pro' && waActive ? (agent.phone_number ?? null) : null,
@@ -194,6 +198,33 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
 
         {/* ── Tab: Información ─────────────────────────────────────────── */}
         <div className={tab !== 'info' ? 'hidden' : 'flex flex-col gap-6'}>
+
+          <Section title="Vertical del cliente">
+            <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+              Determina qué secciones de Oficina se muestran en el portal del cliente.
+            </p>
+            <div className="flex gap-2">
+              {([
+                { value: 'negocio',  label: 'Negocio',  desc: 'Empresas, comercios, servicios'   },
+                { value: 'gobierno', label: 'Gobierno',  desc: 'Municipios, dependencias, H. Cabildo' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVertical(opt.value)}
+                  className="flex-1 flex flex-col gap-0.5 px-4 py-3 rounded-xl text-left transition-all"
+                  style={{
+                    background: vertical === opt.value ? 'rgba(108,59,255,0.15)' : 'var(--c-surface-2)',
+                    border:     vertical === opt.value ? '2px solid rgba(108,59,255,0.5)' : '2px solid var(--c-border)',
+                    color:      vertical === opt.value ? '#9B6DFF' : 'var(--c-text-2)',
+                  }}
+                >
+                  <span className="text-sm font-semibold">{opt.label}</span>
+                  <span className="text-xs opacity-70">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
 
           <Section title="Segundo rol">
             <div>

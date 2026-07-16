@@ -82,7 +82,7 @@ export default function IndustriasPage() {
           <h1 className="font-bold leading-tight mb-5" style={{ fontSize: 'clamp(2.2rem, 5vw, 3.6rem)', color: '#fff' }}>
             ¿En qué tipo de{' '}
             <span style={{ background: 'linear-gradient(135deg, #9B6DFF, #C4A8FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              negocio trabajas?
+              organización trabajas?
             </span>
           </h1>
           <p style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
@@ -179,7 +179,7 @@ export default function IndustriasPage() {
               >
                 <p className="font-bold text-white" style={{ fontSize: '1rem' }}>¿No encuentras tu giro?</p>
                 <p className="text-sm leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.78)' }}>
-                  Tu empleado telefónico IA funciona para cualquier negocio que reciba o necesite hacer llamadas. Platica con nosotros y lo configuramos a tu medida.
+                  Tu empleado telefónico IA funciona para cualquier organización que reciba o necesite hacer llamadas. Platica con nosotros y lo configuramos a tu medida.
                 </p>
                 <Link
                   href="/registro"

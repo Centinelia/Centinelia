@@ -223,10 +223,7 @@ export default function SupportChat() {
         }}
         aria-label="Soporte"
       >
-        {open
-          ? <X size={22} color="#fff" />
-          : <MessageCircle size={22} color="#fff" />
-        }
+        {open ? <X size={22} color="#fff" /> : <MessageCircle size={22} color="#fff" />}
       </button>
     </>
   );

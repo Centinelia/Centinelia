@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
+import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 
 export default function OutboundInstructionsEditor({
   token,
@@ -13,6 +14,9 @@ export default function OutboundInstructionsEditor({
   const [value, setValue]   = useState(initialValue);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
+  const [dirty, setDirty]   = useState(false);
+
+  useDirtyWarning('outbound-instructions', dirty);
 
   const SOFT_LIMIT = 5_000;
   const HARD_LIMIT = 10_000;
@@ -33,7 +37,7 @@ export default function OutboundInstructionsEditor({
       body: JSON.stringify({ outbound_knowledge_base: value }),
     });
     setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
   };
 
   return (
@@ -43,7 +47,7 @@ export default function OutboundInstructionsEditor({
       </p>
       <textarea
         value={value}
-        onChange={e => { setValue(e.target.value); setSaved(false); }}
+        onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}
         rows={10}
         placeholder={
           'OBJETIVO:\n' +
