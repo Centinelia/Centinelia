@@ -12,7 +12,8 @@ export default async function ConsultarPage({ params }: Props) {
   const { token } = await params;
 
   const cookieStore = await cookies();
-  await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  const isOwner = !session?.isSubUser;
 
   const supabase = createAdminClient();
 
@@ -44,5 +45,5 @@ export default async function ConsultarPage({ params }: Props) {
   const opsUsed  = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_used  ?? 0), 0);
   const opsLimit = (opsAgents ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
 
-  return <div id="of-chat"><ConsultarAgentChat token={token} agents={agents} opsUsed={opsUsed} opsLimit={opsLimit} /></div>;
+  return <div id="of-chat"><ConsultarAgentChat token={token} agents={agents} opsUsed={opsUsed} opsLimit={opsLimit} isOwner={isOwner} /></div>;
 }

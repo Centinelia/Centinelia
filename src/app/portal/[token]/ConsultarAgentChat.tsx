@@ -44,12 +44,13 @@ export interface AgentOption {
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
-function welcomeMsg(agent: AgentOption): Message {
+function welcomeMsg(agent: AgentOption, isOwner: boolean): Message {
   const name = agent.agent_name?.trim() || 'Centinelia';
   const role = agent.role?.trim();
+  const who  = isOwner ? 'empleado' : 'compañero';
   return {
     role:    'assistant',
-    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y manual de la empresa. ¿En qué te puedo ayudar?`,
+    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Soy tu ${who} digital y tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y manual de la empresa. ¿En qué te puedo ayudar?`,
   };
 }
 
@@ -58,9 +59,10 @@ interface Props {
   agents:   AgentOption[];
   opsUsed?: number;
   opsLimit?: number;
+  isOwner?: boolean;
 }
 
-export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }: Props) {
+export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit, isOwner = true }: Props) {
   const [selectedId, setSelectedId]   = useState<string>(agents[0]?.id ?? '');
   const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
   const [input, setInput]             = useState('');
@@ -69,7 +71,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
   const selectedAgent = agents.find(a => a.id === selectedId) ?? agents[0];
-  const messages: Message[] = chatHistory[selectedId] ?? (selectedAgent ? [welcomeMsg(selectedAgent)] : []);
+  const messages: Message[] = chatHistory[selectedId] ?? (selectedAgent ? [welcomeMsg(selectedAgent, isOwner)] : []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,7 +85,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
     const text = input.trim();
     if (!text || streaming || !selectedAgent) return;
 
-    const current = chatHistory[selectedId] ?? [welcomeMsg(selectedAgent)];
+    const current = chatHistory[selectedId] ?? [welcomeMsg(selectedAgent, isOwner)];
     const next: Message[] = [...current, { role: 'user', content: text }];
 
     setChatHistory(prev => ({ ...prev, [selectedId]: next }));
@@ -153,7 +155,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
       setChatHistory(prev => ({
         ...prev,
         [selectedId]: [
-          ...(prev[selectedId] ?? [welcomeMsg(selectedAgent)]),
+          ...(prev[selectedId] ?? [welcomeMsg(selectedAgent, isOwner)]),
           { role: 'assistant', content: 'No pude conectarme. Verifica tu conexión.' },
         ],
       }));
@@ -165,7 +167,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
   if (!selectedAgent) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay empleados disponibles.</p>
+        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay {isOwner ? 'empleados' : 'compañeros'} disponibles.</p>
       </div>
     );
   }
@@ -341,7 +343,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
                 send();
               }
             }}
-            placeholder="Pregúntale a tu empleado… (Enter para enviar)"
+            placeholder={`Pregúntale a tu ${isOwner ? 'empleado' : 'compañero'}… (Enter para enviar)`}
             disabled={streaming}
             rows={1}
             className="flex-1 text-sm outline-none resize-none leading-relaxed"
