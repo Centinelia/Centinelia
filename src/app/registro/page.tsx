@@ -433,12 +433,12 @@ function MeerkatCard({
       </div>
 
       {/* Text */}
-      <div style={{ padding: '10px 8px 12px', width: '100%', background: '#F4F0FF' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: '#1A0A3B', lineHeight: 1.2 }}>
+      <div style={{ padding: '10px 8px 12px', width: '100%', background: 'rgba(255,255,255,0.07)' }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2 }}>
           {role.nombre}
         </div>
         {role.rol && (
-          <div style={{ fontSize: 12, fontWeight: 600, color: role.color, marginTop: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: lightenColor(role.color, 0.45), marginTop: 4 }}>
             {role.rol}
           </div>
         )}
