@@ -81,6 +81,17 @@ ${guardrails.trim()}
 Estos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
   }
 
+  // ── Trust stage ──────────────────────────────────────────────────────────
+  const trustStage = (agent as unknown as Record<string, unknown>).trust_stage as number | undefined;
+  const stage = trustStage ?? 3;
+  if (stage === 1) {
+    blocks.push(`MODO DE OPERACIÓN — OBSERVADOR:
+Estás en etapa de observación. NO ejecutes ninguna acción por tu cuenta (no guardes leads, no agendes citas, no inicies seguimientos). Solo responde preguntas, recopila información y avisa al equipo para que ellos actúen. Di al cliente: "Voy a pasar esta solicitud al equipo para que te contacten."`);
+  } else if (stage === 2) {
+    blocks.push(`MODO DE OPERACIÓN — SUPERVISADO:
+Puedes ejecutar tus responsabilidades, pero SIEMPRE notifica al responsable inmediatamente después de cada acción que tomes: qué hiciste, por qué y qué datos capturaste. El equipo revisa todo lo que haces en tiempo real.`);
+  }
+
   // ── Heartbeat / proactive schedule ───────────────────────────────────────
   const heartbeatConfig = (agent as unknown as Record<string, unknown>).heartbeat_config as Record<string, unknown> | undefined;
   if (heartbeatConfig?.enabled) {

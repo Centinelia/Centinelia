@@ -31,6 +31,14 @@ SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades 
     blocks.push(`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:\n${guardrails.trim()}\nEstos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
   }
 
+  const trustStage = (agent as unknown as Record<string, unknown>).trust_stage as number | undefined;
+  const stage = trustStage ?? 3;
+  if (stage === 1) {
+    blocks.push(`MODO DE OPERACIÓN — OBSERVADOR:\nEstás en etapa de observación. NO ejecutes ninguna acción por tu cuenta (no guardes leads, no agendes citas, no inicies seguimientos). Solo responde preguntas, recopila información y avisa al equipo para que ellos actúen.`);
+  } else if (stage === 2) {
+    blocks.push(`MODO DE OPERACIÓN — SUPERVISADO:\nPuedes ejecutar tus responsabilidades, pero SIEMPRE notifica al responsable inmediatamente después de cada acción que tomes: qué hiciste, por qué y qué datos capturaste.`);
+  }
+
   const heartbeatConfig = (agent as unknown as Record<string, unknown>).heartbeat_config as Record<string, unknown> | undefined;
   if (heartbeatConfig?.enabled) {
     const freq    = heartbeatConfig.frequency === 'weekly' ? 'semanal' : 'diario';
