@@ -837,7 +837,7 @@ function RegistroInner() {
 
                 return (
                   <div key={rowIdx}>
-                    <div className="grid grid-cols-3 gap-3 mb-2">
+                    <div className="grid grid-cols-3 gap-3 mb-2 items-start">
                       {rowRoles.map(role => (
                         <MeerkatCard
                           key={role.id}
@@ -1027,7 +1027,7 @@ function RegistroInner() {
             </h1>
             <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
-                ? 'Nox no hace llamadas: su costo es solo de operaciones IA. Puedes cambiarlo desde el portal en cualquier momento.'
+                ? `${selectedMeerkat?.nombre ?? 'El director'} no hace llamadas: su costo es solo de operaciones IA. Puedes cambiarlo desde el portal en cualquier momento.`
                 : 'La mensualidad depende de los minutos que necesites. Puedes cambiarlo en cualquier momento desde el portal.'
               }
             </p>
@@ -1130,7 +1130,7 @@ function RegistroInner() {
 
             <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
               {isCoordinator
-                ? 'Nox coordina sin llamadas. Las operaciones extra tienen costo adicional.'
+                ? `${selectedMeerkat?.nombre ?? 'El director'} coordina sin llamadas. Las operaciones extra tienen costo adicional.`
                 : <>Minutos extra: $12.99 MXN / min<br />+35 ops IA por cada 100 min adicionales</>
 
               }
@@ -1157,7 +1157,7 @@ function RegistroInner() {
             <h1 className="text-2xl font-bold text-white mb-1">Tu organización</h1>
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
-                ? `${selectedMeerkat?.nombre ?? 'Nox'} usará esta información para coordinar y reportar al equipo.`
+                ? `${selectedMeerkat?.nombre ?? 'El director'} usará esta información para coordinar y reportar al equipo.`
                 : 'Tu empleado usará esta información para atender tus llamadas.'
               }
             </p>
