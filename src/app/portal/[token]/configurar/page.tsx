@@ -26,6 +26,7 @@ import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 import GuardrailsEditor              from '../GuardrailsEditor';
 import HeartbeatEditor               from '../HeartbeatEditor';
 import TrustStageSelector           from '../TrustStageSelector';
+import HistoricalSynthesisSection   from '../HistoricalSynthesisSection';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -252,6 +253,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               <PassphraseEditor token={token} initial={(agent as any).owner_passphrase ?? ''} />
             </div>
           )}
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Aprendizaje del historial
+              </h2>
+              <InfoTooltip text="Analiza los patrones de los últimos 60 días de llamadas para detectar brechas en el manual y generar sugerencias concretas de mejora." />
+            </div>
+            <HistoricalSynthesisSection token={token} />
+          </div>
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <ResyncButton token={token} />
