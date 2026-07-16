@@ -433,7 +433,7 @@ function MeerkatCard({
       </div>
 
       {/* Text */}
-      <div style={{ padding: '10px 8px 12px', width: '100%', background: 'rgba(255,255,255,0.07)' }}>
+      <div style={{ padding: '10px 8px 12px', width: '100%', background: 'rgba(255,255,255,0.07)', flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2 }}>
           {role.nombre}
         </div>
@@ -837,7 +837,7 @@ function RegistroInner() {
 
                 return (
                   <div key={rowIdx}>
-                    <div className="grid grid-cols-3 gap-3 mb-2 items-start">
+                    <div className="grid grid-cols-3 gap-3 mb-2">
                       {rowRoles.map(role => (
                         <MeerkatCard
                           key={role.id}
