@@ -113,7 +113,7 @@ export default function KnowledgeBaseEditor({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-        El agente consulta esta información en todas sus conversaciones — llamadas entrantes y salientes. Incluye servicios, precios, FAQs y cualquier detalle que deba conocer.
+        Tu empleado consulta esta información en todas sus interacciones — llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deba conocer.
       </p>
       <textarea
         value={value}

@@ -49,7 +49,7 @@ function welcomeMsg(agent: AgentOption): Message {
   const role = agent.role?.trim();
   return {
     role:    'assistant',
-    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y base de conocimiento. ¿En qué te puedo ayudar?`,
+    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y manual de la empresa. ¿En qué te puedo ayudar?`,
   };
 }
 
@@ -102,7 +102,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
 
       if (!res.ok || !res.body) {
         const errMsg = res.status === 429
-          ? 'Tu cuenta alcanzó el límite de operaciones IA este mes. Compra más ops desde Cuenta → Minutos y uso.'
+          ? 'Tu cuenta alcanzó el límite de tareas este mes. Compra más minutos desde Cuenta → Minutos y uso.'
           : 'Ocurrió un error. Intenta de nuevo.';
         setChatHistory(prev => ({
           ...prev,
@@ -165,7 +165,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
   if (!selectedAgent) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay agentes disponibles.</p>
+        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay empleados disponibles.</p>
       </div>
     );
   }
@@ -241,12 +241,12 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
             {opsLimit !== undefined && opsLimit > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full"
                 style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                {(opsLimit - (opsUsed ?? 0))} ops restantes
+                {(opsLimit - (opsUsed ?? 0))} tareas restantes
               </span>
             )}
             <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
               <Zap size={10} style={{ color: '#9B6DFF' }} />
-              3–13 ops/msg
+              3–13 tareas/mensaje
             </span>
           </div>
         </div>
@@ -341,7 +341,7 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit }:
                 send();
               }
             }}
-            placeholder="Pregúntale a tu agente… (Enter para enviar)"
+            placeholder="Pregúntale a tu empleado… (Enter para enviar)"
             disabled={streaming}
             rows={1}
             className="flex-1 text-sm outline-none resize-none leading-relaxed"

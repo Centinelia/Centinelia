@@ -425,7 +425,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
 
         {/* ── Correo OAuth ───────────────────────────────────────────── */}
         <Section id="correo" label="Correo"
-          description="Conecta tu cuenta de Gmail u Outlook para que el agente lea y gestione tu bandeja de entrada directamente.">
+          description="Conecta tu cuenta de Gmail u Outlook para que tu empleado lea y gestione tu bandeja de entrada directamente.">
           <EmailOAuthSection token={token} />
         </Section>
 
@@ -454,7 +454,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
         </div>
         {hasNotion && (
           <Section label="Validación de bases de datos"
-            description="Define la estructura esperada de tus bases de datos. El agente revisa cada semana que todo esté en orden y te avisa si hay entradas con campos vacíos o valores incorrectos.">
+            description="Define la estructura esperada de tus bases de datos. Tu empleado revisa cada semana que todo esté en orden y te avisa si hay entradas con campos vacíos o valores incorrectos.">
             <NotionSchemasSection token={token} />
           </Section>
         )}
@@ -465,7 +465,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, i
             <div className="px-5 pt-5 pb-1" style={{ background: 'var(--c-surface)' }}>
               <div className="flex items-center gap-1.5 mb-4">
                 <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Mensajería</h2>
-                <InfoTooltip text="Conecta Microsoft Teams via Power Automate para que el agente lea y responda mensajes automáticamente." />
+                <InfoTooltip text="Conecta Microsoft Teams via Power Automate para que tu empleado lea y responda mensajes automáticamente." />
               </div>
             </div>
             <div className="px-5 pb-5" style={{ background: 'var(--c-surface)' }}>

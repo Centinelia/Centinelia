@@ -182,7 +182,7 @@ export default function EmailOAuthSection({ token }: { token: string }) {
                 <div className="flex items-start gap-2">
                   <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
                   <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-                    La sesion expiro o fue revocada. El agente no puede leer ni responder correos hasta que reconectes la cuenta.
+                    La sesion expiro o fue revocada. Tu empleado no puede leer ni responder correos hasta que reconectes la cuenta.
                   </p>
                 </div>
                 <a
@@ -202,8 +202,8 @@ export default function EmailOAuthSection({ token }: { token: string }) {
                   : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
                 <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                   {connected.auto_reply
-                    ? 'El agente responde automaticamente a los correos entrantes usando el borrador generado por IA, sin requerir tu aprobacion.'
-                    : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibiras un correo para aprobar o descartar la respuesta del agente.'}
+                    ? 'Tu empleado responde automaticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobacion.'
+                    : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibiras un correo para aprobar o descartar la respuesta de tu empleado.'}
                 </p>
               </div>
             )}

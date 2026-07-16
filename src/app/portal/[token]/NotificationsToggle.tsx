@@ -87,7 +87,7 @@ export default function NotificationsToggle({ token, initWhatsApp, initEmail }: 
       field: 'notify_email',
       icon:  <Mail size={15} color="#6C3BFF" />,
       label: 'Notificación por email',
-      desc:  'Recibe un email cuando el agente capture un lead, cita o pedido.',
+      desc:  'Recibe un email cuando tu empleado capture un lead, cita o pedido.',
       value: email,
       set:   (v) => { setEmail(v); update('notify_email', v); },
     },

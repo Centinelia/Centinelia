@@ -153,7 +153,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
-        Define la estructura esperada de tus bases de datos de Notion. El agente valida semanalmente que cada entrada cumpla el schema y te notifica si hay problemas.
+        Define la estructura esperada de tus bases de datos de Notion. Tu empleado valida semanalmente que cada entrada cumpla el schema y te notifica si hay problemas.
       </p>
 
       {/* Create form */}

@@ -99,7 +99,7 @@ export default function LearningsSection({ token }: { token: string }) {
         >
           <p className="text-sm" style={{ color: 'var(--c-text-sub)' }}>
             Los aprendizajes aparecen aquí cuando el equipo termina llamadas.
-            <br />Puedes aprobarlos para que el agente los incorpore a su conocimiento.
+            <br />Puedes aprobarlos para que tu empleado los incorpore a su conocimiento.
           </p>
         </div>
       )}
@@ -184,7 +184,7 @@ export default function LearningsSection({ token }: { token: string }) {
             className="text-xs font-semibold uppercase tracking-wider mb-3"
             style={{ color: 'var(--c-text-sub)' }}
           >
-            Ya en base de conocimiento
+            Ya incorporado
           </p>
           <div className="space-y-2">
             {approved.slice(0, 8).map(l => (

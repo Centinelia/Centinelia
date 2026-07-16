@@ -25,7 +25,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   {
     id:           'cal_com',
     label:        'Cal.com',
-    description:  'Agendamiento directo, el agente crea la cita durante la llamada',
+    description:  'Agendamiento directo, tu empleado crea la cita durante la llamada',
     requiredPlan: 'comercial',
     accentColor:  '#000',
     icon: (
@@ -38,7 +38,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   {
     id:           'calendly',
     label:        'Calendly',
-    description:  'Agendamiento vía link, el agente comparte tu URL por WhatsApp',
+    description:  'Agendamiento vía link, tu empleado comparte tu URL por WhatsApp',
     requiredPlan: 'comercial',
     accentColor:  '#006BFF',
     icon: (
@@ -51,7 +51,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   {
     id:           'google',
     label:        'Google Calendar',
-    description:  'Agendamiento vía link, el agente comparte tu URL por WhatsApp',
+    description:  'Agendamiento vía link, tu empleado comparte tu URL por WhatsApp',
     requiredPlan: 'comercial',
     accentColor:  '#4285F4',
     icon: (
@@ -229,13 +229,13 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
 
                   {intg.id === 'google' && (
                     <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(66,133,244,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(66,133,244,0.15)' }}>
-                      El agente captura nombre, servicio y horario durante la llamada. Al terminar, envía tu link de reserva por WhatsApp para que el cliente confirme.
+                      Tu empleado captura nombre, servicio y horario durante la llamada. Al terminar, envía tu link de reserva por WhatsApp para que el cliente confirme.
                     </p>
                   )}
 
                   {intg.id === 'calendly' && (
                     <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(0,107,255,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(0,107,255,0.15)' }}>
-                      El agente captura nombre y servicio durante la llamada. Al terminar, envía tu link de Calendly por WhatsApp para que el cliente seleccione su horario. Para agendamiento directo sin link, usa Cal.com.
+                      Tu empleado captura nombre y servicio durante la llamada. Al terminar, envía tu link de Calendly por WhatsApp para que el cliente seleccione su horario. Para agendamiento directo sin link, usa Cal.com.
                     </p>
                   )}
 
@@ -316,7 +316,7 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
           <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Podemos conectar cualquier sistema, escríbenos</p>
         </div>
         {SUPPORT_WA && (
-          <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('¡Hola! Quiero conectar una herramienta a mi agente de voz, ¿pueden ayudarme?')}`}
+          <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('¡Hola! Quiero conectar una herramienta a mi empleado digital, ¿pueden ayudarme?')}`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
             style={{ background: '#25D366', color: '#fff' }}>

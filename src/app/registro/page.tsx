@@ -893,8 +893,8 @@ function RegistroInner() {
               );
             })}
           </div>
-          {/* Row 2: labels — absolutely centered under each circle */}
-          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          {/* Row 2: labels — hidden on mobile to avoid overlap, visible on sm+ */}
+          <div className="hidden sm:flex" style={{ alignItems: 'flex-start' }}>
             {STEP_LABELS.map((label, i) => {
               const n      = (i + 1) as 1 | 2 | 3 | 4;
               const done   = step > n;
@@ -902,34 +902,38 @@ function RegistroInner() {
               const canNav = done;
               return (
                 <div key={label} style={{ display: 'flex', alignItems: 'flex-start' }}>
-                  {/* Container same width as circle — label anchored to center */}
-                  <div className="w-6 sm:w-8 flex-shrink-0" style={{ position: 'relative', height: 20 }}>
+                  <div className="w-8 flex-shrink-0" style={{ position: 'relative', height: 20 }}>
                     <button
                       type="button"
                       onClick={() => { if (canNav) { setError(''); if (n === 1) setOverlayOpen(false); setStep(n); } }}
-                      className="text-[9px] sm:text-[11px] font-medium leading-tight"
+                      className="text-[11px] font-medium leading-tight"
                       style={{
-                        position:           'absolute',
-                        left:               '50%',
-                        transform:          'translateX(-50%)',
-                        whiteSpace:         'nowrap',
-                        cursor:             canNav ? 'pointer' : 'default',
-                        background:         'none',
-                        border:             'none',
-                        padding:            0,
-                        color:              active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
-                        textDecoration:     canNav ? 'underline' : 'none',
+                        position:            'absolute',
+                        left:                '50%',
+                        transform:           'translateX(-50%)',
+                        whiteSpace:          'nowrap',
+                        cursor:              canNav ? 'pointer' : 'default',
+                        background:          'none',
+                        border:              'none',
+                        padding:             0,
+                        color:               active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
+                        textDecoration:      canNav ? 'underline' : 'none',
                         textUnderlineOffset: 2,
                       }}
                     >
                       {label}
                     </button>
                   </div>
-                  {i < 3 && <div className="w-4 sm:w-14 mx-0.5 sm:mx-1 flex-shrink-0" />}
+                  {i < 3 && <div className="w-14 mx-1 flex-shrink-0" />}
                 </div>
               );
             })}
           </div>
+          {/* Mobile: single step line — no overlap risk */}
+          <p className="sm:hidden text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Paso {step} de 4
+            <span style={{ color: '#9B6DFF' }}> · {STEP_LABELS[step - 1]}</span>
+          </p>
         </div>
 
         {canceled && (

@@ -117,7 +117,7 @@ export default function BusinessHoursEditor({
             {enabled ? 'Horario restringido' : 'Sin restricción (24/7)'}
           </div>
           <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {enabled ? 'El agente solo contesta en este horario' : 'El agente siempre contesta'}
+            {enabled ? 'Tu empleado solo contesta en este horario' : 'Tu empleado siempre contesta'}
           </div>
         </div>
         <Toggle on={enabled} onToggle={handleMasterToggle} />

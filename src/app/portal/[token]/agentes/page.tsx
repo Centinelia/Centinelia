@@ -149,7 +149,7 @@ export default async function AgentesPage({ params }: Props) {
                 {hasRole && (
                   <span className="flex items-center gap-1 text-sm sm:text-base">
                     <Zap size={14} />
-                    {(a.ai_ops_used as number) ?? 0} ops este mes
+                    {(a.ai_ops_used as number) ?? 0} tareas este mes
                   </span>
                 )}
               </div>

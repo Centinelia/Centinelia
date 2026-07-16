@@ -87,7 +87,7 @@ export default function AgentRankingSection({ token }: { token: string }) {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Trophy size={15} style={{ color: '#f59e0b' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Ranking de agentes</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Ranking del equipo</h2>
         </div>
         <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
           {(['semana', 'mes', 'año'] as Period[]).map(p => (
@@ -128,10 +128,10 @@ export default function AgentRankingSection({ token }: { token: string }) {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 mb-1 px-1">
               <Zap size={12} style={{ color: '#a855f7' }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#a855f7' }}>Ops de IA</span>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#a855f7' }}>Tareas</span>
             </div>
             {byOps.map((a, i) => (
-              <RankRow key={a.id} agent={a} rank={i} value={a.ops} unit="ops" />
+              <RankRow key={a.id} agent={a} rank={i} value={a.ops} unit="tareas" />
             ))}
           </div>
 

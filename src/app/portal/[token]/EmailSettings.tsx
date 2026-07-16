@@ -124,7 +124,7 @@ export default function EmailSettings({ token }: { token: string }) {
         ) : (
           <>
             <p className="text-xs mb-3" style={{ color: 'var(--c-text-sub)', lineHeight: 1.6 }}>
-              Registra el correo de tu empresa para que los agentes envíen desde <strong>tu dominio</strong> en lugar de centinelia.mx.
+              Registra el correo de tu empresa para que tu empleado envíe desde <strong>tu dominio</strong> en lugar de centinelia.mx.
               Necesitarás agregar registros DNS a tu proveedor (GoDaddy, Namecheap, Cloudflare, etc.).
             </p>
 
