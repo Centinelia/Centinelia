@@ -31,6 +31,17 @@ SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades 
     blocks.push(`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:\n${guardrails.trim()}\nEstos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
   }
 
+  const heartbeatConfig = (agent as unknown as Record<string, unknown>).heartbeat_config as Record<string, unknown> | undefined;
+  if (heartbeatConfig?.enabled) {
+    const freq    = heartbeatConfig.frequency === 'weekly' ? 'semanal' : 'diario';
+    const hour    = heartbeatConfig.hour as number;
+    const hourStr = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+    const task    = (heartbeatConfig.task as string | undefined)?.trim();
+    if (task) {
+      blocks.push(`RESPONSABILIDADES PROACTIVAS — CHECK-IN ${freq.toUpperCase()}:\nTienes configurado un check-in ${freq} a las ${hourStr}.\nCuando seas activado para esta tarea programada, ejecutas: ${task}\nRepórtale el resultado al responsable por los canales configurados.`);
+    }
+  }
+
   const dod = (agent as unknown as Record<string, unknown>).definition_of_done as string | undefined;
   if (dod?.trim()) {
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:\n${dod.trim()}\nEsta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);

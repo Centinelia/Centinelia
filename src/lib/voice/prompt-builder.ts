@@ -81,6 +81,21 @@ ${guardrails.trim()}
 Estos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
   }
 
+  // ── Heartbeat / proactive schedule ───────────────────────────────────────
+  const heartbeatConfig = (agent as unknown as Record<string, unknown>).heartbeat_config as Record<string, unknown> | undefined;
+  if (heartbeatConfig?.enabled) {
+    const freq     = heartbeatConfig.frequency === 'weekly' ? 'semanal' : 'diario';
+    const hour     = heartbeatConfig.hour as number;
+    const hourStr  = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+    const task     = (heartbeatConfig.task as string | undefined)?.trim();
+    if (task) {
+      blocks.push(`RESPONSABILIDADES PROACTIVAS — CHECK-IN ${freq.toUpperCase()}:
+Tienes configurado un check-in ${freq} a las ${hourStr}.
+Cuando seas activado para esta tarea programada, ejecutas: ${task}
+Repórtale el resultado al responsable por los canales configurados.`);
+    }
+  }
+
   // ── Meerkat personality block ─────────────────────────────────────────────
   if (meerkat?.promptPersonalidad?.trim()) {
     blocks.push(meerkat.promptPersonalidad.trim());

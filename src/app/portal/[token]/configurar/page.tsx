@@ -24,6 +24,7 @@ import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 import GuardrailsEditor              from '../GuardrailsEditor';
+import HeartbeatEditor               from '../HeartbeatEditor';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -161,6 +162,19 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <GuardrailsEditor
               token={token}
               initialValue={(agent as any).agent_guardrails ?? ''}
+            />
+          </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Check-in automático
+              </h2>
+              <InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />
+            </div>
+            <HeartbeatEditor
+              token={token}
+              initConfig={(agent as any).heartbeat_config ?? null}
             />
           </div>
 
