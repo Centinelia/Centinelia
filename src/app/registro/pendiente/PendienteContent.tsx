@@ -7,11 +7,11 @@ import Image from 'next/image';
 import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 const CHECKLIST = [
-  { icon: Phone,    label: 'Número telefónico' },
-  { icon: Monitor,  label: 'Portal de administración' },
-  { icon: FileText, label: 'Memoria de conversaciones' },
-  { icon: Mic,      label: 'Voz y personalidad' },
-  { icon: Zap,      label: 'Conexiones activas' },
+  { icon: Phone,    label: 'Número telefónico asignado' },
+  { icon: Monitor,  label: 'Portal creado' },
+  { icon: FileText, label: 'Memoria inicial preparada' },
+  { icon: Mic,      label: 'Voz configurada' },
+  { icon: Zap,      label: 'Espacio de trabajo listo' },
 ];
 
 export default function PendienteContent() {
@@ -67,17 +67,15 @@ export default function PendienteContent() {
         </div>
 
         {/* Heading */}
+        <p className="text-3xl text-center mb-2">🎉</p>
         <h1 className="text-3xl font-bold text-white mb-2 text-center" style={{ letterSpacing: '-0.02em' }}>
-          Bienvenido al equipo.
+          {name} ya forma parte de tu equipo.
         </h1>
-        <p className="text-base text-center mb-1" style={{ color: 'rgba(255,255,255,0.72)' }}>
-          <strong style={{ color: '#fff' }}>{name}</strong> ya forma parte de tu organización.
-        </p>
         {role && (
           <p className="text-xs text-center mb-1" style={{ color: lightenHex(roleColor, 0.45) }}>{role}</p>
         )}
         <p className="text-sm text-center mb-8" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: 1.6 }}>
-          En este momento estamos preparando su espacio de trabajo.
+          Ahora vamos a prepararlo para que conozca tu empresa.
         </p>
 
         {/* Checklist card */}
@@ -85,7 +83,7 @@ export default function PendienteContent() {
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>
-              Preparando
+              Configurando
             </p>
           </div>
           <div style={{ padding: '10px 18px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -122,11 +120,12 @@ export default function PendienteContent() {
             })}
           </div>
 
-          {/* Time estimate */}
-          <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Clock size={13} style={{ color: roleColor, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              Tiempo estimado: <strong style={{ color: 'rgba(255,255,255,0.7)' }}>2 minutos</strong>
+          {/* Next step */}
+          <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <Clock size={13} style={{ color: roleColor, flexShrink: 0, marginTop: 2 }} />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+              Siguiente paso:<br />
+              <strong style={{ color: 'rgba(255,255,255,0.7)' }}>Enséñale cómo funciona tu organización.</strong>
             </span>
           </div>
         </div>
@@ -138,7 +137,7 @@ export default function PendienteContent() {
             className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-bold text-sm text-white text-center transition-opacity hover:opacity-90"
             style={{ background: `linear-gradient(135deg, ${roleColor}, #9B6DFF)` }}
           >
-            Configurar mi acceso al portal <ChevronRight size={15} />
+            Abrir centro de entrenamiento <ChevronRight size={15} />
           </a>
         )}
 

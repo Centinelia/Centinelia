@@ -862,44 +862,74 @@ function RegistroInner() {
       <div className={`${step === 4 ? 'max-w-3xl' : 'max-w-2xl'} mx-auto px-4 py-10`} style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Step indicator — 4 steps */}
-        <div className="flex items-center justify-center gap-0 mb-6 sm:mb-10">
-          {STEP_LABELS.map((label, i) => {
-            const n      = (i + 1) as 1 | 2 | 3 | 4;
-            const done   = step > n;
-            const active = step === n;
-            const canNav = done;
-            return (
-              <div key={label} className="flex items-center">
-                <button
-                  type="button"
-                  onClick={() => { if (canNav) { setError(''); if (n === 1) setOverlayOpen(false); setStep(n); } }}
-                  className="flex flex-col items-center"
-                  style={{ cursor: canNav ? 'pointer' : 'default', background: 'none', border: 'none', padding: 0 }}
-                >
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all"
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32, gap: 8 }}>
+          {/* Row 1: circles + connectors */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {STEP_LABELS.map((label, i) => {
+              const n      = (i + 1) as 1 | 2 | 3 | 4;
+              const done   = step > n;
+              const active = step === n;
+              const canNav = done;
+              return (
+                <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => { if (canNav) { setError(''); if (n === 1) setOverlayOpen(false); setStep(n); } }}
+                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all flex-shrink-0"
                     style={{
+                      cursor:     canNav ? 'pointer' : 'default',
                       background: done ? '#6C3BFF' : active ? 'rgba(108,59,255,0.3)' : 'rgba(255,255,255,0.05)',
                       border:     `2px solid ${done || active ? '#6C3BFF' : 'rgba(255,255,255,0.1)'}`,
                       color:      done || active ? '#fff' : 'rgba(255,255,255,0.3)',
-                    }}>
+                    }}
+                  >
                     {done ? <Check size={11} /> : n}
+                  </button>
+                  {i < 3 && (
+                    <div className="w-4 sm:w-14 h-px mx-0.5 sm:mx-1 flex-shrink-0"
+                      style={{ background: step > n + 1 ? '#6C3BFF' : 'rgba(255,255,255,0.08)' }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {/* Row 2: labels — absolutely centered under each circle */}
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            {STEP_LABELS.map((label, i) => {
+              const n      = (i + 1) as 1 | 2 | 3 | 4;
+              const done   = step > n;
+              const active = step === n;
+              const canNav = done;
+              return (
+                <div key={label} style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  {/* Container same width as circle — label anchored to center */}
+                  <div className="w-6 sm:w-8 flex-shrink-0" style={{ position: 'relative', height: 20 }}>
+                    <button
+                      type="button"
+                      onClick={() => { if (canNav) { setError(''); if (n === 1) setOverlayOpen(false); setStep(n); } }}
+                      className="text-[9px] sm:text-[11px] font-medium leading-tight"
+                      style={{
+                        position:           'absolute',
+                        left:               '50%',
+                        transform:          'translateX(-50%)',
+                        whiteSpace:         'nowrap',
+                        cursor:             canNav ? 'pointer' : 'default',
+                        background:         'none',
+                        border:             'none',
+                        padding:            0,
+                        color:              active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
+                        textDecoration:     canNav ? 'underline' : 'none',
+                        textUnderlineOffset: 2,
+                      }}
+                    >
+                      {label}
+                    </button>
                   </div>
-                  <span className="w-[52px] text-[9px] sm:text-xs mt-1 sm:mt-1.5 font-medium text-center leading-tight"
-                    style={{
-                      color:              active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
-                      textDecoration:     canNav ? 'underline' : 'none',
-                      textUnderlineOffset:2,
-                    }}>
-                    {label}
-                  </span>
-                </button>
-                {i < 3 && (
-                  <div className="w-4 sm:w-14 h-px mx-0.5 sm:mx-1 mb-4"
-                    style={{ background: step > n + 1 ? '#6C3BFF' : 'rgba(255,255,255,0.08)' }} />
-                )}
-              </div>
-            );
-          })}
+                  {i < 3 && <div className="w-4 sm:w-14 mx-0.5 sm:mx-1 flex-shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {canceled && (
