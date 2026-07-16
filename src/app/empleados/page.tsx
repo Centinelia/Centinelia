@@ -77,6 +77,11 @@ const CONTENT: Record<string, {
   },
 };
 
+// ── Per-image scale overrides (compensates for figure size differences) ───────
+const IMAGE_SCALE: Partial<Record<string, number>> = {
+  nova: 1.25,
+};
+
 // ── Color tokens ───────────────────────────────────────────────────────────────
 const C = {
   text:    '#1A0A3B',
@@ -252,17 +257,19 @@ export default function EmpleadosPage() {
               {/* Image */}
               <div
                 className="flex-1 relative"
-                style={{
-                  minHeight: 'clamp(300px, 48vw, 580px)',
-                  background: `${m.color}06`,
-                }}
+                style={{ minHeight: 'clamp(300px, 48vw, 580px)' }}
               >
                 <Image
                   src={m.imagen}
                   alt={m.nombre}
                   fill
                   sizes="(max-width: 640px) 100vw, 50vw"
-                  style={{ objectFit: 'contain', objectPosition: 'bottom center' }}
+                  style={{
+                    objectFit: 'contain',
+                    objectPosition: 'bottom center',
+                    transform: IMAGE_SCALE[m.id] ? `scale(${IMAGE_SCALE[m.id]})` : undefined,
+                    transformOrigin: 'bottom center',
+                  }}
                   priority={i < 2}
                 />
               </div>

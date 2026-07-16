@@ -944,7 +944,7 @@ function RegistroInner() {
                       }}
                     >
                       {/* Image */}
-                      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#FFFFFF' }}>
+                      <div style={{ width: '100%', aspectRatio: '1', position: 'relative', overflow: 'hidden', background: '#F4F0FF' }}>
                         <img
                           src={dir.imagen!}
                           alt={dir.nombre}
