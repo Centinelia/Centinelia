@@ -44,7 +44,7 @@ const FEATURES: {
   {
     icon:  <Target size={20} color="#6C3BFF" />,
     color: '#6C3BFF',
-    title: 'Agente de seguimiento',
+    title: 'Ejecutivo de seguimiento',
     desc:  'Cuando un prospecto no contesta, vuelve a llamar hasta cerrarlo o agotar los intentos que defines. Ningún lead se queda sin respuesta.',
   },
   {
@@ -259,7 +259,7 @@ export default function LandingPage() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor:  'transparent',
               }}>
-                telefónico.
+                digital.
               </span>
             </h1>
 
@@ -433,7 +433,7 @@ export default function LandingPage() {
             </div>
             <div>
               <p className="font-semibold mb-1" style={{ color: '#fff' }}>
-                Tu empleado telefónico IA resuelve los tres a la vez.
+                Tu Empleado Digital resuelve los tres a la vez.
               </p>
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>
                 Atiende, captura leads, agenda y llama de regreso, sin límite de horario
@@ -456,7 +456,7 @@ export default function LandingPage() {
 
           <AnimatedSection className="mb-12 sm:mb-16 text-center">
             <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: C.accent }}>
-              Un tipo de empleado que no existía
+              Empleado Digital
             </p>
             <h2
               className="font-bold tracking-tight mb-4 mx-auto"
@@ -690,8 +690,8 @@ export default function LandingPage() {
                 {[
                   'Recepcionista',
                   'Ejecutivo comercial',
-                  'Agente de cobranza',
-                  'Agente de seguimiento',
+                  'Cobrador',
+                  'Ejecutivo de seguimiento',
                   'Asistente de clínica',
                   'Supervisor de desempeño',
                 ].map((role, i, arr) => (
@@ -1015,7 +1015,7 @@ export default function LandingPage() {
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                       </div>
                       <p className="text-xs mt-1" style={{ color: 'rgba(155,109,255,0.6)' }}>
-                        {t.ops} ops <span style={{ color: 'rgba(255,255,255,0.25)' }}>· Pro</span>
+                        {t.ops} tareas
                       </p>
                     </div>
                     <div className="text-right">
@@ -1063,7 +1063,7 @@ export default function LandingPage() {
                     </span>
                     <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
                     <p className="text-xs mt-1.5" style={{ color: 'rgba(155,109,255,0.65)' }}>
-                      {t.ops} ops incluidas <span style={{ color: 'rgba(255,255,255,0.25)' }}>· Empleado Centinelia</span>
+                      {t.ops} tareas incluidas
                     </p>
                   </div>
                   <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"

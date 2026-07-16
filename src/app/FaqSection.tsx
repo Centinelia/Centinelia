@@ -26,7 +26,7 @@ const FAQS = [
   },
   {
     q: '¿Funciona para mi tipo de organización?',
-    a: 'Funciona para cualquier organización que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, universidades y más. Tu empleado aprende sobre tu organización específica, no es un bot genérico.',
+    a: 'Funciona para cualquier organización que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, universidades y más. Tu empleado aprende sobre tu organización específica, no viene preconfigurado para otro negocio.',
   },
   {
     q: '¿Puedo cancelar cuando quiera?',
@@ -37,8 +37,8 @@ const FAQS = [
     a: 'Tienes acceso a las grabaciones y transcripciones de cada llamada desde tu portal. Si algo no quedó bien, lo ajustas en la configuración en tiempo real y el cambio se aplica en minutos.',
   },
   {
-    q: '¿Mis clientes van a saber que están hablando con una IA?',
-    a: 'Tu empleado habla de forma natural y no menciona proactivamente que es un asistente automatizado. Si algún cliente pregunta directamente, responde con honestidad. Puedes personalizar el nombre y la voz de tu empleado para que se sienta parte de tu equipo.',
+    q: '¿Mis clientes van a saber que no están hablando con una persona?',
+    a: 'Tu empleado habla de forma natural y no menciona proactivamente que es automatizado. Si algún cliente pregunta directamente, responde con honestidad. Puedes personalizar el nombre y la voz para que se sienta parte de tu equipo.',
   },
 ];
 
