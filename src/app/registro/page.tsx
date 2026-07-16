@@ -403,7 +403,7 @@ function MeerkatCard({
             style={{
               width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'bottom center',
-              ...(roleId === 'nia' && { transform: 'scale(1.18)', transformOrigin: 'bottom center' }),
+              ...(roleId === 'nia' && { transform: 'scale(1.09)', transformOrigin: 'bottom center' }),
             }}
           />
         ) : isCustom ? (
