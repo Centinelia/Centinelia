@@ -76,7 +76,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Hero background responsive crop ───────────────────────────────────── */
 .hero-bg-img {
-  object-position: 78.5% 40%; /* mobile: center on meerkats with phones */
+  object-position: 88% 40%;
 }
 @media (min-width: 640px) {
   .hero-bg-img {
