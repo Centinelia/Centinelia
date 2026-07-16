@@ -9,6 +9,7 @@ import { executeAutoRefill } from '@/lib/billing/auto-refill';
 import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/customers';
 import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
 import { generateTeamMessage } from '@/lib/ai/generate-team-message';
+import { selfEvalCall } from '@/lib/ai/self-eval';
 import { addCallEntry } from '@/lib/notion/client';
 
 export async function POST(req: NextRequest) {
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       const callerNumber = call?.customer?.number ?? message.customer?.number ?? '';
 
       // 1. Log call
-      const { error: callInsertError } = await supabase.from('voice_calls').insert({
+      const { data: callRow, error: callInsertError } = await supabase.from('voice_calls').insert({
         agent_id:            resolvedAgentId,
         vapi_call_id:        call?.id ?? null,
         caller_number:       callerNumber,
@@ -138,7 +139,8 @@ export async function POST(req: NextRequest) {
         cost_usd:            call?.cost ?? null,
         nivel_interes:        structured?.nivel_interes       ?? null,
         acciones_pendientes:  structured?.acciones_pendientes ?? null,
-      });
+      }).select('id').single();
+      const callDbId: string | null = (callRow as { id?: string } | null)?.id ?? null;
 
       // 2. Save lead
       if (structured?.nombre && structured?.tipo_contacto !== 'informacion') {
@@ -483,7 +485,18 @@ export async function POST(req: NextRequest) {
           }).catch(err => console.error('[webhook] extract-learnings failed:', err));
         }
 
-        // I. Team feed message (AI)
+        // I. Self-evaluation post-call (AI)
+        if (transcript && durationSeconds >= 30 && callDbId && outcome !== 'unanswered') {
+          await selfEvalCall({
+            callId:     callDbId,
+            transcript,
+            outcome,
+            dod:        (agent as unknown as Record<string, unknown>)?.definition_of_done as string | null ?? null,
+            guardrails: (agent as unknown as Record<string, unknown>)?.agent_guardrails   as string | null ?? null,
+          }).catch(err => console.error('[webhook] self-eval failed:', err));
+        }
+
+        // K. Team feed message (AI)
         if (agent?.portal_email && !['unanswered', 'other'].includes(outcome)) {
           await generateTeamMessage({
             portalEmail:   agent.portal_email,
@@ -497,7 +510,7 @@ export async function POST(req: NextRequest) {
           }).catch(err => console.error('[webhook] team-message failed:', err));
         }
 
-        // J. Notion CRM
+        // L. Notion CRM
         const notionToken = agent?.notion_access_token ?? null;
         const notionDbId  = agent?.notion_db_id        ?? null;
         if (notionToken && notionDbId && outcome !== 'unanswered') {
@@ -523,7 +536,7 @@ export async function POST(req: NextRequest) {
           }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
         }
 
-        // K. Missed call recovery
+        // M. Missed call recovery
         if (
           outcome === 'unanswered' &&
           callerNumber &&

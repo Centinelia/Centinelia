@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Clock, X, FileText } from 'lucide-react';
+import { Download, Clock, X, FileText, Star } from 'lucide-react';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   lead_created:       { label: 'Lead',        color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'  },
@@ -25,6 +25,8 @@ interface Call {
   summary?: string;
   transcript?: string;
   recording_url?: string;
+  self_eval_score?: number;
+  self_eval_notes?: string;
 }
 
 function RecordingPlayer({ url, createdAt }: { url: string; createdAt: string }) {
@@ -192,6 +194,48 @@ export default function CallCard({ call, isPro, clientName, token }: { call: Cal
                     Resumen
                   </p>
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{call.summary}</p>
+                </div>
+              )}
+
+              {/* Auto-evaluación */}
+              {(call.self_eval_score || call.self_eval_notes) && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-3)' }}>
+                    Auto-evaluación
+                  </p>
+                  <div className="rounded-xl p-3 flex flex-col gap-2"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                    {call.self_eval_score && (
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map(n => {
+                          const filled = n <= call.self_eval_score!;
+                          const color  = call.self_eval_score! >= 4 ? '#22c55e'
+                            : call.self_eval_score! === 3 ? '#f59e0b'
+                            : '#ef4444';
+                          return (
+                            <Star
+                              key={n}
+                              size={13}
+                              fill={filled ? color : 'none'}
+                              color={filled ? color : 'var(--c-border)'}
+                            />
+                          );
+                        })}
+                        <span className="text-xs font-medium ml-1" style={{
+                          color: call.self_eval_score >= 4 ? '#22c55e'
+                            : call.self_eval_score === 3 ? '#f59e0b'
+                            : '#ef4444',
+                        }}>
+                          {call.self_eval_score}/5
+                        </span>
+                      </div>
+                    )}
+                    {call.self_eval_notes && (
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                        {call.self_eval_notes}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -162,6 +162,9 @@ export interface VoiceCall {
   transferred: boolean;
   recording_url?: string;
   cost_usd?: number;
+  self_eval_score?: number;
+  self_eval_notes?: string;
+  self_eval_at?: string;
   created_at: string;
 }
 
