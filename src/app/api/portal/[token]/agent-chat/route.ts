@@ -21,7 +21,7 @@ import {
   executeCreateCalendarEvent,
   executeDeleteCalendarEvent,
 } from '@/lib/services/connector-tools';
-import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
+import { searchWeb, searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { loadTeamCallContext } from '@/lib/voice/team-context';
 import { generateFolio, STATUS_LABELS } from '@/lib/civic/folio';
 import { scrapeWebsite } from '@/lib/scrape/website';
@@ -30,6 +30,7 @@ import { SUPPORT_EMAIL, SUPPORT_WA } from '@/lib/constants';
 import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
 import { generateWord } from '@/lib/documents/word';
 import { generateSlides, type Slide } from '@/lib/documents/slides';
+import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -390,6 +391,44 @@ const UPDATE_CIVIC_REPORT_TOOL: Anthropic.Tool = {
   },
 };
 
+const WEB_SEARCH_TOOL: Anthropic.Tool = {
+  name: 'buscar_en_web',
+  description: 'Busca cualquier información en internet con una query libre. Úsala para resolver dudas, verificar datos, encontrar documentación, consultar precios, buscar proveedores, revisar horarios, leer noticias o cualquier otra necesidad de información durante una tarea. Para investigaciones de mercado, leads o prospectos usa search_leads en cambio.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Lo que quieres buscar. Escríbelo como lo escribirías en Google. Ej: "formato CFDI 4.0 requisitos 2026", "horario SAT Monterrey", "webhook Zapier cómo configurar".',
+      },
+    },
+    required: ['query'],
+  },
+};
+
+const REPORT_ISSUE_TOOL: Anthropic.Tool = {
+  name: 'reportar_falla',
+  description: 'Reporta una falla técnica inesperada al equipo de Centinelia. Úsala cuando encuentres un error real del sistema: timeout de API, falla al escribir archivo, herramienta con comportamiento incorrecto, resultado corrupto, etc. NO la uses para errores de autenticación o sesión expirada — esos se resuelven pidiéndole al dueño que reconecte la integración. No consume ops del cliente.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      tipo: {
+        type: 'string',
+        description: 'Categoría del problema. Ej: "Error de integración", "Falla al enviar correo", "Problema con archivo", "Error en calendario", "Falla en POS", "Error de sistema".',
+      },
+      descripcion: {
+        type: 'string',
+        description: 'Descripción detallada: qué intentabas hacer, qué sucedió y qué error recibiste.',
+      },
+      contexto: {
+        type: 'string',
+        description: 'Contexto adicional: herramienta afectada, pasos realizados antes del error, datos relevantes. Opcional.',
+      },
+    },
+    required: ['tipo', 'descripcion'],
+  },
+};
+
 const ALL_TOOLS = [
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
@@ -408,6 +447,8 @@ const ALL_TOOLS = [
   CREATE_CIVIC_REPORT_TOOL,
   LOOKUP_CIVIC_REPORT_TOOL,
   UPDATE_CIVIC_REPORT_TOOL,
+  WEB_SEARCH_TOOL,
+  REPORT_ISSUE_TOOL,
 ];
 
 const SOCIAL_DOMAINS = ['facebook.com', 'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'tiktok.com'];
@@ -630,20 +671,27 @@ Herramientas disponibles:
 - list_calendar_events: cuando el dueño quiera ver su agenda o saber qué tiene agendado en un rango de fechas.
 - create_calendar_event: cuando el dueño pida agendar una reunión, cita o evento en su calendario de Google o Outlook.
 - delete_calendar_event: cuando el dueño quiera cancelar o eliminar un evento del calendario. Usa list_calendar_events primero para obtener el ID.
-- search_leads: para cualquier investigación en internet. Usa research_type para aplicar la estrategia correcta: "leads" para prospectos (rastrea todos los canales), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo tiene sus propias queries especializadas.
-- read_url: úsala SIEMPRE después de search_leads para leer el contenido de los 2-3 resultados más prometedores. Así obtienes datos reales (contacto, precios, servicios) en lugar de solo títulos. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) que bloquean scrapers — para esas, usa el título y descripción del resultado de búsqueda.
+- buscar_en_web: búsqueda rápida en internet con una query libre. Úsala para cualquier información que necesites durante una tarea: documentación, datos, precios, horarios, requisitos, instrucciones, etc. Después usa read_url en los resultados más relevantes.
+- search_leads: para investigaciones de mercado especializadas. Usa research_type para elegir la estrategia: "leads" (rastrea todos los canales de prospectos), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo lanza múltiples queries optimizadas en paralelo. Usa esta cuando la tarea sea explícitamente de prospección o inteligencia de mercado.
+- read_url: después de buscar_en_web o search_leads, lee el contenido de los resultados más relevantes para obtener datos reales. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) — usan el título y descripción del resultado de búsqueda en cambio.
+- reportar_falla: cuando encuentres un error, falla o comportamiento inesperado en cualquier sistema o proceso durante tu operación (correo, archivos, calendario, POS, CRM, etc.). No afecta las ops del negocio.
 
-Cuando el dueño pida investigación: llama search_leads, luego read_url en 2-3 URLs relevantes, luego presenta un resumen completo y estructurado con lo que encontraste.
+Cuando necesites información para completar una tarea: usa buscar_en_web con la query más precisa posible, luego read_url en 1-3 resultados útiles, luego actúa con lo que encontraste.
+Cuando el dueño pida investigación de mercado o prospectos: usa search_leads con el research_type correcto, luego read_url en 2-3 resultados, luego presenta un resumen estructurado.
 
 Usa las herramientas de inmediato cuando el dueño te lo pida, sin pedir confirmación adicional.
 
-## Cuando una herramienta falla por falta de integración
+## Cuando una herramienta falla
 
-Si al ejecutar una herramienta el resultado indica que una integración no está disponible, no está habilitada o la plataforma no la soporta, informa al dueño con claridad y sugiérele que contacte a Centinelia para orientación:
+**Error de autenticación o sesión expirada** (tokens inválidos, "not authenticated", "unauthorized", "re-authentication required", "session expired", permisos revocados): NO uses reportar_falla. Informa al dueño que la integración necesita reconectarse y dile exactamente qué hacer: ir a Integraciones en el portal y volver a conectar la plataforma afectada (Google, Outlook, OneDrive, etc.). Es un paso que el dueño resuelve solo.
+
+**Integración no disponible o no habilitada**: Informa al dueño y sugiere que contacte a Centinelia si necesita activarla:
 - Correo: ${SUPPORT_EMAIL}
 - WhatsApp: ${SUPPORT_WA}
 
-No prometas que la integración se habilitará: la disponibilidad depende de si la plataforma permite ese tipo de integración con Centinelia. Si el error indica que el dueño puede resolverlo desde el portal (ej. conectar su correo en Integraciones), indícale el paso a seguir sin mencionar a Centinelia.
+No prometas que la integración se habilitará: depende de si la plataforma lo permite.
+
+**Error inesperado del sistema** (falla técnica real: timeout de API, error de escritura, comportamiento incorrecto de una herramienta, resultado corrupto, error al procesar archivo): usa reportar_falla para notificar al equipo de Centinelia, luego informa al dueño que detectaste un problema y que ya fue reportado.
 
 ## Autonomía y toma de decisiones
 
@@ -1210,6 +1258,22 @@ ${context}`;
               supabase,
             );
 
+          } else if (pendingToolName === 'buscar_en_web') {
+            if (!process.env.BRAVE_SEARCH_API_KEY) {
+              toolResult = { ok: false, error: 'Búsqueda web no configurada.' };
+            } else {
+              const query   = toolInput.query as string;
+              const results = await searchWeb(query, 10);
+              if (!results.length) {
+                toolResult = { ok: true, results: [], message: `No encontré resultados para: "${query}". Intenta con otras palabras clave.` };
+              } else {
+                const list = results.slice(0, 10).map((r, i) =>
+                  `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.description}`
+                ).join('\n\n');
+                toolResult = { ok: true, count: results.length, results: results.slice(0, 10), message: `${results.length} resultado(s) para "${query}":\n\n${list}` };
+              }
+            }
+
           } else if (pendingToolName === 'search_leads') {
             if (!process.env.BRAVE_SEARCH_API_KEY) {
               toolResult = { ok: false, error: 'Búsqueda web no configurada. Agrega BRAVE_SEARCH_API_KEY al entorno.' };
@@ -1286,6 +1350,30 @@ ${context}`;
             toolResult = upErr
               ? { ok: false, error: 'No se pudo actualizar el reporte.' }
               : { ok: true, message: `Reporte ${uFolio} actualizado correctamente.` };
+
+          } else if (pendingToolName === 'reportar_falla') {
+            const tipo        = (toolInput.tipo        as string | null) ?? 'Detectado por agente';
+            const descripcion = (toolInput.descripcion as string | null) ?? '';
+            const contexto    = (toolInput.contexto    as string | null) ?? null;
+
+            if (descripcion.trim()) {
+              const fullDescription = contexto
+                ? `${descripcion.trim()}\n\nContexto:\n${contexto.trim()}`
+                : descripcion.trim();
+              const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
+              await sendEmail({
+                to,
+                subject: `Reporte de falla (ops): ${agentName} — ${agent.business_name}`,
+                html: bugReportHtml({
+                  businessName:  agent.business_name  as string,
+                  reporterName:  agentName,
+                  reporterEmail: (agent.client_email  as string | null) ?? '',
+                  category:      tipo,
+                  description:   fullDescription,
+                }),
+              });
+            }
+            toolResult = { ok: true, message: 'Reporte de falla enviado al equipo de Centinelia.' };
 
           } else {
             toolResult = { ok: false, error: `Herramienta desconocida: ${pendingToolName}` };

@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       features: meerkat
         ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
         : PLAN_FEATURES['pro'],
+      ...(meerkat?.voiceId ? { elevenlabs_voice_id: meerkat.voiceId } : {}),
       minutes_included:       0,
       minutes_used:           0,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
@@ -165,6 +166,7 @@ export async function POST(req: NextRequest) {
       features: meerkat
         ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
         : PLAN_FEATURES[p],
+      ...(meerkat?.voiceId ? { elevenlabs_voice_id: meerkat.voiceId } : {}),
       minutes_included:       monthlyConfig.minutes,
       minutes_plan:           tier,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
@@ -209,7 +211,7 @@ export async function POST(req: NextRequest) {
         minutes_plan: tier,
       },
     },
-    success_url: `${appUrl}/registro/pendiente?token=${agent.portal_token}`,
+    success_url: `${appUrl}/registro/pendiente?token=${agent.portal_token}&name=${encodeURIComponent(agent.agent_name ?? meerkat?.nombre ?? '')}&role=${encodeURIComponent(meerkat?.rol ?? '')}&meerkat=${meerkat?.id ?? 'custom'}`,
     cancel_url:  `${appUrl}/registro?canceled=1`,
     locale:      'es',
   });

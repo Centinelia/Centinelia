@@ -532,3 +532,31 @@ export function leadFollowUpToClientHtml(opts: {
     <p style="color:rgba(26,10,59,0.35);font-size:12px;margin:24px 0 0">— ${opts.agentName}, ${opts.businessName}</p>
   `);
 }
+
+// ── Bug report ────────────────────────────────────────────────────────────────
+
+export function bugReportHtml(opts: {
+  businessName:  string;
+  reporterName:  string;
+  reporterEmail: string;
+  category:      string;
+  description:   string;
+}): string {
+  return shell(
+    badge('Reporte de falla', '#ef4444') +
+    heading('Nueva falla reportada', opts.businessName) +
+    infoCard(`
+      ${sectionLabel('Reportado por')}
+      <p style="color:${C.text};font-size:14px;font-weight:600;margin:0 0 2px">${opts.reporterName}</p>
+      <p style="color:${C.sub};font-size:13px;margin:0">${opts.reporterEmail}</p>
+    `) +
+    infoCard(`
+      ${sectionLabel('Categoría')}
+      <p style="color:${C.text};font-size:14px;margin:0">${opts.category}</p>
+    `) +
+    infoCard(`
+      ${sectionLabel('Descripción')}
+      <p style="color:${C.text};font-size:14px;margin:0;line-height:1.7;white-space:pre-wrap">${opts.description}</p>
+    `, true)
+  );
+}

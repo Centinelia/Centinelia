@@ -427,6 +427,34 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     server: server('registrar-encuesta'),
   });
 
+  // ── Bug reporting (always available — agents self-report issues) ───────────────
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'reportar_falla',
+      description: 'Envía un reporte de falla o irregularidad al equipo técnico de Centinelia. Úsalo cuando: (1) detectes un comportamiento inesperado en ti mismo, (2) el usuario reporte que algo no funcionó correctamente en llamadas anteriores, (3) encuentres un error del sistema, datos incorrectos o una limitación que impida tu trabajo. No lo uses para quejas del negocio del usuario, solo para fallas técnicas del sistema Centinelia.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: {
+            type: 'string',
+            description: 'Categoría de la falla: "Bug de sistema", "Comportamiento inesperado", "Datos incorrectos", "Limitación técnica" u "Otro".',
+          },
+          descripcion: {
+            type: 'string',
+            description: 'Descripción clara de la falla: qué ocurrió, cuándo, y cuál debería ser el comportamiento correcto.',
+          },
+          contexto: {
+            type: 'string',
+            description: 'Contexto relevante de la conversación o llamada donde se detectó la falla (opcional).',
+          },
+        },
+        required: ['tipo', 'descripcion'],
+      },
+    },
+    server: server('reportar-falla'),
+  });
+
   // One transferCall tool per active team peer — enables live agent-to-agent routing
   for (const peer of peers) {
     const toolName  = peerToolName(peer);

@@ -84,6 +84,7 @@ export async function POST(
       agent_name:            agentName,
       role:                  role.id === 'custom' ? null : role.rol,
       features,
+      ...(role.voiceId ? { elevenlabs_voice_id: role.voiceId } : {}),
       giro_template:         'general',
       phone_number:          '',
       capture_leads:         false,

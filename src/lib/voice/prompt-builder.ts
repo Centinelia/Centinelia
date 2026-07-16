@@ -105,7 +105,8 @@ ${hoursText}`);
 Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo idioma.
 IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
   } else {
-    blocks.push(`IDIOMA: Responde siempre en español.`);
+    blocks.push(`IDIOMA: Responde siempre en español.
+PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.`);
   }
 
   // ── Nivel 1: Receptionist ──────────────────────────────────────────────────

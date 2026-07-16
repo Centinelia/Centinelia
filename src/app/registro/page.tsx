@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   Check, ChevronRight, ChevronLeft, ChevronDown, Loader, X,
   Phone, Building2, User, Utensils, Stethoscope,
-  Smartphone, ShoppingBag, Landmark, GraduationCap, type LucideProps,
+  Smartphone, ShoppingBag, Landmark, GraduationCap, Clock, Zap, type LucideProps,
 } from 'lucide-react';
 import Image from 'next/image';
 import { MEERKAT_ROLES, MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
@@ -155,17 +155,17 @@ const AGENT_PLANS: AgentPlanDef[] = [
 type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; price: number; popular?: boolean };
 
 const TIERS: TierDef[] = [
-  { id: 'starter', label: 'Esencial',    minutes: 300,  aiOps: 100, price: 2997 },
-  { id: 'growth',  label: 'Profesional', minutes: 600,  aiOps: 200, price: 5994, popular: true },
-  { id: 'scale',   label: 'Avanzado',    minutes: 1200, aiOps: 300, price: 11988 },
+  { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 100, price: 2997 },
+  { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 200, price: 5994, popular: true },
+  { id: 'scale',   label: 'Horas Extra',      minutes: 1200, aiOps: 300, price: 11988 },
 ];
 
 // Ops-only tiers for Nox (no minutes cost)
-type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean };
+type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean; desc: string };
 const NOX_TIERS: NoxTierDef[] = [
-  { id: 'starter', label: 'Coordinador', aiOps:  500, price: 1997 },
-  { id: 'growth',  label: 'Director',    aiOps: 1200, price: 3994, popular: true },
-  { id: 'scale',   label: 'Ejecutivo',   aiOps: 3000, price: 7994 },
+  { id: 'starter', label: '500 tareas',  aiOps:  500, price: 1997, desc: 'Ideal para equipos pequeños.' },
+  { id: 'growth',  label: '1,200 tareas', aiOps: 1200, price: 3994, popular: true, desc: 'Para organizaciones con operación constante.' },
+  { id: 'scale',   label: '3,000 tareas', aiOps: 3000, price: 7994, desc: 'Diseñado para operaciones de alto volumen.' },
 ];
 
 // Roles for the 3×3 grid — excludes coordinator (Nox gets its own card above)
@@ -245,6 +245,14 @@ function lightenColor(hex: string, amount: number): string {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgb(${Math.round(r + (255 - r) * amount)}, ${Math.round(g + (255 - g) * amount)}, ${Math.round(b + (255 - b) * amount)})`;
+}
+
+function getContrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.45 ? '#1A0A3B' : '#ffffff';
 }
 
 // ─── City dropdown ─────────────────────────────────────────────────────────────
@@ -451,6 +459,113 @@ function MeerkatCard({
   );
 }
 
+// ─── Chat personality messages — Step 3 ──────────────────────────────────────
+type MeerkatChatDef = {
+  name:  { filled: (org: string) => string; cleared: string };
+  desc:  { filled: string; cleared: string };
+  phone: { filled: string; cleared: string };
+};
+
+const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
+  nia: {
+    name:  { filled: n => `Anotado. Bienvenidos, ${n}.`, cleared: '¿No era ese el nombre? Sin problema, aquí lo cambio.' },
+    desc:  { filled: 'Perfecto. Ya sé cómo presentar tu empresa con cada llamada.', cleared: 'Sin prisa. Puedes reescribirla cuando quieras.' },
+    phone: { filled: 'Listo. Ese será el número que mencione en las llamadas.', cleared: '¿Cambiaste el teléfono? Cuando tengas el correcto, lo anoto.' },
+  },
+  noah: {
+    name:  { filled: n => `${n}. Bien. ¿Qué vendemos?`, cleared: '¿Distinto nombre? No hay problema.' },
+    desc:  { filled: 'Entendido. Ya sé cómo hablar del negocio.', cleared: 'Cuando tengas la descripción lista, seguimos.' },
+    phone: { filled: 'Ese número queda anotado.', cleared: '¿Cambiaste el teléfono? Dime el correcto.' },
+  },
+  nara: {
+    name:  { filled: n => `${n}. Expediente iniciado.`, cleared: '¿Corrección de nombre? Esperando el definitivo.' },
+    desc:  { filled: 'Contexto recibido. Ya tengo lo que necesito para operar.', cleared: 'Cuando tengas la versión final, continúa.' },
+    phone: { filled: 'Número registrado en el expediente.', cleared: '¿Corrección de número? Aquí lo actualizo.' },
+  },
+  nico: {
+    name:  { filled: n => `${n}, anotado. Vamos bien.`, cleared: '¿No era ese? Sin problema.' },
+    desc:  { filled: 'Claro, ya entiendo de qué va el negocio.', cleared: 'Cuando lo tengas más claro, seguimos.' },
+    phone: { filled: 'Número anotado. ¿Seguimos?', cleared: '¿Ese no era el número? Cuando tengas el correcto, dime.' },
+  },
+  naia: {
+    name:  { filled: n => `¿${n}?, ¡sí los conozco! Hace mucho que quiero trabajar con ustedes.`, cleared: '¿No era ese el nombre? Cuando lo confirmes, lo registro.' },
+    desc:  { filled: 'Todo bien documentado. Ya sé cómo funciona el equipo.', cleared: '¿Revisando la descripción? Tómate tu tiempo.' },
+    phone: { filled: 'Número registrado. Listo para las comunicaciones del equipo.', cleared: '¿Cambio de número? Aquí lo actualizo.' },
+  },
+  nelia: {
+    name:  { filled: n => `¡${n}! Ya los tengo en mi lista.`, cleared: '¿Cambiaste el nombre? Sin problema, dime el correcto.' },
+    desc:  { filled: 'Perfecto. Ya puedo ayudar a sus clientes como si fuera parte del equipo.', cleared: 'Cuando tengas lista la descripción, seguimos.' },
+    phone: { filled: 'Anotado. Ese es el número que mencionaré si alguien pregunta.', cleared: '¿Ese no era el número? Dime el correcto.' },
+  },
+  neo: {
+    name:  { filled: n => `${n}. Nombre registrado.`, cleared: 'Nombre eliminado. Esperando el definitivo.' },
+    desc:  { filled: 'Contexto operativo procesado correctamente.', cleared: 'Descripción eliminada. Esperando la versión final.' },
+    phone: { filled: 'Número de contacto almacenado.', cleared: 'Número eliminado. Continúa cuando tengas el correcto.' },
+  },
+  nova: {
+    name:  { filled: n => `Recibido. ${n} en el sistema.`, cleared: '¿Corrección de nombre? Esperando confirmación.' },
+    desc:  { filled: 'Contexto operacional registrado. Listo para coordinar.', cleared: 'Descripción borrada. En espera de la definitiva.' },
+    phone: { filled: 'Número de contacto registrado.', cleared: '¿Cambio de número? Actualizando cuando lo tengas.' },
+  },
+  nox: {
+    name:  { filled: n => `${n}. Lo registro para el equipo.`, cleared: '¿Corrección? Cuando lo confirmes, lo asigno.' },
+    desc:  { filled: 'Contexto claro. Ya puedo coordinar al equipo.', cleared: 'Cuando tengas la descripción, seguimos.' },
+    phone: { filled: 'Número del equipo registrado.', cleared: '¿Cambio de número? Esperando el definitivo.' },
+  },
+  niva: {
+    name:  { filled: n => `${n}. Bien, empezamos a construir el expediente.`, cleared: '¿Revisión del nombre? Tómate el tiempo que necesites.' },
+    desc:  { filled: 'Ya veo el contexto. Entiendo cómo opera la organización.', cleared: '¿Ajustando la descripción? Sin prisa.' },
+    phone: { filled: 'Número registrado. Sigamos.', cleared: '¿Cambio de número? Aquí lo actualizo.' },
+  },
+  custom: {
+    name:  { filled: n => `${n}, registrado.`, cleared: 'Sin problema. Cuando lo tengas, continúa.' },
+    desc:  { filled: 'Información registrada.', cleared: 'Puedes reescribirla cuando quieras.' },
+    phone: { filled: 'Número registrado.', cleared: 'Cuando tengas el número, continúa.' },
+  },
+};
+
+const MEERKAT_GREETING: Record<string, string> = {
+  nia:    'Antes de comenzar a recibir llamadas, necesito conocer un poco tu empresa.',
+  noah:   'Para empezar a cerrar tratos, cuéntame un poco del negocio.',
+  nara:   'Para abrir tu expediente, necesito los datos de la organización.',
+  nico:   'Antes de ponerme a contestar, dime un poco del negocio.',
+  naia:   'Para poder apoyar a tu equipo, necesito conocer la empresa.',
+  nelia:  'Para atender a tus clientes como si fuera parte del equipo, cuéntame del negocio.',
+  neo:    'Para inicializar mis protocolos de soporte, necesito los datos de la organización.',
+  nova:   'Para coordinar correctamente, necesito el contexto operacional de la empresa.',
+  nox:    'Para empezar a coordinar al equipo, dime los datos de la organización.',
+  niva:   'Para construir el expediente de la organización, necesito algunos datos.',
+  custom: 'Para empezar a trabajar, necesito conocer un poco tu empresa.',
+};
+
+const MEERKAT_AGENT_NAME_MSG: Record<string, (name: string) => string> = {
+  nia:    n => `Me encanta ese nombre. ¡Encantada de ser ${n}!`,
+  noah:   n => `${n}. Suena a alguien que cierra tratos. Me gusta.`,
+  nara:   n => `${n}. Profesional. Me queda bien.`,
+  nico:   n => `${n}. Suena amigable. Me gusta.`,
+  naia:   n => `¡${n}! Qué bonito nombre. Ya lo tengo en mi expediente.`,
+  nelia:  n => `¡${n}! Me encanta. Ya me lo aprendo.`,
+  neo:    n => `${n}. Nombre actualizado en el sistema.`,
+  nova:   n => `Recibido. Operaré como ${n}.`,
+  nox:    n => `${n}. Se lo comunico al equipo.`,
+  niva:   n => `${n}. Bien elegido.`,
+  custom: n => `¡${n} me queda perfecto!`,
+};
+
+const MEERKAT_GIRO_MSG: Record<string, (label: string) => string> = {
+  nia:    g => `¡Perfecto! El sector ${g} es justo mi especialidad.`,
+  noah:   g => `${g}. Ese sector tiene mucho potencial. Vamos.`,
+  nara:   g => `Sector ${g} registrado. Ya adapto el protocolo.`,
+  nico:   g => `¡Bien! ${g}. Conozco bien ese sector.`,
+  naia:   g => `${g}. Tengo experiencia con ese tipo de equipo.`,
+  nelia:  g => `¡${g}! Ese sector me encanta atender.`,
+  neo:    g => `Sector ${g} detectado. Ajustando protocolo de soporte.`,
+  nova:   g => `Sector ${g} registrado. Listo para coordinar.`,
+  nox:    g => `${g}. Lo añado al perfil del equipo.`,
+  niva:   g => `${g}. Conozco los patrones de ese sector.`,
+  custom: g => `Excelente, el sector ${g} es mi especialidad.`,
+};
+
 // ─── Main form ────────────────────────────────────────────────────────────────
 
 function RegistroInner() {
@@ -501,6 +616,17 @@ function RegistroInner() {
   const [clientEmail,     setClientEmail]     = useState('');
   const [whatsapp,        setWhatsapp]        = useState('');
 
+  // Step 3 — Chat widget
+  const [chatMessages,   setChatMessages]   = useState<string[]>([]);
+  const [countryClicked, setCountryClicked] = useState(false);
+  const chatShownRef        = useRef({ name: false, desc: false, country: false, phone: false });
+  const chatClearedRef      = useRef({ name: false, desc: false, phone: false });
+  const chatEndRef          = useRef<HTMLDivElement>(null);
+  const [mobileBubble,      setMobileBubble]      = useState<string | null>(null);
+  const mobileBubbleTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const agentNameChatShown   = useRef(false);
+  const lastGiroShown        = useRef<string | null>(null);
+
   const selectedMeerkat    = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
   const selectedAgentPlan  = AGENT_PLANS.find(p => p.id === plan)!;
   const isCoordinator      = !!((selectedMeerkat?.features as Record<string, unknown>)?.is_coordinator);
@@ -509,7 +635,7 @@ function RegistroInner() {
   const monthlyPrice       = plan !== 'empresarial' ? (isCoordinator ? selectedNoxTier.price : selectedTier.price) : 0;
   const roleColor          = selectedMeerkat?.color ?? selectedAgentPlan.color;
 
-  const STEP_LABELS = ['Empleado', isCoordinator ? 'Ops' : 'Minutos', 'Organización', 'Tus datos'];
+  const STEP_LABELS = ['Empleado', isCoordinator ? 'Tareas' : 'Jornada', 'Onboarding', 'Contratación'];
 
   const [empresarialOpen, setEmpresarialOpen] = useState(false);
   const [overlayOpen,     setOverlayOpen]     = useState(false);
@@ -517,15 +643,92 @@ function RegistroInner() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && step === 1) {
-        if (overlayOpen) setOverlayOpen(false);
-        else if (meerkatRoleId) setMeerkatRoleId(null);
+        if (overlayOpen)      setOverlayOpen(false);
+        else if (meerkatRoleId)   setMeerkatRoleId(null);
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [step, meerkatRoleId, overlayOpen]);
 
+  // Chat widget effects — Step 3
+  useEffect(() => {
+    if (step === 3 && selectedMeerkat) {
+      chatShownRef.current   = { name: false, desc: false, country: false, phone: false };
+      chatClearedRef.current = { name: false, desc: false, phone: false };
+      agentNameChatShown.current = false;
+      lastGiroShown.current      = null;
+      setChatMessages([
+        `Hola, soy ${selectedMeerkat.nombre}.`,
+        MEERKAT_GREETING[selectedMeerkat.id] ?? MEERKAT_GREETING.custom,
+      ]);
+      setCountryClicked(false);
+    }
+    if (step !== 3) setChatMessages([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 3 || !countryClicked || chatShownRef.current.country) return;
+    chatShownRef.current.country = true;
+    const msg = country === 'mx'
+      ? 'Excelente, responderé como una empresa mexicana.'
+      : 'Excelente, responderé como una empresa estadounidense.';
+    setChatMessages(prev => [...prev, msg]);
+  }, [country, countryClicked, step]);
+
+  const handleFieldBlur = (field: 'name' | 'desc' | 'phone') => {
+    if (step !== 3 || !selectedMeerkat) return;
+    const thresholds = { name: 4, desc: 10, phone: 6 } as const;
+    const values     = { name: businessName, desc: businessDesc, phone: businessPhone };
+    const val        = values[field].trim();
+    const filled     = val.length >= thresholds[field];
+    const chatDef    = MEERKAT_CHAT[selectedMeerkat.id] ?? MEERKAT_CHAT.custom;
+
+    if (!chatShownRef.current[field] && filled) {
+      chatShownRef.current[field] = true;
+      chatClearedRef.current[field] = false;
+      const msg = field === 'name' ? chatDef.name.filled(val) : chatDef[field].filled;
+      setChatMessages(prev => [...prev, msg]);
+    } else if (chatShownRef.current[field] && filled) {
+      chatClearedRef.current[field] = false;
+    } else if (chatShownRef.current[field] && !chatClearedRef.current[field] && !filled) {
+      chatClearedRef.current[field] = true;
+      setChatMessages(prev => [...prev, chatDef[field].cleared]);
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  useEffect(() => {
+    if (chatMessages.length === 0) { setMobileBubble(null); return; }
+    const last = chatMessages[chatMessages.length - 1];
+    setMobileBubble(last);
+    if (mobileBubbleTimer.current) clearTimeout(mobileBubbleTimer.current);
+    mobileBubbleTimer.current = setTimeout(() => setMobileBubble(null), 5000);
+  }, [chatMessages]);
+
+  const handleGiroSelect = (giroId: Giro, giroLabel: string) => {
+    setGiro(giroId);
+    if (!selectedMeerkat || lastGiroShown.current === giroId) return;
+    lastGiroShown.current = giroId;
+    const msgFn = MEERKAT_GIRO_MSG[selectedMeerkat.id] ?? MEERKAT_GIRO_MSG.custom;
+    setChatMessages(prev => [...prev, msgFn(giroLabel)]);
+  };
+
+  const handleAgentNameBlur = () => {
+    if (step !== 3 || !selectedMeerkat) return;
+    const val = agentName.trim();
+    if (val.length < 2) return;
+    agentNameChatShown.current = true;
+    const msgFn = MEERKAT_AGENT_NAME_MSG[selectedMeerkat.id] ?? MEERKAT_AGENT_NAME_MSG.custom;
+    setChatMessages(prev => [...prev, msgFn(val)]);
+  };
+
   const handleSelectMeerkat = (roleId: MeerkatRoleId) => {
+    if (meerkatRoleId === roleId) { setMeerkatRoleId(null); setAgentName(''); setError(''); return; }
     const role = MEERKAT_MAP[roleId];
     setMeerkatRoleId(roleId);
     setOverlayOpen(false);
@@ -681,7 +884,7 @@ function RegistroInner() {
                     }}>
                     {done ? <Check size={11} /> : n}
                   </div>
-                  <span className="text-[9px] sm:text-xs mt-1 sm:mt-1.5 font-medium"
+                  <span className="w-[52px] text-[9px] sm:text-xs mt-1 sm:mt-1.5 font-medium text-center leading-tight"
                     style={{
                       color:              active ? '#9B6DFF' : done ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)',
                       textDecoration:     canNav ? 'underline' : 'none',
@@ -702,7 +905,7 @@ function RegistroInner() {
         {canceled && (
           <div className="mb-6 px-4 py-3 rounded-xl text-sm"
             style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}>
-            El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.
+            La contratación no se completó. Tu Centinelia sigue esperándote. Puedes retomar el proceso cuando quieras.
           </div>
         )}
 
@@ -711,7 +914,7 @@ function RegistroInner() {
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Tu equipo Centinelia</h1>
             <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Cada uno tiene un rol especializado. Puedes contratar más adelante a los que necesites.
+              Cada Centinelia domina una especialidad. Juntos forman un equipo extraordinario.
             </p>
 
             {/* Director General duo — Nox + Niva (featured 2-col grid above specialists) */}
@@ -724,7 +927,7 @@ function RegistroInner() {
                     <button
                       key={dirId}
                       type="button"
-                      onClick={() => handleSelectMeerkat(dirId)}
+                      onClick={() => { handleSelectMeerkat(dirId); }}
                       style={{
                         background:    sel ? `${dir.color}18` : 'rgba(255,255,255,0.03)',
                         border:        `2px solid ${sel ? dir.color : 'rgba(255,255,255,0.07)'}`,
@@ -801,6 +1004,18 @@ function RegistroInner() {
                           </div>
                         ))}
                       </div>
+                      {/* Price summary — visible on mobile */}
+                      <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
+                        style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
+                          <span>Instalación</span>
+                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 MXN</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                          <span>Mensualidad</span>
+                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $1,997 MXN</span>
+                        </div>
+                      </div>
                       <button
                         onClick={handleNext}
                         className="sm:hidden w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
@@ -847,7 +1062,7 @@ function RegistroInner() {
                           key={role.id}
                           roleId={role.id}
                           selected={meerkatRoleId === role.id}
-                          onClick={() => handleSelectMeerkat(role.id)}
+                          onClick={() => { handleSelectMeerkat(role.id); }}
                         />
                       ))}
                     </div>
@@ -892,7 +1107,18 @@ function RegistroInner() {
                                   </>
                                 );
                               })()}
-                              {/* Mobile: go straight to next step */}
+                              {/* Mobile: price + go straight to next step */}
+                              <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
+                                style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
+                                  <span>Instalación</span>
+                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 MXN</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                                  <span>Mensualidad</span>
+                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 MXN</span>
+                                </div>
+                              </div>
                               <button
                                 onClick={handleNext}
                                 className="sm:hidden w-full py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
@@ -1023,43 +1249,38 @@ function RegistroInner() {
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">
               {isCoordinator
-                ? `Elige las ops de ${selectedMeerkat!.nombre}`
-                : selectedMeerkat && selectedMeerkat.id !== 'custom'
-                  ? `Elige los minutos de ${selectedMeerkat.nombre}`
-                  : 'Elige tus minutos al mes'
+                ? <>{`¿Cuánto coordinará ${selectedMeerkat!.nombre}`}<br />cada mes?</>
+                : <>{`¿Cuánto trabajará ${selectedMeerkat?.nombre ?? 'tu empleado'}`}<br />cada mes?</>
               }
             </h1>
             <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
-                ? `${selectedMeerkat?.nombre ?? 'El director'} no hace llamadas: su costo es solo de operaciones IA. Puedes cambiarlo desde el portal en cualquier momento.`
-                : 'La mensualidad depende de los minutos que necesites. Puedes cambiarlo en cualquier momento desde el portal.'
+                ? `${selectedMeerkat?.nombre ?? 'El director'} no realiza llamadas. Su jornada depende del volumen de tareas inteligentes que realizará para tu organización. Puedes ajustarlo cuando quieras desde el portal, sin permanencia.`
+                : 'Empieza con la jornada que tu negocio necesita. Siempre podrás ampliarla cuando tu equipo crezca, sin permanencia.'
               }
             </p>
 
-            {/* Tier selector badge */}
-            <div className="inline-flex items-center gap-2 mb-4 px-3 py-2 rounded-xl"
-              style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)' }}>
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#9B6DFF' }} />
-              <p className="text-xs font-semibold" style={{ color: '#C4A8FF' }}>
-                CARGO MENSUAL RECURRENTE
-              </p>
-            </div>
-
             {/* Standard tiers */}
             {!isCoordinator && (
-              <div className="grid grid-cols-3 gap-3 mb-6" style={{ paddingTop: 20 }}>
+              <div className="flex flex-col gap-3 mb-6" style={{ paddingTop: 20 }}>
                 {TIERS.map(t => {
                   const sel = tier === t.id;
                   return (
                     <div key={t.id} onClick={() => setTier(t.id)}
-                      className="rounded-xl cursor-pointer transition-all flex flex-col"
-                      style={{ position: 'relative', background: sel ? 'rgba(108,59,255,0.14)' : 'rgba(255,255,255,0.03)', border: `2px solid ${sel ? '#6C3BFF' : 'rgba(255,255,255,0.07)'}` }}>
+                      className="rounded-xl cursor-pointer transition-all"
+                      style={{
+                        position: 'relative',
+                        background: sel ? 'rgba(108,59,255,0.14)' : 'rgba(255,255,255,0.03)',
+                        border: `2px solid ${sel ? '#6C3BFF' : 'rgba(255,255,255,0.07)'}`,
+                        padding: '16px 20px',
+                        display: 'flex', alignItems: 'center', gap: 16,
+                      }}>
                       {t.popular && (
                         <div style={{
-                          position: 'absolute', top: -20, right: 14,
+                          position: 'absolute', top: -1, right: 16,
                           background: '#6C3BFF',
-                          borderRadius: '6px 6px 0 0',
-                          padding: '3px 10px 5px',
+                          borderRadius: '0 0 6px 6px',
+                          padding: '2px 10px 4px',
                           fontSize: 9, fontWeight: 700,
                           color: '#fff', letterSpacing: '0.06em',
                           textTransform: 'uppercase',
@@ -1067,21 +1288,31 @@ function RegistroInner() {
                           Más usado
                         </div>
                       )}
-                      <div className="flex flex-col items-center text-center flex-1">
-                        <div className="w-full px-4 pt-5 pb-4" style={{ flex: 1 }}>
-                          <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto mb-3 transition-all"
-                            style={{ borderColor: sel ? '#6C3BFF' : 'rgba(255,255,255,0.2)', background: sel ? '#6C3BFF' : 'transparent' }}>
-                            {sel && <div className="w-2 h-2 rounded-full bg-white" />}
-                          </div>
-                          <p className="font-semibold text-white text-sm mb-2">{t.label}</p>
-                          <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{t.minutes} min/mes</p>
-                          <p className="text-xs" style={{ color: sel ? '#9B6DFF' : 'rgba(255,255,255,0.35)' }}>{t.aiOps} ops IA/mes</p>
-                        </div>
-                        <div className="w-full" style={{ borderTop: `1px solid ${sel ? 'rgba(108,59,255,0.4)' : 'rgba(255,255,255,0.07)'}` }}>
-                          <p className="font-bold tabular-nums py-4" style={{ fontSize: 18, color: sel ? '#9B6DFF' : '#fff' }}>
-                            {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}>/mes</span>
+                      {/* Radio */}
+                      <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                        style={{ borderColor: sel ? '#6C3BFF' : 'rgba(255,255,255,0.2)', background: sel ? '#6C3BFF' : 'transparent' }}>
+                        {sel && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      {/* Label + bullets */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white text-sm mb-2">{t.label}</p>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-xs flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                            <Clock size={11} style={{ flexShrink: 0 }} />
+                            Hasta {t.minutes} minutos de conversación al mes
+                          </p>
+                          <p className="text-xs flex items-center gap-1.5" style={{ color: sel ? '#9B6DFF' : 'rgba(255,255,255,0.4)' }}>
+                            <Zap size={11} style={{ flexShrink: 0 }} />
+                            {t.aiOps} tareas inteligentes
                           </p>
                         </div>
+                      </div>
+                      {/* Price */}
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold tabular-nums" style={{ fontSize: 18, color: sel ? '#9B6DFF' : '#fff' }}>
+                          {priceFmt(t.price)}
+                        </p>
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>/mes</p>
                       </div>
                     </div>
                   );
@@ -1091,40 +1322,37 @@ function RegistroInner() {
 
             {/* Nox ops-only tiers */}
             {isCoordinator && (
-              <div className="grid grid-cols-3 gap-3 mb-6" style={{ paddingTop: 20 }}>
+              <div className="flex flex-col gap-3 mb-6" style={{ paddingTop: 20 }}>
                 {NOX_TIERS.map(t => {
                   const sel = tier === t.id;
                   return (
                     <div key={t.id} onClick={() => setTier(t.id)}
-                      className="rounded-xl cursor-pointer transition-all flex flex-col"
+                      className="rounded-xl cursor-pointer transition-all flex items-center gap-4 px-4 py-3.5"
                       style={{ position: 'relative', background: sel ? `${roleColor}18` : 'rgba(255,255,255,0.03)', border: `2px solid ${sel ? roleColor : 'rgba(255,255,255,0.07)'}` }}>
-                      {t.popular && (
-                        <div style={{
-                          position: 'absolute', top: -20, right: 14,
-                          background: roleColor,
-                          borderRadius: '6px 6px 0 0',
-                          padding: '3px 10px 5px',
-                          fontSize: 9, fontWeight: 700,
-                          color: '#fff', letterSpacing: '0.06em',
-                          textTransform: 'uppercase',
-                        }}>
-                          Más usado
-                        </div>
-                      )}
-                      <div className="flex flex-col items-center text-center flex-1">
-                        <div className="w-full px-4 pt-5 pb-4" style={{ flex: 1 }}>
-                          <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center mx-auto mb-3 transition-all"
-                            style={{ borderColor: sel ? roleColor : 'rgba(255,255,255,0.2)', background: sel ? roleColor : 'transparent' }}>
-                            {sel && <div className="w-2 h-2 rounded-full bg-white" />}
+                      {/* Radio */}
+                      <div className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all"
+                        style={{ borderColor: sel ? roleColor : 'rgba(255,255,255,0.2)', background: sel ? roleColor : 'transparent' }}>
+                        {sel && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      {/* Label + desc */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-base leading-tight flex items-center gap-1">
+                          {t.label} <Zap size={11} style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                        </p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Por mes</p>
+                        <p className="text-xs mt-1.5" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.38)' }}>{t.desc}</p>
+                      </div>
+                      {/* Price + badge */}
+                      <div className="text-right flex-shrink-0">
+                        {t.popular && (
+                          <div className="inline-block mb-1 rounded-full px-2 py-0.5"
+                            style={{ background: roleColor, fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            Más usado
                           </div>
-                          <p className="font-semibold text-white text-sm mb-2">{t.label}</p>
-                          <p className="text-xs" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.35)' }}>{t.aiOps} ops IA/mes</p>
-                        </div>
-                        <div className="w-full" style={{ borderTop: `1px solid ${sel ? `${roleColor}60` : 'rgba(255,255,255,0.07)'}` }}>
-                          <p className="font-bold tabular-nums py-4" style={{ fontSize: 18, color: sel ? lightenColor(roleColor, 0.45) : '#fff' }}>
-                            {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}>/mes</span>
-                          </p>
-                        </div>
+                        )}
+                        <p className="font-bold tabular-nums" style={{ fontSize: 17, color: sel ? lightenColor(roleColor, 0.45) : '#fff', display: 'block' }}>
+                          {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}>/mes</span>
+                        </p>
                       </div>
                     </div>
                   );
@@ -1134,9 +1362,8 @@ function RegistroInner() {
 
             <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
               {isCoordinator
-                ? `${selectedMeerkat?.nombre ?? 'El director'} coordina sin llamadas. Las operaciones extra tienen costo adicional.`
-                : <>Minutos extra: $12.99 MXN / min<br />+35 ops IA por cada 100 min adicionales</>
-
+                ? <>{selectedMeerkat?.nombre ?? 'El director'} coordina sin llamadas.<br />Las tareas inteligentes extra tienen costo adicional.</>
+                : <>Si {selectedMeerkat?.nombre ?? 'tu empleado'} necesita más tiempo,<br />Solo pagarás $12.99 por minuto adicional.</>
               }
             </p>
 
@@ -1149,7 +1376,7 @@ function RegistroInner() {
               <button onClick={handleNext}
                 className="flex-1 py-3.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                 style={{ background: isCoordinator ? `linear-gradient(135deg, ${roleColor}, ${lightenColor(roleColor, 0.3)})` : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}>
-                Continuar · {isCoordinator ? selectedNoxTier.label : selectedTier.label} <ChevronRight size={16} />
+                Asignar {isCoordinator ? selectedNoxTier.label : selectedTier.label} <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -1158,20 +1385,22 @@ function RegistroInner() {
         {/* ── STEP 3: Business info ─────────────────────────────────────────────── */}
         {step === 3 && (
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Tu organización</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">
+              {`Cuéntale a ${selectedMeerkat?.nombre ?? 'tu empleado'} sobre tu organización`}
+            </h1>
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
                 ? `${selectedMeerkat?.nombre ?? 'El director'} usará esta información para coordinar y reportar al equipo.`
-                : 'Tu empleado usará esta información para atender tus llamadas.'
+                : 'Mientras más conozca tu negocio, mejores decisiones podrá tomar.'
               }
             </p>
 
             <div className="flex flex-col gap-5">
               <div>
-                <label style={labelStyle}>Nombre de la organización *</label>
+                <label style={labelStyle}>¿Cómo se llama tu organización? *</label>
                 <div className="relative">
                   <Building2 size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                  <input value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Ej. Clínica San Rafael, UAdeNL, Municipio de Monterrey…" style={{ ...inputStyle, paddingLeft: 40 }} />
+                  <input value={businessName} onChange={e => setBusinessName(e.target.value)} onBlur={() => handleFieldBlur('name')} placeholder="Ej. Clínica San Rafael, UAdeNL, Municipio de Monterrey…" style={{ ...inputStyle, paddingLeft: 40 }} />
                 </div>
               </div>
 
@@ -1179,7 +1408,7 @@ function RegistroInner() {
                 <label style={labelStyle}>Sector o industria *</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
                   {GIROS.map(g => (
-                    <button key={g.id} type="button" onClick={() => setGiro(g.id)}
+                    <button key={g.id} type="button" onClick={() => handleGiroSelect(g.id, g.label)}
                       className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
                       style={{
                         background: giro === g.id ? 'rgba(108,59,255,0.2)' : 'rgba(255,255,255,0.04)',
@@ -1192,7 +1421,7 @@ function RegistroInner() {
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setGiro(GIRO_GENERAL.id)}
+                <button type="button" onClick={() => handleGiroSelect(GIRO_GENERAL.id, GIRO_GENERAL.label)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all"
                   style={{
                     background: giro === 'general' ? 'rgba(108,59,255,0.2)' : 'rgba(255,255,255,0.04)',
@@ -1206,15 +1435,13 @@ function RegistroInner() {
               </div>
 
               <div>
-                <label style={labelStyle}>
-                  Describe tu organización brevemente *
-                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(tu empleado lo usa para responder preguntas)</span>
-                </label>
+                <label style={labelStyle}>¿Cómo le describirías tu negocio a un nuevo empleado? *</label>
                 <textarea
                   value={businessDesc}
                   onChange={e => setBusinessDesc(e.target.value)}
-                  placeholder="Ej. Somos una clínica dental en Monterrey con 15 años de experiencia. Ofrecemos limpiezas, ortodoncia y blanqueamiento. Abiertos lunes a sábado de 9am a 7pm."
-                  rows={3}
+                  onBlur={() => handleFieldBlur('desc')}
+                  placeholder={`Imagina que hoy es el primer día de trabajo de ${selectedMeerkat?.nombre ?? 'tu empleado'}.\n\nExplícale qué hace tu empresa, qué vende, cuáles son sus horarios y cualquier información importante que debería conocer.`}
+                  rows={4}
                   style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
                 />
               </div>
@@ -1231,7 +1458,7 @@ function RegistroInner() {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => handleCountryChange(c.id)}
+                        onClick={() => { handleCountryChange(c.id); setCountryClicked(true); }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all flex-1 justify-center"
                         style={{
                           background: country === c.id ? 'rgba(108,59,255,0.2)' : 'rgba(255,255,255,0.04)',
@@ -1269,18 +1496,19 @@ function RegistroInner() {
                 </label>
                 <div className="relative">
                   <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                  <input value={businessPhone} onChange={e => setBusinessPhone(e.target.value)} placeholder="Ej. 81 1234 5678" style={{ ...inputStyle, paddingLeft: 40 }} />
+                  <input value={businessPhone} onChange={e => setBusinessPhone(e.target.value)} onBlur={() => handleFieldBlur('phone')} placeholder="Ej. 81 1234 5678" style={{ ...inputStyle, paddingLeft: 40 }} />
                 </div>
               </div>
 
               <div>
-                <label style={labelStyle}>
-                  Nombre de {selectedMeerkat && selectedMeerkat.id !== 'custom' ? `tu ${selectedMeerkat.rol || 'empleado'}` : 'tu empleado'}
-                  <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>(puedes personalizarlo)</span>
-                </label>
+                <label style={labelStyle}>¿Cómo quieres llamarlo?</label>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginBottom: 8, marginTop: -4 }}>
+                  Puedes personalizar el nombre de tu Centinelia.
+                </p>
                 <input
                   value={agentName}
                   onChange={e => setAgentName(e.target.value)}
+                  onBlur={handleAgentNameBlur}
                   placeholder={selectedMeerkat && selectedMeerkat.id !== 'custom' ? selectedMeerkat.nombre : 'Ej. Ana, Carlos, Sofía…'}
                   style={inputStyle}
                 />
@@ -1315,9 +1543,9 @@ function RegistroInner() {
 
             {/* LEFT — Form */}
             <div>
-              <h1 className="text-xl font-bold text-white mb-1">Tus datos</h1>
+              <h1 className="text-xl font-bold text-white mb-1">Solo falta crear tu acceso</h1>
               <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Para crear tu acceso al portal y enviarte los resúmenes de llamadas.
+                Crearemos tu portal de administración para que puedas supervisar a tu equipo Centinelia.
               </p>
 
               <div className="flex flex-col gap-4">
@@ -1360,7 +1588,16 @@ function RegistroInner() {
                 </p>
               )}
 
-              <div className="flex gap-3 mt-5">
+              {plan !== 'empresarial' && (
+                <p className="text-center text-sm mt-5 mb-1" style={{ color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+                  Hoy estás incorporando a{' '}
+                  <strong style={{ color: '#fff' }}>
+                    {agentName || selectedMeerkat?.nombre || 'tu empleado'}
+                  </strong>{' '}
+                  a tu organización.
+                </p>
+              )}
+              <div className={plan !== 'empresarial' ? 'flex gap-3 mt-3' : 'flex gap-3 mt-5'}>
                 <button onClick={() => { setError(''); setStep(3); }}
                   className="flex items-center gap-1 px-4 py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-80"
                   style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -1376,7 +1613,7 @@ function RegistroInner() {
                     ? <><Loader size={15} className="animate-spin" /> Procesando…</>
                     : plan === 'empresarial'
                       ? <>Enviar solicitud <ChevronRight size={16} /></>
-                      : <>Ir al pago seguro <ChevronRight size={16} /></>
+                      : <>Completar contratación <ChevronRight size={16} /></>
                   }
                 </button>
               </div>
@@ -1390,99 +1627,84 @@ function RegistroInner() {
               </p>
             </div>
 
-            {/* RIGHT — Summary card */}
+            {/* RIGHT — Expediente de contratación */}
             {plan !== 'empresarial' ? (
               <div className="rounded-2xl overflow-hidden"
                 style={{ border: `1px solid ${roleColor}38`, background: `${roleColor}08` }}>
 
-                {/* Meerkat hero */}
-                <div className="relative flex justify-center items-end" style={{ minHeight: 140 }}>
-                  <div className="absolute inset-0" style={{
-                    background: `radial-gradient(ellipse at 50% 90%, ${roleColor}35 0%, transparent 70%)`,
-                  }} />
+                {/* Header label */}
+                <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.32)' }}>
+                    Expediente de contratación
+                  </p>
+                </div>
+
+                {/* Employee hero */}
+                <div className="relative flex justify-center items-end" style={{ minHeight: 130, background: `${roleColor}10` }}>
+                  <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 90%, ${roleColor}30 0%, transparent 70%)` }} />
                   {selectedMeerkat && selectedMeerkat.id !== 'custom' ? (
                     selectedMeerkat.imagen
                       ? <img src={selectedMeerkat.imagen} alt={selectedMeerkat.nombre}
-                          style={{ height: 140, objectFit: 'contain', objectPosition: 'bottom', position: 'relative', zIndex: 1 }} />
-                      : <div style={{
-                          width: 80, height: 80, borderRadius: 20, marginBottom: 16,
-                          background: `${roleColor}25`, border: `1px solid ${roleColor}40`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 30, fontWeight: 900, color: roleColor, position: 'relative', zIndex: 1,
-                        }}>{selectedMeerkat.nombre[0]}</div>
+                          style={{ height: 130, objectFit: 'contain', objectPosition: 'bottom', position: 'relative', zIndex: 1 }} />
+                      : <div style={{ width: 70, height: 70, borderRadius: 18, marginBottom: 16, background: `${roleColor}25`, border: `1px solid ${roleColor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 900, color: roleColor, position: 'relative', zIndex: 1 }}>{selectedMeerkat.nombre[0]}</div>
                   ) : (
-                    <div style={{
-                      width: 80, height: 80, borderRadius: 20, marginBottom: 16,
-                      background: `${roleColor}18`, border: `1px solid ${roleColor}35`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      position: 'relative', zIndex: 1,
-                    }}>
-                      <span style={{ fontSize: 28, color: roleColor, fontWeight: 900 }}>C</span>
+                    <div style={{ width: 70, height: 70, borderRadius: 18, marginBottom: 16, background: `${roleColor}18`, border: `1px solid ${roleColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+                      <span style={{ fontSize: 26, color: roleColor, fontWeight: 900 }}>C</span>
                     </div>
                   )}
                 </div>
 
-                {/* Identity */}
-                <div className="text-center px-5 pt-2 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <p className="font-bold text-white text-sm">{agentName || selectedMeerkat?.nombre || 'Tu empleado'}</p>
+                {/* Name + status badge */}
+                <div className="text-center px-5 pt-3 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="font-bold text-white" style={{ fontSize: 15 }}>
+                    {agentName || selectedMeerkat?.nombre || 'Tu empleado'}
+                  </p>
                   {selectedMeerkat && selectedMeerkat.id !== 'custom' && (
                     <p className="text-xs mt-0.5" style={{ color: lightenColor(roleColor, 0.45) }}>{selectedMeerkat.rol}</p>
                   )}
-                  <div className="flex flex-col items-center gap-1.5 mt-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: `${roleColor}22`, color: roleColor, border: `1px solid ${roleColor}33` }}>
-                      {selectedAgentPlan.label}
-                    </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      {isCoordinator
-                        ? `${selectedNoxTier.aiOps} ops IA/mes`
-                        : `${selectedTier.minutes} min · ${selectedTier.aiOps} ops IA/mes`
-                      }
-                    </span>
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full"
+                    style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.22)' }}>
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 4px rgba(34,197,94,0.7)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#4ade80' }}>Listo para incorporarse</span>
                   </div>
                 </div>
 
-                {/* Line items */}
-                <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div className="flex justify-between items-center py-1.5">
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      Instalación <span style={{ color: 'rgba(255,255,255,0.25)' }}>(único)</span>
-                    </span>
-                    <span className="text-xs font-medium text-white tabular-nums">{priceFmt(selectedAgentPlan.setupFee)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1.5">
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      Mensualidad <span style={{ color: 'rgba(255,255,255,0.25)' }}>({isCoordinator ? selectedNoxTier.label : selectedTier.label})</span>
-                    </span>
-                    <span className="text-xs font-medium text-white tabular-nums">{priceFmt(monthlyPrice)}</span>
-                  </div>
-                </div>
-
-                {/* Totals */}
-                <div className="mx-3 my-3 px-4 py-3 rounded-xl"
-                  style={{ background: `${roleColor}16`, border: `1px solid ${roleColor}28` }}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Subtotal</span>
-                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                      {priceFmt(selectedAgentPlan.setupFee + monthlyPrice)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mb-2.5">
-                    <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>IVA (16%)</span>
-                    <span className="text-xs tabular-nums" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                      {priceFmt(Math.round((selectedAgentPlan.setupFee + monthlyPrice) * 0.16))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-end pt-2.5"
-                    style={{ borderTop: `1px solid ${roleColor}35` }}>
-                    <div>
-                      <p className="text-xs font-semibold text-white">Total hoy</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                        Después: {priceFmt(Math.round(monthlyPrice * 1.16))}/mes
-                      </p>
+                {/* Expediente fields */}
+                <div style={{ padding: '14px 18px 18px' }}>
+                  {[
+                    { label: 'Cargo',          value: selectedMeerkat?.id !== 'custom' ? (selectedMeerkat?.rol ?? 'Personalizado') : 'Personalizado' },
+                    { label: 'Jornada',        value: isCoordinator ? `${selectedNoxTier.label} tareas inteligentes` : selectedTier.label },
+                    { label: 'Organización',   value: businessName || '—' },
+                    { label: 'Inicio',         value: 'Hoy' },
+                    { label: 'Estado',         value: 'Activo al completar' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.33)', flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.82)', textAlign: 'right' }}>{value}</span>
                     </div>
-                    <span className="text-2xl font-bold tabular-nums" style={{ color: roleColor }}>
+                  ))}
+                </div>
+
+                {/* Price summary */}
+                <div style={{ margin: '0 14px 14px', borderRadius: 12, background: `${roleColor}14`, border: `1px solid ${roleColor}28`, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)' }}>
+                      Instalación <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>(único)</span>
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.65)', tabularNums: true } as React.CSSProperties}>{priceFmt(selectedAgentPlan.setupFee)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 10, borderBottom: `1px solid ${roleColor}28` }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)' }}>
+                      Mensualidad <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)' }}>({isCoordinator ? selectedNoxTier.label : selectedTier.label})</span>
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.65)' }}>{priceFmt(monthlyPrice)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>Total hoy c/IVA</p>
+                      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>Después: {priceFmt(Math.round(monthlyPrice * 1.16))}/mes</p>
+                    </div>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: roleColor, letterSpacing: '-0.02em' }}>
                       {priceFmt(Math.round((selectedAgentPlan.setupFee + monthlyPrice) * 1.16))}
                     </span>
                   </div>
@@ -1549,7 +1771,11 @@ function RegistroInner() {
         <div className="absolute inset-0 flex overflow-hidden">
 
           {/* Col 1 — Image */}
-          <div className="relative flex-none" style={{ width: '38%', background: '#F4F0FF' }}>
+          <div className="relative flex-none" style={{
+            width: '38%', background: '#F4F0FF',
+            WebkitMaskImage: 'linear-gradient(to right, black 0%, black 62%, rgba(0,0,0,0.92) 74%, rgba(0,0,0,0.65) 84%, rgba(0,0,0,0.2) 94%, transparent 100%)',
+            maskImage:       'linear-gradient(to right, black 0%, black 62%, rgba(0,0,0,0.92) 74%, rgba(0,0,0,0.65) 84%, rgba(0,0,0,0.2) 94%, transparent 100%)',
+          }}>
             <div style={{
               position: 'absolute', inset: 0,
               background: `radial-gradient(ellipse at 55% 88%, ${selectedMeerkat.color}28 0%, transparent 55%)`,
@@ -1580,7 +1806,7 @@ function RegistroInner() {
           {/* Col 2 — Personality */}
           <div
             className="flex-none flex flex-col overflow-y-auto"
-            style={{ width: '31%', borderLeft: '1px solid rgba(255,255,255,0.06)', padding: '84px 44px 52px' }}
+            style={{ width: '31%', padding: '84px 44px 52px' }}
           >
             <p style={{
               fontSize: 11, fontWeight: 700,
@@ -1655,16 +1881,6 @@ function RegistroInner() {
               );
             })()}
 
-            {/* ¿Hacemos equipo? — bottom of personality column */}
-            <div style={{ marginTop: 'auto', paddingTop: 48, textAlign: 'center' }}>
-              <p style={{
-                fontSize: 'clamp(1.4rem, 1.9vw, 2rem)',
-                fontWeight: 800, color: '#fff',
-                letterSpacing: '-0.02em', lineHeight: 1.2,
-              }}>
-                ¿Hacemos equipo?
-              </p>
-            </div>
           </div>
 
           {/* Col 3 — Price + Features + CTA */}
@@ -1699,7 +1915,10 @@ function RegistroInner() {
                   {selectedMeerkat.id === 'custom' ? 'Configuras desde tu portal' : 'Incluye'}
                 </p>
                 <div className="flex flex-col gap-3">
-                  {(selectedMeerkat.id === 'custom' ? CUSTOM_PORTAL_FEATURES : AGENT_PLANS[0].features).map(f => (
+                  {(selectedMeerkat.id === 'custom'
+                    ? CUSTOM_PORTAL_FEATURES
+                    : AGENT_PLANS[0].features.map(f => f.label === 'Voz y nombre personalizables' ? { label: 'Nombre personalizable', desc: 'Ponle el nombre que quieras a tu Centinelia desde el portal.' } : f)
+                  ).map(f => (
                     <div key={f.label} className="flex items-start gap-2.5">
                       <Check size={12} style={{ color: selectedMeerkat.id === 'custom' ? '#6b7280' : '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
                       <div>
@@ -1716,6 +1935,15 @@ function RegistroInner() {
               </div>
             </div>
 
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 20, marginBottom: 14 }}>
+              <p style={{
+                fontSize: '0.9rem', fontWeight: 700, color: 'rgba(255,255,255,0.72)',
+                letterSpacing: '-0.01em', textAlign: 'center',
+              }}>
+                ¿Hacemos equipo?
+              </p>
+            </div>
+
             <button
               onClick={handleNext}
               className="w-full py-4 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 hover:scale-[1.01] flex-shrink-0"
@@ -1728,6 +1956,125 @@ function RegistroInner() {
         </div>
       </div>
     )}
+
+    {/* ── Chat widget mobile — Step 3 ────────────────────────────────────────── */}
+    {step === 3 && selectedMeerkat && (
+      <div className="sm:hidden" style={{ position: 'fixed', bottom: 24, right: 16, zIndex: 50 }}>
+        {mobileBubble && (
+          <div style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 10px)',
+            right: 0,
+            width: 210,
+            background: roleColor,
+            border: `1px solid ${roleColor}`,
+            borderRadius: '14px 14px 4px 14px',
+            padding: '10px 14px',
+            fontSize: 12.5, lineHeight: 1.55,
+            color: getContrastColor(roleColor),
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: `0 4px 20px ${roleColor}60`,
+          }}>
+            {mobileBubble}
+          </div>
+        )}
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%', overflow: 'hidden',
+          background: '#F4F0FF', border: `2px solid ${roleColor}`,
+          position: 'relative',
+          boxShadow: `0 4px 16px ${roleColor}50`,
+        }}>
+          <Image
+            src={selectedMeerkat.imagen!}
+            alt={selectedMeerkat.nombre} fill sizes="56px"
+            style={{ objectFit: 'cover', objectPosition: 'center 3%' }} />
+        </div>
+      </div>
+    )}
+
+    {/* ── Chat widget desktop — Step 3 ─────────────────────────────────────────── */}
+    {step === 3 && selectedMeerkat && (
+      <div className="hidden sm:block" style={{
+        position: 'fixed', bottom: 24, right: 24,
+        width: 272, zIndex: 50,
+        borderRadius: 20,
+        background: 'rgba(15,7,40,0.88)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '12px 14px',
+          background: `${roleColor}18`,
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 40, height: 46, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
+            background: '#F4F0FF', border: `1.5px solid ${roleColor}50`,
+            position: 'relative',
+          }}>
+            {selectedMeerkat.imagen ? (
+              <Image
+                src={selectedMeerkat.imagen}
+                alt={selectedMeerkat.nombre}
+                fill
+                sizes="40px"
+                style={{ objectFit: 'contain', objectPosition: 'bottom center' }}
+              />
+            ) : (
+              <div style={{
+                width: '100%', height: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, fontWeight: 800, color: roleColor,
+              }}>
+                {selectedMeerkat.nombre[0]}
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+              {agentName.trim() || selectedMeerkat.nombre}
+            </p>
+            <p style={{ fontSize: 10, color: roleColor, marginTop: 1, fontWeight: 600 }}>
+              {selectedMeerkat.rol || 'Personalizado'}
+            </p>
+          </div>
+          <div style={{
+            width: 7, height: 7, borderRadius: '50%',
+            background: '#22c55e',
+            boxShadow: '0 0 6px rgba(34,197,94,0.7)',
+            flexShrink: 0,
+          }} />
+        </div>
+
+        {/* Messages */}
+        <div style={{
+          padding: '12px 12px 14px',
+          display: 'flex', flexDirection: 'column', gap: 6,
+          maxHeight: 220, overflowY: 'auto',
+        }}>
+          {chatMessages.map((msg, i) => (
+            <div key={i} style={{
+              background: 'rgba(255,255,255,0.07)',
+              borderRadius: '4px 14px 14px 14px',
+              padding: '8px 12px',
+              fontSize: 12, lineHeight: 1.55,
+              color: 'rgba(255,255,255,0.85)',
+              maxWidth: '92%',
+            }}>
+              {msg}
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+      </div>
+    )}
+
     </div>
   );
 }

@@ -21,6 +21,7 @@ import InfoTooltip               from '@/components/InfoTooltip';
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
+import BugReportToggle               from '../BugReportToggle';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -104,7 +105,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         {/* Config sections */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
 
-          {agent.plan === 'pro' && (
+          {agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom') && (
             <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               <div className="flex items-center gap-1.5 mb-4">
                 <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -172,6 +173,17 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             </div>
             <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
           </div>
+
+          {isOwner && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Reportes de fallas
+                </h2>
+              </div>
+              <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+            </div>
+          )}
 
           {isOwner && (
             <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

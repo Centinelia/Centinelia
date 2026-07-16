@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import SupportChat       from './SupportChat';
 import OpsAgentChatFab, { type AgentOption } from './OpsAgentChatFab';
+import BugReportButton   from './BugReportButton';
 
 export default async function TokenLayout({
   children,
@@ -14,7 +15,7 @@ export default async function TokenLayout({
   const supabase = createAdminClient();
   const { data: account } = await supabase
     .from('voice_agents')
-    .select('portal_email')
+    .select('portal_email, allow_bug_reports')
     .eq('portal_token', token)
     .single();
 
@@ -42,6 +43,7 @@ export default async function TokenLayout({
       {children}
       <SupportChat />
       {opsAgents.length > 0 && <OpsAgentChatFab token={token} agents={opsAgents} />}
+      {account?.allow_bug_reports && <BugReportButton token={token} />}
     </>
   );
 }

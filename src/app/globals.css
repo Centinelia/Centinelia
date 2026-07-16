@@ -130,6 +130,18 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateZ(0);
 }
 
+/* ── Mobile bottom sheet slide-up ───────────────────────────────────────── */
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Incorporation checklist item reveal ────────────────────────────────── */
+@keyframes item-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Audio waveform ─────────────────────────────────────────────────────── */
 @keyframes wavebar {
   0%,100% { transform: scaleY(0.25); opacity: 0.5; }
