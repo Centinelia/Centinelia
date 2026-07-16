@@ -19,10 +19,6 @@
     {
       "path": "/api/cron/nox-monitor",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/heartbeat",
-      "schedule": "0 * * * *"
     }
   ]
 }

@@ -1,4 +1,6 @@
 export const dynamic = 'force-dynamic';
+// Frecuencia recomendada: "0 * * * *" (cada hora)
+// Agregar a vercel.json cuando se active en producción:
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
