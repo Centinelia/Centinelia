@@ -39,6 +39,7 @@ import CallsSearch             from './CallsSearch';
 import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
+import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
@@ -731,6 +732,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     initialValue={(agent as any).knowledge_base ?? ''}
                     websiteSynced={!!((agent as any).website_knowledge)}
                     hasDescription={!!((agent as any).business_description?.trim())}
+                  />
+                </div>
+
+                <div id="perfil-dueno" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Perfil del responsable</h2>
+                    <InfoTooltip text="Cuéntale a tu empleado quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Se comparte con todos tus empleados automáticamente." />
+                  </div>
+                  <OwnerProfileEditor
+                    token={token}
+                    initialValue={(agent as any).owner_profile ?? ''}
                   />
                 </div>
 

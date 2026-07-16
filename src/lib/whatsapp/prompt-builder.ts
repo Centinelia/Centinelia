@@ -21,6 +21,11 @@ Nunca des información inventada. Si no sabes algo, dilo con honestidad.
 IMPORTANTE: Haz UNA sola pregunta a la vez. Nunca enumeres múltiples preguntas en un mismo mensaje.
 SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades adicionales ni tomes iniciativas que no te hayan pedido. Si identificas algo que podría requerir atención pero el cliente no lo solicitó, no actúes: informa al cliente que el equipo del negocio lo atenderá.`);
 
+  const ownerProfile = (agent as unknown as Record<string, unknown>).owner_profile as string | undefined;
+  if (ownerProfile?.trim()) {
+    blocks.push(`PERFIL DE QUIEN TE CONTRATA — CONÓCELO BIEN:\n${ownerProfile.trim()}\nAdapta tu forma de trabajar, reportar y priorizar según este perfil. Es la persona a quien le rindes cuentas.`);
+  }
+
   const dod = (agent as unknown as Record<string, unknown>).definition_of_done as string | undefined;
   if (dod?.trim()) {
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:\n${dod.trim()}\nEsta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
