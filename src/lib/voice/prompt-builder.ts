@@ -73,6 +73,14 @@ ${dod.trim()}
 Esta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
   }
 
+  // ── Guardrails ────────────────────────────────────────────────────────────
+  const guardrails = (agent as unknown as Record<string, unknown>).agent_guardrails as string | undefined;
+  if (guardrails?.trim()) {
+    blocks.push(`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:
+${guardrails.trim()}
+Estos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
+  }
+
   // ── Meerkat personality block ─────────────────────────────────────────────
   if (meerkat?.promptPersonalidad?.trim()) {
     blocks.push(meerkat.promptPersonalidad.trim());

@@ -23,6 +23,7 @@ import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
+import GuardrailsEditor              from '../GuardrailsEditor';
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -147,6 +148,19 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <DefinitionOfDoneEditor
               token={token}
               initDod={(agent as any).definition_of_done ?? ''}
+            />
+          </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Límites de autoridad
+              </h2>
+              <InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina — y eso genera errores." />
+            </div>
+            <GuardrailsEditor
+              token={token}
+              initialValue={(agent as any).agent_guardrails ?? ''}
             />
           </div>
 

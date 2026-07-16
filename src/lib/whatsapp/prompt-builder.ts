@@ -26,6 +26,11 @@ SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades 
     blocks.push(`PERFIL DE QUIEN TE CONTRATA — CONÓCELO BIEN:\n${ownerProfile.trim()}\nAdapta tu forma de trabajar, reportar y priorizar según este perfil. Es la persona a quien le rindes cuentas.`);
   }
 
+  const guardrails = (agent as unknown as Record<string, unknown>).agent_guardrails as string | undefined;
+  if (guardrails?.trim()) {
+    blocks.push(`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:\n${guardrails.trim()}\nEstos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
+  }
+
   const dod = (agent as unknown as Record<string, unknown>).definition_of_done as string | undefined;
   if (dod?.trim()) {
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:\n${dod.trim()}\nEsta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
