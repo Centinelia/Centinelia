@@ -281,7 +281,7 @@ export default function LandingPage() {
 
             {/* Sub */}
             <p
-              className="mb-8 leading-relaxed mt-[28vw] sm:mt-0"
+              className="mb-8 leading-relaxed mt-[40vw] sm:mt-0"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
               Recepcionista, vendedor, cobrador, seguimiento: todos activos
