@@ -33,7 +33,7 @@ export default function KnowledgeBaseEditor({
   const hint =
     chars <= SOFT_LIMIT ? 'Ideal' :
     chars <= HARD_LIMIT ? 'Largo pero aceptable, considera resumir' :
-    'Muy extenso, el agente puede tener dificultad usando toda esta información';
+    'Muy extenso, considera resumir para que tu empleado lo consulte con facilidad';
 
   const handleGenerate = async () => {
     if (generating) return;
@@ -47,8 +47,8 @@ export default function KnowledgeBaseEditor({
 
     const hasExisting = value.trim().length > 50;
     const confirmMsg  = hasExisting
-      ? 'Esto consumirá 3 operaciones de IA y reemplazará el contenido actual. ¿Deseas continuar?'
-      : 'Esto consumirá 3 operaciones de IA. ¿Deseas continuar?';
+      ? 'Esto usará 3 tareas y reemplazará el contenido actual. ¿Deseas continuar?'
+      : 'Esto usará 3 tareas. ¿Deseas continuar?';
     if (!window.confirm(confirmMsg)) return;
 
     setGenerating(true);
@@ -163,7 +163,7 @@ export default function KnowledgeBaseEditor({
         >
           {generating
             ? <><Loader2 size={12} className="animate-spin" />Generando…</>
-            : <><Sparkles size={12} />Generar con IA <span style={{ opacity: 0.6 }}>· 3 ops</span></>}
+            : <><Sparkles size={12} />Redactar automáticamente <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
         </button>
       </div>
       {genError && (

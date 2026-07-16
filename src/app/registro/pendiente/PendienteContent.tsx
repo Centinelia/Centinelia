@@ -67,7 +67,6 @@ export default function PendienteContent() {
         </div>
 
         {/* Heading */}
-        <p className="text-3xl text-center mb-2">🎉</p>
         <h1 className="text-3xl font-bold text-white mb-2 text-center" style={{ letterSpacing: '-0.02em' }}>
           {name} ya forma parte de tu equipo.
         </h1>

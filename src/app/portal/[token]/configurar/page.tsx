@@ -120,9 +120,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <div className="flex items-center gap-1.5 mb-4">
               <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Base de conocimiento
+                Responsabilidades, objetivos y conducta
               </h2>
-              <InfoTooltip text="Define el rol de este empleado y las instrucciones específicas que usará en campo." />
+              <InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />
             </div>
             <AgentKnowledgeBaseEditor
               token={token}

@@ -73,7 +73,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       items: [
         { label: 'Organización',         id: 'organizacion' },
         { label: 'Branding',             id: 'branding' },
-        { label: 'Base de conocimiento', id: 'conocimiento' },
+        { label: 'Manual de la empresa', id: 'conocimiento' },
         { label: 'Sitio web y reseñas',  id: 'sitio' },
         { label: 'Horarios',             id: 'horarios' },
       ],
@@ -113,12 +113,12 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       items: [
         { label: 'Actividad',          id: '' },
         { label: 'Bandeja de entrada', id: 'bandeja' },
-        { label: 'Reportes AI',        id: 'reportes' },
+        { label: 'Reportes automáticos', id: 'reportes' },
         { label: 'Contratos',          id: 'contratos' },
         { label: 'Documentos',         id: 'documentos' },
         { label: 'Juntas',             id: 'juntas' },
         { label: 'Onboarding',         id: 'onboarding' },
-        { label: 'Consultar agente',   id: 'chat' },
+        { label: 'Chat con tu empleado', id: 'chat' },
       ],
     }] as Section[] : []),
     {
@@ -128,7 +128,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Calendario',  id: 'calendario' },
         { label: 'CRM',         id: 'crm' },
         ...(hasOpsAgent ? [{ label: 'Mensajería', id: 'mensajeria' }] : []),
-        { label: 'Políticas',   id: 'politicas' },
+        { label: 'Reglamento interno', id: 'politicas' },
       ],
     },
     {
@@ -140,7 +140,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     ...(isOwner ? [{
-      id: 'usuarios', label: 'Usuarios', icon: <Users size={14} />,
+      id: 'usuarios', label: 'Equipo de gestión', icon: <Users size={14} />,
       directHref: `/portal/${token}/usuarios`,
       items: [],
     }] as Section[] : []),
@@ -319,7 +319,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
             {aiOpsLimit > 0 && (
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Ops IA</span>
+                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
                   <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>
                     {opsRemain} restantes
                   </span>

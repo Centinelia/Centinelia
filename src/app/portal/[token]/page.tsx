@@ -723,8 +723,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Base de conocimiento general</h2>
-                    <InfoTooltip text="Todo lo que el agente debe saber sobre tu negocio: servicios, precios, horarios, políticas, FAQs. Se usa tanto en llamadas entrantes como en llamadas salientes." />
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la empresa</h2>
+                    <InfoTooltip text="Todo lo que tu empleado debe saber sobre el negocio: servicios, precios, horarios, políticas y preguntas frecuentes. Se usa en llamadas, correos y mensajes." />
                   </div>
                   <KnowledgeBaseEditor
                     token={token}

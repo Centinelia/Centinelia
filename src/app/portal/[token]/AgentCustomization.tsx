@@ -38,7 +38,7 @@ export default function AgentCustomization({ token, initGreeting, initTransferRu
           Saludo de bienvenida
         </label>
         <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '0 0 10px' }}>
-          Lo primero que dice el agente al contestar. Déjalo vacío para usar el saludo estándar.
+          Lo primero que dice tu empleado al contestar. Déjalo vacío para usar el saludo estándar.
         </p>
         <input
           type="text"

@@ -113,8 +113,8 @@ export default function AgentKnowledgeBaseEditor({
 
     // Validate required fields before consuming ops
     const missing: string[] = [];
-    if (!role.trim())   missing.push('· Nombre del rol → escríbelo en el campo "Rol del empleado" arriba.');
-    if (!hasBusinessKb) missing.push('· Base de conocimiento del negocio → ve a Negocio → Base de conocimiento y genera o escribe una primero.');
+    if (!role.trim())   missing.push('· Nombre del puesto → escríbelo en el campo "Puesto del empleado" arriba.');
+    if (!hasBusinessKb) missing.push('· Manual de la empresa → ve a Negocio → Manual de la empresa y complétalo primero.');
     if (missing.length) {
       setIsRoleValidation(true);
       setGenRoleError('Necesitas completar esto antes de generar:\n\n' + missing.join('\n'));
@@ -123,8 +123,8 @@ export default function AgentKnowledgeBaseEditor({
 
     const hasExisting = roleKb.trim().length > 50;
     const confirmMsg  = hasExisting
-      ? 'Esto consumirá 3 operaciones de IA y reemplazará las instrucciones actuales. ¿Deseas continuar?'
-      : 'Esto consumirá 3 operaciones de IA. ¿Deseas continuar?';
+      ? 'Esto usará 3 tareas y reemplazará las instrucciones actuales. ¿Deseas continuar?'
+      : 'Esto usará 3 tareas. ¿Deseas continuar?';
     if (!window.confirm(confirmMsg)) return;
 
     setGeneratingRole(true);
@@ -188,17 +188,17 @@ export default function AgentKnowledgeBaseEditor({
   return (
     <div className="flex flex-col gap-6">
 
-      {/* Rol del agente */}
+      {/* Puesto del empleado */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-3)' }}>
-          Rol del agente
+          Puesto del empleado
         </label>
         <div className="flex gap-2">
           <input
             type="text"
             value={role}
             onChange={e => { setRole(e.target.value); setSavedRoleName(false); setDirtyRoleName(true); }}
-            placeholder="Ej. Agente de operaciones, Asistente ejecutivo..."
+            placeholder="Ej. Coordinadora de ventas, Asistente ejecutivo..."
             className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
             style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
           />
@@ -257,12 +257,12 @@ export default function AgentKnowledgeBaseEditor({
       {/* Divider */}
       <div style={{ borderTop: '1px solid var(--c-border)' }} />
 
-      {/* Section 1: Instrucciones del rol */}
+      {/* Section 1: Instrucciones del puesto */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <BookOpen size={13} style={{ color: roleColor }} />
           <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: roleColor }}>
-            Instrucciones del rol
+            Instrucciones del puesto
           </p>
           <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
             style={{ background: `${roleColor}1f`, color: roleColor, border: `1px solid ${roleColor}40` }}>
@@ -270,7 +270,7 @@ export default function AgentKnowledgeBaseEditor({
           </span>
         </div>
         <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Procedimientos, reglas, límites de aprobación y contactos clave que el agente usa en su rol de <strong style={{ color: roleColor }}>{role}</strong>.
+          Procedimientos, reglas, límites de aprobación y contactos clave que tu empleado usa en su puesto de <strong style={{ color: roleColor }}>{role}</strong>.
         </p>
         <textarea
           value={roleKb}
@@ -291,7 +291,7 @@ export default function AgentKnowledgeBaseEditor({
           >
             {generatingRole
               ? <><Loader2 size={12} className="animate-spin" />Generando…</>
-              : <><Sparkles size={12} />Generar con IA <span style={{ opacity: 0.6 }}>· 3 ops</span></>}
+              : <><Sparkles size={12} />Redactar automáticamente <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
           </button>
         </div>
         {genRoleError && (
@@ -326,7 +326,7 @@ export default function AgentKnowledgeBaseEditor({
           </p>
         </div>
         <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Todo lo que el agente ha aprendido en campo y fue aprobado en Oficina. Puedes editar, reorganizar o eliminar entradas directamente aquí.
+          Todo lo que tu empleado ha aprendido en campo y fue aprobado en Oficina. Puedes editar, reorganizar o eliminar entradas directamente aquí.
         </p>
         <textarea
           value={learnings}

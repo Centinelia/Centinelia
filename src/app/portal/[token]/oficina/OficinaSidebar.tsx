@@ -16,25 +16,26 @@ interface Props {
   hasStripe?:       boolean;
   vertical?:        string;
   modules?:         string[]; // undefined = owner (all access)
+  agentName?:       string;
 }
 
 const NAV_ITEMS = [
   { href: '',               moduleId: 'of_actividad',           label: 'Actividad',             icon: Activity,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-actividad',           vertical: null       },
-  { href: '/bandeja',       moduleId: 'of_bandeja',             label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',            opsHint: '1 op/correo',                 pulseId: 'of-bandeja',             vertical: null       },
-  { href: '/reportes',      moduleId: 'of_reportes',            label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',                   opsHint: '1 op/reporte',                pulseId: 'of-reportes',            vertical: null       },
-  { href: '/contratos',     moduleId: 'of_contratos',           label: 'Contratos',             icon: FileText,      badgeKey: 'contratos',          opsHint: '1 op/análisis',               pulseId: 'of-contratos',           vertical: null       },
+  { href: '/bandeja',       moduleId: 'of_bandeja',             label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',            opsHint: '1 tarea/correo',              pulseId: 'of-bandeja',             vertical: null       },
+  { href: '/reportes',      moduleId: 'of_reportes',            label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',                   opsHint: '1 tarea/reporte',             pulseId: 'of-reportes',            vertical: null       },
+  { href: '/contratos',     moduleId: 'of_contratos',           label: 'Contratos',             icon: FileText,      badgeKey: 'contratos',          opsHint: '1 tarea/análisis',            pulseId: 'of-contratos',           vertical: null       },
   { href: '/documentos',    moduleId: 'of_documentos',          label: 'Documentos',            icon: FolderOpen,    badgeKey: '',                   opsHint: '',                            pulseId: 'of-documentos',          vertical: null       },
-  { href: '/juntas',        moduleId: 'of_juntas',              label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',             opsHint: '1–6 ops/junta',               pulseId: 'of-juntas',              vertical: null       },
-  { href: '/investigacion', moduleId: 'of_investigacion',       label: 'Investigación',         icon: Search,        badgeKey: '',                   opsHint: '0 ops aquí · 7–13 vía chat',  pulseId: 'of-investigacion',       vertical: null       },
+  { href: '/juntas',        moduleId: 'of_juntas',              label: 'Juntas',                icon: Mic,           badgeKey: 'juntas',             opsHint: '1–6 tareas/junta',            pulseId: 'of-juntas',              vertical: null       },
+  { href: '/investigacion', moduleId: 'of_investigacion',       label: 'Investigación',         icon: Search,        badgeKey: '',                   opsHint: '0 tareas aquí · 7–13 vía chat', pulseId: 'of-investigacion',    vertical: null       },
   { href: '/onboarding',    moduleId: 'of_onboarding',          label: 'Onboarding',            icon: UserCheck,     badgeKey: '',                   opsHint: '',                            pulseId: 'of-onboarding',          vertical: null       },
   { href: '/reportes-ciudadanos', moduleId: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', icon: ClipboardList, badgeKey: 'reportesCiudadanos', opsHint: '', pulseId: 'of-reportes-ciudadanos', vertical: 'gobierno' },
   { href: '/cabildo',       moduleId: 'of_cabildo',             label: 'Cabildo',               icon: Gavel,         badgeKey: '',                   opsHint: '',                            pulseId: 'of-cabildo',             vertical: 'gobierno' },
   { href: '/helpdesk',      moduleId: 'of_helpdesk',            label: 'Mesa de ayuda',         icon: Headphones,    badgeKey: '',                   opsHint: '',                            pulseId: 'of-helpdesk',            vertical: null       },
   { href: '/encuestas',     moduleId: 'of_encuestas',           label: 'Encuestas',             icon: PieChart,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-encuestas',           vertical: null       },
-  { href: '/chat',          moduleId: 'of_chat',                label: 'Consultar agente',      icon: MessageSquare, badgeKey: '',                   opsHint: '3–13 ops/msg',                pulseId: 'of-chat',                vertical: null       },
+  { href: '/chat',          moduleId: 'of_chat',                label: 'CHAT_PLACEHOLDER',      icon: MessageSquare, badgeKey: '',                   opsHint: '3–13 tareas/mensaje',         pulseId: 'of-chat',                vertical: null       },
 ];
 
-export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules }: Props) {
+export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules, agentName }: Props) {
   const pathname    = usePathname();
   const base        = `/portal/${token}/oficina`;
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -100,6 +101,9 @@ export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, 
             : pathname.startsWith(href);
           const count    = item.badgeKey ? (badges[item.badgeKey] ?? 0) : 0;
           const Icon     = item.icon;
+          const label    = item.label === 'CHAT_PLACEHOLDER'
+            ? (agentName ? `Hablar con ${agentName}` : 'Chat con tu empleado')
+            : item.label;
 
           return (
             <Link
@@ -114,7 +118,7 @@ export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, 
             >
               <div className="flex items-center gap-2.5">
                 <Icon size={14} style={{ opacity: isActive ? 1 : 0.55, flexShrink: 0 }} />
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">{label}</span>
                 {count > 0 && (
                   <span
                     className="flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums"
@@ -168,7 +172,7 @@ export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, 
             {aiOpsLimit > 0 && (
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Ops IA</span>
+                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
                   <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>{opsRemain} rest.</span>
                 </div>
                 <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>

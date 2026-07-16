@@ -28,7 +28,7 @@ export default function RoleKnowledgeBaseEditor({
   const hint =
     chars <= SOFT_LIMIT ? 'Ideal' :
     chars <= HARD_LIMIT ? 'Largo pero aceptable, considera resumir' :
-    'Muy extenso, el agente puede tener dificultad usando toda esta información';
+    'Muy extenso, considera resumir para que tu empleado lo consulte con facilidad';
 
   const handleSave = async () => {
     setSaving(true);
@@ -45,7 +45,7 @@ export default function RoleKnowledgeBaseEditor({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-        El agente consulta esta información cuando la conversación requiere su especialización como <strong style={{ color: '#f59e0b' }}>{role}</strong>. Incluye procedimientos, reglas de negocio, límites de aprobación, contactos clave y cualquier detalle específico del rol.
+        Tu empleado consulta esta información en su día a día como <strong style={{ color: '#f59e0b' }}>{role}</strong>. Incluye procedimientos, reglas del puesto, límites de aprobación, contactos clave y cualquier detalle específico de su rol.
       </p>
       <textarea
         value={value}
