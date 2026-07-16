@@ -182,15 +182,26 @@ export default function LandingPage() {
       {/* ── HERO, full-screen cinematic image ───────────────────────────── */}
       <section className="relative film-grain" style={{ minHeight: '100svh', display: 'flex', alignItems: 'flex-start', overflow: 'hidden', clipPath: 'inset(0 0 0 0)' }}>
 
-        {/* Background image */}
+        {/* Background image — mobile */}
+        <Image
+          src="/hero-bg-mobile.png"
+          alt=""
+          fill
+          priority
+          quality={100}
+          sizes="100vw"
+          className="hero-bg-img block sm:hidden"
+          style={{ objectFit: 'cover', objectPosition: 'center 30%' }}
+        />
+        {/* Background image — desktop */}
         <Image
           src="/hero-bg.png"
           alt=""
           fill
           priority
           quality={100}
-          sizes="(max-width: 640px) 200vw, (max-width: 1280px) 150vw, 100vw"
-          className="hero-bg-img"
+          sizes="(max-width: 1280px) 150vw, 100vw"
+          className="hero-bg-img hidden sm:block"
           style={{ objectFit: 'cover' }}
         />
 
