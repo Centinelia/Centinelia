@@ -180,7 +180,7 @@ export default function LandingPage() {
       <LandingNav />
 
       {/* ── HERO, full-screen cinematic image ───────────────────────────── */}
-      <section className="relative film-grain" style={{ minHeight: '100svh', display: 'flex', alignItems: 'flex-start', overflow: 'hidden', clipPath: 'inset(0 0 0 0)' }}>
+      <section className="relative film-grain flex items-end sm:items-start" style={{ minHeight: '100svh', overflow: 'hidden', clipPath: 'inset(0 0 0 0)' }}>
 
         {/* Background image — mobile */}
         <Image
@@ -243,7 +243,7 @@ export default function LandingPage() {
         }} />
 
         {/* Content, centered on mobile, left-aligned on sm+ */}
-        <div className="relative w-full max-w-6xl mx-auto px-5 sm:px-8 text-center sm:text-left" style={{ paddingTop: 100, paddingBottom: 80, zIndex: 3 }}>
+        <div className="relative w-full max-w-6xl mx-auto px-5 sm:px-8 text-center sm:text-left pb-14 sm:pb-[80px] pt-0 sm:pt-[100px]" style={{ zIndex: 3 }}>
           <div className="mx-auto sm:mx-0" style={{ maxWidth: 560 }}>
 
             {/* Live waveform indicator */}
