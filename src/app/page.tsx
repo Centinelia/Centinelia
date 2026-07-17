@@ -606,7 +606,7 @@ export default function LandingPage() {
               }}
             >
               <p className="text-sm mb-3" style={{ color: C.textMute }}>
-                Todos activos al mismo tiempo. Las 24 horas. Sin nómina.
+                Un equipo que no incrementa tu nómina.
               </p>
               <p
                 className="font-extrabold tracking-tight mb-8"
@@ -630,7 +630,7 @@ export default function LandingPage() {
                   border: 'none',
                 }}
               >
-                Conoce a los 8 empleados <ArrowRight size={13} />
+                Conoce a los 9 empleados <ArrowRight size={13} />
               </Link>
             </div>
           </AnimatedSection>
@@ -768,7 +768,7 @@ export default function LandingPage() {
                   border: '1px solid rgba(255,255,255,0.16)',
                 }}
               >
-                Conoce a los 8 empleados <ArrowRight size={13} />
+                Conoce a los 9 empleados <ArrowRight size={13} />
               </Link>
             </div>
           </AnimatedSection>
