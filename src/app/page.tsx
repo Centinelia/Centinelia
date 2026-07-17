@@ -630,7 +630,7 @@ export default function LandingPage() {
                   border: 'none',
                 }}
               >
-                Conoce a los 9 empleados <ArrowRight size={13} />
+                Conoce a los 10 empleados <ArrowRight size={13} />
               </Link>
             </div>
           </AnimatedSection>
@@ -768,7 +768,7 @@ export default function LandingPage() {
                   border: '1px solid rgba(255,255,255,0.16)',
                 }}
               >
-                Conoce a los 9 empleados <ArrowRight size={13} />
+                Conoce a los 10 empleados <ArrowRight size={13} />
               </Link>
             </div>
           </AnimatedSection>
