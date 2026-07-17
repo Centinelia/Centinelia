@@ -14,7 +14,10 @@ export async function POST() {
 
   const { error: updateError } = await supabase
     .from('voice_agents')
-    .update({ knowledge_base: DEMO_INSTRUCTIONS })
+    .update({
+      knowledge_base: DEMO_INSTRUCTIONS,
+      first_message: 'Hola, mucho gusto. Soy Centinelia. Esta llamada puede ser grabada.\n\nCuéntame, ¿qué tipo de negocio quieres que simulemos hoy?',
+    })
     .eq('id', agentId);
 
   if (updateError) {

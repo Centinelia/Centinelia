@@ -528,16 +528,16 @@ export default function LandingPage() {
           <div className="hidden lg:flex items-end gap-10 mb-0">
             <AnimatedSection className="flex-1">
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                Lo que puede hacer tu equipo
+                Conoce a tu equipo.
               </p>
               <h2
                 className="font-bold tracking-tight mb-4"
                 style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
               >
-                Recibe, llama, agenda<br />y vende por ti
+                Construye tu oficina digital.
               </h2>
               <p style={{ color: C.textSub }}>
-                Tu empleado aprende sobre tu organización y está tomando llamadas en menos de 24 horas.
+                Contrata empleados especializados que trabajan juntos, las 24 horas.
               </p>
             </AnimatedSection>
 
@@ -553,7 +553,7 @@ export default function LandingPage() {
           <div className="lg:hidden mb-4">
             {/* Label fuera del grid para que siempre ocupe ancho completo */}
             <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: C.accent }}>
-              Lo que puede hacer tu equipo
+              Conoce a tu equipo.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px' }}>
               <div>
@@ -561,10 +561,10 @@ export default function LandingPage() {
                   className="font-bold tracking-tight mb-3"
                   style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
                 >
-                  Recibe, llama, agenda<br />y vende por ti
+                  Construye tu oficina digital.
                 </h2>
                 <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                  Tu empleado aprende sobre tu organización y está tomando llamadas en menos de 24 horas.
+                  Contrata empleados especializados que trabajan juntos, las 24 horas.
                 </p>
               </div>
               <div />{/* espacio reservado para meerkat */}
