@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Phone, BarChart3, PhoneOff, TrendingDown, PhoneOutgoing,
+  Phone, PhoneOff, TrendingDown,
   Clock, Check, ArrowRight, Play, Target, Rocket, Star,
   ShoppingBag, MessageCircle, Users,
 } from 'lucide-react';
@@ -23,59 +23,23 @@ const DEMO_PHONE_HREF = 'tel:+528121888490';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const FEATURES: {
-  icon: React.ReactNode; color: string; title: string; desc: string;
-  cardBg?: string; cardBorder?: string;
-}[] = [
-  {
-    icon:  <Phone size={20} color="#6C3BFF" />,
-    color: '#6C3BFF',
-    title: 'Recepcionista 24/7',
-    desc:  'Contesta cada llamada sin importar la hora, captura el lead, agenda la cita y toma el pedido. Sin llamadas en espera, sin llamadas perdidas.',
-  },
-  {
-    icon:  <PhoneOutgoing size={20} color="#9B6DFF" />,
-    color: '#9B6DFF',
-    title: 'Ejecutivo de ventas',
-    desc:  'Llama a prospectos, confirma citas y reactiva clientes dormidos. Tu fuerza de ventas siempre activa, sin que marques un solo número.',
-    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(155,109,255,0.05) 100%)',
-    cardBorder: 'rgba(155,109,255,0.35)',
-  },
-  {
-    icon:  <Target size={20} color="#6C3BFF" />,
-    color: '#6C3BFF',
-    title: 'Ejecutivo de seguimiento',
-    desc:  'Cuando un prospecto no contesta, vuelve a llamar hasta cerrarlo o agotar los intentos que defines. Ningún lead se queda sin respuesta.',
-  },
-  {
-    icon:  <Rocket size={20} color="#9B6DFF" />,
-    color: '#9B6DFF',
-    title: 'Ejecutivo de recuperación',
-    desc:  'Reactiva clientes dormidos, gestiona cobros y confirma citas en volumen. El trabajo de un equipo entero de cobranza, sin la nómina.',
-    cardBg: 'linear-gradient(145deg, rgba(108,59,255,0.2) 0%, rgba(108,59,255,0.06) 100%)',
-    cardBorder: 'rgba(108,59,255,0.36)',
-  },
-  {
-    icon:  <BarChart3 size={20} color="#6C3BFF" />,
-    color: '#6C3BFF',
-    title: 'Supervisor de desempeño',
-    desc:  'Registra cada llamada, lead, cita y minuto. Sabes exactamente cómo trabaja tu equipo en tiempo real, desde cualquier dispositivo.',
-  },
-  {
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-      </svg>
-    ),
-    color: '#4285F4',
-    title: 'Promotor de reputación',
-    desc:  'Después de cada llamada exitosa, manda el link de reseña de Google por WhatsApp. Tu reputación crece sola, sin que tengas que pedírselo a nadie.',
-    cardBg: 'linear-gradient(145deg, rgba(155,109,255,0.18) 0%, rgba(108,59,255,0.05) 100%)',
-    cardBorder: 'rgba(155,109,255,0.35)',
-  },
+const DIRECTORS = {
+  nombres: 'Nox & Niva',
+  rol:     'Dirección',
+  desc:    'Coordinan al equipo, monitorean tareas y presentan resultados. Hacen que todo funcione sin que el dueño tenga que intervenir.',
+  color:   '#6C3BFF',
+  img:     '/meerkats/nox-niva.png',
+};
+
+const TEAM = [
+  { nombre: 'Nia',   rol: 'Recepción',      desc: 'Atiende llamadas, agenda citas y captura cada lead.',                                 color: '#6C3BFF', img: '/meerkats/nia.png'   },
+  { nombre: 'Noah',  rol: 'Ventas',         desc: 'Llama prospectos, reactiva clientes y genera oportunidades nuevas.',                  color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Nara',  rol: 'Administración', desc: 'Organiza procesos, coordina operaciones y mantiene todo en orden.',                   color: '#f97316', img: '/meerkats/nara.png'  },
+  { nombre: 'Neo',   rol: 'Operaciones',       desc: 'Gestiona tickets, incidentes y flujos internos sin que nada se atasque.',          color: '#06b6d4', img: '/meerkats/neo.png'   },
+  { nombre: 'Naia',  rol: 'Recursos Humanos', desc: 'Maneja faltas, vacaciones y permisos. Todo el equipo siempre en orden.',            color: '#ec4899', img: '/meerkats/naia.png'  },
+  { nombre: 'Nico',  rol: 'Recuperación',     desc: 'Gestiona cobros y reactiva clientes con tacto y firmeza.',                          color: '#f59e0b', img: '/meerkats/nico.png'  },
+  { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Resuelve dudas y da seguimiento hasta que el cliente quede satisfecho.',         color: '#3b82f6', img: '/meerkats/nelia.png' },
+  { nombre: 'Nova',  rol: 'Campo',          desc: 'Despacha equipos, coordina operaciones y actualiza estatus en tiempo real.',          color: '#ef4444', img: '/meerkats/nova.png'  },
 ];
 
 const PAINS = [
@@ -524,9 +488,8 @@ export default function LandingPage() {
       >
         <div className="max-w-5xl mx-auto px-5 sm:px-8" style={{ position: 'relative', zIndex: 1 }}>
 
-          {/* Desktop: 2-col, texto izquierda, suricata derecha asomándose sobre las tarjetas */}
-          <div className="hidden lg:flex items-end gap-10 mb-0">
-            <AnimatedSection className="flex-1">
+          <div className="hidden lg:block mb-10">
+            <AnimatedSection>
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
                 Conoce a tu equipo.
               </p>
@@ -537,81 +500,84 @@ export default function LandingPage() {
                 Construye tu oficina digital.
               </h2>
               <p style={{ color: C.textSub }}>
-                Contrata empleados especializados que trabajan juntos, las 24 horas.
+                Cada empleado tiene una especialidad. Juntos forman la oficina digital 24/7 de tu negocio.
               </p>
             </AnimatedSection>
-
-            {/* Suricata flotante */}
-            <MeerkatReveal className="agent-float relative flex-shrink-0 pointer-events-none select-none"
-              style={{ width: 280, height: 360, marginBottom: -160 }}>
-              <Image src="/agent-f2.png" alt="" fill sizes="280px"
-                style={{ objectFit: 'contain', objectPosition: 'top center' }} />
-            </MeerkatReveal>
           </div>
 
-          {/* Mobile: heading 2-col reserva espacio para la meerkat que asoma desde card[1] */}
-          <div className="lg:hidden mb-4">
-            {/* Label fuera del grid para que siempre ocupe ancho completo */}
+          <div className="lg:hidden mb-6">
             <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: C.accent }}>
               Conoce a tu equipo.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px' }}>
-              <div>
-                <h2
-                  className="font-bold tracking-tight mb-3"
-                  style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
-                >
-                  Construye tu oficina digital.
-                </h2>
-                <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-                  Contrata empleados especializados que trabajan juntos, las 24 horas.
-                </p>
-              </div>
-              <div />{/* espacio reservado para meerkat */}
-            </div>
+            <h2
+              className="font-bold tracking-tight mb-3"
+              style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
+            >
+              Construye tu oficina digital.
+            </h2>
+            <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
+              Cada empleado tiene una especialidad. Juntos forman la oficina digital 24/7 de tu negocio.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:mt-12">
-            {FEATURES.map((f, i) => (
-              <AnimatedSection key={f.title} delay={i * 0.07}>
+          {/* Org chart: Nox al tope, equipo debajo */}
+
+          {/* Dirección — Nox & Niva */}
+          <AnimatedSection className="flex justify-center mb-1">
+            <div
+              className="rounded-2xl overflow-hidden w-full"
+              style={{
+                maxWidth: 480,
+                background: C.surface,
+                border: `1.5px solid ${DIRECTORS.color}40`,
+                boxShadow: `0 4px 28px ${DIRECTORS.color}15`,
+              }}
+            >
+              <div style={{ height: 200, background: `${DIRECTORS.color}08`, position: 'relative' }}>
+                <Image src={DIRECTORS.img} alt="Nox y Niva" fill sizes="480px"
+                  style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
+              </div>
+              <div style={{ padding: '12px 16px 14px', borderTop: `2px solid ${DIRECTORS.color}` }}>
+                <p style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: DIRECTORS.color, marginBottom: 2 }}>
+                  {DIRECTORS.rol}
+                </p>
+                <h3 className="font-bold" style={{ fontSize: '1.05rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                  {DIRECTORS.nombres}
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: C.textSub, lineHeight: 1.5 }}>{DIRECTORS.desc}</p>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* Línea conectora */}
+          <div className="flex justify-center mb-1">
+            <div style={{ width: 1, height: 20, background: `${DIRECTORS.color}30` }} />
+          </div>
+
+          {/* Equipo (8 empleados — 4 cols desktop, 2 cols mobile) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {TEAM.map((m, i) => (
+              <AnimatedSection key={m.nombre} delay={i * 0.06} className="h-full">
                 <div
-                  className="feature-card rounded-2xl p-6 h-full"
+                  className="rounded-2xl overflow-hidden h-full"
                   style={{
-                    background:  f.cardBg ?? C.surface,
-                    border:      `1px solid ${f.cardBorder ?? C.border}`,
-                    boxShadow:   '0 2px 16px rgba(108,59,255,0.05)',
-                    position:    'relative',
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    boxShadow: '0 2px 12px rgba(108,59,255,0.05)',
                   }}
                 >
-                  {i === 1 && (
-                    <div
-                      className="block lg:hidden"
-                      style={{
-                        position: 'absolute',
-                        top: -130,
-                        right: 8,
-                        width: 130,
-                        height: 155,
-                        zIndex: 0,
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      }}
-                    >
-                      <MeerkatReveal style={{ position: 'relative', width: '100%', height: '100%' }}>
-                        <Image src="/agent-f2.png" alt="" fill sizes="130px"
-                          style={{ objectFit: 'contain', objectPosition: 'top center' }} />
-                      </MeerkatReveal>
-                    </div>
-                  )}
-                  <div className="relative" style={{ zIndex: 1 }}>
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                      style={{ background: `${f.color}22`, border: `1px solid ${f.color}44` }}
-                    >
-                      {f.icon}
-                    </div>
-                    <h3 className="font-semibold mb-2" style={{ color: C.text }}>{f.title}</h3>
-                    <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{f.desc}</p>
+                  <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
+                    <Image src={m.img} alt={m.nombre} fill sizes="220px"
+                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: '6px 6px 0' }} />
+                  </div>
+                  <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
+                    <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
+                      {m.rol}
+                    </p>
+                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                      {m.nombre}
+                    </h3>
+                    <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
                   </div>
                 </div>
               </AnimatedSection>
