@@ -733,46 +733,6 @@ export default function LandingPage() {
             </div>
           </AnimatedSection>
 
-          {/* Tagline card */}
-          <AnimatedSection delay={0.42}>
-            <div
-              className="rounded-2xl text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(108,59,255,0.18) 0%, rgba(155,109,255,0.08) 100%)',
-                border: '1px solid rgba(108,59,255,0.35)',
-                padding: 'clamp(24px, 4vw, 40px) clamp(20px, 5vw, 48px)',
-              }}
-            >
-              <p className="text-sm mb-3" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                Todos activos al mismo tiempo. Las 24 horas. Sin nómina.
-              </p>
-              <p
-                className="font-extrabold tracking-tight mb-8"
-                style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: '#fff', lineHeight: 1.1 }}
-              >
-                Contrata capacidad,{' '}
-                <span style={{
-                  background: 'linear-gradient(135deg, #9B6DFF 0%, #C4A8FF 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>
-                  no personal.
-                </span>
-              </p>
-              <Link
-                href="/empleados"
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
-                style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.72)',
-                  border: '1px solid rgba(255,255,255,0.16)',
-                }}
-              >
-                Conoce a los 10 empleados <ArrowRight size={13} />
-              </Link>
-            </div>
-          </AnimatedSection>
-
         </div>
       </section>
 
