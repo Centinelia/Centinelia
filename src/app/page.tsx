@@ -26,20 +26,20 @@ const DEMO_PHONE_HREF = 'tel:+528121888490';
 const DIRECTORS = {
   nombres: 'Nox & Niva',
   rol:     'Dirección',
-  desc:    'Coordinan al equipo, monitorean tareas y presentan resultados. Hacen que todo funcione sin que el dueño tenga que intervenir.',
+  desc:    'Dirigen a todo el equipo. Distribuyen trabajo, supervisan resultados y mantienen a todos sincronizados para que tu operación funcione sola.',
   color:   '#6C3BFF',
   img:     '/meerkats/nox-niva.png',
 };
 
 const TEAM = [
-  { nombre: 'Nia',   rol: 'Recepción',      desc: 'Atiende llamadas, agenda citas y captura cada lead.',                                 color: '#6C3BFF', img: '/meerkats/nia.png'   },
-  { nombre: 'Noah',  rol: 'Ventas',         desc: 'Llama prospectos, reactiva clientes y genera oportunidades nuevas.',                  color: '#22c55e', img: '/meerkats/noah.png'  },
-  { nombre: 'Nara',  rol: 'Administración', desc: 'Organiza procesos, coordina operaciones y mantiene todo en orden.',                   color: '#f97316', img: '/meerkats/nara.png'  },
-  { nombre: 'Neo',   rol: 'Operaciones',       desc: 'Gestiona tickets, incidentes y flujos internos sin que nada se atasque.',          color: '#06b6d4', img: '/meerkats/neo.png'   },
-  { nombre: 'Naia',  rol: 'Recursos Humanos', desc: 'Maneja faltas, vacaciones y permisos. Todo el equipo siempre en orden.',            color: '#ec4899', img: '/meerkats/naia.png'  },
-  { nombre: 'Nico',  rol: 'Recuperación',     desc: 'Gestiona cobros y reactiva clientes con tacto y firmeza.',                          color: '#f59e0b', img: '/meerkats/nico.png'  },
-  { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Resuelve dudas y da seguimiento hasta que el cliente quede satisfecho.',         color: '#3b82f6', img: '/meerkats/nelia.png' },
-  { nombre: 'Nova',  rol: 'Campo',          desc: 'Despacha equipos, coordina operaciones y actualiza estatus en tiempo real.',          color: '#ef4444', img: '/meerkats/nova.png'  },
+  { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png'   },
+  { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',      color: '#22c55e', img: '/meerkats/noah.png'  },
+  { nombre: 'Nara',  rol: 'Coordinación',      desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',  color: '#f97316', img: '/meerkats/nara.png'  },
+  { nombre: 'Neo',   rol: 'Tecnología',        desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.', color: '#06b6d4', img: '/meerkats/neo.png'  },
+  { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },
+  { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
+  { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
+  { nombre: 'Nova',  rol: 'Despacho',          desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.', color: '#ef4444', img: '/meerkats/nova.png'  },
 ];
 
 const PAINS = [
@@ -491,7 +491,7 @@ export default function LandingPage() {
           <div className="hidden lg:block mb-10">
             <AnimatedSection>
               <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                Conoce a tu equipo.
+                Arma tu equipo.
               </p>
               <h2
                 className="font-bold tracking-tight mb-4"
@@ -500,14 +500,14 @@ export default function LandingPage() {
                 Construye tu oficina digital.
               </h2>
               <p style={{ color: C.textSub }}>
-                Cada empleado tiene una especialidad. Juntos forman la oficina digital 24/7 de tu negocio.
+                Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.
               </p>
             </AnimatedSection>
           </div>
 
           <div className="lg:hidden mb-6">
             <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: C.accent }}>
-              Conoce a tu equipo.
+              Arma tu equipo.
             </p>
             <h2
               className="font-bold tracking-tight mb-3"
@@ -516,7 +516,7 @@ export default function LandingPage() {
               Construye tu oficina digital.
             </h2>
             <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-              Cada empleado tiene una especialidad. Juntos forman la oficina digital 24/7 de tu negocio.
+              Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.
             </p>
           </div>
 
@@ -549,9 +549,16 @@ export default function LandingPage() {
             </div>
           </AnimatedSection>
 
-          {/* Línea conectora */}
-          <div className="flex justify-center mb-1">
-            <div style={{ width: 1, height: 20, background: `${DIRECTORS.color}30` }} />
+          {/* Red organizacional — desktop: tronco + barra + 4 caídas | mobile: tronco simple */}
+          <div className="hidden sm:block relative mb-0" style={{ height: 40 }}>
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.05)' }} />
+            <div style={{ position: 'absolute', left: '12.5%', right: '12.5%', top: '55%', height: 1, background: 'rgba(108,59,255,0.05)' }} />
+            {['12.5%', '37.5%', '62.5%', '87.5%'].map(l => (
+              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.05)' }} />
+            ))}
+          </div>
+          <div className="flex justify-center sm:hidden mb-1">
+            <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.05)' }} />
           </div>
 
           {/* Equipo (8 empleados — 4 cols desktop, 2 cols mobile) */}
@@ -582,11 +589,6 @@ export default function LandingPage() {
                 </div>
               </AnimatedSection>
             ))}
-          </div>
-
-          {/* Marquee, debajo de las tarjetas */}
-          <div style={{ marginTop: 40, marginLeft: -20, marginRight: -20 }}>
-            <Marquee />
           </div>
         </div>
       </section>
