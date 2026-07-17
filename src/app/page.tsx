@@ -594,6 +594,47 @@ export default function LandingPage() {
               </AnimatedSection>
             ))}
           </div>
+
+          {/* Tagline cierre de sección */}
+          <AnimatedSection delay={0.1}>
+            <div
+              className="rounded-2xl text-center mt-6"
+              style={{
+                background: `linear-gradient(135deg, rgba(108,59,255,0.06) 0%, rgba(155,109,255,0.03) 100%)`,
+                border: `1px solid rgba(108,59,255,0.15)`,
+                padding: 'clamp(24px, 4vw, 40px) clamp(20px, 5vw, 48px)',
+              }}
+            >
+              <p className="text-sm mb-3" style={{ color: C.textMute }}>
+                Todos activos al mismo tiempo. Las 24 horas. Sin nómina.
+              </p>
+              <p
+                className="font-extrabold tracking-tight mb-8"
+                style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: C.text, lineHeight: 1.1 }}
+              >
+                Contrata capacidad,{' '}
+                <span style={{
+                  background: 'linear-gradient(135deg, #6C3BFF 0%, #9B6DFF 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}>
+                  no personal.
+                </span>
+              </p>
+              <Link
+                href="/empleados"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
+                style={{
+                  background: C.accent,
+                  color: '#fff',
+                  border: 'none',
+                }}
+              >
+                Conoce a los 8 empleados <ArrowRight size={13} />
+              </Link>
+            </div>
+          </AnimatedSection>
+
         </div>
       </section>
 
