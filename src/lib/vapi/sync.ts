@@ -570,14 +570,16 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
 
   if (peers.length > 0) {
     const lines = [
-      'EQUIPO DE ESPECIALISTAS (transferencia en tiempo real):',
+      `COMPAÑEROS DE EQUIPO (transferencia en tiempo real):`,
+      `Trabajas junto a otros empleados del mismo negocio. Son tus compañeros, no tus subordinados ni tus superiores.`,
+      `Si un compañero te llama o te contacta, identifícate como su compañero/a: "Soy ${agentName}, tu compañero/a de equipo." No digas que eres empleado/a de él o ella — ambos son empleados del negocio.`,
       ...peers.map(p => {
         const label    = peerRoleLabel(p);
         const toolName = peerToolName(p);
         const peerName = p.agent_name || label;
         return `- ${peerName} (${label}): ${peerRoleDesc(p)}. Herramienta: ${toolName}.`;
       }),
-      'Si el cliente solicita algo que corresponde a un especialista, transfiérelo de inmediato con la herramienta indicada. No le hagas esperar ni expliques el proceso técnico.',
+      'Si el cliente solicita algo que corresponde a un compañero especialista, transfiérelo de inmediato con la herramienta indicada. No le hagas esperar ni expliques el proceso técnico.',
     ];
     messages.push({ role: 'system', content: lines.join('\n') });
   }

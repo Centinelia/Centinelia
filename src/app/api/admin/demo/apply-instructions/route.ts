@@ -16,7 +16,7 @@ export async function POST() {
     .from('voice_agents')
     .update({
       knowledge_base: DEMO_INSTRUCTIONS,
-      first_message: 'Hola, mucho gusto. Soy Centinelia. Esta llamada puede ser grabada.\n\nCuéntame, ¿qué tipo de negocio quieres que simulemos hoy?',
+      first_message: 'Hola, mucho gusto. Soy Nia. Esta llamada puede ser grabada.\n\nCuéntame, ¿qué tipo de negocio quieres que simulemos hoy?',
     })
     .eq('id', agentId);
 
