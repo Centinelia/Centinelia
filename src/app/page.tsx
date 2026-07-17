@@ -39,7 +39,8 @@ const TEAM = [
   { nombre: 'Naia',  rol: 'Recursos Humanos',  desc: 'Organiza vacaciones, permisos y expedientes del equipo.',              color: '#ec4899', img: '/meerkats/naia.png'  },
   { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
-  { nombre: 'Nova',  rol: 'Despacho',          desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.', color: '#ef4444', img: '/meerkats/nova.png'  },
+  { nombre: 'Nova',        rol: 'Despacho',       desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',               color: '#ef4444', img: '/meerkats/nova.png'    },
+  { nombre: 'Personalizado', rol: 'A tu medida', desc: 'Diseña un empleado con el rol, nombre y personalidad que tu negocio necesita.',       color: '#6b7280', img: '/meerkats/custom.png'  },
 ];
 
 const PAINS = [
@@ -565,10 +566,40 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Equipo (8 empleados — 4 cols desktop, 2 cols mobile) */}
+          {/* Fila 1 — 4 empleados */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {TEAM.map((m, i) => (
+            {TEAM.slice(0, 4).map((m, i) => (
               <AnimatedSection key={m.nombre} delay={i * 0.06} className="h-full">
+                <div
+                  className="rounded-2xl overflow-hidden h-full"
+                  style={{
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
+                    boxShadow: '0 2px 12px rgba(108,59,255,0.20)',
+                  }}
+                >
+                  <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
+                    <Image src={m.img} alt={m.nombre} fill sizes="220px"
+                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
+                  </div>
+                  <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
+                    <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
+                      {m.rol}
+                    </p>
+                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                      {m.nombre}
+                    </h3>
+                    <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
+                  </div>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          {/* Fila 2 — 5 empleados, expandida 125% para igualar tamaño de tarjetas */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 sm:-mx-[12.5%]">
+            {TEAM.slice(4).map((m, i) => (
+              <AnimatedSection key={m.nombre} delay={(i + 4) * 0.06} className="h-full">
                 <div
                   className="rounded-2xl overflow-hidden h-full"
                   style={{
@@ -630,7 +661,7 @@ export default function LandingPage() {
                   border: 'none',
                 }}
               >
-                Conoce a los 10 empleados <ArrowRight size={13} />
+                Conoce a los 11 empleados <ArrowRight size={13} />
               </Link>
             </div>
           </AnimatedSection>

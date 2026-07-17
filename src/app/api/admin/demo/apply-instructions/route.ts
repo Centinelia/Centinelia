@@ -31,7 +31,11 @@ export async function POST() {
     .single();
 
   if (agent?.vapi_agent_id) {
-    await updateVapiAssistant(agent.vapi_agent_id, agent as VoiceAgent);
+    try {
+      await updateVapiAssistant(agent.vapi_agent_id, agent as VoiceAgent);
+    } catch (e) {
+      return NextResponse.json({ error: 'DB actualizada pero falló el sync con Vapi', detail: String(e) }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true });

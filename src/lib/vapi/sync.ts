@@ -630,9 +630,6 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     },
     backgroundSound: 'office',
     backchannelingEnabled: true,
-    backchannelPlan: {
-      backchannels: ['Sí', 'Ajá', 'Claro', 'Mhm', 'Ya veo', 'Entiendo', 'Correcto', 'Perfecto', 'Tiene sentido', 'Sí te sigo'],
-    },
     backgroundDenoisingEnabled: true,
     silenceTimeoutSeconds: 10,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
@@ -691,8 +688,9 @@ async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learn
     body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers, resolvedLearnings)),
   });
   if (!res.ok) {
-    console.error('Vapi syncAgent error:', await res.text());
-    return false;
+    const errText = await res.text();
+    console.error('Vapi syncAgent error:', errText);
+    throw new Error(errText);
   }
   return true;
 }
@@ -738,10 +736,11 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
 }
 
 export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
-  const ok = await syncAgentToVapi(vapiAssistantId, agent);
+  // throws if Vapi rejects — callers should catch
+  await syncAgentToVapi(vapiAssistantId, agent);
   // Fire-and-forget: push the updated tool list to all sibling agents
-  if (ok) resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
-  return ok;
+  resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
+  return true;
 }
 
 // Pushes updated prompts (with current global conversational learnings) to ALL active agents.

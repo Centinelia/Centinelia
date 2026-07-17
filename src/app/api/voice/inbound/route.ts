@@ -292,9 +292,6 @@ export async function POST(req: NextRequest) {
       },
       backgroundSound: 'office',
       backchannelingEnabled: true,
-      backchannelPlan: {
-        backchannels: ['Sí', 'Ajá', 'Claro', 'Mhm', 'Ya veo', 'Entiendo', 'Correcto', 'Perfecto', 'Tiene sentido', 'Sí te sigo'],
-      },
       backgroundDenoisingEnabled: true,
       silenceTimeoutSeconds: 10,
       maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
