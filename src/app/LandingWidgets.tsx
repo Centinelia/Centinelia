@@ -36,10 +36,18 @@ const WA_LINK   = WA_NUMBER
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LandingWidgets() {
-  const [chatOpen, setChatOpen]   = useState(false);
+  const [chatOpen,  setChatOpen]  = useState(false);
   const [messages,  setMessages]  = useState<Message[]>([WELCOME]);
   const [input,     setInput]     = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [pastHero,  setPastHero]  = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setPastHero(window.scrollY > window.innerHeight * 0.7);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
@@ -123,7 +131,13 @@ export default function LandingWidgets() {
   return (
     <>
       {/* ── Chat widget, bottom LEFT ──────────────────────────────────────── */}
-      <div style={{ position: 'fixed', bottom: 24, left: 24, zIndex: 9999 }}>
+      <div style={{
+        position:   'fixed', bottom: 24, left: 24, zIndex: 9999,
+        opacity:    pastHero ? 1 : 0,
+        transform:  pastHero ? 'translateY(0)' : 'translateY(12px)',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
+        pointerEvents: pastHero ? 'auto' : 'none',
+      }}>
 
         {/* Chat panel */}
         {chatOpen && (
@@ -370,6 +384,10 @@ export default function LandingWidgets() {
           bottom:         24,
           right:          24,
           zIndex:         9999,
+          opacity:        pastHero ? 1 : 0,
+          transform:      pastHero ? 'translateY(0)' : 'translateY(12px)',
+          transition:     'opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s',
+          pointerEvents:  pastHero ? 'auto' : 'none',
           width:          56,
           height:         56,
           borderRadius:   '50%',

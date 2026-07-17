@@ -449,7 +449,7 @@ export default function LandingPage() {
               <AnimatedSection key={d.title} delay={i * 0.08}>
                 <div
                   className="rounded-2xl p-6 h-full"
-                  style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: '0 2px 16px rgba(108,59,255,0.05)' }}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, boxShadow: '0 2px 16px rgba(108,59,255,0.20)' }}
                 >
                   <span
                     className="font-bold tabular-nums block mb-3"
@@ -551,14 +551,14 @@ export default function LandingPage() {
 
           {/* Red organizacional — desktop: tronco + barra + 4 caídas | mobile: tronco simple */}
           <div className="hidden sm:block relative mb-0" style={{ height: 40 }}>
-            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.05)' }} />
-            <div style={{ position: 'absolute', left: '12.5%', right: '12.5%', top: '55%', height: 1, background: 'rgba(108,59,255,0.05)' }} />
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.20)' }} />
+            <div style={{ position: 'absolute', left: '12.5%', right: '12.5%', top: '55%', height: 1, background: 'rgba(108,59,255,0.20)' }} />
             {['12.5%', '37.5%', '62.5%', '87.5%'].map(l => (
-              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.05)' }} />
+              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.20)' }} />
             ))}
           </div>
           <div className="flex justify-center sm:hidden mb-1">
-            <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.05)' }} />
+            <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.20)' }} />
           </div>
 
           {/* Equipo (8 empleados — 4 cols desktop, 2 cols mobile) */}
@@ -570,7 +570,7 @@ export default function LandingPage() {
                   style={{
                     background: C.surface,
                     border: `1px solid ${C.border}`,
-                    boxShadow: '0 2px 12px rgba(108,59,255,0.05)',
+                    boxShadow: '0 2px 12px rgba(108,59,255,0.20)',
                   }}
                 >
                   <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
