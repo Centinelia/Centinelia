@@ -3,8 +3,6 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail } from '@/lib/email/send';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface NoxAgent {
@@ -22,7 +20,9 @@ interface SiblingInfo {
   role:       string | null;
 }
 
-// ── Find Nox agent for a portal ───────────────────────────────────────────────
+// ── Find coordinator for a portal ─────────────────────────────────────────────
+// Priority: is_coordinator flag first (Nox/Niva), then any active agent as fallback.
+// Kept as findNoxAgent for backwards compatibility with existing call sites.
 
 export async function findNoxAgent(portalEmail: string): Promise<NoxAgent | null> {
   const supabase = createAdminClient();
@@ -33,8 +33,25 @@ export async function findNoxAgent(portalEmail: string): Promise<NoxAgent | null
     .eq('active', true);
 
   if (!agents?.length) return null;
-  const nox = agents.find(a => (a.features as Record<string, unknown>)?.is_coordinator === true);
-  return nox ?? null;
+  const coordinator = agents.find(a => (a.features as Record<string, unknown>)?.is_coordinator === true);
+  return coordinator ?? (agents[0] as NoxAgent);
+}
+
+// ── Agent name matching ───────────────────────────────────────────────────────
+
+function normalize(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '');
+}
+
+function matchScore(query: string, c: { agent_name?: string | null; role?: string | null }) {
+  const q    = normalize(query);
+  const name = normalize(c.agent_name ?? '');
+  const role = normalize(c.role ?? '');
+  if (name === q || role === q)              return 4;
+  if (name.includes(q) || q.includes(name)) return 3;
+  if (role.includes(q) || q.includes(role)) return 2;
+  const tokens = q.split(/\s+/).filter(t => t.length > 2);
+  return tokens.filter(t => `${name} ${role}`.includes(t)).length;
 }
 
 // ── Email processing: Nox routes incoming emails ──────────────────────────────
@@ -51,19 +68,22 @@ export async function processEmailWithNox(params: {
 
   if (!siblings.length) return;
 
+  const supabase = createAdminClient();
+
   const teamList = siblings
     .map(s => `- ${s.agent_name || 'Sin nombre'} (${s.role || 'Sin rol'})`)
     .join('\n');
 
-  const systemPrompt = `Eres Nox, el director coordinador del equipo de ${portalEmail}.
-Tu trabajo es revisar correos entrantes y decidir si algún miembro del equipo debe encargarse de atenderlo.
+  const coordinatorName = noxAgent.agent_name || 'Empleado';
+  const systemPrompt = `Eres ${coordinatorName}, parte del equipo de trabajo de este negocio.
+Tu trabajo en este momento es revisar un correo entrante y decidir si algún compañero del equipo debe encargarse de atenderlo.
 
-Tu equipo disponible:
+Tus compañeros disponibles:
 ${teamList}
 
 Reglas:
-- Solo delega si hay una acción concreta que un agente del equipo puede ejecutar.
-- Si es un correo informativo, spam, notificación automática o no requiere acción, usa sin_accion.
+- Solo delega si hay una acción concreta que un compañero puede ejecutar.
+- Si es un correo informativo, spam, notificación automática o no requiere acción de ningún compañero, usa sin_accion.
 - Sé preciso al describir la tarea: qué hacer, a quién, qué información necesitan.`;
 
   const userMsg = `Correo recibido:
@@ -111,25 +131,22 @@ ${emailBody.slice(0, 1500)}`;
 
   const { agente, tarea } = toolUse.input as { agente: string; tarea: string };
 
-  // Call the existing delegation route with Nox as the caller
-  await fetch(`${APP_URL}/api/voice/tools/delegar-tarea?agent_id=${noxAgent.id}`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      toolCallList: [{
-        id:   `nox_email_${Date.now()}`,
-        type: 'function',
-        function: {
-          name:      'delegar_tarea',
-          arguments: {
-            agente,
-            tarea,
-            contexto: `Correo de ${emailFrom}: ${emailSubject}`,
-          },
-        },
-      }],
-    }),
-  }).catch(err => console.error('[nox] delegation fetch error:', err));
+  // Match the target sibling by name/role
+  const target = [...siblings].sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0];
+  if (!target) return;
+
+  // Queue as pending — the process-tasks cron picks it up asynchronously
+  const { error: insertError } = await supabase.from('agent_tasks').insert({
+    portal_email:   portalEmail,
+    created_by:     noxAgent.id,
+    assigned_to:    target.id,
+    title:          tarea.slice(0, 200),
+    description:    `Correo de ${emailFrom}: ${emailSubject}`,
+    status:         'pending',
+    trigger_type:   'email',
+    source_context: emailBody.slice(0, 500),
+  });
+  if (insertError) console.error('[nox] task insert error:', insertError);
 }
 
 // ── Cron monitoring: alert about overdue tasks ────────────────────────────────
@@ -184,7 +201,8 @@ export async function runNoxMonitor(): Promise<{ portalsAlerted: number; tasksFo
       })
       .join('\n');
 
-    const message = `*Nox — Alerta de tareas pendientes*\n\nHay ${tasks.length} tarea${tasks.length > 1 ? 's' : ''} sin completar:\n\n${taskLines}\n\nRevisa el portal para más detalles.`;
+    const senderName = nox.agent_name || 'Centinelia';
+    const message = `*${senderName} — Alerta de tareas pendientes*\n\nHay ${tasks.length} tarea${tasks.length > 1 ? 's' : ''} sin completar:\n\n${taskLines}\n\nRevisa el portal para más detalles.`;
 
     if (nox.transfer_whatsapp) {
       await sendWhatsApp(nox.transfer_whatsapp, message)
