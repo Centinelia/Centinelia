@@ -32,7 +32,7 @@ const DIRECTORS = {
 };
 
 const TEAM = [
-  { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png'   },
+  { nombre: 'Nia',   rol: 'Recepción',         desc: 'Atiende llamadas, agenda citas y recibe cada solicitud.',              color: '#6C3BFF', img: '/meerkats/nia.png',  imgPad: '0px' },
   { nombre: 'Noah',  rol: 'Ventas',            desc: 'Llama prospectos, califica leads y cierra oportunidades nuevas.',      color: '#22c55e', img: '/meerkats/noah.png'  },
   { nombre: 'Nara',  rol: 'Coordinación',      desc: 'Coordina procesos, da seguimiento y mantiene la operación en orden.',  color: '#f97316', img: '/meerkats/nara.png'  },
   { nombre: 'Neo',   rol: 'Tecnología',        desc: 'Resuelve tickets, gestiona incidentes y mantiene los sistemas activos.', color: '#06b6d4', img: '/meerkats/neo.png'  },
@@ -575,7 +575,7 @@ export default function LandingPage() {
                 >
                   <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
                     <Image src={m.img} alt={m.nombre} fill sizes="220px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: '6px 6px 0' }} />
+                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
                   </div>
                   <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
                     <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
