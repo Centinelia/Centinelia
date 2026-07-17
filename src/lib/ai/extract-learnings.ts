@@ -73,6 +73,7 @@ Responde SOLO con un JSON array de strings en español mexicano:`,
     vapi_call_id: vapiCallId,
     content:      content.trim().slice(0, 500),
     status:       'pending',
+    source:       'call',
   }));
 
   await supabase.from('agent_learnings').insert(items);

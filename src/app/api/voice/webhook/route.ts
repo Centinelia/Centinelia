@@ -10,6 +10,8 @@ import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/custom
 import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
 import { generateTeamMessage } from '@/lib/ai/generate-team-message';
 import { selfEvalCall } from '@/lib/ai/self-eval';
+import { getGoalsContext } from '@/lib/goals/progress';
+import { checkVoiceInitiative } from '@/lib/initiative/detector';
 import { addCallEntry } from '@/lib/notion/client';
 
 export async function POST(req: NextRequest) {
@@ -50,16 +52,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'agent not found' }, { status: 404 });
       }
 
-      // Inject customer context as an additional system message if caller is known
-      let assistantOverrides: Record<string, unknown> | undefined;
+      // Inject dynamic context (customer + goals) as additional system messages
+      const dynamicMessages: Array<{ role: string; content: string }> = [];
+
       if (callerNumber && agent.portal_email) {
         const ctx = await getCustomerContext(agent.portal_email, callerNumber);
-        if (ctx) {
-          assistantOverrides = {
-            model: { messages: [{ role: 'system', content: ctx }] },
-          };
-        }
+        if (ctx) dynamicMessages.push({ role: 'system', content: ctx });
       }
+
+      const goalsCtx = await getGoalsContext(agent.id);
+      if (goalsCtx) dynamicMessages.push({ role: 'system', content: goalsCtx });
+
+      const assistantOverrides = dynamicMessages.length > 0
+        ? { model: { messages: dynamicMessages } }
+        : undefined;
 
       return NextResponse.json({
         assistantId: agent.vapi_agent_id,
@@ -534,6 +540,15 @@ export async function POST(req: NextRequest) {
             outcome,
             accion:      structured?.acciones_pendientes ?? null,
           }).catch(err => console.error('[webhook] notion addCallEntry failed:', err));
+        }
+
+        // N. Initiative — detect recurring patterns across voice calls
+        if (agent?.transfer_whatsapp && outcome !== 'unanswered') {
+          await checkVoiceInitiative(
+            resolvedAgentId,
+            agent.agent_name ?? agent.business_name ?? 'tu empleado',
+            agent.transfer_whatsapp,
+          ).catch(err => console.error('[webhook] initiative check failed:', err));
         }
 
         // M. Missed call recovery

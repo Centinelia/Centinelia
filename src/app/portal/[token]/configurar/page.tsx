@@ -23,6 +23,7 @@ import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
+import GoalsSection                  from '../GoalsSection';
 import GuardrailsEditor              from '../GuardrailsEditor';
 import HeartbeatEditor               from '../HeartbeatEditor';
 import TrustStageSelector           from '../TrustStageSelector';
@@ -161,6 +162,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               token={token}
               initDod={(agent as any).definition_of_done ?? ''}
             />
+          </div>
+
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-1.5 mb-4">
+              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                Metas
+              </h2>
+              <InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />
+            </div>
+            <GoalsSection token={token} roleColor={roleColor} />
           </div>
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

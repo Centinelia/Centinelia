@@ -16,7 +16,21 @@ interface Learning {
   created_at:    string;
   vapi_call_id:  string | null;
   agent_id:      string;
+  source?:       'call' | 'email' | 'chat' | null;
+  confidence?:   number | null;
   voice_agents:  AgentRef | null;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  call:  'llamada',
+  email: 'correo',
+  chat:  'chat',
+};
+
+function sourceColor(source: string | null | undefined): string {
+  if (source === 'email') return '#0ea5e9';
+  if (source === 'chat')  return '#22c55e';
+  return '#9B6DFF'; // call (default)
 }
 
 function agentLabel(l: Learning): string {
@@ -122,7 +136,7 @@ export default function LearningsSection({ token }: { token: string }) {
                 border:     '1px solid rgba(108,59,255,0.25)',
               }}
             >
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                   style={{ background: 'rgba(108,59,255,0.15)', color: '#9B6DFF' }}
@@ -132,6 +146,17 @@ export default function LearningsSection({ token }: { token: string }) {
                 <span className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
                   {agentLabel(l)}
                 </span>
+                {l.source && (
+                  <span
+                    className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                    style={{
+                      background: `${sourceColor(l.source)}22`,
+                      color:       sourceColor(l.source),
+                    }}
+                  >
+                    {SOURCE_LABELS[l.source] ?? l.source}
+                  </span>
+                )}
                 <Clock size={11} style={{ color: 'var(--c-text-sub)' }} />
                 <span className="text-xs" style={{ color: 'var(--c-text-sub)' }}>
                   {timeAgo(l.created_at)}
@@ -197,9 +222,23 @@ export default function LearningsSection({ token }: { token: string }) {
                 }}
               >
                 <Check size={13} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>
-                  {l.content}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>
+                    {l.content}
+                  </p>
+                  {l.source && (
+                    <span
+                      className="mt-1 inline-block text-xs px-1.5 py-0.5 rounded-full font-medium"
+                      style={{
+                        background: `${sourceColor(l.source)}18`,
+                        color:       sourceColor(l.source),
+                      }}
+                    >
+                      {SOURCE_LABELS[l.source] ?? l.source}
+                      {l.confidence && l.confidence >= 0.85 ? ' · auto' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

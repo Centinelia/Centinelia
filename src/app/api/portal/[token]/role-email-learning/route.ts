@@ -7,68 +7,11 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { refreshIfNeeded } from '@/lib/connectors';
 import type { IntegrationRow } from '@/lib/connectors';
+import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
+import { saveLearnings } from '@/lib/ai/save-learning';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
-
-// ── Direct email fetch (all recent, not just unread) ─────────────────────────
-
-async function fetchRecentGmail(
-  accessToken: string,
-  since: Date,
-): Promise<Array<{ from: string; subject: string; snippet: string }>> {
-  const after = Math.floor(since.getTime() / 1000);
-  const query = `in:inbox after:${after}`;
-
-  const listRes = await fetch(
-    `https://www.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=60`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!listRes.ok) return [];
-  const list = await listRes.json();
-  const ids: string[] = (list.messages ?? []).map((m: { id: string }) => m.id);
-  if (!ids.length) return [];
-
-  const results = await Promise.allSettled(
-    ids.slice(0, 60).map(async id => {
-      const res = await fetch(
-        `https://www.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      );
-      if (!res.ok) return null;
-      const msg = await res.json();
-      const headers: Record<string, string> = {};
-      for (const h of msg.payload?.headers ?? []) headers[h.name.toLowerCase()] = h.value;
-      return {
-        from:    headers['from'] ?? '',
-        subject: headers['subject'] ?? '',
-        snippet: (msg.snippet ?? '') as string,
-      };
-    }),
-  );
-
-  return results
-    .filter(r => r.status === 'fulfilled' && r.value !== null)
-    .map(r => (r as PromiseFulfilledResult<{ from: string; subject: string; snippet: string }>).value);
-}
-
-async function fetchRecentOutlook(
-  accessToken: string,
-  since: Date,
-): Promise<Array<{ from: string; subject: string; snippet: string }>> {
-  const filter = `receivedDateTime ge ${since.toISOString()}`;
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}&$top=60&$select=from,subject,bodyPreview`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.value ?? []).map((m: { from?: { emailAddress?: { address?: string } }; subject?: string; bodyPreview?: string }) => ({
-    from:    m.from?.emailAddress?.address ?? '',
-    subject: m.subject ?? '',
-    snippet: m.bodyPreview ?? '',
-  }));
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -155,11 +98,12 @@ ${emailLines}
 
 INSTRUCCIONES:
 1. Identifica cuáles correos son RELEVANTES para el rol descrito (ignora los que no tienen relación)
-2. De los correos relevantes, extrae las reglas de decisión que el empleado debería conocer: cómo se toman decisiones en este negocio, qué se aprueba, qué se escala, qué procedimientos se usan, qué políticas informales existen
+2. De los relevantes, extrae las reglas de decisión que el empleado debería conocer: cómo se toman decisiones, qué se aprueba, qué se escala, qué políticas informales existen
+3. Asigna una confianza del 0 al 1 por cada regla: 1.0 = evidencia clara en múltiples correos, 0.5 = inferencia razonable
 
 RESTRICCIONES IMPORTANTES:
 - NO incluyas nombres de personas ni datos de clientes identificables
-- Solo incluye patrones y reglas generales, no casos específicos
+- Solo incluye patrones y reglas generales, no casos únicos
 - Solo incluye lo que haya evidencia clara en los correos
 - Si no hay correos relevantes al rol, responde con learnings vacío
 
@@ -167,9 +111,8 @@ Responde ÚNICAMENTE con JSON válido:
 {
   "relevant_count": <número de correos relevantes al rol>,
   "learnings": [
-    "Regla de decisión 1: texto concreto y accionable que el empleado puede aplicar",
-    "Regla 2",
-    "Regla 3"
+    { "content": "Regla concreta y accionable que el empleado puede aplicar", "confidence": 0.90 },
+    { "content": "Otra regla", "confidence": 0.65 }
   ]
 }
 
@@ -190,12 +133,15 @@ Máximo 8 aprendizajes. Las reglas deben ser aplicables, no observaciones vagas.
     return NextResponse.json({ error: 'Error al procesar el análisis.' }, { status: 500 });
   }
 
-  const learnings = (parsed.learnings ?? [])
-    .filter((l): l is string => typeof l === 'string' && l.trim().length > 10)
-    .slice(0, 8)
-    .map(l => l.trim().slice(0, 500));
+  const extracted = (parsed.learnings ?? [])
+    .filter((l): l is { content: string; confidence: number } =>
+      typeof (l as any)?.content === 'string' &&
+      (l as any).content.trim().length > 10 &&
+      typeof (l as any)?.confidence === 'number',
+    )
+    .slice(0, 8);
 
-  if (!learnings.length) {
+  if (!extracted.length) {
     return NextResponse.json({
       saved:          0,
       relevant_count: parsed.relevant_count ?? 0,
@@ -204,20 +150,19 @@ Máximo 8 aprendizajes. Las reglas deben ser aplicables, no observaciones vagas.
     });
   }
 
-  // Save as pending learnings
-  const rows = learnings.map(content => ({
-    agent_id:     agent.id,
-    portal_email: agent.portal_email as string | null,
-    vapi_call_id: null,
-    content,
-    status:       'pending',
-  }));
-
-  await supabase.from('agent_learnings').insert(rows);
+  const saved = await saveLearnings(
+    extracted.map(e => ({
+      agentId:     agent.id as string,
+      portalEmail: agent.portal_email as string | null,
+      content:     e.content.trim().slice(0, 500),
+      confidence:  Math.min(1, Math.max(0, e.confidence)),
+      source:      'email' as const,
+    })),
+  );
 
   return NextResponse.json({
-    saved:          learnings.length,
-    relevant_count: parsed.relevant_count ?? learnings.length,
+    saved,
+    relevant_count: parsed.relevant_count ?? extracted.length,
     total_emails:   emails.length,
   });
 }

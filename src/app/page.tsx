@@ -136,23 +136,23 @@ const MINUTE_TIERS: {
 const DIFFERENTIATORS = [
   {
     num: '∞',
-    title: 'Recibe y hace llamadas, sin límite',
-    desc: 'Atiende todas las entrantes en paralelo y llama de regreso a quien no contestó. Un solo empleado que trabaja en ambas direcciones, al mismo tiempo.',
+    title: 'Atiende varias conversaciones al mismo tiempo',
+    desc: 'Mientras una persona solo puede hablar con un cliente, Centinelia puede atender 3 llamadas al mismo tiempo además de correos y chats simultáneamente.',
   },
   {
     num: '24/7',
-    title: 'Disponible cuando tus clientes llaman',
-    desc: 'No hay turno, horario ni día festivo. Trabaja mientras tú descansas, los fines de semana y a las 3 de la mañana.',
+    title: 'Siempre disponible',
+    desc: 'Trabaja de día, de noche, fines de semana y días festivos.',
   },
   {
     num: '$0',
-    title: 'Sin IMSS, vacaciones ni incapacidades',
-    desc: 'Pagas por los minutos que usa, no por las horas que trabaja. Sin costos laborales adicionales ni obligaciones patronales.',
+    title: 'Costos laborales adicionales',
+    desc: 'Sin IMSS, vacaciones, incapacidades ni reemplazos por ausencias.',
   },
   {
     num: '<24h',
-    title: 'En línea sin reclutamiento ni capacitación',
-    desc: 'No hay periodo de prueba ni curvas de aprendizaje. Configuras el conocimiento de tu organización hoy y atiende mañana.',
+    title: 'Empieza a trabajar mañana',
+    desc: 'Aprende tu negocio y comienza a operar sin procesos largos de contratación.',
   },
 ];
 
@@ -281,11 +281,11 @@ export default function LandingPage() {
 
             {/* Sub */}
             <p
-              className="mb-8 leading-relaxed mt-[30vw] sm:mt-0"
+              className="mb-8 leading-relaxed mt-[20vw] sm:mt-0"
               style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)' }}
             >
-              Recepcionista, vendedor, cobrador, seguimiento: todos activos
-              al mismo tiempo, las 24 horas, sin nómina.
+              Primera oficina digital con empleados especializados que responden llamadas, correos, agendas, documentos y tareas.<br /><br />
+              Trabajan juntos. Nunca descansan.
             </p>
 
             {/* CTAs */}
@@ -494,25 +494,18 @@ export default function LandingPage() {
                     {d.num}
                   </span>
                   <h3 className="font-semibold mb-2" style={{ color: C.text, fontSize: '0.95rem' }}>{d.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{d.desc}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: C.textSub }}>{d.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
           </div>
 
           <AnimatedSection delay={0.2}>
-            <div
-              className="rounded-2xl px-7 py-6"
-              style={{ background: 'rgba(108,59,255,0.08)', border: `1px solid rgba(108,59,255,0.2)` }}
-            >
-              <p className="font-semibold mb-2" style={{ color: C.accent }}>
-                "¿Y si mis llamadas aumentan cada mes?"
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>
-                Si tus minutos suben, es porque tu empleado atendió más clientes, agendó más citas o capturó más leads.
-                Es el único costo que crece junto con tus ingresos, no con tu nómina.
-              </p>
-            </div>
+            <p className="text-center mt-10" style={{ lineHeight: 1.8 }}>
+              <span className="font-bold" style={{ color: C.accent }}>Los buenos empleados generan trabajo.</span><br />
+              <span className="font-bold" style={{ color: C.accent }}>Los mejores también generan ingresos.</span><br />
+              <span style={{ color: C.textSub, fontSize: '0.95rem' }}>Si Centinelia utiliza más minutos, normalmente significa exactamente eso.</span>
+            </p>
           </AnimatedSection>
 
         </div>

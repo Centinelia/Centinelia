@@ -31,6 +31,8 @@ import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
 import { generateWord } from '@/lib/documents/word';
 import { generateSlides, type Slide } from '@/lib/documents/slides';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
+import { checkOfficeInitiative } from '@/lib/initiative/detector';
+import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -1394,6 +1396,24 @@ ${context}`;
         );
       } finally {
         controller.close();
+        // Fire office initiative check + chat learning after session ends (fire-and-forget)
+        const _agentId    = agent.id as string;
+        const _agentName  = (agent.agent_name as string | null)?.trim() || (agent.business_name as string) || 'tu empleado';
+        const _agentRole  = (agent.role as string | null)?.trim() || '';
+        const _transferWa = (agent.transfer_whatsapp as string | null) ?? null;
+        const _portalEmail = (agent.portal_email as string | null) ?? null;
+        if (_transferWa) {
+          checkOfficeInitiative(_agentId, _agentName, _transferWa).catch(
+            err => console.error('[agent-chat] initiative check failed:', err),
+          );
+        }
+        extractChatLearnings({
+          agentId:     _agentId,
+          portalEmail: _portalEmail,
+          agentName:   _agentName,
+          agentRole:   _agentRole,
+          messages:    (messages as Array<{ role: 'user' | 'assistant'; content: string | unknown }>),
+        }).catch(err => console.error('[agent-chat] chat-learning failed:', err));
       }
     },
   });

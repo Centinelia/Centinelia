@@ -29,6 +29,16 @@ const FAQS = [
     a: 'Funciona para cualquier organización que reciba llamadas: clínicas, restaurantes, despachos, inmobiliarias, tiendas, universidades y más. Tu empleado aprende sobre tu organización específica, no viene preconfigurado para otro negocio.',
   },
   {
+    q: '¿Qué pasa si los minutos aumentan cada mes?',
+    a: (
+      <>
+        <span style={{ fontWeight: 700, color: '#6C3BFF' }}>Los buenos empleados generan trabajo.</span><br />
+        <span style={{ fontWeight: 700, color: '#6C3BFF' }}>Los mejores también generan ingresos.</span><br /><br />
+        Si Centinelia utiliza más minutos, normalmente significa exactamente eso.
+      </>
+    ),
+  },
+  {
     q: '¿Puedo cancelar cuando quiera?',
     a: 'Sí, sin penalizaciones ni trámites. No hay contratos de permanencia. Si decides cancelar, el servicio termina al final del ciclo de facturación.',
   },
