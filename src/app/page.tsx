@@ -557,8 +557,12 @@ export default function LandingPage() {
               <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.20)' }} />
             ))}
           </div>
-          <div className="flex justify-center sm:hidden mb-1">
-            <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.20)' }} />
+          <div className="sm:hidden relative mb-0" style={{ height: 40 }}>
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '55%', background: 'rgba(108,59,255,0.20)' }} />
+            <div style={{ position: 'absolute', left: '25%', right: '25%', top: '55%', height: 1, background: 'rgba(108,59,255,0.20)' }} />
+            {['25%', '75%'].map(l => (
+              <div key={l} style={{ position: 'absolute', left: l, top: '55%', width: 1, height: '45%', background: 'rgba(108,59,255,0.20)' }} />
+            ))}
           </div>
 
           {/* Equipo (8 empleados — 4 cols desktop, 2 cols mobile) */}
