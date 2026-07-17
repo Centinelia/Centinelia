@@ -398,7 +398,6 @@ export default function LandingWidgets() {
           boxShadow:      '0 4px 24px rgba(37,211,102,0.45)',
           color:          '#fff',
           textDecoration: 'none',
-          transition:     'transform 0.2s, box-shadow 0.2s',
         }}
         onMouseEnter={e => {
           (e.currentTarget as HTMLAnchorElement).style.transform  = 'scale(1.1)';
