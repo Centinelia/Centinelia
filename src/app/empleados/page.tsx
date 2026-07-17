@@ -75,6 +75,12 @@ const CONTENT: Record<string, {
     subtitle: 'Cada unidad en el lugar correcto',
     bullets:  ['Despacha equipos en segundos', 'Coordina repartidores, técnicos o brigadas', 'Actualiza el estatus de cada unidad en tiempo real', 'Registra y archiva cada operación'],
   },
+  custom: {
+    rolLabel: 'A tu medida',
+    tagline:  'Cuando ningún rol estándar encaja, diseña el tuyo.',
+    subtitle: 'Tú defines todo',
+    bullets:  ['Nombre y personalidad únicos para tu negocio', 'Tú defines el rol, las funciones y el tono de voz', 'Configura cada parámetro manualmente', 'Ideal para operaciones muy específicas'],
+  },
 };
 
 // ── Per-image scale overrides (compensates for figure size differences) ───────
@@ -94,7 +100,7 @@ const C = {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function EmpleadosPage() {
   const directors   = MEERKAT_ROLES.filter(r => !!(r.features as Record<string, unknown>)?.is_coordinator);
-  const specialists = MEERKAT_ROLES.filter(r => r.id !== 'custom' && !(r.features as Record<string, unknown>)?.is_coordinator);
+  const specialists = MEERKAT_ROLES.filter(r => !(r.features as Record<string, unknown>)?.is_coordinator);
   const meerkats    = [...directors, ...specialists];
 
   return (
@@ -143,8 +149,7 @@ export default function EmpleadosPage() {
             fontSize: 'clamp(0.95rem, 2vw, 1.15rem)',
             lineHeight: 1.75, maxWidth: 520, margin: '0 auto 36px',
           }}>
-            Dos Directores Generales y ocho especialistas, cada uno con un rol
-            concreto, listos para integrarse a tu negocio desde el primer día.
+            Dos Directores Generales, ocho especialistas y un empleado completamente personalizable, listos para integrarse a tu negocio desde el primer día.
           </p>
           <Link
             href="/registro"
