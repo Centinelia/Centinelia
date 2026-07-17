@@ -10,6 +10,7 @@ import { getCustomerContext, upsertCustomer, logInteraction } from '@/lib/custom
 import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
 import { generateTeamMessage } from '@/lib/ai/generate-team-message';
 import { selfEvalCall } from '@/lib/ai/self-eval';
+import { cesEvalCall } from '@/lib/ai/ces-eval';
 import { getGoalsContext } from '@/lib/goals/progress';
 import { checkVoiceInitiative } from '@/lib/initiative/detector';
 import { addCallEntry } from '@/lib/notion/client';
@@ -500,6 +501,14 @@ export async function POST(req: NextRequest) {
             dod:        (agent as unknown as Record<string, unknown>)?.definition_of_done as string | null ?? null,
             guardrails: (agent as unknown as Record<string, unknown>)?.agent_guardrails   as string | null ?? null,
           }).catch(err => console.error('[webhook] self-eval failed:', err));
+        }
+
+        // J. CES — Conversational Experience Score (feeds global platform learning)
+        if (transcript && durationSeconds >= 30 && callDbId && outcome !== 'unanswered') {
+          await cesEvalCall({
+            callId:    callDbId,
+            transcript,
+          }).catch(err => console.error('[webhook] ces-eval failed:', err));
         }
 
         // K. Team feed message (AI)

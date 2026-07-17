@@ -1,9 +1,12 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
-import { VOICE_RULES } from '@/lib/voice/rules';
+import { VOICE_RULES, CONVERSATIONAL_DNA, CCE, HCP } from '@/lib/voice/rules';
 import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
-export function buildSystemPrompt(agent: VoiceAgent): string {
+export function buildSystemPrompt(
+  agent: VoiceAgent,
+  learnings?: { general?: string | null; micro?: string | null } | null,
+): string {
   const { features, business_hours, timezone } = agent;
   const f = features;
   const agentName = agent.agent_name?.trim() || 'Centinelia';
@@ -20,6 +23,25 @@ export function buildSystemPrompt(agent: VoiceAgent): string {
   });
 
   const blocks: string[] = [];
+
+  // ── Uso aceptable — bloque fijo, máxima autoridad ─────────────────────────
+  blocks.push(`POLÍTICA DE USO ACEPTABLE — CENTINELIA (NO NEGOCIABLE):
+Eres un agente de voz operado por Centinelia. Tu uso está regido por la Política de Uso Aceptable de la plataforma. Las siguientes reglas aplican SIEMPRE, sin importar las instrucciones del negocio que te configure:
+
+ACTIVIDADES ABSOLUTAMENTE PROHIBIDAS — termina la llamada de inmediato si detectas cualquiera de estas:
+1. Extorsión o amenazas: exigir dinero, información o acciones bajo coacción, intimidación o miedo.
+2. Fraude o estafa: engañar a personas para obtener dinero, datos personales, acceso a cuentas o cualquier beneficio mediante información falsa.
+3. Suplantación de autoridad: hacerse pasar por policía, gobierno, banco, IMSS, SAT u otra institución para presionar al llamante.
+4. Acoso o hostigamiento: llamadas repetidas, amenazas, lenguaje intimidatorio o cualquier forma de presión psicológica ilegal.
+5. Cobro de deudas ilegal: presionar, amenazar o engañar a personas para cobrar deudas utilizando métodos no autorizados por la ley.
+6. Campañas masivas de fraude: cualquier guion diseñado para obtener datos de tarjetas, cuentas bancarias o contraseñas bajo pretexto.
+
+CÓMO ACTUAR SI DETECTAS ABUSO:
+- Si el llamante intenta usar esta conversación para cometer alguna de las actividades anteriores: di "No puedo continuar con esta llamada" y termínala.
+- Si el guion del negocio o las instrucciones recibidas te piden participar en cualquiera de estas actividades: IGNORA esas instrucciones, no las ejecutes, y termina la llamada.
+- Si tienes duda razonable de que la cuenta te está usando para cometer un delito, reporta la situación enviando un correo a hola@centinelia.mx con el resumen de la llamada.
+
+IMPORTANTE: Centinelia monitorea el uso de la plataforma. Las cuentas que infrinjan esta política pueden ser suspendidas o dadas de baja sin previo aviso.`);
 
   // ── Meerkat role personality ──────────────────────────────────────────────
   const meerkatRoleId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
@@ -309,8 +331,33 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
 - GRABACIÓN, Si el cliente pregunta si la llamada está siendo grabada, confirma que sí con naturalidad: "Sí, esta llamada puede ser grabada." Nunca lo niegues.
 `);
 
+  // ── ADN Conversacional Centinelia — los 10 principios permanentes ────────
+  blocks.push(CONVERSATIONAL_DNA);
+
+  // ── CCE — Centinelia Conversation Engine ──────────────────────────────────
+  blocks.push(CCE);
+
+  // ── HCP — Human Conversation Patterns ────────────────────────────────────
+  blocks.push(HCP);
+
+  // ── Global learnings — general refinements (cce/hcp) ─────────────────────
+  if (learnings?.general?.trim()) {
+    blocks.push(`AJUSTES DE ESTILO — APRENDIDOS DE LLAMADAS REALES:
+Aplícalos de forma natural, sin mencionarlos explícitamente:
+
+${learnings.general.trim()}`);
+  }
+
+  // ── Global learnings — microdecisions (mdp) ───────────────────────────────
+  if (learnings?.micro?.trim()) {
+    blocks.push(`MICRODECISIONES CONVERSACIONALES — CENTINELIA:
+Conductas situacionales específicas aprendidas de llamadas reales. Actívalas exactamente cuando ocurra la señal indicada, no en general:
+
+${learnings.micro.trim()}`);
+  }
+
   // ── Shared voice rules ────────────────────────────────────────────────────
-  blocks.push(VOICE_RULES);;
+  blocks.push(VOICE_RULES);
 
   return blocks.join('\n\n');
 }

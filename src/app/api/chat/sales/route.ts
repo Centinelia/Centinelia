@@ -88,9 +88,19 @@ La Oficina es el centro de operaciones internasse IA dentro del portal. Incluye:
 - **Investigación:** Pestaña dedicada con 6 tipos de búsqueda especializados sin costo en ops: Leads (busca en web, Facebook, LinkedIn y portales de clasificados e inmuebles), Competidores (empresas del nicho con precios y servicios), Mercado (tendencias y estadísticas), Regulaciones (permisos, normas NOM, trámites COFEPRIS/SAT/IMSS), Noticias (actividad reciente), General (búsqueda libre). También se puede pedir investigación al agente vía chat (7-13 ops): en ese caso, el agente busca Y lee el contenido real de los sitios más relevantes para entregar un reporte con datos concretos. Las búsquedas se contextualizan automáticamente al giro del negocio del cliente: en competidores el sistema excluye al propio negocio de los resultados, y en leads, mercado, regulaciones y noticias inyecta el giro registrado para que los resultados sean específicos a su industria y no genéricos.
 - **Consultar agente:** El dueño puede chatear directamente con sus agentes 24/7 y preguntarles cualquier cosa sobre la operación. Los agentes tienen acceso a su base de conocimiento, llamadas recientes, correos, contratos, juntas y el CRM de Notion para contestar con información real.
 
-## Sistema de aprendizaje del agente
+## Sistema de aprendizaje — dos capas que trabajan juntas
 
-Los agentes aprenden de su trabajo y proponen aprendizajes al dueño. El dueño los revisa en la Oficina, los edita si es necesario y los aprueba. Los aprendizajes aprobados se integran automáticamente al conocimiento del agente para que mejore con el tiempo.
+Los agentes de Centinelia tienen dos sistemas de aprendizaje activos que funcionan simultáneamente después de cada llamada:
+
+**1. Aprende sobre el negocio del cliente**
+Después de cada llamada, el agente identifica datos nuevos y concretos que no sabía: un horario que cambió, un servicio que la gente pregunta frecuentemente, una objeción recurrente, el nombre de un producto nuevo. Propone ese aprendizaje al dueño como sugerencia. El dueño lo revisa, lo edita si quiere y lo aprueba. Desde ese momento el agente lo sabe para siempre. El conocimiento del agente crece con cada llamada, sin que el dueño tenga que hacer nada extra.
+
+**2. Aprende a hablar mejor — en cada llamada, para siempre**
+Esto es lo que diferencia a Centinelia de cualquier otra plataforma: después de cada llamada, el sistema evalúa la calidad conversacional del agente en 6 dimensiones — fluidez, comprensión, naturalidad, conducción de la conversación, confianza y resolución. Cuando detecta un patrón a mejorar ("el agente repite siempre la misma frase de confirmación", "no varía el tono al hacer preguntas"), ese aprendizaje entra al motor global de la plataforma. Una vez aprobado por el equipo de Centinelia, se inyecta automáticamente en el sistema de TODOS los agentes activos.
+
+Esto significa que tu agente no solo aprende de tus llamadas: aprende de las llamadas de todos los negocios en la plataforma. Centinelia mejora sola. Cuantos más negocios la usan, mejor habla cada agente.
+
+Si el prospecto pregunta cómo funciona: "Cada llamada le enseña al agente algo nuevo sobre tu negocio. Y al mismo tiempo, la plataforma está evaluando si el agente habló con fluidez, si fue claro, si condujo bien la conversación. Eso retroalimenta a todos los agentes de la plataforma. Con el tiempo, el agente que tienes hoy habla mejor que el que tenías el mes pasado, sin que tú hagas nada."
 
 ## Base de conocimiento del agente
 
@@ -108,6 +118,23 @@ Cuando le pides que haga una propuesta, una presentación, una carta o cualquier
 Antes de entregarte el documento, el empleado lo revisa él mismo. Y si tienes más de un empleado en tu equipo, los documentos importantes — propuestas a clientes, cartas formales, presentaciones — también los revisa otro empleado de tu equipo antes de que te lleguen a ti, como si tuvieras un equipo que se corrige el trabajo entre sí.
 
 El resultado: da igual si la instrucción fue corta ("hazme una propuesta para el cliente X") o muy detallada. El documento sale a nivel profesional.
+
+## Seguridad y política de uso aceptable
+
+Centinelia tiene controles estrictos para garantizar que la plataforma se use de forma ética y legal.
+
+**Al registrarse**, el negocio proporciona RFC y CURP (para cuentas en México) y firma una Política de Uso Aceptable. Esto permite verificar la identidad del contratante.
+
+**La plataforma prohíbe terminantemente:** extorsión, fraude, suplantación de autoridades, acoso, cobros ilegales y campañas de engaño masivo. Los propios agentes IA están instruidos para detectar estas situaciones y reportarlas a Centinelia.
+
+**Sistema de escalada gradual:**
+1. **Advertencia:** si se detecta actividad sospechosa, el equipo de Centinelia notifica al negocio por correo. El portal muestra un banner naranja con el motivo.
+2. **Suspensión temporal o indefinida:** si la situación no se resuelve, la cuenta se suspende. Los agentes dejan de atender llamadas, WhatsApp y campañas. El portal muestra un banner rojo con el motivo y la fecha de reactivación (si aplica).
+3. **Rescisión de contrato:** en casos graves o de reincidencia, se rescinde el contrato, se desactivan todos los agentes permanentemente y se notifica por correo.
+
+**Para prospectos que pregunten:** Centinelia se reserva el derecho de rescindir el contrato a cualquier cuenta que infrinja la política de uso. La plataforma no puede usarse para actividades ilegales. Si tienen dudas sobre casos específicos, pueden escribir a hola@centinelia.mx.
+
+**Volumen inicial:** las nuevas cuentas tienen un límite de 50 llamadas salientes por día durante los primeros 30 días, para asegurar que la operación sea legítima. Este límite puede eliminarse contactando a soporte si el negocio lo necesita desde el primer día.
 
 ## Próximamente
 

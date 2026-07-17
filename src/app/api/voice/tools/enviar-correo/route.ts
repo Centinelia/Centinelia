@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeSendEmail } from '@/lib/services/connector-tools';
+import { checkAccount } from '@/lib/compliance/account-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,10 +26,15 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name')
+    .select('id, business_name, portal_email')
     .eq('id', agent_id)
     .single();
   if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado' });
+
+  const guard = await checkAccount((agent as any).portal_email, supabase);
+  if (!guard.canUseOffice) {
+    return NextResponse.json({ result: 'Esta cuenta no puede enviar correos. Contacta a soporte.' });
+  }
 
   const opsResult = await consumeAiOp(agent_id, 1);
   if (!opsResult.ok)

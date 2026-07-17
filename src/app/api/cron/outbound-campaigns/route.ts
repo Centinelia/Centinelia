@@ -36,6 +36,32 @@ export async function GET(req: NextRequest) {
     const agent = campaign.voice_agents as VoiceAgent;
     if (!agent?.vapi_agent_id || !agent?.active) continue;
 
+    // Rate limit: accounts within their first 30 days have an outbound daily cap
+    if (agent.portal_email) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('outbound_daily_limit, outbound_limit_until, account_status')
+        .eq('portal_email', agent.portal_email)
+        .single();
+
+      if (org?.account_status === 'suspended' || org?.account_status === 'terminated') continue;
+
+      if (org?.outbound_limit_until && new Date(org.outbound_limit_until) > new Date()) {
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const { count: todayCount } = await supabase
+          .from('outbound_calls')
+          .select('id', { count: 'exact', head: true })
+          .eq('agent_id', agent.id)
+          .gte('called_at', todayStart.toISOString());
+
+        const limit = org.outbound_daily_limit ?? 50;
+        if ((todayCount ?? 0) >= limit) {
+          console.log(`[rate-limit] ${agent.portal_email} reached daily outbound limit (${limit}), skipping campaign ${campaign.id}`);
+          continue;
+        }
+      }
+    }
+
     // Fetch pending contacts for this campaign
     let q = supabase
       .from('outbound_contacts')

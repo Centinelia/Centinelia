@@ -19,6 +19,20 @@ export default async function TokenLayout({
     .eq('portal_token', token)
     .single();
 
+  const portalEmail = account?.portal_email ?? null;
+
+  const { data: org } = portalEmail
+    ? await supabase
+        .from('organizations')
+        .select('account_status, warning_reason, suspension_reason, suspended_until')
+        .eq('portal_email', portalEmail)
+        .single()
+    : { data: null };
+
+  const isWarned    = org?.account_status === 'warned';
+  const isSuspended = org?.account_status === 'suspended';
+  const isTerminated = org?.account_status === 'terminated';
+
   let opsAgents: AgentOption[] = [];
   if (account?.portal_email) {
     const { data } = await supabase
@@ -38,8 +52,51 @@ export default async function TokenLayout({
     })) as AgentOption[];
   }
 
+  const untilLabel = org?.suspended_until
+    ? new Date(org.suspended_until).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+
   return (
     <>
+      {isWarned && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: 'rgba(217,119,6,0.95)', backdropFilter: 'blur(8px)',
+          padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 2px 16px rgba(0,0,0,0.3)',
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>Aviso de cumplimiento</span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {org?.warning_reason ?? 'Se detectó actividad que podría infringir la Política de Uso Aceptable.'}
+          </span>
+          <a href="mailto:hola@centinelia.mx" style={{ fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'underline', flexShrink: 0 }}>
+            Contactar soporte
+          </a>
+        </div>
+      )}
+      {(isSuspended || isTerminated) && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: isSuspended ? 'rgba(220,38,38,0.95)' : 'rgba(127,29,29,0.97)',
+          backdropFilter: 'blur(8px)',
+          padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            {isTerminated ? 'Contrato rescindido' : 'Cuenta suspendida'}
+          </span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', flex: 1 }}>
+            {isTerminated
+              ? (org?.suspension_reason ?? 'Tu contrato ha sido rescindido por infracciones a la Política de Uso Aceptable.')
+              : untilLabel
+                ? `Suspendida hasta el ${untilLabel}. ${org?.suspension_reason ?? ''}`
+                : (org?.suspension_reason ?? 'Tu cuenta está suspendida temporalmente.')}
+          </span>
+          <a href="mailto:hola@centinelia.mx" style={{ fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'underline', flexShrink: 0 }}>
+            Contactar soporte
+          </a>
+        </div>
+      )}
       {children}
       <SupportChat />
       {opsAgents.length > 0 && <OpsAgentChatFab token={token} agents={opsAgents} />}

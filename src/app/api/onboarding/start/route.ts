@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
     transfer_whatsapp,
     area_code,
     meerkat_role_id,
+    rfc,
+    curp,
+    aup_accepted,
   } = await req.json();
 
   const meerkat = (meerkat_role_id && meerkat_role_id !== 'custom')
@@ -133,6 +136,15 @@ export async function POST(req: NextRequest) {
       }).catch(console.error),
     ]);
 
+    // KYC for empresarial accounts
+    const kycPatchE: Record<string, unknown> = {};
+    if (rfc?.trim())  kycPatchE.rfc  = rfc.trim().toUpperCase();
+    if (curp?.trim()) kycPatchE.curp = curp.trim().toUpperCase();
+    if (aup_accepted) kycPatchE.aup_accepted_at = new Date().toISOString();
+    if (Object.keys(kycPatchE).length > 0) {
+      await supabase.from('organizations').update(kycPatchE).eq('portal_email', email);
+    }
+
     return NextResponse.json({ empresarial: true });
   }
 
@@ -179,6 +191,19 @@ export async function POST(req: NextRequest) {
   if (error || !agent) {
     console.error('onboarding/start:', error);
     return NextResponse.json({ error: 'Error al registrar el agente' }, { status: 500 });
+  }
+
+  // Persist KYC data and AUP acceptance in the org record
+  const kycPatch: Record<string, unknown> = {};
+  if (rfc?.trim())  kycPatch.rfc  = rfc.trim().toUpperCase();
+  if (curp?.trim()) kycPatch.curp = curp.trim().toUpperCase();
+  if (aup_accepted) kycPatch.aup_accepted_at = new Date().toISOString();
+  if (rfc?.trim() && curp?.trim()) kycPatch.kyc_completed_at = new Date().toISOString();
+  if (Object.keys(kycPatch).length > 0) {
+    await supabase
+      .from('organizations')
+      .update(kycPatch)
+      .eq('portal_email', email);
   }
 
   const customer = await stripe.customers.create({

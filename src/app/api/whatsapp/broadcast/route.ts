@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkAccount } from '@/lib/compliance/account-guard';
 
 const ADMIN_COOKIE = 'Centinelia_admin';
 
@@ -66,6 +67,17 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // Account guard: block broadcasts for suspended/terminated accounts
+  const { data: agentForGuard } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agent_id)
+    .single();
+  const guard = await checkAccount(agentForGuard?.portal_email, supabase);
+  if (!guard.canOperate) {
+    return NextResponse.json({ error: `Cuenta ${guard.status}. No se pueden enviar broadcasts.` }, { status: 403 });
+  }
 
   const { data: broadcast, error: broadcastErr } = await supabase
     .from('wa_broadcasts')

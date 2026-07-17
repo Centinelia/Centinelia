@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { checkAccount } from '@/lib/compliance/account-guard';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,11 +19,14 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, transfer_whatsapp')
+    .select('business_name, transfer_whatsapp, portal_email')
     .eq('id', agent_id)
     .single();
 
   if (!agent) return NextResponse.json({ result: 'Error de configuración.' });
+
+  const guard = await checkAccount((agent as any).portal_email, supabase);
+  if (!guard.canOperate) return NextResponse.json({ result: 'Cuenta suspendida. No se puede enviar WhatsApp.' });
 
   const digits = numero_cliente.replace(/\D/g, '');
   const waNumber = digits.startsWith('52') ? `+${digits}` : `+52${digits}`;

@@ -13,6 +13,35 @@ function headers() {
   };
 }
 
+// ─── Global conversational learnings ─────────────────────────────────────────
+
+interface AgentLearnings {
+  general: string | null;
+  micro:   string | null;
+}
+
+async function fetchConversationalLearnings(): Promise<AgentLearnings> {
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('conversational_learnings')
+      .select('body, target_document')
+      .eq('status', 'active')
+      .order('approved_at', { ascending: true });
+    if (!data?.length) return { general: null, micro: null };
+
+    const general = data.filter(l => l.target_document !== 'mdp');
+    const micro   = data.filter(l => l.target_document === 'mdp');
+
+    return {
+      general: general.length ? general.map((l, i) => `${i + 1}. ${l.body}`).join('\n') : null,
+      micro:   micro.length   ? micro.map(l => l.body).join('\n') : null,
+    };
+  } catch {
+    return { general: null, micro: null };
+  }
+}
+
 // ─── Team peer types ──────────────────────────────────────────────────────────
 
 interface TeamPeer {
@@ -500,13 +529,43 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   return ids;
 }
 
+// ─── Per-meerkat model + behavior config ──────────────────────────────────────
+// Model is the last layer — personality lives in ADN → CCE → HCP → meerkat prompt.
+// These params shape output behavior only: how fast, how long, how deterministic.
+
+interface MeerkatModelConfig {
+  provider:    string;
+  model:       string;
+  temperature: number;
+  maxTokens:   number;
+  speed:       number;
+  minChars:    number;
+}
+
+const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.93, minChars: 50 },
+  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 0.98, minChars: 40 },
+  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
+  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 110, speed: 0.98, minChars: 40 },
+  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.93, minChars: 50 },
+  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 40 },
+  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.15, maxTokens: 110, speed: 1.05, minChars: 30 },
+  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 28 },
+  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.10, maxTokens:  80, speed: 1.05, minChars: 30 },
+  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
+};
+
+const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
+  provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150, speed: 0.98, minChars: 40,
+};
+
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
-function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = []) {
+function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = [], learnings?: AgentLearnings | null) {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
 
   const messages: Array<{ role: string; content: string }> = [
-    { role: 'system', content: buildSystemPrompt(agent) },
+    { role: 'system', content: buildSystemPrompt(agent, learnings) },
   ];
 
   if (peers.length > 0) {
@@ -523,14 +582,17 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     messages.push({ role: 'system', content: lines.join('\n') });
   }
 
+  const meerkatId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as string | undefined;
+  const cfg: MeerkatModelConfig = (meerkatId ? MEERKAT_MODEL_CONFIG[meerkatId] : undefined) ?? DEFAULT_MODEL_CONFIG;
+
   return {
     name: `${agentName}, ${agent.business_name}`,
     model: {
-      provider: 'anthropic',
-      model: 'claude-3-5-haiku-20241022',
+      provider: cfg.provider,
+      model:    cfg.model,
       messages,
-      temperature: 0.4,
-      maxTokens: VAPI_VOICE_MAX_TOKENS,
+      temperature: cfg.temperature,
+      maxTokens:   cfg.maxTokens,
       ...(toolIds.length > 0 ? { toolIds } : {}),
     },
     voice: {
@@ -540,12 +602,12 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       stability: 0.35,
       similarityBoost: 0.75,
       style: 0.45,
-      speed: 1.05,
+      speed: cfg.speed,
       useSpeakerBoost: true,
       optimizeStreamingLatency: 3,
       chunkPlan: {
         enabled: true,
-        minCharacters: 50,
+        minCharacters: cfg.minChars,
         punctuationBoundaries: ['.', '!', '?'],
       },
     },
@@ -564,7 +626,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       model: 'nova-2',
       language: agent.features.multilingual ? 'multi' : 'es',
       smartFormat: true,
-      endpointing: 100,
+      endpointing: 300,
     },
     backgroundSound: 'office',
     backchannelingEnabled: true,
@@ -604,6 +666,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
         '¿Hay algo más en lo que te pueda ayudar?',
         'Estoy aquí si necesitas algo.',
         'Tómate el tiempo que necesites.',
+        'Tómate tu tiempo.',
       ],
     },
     metadata: { agent_id: agent.id, plan: agent.plan },
@@ -613,13 +676,16 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
 // ─── Exported sync functions ──────────────────────────────────────────────────
 
 // Internal: sync one agent without triggering cascade (prevents infinite loops)
-async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
-  const peers   = await fetchTeamPeers(agent);
-  const toolIds = await createVapiTools(agent, peers);
+async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learnings?: AgentLearnings | null): Promise<boolean> {
+  const peers          = await fetchTeamPeers(agent);
+  const toolIds        = await createVapiTools(agent, peers);
+  const resolvedLearnings = learnings !== undefined
+    ? learnings
+    : await fetchConversationalLearnings();
   const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers)),
+    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers, resolvedLearnings)),
   });
   if (!res.ok) {
     console.error('Vapi syncAgent error:', await res.text());
@@ -673,6 +739,38 @@ export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceA
   // Fire-and-forget: push the updated tool list to all sibling agents
   if (ok) resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
   return ok;
+}
+
+// Pushes updated prompts (with current global conversational learnings) to ALL active agents.
+// Called by the cron after new learnings are activated — do NOT call on every request.
+export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: number; errors: number }> {
+  const supabase    = createAdminClient();
+  const learnings   = await fetchConversationalLearnings();
+
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('*')
+    .eq('active', true)
+    .not('vapi_agent_id', 'is', null);
+
+  if (!agents?.length) return { synced: 0, errors: 0 };
+
+  let synced = 0;
+  let errors = 0;
+
+  // Process in batches of 5 to avoid hammering Vapi API
+  for (let i = 0; i < agents.length; i += 5) {
+    const batch = agents.slice(i, i + 5);
+    const results = await Promise.allSettled(
+      batch.map(a => syncAgentToVapi(a.vapi_agent_id, a as VoiceAgent, learnings)),
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) synced++;
+      else errors++;
+    }
+  }
+
+  return { synced, errors };
 }
 
 export async function assignAssistantToPhone(

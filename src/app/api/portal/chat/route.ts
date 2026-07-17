@@ -90,14 +90,28 @@ Desde Cuenta → Mis agentes → botón Configurar (o desde /portal/[token]/conf
 
 ---
 
-## Sistema de aprendizaje
+## Sistema de aprendizaje — dos capas
 
-Los agentes proponen aprendizajes basados en su experiencia en campo. Aparecen en la Oficina → Actividad, sección "Aprendizajes pendientes". El dueño puede:
-1. Editar el contenido del aprendizaje antes de aprobarlo.
-2. Aprobarlo: se integra automáticamente al campo "Aprendizajes activos" del agente.
-3. Rechazarlo: el agente lo descarta.
+El agente aprende de dos formas distintas después de cada llamada:
 
-Los aprendizajes activos también se pueden editar directamente desde el configurador del agente → Base de conocimiento del agente → Aprendizajes activos.
+### Aprendizajes de negocio (específicos de la cuenta)
+Después de cada llamada, el agente detecta datos nuevos y concretos que no tenía: un cambio de horario, una pregunta frecuente de clientes, una objeción recurrente. Propone ese dato como aprendizaje.
+
+El dueño los gestiona en: Oficina → Actividad → sección "Aprendizajes pendientes".
+Opciones: editar el texto → aprobar (queda activo en el agente) o rechazar.
+También se pueden ver y editar directamente desde: Configurar agente → Base de conocimiento → Aprendizajes activos.
+
+### Aprendizajes conversacionales (mejora de estilo — plataforma global)
+Esto es diferente y más poderoso: después de cada llamada el sistema evalúa cómo habló el agente en 6 dimensiones: fluidez, comprensión, naturalidad, conducción de la conversación, confianza y resolución. A esto se le llama CES (Conversational Experience Score).
+
+Cuando el sistema detecta un patrón a mejorar (por ejemplo: el agente repite siempre la misma frase de confirmación, o no varía el tono al hacer preguntas), ese aprendizaje entra al motor global de Centinelia. Una vez aprobado por el equipo de Centinelia, se inyecta en el sistema de TODOS los agentes activos de la plataforma.
+
+Esto significa que el agente del cliente aprende de las llamadas de todos los negocios en la plataforma — no solo de las propias. La plataforma mejora sola con el tiempo.
+
+El cliente no necesita hacer nada para beneficiarse de esto: el agente habla mejor automáticamente en cada actualización del sistema.
+
+### ¿Por qué el agente habla diferente que hace un mes?
+Exactamente por esto: los aprendizajes conversacionales se van integrando. Si el cliente nota que el agente varía más su vocabulario, es más fluido o conduce mejor la conversación, es porque el motor de mejora de Centinelia lo actualizó. Es normal y esperado — es parte del servicio.
 
 ---
 
@@ -158,6 +172,34 @@ Por eso, en algunos documentos críticos puede tardar unos segundos más — ese
 Si el cliente pregunta "¿por qué tardó más de lo normal?": es porque el agente revisó el documento antes de entregarlo, y si hay otro agente en la cuenta, también lo revisó él.
 
 Si el cliente pregunta "¿puedo confiarle documentos importantes al agente?": sí. El sistema está diseñado para que el output sea profesional aunque la instrucción haya sido corta. Si algo no quedó como esperaba, puede pedirle al agente que lo ajuste directamente en el chat de Consultar agente.
+
+---
+
+## Estado de la cuenta — banners y bloqueos
+
+El portal puede mostrar banners de cumplimiento en la parte superior cuando el equipo de Centinelia detecta uso irregular:
+
+### Banner naranja — Advertencia
+El negocio recibió una advertencia formal. El motivo aparece en el banner. Los agentes siguen funcionando con normalidad. Es una señal de que algo debe corregirse. Para resolver: revisar el motivo en el banner y contactar a soporte en hola@centinelia.mx.
+
+### Banner rojo — Cuenta suspendida
+La cuenta está suspendida. Los agentes no atienden llamadas, no envían mensajes de WhatsApp ni ejecutan campañas salientes. Si la suspensión es temporal, el banner muestra la fecha de reactivación automática. Si es indefinida, el banner lo indica.
+- ¿Qué hacer?: Contactar a soporte en hola@centinelia.mx con el asunto "Reactivación de cuenta" explicando la situación.
+- Los agentes de oficina (correos, documentos, tareas) siguen disponibles durante la suspensión.
+
+### Banner granate/oscuro — Contrato rescindido
+El contrato fue rescindido permanentemente. Todos los agentes están desactivados. No es posible reactivar la cuenta.
+- Si el cliente cree que fue un error, puede escribir a hola@centinelia.mx.
+
+### ¿Por qué me suspendieron o advirtieron?
+El motivo siempre aparece en el banner y en el correo que se envió al registrar el evento. Las razones más comunes son: volumen de llamadas inusual, reportes de uso indebido de los agentes, o incumplimiento de la Política de Uso Aceptable firmada al registrarse.
+
+### ¿Cuándo se reactiva la cuenta?
+- Si la suspensión es temporal: automáticamente en la fecha que indica el banner.
+- Si es indefinida o si hay una rescisión: solo mediante resolución del equipo de Centinelia. Escribir a hola@centinelia.mx.
+
+### Límite de llamadas salientes (primeros 30 días)
+Las cuentas nuevas tienen un límite de 50 llamadas salientes por día durante el primer mes. Este límite aplica solo a campañas, no a llamadas inbound ni a devoluciones de llamada del flujo de trabajo. Si el negocio necesita más volumen desde el primer día, puede solicitarlo en hola@centinelia.mx.
 
 ---
 

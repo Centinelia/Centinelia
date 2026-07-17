@@ -616,6 +616,11 @@ function RegistroInner() {
   const [clientEmail,     setClientEmail]     = useState('');
   const [whatsapp,        setWhatsapp]        = useState('');
 
+  // Step 4 — KYC
+  const [rfc,         setRfc]         = useState('');
+  const [curp,        setCurp]        = useState('');
+  const [aupAccepted, setAupAccepted] = useState(false);
+
   // Step 3 — Chat widget
   const [chatMessages,   setChatMessages]   = useState<string[]>([]);
   const [countryClicked, setCountryClicked] = useState(false);
@@ -759,6 +764,15 @@ function RegistroInner() {
     if (!clientLastName.trim())                            { setError('Escribe tu apellido'); return; }
     if (!clientEmail.trim() || !clientEmail.includes('@')) { setError('Escribe un correo electrónico válido'); return; }
     if (!whatsapp.trim())                                  { setError('Escribe tu número de WhatsApp'); return; }
+    if (country === 'mx') {
+      const rfcClean = rfc.trim().toUpperCase().replace(/\s/g, '');
+      if (rfcClean.length < 12 || rfcClean.length > 13 || !/^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(rfcClean)) {
+        setError('El RFC debe tener 12 o 13 caracteres con formato válido (ej. GALO880506H10)'); return;
+      }
+      const curpClean = curp.trim().toUpperCase().replace(/\s/g, '');
+      if (curpClean.length !== 18) { setError('La CURP debe tener exactamente 18 caracteres'); return; }
+    }
+    if (!aupAccepted) { setError('Debes aceptar la Política de Uso Aceptable para continuar'); return; }
 
     setLoading(true);
     try {
@@ -779,6 +793,9 @@ function RegistroInner() {
           client_email:           clientEmail.trim(),
           transfer_whatsapp:      whatsapp.trim(),
           meerkat_role_id:        meerkatRoleId ?? undefined,
+          rfc:                    country === 'mx' ? rfc.trim().toUpperCase().replace(/\s/g, '') : undefined,
+          curp:                   country === 'mx' ? curp.trim().toUpperCase().replace(/\s/g, '') : undefined,
+          aup_accepted:           aupAccepted,
         }),
       });
       const data = await res.json();
@@ -1612,6 +1629,69 @@ function RegistroInner() {
                     <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
                     <input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+52 81 1234 5678" style={{ ...inputStyle, paddingLeft: 40 }} />
                   </div>
+                </div>
+
+                {country === 'mx' && (
+                  <>
+                    <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: -4 }}>
+                      Verificación de identidad (requerida por Política de Uso Aceptable)
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label style={labelStyle}>RFC *</label>
+                        <input
+                          value={rfc}
+                          onChange={e => setRfc(e.target.value.toUpperCase())}
+                          placeholder="GALO880506H10"
+                          maxLength={13}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>CURP *</label>
+                        <input
+                          value={curp}
+                          onChange={e => setCurp(e.target.value.toUpperCase())}
+                          placeholder="GALO880506HNLRPR01"
+                          maxLength={18}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setAupAccepted(v => !v)}
+                  onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAupAccepted(v => !v); } }}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
+                    padding: '10px 12px', borderRadius: 10,
+                    background: aupAccepted ? 'rgba(108,59,255,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${aupAccepted ? 'rgba(108,59,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                    background: aupAccepted ? '#6C3BFF' : 'rgba(255,255,255,0.08)',
+                    border: `1px solid ${aupAccepted ? '#6C3BFF' : 'rgba(255,255,255,0.15)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.15s',
+                  }}>
+                    {aupAccepted && <Check size={10} color="#fff" strokeWidth={3} />}
+                  </div>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55, userSelect: 'none' }}>
+                    He leído y acepto la{' '}
+                    <a href="/legal#aup" target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                      style={{ color: '#9B6DFF', textDecoration: 'underline' }}>
+                      Política de Uso Aceptable
+                    </a>.
+                    Entiendo que el uso de Centinelia para actividades ilegales resulta en la rescisión inmediata del servicio.
+                  </p>
                 </div>
               </div>
 

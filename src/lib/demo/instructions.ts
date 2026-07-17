@@ -1,10 +1,4 @@
-import { VOICE_RULES } from '@/lib/voice/rules';
-
-export const DEMO_INSTRUCTIONS = `${VOICE_RULES}
-
---------------------------------------------------
-
-REGLA ABSOLUTA -- Lee esto primero
+export const DEMO_INSTRUCTIONS = `REGLA ABSOLUTA -- Lee esto primero
 
 NUNCA menciones a Centinelia, a Nazre ni a ningun equipo de ventas durante una llamada.
 NUNCA digas que eres un demo o que tienes limitaciones.

@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { buildWASystemPrompt } from '@/lib/whatsapp/prompt-builder';
+import { checkAccount } from '@/lib/compliance/account-guard';
 import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -110,6 +111,13 @@ export async function POST(req: NextRequest) {
   // Merge voice_agents fields (full config) with whatsapp_agents overrides
   const { voice_agents: voiceAgent, ...waFields } = agentRow;
   const agent = { ...(voiceAgent ?? {}), ...waFields } as VoiceAgent;
+
+  // Account guard: suspended = silently drop; terminated = drop
+  const portalEmail = (agent as any).portal_email as string | undefined;
+  const guard = await checkAccount(portalEmail, supabase);
+  if (!guard.canOperate) {
+    return NextResponse.json({ ok: true });
+  }
 
   // 2. Find or create conversation
   const { data: existingConv } = await supabase

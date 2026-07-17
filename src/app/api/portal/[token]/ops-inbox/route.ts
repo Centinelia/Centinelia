@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { sendEmail } from '@/lib/email/send';
+import { checkAccount } from '@/lib/compliance/account-guard';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -63,6 +64,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (newStatus === 'approved') {
     update.sent_at = new Date().toISOString();
+
+    // Block email sending for terminated accounts
+    const guard = await checkAccount(acct.portal_email, supabase);
+    if (!guard.canUseOffice) {
+      return NextResponse.json({ error: 'Cuenta rescindida. No se pueden enviar correos.' }, { status: 403 });
+    }
 
     // Send the draft response if this is an email type
     if (item.item_type === 'email' && item.ai_draft && item.email_from) {

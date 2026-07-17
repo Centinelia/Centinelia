@@ -41,6 +41,28 @@ export async function POST(req: NextRequest) {
   const typedAgent = agent as VoiceAgent;
   const agentName  = typedAgent.agent_name?.trim() || 'Centinelia';
 
+  // Check account status — suspended or terminated accounts cannot receive calls
+  if (typedAgent.portal_email) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('account_status, suspended_until')
+      .eq('portal_email', typedAgent.portal_email)
+      .single();
+
+    if (org) {
+      const isSuspended = org.account_status === 'suspended' &&
+        (!org.suspended_until || new Date(org.suspended_until) > new Date());
+      const isTerminated = org.account_status === 'terminated';
+
+      if (isSuspended || isTerminated) {
+        return NextResponse.json(
+          { error: 'Account suspended' },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   // Proactive caller lookup for client memory (Pro) and existing_client_support
   let callerName    = '';
   let callerContext = '';

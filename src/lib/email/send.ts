@@ -560,3 +560,84 @@ export function bugReportHtml(opts: {
     `, true)
   );
 }
+
+// ── Compliance enforcement emails ─────────────────────────────────────────────
+
+export function accountWarningHtml(opts: {
+  clientName:   string;
+  businessName: string;
+  reason:       string;
+  portalUrl:    string;
+}): string {
+  return shell(
+    badge('Aviso de cumplimiento', '#D97706') +
+    heading('Aviso importante sobre tu cuenta', `${opts.businessName} · Centinelia`) +
+    `<p style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 20px">
+      Hola ${opts.clientName},
+    </p>
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">
+      Nuestro equipo detectó actividad en tu cuenta que podría estar en conflicto con nuestra <strong style="color:${C.text}">Política de Uso Aceptable</strong>.
+    </p>` +
+    infoCard(`
+      ${sectionLabel('Motivo del aviso')}
+      <p style="color:${C.text};font-size:14px;margin:0;line-height:1.7">${opts.reason}</p>
+    `, true) +
+    `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:16px 0">
+      Si crees que esto es un error o quieres aclarar la situación, responde a este correo o escríbenos a
+      <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF">hola@centinelia.mx</a> en las próximas <strong style="color:${C.text}">48 horas</strong>.
+    </p>
+    <p style="color:${C.sub};font-size:13px;line-height:1.7;margin:0 0 20px">
+      En caso de reincidencia o falta de respuesta, la cuenta podrá ser suspendida de forma temporal o permanente.
+    </p>` +
+    btn('Ir a mi portal', opts.portalUrl)
+  );
+}
+
+export function accountSuspendedHtml(opts: {
+  clientName:   string;
+  businessName: string;
+  reason:       string;
+  until:        string | null;
+}): string {
+  const durationLine = opts.until
+    ? `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">La suspensión es <strong style="color:${C.text}">temporal</strong> y se levantará automáticamente el <strong style="color:${C.text}">${opts.until}</strong>.</p>`
+    : `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">La suspensión es <strong style="color:#ef4444}">indefinida</strong> hasta que el equipo de Centinelia la levante.</p>`;
+
+  return shell(
+    badge('Cuenta suspendida', '#DC2626') +
+    heading('Tu cuenta ha sido suspendida', opts.businessName) +
+    `<p style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 16px">Hola ${opts.clientName},</p>` +
+    infoCard(`
+      ${sectionLabel('Motivo')}
+      <p style="color:${C.text};font-size:14px;margin:0;line-height:1.7">${opts.reason}</p>
+    `, true) +
+    durationLine +
+    `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0">
+      Si consideras que esta suspensión es un error, escríbenos a
+      <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF">hola@centinelia.mx</a>.
+    </p>`
+  );
+}
+
+export function accountTerminatedHtml(opts: {
+  clientName:   string;
+  businessName: string;
+  reason:       string;
+}): string {
+  return shell(
+    badge('Contrato rescindido', '#7f1d1d') +
+    heading('Tu contrato ha sido rescindido', opts.businessName) +
+    `<p style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 16px">Hola ${opts.clientName},</p>
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">
+      Lamentamos informarte que, como resultado de infracciones reiteradas a nuestra Política de Uso Aceptable, hemos procedido a rescindir el contrato de todos los empleados activos en tu cuenta de Centinelia.
+    </p>` +
+    infoCard(`
+      ${sectionLabel('Motivo de rescisión')}
+      <p style="color:${C.text};font-size:14px;margin:0;line-height:1.7">${opts.reason}</p>
+    `, true) +
+    `<p style="color:${C.sub};font-size:13px;line-height:1.7;margin:16px 0 0">
+      Si tienes preguntas sobre esta decisión, puedes contactarnos en
+      <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF">hola@centinelia.mx</a>.
+    </p>`
+  );
+}

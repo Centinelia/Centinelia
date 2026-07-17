@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
+import { checkAccount } from '@/lib/compliance/account-guard';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -22,6 +23,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (!portalAgent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  // Account guard
+  const guard = await checkAccount(portalAgent.portal_email, supabase);
+  if (!guard.canOperate) {
+    return NextResponse.json({ error: `Cuenta ${guard.status}. No se pueden hacer llamadas salientes.` }, { status: 403 });
+  }
 
   const body = await req.json() as { contactIds: string[]; agentId?: string };
   const { contactIds, agentId } = body;
