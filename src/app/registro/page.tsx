@@ -999,7 +999,7 @@ function RegistroInner() {
                         <img
                           src={dir.imagen!}
                           alt={dir.nombre}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center', padding: '6px 6px 0' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }}
                         />
                         {sel && (
                           <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: dir.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1900,7 +1900,10 @@ function RegistroInner() {
                 alt={selectedMeerkat.nombre}
                 fill
                 sizes="38vw"
-                style={{ objectFit: 'contain', objectPosition: 'bottom center' }}
+                style={{
+                  objectFit: (selectedMeerkat.id === 'nox' || selectedMeerkat.id === 'niva') ? 'cover' : 'contain',
+                  objectPosition: (selectedMeerkat.id === 'nox' || selectedMeerkat.id === 'niva') ? 'center 15%' : 'bottom center',
+                }}
                 priority
               />
             ) : (
@@ -2113,23 +2116,21 @@ function RegistroInner() {
         position: 'fixed', bottom: 24, right: 24,
         width: 272, zIndex: 50,
         borderRadius: 20,
-        background: 'rgba(15,7,40,0.88)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        background: '#F4F0FF',
+        border: `1px solid ${roleColor}30`,
+        boxShadow: `0 12px 40px rgba(108,59,255,0.15), 0 2px 8px rgba(0,0,0,0.08)`,
         overflow: 'hidden',
       }}>
         {/* Header */}
         <div style={{
           padding: '12px 14px',
-          background: `${roleColor}18`,
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          background: `${roleColor}12`,
+          borderBottom: `1px solid ${roleColor}20`,
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div style={{
             width: 40, height: 46, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
-            background: '#F4F0FF', border: `1.5px solid ${roleColor}50`,
+            background: '#EDE8FF', border: `1.5px solid ${roleColor}50`,
             position: 'relative',
           }}>
             {selectedMeerkat.imagen ? (
@@ -2151,10 +2152,10 @@ function RegistroInner() {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#1A0A3B', lineHeight: 1.2 }}>
               {agentName.trim() || selectedMeerkat.nombre}
             </p>
-            <p style={{ fontSize: 10, color: roleColor, marginTop: 1, fontWeight: 600 }}>
+            <p style={{ fontSize: 10, color: roleColor, marginTop: 1, fontWeight: 700 }}>
               {selectedMeerkat.rol || 'Personalizado'}
             </p>
           </div>
@@ -2174,12 +2175,13 @@ function RegistroInner() {
         }}>
           {chatMessages.map((msg, i) => (
             <div key={i} style={{
-              background: 'rgba(255,255,255,0.07)',
+              background: '#ffffff',
               borderRadius: '4px 14px 14px 14px',
               padding: '8px 12px',
               fontSize: 12, lineHeight: 1.55,
-              color: 'rgba(255,255,255,0.85)',
+              color: '#2D1B69',
               maxWidth: '92%',
+              boxShadow: '0 1px 3px rgba(108,59,255,0.08)',
             }}>
               {msg}
             </div>
