@@ -15,6 +15,7 @@ import AnimatedSection from './AnimatedSection';
 import MeerkatReveal from './MeerkatReveal';
 import AudioWaveform from './AudioWaveform';
 import Marquee from './Marquee';
+import TeamFlowSection from './TeamFlowSection';
 
 // ─── Demo agent ───────────────────────────────────────────────────────────────
 // Reemplaza con el número real del agente demo cuando esté configurado
@@ -668,6 +669,9 @@ export default function LandingPage() {
 
         </div>
       </section>
+
+      {/* ── CÓMO TRABAJAN ──────────────────────────────────────────────── */}
+      <TeamFlowSection />
 
       {/* ── CAPACIDAD EMPRESARIAL ───────────────────────────────────────── */}
       <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
