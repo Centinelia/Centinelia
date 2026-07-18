@@ -99,7 +99,7 @@ export default function TeamFlowSection() {
                     boxShadow: `0 0 22px ${step.color}55`,
                     overflow: 'hidden',
                     position: 'relative',
-                    background: step.img ? '#0D0520' : `${step.color}18`,
+                    background: '#EDE8FF',
                     flexShrink: 0,
                   }}
                 >
