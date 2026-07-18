@@ -2116,21 +2116,23 @@ function RegistroInner() {
         position: 'fixed', bottom: 24, right: 24,
         width: 272, zIndex: 50,
         borderRadius: 20,
-        background: '#F4F0FF',
-        border: `1px solid ${roleColor}30`,
-        boxShadow: `0 12px 40px rgba(108,59,255,0.15), 0 2px 8px rgba(0,0,0,0.08)`,
+        background: 'rgba(15,7,40,0.88)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
         overflow: 'hidden',
       }}>
         {/* Header */}
         <div style={{
           padding: '12px 14px',
-          background: `${roleColor}12`,
-          borderBottom: `1px solid ${roleColor}20`,
+          background: `${roleColor}18`,
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div style={{
             width: 40, height: 46, borderRadius: 10, overflow: 'hidden', flexShrink: 0,
-            background: '#EDE8FF', border: `1.5px solid ${roleColor}50`,
+            background: '#F4F0FF', border: `1.5px solid ${roleColor}50`,
             position: 'relative',
           }}>
             {selectedMeerkat.imagen ? (
@@ -2152,10 +2154,10 @@ function RegistroInner() {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#1A0A3B', lineHeight: 1.2 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
               {agentName.trim() || selectedMeerkat.nombre}
             </p>
-            <p style={{ fontSize: 10, color: roleColor, marginTop: 1, fontWeight: 700 }}>
+            <p style={{ fontSize: 10, color: roleColor, marginTop: 1, fontWeight: 600 }}>
               {selectedMeerkat.rol || 'Personalizado'}
             </p>
           </div>
@@ -2172,6 +2174,7 @@ function RegistroInner() {
           padding: '12px 12px 14px',
           display: 'flex', flexDirection: 'column', gap: 6,
           maxHeight: 220, overflowY: 'auto',
+          background: '#F4F0FF',
         }}>
           {chatMessages.map((msg, i) => (
             <div key={i} style={{
