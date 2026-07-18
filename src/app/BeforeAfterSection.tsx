@@ -2,29 +2,25 @@
 
 import { motion, useInView } from 'motion/react';
 import { useRef } from 'react';
-import {
-  PhoneMissed, Clock, CalendarX, ClipboardList, MailX, AlertTriangle,
-  CheckCircle,
-} from 'lucide-react';
+import { XCircle, CheckCircle } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const BEFORE = [
-  { icon: PhoneMissed,    text: 'Llamadas perdidas',       color: '#ef4444' },
-  { icon: Clock,          text: 'Clientes esperando',      color: '#f97316' },
-  { icon: CalendarX,      text: 'Citas olvidadas',         color: '#ef4444' },
-  { icon: ClipboardList,  text: 'Seguimientos manuales',   color: '#94a3b8' },
-  { icon: MailX,          text: 'Correos sin responder',   color: '#94a3b8' },
-  { icon: AlertTriangle,  text: 'Cobros pendientes',       color: '#eab308' },
+  'Un cliente llamó y nadie respondió.',
+  'Hay citas que nadie confirmó.',
+  'Los seguimientos dependen de recordar hacerlos.',
+  'Los correos se acumulan.',
+  'Cobrar requiere perseguir clientes.',
 ];
 
 const AFTER = [
-  'Todas las llamadas atendidas',
-  'Todas las citas confirmadas',
-  'Todos los leads registrados',
-  'Todos los seguimientos creados',
-  'Todos los correos clasificados',
-  'Todos los cobros recordados',
+  'Cada llamada recibe respuesta.',
+  'Cada cita se confirma automáticamente.',
+  'Cada prospecto queda registrado.',
+  'Cada seguimiento se crea solo.',
+  'Cada correo llega al responsable correcto.',
+  'Cada cobro recibe su recordatorio.',
 ];
 
 export default function BeforeAfterSection() {
@@ -98,30 +94,27 @@ export default function BeforeAfterSection() {
             </div>
 
             <div>
-              {BEFORE.map((item, i) => (
+              {BEFORE.map((text, i) => (
                 <motion.div
-                  key={item.text}
+                  key={text}
                   initial={{ opacity: 0 }}
                   animate={inView ? { opacity: 1 } : {}}
-                  transition={{ duration: 0.35, delay: 0.28 + i * 0.055 }}
+                  transition={{ duration: 0.35, delay: 0.28 + i * 0.065 }}
                   style={{
                     display:      'flex',
-                    alignItems:   'center',
+                    alignItems:   'flex-start',
                     gap:          12,
                     padding:      '13px 20px',
                     borderBottom: i < BEFORE.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
                   }}
                 >
-                  <item.icon size={15} color={item.color} style={{ flexShrink: 0, opacity: 0.75 }} />
+                  <XCircle size={15} color="#ef4444" style={{ flexShrink: 0, marginTop: 2, opacity: 0.8 }} />
                   <span style={{
-                    fontSize:              '0.875rem',
-                    color:                 'rgba(26,10,59,0.45)',
-                    lineHeight:            1.45,
-                    textDecoration:        'line-through',
-                    textDecorationColor:   'rgba(239,68,68,0.35)',
-                    textDecorationThickness: '1.5px',
+                    fontSize:  '0.875rem',
+                    color:     'rgba(26,10,59,0.5)',
+                    lineHeight: 1.5,
                   }}>
-                    {item.text}
+                    {text}
                   </span>
                 </motion.div>
               ))}
