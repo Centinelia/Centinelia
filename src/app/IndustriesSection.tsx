@@ -118,8 +118,8 @@ const INDUSTRIES: {
   },
   {
     Icon:  GraduationCap,
-    color: '#7C3AED',
-    bg:    'rgba(124,58,237,0.08)',
+    color: '#DC2626',
+    bg:    'rgba(220,38,38,0.08)',
     label: 'Universidad',
     sub:   'Así trabaja en una',
     tasks: [
