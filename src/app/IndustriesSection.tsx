@@ -4,8 +4,8 @@ import { motion, useInView } from 'motion/react';
 import { useRef } from 'react';
 import {
   Stethoscope, UtensilsCrossed, Home, Landmark,
-  Smile, Wrench, Scale, GraduationCap,
-  Check, type LucideIcon,
+  Wrench, Scale, GraduationCap,
+  Check, Sparkles, type LucideIcon,
 } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -28,19 +28,6 @@ const INDUSTRIES: {
       'Confirma citas.',
       'Envía recordatorios.',
       'Recupera cancelaciones.',
-    ],
-  },
-  {
-    Icon:  Smile,
-    color: '#EC4899',
-    bg:    'rgba(236,72,153,0.08)',
-    label: 'Clínica Dental',
-    tasks: [
-      'Agenda limpiezas.',
-      'Confirma citas.',
-      'Atiende urgencias.',
-      'Recupera pacientes.',
-      'Informa tratamientos.',
     ],
   },
   {
@@ -123,6 +110,13 @@ const INDUSTRIES: {
   },
 ];
 
+const CUSTOM_ITEMS = [
+  'Personalizamos procesos',
+  'Flujos',
+  'Bases de conocimiento',
+  'Automatizaciones',
+];
+
 export default function IndustriesSection() {
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-60px 0px' });
@@ -163,6 +157,8 @@ export default function IndustriesSection() {
 
         {/* Grid 4×2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+
+          {/* Industry cards */}
           {INDUSTRIES.map(({ Icon, color, bg, label, tasks }, i) => (
             <motion.div
               key={label}
@@ -177,7 +173,6 @@ export default function IndustriesSection() {
                 boxShadow:    '0 2px 12px rgba(26,10,59,0.05)',
               }}
             >
-              {/* Card header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 18 }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 10,
@@ -191,7 +186,6 @@ export default function IndustriesSection() {
                 </p>
               </div>
 
-              {/* Task list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {tasks.map((task, j) => (
                   <motion.div
@@ -208,9 +202,7 @@ export default function IndustriesSection() {
                     }}>
                       <Check size={9} color={color} strokeWidth={2.5} />
                     </div>
-                    <span style={{
-                      fontSize: '0.82rem', color: 'rgba(26,10,59,0.65)', lineHeight: 1.45,
-                    }}>
+                    <span style={{ fontSize: '0.82rem', color: 'rgba(26,10,59,0.65)', lineHeight: 1.45 }}>
                       {task}
                     </span>
                   </motion.div>
@@ -218,6 +210,64 @@ export default function IndustriesSection() {
               </div>
             </motion.div>
           ))}
+
+          {/* Special "¿No ves tu industria?" card */}
+          <motion.div
+            initial={{ opacity: 0, y: 22 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.45, delay: 0.12 + INDUSTRIES.length * 0.07, ease: EASE }}
+            style={{
+              background:   'linear-gradient(135deg, rgba(108,59,255,0.07) 0%, rgba(108,59,255,0.03) 100%)',
+              border:       '1px solid rgba(108,59,255,0.22)',
+              borderRadius: 18,
+              padding:      '22px 20px 24px',
+              boxShadow:    '0 2px 16px rgba(108,59,255,0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 12 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 10,
+                background: 'rgba(108,59,255,0.1)', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Sparkles size={17} color="#6C3BFF" strokeWidth={2} />
+              </div>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.2 }}>
+                ¿No ves tu industria?
+              </p>
+            </div>
+
+            <p style={{
+              fontSize: '0.8rem', color: 'rgba(26,10,59,0.5)',
+              marginBottom: 14, lineHeight: 1.55,
+            }}>
+              Tu oficina se adapta a cualquier negocio.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {CUSTOM_ITEMS.map((item, j) => (
+                <motion.div
+                  key={item}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.28, delay: 0.25 + INDUSTRIES.length * 0.07 + j * 0.05, ease: EASE }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <div style={{
+                    width: 16, height: 16, borderRadius: '50%',
+                    background: 'rgba(108,59,255,0.1)', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Check size={9} color="#6C3BFF" strokeWidth={2.5} />
+                  </div>
+                  <span style={{ fontSize: '0.82rem', color: 'rgba(26,10,59,0.65)', lineHeight: 1.45 }}>
+                    {item}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
         </div>
 
       </div>
