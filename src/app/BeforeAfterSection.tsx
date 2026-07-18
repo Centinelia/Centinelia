@@ -115,7 +115,7 @@ export default function BeforeAfterSection() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 1.05, ease: EASE }}
+            transition={{ duration: 0.5, delay: 2.65, ease: EASE }}
             className="rounded-2xl overflow-hidden"
             style={{
               background: '#fff',
@@ -142,7 +142,7 @@ export default function BeforeAfterSection() {
                   key={text}
                   initial={{ opacity: 0, x: 10 }}
                   animate={inView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.4, delay: 1.22 + i * 0.065, ease: EASE }}
+                  transition={{ duration: 0.4, delay: 2.82 + i * 0.065, ease: EASE }}
                   style={{
                     display: 'flex', alignItems: 'center',
                     gap: 12, padding: '12px 20px',
@@ -182,7 +182,7 @@ export default function BeforeAfterSection() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.45, delay: 1.75, ease: EASE }}
+            transition={{ duration: 0.45, delay: 3.35, ease: EASE }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '13px 20px', borderRadius: 14,
