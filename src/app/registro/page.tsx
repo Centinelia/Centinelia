@@ -2126,8 +2126,8 @@ function RegistroInner() {
         {/* Header */}
         <div style={{
           padding: '12px 14px',
-          background: `${roleColor}18`,
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          background: '#3D1F8A',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div style={{
