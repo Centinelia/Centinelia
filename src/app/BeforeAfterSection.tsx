@@ -11,16 +11,16 @@ const BEFORE = [
   'Hay citas que nadie confirmó.',
   'Los seguimientos dependen de recordar hacerlos.',
   'Los correos se acumulan.',
-  'Cobrar requiere perseguir clientes.',
+  'Hay pagos que se olvidan.',
 ];
 
 const AFTER = [
   'Cada llamada recibe respuesta.',
-  'Cada cita se confirma automáticamente.',
-  'Cada prospecto queda registrado.',
-  'Cada seguimiento se crea solo.',
-  'Cada correo llega al responsable correcto.',
-  'Cada cobro recibe su recordatorio.',
+  'Cada cita llega confirmada.',
+  'Ninguna oportunidad se pierde.',
+  'Nadie cae en el olvido.',
+  'Cada mensaje llega al responsable correcto.',
+  'Más pagos llegan a tiempo.',
 ];
 
 export default function BeforeAfterSection() {
@@ -197,7 +197,7 @@ export default function BeforeAfterSection() {
           >
             <CheckCircle size={18} color="#6C3BFF" style={{ flexShrink: 0 }} />
             <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.4 }}>
-              El dueño supervisa. El equipo ejecuta.
+              Tú diriges. Ellos trabajan.
             </span>
           </motion.div>
 
