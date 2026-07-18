@@ -18,7 +18,7 @@ const AFTER = [
   'Cada llamada recibe respuesta.',
   'Cada cita llega confirmada.',
   'Ninguna oportunidad se pierde.',
-  'Nadie cae en el olvido.',
+  'Ningún cliente queda olvidado.',
   'Cada mensaje llega al responsable correcto.',
   'Más pagos llegan a tiempo.',
 ];
@@ -179,7 +179,7 @@ export default function BeforeAfterSection() {
               fontStyle: 'italic', textDecoration: 'line-through',
               textDecorationColor: 'rgba(239,68,68,0.35)',
             }}>
-              El dueño hace todo.
+              Todo depende de ti.
             </span>
           </motion.div>
 
