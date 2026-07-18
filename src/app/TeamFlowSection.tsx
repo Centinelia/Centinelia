@@ -538,7 +538,7 @@ export default function TeamFlowSection() {
                     src="/meerkats/nox-niva.png"
                     alt="Nox y Niva"
                     fill
-                    style={{ objectFit: 'cover', objectPosition: 'center 0%' }}
+                    style={{ objectFit: 'cover', objectPosition: 'center 18%' }}
                   />
                 </div>
                 <span style={{
