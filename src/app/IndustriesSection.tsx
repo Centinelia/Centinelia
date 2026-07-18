@@ -15,7 +15,6 @@ const INDUSTRIES: {
   color:  string;
   bg:     string;
   label:  string;
-  sub:    string;
   tasks:  string[];
 }[] = [
   {
@@ -23,7 +22,6 @@ const INDUSTRIES: {
     color: '#0891B2',
     bg:    'rgba(8,145,178,0.08)',
     label: 'Clínica',
-    sub:   'Así trabaja en una',
     tasks: [
       'Contesta llamadas.',
       'Agenda pacientes.',
@@ -37,7 +35,6 @@ const INDUSTRIES: {
     color: '#EC4899',
     bg:    'rgba(236,72,153,0.08)',
     label: 'Clínica Dental',
-    sub:   'Así trabaja en una',
     tasks: [
       'Agenda limpiezas.',
       'Confirma citas.',
@@ -51,7 +48,6 @@ const INDUSTRIES: {
     color: '#D97706',
     bg:    'rgba(217,119,6,0.08)',
     label: 'Restaurante',
-    sub:   'Así trabaja en un',
     tasks: [
       'Atiende reservaciones.',
       'Confirma mesas.',
@@ -65,7 +61,6 @@ const INDUSTRIES: {
     color: '#64748B',
     bg:    'rgba(100,116,139,0.08)',
     label: 'Taller Mecánico',
-    sub:   'Así trabaja en un',
     tasks: [
       'Agenda servicios.',
       'Cotiza reparaciones.',
@@ -79,7 +74,6 @@ const INDUSTRIES: {
     color: '#6C3BFF',
     bg:    'rgba(108,59,255,0.08)',
     label: 'Inmobiliaria',
-    sub:   'Así trabaja en una',
     tasks: [
       'Captura leads.',
       'Agenda visitas.',
@@ -93,7 +87,6 @@ const INDUSTRIES: {
     color: '#1D4ED8',
     bg:    'rgba(29,78,216,0.08)',
     label: 'Despacho Jurídico',
-    sub:   'Así trabaja en un',
     tasks: [
       'Agenda consultas.',
       'Da seguimiento.',
@@ -107,7 +100,6 @@ const INDUSTRIES: {
     color: '#16A34A',
     bg:    'rgba(22,163,74,0.08)',
     label: 'Municipio',
-    sub:   'Así trabaja en un',
     tasks: [
       'Atiende ciudadanos.',
       'Clasifica solicitudes.',
@@ -121,7 +113,6 @@ const INDUSTRIES: {
     color: '#DC2626',
     bg:    'rgba(220,38,38,0.08)',
     label: 'Universidad',
-    sub:   'Así trabaja en una',
     tasks: [
       'Informa horarios.',
       'Atiende estudiantes.',
@@ -172,7 +163,7 @@ export default function IndustriesSection() {
 
         {/* Grid 4×2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {INDUSTRIES.map(({ Icon, color, bg, label, sub, tasks }, i) => (
+          {INDUSTRIES.map(({ Icon, color, bg, label, tasks }, i) => (
             <motion.div
               key={label}
               initial={{ opacity: 0, y: 22 }}
@@ -195,18 +186,9 @@ export default function IndustriesSection() {
                 }}>
                   <Icon size={17} color={color} strokeWidth={2} />
                 </div>
-                <div>
-                  <p style={{
-                    fontSize: '0.6rem', fontWeight: 700,
-                    letterSpacing: '0.09em', textTransform: 'uppercase' as const,
-                    color, marginBottom: 2,
-                  }}>
-                    {sub}
-                  </p>
-                  <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.2 }}>
-                    {label}
-                  </p>
-                </div>
+                <p style={{ fontSize: '1rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.2 }}>
+                  {label}
+                </p>
               </div>
 
               {/* Task list */}
