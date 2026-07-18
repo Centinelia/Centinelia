@@ -217,6 +217,9 @@ export default function TeamFlowSection() {
   const specSize    = isMobile ? 27 : 56;
   const dirSize     = isMobile ? 72  : 100;
 
+  // Gap between the connector div bottom and the top edge of Nia's circle
+  const connectorGap = NIA_XY.y - niaSize / 2;
+
   return (
     <section
       ref={ref}
@@ -280,14 +283,15 @@ export default function TeamFlowSection() {
               opacity: { duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
             }}
             style={{
-              width: 2, height: 24,
+              width: 2, height: 24 + connectorGap,
               background: 'linear-gradient(180deg, #94a3b8, #6C3BFF)',
               borderRadius: 2, transformOrigin: 'top',
+              position: 'relative', zIndex: 2,
             }}
           />
 
           {/* Orbital ring — flex centers Dirección; SVG + avatars are absolute */}
-          <div style={{ position: 'relative', width: ORBIT_D, height: ORBIT_D, overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: ORBIT_D, height: ORBIT_D, overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: -connectorGap }}>
 
             {/* SVG overlay — all connections */}
             <svg
