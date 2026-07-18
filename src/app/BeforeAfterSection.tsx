@@ -62,7 +62,7 @@ export default function BeforeAfterSection() {
             Lo que cambia el lunes.
           </h2>
           <p style={{ color: 'rgba(26,10,59,0.55)', fontSize: '1rem', lineHeight: 1.7 }}>
-            ¿Qué cambia cuando contratas a estos empleados?
+            Esto es lo primero que notarás al incorporarlos a tu equipo.
           </p>
         </motion.div>
 
