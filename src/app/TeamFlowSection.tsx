@@ -581,7 +581,7 @@ export default function TeamFlowSection() {
           >
             <div style={{ width: 36, height: 1, background: 'rgba(108,59,255,0.5)', borderRadius: 1 }} />
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem', lineHeight: 1.75, maxWidth: 460, margin: 0 }}>
-              Lo complejo ocurre detrás.{' '}
+              Lo complejo ocurre detrás.<br />
               <span style={{ color: '#fff', fontWeight: 600 }}>El cliente solo recibe una atención impecable.</span>
             </p>
           </motion.div>
