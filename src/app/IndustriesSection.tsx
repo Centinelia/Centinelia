@@ -166,7 +166,7 @@ export default function IndustriesSection() {
             Así trabaja en tu negocio.
           </h2>
           <p style={{ color: 'rgba(26,10,59,0.55)', fontSize: '1rem', lineHeight: 1.7 }}>
-            No importa qué tipo de negocio seas.
+            Tu oficina aprende cómo trabaja tu organización.
           </p>
         </motion.div>
 
