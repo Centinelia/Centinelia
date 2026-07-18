@@ -538,7 +538,7 @@ export default function TeamFlowSection() {
                     src="/meerkats/nox-niva.png"
                     alt="Nox y Niva"
                     fill
-                    style={{ objectFit: 'contain', objectPosition: 'center bottom' }}
+                    style={{ objectFit: 'cover', objectPosition: 'center 0%' }}
                   />
                 </div>
                 <span style={{
@@ -573,20 +573,18 @@ export default function TeamFlowSection() {
           </div>
 
           {/* Closing text */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, delay: 1.2 }}
-            style={{
-              color: 'rgba(255,255,255,0.3)',
-              fontSize: '0.85rem',
-              lineHeight: 1.75,
-              textAlign: 'center',
-              marginTop: 36,
-            }}
+            style={{ textAlign: 'center', marginTop: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
           >
-            Lo complejo ocurre detrás. El cliente solo recibe una atención impecable.
-          </motion.p>
+            <div style={{ width: 36, height: 1, background: 'rgba(108,59,255,0.5)', borderRadius: 1 }} />
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem', lineHeight: 1.75, maxWidth: 460, margin: 0 }}>
+              Lo complejo ocurre detrás.{' '}
+              <span style={{ color: '#fff', fontWeight: 600 }}>El cliente solo recibe una atención impecable.</span>
+            </p>
+          </motion.div>
 
         </div>
       </div>
