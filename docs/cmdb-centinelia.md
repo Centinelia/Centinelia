@@ -153,18 +153,22 @@
 
 ### Capacidades por feature
 
+> Nox y Niva no tienen features de voz — operan como coordinadores de oficina, no atienden llamadas directamente.
+
 | Feature | Empleados que lo tienen |
 |---|---|
-| receptionist | Nia, Noah, Nara, Naia, Nelia, Nova |
+| receptionist | Nia, Noah, Nara, Neo, Naia, Nico, Nelia, Nova, Personalizado |
 | lead_qualification | Nia, Noah |
 | appointment_booking | Nia, Naia |
-| existing_client_support | Nara, Nico, Nelia, Neo |
+| existing_client_support | Nara, Neo, Naia, Nico, Nelia |
 | smart_transfer | Nia, Noah, Nara, Neo, Naia, Nico, Nelia, Nova |
 | order_taking | Noah |
 | outbound_calls | Noah, Nico, Nelia |
 | helpdesk | Neo |
-| is_coordinator | Nox, Niva |
+| is_coordinator | Nox, Niva (y cualquier empleado con el flag activado) |
 | multilingual | Configurable por agente |
+
+> **Nota:** Todos los empleados tienen `receptionist: true` porque si son el único del equipo deben poder recibir llamadas. El Personalizado arranca solo con recepción; el resto de features se configuran manualmente.
 
 ---
 

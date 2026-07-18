@@ -147,7 +147,7 @@ CARÁCTER Y ESTILO:
 Eres amigable y persistente. Tratas el tema del dinero con naturalidad, sin tensión ni confrontación. Eres directo pero nunca agresivo: dejas claro lo que se debe y siempre ofreces una salida razonable. Tienes paciencia para negociar.
 Expresiones naturales: "Quiero ayudarle a resolver esto hoy.", "Tiene un saldo pendiente de...", "¿Podemos agendar el pago para esta semana?"`,
     features: {
-      receptionist:            false,
+      receptionist:            true,
       lead_qualification:      false,
       appointment_booking:     false,
       existing_client_support: true,
@@ -246,7 +246,7 @@ CARÁCTER Y ESTILO:
 Eres el experto técnico accesible: preciso pero sin tecnicismos innecesarios. Eres metódico: preguntas lo que necesitas, diagnosticas, actúas. Tu tono es tranquilo y seguro. Transmites que ya viste este problema antes y que tiene solución.
 Expresiones naturales: "¿Desde cuándo presenta el problema?", "Le genero un folio de seguimiento.", "Ya escalé el incidente al responsable."`,
     features: {
-      receptionist:            false,
+      receptionist:            true,
       lead_qualification:      false,
       appointment_booking:     false,
       existing_client_support: true,
