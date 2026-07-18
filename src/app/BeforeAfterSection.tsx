@@ -2,7 +2,7 @@
 
 import { motion, useInView } from 'motion/react';
 import { useRef } from 'react';
-import { XCircle, CheckCircle, User, Users } from 'lucide-react';
+import { XCircle, CheckCircle } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -159,39 +159,44 @@ export default function BeforeAfterSection() {
 
         </div>
 
-        {/* Closing rows — philosophy summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-5">
+        {/* Closing rows — philosophical punchline */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-8 sm:mt-10">
 
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.45, delay: 1.0, ease: EASE }}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '13px 20px', borderRadius: 14,
-              background: 'rgba(239,68,68,0.05)',
-              border: '1px solid rgba(239,68,68,0.14)',
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '18px 24px', borderRadius: 16,
+              background: 'rgba(239,68,68,0.04)',
+              border: '1px solid rgba(239,68,68,0.13)',
             }}
           >
-            <User size={15} color="#ef4444" style={{ flexShrink: 0, opacity: 0.7 }} />
-            <span style={{ fontSize: '0.875rem', color: 'rgba(26,10,59,0.45)', fontStyle: 'italic' }}>
+            <XCircle size={18} color="#ef4444" style={{ flexShrink: 0, opacity: 0.5 }} />
+            <span style={{
+              fontSize: '1rem', color: 'rgba(26,10,59,0.35)',
+              fontStyle: 'italic', textDecoration: 'line-through',
+              textDecorationColor: 'rgba(239,68,68,0.35)',
+            }}>
               El dueño hace todo.
             </span>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.45, delay: 3.35, ease: EASE }}
+            transition={{ duration: 0.5, delay: 3.35, ease: EASE }}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '13px 20px', borderRadius: 14,
-              background: 'rgba(108,59,255,0.07)',
-              border: '1px solid rgba(108,59,255,0.18)',
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '18px 24px', borderRadius: 16,
+              background: 'linear-gradient(135deg, rgba(108,59,255,0.11) 0%, rgba(108,59,255,0.06) 100%)',
+              border: '1px solid rgba(108,59,255,0.28)',
+              boxShadow: '0 4px 24px rgba(108,59,255,0.12)',
             }}
           >
-            <Users size={15} color="#6C3BFF" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A0A3B' }}>
+            <CheckCircle size={18} color="#6C3BFF" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.4 }}>
               El dueño supervisa. El equipo ejecuta.
             </span>
           </motion.div>
