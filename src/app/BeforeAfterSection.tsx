@@ -2,7 +2,7 @@
 
 import { motion, useInView } from 'motion/react';
 import { useRef } from 'react';
-import { XCircle, CheckCircle } from 'lucide-react';
+import { XCircle, CheckCircle, User, Users } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -31,7 +31,7 @@ export default function BeforeAfterSection() {
     <section
       ref={ref}
       style={{
-        background:   '#F4F0FF',
+        background:   'linear-gradient(160deg, #F4F0FF 0%, #EAE4FF 100%)',
         borderTop:    '1px solid rgba(108,59,255,0.1)',
         borderBottom: '1px solid rgba(108,59,255,0.1)',
       }}
@@ -65,16 +65,16 @@ export default function BeforeAfterSection() {
         {/* Columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
 
-          {/* Antes */}
+          {/* Antes — enters first */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.15, ease: EASE }}
             className="rounded-2xl overflow-hidden"
             style={{
-              background:  '#fff',
-              border:      '1px solid rgba(239,68,68,0.18)',
-              boxShadow:   '0 2px 12px rgba(239,68,68,0.06)',
+              background: '#fff',
+              border:     '1px solid rgba(239,68,68,0.18)',
+              boxShadow:  '0 2px 16px rgba(239,68,68,0.06)',
             }}
           >
             <div style={{
@@ -83,37 +83,27 @@ export default function BeforeAfterSection() {
               background:   'rgba(239,68,68,0.04)',
             }}>
               <span style={{
-                fontSize:      '0.7rem',
-                fontWeight:    800,
-                letterSpacing: '0.09em',
-                textTransform: 'uppercase' as const,
-                color:         '#ef4444',
+                fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.09em',
+                textTransform: 'uppercase' as const, color: '#ef4444',
               }}>
-                Antes
+                Sin Centinelia
               </span>
             </div>
 
-            <div>
+            <div style={{ padding: '6px 0' }}>
               {BEFORE.map((text, i) => (
                 <motion.div
                   key={text}
-                  initial={{ opacity: 0 }}
-                  animate={inView ? { opacity: 1 } : {}}
-                  transition={{ duration: 0.35, delay: 0.28 + i * 0.065 }}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.3 + i * 0.07, ease: EASE }}
                   style={{
-                    display:      'flex',
-                    alignItems:   'flex-start',
-                    gap:          12,
-                    padding:      '13px 20px',
-                    borderBottom: i < BEFORE.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                    display: 'flex', alignItems: 'flex-start',
+                    gap: 12, padding: '12px 20px',
                   }}
                 >
-                  <XCircle size={15} color="#ef4444" style={{ flexShrink: 0, marginTop: 2, opacity: 0.8 }} />
-                  <span style={{
-                    fontSize:  '0.875rem',
-                    color:     'rgba(26,10,59,0.5)',
-                    lineHeight: 1.5,
-                  }}>
+                  <XCircle size={15} color="#ef4444" style={{ flexShrink: 0, marginTop: 2, opacity: 0.7 }} />
+                  <span style={{ fontSize: '0.875rem', color: 'rgba(26,10,59,0.5)', lineHeight: 1.55 }}>
                     {text}
                   </span>
                 </motion.div>
@@ -121,16 +111,16 @@ export default function BeforeAfterSection() {
             </div>
           </motion.div>
 
-          {/* Después */}
+          {/* Después — enters 300 ms later */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.25, ease: EASE }}
+            transition={{ duration: 0.5, delay: 0.45, ease: EASE }}
             className="rounded-2xl overflow-hidden"
             style={{
-              background:  '#fff',
-              border:      '1px solid rgba(108,59,255,0.2)',
-              boxShadow:   '0 4px 24px rgba(108,59,255,0.1)',
+              background: '#fff',
+              border:     '1px solid rgba(108,59,255,0.2)',
+              boxShadow:  '0 4px 28px rgba(108,59,255,0.12)',
             }}
           >
             <div style={{
@@ -139,38 +129,27 @@ export default function BeforeAfterSection() {
               background:   'rgba(108,59,255,0.04)',
             }}>
               <span style={{
-                fontSize:      '0.7rem',
-                fontWeight:    800,
-                letterSpacing: '0.09em',
-                textTransform: 'uppercase' as const,
-                color:         '#6C3BFF',
+                fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.09em',
+                textTransform: 'uppercase' as const, color: '#6C3BFF',
               }}>
-                Después
+                Con Centinelia
               </span>
             </div>
 
-            <div>
+            <div style={{ padding: '6px 0' }}>
               {AFTER.map((text, i) => (
                 <motion.div
                   key={text}
-                  initial={{ opacity: 0 }}
-                  animate={inView ? { opacity: 1 } : {}}
-                  transition={{ duration: 0.35, delay: 0.38 + i * 0.055 }}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={inView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.62 + i * 0.065, ease: EASE }}
                   style={{
-                    display:      'flex',
-                    alignItems:   'center',
-                    gap:          12,
-                    padding:      '13px 20px',
-                    borderBottom: i < AFTER.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                    display: 'flex', alignItems: 'center',
+                    gap: 12, padding: '12px 20px',
                   }}
                 >
                   <CheckCircle size={15} color="#22c55e" style={{ flexShrink: 0 }} />
-                  <span style={{
-                    fontSize:   '0.875rem',
-                    fontWeight: 500,
-                    color:      '#1A0A3B',
-                    lineHeight: 1.45,
-                  }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1A0A3B', lineHeight: 1.45 }}>
                     {text}
                   </span>
                 </motion.div>
@@ -179,6 +158,46 @@ export default function BeforeAfterSection() {
           </motion.div>
 
         </div>
+
+        {/* Closing rows — philosophy summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-5">
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.45, delay: 1.0, ease: EASE }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '13px 20px', borderRadius: 14,
+              background: 'rgba(239,68,68,0.05)',
+              border: '1px solid rgba(239,68,68,0.14)',
+            }}
+          >
+            <User size={15} color="#ef4444" style={{ flexShrink: 0, opacity: 0.7 }} />
+            <span style={{ fontSize: '0.875rem', color: 'rgba(26,10,59,0.45)', fontStyle: 'italic' }}>
+              El dueño hace todo.
+            </span>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.45, delay: 1.15, ease: EASE }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '13px 20px', borderRadius: 14,
+              background: 'rgba(108,59,255,0.07)',
+              border: '1px solid rgba(108,59,255,0.18)',
+            }}
+          >
+            <Users size={15} color="#6C3BFF" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1A0A3B' }}>
+              El dueño supervisa. El equipo ejecuta.
+            </span>
+          </motion.div>
+
+        </div>
+
       </div>
     </section>
   );
