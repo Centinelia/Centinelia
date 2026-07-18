@@ -341,37 +341,49 @@ export default function TeamFlowSection() {
                 transition={{ duration: 0.8, delay: 0.4 }}
               />
 
-              {/* Ghost spokes — Nia to center */}
-              <motion.line
-                x1={NIA_XY.x} y1={NIA_XY.y} x2={CX} y2={CY}
-                stroke={NIA.color} strokeWidth={0.8}
-                initial={{ opacity: 0 }}
-                animate={inView ? { opacity: 0.2 } : { opacity: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              />
-              {/* Nia active spoke — glow */}
-              <motion.line
-                x1={NIA_XY.x} y1={NIA_XY.y} x2={CX} y2={CY}
-                stroke={NIA.color} strokeWidth={4}
-                filter="url(#tf-orbit-glow)"
-                strokeDasharray="5 12"
-                animate={inView ? { opacity: 0.32, strokeDashoffset: [0, -17] } : { opacity: 0 }}
-                transition={{
-                  opacity: { duration: 0.6, delay: 0.4 },
-                  strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
-                }}
-              />
-              {/* Nia active spoke — main */}
-              <motion.line
-                x1={NIA_XY.x} y1={NIA_XY.y} x2={CX} y2={CY}
-                stroke={NIA.color} strokeWidth={1.5}
-                strokeDasharray="5 12"
-                animate={inView ? { opacity: 0.85, strokeDashoffset: [0, -17] } : { opacity: 0 }}
-                transition={{
-                  opacity: { duration: 0.6, delay: 0.4 },
-                  strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
-                }}
-              />
+              {/* Ghost lines — Nia to all specialists (siempre visibles, muy tenues) */}
+              {SPEC_XY.map((pos, i) => (
+                <motion.line key={`ghost-nia-spec-${i}`}
+                  x1={NIA_XY.x} y1={NIA_XY.y} x2={pos.x} y2={pos.y}
+                  stroke={NIA.color} strokeWidth={0.6}
+                  initial={{ opacity: 0 }}
+                  animate={inView ? { opacity: 0.1 } : { opacity: 0 }}
+                  transition={{ duration: 0.6, delay: 0.32 + i * 0.04 }}
+                />
+              ))}
+              {/* Nia → especialista activo — glow */}
+              {SPEC_XY.map((pos, i) => (
+                <motion.line key={`glow-nia-spec-${i}`}
+                  x1={NIA_XY.x} y1={NIA_XY.y} x2={pos.x} y2={pos.y}
+                  stroke={NIA.color} strokeWidth={4}
+                  filter="url(#tf-orbit-glow)"
+                  strokeDasharray="5 12"
+                  animate={inView ? {
+                    opacity: activeSet.has(i) ? 0.32 : 0,
+                    strokeDashoffset: [0, -17],
+                  } : { opacity: 0 }}
+                  transition={{
+                    opacity: { duration: 0.4 },
+                    strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
+                  }}
+                />
+              ))}
+              {/* Nia → especialista activo — main */}
+              {SPEC_XY.map((pos, i) => (
+                <motion.line key={`flow-nia-spec-${i}`}
+                  x1={NIA_XY.x} y1={NIA_XY.y} x2={pos.x} y2={pos.y}
+                  stroke={NIA.color} strokeWidth={1.5}
+                  strokeDasharray="5 12"
+                  animate={inView ? {
+                    opacity: activeSet.has(i) ? 0.85 : 0,
+                    strokeDashoffset: [0, -17],
+                  } : { opacity: 0 }}
+                  transition={{
+                    opacity: { duration: 0.4 },
+                    strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
+                  }}
+                />
+              ))}
 
               {/* Ghost spokes — specialists to center */}
               {SPEC_XY.map((pos, i) => (
@@ -526,7 +538,7 @@ export default function TeamFlowSection() {
                     src="/meerkats/nox-niva.png"
                     alt="Nox y Niva"
                     fill
-                    style={{ objectFit: 'cover', objectPosition: 'center 5%' }}
+                    style={{ objectFit: 'contain', objectPosition: 'center bottom' }}
                   />
                 </div>
                 <span style={{
