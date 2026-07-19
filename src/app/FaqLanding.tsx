@@ -31,7 +31,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Necesito saber de tecnología para configurarlo?',
-        a: 'No. El proceso es guiado paso a paso. Tú describes tu negocio y nosotros lo dejamos funcionando.',
+        a: 'No. El proceso es guiado paso a paso. Tú describes tu organización y nosotros lo dejamos funcionando.',
       },
     ],
   },
@@ -48,7 +48,7 @@ const CATEGORIES = [
         a: 'Nunca deja de responder. Los minutos adicionales se cobran automáticamente según la tarifa vigente. Solo necesitas tener una tarjeta registrada en tu cuenta.',
       },
       {
-        q: '¿Aprende mi negocio?',
+        q: '¿Aprende mi organización?',
         a: 'Sí. Tu oficina aprende tus procesos, clientes y forma de trabajar. Con cada llamada mejora.',
       },
       {
@@ -70,7 +70,7 @@ const CATEGORIES = [
         a: 'Incorporas otro directamente desde tu portal de cliente. Todos trabajan juntos desde la misma oficina digital.',
       },
       {
-        q: '¿Qué pasa si mi negocio cambia?',
+        q: '¿Qué pasa si mi organización cambia?',
         a: 'No necesitas empezar de nuevo. Tu oficina evoluciona contigo: puedes modificar procesos, incorporar nuevos empleados o ampliar la capacidad conforme crece tu organización.',
       },
     ],

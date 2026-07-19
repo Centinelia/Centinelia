@@ -253,7 +253,7 @@ function PrivacyExample() {
 const REGLAS = [
   { n: '01', rule: 'Nada importante\nvuelve a perderse.',  sub: 'Cada cliente, llamada y tarea queda registrada automáticamente.', Example: CrmExample         },
   { n: '02', rule: 'Siempre hay alguien disponible.',      sub: 'Si una llamada entra, alguien responde.',                         Example: CallExample        },
-  { n: '03', rule: 'Cada día conoce mejor tu negocio.',    sub: null,                                                              Example: LearningExample    },
+  { n: '03', rule: 'Cada día conoce mejor tu organización.',    sub: null,                                                              Example: LearningExample    },
   { n: '04', rule: 'Centinelia ejecuta.\nTú decides.',      sub: 'Tu oficina puede trabajar sola.\nLas decisiones importantes siguen siendo tuyas.', Example: BlockedActionExample },
   { n: '05', rule: 'Tu información\nsigue siendo tuya.',   sub: null,                                                                                   Example: PrivacyExample       },
 ];

@@ -91,7 +91,7 @@ const INDUSTRIES: Industry[] = [
     Icon: Sparkles, color: '#6C3BFF', bg: 'rgba(108,59,255,0.08)',
     label: '¿No ves tu industria?', article: 'un',
     active: ['nia', 'noah', 'nelia', 'nara', 'nico', 'naia', 'neo', 'nova', 'nox', 'niva'],
-    flow: ['Analizamos tu negocio', 'Definimos el flujo', 'Asignamos especialistas', 'Entrenamos a tu oficina digital', 'Tu negocio opera'],
+    flow: ['Analizamos tu organización', 'Definimos el flujo', 'Asignamos especialistas', 'Entrenamos a tu oficina digital', 'Tu organización opera'],
     result: 'Cada solicitud encuentra al especialista correcto.',
     special: true,
   },
@@ -210,12 +210,12 @@ export default function IndustriesSection() {
                     fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em',
                     textTransform: 'uppercase' as const, color: ind.color, marginBottom: 4,
                   }}>
-                    {ind.special ? 'Tu negocio' : `Así trabaja en ${ind.article} ${ind.label}`}
+                    {ind.special ? 'Tu organización' : `Así trabaja en ${ind.article} ${ind.label}`}
                   </p>
                   <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1A0A3B', lineHeight: 1.3 }}>
                     {ind.special
-                      ? 'Tu oficina se adapta a cualquier negocio.'
-                      : 'Estos Centinelias trabajan para este negocio.'}
+                      ? 'Tu oficina se adapta a cualquier organización.'
+                      : 'Estos Centinelias trabajan para esta organización.'}
                   </p>
                 </div>
 

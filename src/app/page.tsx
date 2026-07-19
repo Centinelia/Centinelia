@@ -42,7 +42,7 @@ const TEAM = [
   { nombre: 'Nico',  rol: 'Recuperación',      desc: 'Cobra, recuerda pagos y recupera clientes inactivos.',                 color: '#f59e0b', img: '/meerkats/nico.png'  },
   { nombre: 'Nelia', rol: 'Atención al Cliente', desc: 'Responde dudas y acompaña al cliente hasta resolverlas.',            color: '#3b82f6', img: '/meerkats/nelia.png' },
   { nombre: 'Nova',        rol: 'Despacho',       desc: 'Despacha equipos, actualiza estatus y coordina cada salida en campo.',               color: '#ef4444', img: '/meerkats/nova.png'    },
-  { nombre: 'Personalizado', rol: 'A tu medida', desc: 'Diseña un empleado con el rol, nombre y personalidad que tu negocio necesita.',       color: '#6b7280', img: '/meerkats/custom.png'  },
+  { nombre: 'Personalizado', rol: 'A tu medida', desc: 'Diseña un empleado con el rol, nombre y personalidad que tu organización necesita.',       color: '#6b7280', img: '/meerkats/custom.png'  },
 ];
 
 const LIMITS = [
@@ -80,7 +80,7 @@ const AGENT_TYPES: {
     description: 'Todo lo que tu organización necesita para automatizar la atención telefónica desde el primer día.',
     features: [
       'Voz profesional',
-      'Memoria del negocio',
+      'Memoria de tu organización',
       'Número propio',
       'Portal privado',
       'Entrenamiento inicial',
@@ -94,8 +94,8 @@ const AGENT_TYPES: {
 const MINUTE_TIERS: {
   id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay: number; popular?: boolean;
 }[] = [
-  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para negocios pequeños.',             minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
-  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las empresas.',    minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
+  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
+  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
   { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',  minutes: 1200, ops: 300, price: 11988, callsPerDay: 20 },
 ];
 
@@ -118,7 +118,7 @@ const DIFFERENTIATORS = [
   {
     num: '<24h',
     title: 'Empieza a trabajar mañana',
-    desc: 'Aprende tu negocio y comienza a operar sin procesos largos de contratación.',
+    desc: 'Aprende tu organización y comienza a operar sin procesos largos de contratación.',
   },
 ];
 
@@ -443,7 +443,7 @@ export default function LandingPage() {
 
           <AnimatedSection delay={0.2}>
             <p className="text-center mt-10" style={{ lineHeight: 1.8 }}>
-              <span className="font-bold" style={{ color: C.accent }}>La mayoría de las empresas no necesitan más clientes.</span><br />
+              <span className="font-bold" style={{ color: C.accent }}>La mayoría de las organizaciones no necesitan más clientes.</span><br />
               <span className="font-bold" style={{ color: C.accent }}>Necesitan más capacidad para atenderlos.</span>
             </p>
           </AnimatedSection>
@@ -476,7 +476,7 @@ export default function LandingPage() {
                 Construye tu oficina digital
               </h2>
               <p style={{ color: C.textSub }}>
-                Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.
+                Cada Centinelia adopta tu misión. Juntos operan tu organización 24/7.
               </p>
             </AnimatedSection>
           </div>
@@ -492,7 +492,7 @@ export default function LandingPage() {
               Construye tu oficina digital
             </h2>
             <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-              Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.
+              Cada Centinelia adopta tu misión. Juntos operan tu organización 24/7.
             </p>
           </div>
 
@@ -795,7 +795,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.18}>
             <div className="flex flex-col gap-2 mb-6">
               {[
-                { text: 'Hay empresas esperando a que mañana sea lunes.', op: 0.58 },
+                { text: 'Hay organizaciones esperando a que mañana sea lunes.', op: 0.58 },
                 { text: 'Esperando a que alguien llegue.',                op: 0.44 },
                 { text: 'Esperando a tener más capacidad.',               op: 0.3  },
               ].map(({ text, op }) => (

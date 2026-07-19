@@ -44,7 +44,7 @@ const AGENT_TYPES = [
     id: 'pro', name: 'Empleado Centinelia', setupFee: 14990, color: '#9B6DFF', popular: true,
     features: [
       'Voz profesional',
-      'Memoria del negocio',
+      'Memoria de tu organización',
       'Número propio',
       'Portal privado',
       'Entrenamiento inicial',
@@ -54,8 +54,8 @@ const AGENT_TYPES = [
 ];
 
 const MINUTE_TIERS = [
-  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para negocios pequeños.',            minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
-  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las empresas.',   minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
+  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',         minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
+  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
   { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.', minutes: 1200, ops: 300, price: 11988, callsPerDay: 20 },
 ];
 
