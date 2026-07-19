@@ -428,7 +428,7 @@ export default function NiaInterview() {
                   className="text-xs font-semibold mb-3"
                   style={{ color: 'rgba(26,10,59,0.38)', textTransform: 'uppercase', letterSpacing: '0.1em' }}
                 >
-                  ¿En qué tipo de negocio trabajará?
+                  ¿En qué tipo de organización trabajará?
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {INDUSTRIES.map(ind => (
@@ -549,7 +549,7 @@ export default function NiaInterview() {
                 <textarea
                   value={desc}
                   onChange={e => { setDesc(e.target.value); setError(null); }}
-                  placeholder="Describe tu negocio..."
+                  placeholder="Describe tu organización..."
                   rows={3}
                   maxLength={400}
                   className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none"
