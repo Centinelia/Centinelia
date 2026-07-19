@@ -481,7 +481,7 @@ export default function LandingPage() {
             </AnimatedSection>
           </div>
 
-          <div className="lg:hidden mb-6">
+          <AnimatedSection className="lg:hidden mb-6">
             <p className="text-xs font-semibold tracking-wider uppercase mb-3" style={{ color: C.accent }}>
               Arma tu equipo.
             </p>
@@ -494,7 +494,7 @@ export default function LandingPage() {
             <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
               Cada Centinelia adopta tu misión.<br />Juntos operan tu organización 24/7.
             </p>
-          </div>
+          </AnimatedSection>
 
           {/* Org chart: Nox al tope, equipo debajo */}
 
@@ -742,7 +742,7 @@ export default function LandingPage() {
               </div>
               <div className="flex sm:flex-col sm:items-end gap-3 sm:gap-4 flex-shrink-0 sm:pt-1">
                 <Link
-                  href="/registro?plan=empresarial"
+                  href="/cotizar"
                   className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center"
                   style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
                 >

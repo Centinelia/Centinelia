@@ -260,9 +260,11 @@ export default function EmpleadosPage() {
               </AnimatedSection>
 
               {/* Image */}
-              <div
+              <AnimatedSection
                 className={`flex-1 relative${m.id === 'nova' ? ' nova-img-wrap' : ''}`}
                 style={{ minHeight: 'clamp(300px, 48vw, 580px)' }}
+                delay={reversed ? 0 : 0.1}
+                y={24}
               >
                 <Image
                   src={m.imagen}
@@ -277,7 +279,7 @@ export default function EmpleadosPage() {
                   }}
                   priority={i < 2}
                 />
-              </div>
+              </AnimatedSection>
 
             </div>
           </section>
@@ -340,7 +342,7 @@ export default function EmpleadosPage() {
                   Contratar ahora <ArrowRight size={14} />
                 </Link>
                 <Link
-                  href="/registro?plan=empresarial"
+                  href="/cotizar"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-colors whitespace-nowrap"
                   style={{
                     background: 'rgba(255,255,255,0.06)',
@@ -354,7 +356,12 @@ export default function EmpleadosPage() {
             </AnimatedSection>
 
             {/* Group photo — desktop */}
-            <div className="hidden lg:block relative flex-shrink-0 self-center" style={{ width: 860, height: 700 }}>
+            <AnimatedSection
+              className="hidden lg:block relative flex-shrink-0 self-center"
+              style={{ width: 860, height: 700 }}
+              delay={0.18}
+              y={32}
+            >
               <Image
                 src="/meerkats/grupo.png"
                 alt="Equipo Centinelia"
@@ -362,12 +369,12 @@ export default function EmpleadosPage() {
                 sizes="860px"
                 style={{ objectFit: 'contain', objectPosition: 'center center' }}
               />
-            </div>
+            </AnimatedSection>
           </div>
 
           {/* Group photo — mobile */}
           <div className="lg:hidden overflow-hidden" style={{ marginTop: -8 }}>
-            <div className="relative" style={{ width: '125%', marginLeft: '-12.5%', aspectRatio: '2752/1536' }}>
+            <AnimatedSection className="relative" style={{ width: '125%', marginLeft: '-12.5%', aspectRatio: '2752/1536' }} delay={0.1} y={20}>
               <Image
                 src="/meerkats/grupo.png"
                 alt="Equipo Centinelia"
@@ -375,7 +382,7 @@ export default function EmpleadosPage() {
                 sizes="125vw"
                 style={{ objectFit: 'contain', objectPosition: 'center center' }}
               />
-            </div>
+            </AnimatedSection>
           </div>
         </div>
       </section>
