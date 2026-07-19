@@ -378,7 +378,7 @@ export default function NiaInterview() {
             }}
           >
             Descubre cómo sonará el primer contacto de tu nueva oficina digital.
-            Dile qué tipo de negocio tienes y Nia actuará como tu próxima recepcionista.
+            Dile qué tipo de organización tienes y Nia actuará como tu próxima recepcionista.
           </p>
         </AnimatedSection>
 
