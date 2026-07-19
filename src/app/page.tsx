@@ -813,7 +813,7 @@ export default function LandingPage() {
           {/* Contrast */}
           <AnimatedSection delay={0.22}>
             <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, maxWidth: 480, marginBottom: '3.5rem' }}>
-              Las organizaciones que crecen más rápido no son las que trabajan más horas.<br className="hidden sm:block" />
+              Las organizaciones que crecen más rápido<br />no son las que trabajan más horas.<br />
               Son las que tienen más capacidad.
             </p>
           </AnimatedSection>
