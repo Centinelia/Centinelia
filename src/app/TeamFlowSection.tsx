@@ -6,13 +6,17 @@ import Image from 'next/image';
 import { Phone, Mail } from 'lucide-react';
 
 interface AgentDef {
-  id:     string;
-  role:   string;
-  color:  string;
-  img:    string | null;
-  imgPos?: string;
-  label?: string;
-  badge?: boolean;
+  id:         string;
+  role:       string;
+  color:      string;
+  img:        string | null;
+  imgPos?:    string;
+  imgScale?:  number;
+  imgOrigin?: string;
+  imgShiftX?: string;
+  imgShiftY?: string;
+  label?:     string;
+  badge?:     boolean;
 }
 
 const CLIENTE: AgentDef = {
@@ -21,17 +25,17 @@ const CLIENTE: AgentDef = {
 
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
-  img: '/meerkats/nia.png', imgPos: 'center 8%',
+  img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '10.5px',
 };
 
 const SPECIALISTS: AgentDef[] = [
-  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%' },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%' },
-  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 8%' },
-  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 8%' },
+  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 3%' },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 3%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
+  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 3%' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 3%' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 3%' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -95,6 +99,13 @@ function AvatarNode({
 }: {
   agent: AgentDef; size: number; delay: number; inView: boolean; isClient?: boolean; hidePill?: boolean; dimmed?: boolean;
 }) {
+  const transform = [
+    (agent.imgShiftX || agent.imgShiftY)
+      ? `translate(${agent.imgShiftX ?? '0'}, ${agent.imgShiftY ?? '0'})`
+      : null,
+    agent.imgScale ? `scale(${agent.imgScale})` : null,
+  ].filter(Boolean).join(' ') || undefined;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
       <motion.div
@@ -124,7 +135,9 @@ function AvatarNode({
               fill
               style={{
                 objectFit: 'cover',
-                objectPosition: agent.imgPos ?? 'center 8%',
+                objectPosition: agent.imgPos ?? 'center 3%',
+                transform,
+                transformOrigin: agent.imgOrigin ?? 'center 10%',
               }}
             />
           </motion.div>
@@ -468,7 +481,7 @@ export default function TeamFlowSection() {
                     src="/meerkats/nox-niva.png"
                     alt="Nox y Niva"
                     fill
-                    style={{ objectFit: 'cover', objectPosition: 'center 5%' }}
+                    style={{ objectFit: 'cover', objectPosition: 'center 0%', transform: 'translateY(14px)' }}
                   />
                 </div>
                 <span style={{

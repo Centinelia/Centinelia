@@ -77,6 +77,32 @@ const CATEGORIES = [
   },
 ];
 
+function ClosingCard({ accent, text, textSub }: { accent: string; text: string; textSub: string }) {
+  return (
+    <div
+      className="rounded-2xl p-6 sm:p-7"
+      style={{
+        background: 'linear-gradient(135deg, rgba(108,59,255,0.06) 0%, rgba(155,109,255,0.03) 100%)',
+        border: '1px solid rgba(108,59,255,0.14)',
+      }}
+    >
+      <p className="font-semibold mb-1" style={{ fontSize: '0.9375rem', color: text }}>
+        ¿Prefieres hablar con alguien?
+      </p>
+      <p className="text-sm mb-5" style={{ color: textSub, lineHeight: 1.6 }}>
+        En 15 minutos te mostramos cómo se vería una oficina como la tuya.
+      </p>
+      <Link
+        href="/registro"
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
+        style={{ background: accent, color: '#fff' }}
+      >
+        Agendar una demostración <ArrowRight size={13} />
+      </Link>
+    </div>
+  );
+}
+
 type ItemKey = `${number}-${number}`;
 
 export default function FaqLanding() {
@@ -97,8 +123,8 @@ export default function FaqLanding() {
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16">
 
-          {/* ── Left column: header + stats ──────────────────────────── */}
-          <div className="lg:col-span-2">
+          {/* ── Left column: header + stats + closing card (desktop) ─── */}
+          <div className="lg:col-span-2 flex flex-col">
             <AnimatedSection>
               <p
                 className="text-xs font-bold tracking-widest uppercase mb-4"
@@ -144,6 +170,13 @@ export default function FaqLanding() {
                 ))}
               </div>
             </AnimatedSection>
+
+            {/* Closing card — desktop only, anchored to bottom of left col */}
+            <div className="hidden lg:block mt-auto pt-10">
+              <AnimatedSection delay={0.25}>
+                <ClosingCard accent={C.accent} text={C.text} textSub={C.textSub} />
+              </AnimatedSection>
+            </div>
           </div>
 
           {/* ── Right column: accordion ───────────────────────────────── */}
@@ -217,38 +250,14 @@ export default function FaqLanding() {
               </AnimatedSection>
             ))}
 
-            {/* ── Closing card ─────────────────────────────────────────── */}
-            <AnimatedSection delay={0.2}>
-              <div
-                className="rounded-2xl p-6 sm:p-7"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(108,59,255,0.06) 0%, rgba(155,109,255,0.03) 100%)',
-                  border: '1px solid rgba(108,59,255,0.14)',
-                }}
-              >
-                <p
-                  className="font-semibold mb-1"
-                  style={{ fontSize: '0.9375rem', color: C.text }}
-                >
-                  ¿Prefieres hablar con alguien?
-                </p>
-                <p
-                  className="text-sm mb-5"
-                  style={{ color: C.textSub, lineHeight: 1.6 }}
-                >
-                  En 15 minutos te mostramos cómo se vería una oficina como la tuya.
-                </p>
-                <Link
-                  href="/registro"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
-                  style={{ background: C.accent, color: '#fff' }}
-                >
-                  Agendar una demostración <ArrowRight size={13} />
-                </Link>
-              </div>
-            </AnimatedSection>
-
           </div>
+        </div>
+
+        {/* Closing card — mobile only, after accordion */}
+        <div className="lg:hidden mt-8">
+          <AnimatedSection delay={0.1}>
+            <ClosingCard accent={C.accent} text={C.text} textSub={C.textSub} />
+          </AnimatedSection>
         </div>
       </div>
     </section>
