@@ -34,7 +34,7 @@ const NIA: AgentDef = {
 
 const SPECIALISTS: AgentDef[] = [
   { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', imgScale: 1.2, imgShiftY: '5px', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-3px', imgShiftY: '4px' },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-3px', imgShiftY: '4px', mobileImgShiftX: '-2px', mobileImgShiftY: '4px' },
   { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', imgShiftY: '3px', mobileImgShiftY: '1.5px' },
   { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%', imgShiftX: '-0.5px', mobileImgShiftX: '-0.5px' },
   { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', imgShiftY: '4px', mobileImgShiftX: '0', mobileImgShiftY: '3px' },
