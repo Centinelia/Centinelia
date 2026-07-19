@@ -60,7 +60,7 @@ export const metadata: Metadata = {
       'La forma más sencilla de ampliar la capacidad de tu organización. Incorpora empleados digitales que trabajan 24/7 y construye una oficina que nunca se detiene.',
     images: [
       {
-        url: `${BASE_URL}/og-centinelia.png`,
+        url: `${BASE_URL}/og-centinelia.jpg`,
         width: 1950,
         height: 1024,
         alt: 'Centinelia: Construye tu oficina digital',
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     title: 'Centinelia | Construye tu oficina digital',
     description:
       'La forma más sencilla de ampliar la capacidad de tu organización. Incorpora empleados digitales que trabajan 24/7 y construye una oficina que nunca se detiene.',
-    images: [`${BASE_URL}/og-centinelia.png`],
+    images: [`${BASE_URL}/og-centinelia.jpg`],
   },
 };
 
