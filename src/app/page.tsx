@@ -775,7 +775,7 @@ export default function LandingPage() {
           <AnimatedSection>
             <h2 className="font-extrabold tracking-tight"
               style={{ fontSize: 'clamp(2.4rem, 6vw, 4.5rem)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em' }}>
-              Tu oficina ya puede<br />empezar a trabajar
+              Hoy empieza una forma<br />distinta de trabajar
             </h2>
           </AnimatedSection>
 
@@ -793,11 +793,11 @@ export default function LandingPage() {
 
           {/* Loss lines */}
           <AnimatedSection delay={0.18}>
-            <div className="flex flex-col gap-2 mb-12">
+            <div className="flex flex-col gap-2 mb-6">
               {[
-                { text: 'Hay negocios perdiendo llamadas.', op: 0.58 },
-                { text: 'Olvidando seguimientos.',          op: 0.44 },
-                { text: 'Posponiendo tareas.',              op: 0.3  },
+                { text: 'Hay empresas esperando a que mañana sea lunes.', op: 0.58 },
+                { text: 'Esperando a que alguien llegue.',                op: 0.44 },
+                { text: 'Esperando a tener más capacidad.',               op: 0.3  },
               ].map(({ text, op }) => (
                 <p key={text}
                   style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: `rgba(255,255,255,${op})`, fontWeight: 400, lineHeight: 1.4 }}>
@@ -805,13 +805,16 @@ export default function LandingPage() {
                 </p>
               ))}
             </div>
+            <p style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: 'rgba(255,255,255,0.72)', fontWeight: 600, lineHeight: 1.4, marginBottom: '3rem' }}>
+              La tuya no tiene por qué esperar.
+            </p>
           </AnimatedSection>
 
           {/* Contrast */}
           <AnimatedSection delay={0.22}>
-            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, maxWidth: 440, marginBottom: '3.5rem' }}>
-              La diferencia es que ellos siguen dependiendo<br className="hidden sm:block" /> del tiempo de las personas.<br />
-              Tu organización ya no tiene por qué hacerlo.
+            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, maxWidth: 480, marginBottom: '3.5rem' }}>
+              Las organizaciones que crecen más rápido no son las que trabajan más horas.<br className="hidden sm:block" />
+              Son las que tienen más capacidad.
             </p>
           </AnimatedSection>
 
@@ -824,7 +827,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.28}>
             <p className="font-semibold mb-7"
               style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'rgba(255,255,255,0.68)' }}>
-              Construye hoy tu oficina digital.
+              Construye el primer equipo que nunca deja de trabajar.
             </p>
           </AnimatedSection>
 
