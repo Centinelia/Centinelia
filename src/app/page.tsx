@@ -319,7 +319,7 @@ export default function LandingPage() {
           }} />
         </div>
 
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:pl-80 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:pr-80 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
           {/* Floating illustration — inside the container so it shares its stacking context.
               CSS escapes it leftward to cover the full left zone. */}
           <MeerkatReveal className="meerkat-money">
