@@ -533,6 +533,34 @@ export function leadFollowUpToClientHtml(opts: {
   `);
 }
 
+// ── Infra alert (internal — sent to hola@centinelia.mx) ──────────────────────
+
+export function infraAlertHtml(opts: {
+  date:    string;
+  alerts:  { service: string; current: string; threshold: string; action: string; actionUrl: string; color: string }[];
+}): string {
+  const rows = opts.alerts.map(a => `
+    <div style="background:${a.color}0D;border:1px solid ${a.color}33;border-radius:12px;padding:18px 20px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="color:${C.text};font-size:14px;font-weight:700">${a.service}</span>
+        <span style="color:${a.color};font-size:12px;font-weight:700;background:${a.color}22;padding:3px 10px;border-radius:20px">ALERTA</span>
+      </div>
+      <p style="color:${C.sub};font-size:13px;margin:0 0 4px">Actual: <strong style="color:${C.text}">${a.current}</strong></p>
+      <p style="color:${C.mute};font-size:12px;margin:0 0 12px">Umbral: ${a.threshold}</p>
+      <a href="${a.actionUrl}" style="color:${C.accent};font-size:13px;font-weight:600;text-decoration:none">${a.action} →</a>
+    </div>`).join('');
+
+  return shell(`
+    ${badge('Alerta de infraestructura', '#ef4444')}
+    ${heading('Acción requerida', opts.date)}
+    <p style="color:${C.sub};font-size:13px;line-height:1.7;margin:0 0 20px;text-align:center">
+      Uno o más servicios de Centinelia requieren atención. Revisa y recarga antes de que afecte el servicio.
+    </p>
+    ${rows}
+    ${btn('Ver dashboard →', 'https://www.centinelia.mx/admin/dashboard')}
+  `);
+}
+
 // ── Bug report ────────────────────────────────────────────────────────────────
 
 export function bugReportHtml(opts: {

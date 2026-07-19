@@ -4,7 +4,7 @@ import { triggerOutboundCall } from '@/lib/vapi/outbound';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization') ?? '';
   const secret = process.env.CRON_SECRET;
   if (!secret || auth !== `Bearer ${secret}`) {

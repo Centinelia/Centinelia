@@ -57,6 +57,10 @@ export default async function DashboardPage() {
   const totalOpsLimit = (opsData ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
   // Estimated Claude cost: Haiku ~$0.0024 per op (1,500 input + 300 output tokens avg)
   const estimatedClaudeCost = totalOpsUsed * 0.0024;
+  const claudeBudget        = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
+  const claudeBudgetPct     = Math.min(Math.round((estimatedClaudeCost / claudeBudget) * 100), 100);
+  const claudeOverBudget    = estimatedClaudeCost >= claudeBudget;
+  const claudeNearBudget    = !claudeOverBudget && claudeBudgetPct >= 70;
 
   const vapiBalance   = typeof vapiAccount?.balance   === 'number' ? vapiAccount.balance   : null;
   const twilioBalance2 = typeof twilioBalance?.balance === 'string' ? parseFloat(twilioBalance.balance) : null;
@@ -297,17 +301,36 @@ export default async function DashboardPage() {
           </div>
 
           {/* Claude / Ops */}
-          <div className="p-4 rounded-xl flex items-start gap-3" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <Zap size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+          <div className="p-4 rounded-xl flex items-start gap-3" style={{
+            background: claudeOverBudget ? 'rgba(239,68,68,0.06)' : claudeNearBudget ? 'rgba(245,158,11,0.06)' : 'var(--c-surface)',
+            border:     claudeOverBudget ? '1px solid rgba(239,68,68,0.3)' : claudeNearBudget ? '1px solid rgba(245,158,11,0.3)' : '1px solid var(--c-border)',
+          }}>
+            <Zap size={15} style={{ color: claudeOverBudget ? '#ef4444' : claudeNearBudget ? '#f59e0b' : '#f59e0b', flexShrink: 0, marginTop: 2 }} />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Claude — ops este mes</p>
-              <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: 'var(--c-text)' }}>
-                {totalOpsUsed.toLocaleString('es-MX')}
-                <span className="text-sm font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>ops</span>
+              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Claude — gasto mensual</p>
+              <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: claudeOverBudget ? '#ef4444' : 'var(--c-text)' }}>
+                ~${estimatedClaudeCost.toFixed(2)}
+                <span className="text-sm font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>USD</span>
               </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
-                Costo estimado: ~${estimatedClaudeCost.toFixed(2)} USD
+              {/* Budget progress bar */}
+              <div style={{ background: 'rgba(255,255,255,0.10)', borderRadius: 4, height: 4, overflow: 'hidden', margin: '8px 0 4px' }}>
+                <div style={{
+                  height: '100%',
+                  width:  `${claudeBudgetPct}%`,
+                  background: claudeOverBudget ? '#ef4444' : claudeNearBudget ? '#f59e0b' : '#a855f7',
+                  borderRadius: 4,
+                  transition: 'width 0.3s ease',
+                }} />
+              </div>
+              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                {totalOpsUsed.toLocaleString('es-MX')} ops · presupuesto ${claudeBudget} USD ({claudeBudgetPct}%)
               </p>
+              {(claudeOverBudget || claudeNearBudget) && (
+                <p className="text-xs mt-1 flex items-center gap-1" style={{ color: claudeOverBudget ? '#ef4444' : '#f59e0b' }}>
+                  <AlertTriangle size={10} />
+                  {claudeOverBudget ? 'Presupuesto superado' : 'Cerca del límite mensual'}
+                </p>
+              )}
             </div>
           </div>
 

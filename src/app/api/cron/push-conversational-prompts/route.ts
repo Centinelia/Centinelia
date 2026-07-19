@@ -6,8 +6,11 @@ import { pushConversationalPromptsToAllAgents } from '@/lib/vapi/sync';
 // { "path": "/api/cron/push-conversational-prompts", "schedule": "0 3 * * 1" }  (Mondays 3 AM UTC)
 
 export async function GET(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get('secret');
-  if (secret !== process.env.CRON_SECRET && secret !== process.env.ADMIN_SECRET) {
+  const bearer = req.headers.get('authorization');
+  const query  = req.nextUrl.searchParams.get('secret');
+  const cronOk  = bearer === `Bearer ${process.env.CRON_SECRET}`;
+  const adminOk = query  === process.env.ADMIN_SECRET || query === process.env.CRON_SECRET;
+  if (!cronOk && !adminOk) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
