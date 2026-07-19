@@ -774,7 +774,7 @@ export default function LandingPage() {
           {/* Headline */}
           <AnimatedSection>
             <h2 className="font-extrabold tracking-tight"
-              style={{ fontSize: 'clamp(2.4rem, 6vw, 4.5rem)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em' }}>
+              style={{ fontSize: 'clamp(2rem, 4.5vw, 3.4rem)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em' }}>
               Hoy empieza una forma<br />distinta de trabajar
             </h2>
           </AnimatedSection>
