@@ -138,37 +138,6 @@ const C = {
   accentLt: '#9B6DFF',
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function LimitCard({ p }: { p: typeof LIMITS[number] }) {
-  return (
-    <div
-      className="rounded-2xl p-6 h-full"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
-    >
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
-        style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
-      >
-        {p.icon}
-      </div>
-      <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
-        {p.label}
-      </p>
-      <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
-        {p.title}
-      </p>
-      <div className="flex flex-col gap-1.5">
-        {p.items.map(item => (
-          <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {item}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
@@ -350,60 +319,73 @@ export default function LandingPage() {
           }} />
         </div>
 
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
 
-          {/* Desktop: [card] [title] [card] — Mobile: title first, then 3 cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8 lg:items-center">
+          {/* Header */}
+          <AnimatedSection className="text-center mb-12 sm:mb-16">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+              El límite
+            </p>
+            <h2
+              className="font-bold tracking-tight mb-4"
+              style={{ fontSize: 'clamp(1.6rem, 4vw, 2.8rem)', color: '#fff', lineHeight: 1.15 }}
+            >
+              Toda organización<br />tiene una capacidad.
+            </h2>
+            <p className="mx-auto" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 500, lineHeight: 1.65 }}>
+              Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
+            </p>
+          </AnimatedSection>
 
-            {/* Left card — Conversaciones */}
-            <AnimatedSection delay={0} className="hidden lg:block">
-              <LimitCard p={LIMITS[0]} />
-            </AnimatedSection>
-
-            {/* Center: title + quote */}
-            <div className="text-center mb-8 lg:mb-0 lg:px-4">
-              <AnimatedSection>
-                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-                  El límite
-                </p>
-                <h2
-                  className="font-bold tracking-tight mb-4"
-                  style={{ fontSize: 'clamp(1.6rem, 3vw, 2.4rem)', color: '#fff', lineHeight: 1.15 }}
-                >
-                  Toda organización<br />tiene una capacidad.
-                </h2>
-                <p style={{ color: 'rgba(255,255,255,0.52)', lineHeight: 1.65, fontSize: '0.9375rem' }}>
-                  Conforme crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
-                </p>
-              </AnimatedSection>
-              <AnimatedSection delay={0.15} className="mt-6">
-                <div
-                  className="rounded-2xl px-6 py-5 text-left"
-                  style={{ background: 'rgba(108,59,255,0.09)', border: '1px solid rgba(108,59,255,0.2)', borderLeftWidth: 3, borderLeftColor: 'rgba(108,59,255,0.55)', borderLeftStyle: 'solid' }}
-                >
-                  <p className="font-semibold" style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.72)', lineHeight: 1.55 }}>
-                    Las ventas generan crecimiento.<br />
-                    <span style={{ color: '#C4A8FF' }}>La capacidad determina hasta dónde puedes crecer.</span>
-                  </p>
-                </div>
-              </AnimatedSection>
-            </div>
-
-            {/* Right card — Seguimientos */}
-            <AnimatedSection delay={0.1} className="hidden lg:block">
-              <LimitCard p={LIMITS[1]} />
-            </AnimatedSection>
-
-          </div>
-
-          {/* Mobile only: all 3 cards stacked */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-3 gap-5 mt-8">
+          {/* Consequence cards — full width 3-col */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5" style={{ position: 'relative', zIndex: 1 }}>
             {LIMITS.map((p, i) => (
               <AnimatedSection key={p.title} delay={i * 0.1}>
-                <LimitCard p={p} />
+                <div
+                  className="rounded-2xl p-6 h-full"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
+                    style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
+                  >
+                    {p.icon}
+                  </div>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
+                    {p.label}
+                  </p>
+                  <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
+                    {p.title}
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {p.items.map(item => (
+                      <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        {item}
+                      </p>
+                    ))}
+                  </div>
+                </div>
               </AnimatedSection>
             ))}
           </div>
+
+          {/* Quote bridge */}
+          <AnimatedSection delay={0.15}>
+            <div
+              className="mt-8 rounded-2xl px-7 py-7"
+              style={{ background: 'rgba(108,59,255,0.09)', border: '1px solid rgba(108,59,255,0.2)', borderLeftWidth: 3, borderLeftColor: 'rgba(108,59,255,0.55)', borderLeftStyle: 'solid' }}
+            >
+              <p
+                className="font-semibold leading-relaxed"
+                style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}
+              >
+                Las ventas generan crecimiento.<br />
+                <span style={{ color: '#C4A8FF' }}>
+                  La capacidad determina hasta dónde puedes crecer.
+                </span>
+              </p>
+            </div>
+          </AnimatedSection>
 
         </div>
       </section>
