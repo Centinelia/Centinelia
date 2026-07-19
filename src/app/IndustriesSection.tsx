@@ -124,7 +124,7 @@ export default function IndustriesSection() {
             className="font-bold tracking-tight mb-4"
             style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#1A0A3B', lineHeight: 1.1 }}
           >
-            Cada industria tiene una oficina distinta.
+            Cada industria tiene una oficina distinta
           </h2>
           <p style={{ color: 'rgba(26,10,59,0.55)', fontSize: '1rem', lineHeight: 1.7 }}>
             Tu oficina aprende cómo trabaja tu organización.
