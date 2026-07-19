@@ -379,7 +379,7 @@ export default function LandingPage() {
             <div
               className="mx-auto rounded-2xl px-7 py-5"
               style={{
-                maxWidth: 400,
+                maxWidth: 500,
                 background: 'rgba(108,59,255,0.09)',
                 border: '1px solid rgba(108,59,255,0.2)',
                 borderLeftWidth: 3,
