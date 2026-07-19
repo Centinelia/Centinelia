@@ -28,18 +28,18 @@ const CLIENTE: AgentDef = {
 
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
-  img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '10.5px',
+  img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '15px',
   mobileImgShiftX: '9px',
 };
 
 const SPECIALISTS: AgentDef[] = [
-  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
-  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', mobileImgShiftY: '1.5px' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%', mobileImgShiftX: '-0.5px' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '3px' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px', mobileImgShiftX: '11px', mobileImgShiftY: '4px' },
-  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px', mobileImgShiftX: '16px', mobileImgShiftY: '5px' },
+  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', imgScale: 1.2, imgShiftY: '5px', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-3px', imgShiftY: '4px' },
+  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', imgShiftY: '3px', mobileImgShiftY: '1.5px' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%', imgShiftX: '-0.5px', mobileImgShiftX: '-0.5px' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', imgShiftY: '4px', mobileImgShiftX: '0', mobileImgShiftY: '3px' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '15.5px', imgShiftY: '5px', mobileImgShiftX: '11px', mobileImgShiftY: '4px' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '23px', imgShiftY: '6px', mobileImgShiftX: '16px', mobileImgShiftY: '5px' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -210,19 +210,19 @@ export default function TeamFlowSection() {
   }, [inView]);
 
   // Orbital layout — scales with viewport
-  const ORBIT_D  = isMobile ? 370 : 620;
+  const ORBIT_D  = isMobile ? 370 : 820;
   const CX       = ORBIT_D / 2;
   const CY       = ORBIT_D / 2;
-  const ORBIT_R  = isMobile ? 148 : 224;
+  const ORBIT_R  = isMobile ? 148 : 300;
 
   const nodePos  = NODE_UNIT.map(u => ({ x: CX + ORBIT_R * u.x, y: CY + ORBIT_R * u.y }));
   const NIA_XY   = nodePos[0];
   const SPEC_XY  = nodePos.slice(1);
 
-  const clienteSize = isMobile ? 52 : 62;
-  const niaSize     = isMobile ? 64 : 78;
-  const specSize    = isMobile ? 54 : 56;
-  const dirSize     = isMobile ? 88 : 100;
+  const clienteSize = isMobile ? 52 : 82;
+  const niaSize     = isMobile ? 64 : 104;
+  const specSize    = isMobile ? 54 : 76;
+  const dirSize     = isMobile ? 88 : 132;
 
   // Gap between the connector div bottom and the top edge of Nia's circle
   const connectorGap = NIA_XY.y - niaSize / 2;
@@ -252,7 +252,7 @@ export default function TeamFlowSection() {
         }} />
       </div>
 
-      <div className="max-w-5xl mx-auto px-5 sm:px-10 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="max-w-6xl mx-auto px-5 sm:px-10 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Header */}
         <motion.div
