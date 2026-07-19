@@ -359,10 +359,9 @@ export default function NiaInterview() {
               fontSize:   'clamp(2.4rem, 5.5vw, 4.2rem)',
               color:      '#1A0A3B',
               lineHeight: 1.06,
-              maxWidth:   540,
             }}
           >
-            antes de contratarla...<br />Conócela.
+            Antes de contratarla...<br />Conócela.
           </h2>
           <p
             className="text-xs font-bold tracking-widest uppercase mt-5"
