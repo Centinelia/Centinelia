@@ -286,9 +286,14 @@ export default function NiaInterview() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
-    } catch {
+    } catch (err: unknown) {
       setCallState('idle');
-      setError('Necesitamos acceso al micrófono para la llamada.');
+      const name = (err as { name?: string })?.name;
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setError('Permiso de micrófono bloqueado. Ve a Ajustes > Safari (o tu navegador) > Micrófono y actívalo para este sitio.');
+      } else {
+        setError('No pudimos acceder al micrófono. Verifica que tu dispositivo tenga uno disponible.');
+      }
       return;
     }
 
