@@ -331,7 +331,7 @@ export default function EmpleadosPage() {
                 Elige al empleado que tu negocio necesita, configúralo con
                 tu información y empieza a recibir llamadas en menos de 24 horas.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-row flex-wrap gap-3">
                 <Link
                   href="/registro"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold transition-all hover:opacity-90 hover:scale-[1.02]"
@@ -366,7 +366,7 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Group photo — mobile */}
-          <div className="lg:hidden relative w-full" style={{ aspectRatio: '2752/1536', marginTop: -8 }}>
+          <div className="lg:hidden relative w-full" style={{ aspectRatio: '2752/1200', marginTop: -8 }}>
             <Image
               src="/meerkats/grupo.png"
               alt="Equipo Centinelia"
