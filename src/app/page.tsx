@@ -473,7 +473,7 @@ export default function LandingPage() {
                 className="font-bold tracking-tight mb-4"
                 style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
               >
-                Construye tu oficina digital.
+                Construye tu oficina digital
               </h2>
               <p style={{ color: C.textSub }}>
                 Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.
@@ -489,7 +489,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-3"
               style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: C.text, lineHeight: 1.25 }}
             >
-              Construye tu oficina digital.
+              Construye tu oficina digital
             </h2>
             <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
               Cada Centinelia adopta tu misión. Juntos operan tu negocio 24/7.

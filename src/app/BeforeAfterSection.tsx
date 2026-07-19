@@ -55,7 +55,7 @@ export default function BeforeAfterSection() {
             className="font-bold tracking-tight mb-4"
             style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#1A0A3B', lineHeight: 1.1 }}
           >
-            Lo que cambia el lunes.
+            Lo que cambia el lunes
           </h2>
           <p style={{ color: 'rgba(26,10,59,0.55)', fontSize: '1rem', lineHeight: 1.7 }}>
             Esto es lo primero que notarás al incorporarlos a tu equipo.
