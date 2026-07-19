@@ -125,9 +125,9 @@ type AgentPlanDef = {
 const AGENT_PLANS: AgentPlanDef[] = [
   {
     id: 'pro', label: 'Empleado Centinelia', setupFee: 14990, color: '#6C3BFF',
-    description: 'Todo lo que tu negocio necesita para automatizar la atención telefónica.',
+    description: 'Todo lo que tu organización necesita para automatizar la atención telefónica.',
     features: [
-      { label: 'Atención telefónica 24/7', desc: 'Contesta a cualquier hora con el nombre e información de tu negocio.' },
+      { label: 'Atención telefónica 24/7', desc: 'Contesta a cualquier hora con el nombre e información de tu organización.' },
       { label: 'Captura de leads y agendamiento', desc: 'Obtiene datos del prospecto y confirma o modifica citas durante la llamada.' },
       { label: 'Transferencia inteligente y escalación', desc: 'Transfiere al staff o dirige a WhatsApp cuando el cliente lo necesita.' },
       { label: 'Hasta 3 llamadas simultáneas', desc: 'Tu agente atiende hasta 3 llamadas al mismo tiempo sin dar señal de ocupado.' },
@@ -157,7 +157,7 @@ type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; pr
 const TIERS: TierDef[] = [
   { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 100, price: 2997 },
   { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 200, price: 5994, popular: true },
-  { id: 'scale',   label: 'Horas Extra',      minutes: 1200, aiOps: 300, price: 11988 },
+  { id: 'scale',   label: 'Alta Demanda',     minutes: 1200, aiOps: 300, price: 11988 },
 ];
 
 // Ops-only tiers for Nox (no minutes cost)
@@ -469,12 +469,12 @@ type MeerkatChatDef = {
 const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
   nia: {
     name:  { filled: n => `Anotado. Bienvenidos, ${n}.`, cleared: '¿No era ese el nombre? Sin problema, aquí lo cambio.' },
-    desc:  { filled: 'Perfecto. Ya sé cómo presentar tu empresa con cada llamada.', cleared: 'Sin prisa. Puedes reescribirla cuando quieras.' },
+    desc:  { filled: 'Perfecto. Ya sé cómo presentar tu organización con cada llamada.', cleared: 'Sin prisa. Puedes reescribirla cuando quieras.' },
     phone: { filled: 'Listo. Ese será el número que mencione en las llamadas.', cleared: '¿Cambiaste el teléfono? Cuando tengas el correcto, lo anoto.' },
   },
   noah: {
     name:  { filled: n => `${n}. Bien. ¿Qué vendemos?`, cleared: '¿Distinto nombre? No hay problema.' },
-    desc:  { filled: 'Entendido. Ya sé cómo hablar del negocio.', cleared: 'Cuando tengas la descripción lista, seguimos.' },
+    desc:  { filled: 'Entendido. Ya sé cómo hablar de la organización.', cleared: 'Cuando tengas la descripción lista, seguimos.' },
     phone: { filled: 'Ese número queda anotado.', cleared: '¿Cambiaste el teléfono? Dime el correcto.' },
   },
   nara: {
@@ -484,7 +484,7 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
   },
   nico: {
     name:  { filled: n => `${n}, anotado. Vamos bien.`, cleared: '¿No era ese? Sin problema.' },
-    desc:  { filled: 'Claro, ya entiendo de qué va el negocio.', cleared: 'Cuando lo tengas más claro, seguimos.' },
+    desc:  { filled: 'Claro, ya entiendo de qué va la organización.', cleared: 'Cuando lo tengas más claro, seguimos.' },
     phone: { filled: 'Número anotado. ¿Seguimos?', cleared: '¿Ese no era el número? Cuando tengas el correcto, dime.' },
   },
   naia: {
@@ -525,17 +525,17 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
 };
 
 const MEERKAT_GREETING: Record<string, string> = {
-  nia:    'Antes de comenzar a recibir llamadas, necesito conocer un poco tu empresa.',
-  noah:   'Para empezar a cerrar tratos, cuéntame un poco del negocio.',
+  nia:    'Antes de comenzar a recibir llamadas, necesito conocer un poco tu organización.',
+  noah:   'Para empezar a cerrar tratos, cuéntame un poco de la organización.',
   nara:   'Para abrir tu expediente, necesito los datos de la organización.',
-  nico:   'Antes de ponerme a contestar, dime un poco del negocio.',
-  naia:   'Para poder apoyar a tu equipo, necesito conocer la empresa.',
-  nelia:  'Para atender a tus clientes como si fuera parte del equipo, cuéntame del negocio.',
+  nico:   'Antes de ponerme a contestar, dime un poco de la organización.',
+  naia:   'Para poder apoyar a tu equipo, necesito conocer la organización.',
+  nelia:  'Para atender a tus clientes como si fuera parte del equipo, cuéntame de la organización.',
   neo:    'Para inicializar mis protocolos de soporte, necesito los datos de la organización.',
-  nova:   'Para coordinar correctamente, necesito el contexto operacional de la empresa.',
+  nova:   'Para coordinar correctamente, necesito el contexto operacional de la organización.',
   nox:    'Para empezar a coordinar al equipo, dime los datos de la organización.',
   niva:   'Para construir el expediente de la organización, necesito algunos datos.',
-  custom: 'Para empezar a trabajar, necesito conocer un poco tu empresa.',
+  custom: 'Para empezar a trabajar, necesito conocer un poco tu organización.',
 };
 
 const MEERKAT_AGENT_NAME_MSG: Record<string, (name: string) => string> = {
@@ -677,8 +677,8 @@ function RegistroInner() {
     if (step !== 3 || !countryClicked || chatShownRef.current.country) return;
     chatShownRef.current.country = true;
     const msg = country === 'mx'
-      ? 'Excelente, responderé como una empresa mexicana.'
-      : 'Excelente, responderé como una empresa estadounidense.';
+      ? 'Excelente, responderé como una organización mexicana.'
+      : 'Excelente, responderé como una organización estadounidense.';
     setChatMessages(prev => [...prev, msg]);
   }, [country, countryClicked, step]);
 
@@ -751,9 +751,9 @@ function RegistroInner() {
     } else if (step === 2) {
       setStep(3);
     } else if (step === 3) {
-      if (!businessName.trim())  { setError('Escribe el nombre de tu negocio'); return; }
-      if (!businessDesc.trim())  { setError('Escribe una descripción del negocio'); return; }
-      if (!businessPhone.trim()) { setError('Escribe el teléfono del negocio'); return; }
+      if (!businessName.trim())  { setError('Escribe el nombre de tu organización'); return; }
+      if (!businessDesc.trim())  { setError('Escribe una descripción de la organización'); return; }
+      if (!businessPhone.trim()) { setError('Escribe el teléfono de la organización'); return; }
       setStep(4);
     }
   };
@@ -1268,7 +1268,7 @@ function RegistroInner() {
                   padding: '16px 18px 18px',
                 }}>
                   <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.65, marginBottom: 14 }}>
-                    Para empresas con múltiples sucursales, franquicias o que requieren integraciones con su propio sistema (POS, CRM, ERP). Cada sucursal puede tener su propio empleado con portal independiente.
+                    Para organizaciones con múltiples sucursales, franquicias o que requieren integraciones con su propio sistema (POS, CRM, ERP). Cada sucursal puede tener su propio empleado con portal independiente.
                   </p>
                   <div className="flex flex-col gap-2 mb-5">
                     {AGENT_PLANS.find(p => p.id === 'empresarial')!.features.map(f => (
@@ -1307,7 +1307,7 @@ function RegistroInner() {
             <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
                 ? `${selectedMeerkat?.nombre ?? 'El director'} no realiza llamadas. Su jornada depende del volumen de tareas inteligentes que realizará para tu organización. Puedes ajustarlo cuando quieras desde el portal, sin permanencia.`
-                : 'Empieza con la jornada que tu negocio necesita. Siempre podrás ampliarla cuando tu equipo crezca, sin permanencia.'
+                : 'Empieza con la jornada que tu organización necesita. Siempre podrás ampliarla cuando tu equipo crezca, sin permanencia.'
               }
             </p>
 
@@ -1442,7 +1442,7 @@ function RegistroInner() {
             <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
               {isCoordinator
                 ? `${selectedMeerkat?.nombre ?? 'El director'} usará esta información para coordinar y reportar al equipo.`
-                : 'Mientras más conozca tu negocio, mejores decisiones podrá tomar.'
+                : 'Mientras más conozca tu organización, mejores decisiones podrá tomar.'
               }
             </p>
 
@@ -1486,12 +1486,12 @@ function RegistroInner() {
               </div>
 
               <div>
-                <label style={labelStyle}>¿Cómo le describirías tu negocio a un nuevo empleado? *</label>
+                <label style={labelStyle}>¿Cómo le describirías tu organización a un nuevo empleado? *</label>
                 <textarea
                   value={businessDesc}
                   onChange={e => setBusinessDesc(e.target.value)}
                   onBlur={() => handleFieldBlur('desc')}
-                  placeholder={`Imagina que hoy es el primer día de trabajo de ${selectedMeerkat?.nombre ?? 'tu empleado'}.\n\nExplícale qué hace tu empresa, qué vende, cuáles son sus horarios y cualquier información importante que debería conocer.`}
+                  placeholder={`Imagina que hoy es el primer día de trabajo de ${selectedMeerkat?.nombre ?? 'tu empleado'}.\n\nExplícale qué hace tu organización, qué vende, cuáles son sus horarios y cualquier información importante que debería conocer.`}
                   rows={4}
                   style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
                 />

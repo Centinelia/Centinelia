@@ -60,7 +60,7 @@ interface Lead {
 
 const EDIT_FIELDS: { key: keyof Lead; label: string; placeholder?: string }[] = [
   { key: 'nombre',      label: 'Nombre completo',    placeholder: 'Ej: Juan García' },
-  { key: 'negocio',     label: 'Negocio',             placeholder: 'Ej: Restaurante El Pino' },
+  { key: 'negocio',     label: 'Organización',        placeholder: 'Ej: Restaurante El Pino' },
   { key: 'giro',        label: 'Giro',                placeholder: 'Ej: Restaurante' },
   { key: 'servicio',    label: 'Servicio de interés', placeholder: 'Ej: Agente de voz' },
   { key: 'presupuesto', label: 'Presupuesto',          placeholder: 'Ej: $5,000 MXN' },

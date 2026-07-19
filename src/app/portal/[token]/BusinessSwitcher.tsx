@@ -72,7 +72,7 @@ export default function BusinessSwitcher({
         >
           <p className="px-4 pt-2 pb-1 text-xs font-semibold tracking-widest uppercase"
             style={{ color: 'var(--c-text-4)' }}>
-            Mis empresas
+            Mis organizaciones
           </p>
           {options.map(opt => {
             const isCurrent = opt.business_name === currentBusinessName;

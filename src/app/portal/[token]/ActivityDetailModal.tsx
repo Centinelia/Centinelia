@@ -204,7 +204,7 @@ export default function ActivityDetailModal({ type, item, isPro, token, onClose 
               {item.servicio   && <InfoRow icon={<Tag size={13} />}           label="Servicio"     value={item.servicio} />}
               {item.presupuesto && <InfoRow icon={<DollarSign size={13} />}   label="Presupuesto"  value={item.presupuesto} />}
               {item.timeline   && <InfoRow icon={<Calendar size={13} />}      label="Timeline"     value={item.timeline} />}
-              {item.negocio    && <InfoRow icon={<Briefcase size={13} />}     label="Negocio"      value={`${item.negocio}${item.giro ? ` · ${item.giro}` : ''}`} />}
+              {item.negocio    && <InfoRow icon={<Briefcase size={13} />}     label="Organización" value={`${item.negocio}${item.giro ? ` · ${item.giro}` : ''}`} />}
             </>}
 
             {type === 'appt' && <>

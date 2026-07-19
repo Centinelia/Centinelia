@@ -147,7 +147,7 @@ export default function IndustriesSection() {
                 return (
                   <button
                     key={industry.label}
-                    onMouseEnter={() => setActive(i)}
+                    onPointerEnter={(e) => { if (e.pointerType === 'mouse') setActive(i); }}
                     onClick={() => setActive(i)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 9,

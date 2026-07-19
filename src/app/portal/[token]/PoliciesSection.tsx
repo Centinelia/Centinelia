@@ -8,7 +8,7 @@ const CAPABILITIES_CONFIG = [
   {
     capability:  'email',
     label:       'Correo electrónico',
-    description: 'El agente puede enviar correos en nombre del negocio.',
+    description: 'El agente puede enviar correos en nombre de la organización.',
     icon:        Mail,
     active:      true,
   },

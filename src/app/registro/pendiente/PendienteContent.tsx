@@ -74,7 +74,7 @@ export default function PendienteContent() {
           <p className="text-xs text-center mb-1" style={{ color: lightenHex(roleColor, 0.45) }}>{role}</p>
         )}
         <p className="text-sm text-center mb-8" style={{ color: 'rgba(255,255,255,0.38)', lineHeight: 1.6 }}>
-          Ahora vamos a prepararlo para que conozca tu empresa.
+          Ahora vamos a prepararlo para que conozca tu organización.
         </p>
 
         {/* Checklist card */}

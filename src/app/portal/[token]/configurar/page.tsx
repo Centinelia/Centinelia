@@ -279,7 +279,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                 Aprendizaje de plataformas
               </h2>
-              <InfoTooltip text="Tu empleado lee los correos del negocio, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />
+              <InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />
             </div>
             <RoleEmailLearningSection
               token={token}

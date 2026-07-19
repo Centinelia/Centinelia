@@ -41,7 +41,7 @@ export default function KnowledgeBaseEditor({
     // Validate required fields before consuming ops
     if (!hasDescription) {
       setIsValidationErr(true);
-      setGenError('Necesitas completar esto antes de generar:\n\n· Descripción del negocio → ve a Negocio → Organización y completa el campo Descripción.');
+      setGenError('Necesitas completar esto antes de generar:\n\n· Descripción de la organización → ve a Organización y completa el campo Descripción.');
       return;
     }
 

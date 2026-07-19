@@ -6,17 +6,20 @@ import Image from 'next/image';
 import { Phone, Mail } from 'lucide-react';
 
 interface AgentDef {
-  id:         string;
-  role:       string;
-  color:      string;
-  img:        string | null;
-  imgPos?:    string;
-  imgScale?:  number;
-  imgOrigin?: string;
-  imgShiftX?: string;
-  imgShiftY?: string;
-  label?:     string;
-  badge?:     boolean;
+  id:              string;
+  role:            string;
+  color:           string;
+  img:             string | null;
+  imgPos?:         string;
+  imgScale?:       number;
+  imgOrigin?:      string;
+  imgShiftX?:      string;
+  imgShiftY?:      string;
+  mobileImgShiftX?: string;
+  mobileImgShiftY?: string;
+  mobileImgScale?:  number;
+  label?:          string;
+  badge?:          boolean;
 }
 
 const CLIENTE: AgentDef = {
@@ -26,16 +29,17 @@ const CLIENTE: AgentDef = {
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
   img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '10.5px',
+  mobileImgShiftX: '8.5px',
 };
 
 const SPECIALISTS: AgentDef[] = [
-  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 3%' },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 3%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
-  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 3%' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 3%' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 3%' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px' },
-  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px' },
+  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
+  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', mobileImgShiftY: '1.5px' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '2px' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px', mobileImgShiftX: '10.5px', mobileImgShiftY: '5px' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px', mobileImgShiftX: '16px' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -58,8 +62,8 @@ for (let i = 0; i < SPECIALISTS.length; i++) {
   }
 }
 
-function RolePill({ color, role, delay, inView, badge = false }: {
-  color: string; role: string; delay: number; inView: boolean; badge?: boolean;
+function RolePill({ color, role, delay, inView, badge = false, isMobile = false }: {
+  color: string; role: string; delay: number; inView: boolean; badge?: boolean; isMobile?: boolean;
 }) {
   return (
     <motion.span
@@ -71,18 +75,18 @@ function RolePill({ color, role, delay, inView, badge = false }: {
         color: '#fff',
         fontWeight: 700,
         background: color,
-        padding: '3px 10px',
+        padding: isMobile ? '2px 7px' : '3px 10px',
         borderRadius: 20,
         whiteSpace: 'nowrap',
         lineHeight: 1.4,
         letterSpacing: '0.04em',
         textTransform: 'uppercase' as const,
       } : {
-        fontSize: '0.58rem',
+        fontSize: isMobile ? '0.52rem' : '0.58rem',
         color,
         fontWeight: 600,
         background: `${color}1A`,
-        padding: '2px 7px',
+        padding: isMobile ? '1px 5px' : '2px 7px',
         borderRadius: 20,
         border: `1px solid ${color}35`,
         whiteSpace: 'nowrap',
@@ -95,15 +99,18 @@ function RolePill({ color, role, delay, inView, badge = false }: {
 }
 
 function AvatarNode({
-  agent, size, delay, inView, isClient = false, hidePill = false, dimmed = false,
+  agent, size, delay, inView, isClient = false, hidePill = false, dimmed = false, isMobile = false,
 }: {
-  agent: AgentDef; size: number; delay: number; inView: boolean; isClient?: boolean; hidePill?: boolean; dimmed?: boolean;
+  agent: AgentDef; size: number; delay: number; inView: boolean; isClient?: boolean; hidePill?: boolean; dimmed?: boolean; isMobile?: boolean;
 }) {
+  const shiftX = (isMobile && agent.mobileImgShiftX !== undefined) ? agent.mobileImgShiftX : agent.imgShiftX;
+  const shiftY = (isMobile && agent.mobileImgShiftY !== undefined) ? agent.mobileImgShiftY : agent.imgShiftY;
+  const scale  = (isMobile && agent.mobileImgScale  !== undefined) ? agent.mobileImgScale  : agent.imgScale;
   const transform = [
-    (agent.imgShiftX || agent.imgShiftY)
-      ? `translate(${agent.imgShiftX ?? '0'}, ${agent.imgShiftY ?? '0'})`
+    (shiftX || shiftY)
+      ? `translate(${shiftX ?? '0'}, ${shiftY ?? '0'})`
       : null,
-    agent.imgScale ? `scale(${agent.imgScale})` : null,
+    scale ? `scale(${scale})` : null,
   ].filter(Boolean).join(' ') || undefined;
 
   return (
@@ -160,7 +167,7 @@ function AvatarNode({
             Nueva Solicitud
           </motion.span>
         ) : !hidePill ? (
-          <RolePill color={agent.color} role={agent.label ?? agent.role} delay={delay + 0.1} inView={inView} badge={agent.badge} />
+          <RolePill color={agent.color} role={agent.label ?? agent.role} delay={delay + 0.1} inView={inView} badge={agent.badge} isMobile={isMobile} />
         ) : null}
       </motion.div>
     </div>
@@ -203,19 +210,19 @@ export default function TeamFlowSection() {
   }, [inView]);
 
   // Orbital layout — scales with viewport
-  const ORBIT_D  = isMobile ? 320 : 620;
+  const ORBIT_D  = isMobile ? 370 : 620;
   const CX       = ORBIT_D / 2;
   const CY       = ORBIT_D / 2;
-  const ORBIT_R  = isMobile ? 112 : 224;
+  const ORBIT_R  = isMobile ? 148 : 224;
 
   const nodePos  = NODE_UNIT.map(u => ({ x: CX + ORBIT_R * u.x, y: CY + ORBIT_R * u.y }));
   const NIA_XY   = nodePos[0];
   const SPEC_XY  = nodePos.slice(1);
 
-  const clienteSize = isMobile ? 40 : 62;
-  const niaSize     = isMobile ? 44 : 78;
-  const specSize    = isMobile ? 27 : 56;
-  const dirSize     = isMobile ? 72  : 100;
+  const clienteSize = isMobile ? 52 : 62;
+  const niaSize     = isMobile ? 64 : 78;
+  const specSize    = isMobile ? 54 : 56;
+  const dirSize     = isMobile ? 88 : 100;
 
   // Gap between the connector div bottom and the top edge of Nia's circle
   const connectorGap = NIA_XY.y - niaSize / 2;
@@ -451,7 +458,7 @@ export default function TeamFlowSection() {
               transform: 'translate(-50%, -50%)',
               zIndex: 2,
             }}>
-              <AvatarNode agent={NIA} size={niaSize} delay={0.18} inView={inView} />
+              <AvatarNode agent={NIA} size={niaSize} delay={0.18} inView={inView} isMobile={isMobile} />
             </div>
 
             {/* Dirección — exact center: outer div positions, motion.div animates */}
@@ -508,8 +515,9 @@ export default function TeamFlowSection() {
                   size={specSize}
                   delay={0.5 + i * 0.06}
                   inView={inView}
-                  hidePill={isMobile}
+                  hidePill={false}
                   dimmed={inView && !activeSet.has(i)}
+                  isMobile={isMobile}
                 />
               </div>
             ))}

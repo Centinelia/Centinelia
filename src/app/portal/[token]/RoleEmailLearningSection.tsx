@@ -42,8 +42,8 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        Tu empleado lee los correos del negocio y aprende cómo se toman decisiones en su área.
-        Si 3 de 10 correos hablan de ventas, el empleado de ventas analiza esos 3 y extrae las reglas implícitas de tu negocio.
+        Tu empleado lee los correos de la organización y aprende cómo se toman decisiones en su área.
+        Si 3 de 10 correos hablan de ventas, el empleado de ventas analiza esos 3 y extrae las reglas implícitas de tu organización.
       </p>
 
       {state === 'no-email' && (
@@ -95,7 +95,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                 style={{ borderColor: 'rgba(108,59,255,0.2)', borderTopColor: '#6C3BFF' }}
               />
               <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                Leyendo correos y aprendiendo reglas de negocio...
+                Leyendo correos y aprendiendo reglas de la organización...
               </span>
             </div>
           )}

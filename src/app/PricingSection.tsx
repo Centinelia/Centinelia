@@ -278,7 +278,7 @@ export default function PricingSection() {
         >
           <p className="text-sm font-semibold" style={{ color: '#fff' }}>¿Tu operación creció este mes?</p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
-            Agrega minutos cuando los necesites. No tienes que cambiar de plan.
+            Agrega minutos cuando los necesites.<br className="sm:hidden" /> No tienes que cambiar de plan.
           </p>
         </div>
       </AnimatedSection>

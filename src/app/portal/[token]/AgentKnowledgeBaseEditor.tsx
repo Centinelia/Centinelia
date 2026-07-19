@@ -114,7 +114,7 @@ export default function AgentKnowledgeBaseEditor({
     // Validate required fields before consuming ops
     const missing: string[] = [];
     if (!role.trim())   missing.push('· Nombre del puesto → escríbelo en el campo "Puesto del empleado" arriba.');
-    if (!hasBusinessKb) missing.push('· Manual de la empresa → ve a Negocio → Manual de la empresa y complétalo primero.');
+    if (!hasBusinessKb) missing.push('· Manual de la organización → ve a Organización → Manual de la organización y complétalo primero.');
     if (missing.length) {
       setIsRoleValidation(true);
       setGenRoleError('Necesitas completar esto antes de generar:\n\n' + missing.join('\n'));

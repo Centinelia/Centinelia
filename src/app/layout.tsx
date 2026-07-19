@@ -22,11 +22,11 @@ export const metadata: Metadata = {
   manifest: '/site.webmanifest',
 
   title: {
-    default: 'Centinelia: Tu negocio nunca pierde una llamada',
+    default: 'Centinelia | Construye tu oficina digital',
     template: '%s | Centinelia',
   },
   description:
-    'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y realiza llamadas salientes, sin que tú estés presente. Desde $2,997/mes.',
+    'La forma más sencilla de ampliar la capacidad de tu organización. Incorpora empleados digitales que trabajan 24/7 y construye una oficina que nunca se detiene.',
   keywords: [
     'agente de voz IA', 'inteligencia artificial para negocios', 'recepcionista virtual',
     'atención telefónica automatizada', 'chatbot de voz', 'agenda citas automática',
@@ -55,23 +55,23 @@ export const metadata: Metadata = {
     locale: 'es_MX',
     url: BASE_URL,
     siteName: 'Centinelia',
-    title: 'Centinelia: Tu negocio nunca pierde una llamada',
+    title: 'Centinelia | Construye tu oficina digital',
     description:
-      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Agenda citas, captura leads y realiza llamadas salientes, desde $2,997/mes.',
+      'La forma más sencilla de ampliar la capacidad de tu organización. Incorpora empleados digitales que trabajan 24/7 y construye una oficina que nunca se detiene.',
     images: [
       {
         url: '/og-image.png?v=2',
         width: 1200,
         height: 630,
-        alt: 'Centinelia: Agentes de voz con IA para tu negocio',
+        alt: 'Centinelia: Construye tu oficina digital',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Centinelia: Tu negocio nunca pierde una llamada',
+    title: 'Centinelia | Construye tu oficina digital',
     description:
-      'Agentes de voz con IA que atienden las llamadas de tu negocio 24/7. Entrantes y salientes, desde $2,997/mes.',
+      'La forma más sencilla de ampliar la capacidad de tu organización. Incorpora empleados digitales que trabajan 24/7 y construye una oficina que nunca se detiene.',
     images: ['/og-image.png?v=2'],
   },
 };

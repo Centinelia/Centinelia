@@ -215,7 +215,7 @@ export default function EmailSettings({ token }: { token: string }) {
               className="w-full text-sm px-3 py-2 rounded-lg outline-none"
               style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
             />
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-sub)' }}>Si no pones logo, se muestra el nombre de tu negocio en texto.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--c-text-sub)' }}>Si no pones logo, se muestra el nombre de tu organización en texto.</p>
           </div>
 
           <div>

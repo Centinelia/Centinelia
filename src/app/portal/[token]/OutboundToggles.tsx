@@ -123,7 +123,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
         <div style={{ padding: '20px 20px 4px' }}>
           <p style={{ fontSize: 13, color: 'var(--c-text-2)', lineHeight: 1.65, margin: '0 0 20px' }}>
             Al activar las llamadas salientes confirmo que las usaré exclusivamente
-            para contactar a personas con relación previa a mi negocio: clientes
+            para contactar a personas con relación previa a mi organización: clientes
             actuales, prospectos que dejaron sus datos, y devolución de llamadas
             perdidas. Entiendo que como responsable de las llamadas, debo cumplir
             con la Lista Nacional de No Llamar (LNCL) de PROFECO cuando aplique.

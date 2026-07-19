@@ -379,7 +379,7 @@ function PlantillaTab({ token }: { token: string }) {
             <p className="text-sm font-semibold mb-1.5" style={{ color: 'var(--c-text-2)' }}>Plantilla vacía</p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
               Esta es la plantilla base que el agente usa para generar contratos de prestación de servicios para tus clientes.
-              Carga las cláusulas estándar y edita el texto según las necesidades de tu negocio.
+              Carga las cláusulas estándar y edita el texto según las necesidades de tu organización.
             </p>
           </div>
           <button

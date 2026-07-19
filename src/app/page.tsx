@@ -443,7 +443,7 @@ export default function LandingPage() {
 
           <AnimatedSection delay={0.2}>
             <p className="text-center mt-10" style={{ lineHeight: 1.8 }}>
-              <span className="font-bold" style={{ color: C.accent }}>La mayoría de las organizaciones no necesitan más clientes.</span><br />
+              <span className="font-bold" style={{ color: C.accent }}>La mayoría de las organizaciones<br className="sm:hidden" /> no necesitan más clientes.</span><br />
               <span className="font-bold" style={{ color: C.accent }}>Necesitan más capacidad para atenderlos.</span>
             </p>
           </AnimatedSection>
@@ -573,32 +573,37 @@ export default function LandingPage() {
 
           {/* Fila 2 — 5 empleados, expandida 125% para igualar tamaño de tarjetas */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3 sm:-mx-[12.5%]">
-            {TEAM.slice(4).map((m, i) => (
-              <AnimatedSection key={m.nombre} delay={(i + 4) * 0.06} className="h-full">
-                <div
-                  className="rounded-2xl overflow-hidden h-full"
-                  style={{
-                    background: C.surface,
-                    border: `1px solid ${C.border}`,
-                    boxShadow: '0 2px 12px rgba(108,59,255,0.20)',
-                  }}
-                >
-                  <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
-                    <Image src={m.img} alt={m.nombre} fill sizes="220px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
+            {TEAM.slice(4).map((m, i, arr) => {
+              const isLastOdd = i === arr.length - 1 && arr.length % 2 !== 0;
+              return (
+                <AnimatedSection key={m.nombre} delay={(i + 4) * 0.06}
+                  className={`h-full${isLastOdd ? ' col-span-2 sm:col-span-1 flex justify-center' : ''}`}>
+                  <div
+                    className="rounded-2xl overflow-hidden h-full"
+                    style={{
+                      width:     isLastOdd ? 'calc(50% - 6px)' : undefined,
+                      background: C.surface,
+                      border:     `1px solid ${C.border}`,
+                      boxShadow:  '0 2px 12px rgba(108,59,255,0.20)',
+                    }}
+                  >
+                    <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
+                      <Image src={m.img} alt={m.nombre} fill sizes="220px"
+                        style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
+                    </div>
+                    <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
+                      <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
+                        {m.rol}
+                      </p>
+                      <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
+                        {m.nombre}
+                      </h3>
+                      <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
+                    </div>
                   </div>
-                  <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
-                    <p style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: m.color, marginBottom: 2 }}>
-                      {m.rol}
-                    </p>
-                    <h3 className="font-bold" style={{ fontSize: '0.95rem', color: C.text, lineHeight: 1.2, marginBottom: 4 }}>
-                      {m.nombre}
-                    </h3>
-                    <p style={{ fontSize: '0.72rem', color: C.textSub, lineHeight: 1.5 }}>{m.desc}</p>
-                  </div>
-                </div>
-              </AnimatedSection>
-            ))}
+                </AnimatedSection>
+              );
+            })}
           </div>
 
           {/* Tagline cierre de sección */}
@@ -697,7 +702,7 @@ export default function LandingPage() {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Después solo pagas la jornada que necesites.
+              Después solo pagas<br className="sm:hidden" /> la jornada que necesites.
             </p>
           </AnimatedSection>
 
@@ -762,6 +767,24 @@ export default function LandingPage() {
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
       <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          {/* Meerkat team background */}
+          <img
+            src="/meerkats-happy-team.png?v=2"
+            alt=""
+            aria-hidden="true"
+            style={{
+              position:   'absolute',
+              bottom:     0,
+              left:       '50%',
+              transform:  'translateX(-50%)',
+              width:      '140%',
+              maxWidth:   1600,
+              height:     'auto',
+              objectFit:  'cover',
+              objectPosition: 'center bottom',
+              opacity:    0.05,
+            }}
+          />
           <div style={{
             position: 'absolute', width: 900, height: 700,
             top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -827,7 +850,7 @@ export default function LandingPage() {
           <AnimatedSection delay={0.28}>
             <p className="font-semibold mb-7"
               style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'rgba(255,255,255,0.68)' }}>
-              Construye el primer equipo que nunca deja de trabajar.
+              El siguiente paso ya no es contratar más personas. Es ampliar tu capacidad.
             </p>
           </AnimatedSection>
 

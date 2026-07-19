@@ -724,8 +724,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la empresa</h2>
-                    <InfoTooltip text="Todo lo que tu empleado debe saber sobre el negocio: servicios, precios, horarios, políticas y preguntas frecuentes. Se usa en llamadas, correos y mensajes." />
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
+                    <InfoTooltip text="Todo lo que tu empleado debe saber sobre la organización: servicios, precios, horarios, políticas y preguntas frecuentes. Se usa en llamadas, correos y mensajes." />
                   </div>
                   <KnowledgeBaseEditor
                     token={token}
@@ -749,7 +749,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                    <InfoTooltip text="Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu negocio." />
+                    <InfoTooltip text="Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu organización." />
                   </div>
                   <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
                   <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
@@ -873,7 +873,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <div id="plan" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                       <div className="flex items-center gap-1.5 mb-4">
                         <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
-                        <InfoTooltip text="Sube o baja de tier según las necesidades de tu negocio." />
+                        <InfoTooltip text="Sube o baja de tier según las necesidades de tu organización." />
                       </div>
                       <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
                     </div>

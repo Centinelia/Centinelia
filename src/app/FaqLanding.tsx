@@ -150,7 +150,7 @@ export default function FaqLanding() {
               </p>
 
               {/* Stats */}
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5 items-start sm:items-start">
                 {[
                   { num: '< 24h', label: 'Tiempo de activación' },
                   { num: '24/7',  label: 'Disponibilidad garantizada' },
@@ -159,7 +159,7 @@ export default function FaqLanding() {
                   <div key={s.label} className="flex items-center gap-4">
                     <span
                       className="font-extrabold tabular-nums"
-                      style={{ fontSize: '1.5rem', color: C.accent, minWidth: 64, lineHeight: 1 }}
+                      style={{ fontSize: '1.5rem', color: C.accent, width: 72, textAlign: 'center', lineHeight: 1, flexShrink: 0 }}
                     >
                       {s.num}
                     </span>

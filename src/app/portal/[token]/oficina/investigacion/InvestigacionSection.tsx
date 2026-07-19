@@ -17,14 +17,14 @@ const TYPES: { key: ResearchType; label: string; icon: React.ElementType; desc: 
     key:         'leads',
     label:       'Leads',
     icon:        Users,
-    desc:        'Personas o empresas con una necesidad específica',
-    placeholder: 'Ej: personas que quieren vender su casa, empresas que buscan contador…',
+    desc:        'Personas u organizaciones con una necesidad específica',
+    placeholder: 'Ej: personas que quieren vender su casa, organizaciones que buscan contador…',
   },
   {
     key:         'competidores',
     label:       'Competidores',
     icon:        RefreshCw,
-    desc:        'Negocios del mismo giro en tu zona',
+    desc:        'Organizaciones del mismo giro en tu zona',
     placeholder: 'Ej: despachos contables, agencias de marketing digital…',
   },
   {

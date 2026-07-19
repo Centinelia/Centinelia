@@ -22,8 +22,8 @@ const TASKS = [
   { id: 'pedido',      label: 'Tomar un pedido' },
   { id: 'cancelar',    label: 'Cancelar' },
   { id: 'seguimiento', label: 'Dar seguimiento' },
-  { id: 'dudas',       label: 'Resolver dudas' },
   { id: 'cobrar',      label: 'Cobrar' },
+  { id: 'dudas',       label: 'Resolver dudas' },
 ];
 
 const G: Record<string, Record<string, string>> = {
@@ -280,6 +280,17 @@ export default function NiaInterview() {
 
     setCallState('connecting');
     setError(null);
+
+    // Pedir micrófono antes del fetch — en móvil el permiso debe solicitarse
+    // dentro del contexto del tap del usuario, antes de cualquier await async.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+    } catch {
+      setCallState('idle');
+      setError('Necesitamos acceso al micrófono para la llamada.');
+      return;
+    }
 
     try {
       const greeting = activeGreeting ?? 'Hola, gracias por llamar. ¿En qué le puedo ayudar?';
