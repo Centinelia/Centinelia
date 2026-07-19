@@ -205,23 +205,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── Meerkat responsive positioning ────────────────────────────────────── */
-.meerkat-money {
-  display: none;
-}
-@media (min-width: 1024px) {
-  .meerkat-money {
-    display: block;
-    position: absolute;
-    /* subtitle starts at: py-28(112) + label+mb-3(26) + h2 2-lines+mb-4(126) = 264px */
-    top: 264px;
-    bottom: 0;
-    right: 0;
-    width: 312px;
-    z-index: 0;
-    pointer-events: none;
-    user-select: none;
-  }
-}
 
 .meerkat-duo-stand {
   display: none;

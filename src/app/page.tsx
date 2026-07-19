@@ -319,94 +319,102 @@ export default function LandingPage() {
           }} />
         </div>
 
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:pr-80 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
-          {/* Floating illustration — inside the container so it shares its stacking context.
-              CSS escapes it leftward to cover the full left zone. */}
-          <MeerkatReveal className="meerkat-money">
-            <OverloadIllustration />
-          </MeerkatReveal>
+        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-5 lg:gap-14 lg:items-start">
 
-          {/* Mobile header */}
-          <div className="lg:hidden mb-4">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              El límite
-            </p>
-            <h2
-              className="font-bold tracking-tight mb-3"
-              style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: '#fff', lineHeight: 1.2 }}
-            >
-              Toda organización<br />tiene una capacidad.
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-              Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
-            </p>
-          </div>
-
-          {/* Desktop header */}
-          <div className="hidden lg:block text-center mb-14">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              El límite
-            </p>
-            <h2
-              className="font-bold tracking-tight mb-4"
-              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff', lineHeight: 1.15 }}
-            >
-              Toda organización<br />tiene una capacidad.
-            </h2>
-            <p className="max-w-lg mx-auto" style={{ color: 'rgba(255,255,255,0.52)' }}>
-              Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
-            </p>
-          </div>
-
-          {/* Consequence cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5" style={{ position: 'relative', zIndex: 1 }}>
-            {LIMITS.map((p, i) => (
-              <AnimatedSection key={p.title} delay={i * 0.1}>
-                <div
-                  className="rounded-2xl p-6 h-full"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
+            {/* ── Left column: text content ───────────────────────────────── */}
+            <div className="lg:col-span-3">
+              {/* Mobile header */}
+              <div className="lg:hidden mb-4">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'rgba(155,109,255,0.7)' }}>
+                  El límite
+                </p>
+                <h2
+                  className="font-bold tracking-tight mb-3"
+                  style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: '#fff', lineHeight: 1.2 }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
-                    style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
-                  >
-                    {p.icon}
-                  </div>
-                  <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
-                    {p.label}
-                  </p>
-                  <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
-                    {p.title}
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {p.items.map(item => (
-                      <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {item}
+                  Toda organización<br />tiene una capacidad.
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                  Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
+                </p>
+              </div>
+
+              {/* Desktop header — left aligned */}
+              <div className="hidden lg:block mb-10">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+                  El límite
+                </p>
+                <h2
+                  className="font-bold tracking-tight mb-4"
+                  style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', color: '#fff', lineHeight: 1.15 }}
+                >
+                  Toda organización<br />tiene una capacidad.
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 440, lineHeight: 1.65 }}>
+                  Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
+                </p>
+              </div>
+
+              {/* Consequence cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-5" style={{ position: 'relative', zIndex: 1 }}>
+                {LIMITS.map((p, i) => (
+                  <AnimatedSection key={p.title} delay={i * 0.1}>
+                    <div
+                      className="rounded-2xl p-6 h-full"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
+                        style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
+                      >
+                        {p.icon}
+                      </div>
+                      <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
+                        {p.label}
                       </p>
-                    ))}
-                  </div>
+                      <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
+                        {p.title}
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {p.items.map(item => (
+                          <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            {item}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </AnimatedSection>
+                ))}
+              </div>
+
+              {/* Quote bridge */}
+              <AnimatedSection delay={0.15}>
+                <div
+                  className="mt-6 rounded-2xl px-7 py-7"
+                  style={{ background: 'rgba(108,59,255,0.09)', border: '1px solid rgba(108,59,255,0.2)', borderLeftWidth: 3, borderLeftColor: 'rgba(108,59,255,0.55)', borderLeftStyle: 'solid' }}
+                >
+                  <p
+                    className="font-semibold leading-relaxed"
+                    style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}
+                  >
+                    Las ventas generan crecimiento.<br />
+                    <span style={{ color: '#C4A8FF' }}>
+                      La capacidad determina hasta dónde puedes crecer.
+                    </span>
+                  </p>
                 </div>
               </AnimatedSection>
-            ))}
-          </div>
-
-          {/* Quote bridge */}
-          <AnimatedSection delay={0.15}>
-            <div
-              className="mt-8 rounded-2xl px-7 py-7"
-              style={{ borderLeft: '3px solid rgba(108,59,255,0.55)', background: 'rgba(108,59,255,0.09)', border: '1px solid rgba(108,59,255,0.2)', borderLeftWidth: 3, borderLeftColor: 'rgba(108,59,255,0.55)' }}
-            >
-              <p
-                className="font-semibold leading-relaxed"
-                style={{ fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}
-              >
-                Las ventas generan crecimiento.<br />
-                <span style={{ color: '#C4A8FF' }}>
-                  La capacidad determina hasta dónde puedes crecer.
-                </span>
-              </p>
             </div>
-          </AnimatedSection>
+
+            {/* ── Right column: animated illustration (desktop only) ──────── */}
+            <div className="hidden lg:flex lg:col-span-2 flex-col" style={{ minHeight: 520 }}>
+              <MeerkatReveal style={{ flex: 1, position: 'relative' }}>
+                <OverloadIllustration />
+              </MeerkatReveal>
+            </div>
+
+          </div>
         </div>
       </section>
 
