@@ -29,17 +29,17 @@ const CLIENTE: AgentDef = {
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
   img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '10.5px',
-  mobileImgShiftX: '8.5px',
+  mobileImgShiftX: '9px',
 };
 
 const SPECIALISTS: AgentDef[] = [
   { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '3px', mobileImgScale: 1.1 },
   { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
   { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%', mobileImgShiftY: '1.5px' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '2px' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px', mobileImgShiftX: '10.5px', mobileImgShiftY: '5px' },
-  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px', mobileImgShiftX: '16px' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%', mobileImgShiftX: '-0.5px' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%', mobileImgShiftX: '0', mobileImgShiftY: '3px' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px', mobileImgShiftX: '11px', mobileImgShiftY: '4px' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px', mobileImgShiftX: '16px', mobileImgShiftY: '5px' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -178,7 +178,7 @@ export default function TeamFlowSection() {
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: '-80px 0px' });
 
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
     check();
@@ -275,8 +275,8 @@ export default function TeamFlowSection() {
           </p>
         </motion.div>
 
-        {/* Flow diagram */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {/* Flow diagram — oculto hasta determinar dispositivo para evitar flash de layout desktop */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: isMobile === null ? 0 : 1, transition: 'opacity 0.25s' }}>
 
           {/* Cliente */}
           <AvatarNode agent={CLIENTE} size={clienteSize} delay={0} inView={inView} isClient />
@@ -458,7 +458,7 @@ export default function TeamFlowSection() {
               transform: 'translate(-50%, -50%)',
               zIndex: 2,
             }}>
-              <AvatarNode agent={NIA} size={niaSize} delay={0.18} inView={inView} isMobile={isMobile} />
+              <AvatarNode agent={NIA} size={niaSize} delay={0.18} inView={inView} isMobile={isMobile ?? false} />
             </div>
 
             {/* Dirección — exact center: outer div positions, motion.div animates */}
@@ -517,7 +517,7 @@ export default function TeamFlowSection() {
                   inView={inView}
                   hidePill={false}
                   dimmed={inView && !activeSet.has(i)}
-                  isMobile={isMobile}
+                  isMobile={isMobile ?? false}
                 />
               </div>
             ))}

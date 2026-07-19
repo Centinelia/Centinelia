@@ -25,6 +25,19 @@ const AGENTS: { id: AgentId; name: string }[] = [
   { id: 'niva',  name: 'Niva'  },
 ];
 
+const IMG_CFG: Record<AgentId, { pos: string; scale?: number; tx?: string; ty?: string }> = {
+  nia:   { pos: 'center 10%', scale: 1.50, tx: '8.5px', ty: '-2.5px' },
+  noah:  { pos: 'center 8%', scale: 1.2, ty: '3px' },
+  nelia: { pos: 'center 8%', ty: '3px' },
+  nara:  { pos: 'center 8%',  scale: 1.2,  tx: '-1.5px',  ty: '4px' },
+  nico:  { pos: 'center 8%', tx: '0.5px', ty: '2px' },
+  naia:  { pos: 'center 8%' },
+  neo:   { pos: 'center 10%', scale: 1.45, tx: '11.5px', ty: '3.5px' },
+  nova:  { pos: 'center 5%',  scale: 2.00, tx: '16px',   ty: '4px' },
+  nox:   { pos: 'center 5%',  scale: 2.5, tx: '1px' },
+  niva:  { pos: 'center 5%',  scale: 2.3 },
+};
+
 interface Industry {
   Icon:     LucideIcon;
   color:    string;
@@ -247,7 +260,17 @@ export default function IndustriesSection() {
                             src={`/meerkats/${id}.png`}
                             alt={name}
                             fill
-                            style={{ objectFit: 'cover', objectPosition: 'center 10%' }}
+                            style={{
+                              objectFit:      'cover',
+                              objectPosition: IMG_CFG[id].pos,
+                              transform:      [
+                                IMG_CFG[id].tx || IMG_CFG[id].ty
+                                  ? `translate(${IMG_CFG[id].tx ?? '0'}, ${IMG_CFG[id].ty ?? '0'})`
+                                  : null,
+                                IMG_CFG[id].scale ? `scale(${IMG_CFG[id].scale})` : null,
+                              ].filter(Boolean).join(' ') || undefined,
+                              transformOrigin: 'center 10%',
+                            }}
                           />
                         </div>
                         <span style={{
