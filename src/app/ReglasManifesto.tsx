@@ -66,13 +66,15 @@ function CallExample() {
   return (
     <div style={CARD_S}>
       {/* Out of hours — header */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0 }}
-        className="px-4 pt-5 pb-3 flex items-center gap-2.5">
-        <span style={{ fontSize: 12, lineHeight: 1 }}>🌙</span>
-        <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.04em' }}>
+        className="px-4 py-3 flex items-center gap-2"
+        style={{ background: 'rgba(108,59,255,0.1)', borderBottom: '1px solid rgba(108,59,255,0.22)' }}>
+        <span style={{ fontSize: 11, lineHeight: 1 }}>🌙</span>
+        <span className="font-bold tracking-widest uppercase"
+          style={{ fontSize: '9px', letterSpacing: '0.16em', color: '#9B6DFF' }}>
           Fuera del horario laboral
-        </p>
+        </span>
       </motion.div>
 
       <Connector delay={0.2} />
