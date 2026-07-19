@@ -408,6 +408,59 @@ const WEB_SEARCH_TOOL: Anthropic.Tool = {
   },
 };
 
+const ML_ANALIZAR_PUBLICACIONES_TOOL: Anthropic.Tool = {
+  name: 'analizar_publicaciones_ml',
+  description: 'Obtiene las publicaciones activas del vendedor en Mercado Libre (títulos, precios, stock, estado, links). Úsala cuando el dueño quiera revisar su catálogo, comparar precios, identificar productos sin stock o analizar su presencia en el marketplace.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
+
+const ML_CREAR_PUBLICACION_TOOL: Anthropic.Tool = {
+  name: 'crear_publicacion_ml',
+  description: 'Crea una nueva publicación en Mercado Libre para el vendedor. Úsala cuando el dueño pida publicar un producto nuevo en el marketplace.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      title:              { type: 'string',  description: 'Título de la publicación. Máximo 60 caracteres, descriptivo y con palabras clave.' },
+      price:              { type: 'number',  description: 'Precio de venta en pesos MXN.' },
+      category_id:        { type: 'string',  description: 'ID de categoría de Mercado Libre México. Ej: MLM1055 (Celulares), MLM1648 (Computadoras). Si no lo sabes, omítelo y se solicitará al dueño.' },
+      available_quantity: { type: 'number',  description: 'Cantidad disponible en inventario.' },
+      condition:          { type: 'string',  enum: ['new', 'used'], description: '"new" para producto nuevo, "used" para usado.' },
+      listing_type_id:    { type: 'string',  description: 'Tipo de publicación. "gold_special" (recomendado), "gold_pro", "gold", "silver", "bronze", "free".' },
+      description:        { type: 'string',  description: 'Descripción detallada del producto.' },
+    },
+    required: ['title', 'price', 'category_id', 'available_quantity'],
+  },
+};
+
+const ML_ACTUALIZAR_PUBLICACION_TOOL: Anthropic.Tool = {
+  name: 'actualizar_publicacion_ml',
+  description: 'Actualiza precio, stock o título de una publicación existente en Mercado Libre. Úsala cuando el dueño quiera modificar datos de un producto ya publicado.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      item_id:            { type: 'string', description: 'ID de la publicación en ML. Empieza con "MLM". Obtenlo de analizar_publicaciones_ml.' },
+      price:              { type: 'number', description: 'Nuevo precio en pesos MXN (opcional).' },
+      available_quantity: { type: 'number', description: 'Nuevo stock disponible (opcional).' },
+      title:              { type: 'string', description: 'Nuevo título de la publicación (opcional).' },
+    },
+    required: ['item_id'],
+  },
+};
+
+const ML_VER_METRICAS_TOOL: Anthropic.Tool = {
+  name: 'ver_metricas_ml',
+  description: 'Muestra métricas de ventas y visitas del vendedor en Mercado Libre: total de publicaciones activas, visitas por ítem en los últimos 30 días y órdenes recientes pagadas. Úsala cuando el dueño quiera saber cómo va su desempeño en el marketplace.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {},
+    required: [],
+  },
+};
+
 const REPORT_ISSUE_TOOL: Anthropic.Tool = {
   name: 'reportar_falla',
   description: 'Reporta una falla técnica inesperada al equipo de Centinelia. Úsala cuando encuentres un error real del sistema: timeout de API, falla al escribir archivo, herramienta con comportamiento incorrecto, resultado corrupto, etc. NO la uses para errores de autenticación o sesión expirada — esos se resuelven pidiéndole al dueño que reconecte la integración. No consume ops del cliente.',
@@ -451,6 +504,10 @@ const ALL_TOOLS = [
   UPDATE_CIVIC_REPORT_TOOL,
   WEB_SEARCH_TOOL,
   REPORT_ISSUE_TOOL,
+  ML_ANALIZAR_PUBLICACIONES_TOOL,
+  ML_CREAR_PUBLICACION_TOOL,
+  ML_ACTUALIZAR_PUBLICACION_TOOL,
+  ML_VER_METRICAS_TOOL,
 ];
 
 const SOCIAL_DOMAINS = ['facebook.com', 'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'tiktok.com'];
@@ -677,6 +734,10 @@ Herramientas disponibles:
 - search_leads: para investigaciones de mercado especializadas. Usa research_type para elegir la estrategia: "leads" (rastrea todos los canales de prospectos), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo lanza múltiples queries optimizadas en paralelo. Usa esta cuando la tarea sea explícitamente de prospección o inteligencia de mercado.
 - read_url: después de buscar_en_web o search_leads, lee el contenido de los resultados más relevantes para obtener datos reales. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) — usan el título y descripción del resultado de búsqueda en cambio.
 - reportar_falla: cuando encuentres un error, falla o comportamiento inesperado en cualquier sistema o proceso durante tu operación (correo, archivos, calendario, POS, CRM, etc.). No afecta las ops del negocio.
+- analizar_publicaciones_ml: obtiene el catálogo de publicaciones activas del dueño en Mercado Libre (IDs, títulos, precios, stock, estado, links). Úsala antes de actualizar o cuando pidan revisar el catálogo.
+- crear_publicacion_ml: publica un producto nuevo en Mercado Libre. Requiere title, price, category_id y available_quantity mínimo.
+- actualizar_publicacion_ml: modifica precio, stock o título de una publicación existente. Usa analizar_publicaciones_ml primero para obtener el item_id.
+- ver_metricas_ml: muestra resumen de desempeño en Mercado Libre: publicaciones activas, visitas 30 días y ventas recientes pagadas.
 
 Cuando necesites información para completar una tarea: usa buscar_en_web con la query más precisa posible, luego read_url en 1-3 resultados útiles, luego actúa con lo que encontraste.
 Cuando el dueño pida investigación de mercado o prospectos: usa search_leads con el research_type correcto, luego read_url en 2-3 resultados, luego presenta un resumen estructurado.
@@ -1376,6 +1437,106 @@ ${context}`;
               });
             }
             toolResult = { ok: true, message: 'Reporte de falla enviado al equipo de Centinelia.' };
+
+          } else if (pendingToolName === 'analizar_publicaciones_ml') {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+            const res = await fetch(`${appUrl}/api/portal/${token}/integrations/ml/listings`, {
+              headers: { Cookie: `${PORTAL_COOKIE}=${req.cookies.get(PORTAL_COOKIE)?.value ?? ''}` },
+            });
+            if (!res.ok) {
+              toolResult = { ok: false, error: 'Mercado Libre no conectado. El dueño debe conectarlo desde Integraciones en el portal.' };
+            } else {
+              const data = await res.json() as { items: unknown[] };
+              const items = data.items ?? [];
+              if (!items.length) {
+                toolResult = { ok: true, items: [], message: 'No hay publicaciones activas en Mercado Libre.' };
+              } else {
+                const lines = (items as Array<Record<string, unknown>>).map(i =>
+                  `- [${i.id}] ${i.title} | Precio: $${i.price} MXN | Stock: ${i.available_quantity} | Estado: ${i.status} | ${i.permalink}`
+                ).join('\n');
+                toolResult = { ok: true, items, message: `${items.length} publicación(es) encontrada(s):\n${lines}` };
+              }
+            }
+
+          } else if (pendingToolName === 'crear_publicacion_ml') {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+            const res = await fetch(`${appUrl}/api/portal/${token}/integrations/ml/items`, {
+              method:  'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Cookie: `${PORTAL_COOKIE}=${req.cookies.get(PORTAL_COOKIE)?.value ?? ''}`,
+              },
+              body: JSON.stringify(toolInput),
+            });
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({})) as { error?: string };
+              toolResult = { ok: false, error: errData.error ?? 'No se pudo crear la publicación en Mercado Libre.' };
+            } else {
+              const data = await res.json() as { item: Record<string, unknown> };
+              toolResult = {
+                ok: true,
+                item: data.item,
+                message: `Publicación creada correctamente en Mercado Libre. ID: ${data.item?.id}. Ver: ${data.item?.permalink}`,
+              };
+            }
+
+          } else if (pendingToolName === 'actualizar_publicacion_ml') {
+            const itemId = toolInput.item_id as string;
+            if (!itemId) {
+              toolResult = { ok: false, error: 'Se requiere item_id para actualizar la publicación.' };
+            } else {
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+              const payload: Record<string, unknown> = {};
+              if (toolInput.price              !== undefined) payload.price              = toolInput.price;
+              if (toolInput.available_quantity !== undefined) payload.available_quantity = toolInput.available_quantity;
+              if (toolInput.title              !== undefined) payload.title              = toolInput.title;
+              const res = await fetch(`${appUrl}/api/portal/${token}/integrations/ml/items/${itemId}`, {
+                method:  'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Cookie: `${PORTAL_COOKIE}=${req.cookies.get(PORTAL_COOKIE)?.value ?? ''}`,
+                },
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok) {
+                const errData = await res.json().catch(() => ({})) as { error?: string };
+                toolResult = { ok: false, error: errData.error ?? 'No se pudo actualizar la publicación.' };
+              } else {
+                toolResult = { ok: true, message: `Publicación ${itemId} actualizada correctamente en Mercado Libre.` };
+              }
+            }
+
+          } else if (pendingToolName === 'ver_metricas_ml') {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+            const res = await fetch(`${appUrl}/api/portal/${token}/integrations/ml/metrics`, {
+              headers: { Cookie: `${PORTAL_COOKIE}=${req.cookies.get(PORTAL_COOKIE)?.value ?? ''}` },
+            });
+            if (!res.ok) {
+              toolResult = { ok: false, error: 'Mercado Libre no conectado. El dueño debe conectarlo desde Integraciones en el portal.' };
+            } else {
+              const data = await res.json() as {
+                item_count: number;
+                visits: unknown;
+                recent_orders: Array<Record<string, unknown>>;
+                period: { from: string; to: string };
+              };
+              const orders     = data.recent_orders ?? [];
+              const totalSales = orders.reduce((sum, o) => sum + ((o.total_amount as number) ?? 0), 0);
+              const orderLines = orders.slice(0, 5).map(o =>
+                `- Orden #${o.id} | $${o.total_amount} MXN | ${o.status} | ${o.date_created}`
+              ).join('\n');
+              toolResult = {
+                ok: true,
+                data,
+                message: [
+                  `Métricas de Mercado Libre (${data.period?.from} al ${data.period?.to}):`,
+                  `- Publicaciones activas: ${data.item_count}`,
+                  `- Ventas recientes pagadas: ${orders.length} pedidos | Total: $${totalSales.toFixed(2)} MXN`,
+                  orders.length ? `\nÚltimos pedidos:\n${orderLines}` : '',
+                  data.visits ? `\nDatos de visitas disponibles para ${data.item_count} publicación(es).` : '',
+                ].filter(Boolean).join('\n'),
+              };
+            }
 
           } else {
             toolResult = { ok: false, error: `Herramienta desconocida: ${pendingToolName}` };
