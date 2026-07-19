@@ -33,6 +33,7 @@ import { generateSlides, type Slide } from '@/lib/documents/slides';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
+import { getKnowledgeBase } from '@/lib/knowledge-base';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -709,7 +710,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     } catch { /* Notion unavailable */ }
   }
 
-  const context = sections.join('\n\n');
+  const context  = sections.join('\n\n');
+  const kbPortal = await getKnowledgeBase('kb_portal');
 
   const system = `Eres ${agentName}, empleado de ${agent.business_name}${agentRole ? ` con el rol de ${agentRole}` : ''}.
 
@@ -775,6 +777,7 @@ Cuando generes contenido para create_document o create_file, aplica estos princi
 - Todos: tono profesional sin sonar robótico. Elimina relleno. Cada párrafo debe ganar su lugar.
 
 Responde en español mexicano. Sé directo — 2 a 5 oraciones a menos que se pida más detalle.
+${kbPortal ? `\n## Guía de marca y terminología\n${kbPortal}` : ''}
 
 ## Contexto operativo
 
@@ -1591,15 +1594,18 @@ ${context}`;
         }).catch(err => console.error('[agent-chat] chat-learning failed:', err));
 
         // Harness run log — fire-and-forget, never blocks the stream
-        supabase.from('agent_runs').insert({
-          agent_id:     _agentId,
-          portal_email: _portalEmail,
-          started_at:   new Date(runStart).toISOString(),
-          ended_at:     new Date().toISOString(),
-          duration_ms:  Date.now() - runStart,
-          tools_called: toolsCalled,
-          llm_calls:    llmCalls,
-        }).then().catch(err => console.error('[agent-chat] run log failed:', err));
+        void (async () => {
+          const { error } = await supabase.from('agent_runs').insert({
+            agent_id:     _agentId,
+            portal_email: _portalEmail,
+            started_at:   new Date(runStart).toISOString(),
+            ended_at:     new Date().toISOString(),
+            duration_ms:  Date.now() - runStart,
+            tools_called: toolsCalled,
+            llm_calls:    llmCalls,
+          });
+          if (error) console.error('[agent-chat] run log failed:', error.message);
+        })();
       }
     },
   });
