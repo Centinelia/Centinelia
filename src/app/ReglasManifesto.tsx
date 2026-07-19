@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Phone, X, ShieldAlert, Lock } from 'lucide-react';
+import { Check, Phone, X, ShieldAlert, Lock, Moon } from 'lucide-react';
 
 // ─── Shared styles ─────────────────────────────────────────────────────────
 const CARD_S = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(108,59,255,0.2)', borderRadius: 12, overflow: 'hidden' as const };
@@ -70,7 +70,7 @@ function CallExample() {
         transition={{ duration: 0.3, delay: 0 }}
         className="px-4 py-3 flex items-center gap-2"
         style={{ background: 'rgba(108,59,255,0.1)', borderBottom: '1px solid rgba(108,59,255,0.22)' }}>
-        <span style={{ fontSize: 11, lineHeight: 1 }}>🌙</span>
+        <Moon size={11} color="#9B6DFF" />
         <span className="font-bold tracking-widest uppercase"
           style={{ fontSize: '9px', letterSpacing: '0.16em', color: '#9B6DFF' }}>
           Fuera del horario laboral
