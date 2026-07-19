@@ -579,9 +579,8 @@ export default function LandingPage() {
                 <AnimatedSection key={m.nombre} delay={(i + 4) * 0.06}
                   className={`h-full${isLastOdd ? ' col-span-2 sm:col-span-1 flex justify-center' : ''}`}>
                   <div
-                    className="rounded-2xl overflow-hidden h-full"
+                    className={`rounded-2xl overflow-hidden h-full${isLastOdd ? ' w-[calc(50%-6px)] sm:w-full' : ''}`}
                     style={{
-                      width:     isLastOdd ? 'calc(50% - 6px)' : undefined,
                       background: C.surface,
                       border:     `1px solid ${C.border}`,
                       boxShadow:  '0 2px 12px rgba(108,59,255,0.20)',
@@ -623,7 +622,7 @@ export default function LandingPage() {
                 className="font-extrabold tracking-tight mb-8"
                 style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: C.text, lineHeight: 1.1 }}
               >
-                Contrata capacidad,<br className="sm:hidden" />
+                Contrata capacidad,<br className="sm:hidden" />{' '}
                 <span style={{
                   background: 'linear-gradient(135deg, #6C3BFF 0%, #9B6DFF 100%)',
                   WebkitBackgroundClip: 'text',

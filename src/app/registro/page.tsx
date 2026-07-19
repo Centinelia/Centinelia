@@ -999,7 +999,7 @@ function RegistroInner() {
                         <img
                           src={dir.imagen!}
                           alt={dir.nombre}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }}
                         />
                         {sel && (
                           <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: dir.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
