@@ -149,26 +149,6 @@ export default function FaqLanding() {
                 Aquí resolvemos las preguntas que casi todos hacen antes de empezar.
               </p>
 
-              {/* Stats */}
-              <div className="flex flex-col gap-5 items-start sm:items-start">
-                {[
-                  { num: '< 24h', label: 'Tiempo de activación' },
-                  { num: '24/7',  label: 'Disponibilidad garantizada' },
-                  { num: '∞',     label: 'Conversaciones simultáneas' },
-                ].map(s => (
-                  <div key={s.label} className="flex items-center gap-4">
-                    <span
-                      className="font-extrabold tabular-nums"
-                      style={{ fontSize: '1.5rem', color: C.accent, width: 72, textAlign: 'center', lineHeight: 1, flexShrink: 0 }}
-                    >
-                      {s.num}
-                    </span>
-                    <span style={{ fontSize: '0.875rem', color: C.textMute, lineHeight: 1.4 }}>
-                      {s.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </AnimatedSection>
 
             {/* Closing card — desktop only, anchored to bottom of left col */}

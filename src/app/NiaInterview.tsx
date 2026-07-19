@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Phone, PhoneOff, Sparkles, Loader2 } from 'lucide-react';
+import { Phone, PhoneOff, Sparkles, Loader2, Mic } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
 import { motion, AnimatePresence } from 'motion/react';
 import DailyIframe from '@daily-co/daily-js';
@@ -244,7 +244,7 @@ function NiaCard() {
   );
 }
 
-type CallState = 'idle' | 'connecting' | 'active' | 'ended';
+type CallState = 'idle' | 'mic_primer' | 'connecting' | 'active' | 'ended';
 
 export default function NiaInterview() {
   const [industry, setIndustry]             = useState<string | null>(null);
@@ -277,13 +277,19 @@ export default function NiaInterview() {
       await callObjRef.current?.leave();
       return;
     }
-    if (callState === 'connecting') return;
+    if (callState === 'connecting' || callState === 'mic_primer') return;
 
+    // Show primer before requesting mic so user knows what's coming
+    setCallState('mic_primer');
+    setError(null);
+  }
+
+  // Called from the primer "Continuar" button — must be a direct click handler
+  // so iOS Safari treats getUserMedia as a user-gesture-initiated request.
+  async function handleMicContinue() {
     setCallState('connecting');
     setError(null);
 
-    // Pedir micrófono antes del fetch — en móvil el permiso debe solicitarse
-    // dentro del contexto del tap del usuario, antes de cualquier await async.
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
@@ -493,45 +499,101 @@ export default function NiaInterview() {
                 )}
               </AnimatePresence>
 
-              {/* Call button */}
+              {/* Call button / mic primer */}
               <div>
-                {callState === 'ended' ? (
-                  <div
-                    className="flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-sm"
-                    style={{ background: 'rgba(34,197,94,0.08)', border: '1.5px solid rgba(34,197,94,0.25)', color: '#15803d' }}
-                  >
-                    Llamada terminada. Hasta pronto.
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleCall}
-                    disabled={callState === 'connecting'}
-                    className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold transition-all hover:opacity-92 hover:scale-[1.015] disabled:cursor-not-allowed"
-                    style={{
-                      background: callState === 'active'
-                        ? 'linear-gradient(135deg, #dc2626, #ef4444)'
-                        : hasSelection
-                          ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)'
-                          : 'rgba(108,59,255,0.07)',
-                      color:     (callState === 'active' || hasSelection) ? '#fff' : 'rgba(26,10,59,0.4)',
-                      border:    `1.5px solid ${callState === 'active' || hasSelection ? 'transparent' : 'rgba(108,59,255,0.15)'}`,
-                      boxShadow: callState === 'active'
-                        ? '0 8px 32px rgba(220,38,38,0.28)'
-                        : hasSelection
-                          ? '0 8px 32px rgba(108,59,255,0.32)'
-                          : 'none',
-                      fontSize:   '1rem',
-                      transition: 'all 0.25s ease',
-                    }}
-                  >
-                    {callState === 'connecting' && <Loader2 size={18} className="animate-spin" />}
-                    {callState === 'active'     && <PhoneOff size={18} />}
-                    {(callState === 'idle')     && <Phone size={18} />}
-                    {callState === 'connecting' ? 'Conectando...'
-                      : callState === 'active'  ? 'Terminar llamada'
-                      : 'Llamar a Nia'}
-                  </button>
-                )}
+                <AnimatePresence mode="wait">
+                  {callState === 'ended' ? (
+                    <motion.div
+                      key="ended"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.22 }}
+                      className="flex items-center justify-center gap-2 rounded-2xl py-4 font-semibold text-sm"
+                      style={{ background: 'rgba(34,197,94,0.08)', border: '1.5px solid rgba(34,197,94,0.25)', color: '#15803d' }}
+                    >
+                      Llamada terminada. Hasta pronto.
+                    </motion.div>
+                  ) : callState === 'mic_primer' ? (
+                    <motion.div
+                      key="mic_primer"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-2xl p-5"
+                      style={{ background: 'rgba(108,59,255,0.05)', border: '1.5px solid rgba(108,59,255,0.18)' }}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="flex-shrink-0 flex items-center justify-center rounded-xl"
+                          style={{ width: 40, height: 40, background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)' }}
+                        >
+                          <Mic size={18} color="#fff" strokeWidth={1.75} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm mb-1" style={{ color: '#1A0A3B' }}>
+                            Necesitamos acceso a tu micrófono
+                          </p>
+                          <p className="text-xs leading-relaxed" style={{ color: 'rgba(26,10,59,0.55)' }}>
+                            Tu dispositivo te pedirá confirmación. Sin él, Nia no puede escucharte durante la llamada.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-4">
+                        <button
+                          onClick={handleMicContinue}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm transition-all hover:opacity-90 hover:scale-[1.015]"
+                          style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff', boxShadow: '0 6px 24px rgba(108,59,255,0.3)' }}
+                        >
+                          <Phone size={14} />
+                          Continuar
+                        </button>
+                        <button
+                          onClick={() => setCallState('idle')}
+                          className="px-4 py-3 rounded-xl text-sm font-medium transition-all hover:opacity-70"
+                          style={{ color: 'rgba(26,10,59,0.45)' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.button
+                      key="call-btn"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.22 }}
+                      onClick={handleCall}
+                      disabled={callState === 'connecting'}
+                      className="w-full flex items-center justify-center gap-3 rounded-2xl py-4 font-bold transition-all hover:opacity-92 hover:scale-[1.015] disabled:cursor-not-allowed"
+                      style={{
+                        background: callState === 'active'
+                          ? 'linear-gradient(135deg, #dc2626, #ef4444)'
+                          : hasSelection
+                            ? 'linear-gradient(135deg, #6C3BFF, #9B6DFF)'
+                            : 'rgba(108,59,255,0.07)',
+                        color:     (callState === 'active' || hasSelection) ? '#fff' : 'rgba(26,10,59,0.4)',
+                        border:    `1.5px solid ${callState === 'active' || hasSelection ? 'transparent' : 'rgba(108,59,255,0.15)'}`,
+                        boxShadow: callState === 'active'
+                          ? '0 8px 32px rgba(220,38,38,0.28)'
+                          : hasSelection
+                            ? '0 8px 32px rgba(108,59,255,0.32)'
+                            : 'none',
+                        fontSize:   '1rem',
+                        transition: 'all 0.25s ease',
+                      }}
+                    >
+                      {callState === 'connecting' && <Loader2 size={18} className="animate-spin" />}
+                      {callState === 'active'     && <PhoneOff size={18} />}
+                      {callState === 'idle'       && <Phone size={18} />}
+                      {callState === 'connecting' ? 'Conectando...'
+                        : callState === 'active'  ? 'Terminar llamada'
+                        : 'Llamar a Nia'}
+                    </motion.button>
+                  )}
+                </AnimatePresence>
 
                 {callState === 'idle' && (
                   <p className="text-center text-xs mt-2" style={{ color: 'rgba(26,10,59,0.3)' }}>
