@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Phone, PhoneOff, Sparkles, Loader2 } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
 import { motion, AnimatePresence } from 'motion/react';
+import DailyIframe from '@daily-co/daily-js';
 
 const DEMO_PHONE      = '+52 (81) 2188 8490';
 const DEMO_PHONE_HREF = 'tel:+528121888490';
@@ -308,7 +309,6 @@ export default function NiaInterview() {
       const data = await res.json() as { webCallUrl?: string; error?: string };
       if (!data.webCallUrl) throw new Error(data.error ?? 'No se recibió URL de llamada');
 
-      const DailyIframe = (await import('@daily-co/daily-js')).default;
       const callObj = DailyIframe.createCallObject({
         audioSource: true,
         videoSource: false,

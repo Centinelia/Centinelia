@@ -112,7 +112,7 @@ const INDUSTRIES: Industry[] = [
 
 export default function IndustriesSection() {
   const ref      = useRef(null);
-  const inView   = useInView(ref, { once: true, margin: '-500px 0px' });
+  const inView   = useInView(ref, { once: true, margin: '-100px 0px' });
   const [active, setActive] = useState(0);
   const ind = INDUSTRIES[active];
 
