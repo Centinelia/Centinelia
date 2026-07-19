@@ -55,50 +55,52 @@ function CrmExample() {
   );
 }
 
-// ─── Example: 02 — Call timeline ────────────────────────────────────────────
+// ─── Example: 02 — Continuity scenario ─────────────────────────────────────
 function CallExample() {
+  const Connector = ({ delay }: { delay: number }) => (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay }}
+      className="flex justify-center" style={{ margin: '2px 0' }}>
+      <div style={{ width: 1, height: 18, background: 'rgba(108,59,255,0.3)' }} />
+    </motion.div>
+  );
   return (
     <div style={CARD_S}>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0 }}
-        className="px-4 py-4 flex items-start gap-3">
-        <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          <Phone size={12} color="#ef4444" />
-        </div>
-        <div>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 2 }}>11:47 PM · Llamada entrante</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>No disponible</p>
-        </div>
+      {/* Timestamp */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0 }}
+        className="px-4 pt-5 pb-3 flex items-center gap-2.5">
+        <Phone size={12} color="rgba(255,255,255,0.25)" />
+        <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.04em' }}>
+          11:47 PM · Llamada entrante
+        </p>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
-        className="flex justify-center" style={{ margin: '-4px 0' }}>
-        <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.3)' }} />
+      <Connector delay={0.2} />
+
+      {/* Out of hours */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+        className="mx-4 my-2 px-3 py-2 rounded-lg flex items-center gap-2"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <span style={{ fontSize: 12 }}>🌙</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>Fuera del horario laboral</span>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.5 }}
-        className="px-4 py-4 flex items-start gap-3">
-        <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(108,59,255,0.2)', border: '1px solid rgba(108,59,255,0.4)', fontSize: 11, fontWeight: 800, color: '#9B6DFF' }}>
-          C
-        </div>
-        <div>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 2 }}>11:48 PM · Centinelia</p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 500, lineHeight: 1.55 }}>
-            Hola. Gracias por llamar.<br />¿En qué puedo ayudarte?
-          </p>
-        </div>
+      <Connector delay={0.45} />
+
+      {/* Centinelia responds */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.55 }}
+        className="mx-4 my-2 px-3 py-2 rounded-lg flex items-center gap-2"
+        style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.35)' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#C4A8FF' }}>Centinelia responde</span>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
-        className="flex justify-center" style={{ margin: '-4px 0' }}>
-        <div style={{ width: 1, height: 20, background: 'rgba(108,59,255,0.3)' }} />
-      </motion.div>
+      <Connector delay={0.7} />
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
-        <GreenCheck label="Cita agendada" />
+      {/* Client attended */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.85 }}>
+        <GreenCheck label="Cliente atendido" />
       </motion.div>
     </div>
   );

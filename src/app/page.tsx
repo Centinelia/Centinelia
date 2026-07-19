@@ -824,57 +824,29 @@ export default function LandingPage() {
             <div style={{ width: 44, height: 1, background: 'rgba(108,59,255,0.55)', margin: '2.5rem auto' }} />
           </AnimatedSection>
 
-          {/* Subtitle */}
+          {/* Pause */}
           <AnimatedSection delay={0.14}>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.38)', letterSpacing: '0.04em', marginBottom: '2.5rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.25)', fontStyle: 'italic', marginBottom: '2.75rem' }}>
               Mientras lees esto...
             </p>
           </AnimatedSection>
 
-          {/* Continuity scenario */}
+          {/* Loss lines */}
           <AnimatedSection delay={0.18}>
-            <div
-              className="mx-auto mb-10 rounded-2xl px-8 py-6 flex flex-col items-center gap-3"
-              style={{
-                maxWidth: 340,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.09)',
-              }}
-            >
-              {/* Time stamp */}
-              <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em' }}>
-                11:47 PM
-              </p>
-              {/* Out of hours label */}
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                <span style={{ fontSize: '0.75rem' }}>🌙</span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>Fuera del horario laboral</span>
-              </div>
-              {/* Arrow */}
-              <p style={{ color: 'rgba(108,59,255,0.5)', fontSize: '1.1rem', lineHeight: 1 }}>↓</p>
-              {/* Centinelia responds */}
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(108,59,255,0.18)', border: '1px solid rgba(108,59,255,0.35)' }}
-              >
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#C4A8FF' }}>Centinelia responde</span>
-              </div>
-              {/* Arrow */}
-              <p style={{ color: 'rgba(108,59,255,0.5)', fontSize: '1.1rem', lineHeight: 1 }}>↓</p>
-              {/* Client attended */}
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)' }}
-              >
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#86efac' }}>✓ Cliente atendido</span>
-              </div>
+            <div className="flex flex-col gap-2 mb-6">
+              {[
+                { text: 'Hay organizaciones esperando a que mañana sea lunes.', op: 0.58 },
+                { text: 'Esperando a que alguien llegue.',                op: 0.44 },
+                { text: 'Esperando a tener más capacidad.',               op: 0.3  },
+              ].map(({ text, op }) => (
+                <p key={text}
+                  style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: `rgba(255,255,255,${op})`, fontWeight: 400, lineHeight: 1.4 }}>
+                  {text}
+                </p>
+              ))}
             </div>
-
             <p style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: 'rgba(255,255,255,0.72)', fontWeight: 600, lineHeight: 1.4, marginBottom: '3rem' }}>
-              Ya no tiene porque ser así.
+              La tuya no tiene por qué esperar.
             </p>
           </AnimatedSection>
 
