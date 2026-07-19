@@ -414,7 +414,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4 mx-auto"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text, lineHeight: 1.1, maxWidth: 640 }}
             >
-              No es software.<br />No es recepcionista.<br />Es capacidad operativa que trabaja sola.
+              No es software.<br />No es recepcionista.<br />Es capacidad operativa que trabaja sola
             </h2>
             <p className="mx-auto" style={{ color: C.textSub, maxWidth: 520, lineHeight: 1.7 }}>
               La diferencia no está en las funciones. Está en que, por primera vez, tienes un empleado sin los límites que tienen todos los demás.
