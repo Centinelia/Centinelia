@@ -366,13 +366,13 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Group photo — mobile */}
-          <div className="lg:hidden relative w-full" style={{ height: 460, marginTop: -16 }}>
+          <div className="lg:hidden relative w-full" style={{ height: 300, marginTop: -16 }}>
             <Image
               src="/meerkats/grupo.png"
               alt="Equipo Centinelia"
               fill
               sizes="100vw"
-              style={{ objectFit: 'contain', objectPosition: 'center center' }}
+              style={{ objectFit: 'cover', objectPosition: 'center center' }}
             />
           </div>
         </div>
