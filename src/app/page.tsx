@@ -623,7 +623,7 @@ export default function LandingPage() {
                 className="font-extrabold tracking-tight mb-8"
                 style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2.2rem)', color: C.text, lineHeight: 1.1 }}
               >
-                Contrata capacidad,{' '}
+                Contrata capacidad,<br className="sm:hidden" />
                 <span style={{
                   background: 'linear-gradient(135deg, #6C3BFF 0%, #9B6DFF 100%)',
                   WebkitBackgroundClip: 'text',
