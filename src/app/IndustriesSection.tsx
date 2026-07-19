@@ -34,8 +34,8 @@ const IMG_CFG: Record<AgentId, { pos: string; scale?: number; tx?: string; ty?: 
   naia:  { pos: 'center 8%' },
   neo:   { pos: 'center 10%', scale: 1.45, tx: '11.5px', ty: '3.5px' },
   nova:  { pos: 'center 5%',  scale: 2.00, tx: '16px',   ty: '4px' },
-  nox:   { pos: 'center 5%',  scale: 2.5, tx: '1px' },
-  niva:  { pos: 'center 5%',  scale: 2.3 },
+  nox:   { pos: 'center 18%', scale: 1.8, tx: '1px' },
+  niva:  { pos: 'center 18%', scale: 1.8 },
 };
 
 interface Industry {
