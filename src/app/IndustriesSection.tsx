@@ -257,7 +257,7 @@ export default function IndustriesSection() {
                           transition: 'border-color 0.35s, box-shadow 0.35s',
                         }}>
                           <Image
-                            src={`/meerkats/${id}.png`}
+                            src={`/meerkats/${id}.png?v=2`}
                             alt={name}
                             fill
                             style={{
