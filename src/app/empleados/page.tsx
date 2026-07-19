@@ -354,19 +354,19 @@ export default function EmpleadosPage() {
             </AnimatedSection>
 
             {/* Group photo — desktop */}
-            <div className="hidden lg:block relative flex-shrink-0 self-center" style={{ width: 680, height: 560 }}>
+            <div className="hidden lg:block relative flex-shrink-0 self-center" style={{ width: 860, height: 700 }}>
               <Image
                 src="/meerkats/grupo.png"
                 alt="Equipo Centinelia"
                 fill
-                sizes="680px"
+                sizes="860px"
                 style={{ objectFit: 'contain', objectPosition: 'center center' }}
               />
             </div>
           </div>
 
           {/* Group photo — mobile */}
-          <div className="lg:hidden relative w-full" style={{ aspectRatio: '2752/1536', marginTop: -16 }}>
+          <div className="lg:hidden relative w-full" style={{ aspectRatio: '2752/1536', marginTop: -8 }}>
             <Image
               src="/meerkats/grupo.png"
               alt="Equipo Centinelia"
