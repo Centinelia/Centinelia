@@ -539,7 +539,7 @@ export default function NiaInterview() {
               <div className="flex items-center gap-4 mt-1">
                 <div style={{ flex: 1, height: 1, background: 'rgba(26,10,59,0.07)' }} />
                 <span className="text-xs whitespace-nowrap" style={{ color: 'rgba(26,10,59,0.3)' }}>
-                  o cuéntale sobre tu empresa
+                  o cuéntale sobre tu organización
                 </span>
                 <div style={{ flex: 1, height: 1, background: 'rgba(26,10,59,0.07)' }} />
               </div>
@@ -586,7 +586,7 @@ export default function NiaInterview() {
                     ? <Loader2 size={14} className="animate-spin" />
                     : <Sparkles size={14} />
                   }
-                  {loading ? 'Procesando...' : 'Cuéntale cómo trabaja tu empresa'}
+                  {loading ? 'Procesando...' : 'Cuéntale cómo trabaja tu organización'}
                 </button>
               </div>
 
