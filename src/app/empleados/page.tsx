@@ -341,7 +341,7 @@ export default function EmpleadosPage() {
                 </Link>
                 <Link
                   href="/registro?plan=empresarial"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium transition-colors whitespace-nowrap"
                   style={{
                     background: 'rgba(255,255,255,0.06)',
                     color: 'rgba(255,255,255,0.7)',
