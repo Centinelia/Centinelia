@@ -65,25 +65,25 @@ function CallExample() {
   );
   return (
     <div style={CARD_S}>
-      {/* Timestamp */}
+      {/* Out of hours — header */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0 }}
         className="px-4 pt-5 pb-3 flex items-center gap-2.5">
-        <Phone size={12} color="rgba(255,255,255,0.25)" />
+        <span style={{ fontSize: 12, lineHeight: 1 }}>🌙</span>
         <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.04em' }}>
-          11:47 PM · Llamada entrante
+          Fuera del horario laboral
         </p>
       </motion.div>
 
       <Connector delay={0.2} />
 
-      {/* Out of hours */}
+      {/* Incoming call */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.3 }}
         className="mx-4 my-2 px-3 py-2 rounded-lg flex items-center gap-2"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <span style={{ fontSize: 12 }}>🌙</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>Fuera del horario laboral</span>
+        <Phone size={12} color="rgba(255,255,255,0.35)" />
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)' }}>11:47 PM · Llamada entrante</span>
       </motion.div>
 
       <Connector delay={0.45} />
