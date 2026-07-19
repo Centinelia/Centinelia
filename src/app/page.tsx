@@ -2,27 +2,26 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Phone, PhoneOff, TrendingDown,
-  Clock, Check, ArrowRight, Play, Target, Rocket, Star,
+  Phone, Check, ArrowRight, Play, Rocket, Star,
+  Inbox, BellOff, TrendingUp,
   ShoppingBag, MessageCircle, Users,
 } from 'lucide-react';
 import LandingNav from './LandingNav';
 import LandingWidgets from './LandingWidgets';
+import PricingSection from './PricingSection';
 import RotatingNiche from './RotatingNiche';
 import FaqSection from './FaqSection';
-import DemoSelector from './DemoSelector';
+import NiaInterview from './NiaInterview';
 import AnimatedSection from './AnimatedSection';
 import MeerkatReveal from './MeerkatReveal';
+import OverloadIllustration from './OverloadIllustration';
 import AudioWaveform from './AudioWaveform';
 import Marquee from './Marquee';
 import TeamFlowSection from './TeamFlowSection';
+import ReglasManifesto from './ReglasManifesto';
+import FaqLanding from './FaqLanding';
 import BeforeAfterSection from './BeforeAfterSection';
 import IndustriesSection from './IndustriesSection';
-
-// ─── Demo agent ───────────────────────────────────────────────────────────────
-// Reemplaza con el número real del agente demo cuando esté configurado
-const DEMO_PHONE      = '+52 (81) 2188 8490';
-const DEMO_PHONE_HREF = 'tel:+528121888490';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -46,24 +45,27 @@ const TEAM = [
   { nombre: 'Personalizado', rol: 'A tu medida', desc: 'Diseña un empleado con el rol, nombre y personalidad que tu negocio necesita.',       color: '#6b7280', img: '/meerkats/custom.png'  },
 ];
 
-const PAINS = [
+const LIMITS = [
   {
-    icon:  <PhoneOff size={22} color="#dc2626" />,
-    stat:  '62%',
-    label: 'de los clientes no vuelve a llamar si no contestan a la primera.',
+    icon:  <Inbox size={20} color="#dc2626" />,
+    title: 'Las conversaciones se acumulan.',
+    items: ['Clientes esperando.', 'WhatsApps sin responder.', 'Correos pendientes.'],
     color: '#dc2626',
+    label: 'Conversaciones',
   },
   {
-    icon:  <TrendingDown size={22} color="#d97706" />,
-    stat:  '5–20',
-    label: 'oportunidades semanales se pierden solo por no contestar el teléfono.',
+    icon:  <BellOff size={20} color="#d97706" />,
+    title: 'Los seguimientos desaparecen.',
+    items: ['Cotizaciones olvidadas.', 'Llamadas pendientes.', 'Oportunidades perdidas.'],
     color: '#d97706',
+    label: 'Seguimientos',
   },
   {
-    icon:  <Clock size={22} color="#eab308" />,
-    stat:  '16 h',
-    label: 'al día en promedio tu organización está cerrada, pero tus clientes no dejan de llamar.',
-    color: '#eab308',
+    icon:  <TrendingUp size={20} color="#9ca3af" />,
+    title: 'La capacidad deja de alcanzar.',
+    items: ['Tu operación sigue creciendo.', 'Pero tu equipo sigue teniendo las mismas horas.'],
+    color: '#6b7280',
+    label: 'Capacidad',
   },
 ];
 
@@ -77,16 +79,12 @@ const AGENT_TYPES: {
     id: 'pro', name: 'Empleado Centinelia', setupFee: 14990, color: '#9B6DFF', popular: true,
     description: 'Todo lo que tu organización necesita para automatizar la atención telefónica desde el primer día.',
     features: [
-      'Atención telefónica 24/7',
-      'Captura de leads y agendamiento de citas',
-      'Hasta 3 llamadas simultáneas',
-      'Llamadas salientes y devolución automática',
-      'Toma de pedidos por teléfono',
-      'Multiidioma (español + inglés)',
-      'Memoria de cliente entre llamadas',
-      'Voz y flujos personalizables',
-      'Reseñas Google automáticas',
-      'Módulo Oficina completo',
+      'Voz profesional',
+      'Memoria del negocio',
+      'Número propio',
+      'Portal privado',
+      'Entrenamiento inicial',
+      'Integración con tu oficina',
     ],
     meerkat: '/agent-plan-pro.png', meerkatBottom: 66,
     meerkatDesk: '/meerkat-transparente-07.png', meerkatDeskBottom: 65,
@@ -94,11 +92,11 @@ const AGENT_TYPES: {
 ];
 
 const MINUTE_TIERS: {
-  id: string; label: string; minutes: number; ops: number; price: number; popular?: boolean;
+  id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay: number; popular?: boolean;
 }[] = [
-  { id: 'starter', label: 'Starter', minutes: 300,  ops: 100, price: 2997 },
-  { id: 'growth',  label: 'Growth',  minutes: 600,  ops: 200, price: 5994, popular: true },
-  { id: 'scale',   label: 'Scale',   minutes: 1200, ops: 300, price: 11988 },
+  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para negocios pequeños.',             minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
+  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las empresas.',    minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
+  { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',  minutes: 1200, ops: 300, price: 11988, callsPerDay: 20 },
 ];
 
 const DIFFERENTIATORS = [
@@ -322,104 +320,92 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:pl-80 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
-          {/* Suricata, dinero volando — dentro del contenedor para centrar en el espacio lg:pl-80 */}
+          {/* Floating illustration — inside the container so it shares its stacking context.
+              CSS escapes it leftward to cover the full left zone. */}
           <MeerkatReveal className="meerkat-money">
-            <Image
-              src="/agent-money.png"
-              alt=""
-              fill
-              sizes="(min-width: 1024px) 360px, 140px"
-              style={{ objectFit: 'contain', objectPosition: 'top center' }}
-            />
+            <OverloadIllustration />
           </MeerkatReveal>
 
-          {/* Mobile: suricata absoluta izquierda, desborda hacia tarjetas */}
-          <div className="lg:hidden relative mb-4">
-            {/* Suricata, ancla su bottom justo en el top de las tarjetas */}
-            <MeerkatReveal className="absolute" style={{ bottom: -16, left: -5, width: 105, height: 188, zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}>
-              <Image
-                src="/agent-money.png"
-                alt=""
-                fill
-                sizes="105px"
-                style={{ objectFit: 'contain', objectPosition: 'top center' }}
-              />
-            </MeerkatReveal>
-            <div style={{ paddingLeft: 112 }}>
-              <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'rgba(155,109,255,0.7)' }}>
-                El problema
-              </p>
-              <h2
-                className="font-bold tracking-tight mb-3"
-                style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: '#fff', lineHeight: 1.25 }}
-              >
-                Cada llamada perdida<br />es dinero perdido
-              </h2>
-              <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                Mientras tu organización no contesta, tu competencia sí lo hace.
-                Esto le pasa a una organización promedio cada semana:
-              </p>
-            </div>
+          {/* Mobile header */}
+          <div className="lg:hidden mb-4">
+            <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'rgba(155,109,255,0.7)' }}>
+              El límite
+            </p>
+            <h2
+              className="font-bold tracking-tight mb-3"
+              style={{ fontSize: 'clamp(1.3rem, 5.5vw, 1.7rem)', color: '#fff', lineHeight: 1.2 }}
+            >
+              Toda organización<br />tiene una capacidad.
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '0.875rem', lineHeight: 1.6 }}>
+              Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
+            </p>
           </div>
 
-          {/* Desktop: centered heading */}
+          {/* Desktop header */}
           <div className="hidden lg:block text-center mb-14">
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              El problema
+              El límite
             </p>
             <h2
               className="font-bold tracking-tight mb-4"
-              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}
+              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff', lineHeight: 1.15 }}
             >
-              Cada llamada perdida<br />es dinero perdido
+              Toda organización<br />tiene una capacidad.
             </h2>
             <p className="max-w-lg mx-auto" style={{ color: 'rgba(255,255,255,0.52)' }}>
-              Mientras tu organización no contesta, tu competencia sí lo hace.
-              Esto le pasa a una organización promedio cada semana:
+              Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
             </p>
           </div>
 
+          {/* Consequence cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5" style={{ position: 'relative', zIndex: 1 }}>
-            {PAINS.map((p, i) => (
-              <AnimatedSection key={p.stat} delay={i * 0.1}>
-              <div
-                className="rounded-2xl p-6 h-full"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
-              >
+            {LIMITS.map((p, i) => (
+              <AnimatedSection key={p.title} delay={i * 0.1}>
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                  style={{ background: `${p.color}18`, border: `1px solid ${p.color}30` }}
+                  className="rounded-2xl p-6 h-full"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
                 >
-                  {p.icon}
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
+                    style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
+                  >
+                    {p.icon}
+                  </div>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
+                    {p.label}
+                  </p>
+                  <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
+                    {p.title}
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    {p.items.map(item => (
+                      <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                        {item}
+                      </p>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-4xl font-bold tabular-nums block mb-2" style={{ color: p.color }}>
-                  {p.stat}
-                </span>
-                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.52)' }}>{p.label}</p>
-              </div>
               </AnimatedSection>
             ))}
           </div>
 
-          {/* Bridge */}
+          {/* Quote bridge */}
           <AnimatedSection delay={0.15}>
-          <div
-            className="mt-8 rounded-2xl px-7 py-6 flex flex-col sm:flex-row items-start sm:items-center gap-5"
-            style={{ background: 'rgba(108,59,255,0.12)', border: `1px solid rgba(108,59,255,0.28)` }}
-          >
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.25)', border: '1px solid rgba(108,59,255,0.4)' }}>
-              <Target size={18} color="#C4A8FF" />
-            </div>
-            <div>
-              <p className="font-semibold mb-1" style={{ color: '#fff' }}>
-                Tu Empleado Digital resuelve los tres a la vez.
-              </p>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.52)' }}>
-                Atiende, captura leads, agenda y llama de regreso, sin límite de horario
-                ni de capacidad. Sin que tú tengas que intervenir.
+            <div
+              className="mt-8 rounded-2xl px-7 py-7"
+              style={{ borderLeft: '3px solid rgba(108,59,255,0.55)', background: 'rgba(108,59,255,0.09)', border: '1px solid rgba(108,59,255,0.2)', borderLeftWidth: 3, borderLeftColor: 'rgba(108,59,255,0.55)' }}
+            >
+              <p
+                className="font-semibold leading-relaxed"
+                style={{ fontSize: 'clamp(1rem, 2.2vw, 1.2rem)', color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}
+              >
+                Las ventas generan crecimiento.<br />
+                <span style={{ color: '#C4A8FF' }}>
+                  La capacidad determina hasta dónde puedes crecer.
+                </span>
               </p>
             </div>
-          </div>
           </AnimatedSection>
         </div>
       </section>
@@ -681,196 +667,8 @@ export default function LandingPage() {
       {/* ── ASÍ TRABAJA EN TU NEGOCIO ───────────────────────────────────── */}
       <IndustriesSection />
 
-      {/* ── CAPACIDAD EMPRESARIAL ───────────────────────────────────────── */}
-      <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          <div style={{
-            position: 'absolute',
-            width: 900, height: 700,
-            top: -200, left: '50%', transform: 'translateX(-50%)',
-            background: 'radial-gradient(circle, rgba(108,59,255,0.14) 0%, transparent 65%)',
-          }} />
-        </div>
-
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
-
-          <AnimatedSection className="text-center mb-14">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: '#9B6DFF' }}>
-              La diferencia que cambia todo
-            </p>
-            <h2
-              className="font-bold tracking-tight mb-5"
-              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff', lineHeight: 1.1 }}
-            >
-              No contratas uno.<br />Contratas los que necesites.
-            </h2>
-            <p style={{ color: 'rgba(255,255,255,0.48)', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-              Mientras tu competencia tiene una recepcionista que descansa, enferma y renuncia,
-              tú puedes tener un equipo completo activo al mismo tiempo. Sin contratar a nadie.
-            </p>
-          </AnimatedSection>
-
-          {/* Manifiesto de escala */}
-          <AnimatedSection delay={0.1}>
-            <div
-              className="rounded-2xl text-center mb-8"
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                padding: 'clamp(36px, 6vw, 64px) clamp(24px, 5vw, 56px)',
-              }}
-            >
-              <p
-                className="font-extrabold tracking-tight"
-                style={{ fontSize: 'clamp(1.45rem, 4.5vw, 2.8rem)', lineHeight: 1.2, marginBottom: '2rem' }}
-              >
-                <span style={{ color: '#fff' }}>Una empresa. </span>
-                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Seis empleados. </span>
-                <span style={{
-                  background: 'linear-gradient(135deg, #9B6DFF 0%, #C4A8FF 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}>
-                  Cero nómina.
-                </span>
-              </p>
-
-              <div style={{ width: 40, height: 1, background: 'rgba(108,59,255,0.4)', margin: '0 auto 2rem' }} />
-
-              <p
-                className="font-semibold"
-                style={{
-                  fontSize: 'clamp(0.95rem, 2.2vw, 1.2rem)',
-                  color: 'rgba(255,255,255,0.6)',
-                  lineHeight: 2,
-                  maxWidth: 500,
-                  margin: '0 auto 2rem',
-                }}
-              >
-                {[
-                  'Recepcionista',
-                  'Ejecutivo comercial',
-                  'Cobrador',
-                  'Ejecutivo de seguimiento',
-                  'Asistente de clínica',
-                  'Supervisor de desempeño',
-                ].map((role, i, arr) => (
-                  <span key={role}>
-                    {role}
-                    <span style={{ color: '#6C3BFF' }}>
-                      {i < arr.length - 1 ? '. ' : '.'}
-                    </span>
-                  </span>
-                ))}
-              </p>
-
-              <p style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.25)',
-              }}>
-                Todos disponibles desde el día uno.
-              </p>
-            </div>
-          </AnimatedSection>
-
-        </div>
-      </section>
-
-      {/* ── CÓMO FUNCIONA ────────────────────────────────────────────────── */}
-      <section style={{ background: C.bgAlt }}>
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 pt-16 sm:pt-24 pb-20 lg:pb-12 relative overflow-hidden">
-
-        <AnimatedSection className="mb-12 lg:mb-16">
-          <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-            Cómo contratar tu empleado
-          </p>
-          <h2
-            className="font-bold tracking-tight"
-            style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
-          >
-            Tu empleado, en línea en 3 pasos
-          </h2>
-        </AnimatedSection>
-
-        {/* Editorial numbered list — unique layout vs 3-col cards elsewhere */}
-        <div className="lg:pr-72">
-          {[
-            { n: '01', title: 'Elige tu empleado y tus minutos',  desc: 'Selecciona el tipo de empleado que necesita tu organización y los minutos mensuales que consumiría. Completa el pago en línea en menos de 5 minutos.' },
-            { n: '02', title: 'Configura tu empleado',             desc: 'Accede a tu portal, agrega la información de tu organización y personaliza cómo responde tu empleado.' },
-            { n: '03', title: 'Recibe y realiza llamadas',         desc: 'Tu número queda activo en horas. Tu empleado atiende llamadas entrantes, llama de regreso a los que no contestaron y ejecuta campañas salientes. Tú solo monitoreas desde el portal.' },
-          ].map((s, i) => (
-            <AnimatedSection key={s.n} delay={i * 0.12}>
-              <div
-                className="flex items-start gap-6 sm:gap-10 py-7 sm:py-8"
-                style={{ borderBottom: i < 2 ? `1px solid ${C.border}` : 'none' }}
-              >
-                <span
-                  className="font-bold tabular-nums flex-shrink-0 select-none"
-                  style={{ fontSize: 'clamp(3rem, 5vw, 4rem)', color: 'rgba(108,59,255,0.13)', lineHeight: 1, minWidth: 72 }}
-                >
-                  {s.n}
-                </span>
-                <div className="pt-1">
-                  <h3 className="font-semibold text-base sm:text-lg mb-2" style={{ color: C.text }}>{s.title}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{s.desc}</p>
-                </div>
-              </div>
-            </AnimatedSection>
-          ))}
-        </div>
-
-        {/* Character peeking bottom-right, desktop only */}
-        <MeerkatReveal
-          className="agent-float-slow meerkat-duo-stand overflow-hidden"
-          style={{ position: 'absolute', right: -16, bottom: -20 }}
-        >
-          <Image src="/agent-duo-stand2.png" alt="Agentes Centinelia" fill
-            sizes="340px"
-            style={{ objectFit: 'cover', objectPosition: 'center 85%' }} />
-        </MeerkatReveal>
-
-      </div>
-      </section>
-
-      {/* ── DEMO EN VIVO ─────────────────────────────────────────────────── */}
-      <section id="demo" style={{ background: C.bg, borderTop: `1px solid ${C.border}`, position: 'relative', overflow: 'hidden' }}>
-        {/* Headset meerkat, mobile: overflows from Demo into Planes section below */}
-        <div className="meerkat-headset-mob">
-          <MeerkatReveal style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <Image src="/agent-headset.png" alt="" fill sizes="170px"
-              style={{ objectFit: 'contain', objectPosition: 'top center' }} />
-          </MeerkatReveal>
-        </div>
-        {/* Desktop: left side */}
-        <MeerkatReveal className="agent-sway meerkat-headset-desk-left">
-          <Image src="/agent-headset.png" alt="" fill sizes="260px"
-            style={{ objectFit: 'contain', objectPosition: 'top center' }} />
-        </MeerkatReveal>
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 pt-20 pb-44 sm:pt-24 sm:pb-32">
-          <AnimatedSection className="text-center mb-12">
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-              Demo en vivo
-            </p>
-            <h2
-              className="font-bold tracking-tight mb-4"
-              style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text }}
-            >
-              Tu empleado.<br />Cualquier rol.
-            </h2>
-            <p className="max-w-lg mx-auto" style={{ color: C.textSub }}>
-              Elige el escenario, llama y experimenta. Vendedor, tomador de pedidos,
-              soporte, seguimiento: un solo empleado configurado para lo que tu organización necesite.
-            </p>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.15}>
-            <DemoSelector demoPhone={DEMO_PHONE} demoPhoneHref={DEMO_PHONE_HREF} />
-          </AnimatedSection>
-        </div>
-      </section>
+      {/* ── PRIMERA ENTREVISTA ───────────────────────────────────────────── */}
+      <NiaInterview />
 
       {/* ── PLANES ───────────────────────────────────────────────────────── */}
       <section
@@ -890,381 +688,180 @@ export default function LandingPage() {
           {/* Header */}
           <AnimatedSection className="text-center mb-16">
             <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accentLt }}>
-              Precios
+              Tu Oficina
             </p>
             <h2
-              className="font-bold tracking-tight mb-4"
+              className="font-bold tracking-tight mb-6"
               style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: '#fff' }}
             >
-              El precio correcto<br />para tu organización
+              Empieza a construir tu oficina digital
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Una compra única por tu empleado, más una mensualidad según los minutos que uses.
+            <p
+              className="font-bold tracking-tight mb-1"
+              style={{ fontSize: 'clamp(1.3rem, 3vw, 2rem)', color: '#fff', lineHeight: 1.2 }}
+            >
+              Hoy pagas la incorporación.
+            </p>
+            <p
+              className="font-bold tracking-tight"
+              style={{
+                fontSize: 'clamp(1.3rem, 3vw, 2rem)', lineHeight: 1.2,
+                background: 'linear-gradient(90deg, #9B6DFF, #C4A8FF)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Después solo pagas la jornada que necesites.
             </p>
           </AnimatedSection>
 
-          {/* ─── PASO 1: Tipo de agente ─────────────── */}
-          <AnimatedSection>
-            <div className="flex flex-col items-center gap-3 mb-7 text-center">
-              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(108,59,255,0.2)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
-                Paso 1 · Pago único
-              </span>
-              <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
-                Tu Empleado Centinelia
-              </h3>
-            </div>
-          </AnimatedSection>
+          {/* ─── Pricing interactive ─────────────────── */}
+          <PricingSection />
 
-          <div className="flex justify-center mb-16">
-            <div className="w-full max-w-lg">
-            {AGENT_TYPES.map((a, i) => (
-              <AnimatedSection key={a.id} delay={i * 0.09}>
-              <div
-                className="rounded-2xl p-6 flex flex-col h-full relative overflow-hidden"
-                style={{
-                  background: a.popular ? `linear-gradient(145deg, ${a.color}22, ${a.color}0a)` : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${a.popular ? a.color + '55' : 'rgba(255,255,255,0.09)'}`,
-                  boxShadow: a.popular ? `0 12px 48px ${a.color}30` : 'none',
-                  backdropFilter: 'blur(12px)',
-                }}
-              >
-                {a.popular && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                    background: `linear-gradient(90deg, ${a.color}, ${a.color}88)` }} />
-                )}
-                <div className="flex items-center justify-between mb-4">
-                  <p className="font-bold" style={{ color: '#fff', fontSize: '1.1rem' }}>{a.name}</p>
-                  {a.popular && (
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: a.color, color: '#fff' }}>
-                      <Star size={9} style={{ fill: '#fff' }} /> Más completo
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Instalación · pago único</p>
-                <div className="flex items-baseline gap-1.5 mb-3">
-                  <span className="text-4xl font-bold tabular-nums" style={{ color: a.popular ? a.color : '#fff' }}>
-                    ${fmt(a.setupFee)}
-                  </span>
-                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>+ IVA</span>
-                </div>
-                <p className="text-sm mb-5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.48)' }}>{a.description}</p>
-                <ul className="flex flex-col gap-2 flex-1 mb-6">
-                  {a.features.map(f => (
-                    <li key={f} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      <Check size={13} color={a.color} className="flex-shrink-0 mt-0.5" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                {/* Mobile meerkat */}
-                <MeerkatReveal className="hidden" style={{
-                  position: 'absolute', bottom: a.meerkatBottom, right: 10,
-                  width: 136, height: 136, zIndex: 0, pointerEvents: 'none', userSelect: 'none',
-                }}>
-                  <Image src={a.meerkat} alt="" fill sizes="136px"
-                    style={{ objectFit: 'cover', objectPosition: 'top center' }} />
-                </MeerkatReveal>
-                {/* Desktop meerkat */}
-                <MeerkatReveal className="hidden sm:block" style={{
-                  position: 'absolute', bottom: a.meerkatDeskBottom, right: 8,
-                  width: 165, height: 165, zIndex: 0, pointerEvents: 'none', userSelect: 'none',
-                }}>
-                  <Image src={a.meerkatDesk} alt="" fill sizes="165px"
-                    style={{ objectFit: 'cover', objectPosition: 'top center' }} />
-                </MeerkatReveal>
-                <Link
-                  href={`/registro?plan=${a.id}`}
-                  className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
-                  style={{
-                    background: a.popular ? a.color : 'rgba(108,59,255,0.2)',
-                    color: '#fff',
-                    border: a.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
-                    position: 'relative', zIndex: 1,
-                  }}
-                >
-                  Contratar {a.name}
-                </Link>
-              </div>
-              </AnimatedSection>
-            ))}
-            </div>
-          </div>
-
-          {/* ─── PASO 2: Minutos mensuales ──────────── */}
-          <AnimatedSection>
-            <div className="flex flex-col items-center gap-3 mb-3 text-center">
-              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(155,109,255,0.15)', color: '#C4A8FF', border: '1px solid rgba(155,109,255,0.25)' }}>
-                Paso 2 · Mensualidad
-              </span>
-              <h3 className="font-bold text-sm sm:text-[1.1rem]" style={{ color: '#fff' }}>
-                Elige tus minutos al mes
-              </h3>
-            </div>
-            <p className="text-sm mb-8 text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
-              Pagas solo los minutos del plan + IVA. Sin cuotas adicionales.
-            </p>
-          </AnimatedSection>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-5">
-            {MINUTE_TIERS.map((t, i) => (
-              <AnimatedSection key={t.id} delay={i * 0.08}>
-              <div
-                className="rounded-2xl p-5 sm:p-6 flex flex-col h-full relative overflow-hidden"
-                style={{
-                  background: t.popular ? 'linear-gradient(145deg, rgba(108,59,255,0.2), rgba(108,59,255,0.08))' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${t.popular ? 'rgba(108,59,255,0.5)' : 'rgba(255,255,255,0.09)'}`,
-                  boxShadow: t.popular ? '0 12px 48px rgba(108,59,255,0.25)' : 'none',
-                }}
-              >
-                {t.popular && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                    background: 'linear-gradient(90deg, #6C3BFF, #9B6DFF88)' }} />
-                )}
-
-                {/* Mobile layout — horizontal split: minutes left, price right */}
-                <div className="sm:hidden">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <p className="font-bold text-base mb-1" style={{ color: '#fff' }}>{t.label}</p>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                          {fmt(t.minutes)}
-                        </span>
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
-                      </div>
-                      <p className="text-xs mt-1" style={{ color: 'rgba(155,109,255,0.6)' }}>
-                        {t.ops} tareas
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      {t.popular && (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold mb-1.5"
-                          style={{ background: '#6C3BFF', color: '#fff' }}>
-                          <Star size={8} style={{ fill: '#fff' }} /> Más usado
-                        </span>
-                      )}
-                      <div className="flex items-baseline gap-0.5 justify-end">
-                        <span className="text-xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                          ${fmt(t.price)}
-                        </span>
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
-                      </div>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/registro?tier=${t.id}`}
-                    className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
-                    style={{
-                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
-                      color: '#fff',
-                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
-                    }}
-                  >
-                    Seleccionar
-                  </Link>
-                </div>
-
-                {/* Desktop layout */}
-                <div className="hidden sm:flex sm:flex-col sm:flex-1">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="font-bold text-base" style={{ color: '#fff' }}>{t.label}</p>
-                    {t.popular && (
-                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: '#6C3BFF', color: '#fff' }}>
-                        <Star size={9} style={{ fill: '#fff' }} /> Más usado
-                      </span>
-                    )}
-                  </div>
-                  <div className="mb-4">
-                    <span className="text-5xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                      {fmt(t.minutes)}
-                    </span>
-                    <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
-                    <p className="text-xs mt-1.5" style={{ color: 'rgba(155,109,255,0.65)' }}>
-                      {t.ops} tareas incluidas
-                    </p>
-                  </div>
-                  <div className="rounded-xl px-4 py-3 mb-5 flex flex-col gap-1 flex-1"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold tabular-nums" style={{ color: t.popular ? '#9B6DFF' : '#fff' }}>
-                        ${fmt(t.price)}
-                      </span>
-                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes</span>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/registro?tier=${t.id}`}
-                    className="block text-center py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 hover:scale-[1.02]"
-                    style={{
-                      background: t.popular ? '#6C3BFF' : 'rgba(108,59,255,0.2)',
-                      color: '#fff',
-                      border: t.popular ? 'none' : '1.5px solid rgba(108,59,255,0.4)',
-                    }}
-                  >
-                    Seleccionar
-                  </Link>
-                </div>
-              </div>
-              </AnimatedSection>
-            ))}
-          </div>
-
-          {/* Extra minutes note */}
-          <AnimatedSection>
-            <p className="text-center text-xs mb-14" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              Minutos extra fuera del plan: $12.99 MXN / min
-            </p>
-          </AnimatedSection>
 
           {/* ─── Empresarial ────────────────────────── */}
           <AnimatedSection>
           <div
-            className="relative rounded-2xl p-4 sm:p-8 flex flex-row items-center gap-3 sm:gap-6"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden' }}
+            className="relative rounded-2xl p-7 sm:p-10 mt-8"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              overflow: 'hidden',
+            }}
           >
-            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(108,59,255,0.18)', border: '1px solid rgba(108,59,255,0.35)' }}>
-              <Rocket size={16} color="#C4A8FF" />
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+              background: 'linear-gradient(90deg, transparent, rgba(155,109,255,0.5), transparent)' }} />
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+              <div className="flex-1">
+                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.6)' }}>
+                  Para equipos
+                </p>
+                <h3 className="font-bold mb-2" style={{ color: '#fff', fontSize: '1.25rem' }}>
+                  ¿Necesitas una oficina a la medida?
+                </h3>
+                <p className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Diseñamos una oficina digital completa para organizaciones con múltiples sucursales, procesos complejos o necesidades especiales.
+                </p>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+                  {['Múltiples Centinelias', 'Sucursales', 'CRM', 'Flujos personalizados', 'Integraciones', 'SLA dedicado'].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      <Check size={13} color="#9B6DFF" className="flex-shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex sm:flex-col sm:items-end gap-3 sm:gap-4 flex-shrink-0 sm:pt-1">
+                <Link
+                  href="/registro?plan=empresarial"
+                  className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 text-center"
+                  style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)', whiteSpace: 'nowrap' }}
+                >
+                  Diseñar mi oficina digital
+                </Link>
+              </div>
             </div>
-            <div className="flex-1 min-w-0 xl:pr-44">
-              <p className="font-bold leading-tight" style={{ color: '#fff', fontSize: '1rem' }}>Empresarial</p>
-              <p className="text-sm hidden sm:block mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                Múltiples empleados y sucursales, integración con tu POS o CRM, flujos a medida y SLA dedicado.
-              </p>
-              <p className="text-xs sm:hidden mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Múltiples empleados · POS/CRM · SLA dedicado
-              </p>
-            </div>
-            <Link
-              href="/registro?plan=empresarial"
-              className="flex-shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all hover:opacity-90"
-              style={{ background: 'rgba(108,59,255,0.25)', color: '#C4A8FF', border: '1.5px solid rgba(108,59,255,0.45)' }}
-            >
-              Cotizar
-            </Link>
           </div>
           </AnimatedSection>
 
         </div>
       </section>
 
+
+      {/* ── LAS REGLAS DE TU OFICINA DIGITAL ────────────────────────────── */}
+      <ReglasManifesto />
+
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ padding: '0', background: C.bgAlt }}>
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 2 }}>
-        <MeerkatReveal className="agent-float-slow meerkat-faq-desk">
-          <Image src="/agent-duo-phones.png" alt="" fill sizes="360px"
-            style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-        </MeerkatReveal>
-        <div className="lg:grid lg:grid-cols-5 lg:gap-16 lg:items-start">
-          <div className="mb-4 lg:mb-0 lg:col-span-2 lg:pt-2" style={{ position: 'relative' }}>
-            <AnimatedSection>
-              <div className="pr-40 lg:pr-0">
-                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: C.accent }}>
-                  Preguntas frecuentes
-                </p>
-                <h2
-                  className="font-bold tracking-tight"
-                  style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: C.text, lineHeight: 1.1 }}
-                >
-                  Resolvemos<br />tus dudas
-                </h2>
-              </div>
-            </AnimatedSection>
-            <MeerkatReveal
-              className="lg:hidden agent-float-slow absolute"
-              style={{ bottom: -50, right: 0, width: 140, height: 180, zIndex: 0, pointerEvents: 'none', userSelect: 'none' }}
-            >
-              <Image src="/agent-duo-phones.png" alt="" fill sizes="140px"
-                style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-            </MeerkatReveal>
-          </div>
-          <div className="lg:col-span-3" style={{ position: 'relative', zIndex: 1 }}>
-            <FaqSection />
-          </div>
-        </div>
-      </div>
-      </section>
+      <FaqLanding />
 
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
-      <section className="relative" style={{ background: '#1A0A3B' }}>
-        {/* Glow wrapper — overflow:hidden aquí, no en section, para que los meerkats desborden */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <div style={{
-            position:  'absolute',
-            top:       0,
-            left:      '30%',
-            transform: 'translateX(-50%)',
-            width:     700,
-            height:    500,
-            background:'radial-gradient(circle, rgba(108,59,255,0.3) 0%, transparent 65%)',
+            position: 'absolute', width: 900, height: 700,
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(108,59,255,0.14) 0%, transparent 65%)',
           }} />
         </div>
 
-        {/* ── Mobile: centrado + duo al fondo ─────────────────────────── */}
-        <div
-          className="lg:hidden relative max-w-3xl mx-auto px-5 sm:px-8 pt-24 sm:pt-28 text-center"
-          style={{ paddingBottom: 'clamp(160px, 30vw, 280px)' }}
-        >
+        <div className="relative max-w-3xl mx-auto px-5 sm:px-10 py-32 sm:py-48 flex flex-col items-center text-center">
+
+          {/* Headline */}
           <AnimatedSection>
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu equipo te espera
-            </p>
-            <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(1.8rem, 6vw, 2.8rem)', color: '#fff' }}>
-              Mientras tú atiendes tu organización,<br />tu equipo atiende el teléfono.
+            <h2 className="font-extrabold tracking-tight"
+              style={{ fontSize: 'clamp(2.4rem, 6vw, 4.5rem)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em' }}>
+              Tu oficina ya puede<br />empezar a trabajar.
             </h2>
-            <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)' }}>
-              Tu empleado puede estar en línea en menos de 24 horas.<br />Sin contratos largos. Sin complicaciones.
+          </AnimatedSection>
+
+          {/* Divider */}
+          <AnimatedSection delay={0.1}>
+            <div style={{ width: 44, height: 1, background: 'rgba(108,59,255,0.55)', margin: '2.5rem auto' }} />
+          </AnimatedSection>
+
+          {/* Pause */}
+          <AnimatedSection delay={0.14}>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.25)', fontStyle: 'italic', marginBottom: '2.75rem' }}>
+              Mientras lees esto...
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Armar mi equipo <ArrowRight size={15} />
+          </AnimatedSection>
+
+          {/* Loss lines */}
+          <AnimatedSection delay={0.18}>
+            <div className="flex flex-col gap-2 mb-12">
+              {[
+                { text: 'Hay negocios perdiendo llamadas.', op: 0.58 },
+                { text: 'Olvidando seguimientos.',          op: 0.44 },
+                { text: 'Posponiendo tareas.',              op: 0.3  },
+              ].map(({ text, op }) => (
+                <p key={text}
+                  style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: `rgba(255,255,255,${op})`, fontWeight: 400, lineHeight: 1.4 }}>
+                  {text}
+                </p>
+              ))}
+            </div>
+          </AnimatedSection>
+
+          {/* Contrast */}
+          <AnimatedSection delay={0.22}>
+            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.8, maxWidth: 440, marginBottom: '3.5rem' }}>
+              La diferencia es que ellos siguen dependiendo<br className="hidden sm:block" /> del tiempo de las personas.<br />
+              Tu organización ya no tiene por qué hacerlo.
+            </p>
+          </AnimatedSection>
+
+          {/* Separator */}
+          <AnimatedSection delay={0.25}>
+            <div style={{ width: 180, height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: '3rem' }} />
+          </AnimatedSection>
+
+          {/* Sub-CTA line */}
+          <AnimatedSection delay={0.28}>
+            <p className="font-semibold mb-7"
+              style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'rgba(255,255,255,0.68)' }}>
+              Construye hoy tu oficina digital.
+            </p>
+          </AnimatedSection>
+
+          {/* Buttons */}
+          <AnimatedSection delay={0.32}>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <Link
+                href="/registro"
+                className="cta-pulse inline-flex items-center gap-2 px-10 py-4 rounded-2xl font-bold text-sm"
+                style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff', boxShadow: '0 8px 36px rgba(108,59,255,0.45)' }}
+              >
+                Incorporar mi primer Centinelia <ArrowRight size={15} />
               </Link>
-              <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <a
+                href="tel:+528116333559"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }}
+              >
                 <Phone size={14} /> Habla con un asesor
               </a>
             </div>
           </AnimatedSection>
-          <MeerkatReveal className="agent-sway absolute bottom-[-50px] sm:bottom-[-80px] left-1/2 -translate-x-1/2 pointer-events-none w-[300px] h-[216px] sm:w-[580px] sm:h-[420px]">
-            <Image src="/agent-duo-call.png" alt="Equipo Centinelia" fill sizes="(max-width: 640px) 300px, 580px" style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-          </MeerkatReveal>
-        </div>
 
-        {/* ── Desktop: texto + meerkat dentro del contenedor max-6xl ────── */}
-        <div
-          className="hidden lg:block max-w-6xl mx-auto px-8 pt-28 pb-20"
-          style={{ position: 'relative' }}
-        >
-          <AnimatedSection style={{ maxWidth: 520 }}>
-            <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-              Tu equipo te espera
-            </p>
-            <h2 className="font-bold tracking-tight mb-5" style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', color: '#fff', lineHeight: 1.1 }}>
-              Mientras tú atiendes<br />tu organización, tu equipo<br />atiende el teléfono.
-            </h2>
-            <p className="mb-8" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420 }}>
-              Tu empleado puede estar en línea en menos de 24 horas. Sin contratos largos. Sin complicaciones.
-            </p>
-            <div className="flex items-start gap-3">
-              <Link href="/registro" className="cta-pulse inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}>
-                Armar mi equipo <ArrowRight size={15} />
-              </Link>
-              <a href="tel:+528116333559" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Phone size={14} /> Habla con un asesor
-              </a>
-            </div>
-          </AnimatedSection>
-
-          {/* Meerkat absoluto dentro del max-6xl: right/bottom relativo a este contenedor */}
-          <MeerkatReveal
-            className="agent-sway"
-            style={{ position: 'absolute', bottom: -20, right: 32, width: 500, height: 380 }}
-          >
-            <Image src="/agent-duo-call.png" alt="Equipo Centinelia" fill sizes="500px"
-              style={{ objectFit: 'contain', objectPosition: 'bottom center' }} />
-          </MeerkatReveal>
         </div>
       </section>
 

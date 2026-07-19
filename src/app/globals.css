@@ -158,6 +158,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 2px;
   transform-origin: bottom;
   animation: wavebar 0.9s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 /* ── Marquee ────────────────────────────────────────────────────────────── */
@@ -177,6 +178,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   width: max-content;
   animation: marquee 30s linear infinite;
+  will-change: transform;
 }
 
 .marquee-item {
@@ -210,10 +212,11 @@ h1, h2, h3, h4, h5, h6 {
   .meerkat-money {
     display: block;
     position: absolute;
-    bottom: -110px;
-    left: -70px;
-    width: 360px;
-    height: 600px;
+    /* subtitle starts at: py-28(112) + label+mb-3(26) + h2 2-lines+mb-4(126) = 264px */
+    top: 264px;
+    bottom: 0;
+    left: 0;
+    width: 312px;
     z-index: 0;
     pointer-events: none;
     user-select: none;

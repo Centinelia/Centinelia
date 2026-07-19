@@ -6,17 +6,13 @@ import Image from 'next/image';
 import { Phone, Mail } from 'lucide-react';
 
 interface AgentDef {
-  id:         string;
-  role:       string;
-  color:      string;
-  img:        string | null;
-  imgPos?:    string;
-  imgScale?:  number;
-  imgOrigin?: string;
-  imgShiftX?: string;
-  imgShiftY?: string;
-  label?:     string;
-  badge?:     boolean;
+  id:     string;
+  role:   string;
+  color:  string;
+  img:    string | null;
+  imgPos?: string;
+  label?: string;
+  badge?: boolean;
 }
 
 const CLIENTE: AgentDef = {
@@ -25,17 +21,17 @@ const CLIENTE: AgentDef = {
 
 const NIA: AgentDef = {
   id: 'nia', role: 'Recepcionista', label: 'Primer contacto', badge: true, color: '#6C3BFF',
-  img: '/meerkats/nia.png', imgPos: 'center 10%', imgScale: 1.35, imgOrigin: 'center 12%', imgShiftX: '10.5px',
+  img: '/meerkats/nia.png', imgPos: 'center 8%',
 };
 
 const SPECIALISTS: AgentDef[] = [
-  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 3%' },
-  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 3%', imgScale: 1.2, imgOrigin: 'center 10%', imgShiftX: '-2px', imgShiftY: '4px' },
-  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 3%' },
-  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 3%' },
-  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 3%' },
-  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 10%', imgScale: 1.45, imgOrigin: 'center 12%', imgShiftX: '12px', imgShiftY: '5px' },
-  { id: 'nova',  role: 'Coordinación', color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 5%', imgScale: 2.00, imgOrigin: 'center 12%', imgShiftX: '17.5px', imgShiftY: '4px' },
+  { id: 'noah',  role: 'Ventas',       color: '#22c55e', img: '/meerkats/noah.png',  imgPos: 'center 8%' },
+  { id: 'nara',  role: 'Coordinadora', color: '#f97316', img: '/meerkats/nara.png',  imgPos: 'center 8%' },
+  { id: 'nico',  role: 'Cobranza',     color: '#f59e0b', img: '/meerkats/nico.png',  imgPos: 'center 8%' },
+  { id: 'naia',  role: 'RR.HH.',       color: '#ec4899', img: '/meerkats/naia.png',  imgPos: 'center 8%' },
+  { id: 'nelia', role: 'Atención',     color: '#3b82f6', img: '/meerkats/nelia.png', imgPos: 'center 8%' },
+  { id: 'neo',   role: 'Operaciones',  color: '#06b6d4', img: '/meerkats/neo.png',   imgPos: 'center 8%' },
+  { id: 'nova',  role: 'Despacho',     color: '#ef4444', img: '/meerkats/nova.png',  imgPos: 'center 8%' },
 ];
 
 const NOX_COLOR  = '#0d9488';
@@ -99,13 +95,6 @@ function AvatarNode({
 }: {
   agent: AgentDef; size: number; delay: number; inView: boolean; isClient?: boolean; hidePill?: boolean; dimmed?: boolean;
 }) {
-  const transform = [
-    (agent.imgShiftX || agent.imgShiftY)
-      ? `translate(${agent.imgShiftX ?? '0'}, ${agent.imgShiftY ?? '0'})`
-      : null,
-    agent.imgScale ? `scale(${agent.imgScale})` : null,
-  ].filter(Boolean).join(' ') || undefined;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
       <motion.div
@@ -135,9 +124,7 @@ function AvatarNode({
               fill
               style={{
                 objectFit: 'cover',
-                objectPosition: agent.imgPos ?? 'center 3%',
-                transform,
-                transformOrigin: agent.imgOrigin ?? 'center 10%',
+                objectPosition: agent.imgPos ?? 'center 8%',
               }}
             />
           </motion.div>
@@ -303,10 +290,6 @@ export default function TeamFlowSection() {
               }}
             >
               <defs>
-                <filter id="tf-orbit-glow" x="-60%" y="-60%" width="220%" height="220%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
                 <radialGradient id="tf-center-glow" cx="50%" cy="50%" r="50%">
                   <stop offset="0%" stopColor="#6C3BFF" stopOpacity="0.18" />
                   <stop offset="100%" stopColor="#6C3BFF" stopOpacity="0" />
@@ -355,23 +338,6 @@ export default function TeamFlowSection() {
                   transition={{ duration: 0.6, delay: 0.32 + i * 0.04 }}
                 />
               ))}
-              {/* Nia → especialista activo — glow */}
-              {SPEC_XY.map((pos, i) => (
-                <motion.line key={`glow-nia-spec-${i}`}
-                  x1={NIA_XY.x} y1={NIA_XY.y} x2={pos.x} y2={pos.y}
-                  stroke={NIA.color} strokeWidth={4}
-                  filter="url(#tf-orbit-glow)"
-                  strokeDasharray="5 12"
-                  animate={inView ? {
-                    opacity: activeSet.has(i) ? 0.32 : 0,
-                    strokeDashoffset: [0, -17],
-                  } : { opacity: 0 }}
-                  transition={{
-                    opacity: { duration: 0.4 },
-                    strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
-                  }}
-                />
-              ))}
               {/* Nia → especialista activo — main */}
               {SPEC_XY.map((pos, i) => (
                 <motion.line key={`flow-nia-spec-${i}`}
@@ -397,24 +363,6 @@ export default function TeamFlowSection() {
                   initial={{ opacity: 0 }}
                   animate={inView ? { opacity: 0.12 } : { opacity: 0 }}
                   transition={{ duration: 0.6, delay: 0.38 + i * 0.04 }}
-                />
-              ))}
-
-              {/* Active spoke glow */}
-              {SPEC_XY.map((pos, i) => (
-                <motion.line key={`glow-spoke-${i}`}
-                  x1={pos.x} y1={pos.y} x2={CX} y2={CY}
-                  stroke={SPECIALISTS[i].color} strokeWidth={4}
-                  filter="url(#tf-orbit-glow)"
-                  strokeDasharray="5 12"
-                  animate={inView ? {
-                    opacity: activeSet.has(i) ? 0.32 : 0,
-                    strokeDashoffset: [0, -17],
-                  } : { opacity: 0 }}
-                  transition={{
-                    opacity: { duration: 0.4 },
-                    strokeDashoffset: { duration: 1.0, repeat: Infinity, ease: 'linear' },
-                  }}
                 />
               ))}
 
@@ -446,28 +394,6 @@ export default function TeamFlowSection() {
                   transition={{ duration: 0.8, delay: 0.65 }}
                 />
               ))}
-
-              {/* Active chord glow — gradient of the two peers' colors */}
-              {ALL_PAIRS.map(([i, j]) => {
-                const active = activeSet.has(i) && activeSet.has(j);
-                return (
-                  <motion.line key={`glow-chord-${i}-${j}`}
-                    x1={SPEC_XY[i].x} y1={SPEC_XY[i].y}
-                    x2={SPEC_XY[j].x} y2={SPEC_XY[j].y}
-                    stroke={`url(#chord-grad-${i}-${j})`} strokeWidth={3.5}
-                    filter="url(#tf-orbit-glow)"
-                    strokeDasharray="4 14"
-                    animate={inView ? {
-                      opacity: active ? 0.35 : 0,
-                      strokeDashoffset: [0, -18],
-                    } : { opacity: 0 }}
-                    transition={{
-                      opacity: { duration: 0.4 },
-                      strokeDashoffset: { duration: 1.1, repeat: Infinity, ease: 'linear' },
-                    }}
-                  />
-                );
-              })}
 
               {/* Active chord main — gradient of the two peers' colors */}
               {ALL_PAIRS.map(([i, j]) => {
@@ -542,7 +468,7 @@ export default function TeamFlowSection() {
                     src="/meerkats/nox-niva.png"
                     alt="Nox y Niva"
                     fill
-                    style={{ objectFit: 'cover', objectPosition: 'center 0%', transform: 'translateY(14px)' }}
+                    style={{ objectFit: 'cover', objectPosition: 'center 5%' }}
                   />
                 </div>
                 <span style={{
