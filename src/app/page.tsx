@@ -768,7 +768,7 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           {/* Desktop background — horizontal group */}
           <img
-            src="/meerkats-happy-team.png?v=3"
+            src="/meerkats-happy-team.png?v=4"
             alt=""
             aria-hidden="true"
             className="hidden sm:block"
@@ -782,7 +782,8 @@ export default function LandingPage() {
               height:         'auto',
               objectFit:      'cover',
               objectPosition: 'center bottom',
-              opacity:        0.05,
+              opacity:        0.15,
+              mixBlendMode:   'screen',
             }}
           />
           {/* Mobile background — vertical stack */}
