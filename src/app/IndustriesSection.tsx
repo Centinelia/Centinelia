@@ -257,9 +257,10 @@ export default function IndustriesSection() {
                           transition: 'border-color 0.35s, box-shadow 0.35s',
                         }}>
                           <Image
-                            src={`/meerkats/${id}.png?v=2`}
+                            src={`/meerkats/${id}.png`}
                             alt={name}
                             fill
+                            unoptimized
                             style={{
                               objectFit:      'cover',
                               objectPosition: IMG_CFG[id].pos,
