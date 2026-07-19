@@ -586,7 +586,7 @@ export default function LandingPage() {
                       boxShadow:  '0 2px 12px rgba(108,59,255,0.20)',
                     }}
                   >
-                    <div className={m.nombre === 'Nova' ? 'nova-img-wrap' : ''} style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
+                    <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
                       <Image src={m.img} alt={m.nombre} fill sizes="220px"
                         style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
                     </div>
