@@ -366,14 +366,16 @@ export default function EmpleadosPage() {
           </div>
 
           {/* Group photo — mobile */}
-          <div className="lg:hidden relative w-full" style={{ aspectRatio: '2752/1200', marginTop: -8 }}>
-            <Image
-              src="/meerkats/grupo.png"
-              alt="Equipo Centinelia"
-              fill
-              sizes="100vw"
-              style={{ objectFit: 'contain', objectPosition: 'center center' }}
-            />
+          <div className="lg:hidden overflow-hidden" style={{ marginTop: -8 }}>
+            <div className="relative" style={{ width: '125%', marginLeft: '-12.5%', aspectRatio: '2752/1536' }}>
+              <Image
+                src="/meerkats/grupo.png"
+                alt="Equipo Centinelia"
+                fill
+                sizes="125vw"
+                style={{ objectFit: 'contain', objectPosition: 'center center' }}
+              />
+            </div>
           </div>
         </div>
       </section>
