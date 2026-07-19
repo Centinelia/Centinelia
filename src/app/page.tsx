@@ -767,22 +767,39 @@ export default function LandingPage() {
       {/* ── BOTTOM CTA ───────────────────────────────────────────────────── */}
       <section style={{ background: '#0D0520', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          {/* Meerkat team background */}
+          {/* Desktop background — horizontal group */}
           <img
-            src="/meerkats-happy-team.png?v=2"
+            src="/meerkats-happy-team.png?v=3"
             alt=""
             aria-hidden="true"
+            className="hidden sm:block"
             style={{
-              position:   'absolute',
-              bottom:     0,
-              left:       '50%',
-              transform:  'translateX(-50%)',
-              width:      '140%',
-              maxWidth:   1600,
-              height:     'auto',
-              objectFit:  'cover',
+              position:       'absolute',
+              bottom:         0,
+              left:           '50%',
+              transform:      'translateX(-50%)',
+              width:          '140%',
+              maxWidth:       1600,
+              height:         'auto',
+              objectFit:      'cover',
               objectPosition: 'center bottom',
-              opacity:    0.05,
+              opacity:        0.05,
+            }}
+          />
+          {/* Mobile background — vertical stack */}
+          <img
+            src="/meerkats-mobile-bg.png"
+            alt=""
+            aria-hidden="true"
+            className="sm:hidden"
+            style={{
+              position:       'absolute',
+              top:            '50%',
+              left:           '50%',
+              transform:      'translate(-50%, -50%)',
+              width:          '100%',
+              height:         'auto',
+              opacity:        0.05,
             }}
           />
           <div style={{
