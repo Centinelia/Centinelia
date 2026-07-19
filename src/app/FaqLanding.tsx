@@ -27,7 +27,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Cuánto tarda en estar listo?',
-        a: 'Máximo 24 horas desde que terminas el registro. Nosotros configuramos todo.',
+        a: 'Máximo 24 horas desde que incorporas a tu empleado. Nosotros configuramos todo.',
       },
       {
         q: '¿Necesito saber de tecnología para configurarlo?',
@@ -66,8 +66,8 @@ const CATEGORIES = [
         a: 'Sí. Toda la información permanece aislada para tu organización. Solo las personas que autorices pueden acceder a ella.',
       },
       {
-        q: '¿Y si después necesito más empleados IA?',
-        a: 'Incorporas otro Centinelia especializado. Todos trabajan juntos desde la misma oficina digital.',
+        q: '¿Y si después necesito más empleados digitales?',
+        a: 'Incorporas otro directamente desde tu portal de cliente. Todos trabajan juntos desde la misma oficina digital.',
       },
       {
         q: '¿Qué pasa si mi negocio cambia?',
