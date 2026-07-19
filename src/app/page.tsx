@@ -443,9 +443,8 @@ export default function LandingPage() {
 
           <AnimatedSection delay={0.2}>
             <p className="text-center mt-10" style={{ lineHeight: 1.8 }}>
-              <span className="font-bold" style={{ color: C.accent }}>Los buenos empleados generan trabajo.</span><br />
-              <span className="font-bold" style={{ color: C.accent }}>Los mejores también generan ingresos.</span><br />
-              <span style={{ color: C.textSub, fontSize: '0.95rem' }}>Si Centinelia utiliza más minutos, normalmente significa exactamente eso.</span>
+              <span className="font-bold" style={{ color: C.accent }}>La mayoría de las empresas no necesitan más clientes.</span><br />
+              <span className="font-bold" style={{ color: C.accent }}>Necesitan más capacidad para atenderlos.</span>
             </p>
           </AnimatedSection>
 
