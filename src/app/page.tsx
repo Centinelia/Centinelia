@@ -846,7 +846,7 @@ export default function LandingPage() {
               ))}
             </div>
             <p style={{ fontSize: 'clamp(1.05rem, 2.2vw, 1.35rem)', color: 'rgba(255,255,255,0.72)', fontWeight: 600, lineHeight: 1.4, marginBottom: '3rem' }}>
-              La tuya no tiene por qué esperar.
+              Ya no tiene por qué ser así.
             </p>
           </AnimatedSection>
 
