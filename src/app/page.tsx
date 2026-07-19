@@ -782,7 +782,7 @@ export default function LandingPage() {
               height:         'auto',
               objectFit:      'cover',
               objectPosition: 'center bottom',
-              opacity:        0.15,
+              opacity:        0.05,
               mixBlendMode:   'screen',
             }}
           />
