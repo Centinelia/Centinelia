@@ -818,6 +818,10 @@ ${context}`;
       const send = (text: string) =>
         controller.enqueue(enc.encode(`data: ${JSON.stringify({ text })}\n\n`));
 
+      const runStart    = Date.now();
+      const toolsCalled: { name: string; ok: boolean; error?: string }[] = [];
+      let   llmCalls    = 0;
+
       try {
         let conversationMessages: Anthropic.MessageParam[] = (
           messages as { role: 'user' | 'assistant'; content: string }[]
@@ -834,6 +838,7 @@ ${context}`;
             if (!midOps.ok) break;
           }
           callCount++;
+          llmCalls = callCount;
 
           const stream = client.messages.stream({
             model:      'claude-sonnet-4-6',
@@ -1542,6 +1547,15 @@ ${context}`;
             toolResult = { ok: false, error: `Herramienta desconocida: ${pendingToolName}` };
           }
 
+          // Track tool call for run log
+          toolsCalled.push({
+            name: pendingToolName ?? 'unknown',
+            ok:   (toolResult as { ok?: boolean })?.ok !== false,
+            ...((toolResult as { ok?: boolean; error?: string })?.ok === false
+              ? { error: String((toolResult as { error?: unknown })?.error ?? '') }
+              : {}),
+          });
+
           // Extend conversation with this tool turn
           conversationMessages = [
             ...conversationMessages,
@@ -1575,6 +1589,17 @@ ${context}`;
           agentRole:   _agentRole,
           messages:    (messages as Array<{ role: 'user' | 'assistant'; content: string | unknown }>),
         }).catch(err => console.error('[agent-chat] chat-learning failed:', err));
+
+        // Harness run log — fire-and-forget, never blocks the stream
+        supabase.from('agent_runs').insert({
+          agent_id:     _agentId,
+          portal_email: _portalEmail,
+          started_at:   new Date(runStart).toISOString(),
+          ended_at:     new Date().toISOString(),
+          duration_ms:  Date.now() - runStart,
+          tools_called: toolsCalled,
+          llm_calls:    llmCalls,
+        }).then().catch(err => console.error('[agent-chat] run log failed:', err));
       }
     },
   });
