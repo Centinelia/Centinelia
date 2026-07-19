@@ -261,7 +261,7 @@ export default function EmpleadosPage() {
 
               {/* Image */}
               <div
-                className="flex-1 relative"
+                className={`flex-1 relative${m.id === 'nova' ? ' nova-img-wrap' : ''}`}
                 style={{ minHeight: 'clamp(300px, 48vw, 580px)' }}
               >
                 <Image

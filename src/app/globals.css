@@ -68,10 +68,11 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--c-text) !important;
 }
 
-/* ── Nova team card — reduce size on mobile only ───────────────────────── */
+/* ── Nova — reduce scale on mobile in both team grid and empleados page ── */
 @media (max-width: 639px) {
-  .nova-team-img {
-    padding-top: 30px !important;
+  .nova-img-wrap {
+    transform: scale(0.78);
+    transform-origin: bottom center;
   }
 }
 

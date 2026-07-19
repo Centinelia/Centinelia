@@ -492,7 +492,7 @@ export default function LandingPage() {
               Construye tu oficina digital
             </h2>
             <p style={{ color: C.textSub, fontSize: '0.875rem', lineHeight: 1.6 }}>
-              Cada Centinelia adopta tu misión.
+              Cada Centinelia adopta tu misión.<br />Juntos operan tu organización 24/7.
             </p>
           </div>
 
@@ -586,9 +586,8 @@ export default function LandingPage() {
                       boxShadow:  '0 2px 12px rgba(108,59,255,0.20)',
                     }}
                   >
-                    <div style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
+                    <div className={m.nombre === 'Nova' ? 'nova-img-wrap' : ''} style={{ height: 130, background: `${m.color}0d`, position: 'relative' }}>
                       <Image src={m.img} alt={m.nombre} fill sizes="220px"
-                        className={m.nombre === 'Nova' ? 'nova-team-img' : ''}
                         style={{ objectFit: 'contain', objectPosition: 'bottom center', padding: (m as any).imgPad ?? '6px 6px 0' }} />
                     </div>
                     <div style={{ padding: '10px 12px 12px', borderTop: `2px solid ${m.color}` }}>
