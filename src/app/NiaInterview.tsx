@@ -361,7 +361,7 @@ export default function NiaInterview() {
               lineHeight: 1.06,
             }}
           >
-            Antes de contratarla...<br />Conócela.
+            Antes de contratarla...<br />Conócela
           </h2>
           <p
             className="text-xs font-bold tracking-widest uppercase mt-5"

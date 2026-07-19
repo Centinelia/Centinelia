@@ -261,7 +261,7 @@ export default function TeamFlowSection() {
             className="font-bold tracking-tight mb-5"
             style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#fff', lineHeight: 1.1 }}
           >
-            Así funciona una oficina<br />que nunca duerme.
+            Así funciona una oficina<br />que nunca duerme
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.55)', margin: '0 auto', lineHeight: 1.75, fontSize: '1rem' }}>
             Cada tarea llega automáticamente al especialista correcto.

@@ -337,7 +337,7 @@ export default function LandingPage() {
               className="font-bold tracking-tight mb-4"
               style={{ fontSize: 'clamp(1.6rem, 4vw, 2.8rem)', color: '#fff', lineHeight: 1.15 }}
             >
-              Toda organización<br />tiene una capacidad.
+              Toda organización<br />tiene una capacidad
             </h2>
             <p className="mx-auto" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 500, lineHeight: 1.65 }}>
               Conforme una organización crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana simplemente deja de ser suficiente.
@@ -775,7 +775,7 @@ export default function LandingPage() {
           <AnimatedSection>
             <h2 className="font-extrabold tracking-tight"
               style={{ fontSize: 'clamp(2.4rem, 6vw, 4.5rem)', color: '#fff', lineHeight: 1.08, letterSpacing: '-0.02em' }}>
-              Tu oficina ya puede<br />empezar a trabajar.
+              Tu oficina ya puede<br />empezar a trabajar
             </h2>
           </AnimatedSection>
 

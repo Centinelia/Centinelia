@@ -140,7 +140,7 @@ export default function FaqLanding() {
                   lineHeight: 1.12,
                 }}
               >
-                Antes de construir<br />tu oficina.
+                Antes de construir<br />tu oficina
               </h2>
               <p
                 className="mb-10 leading-relaxed"
