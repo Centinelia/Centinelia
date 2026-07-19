@@ -321,85 +321,85 @@ export default function LandingPage() {
 
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28" style={{ position: 'relative', zIndex: 1 }}>
 
-          {/* Row 1 — Desktop: [pills] [title] [pills]  /  Mobile: title only */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] lg:gap-6 lg:items-center mb-10">
+          {/* Desktop: [pills 160px] [title + cards + quote] [pills 160px] */}
+          <div className="grid grid-cols-1 lg:grid-cols-[160px_1fr_160px] lg:gap-6 lg:items-center">
 
             <div className="hidden lg:block" style={{ position: 'relative', minHeight: 420, overflow: 'visible' }}>
               <OverloadIllustration half="left" />
             </div>
 
-            <AnimatedSection className="text-center">
-              <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
-                El límite
-              </p>
-              <h2
-                className="font-bold tracking-tight mb-4"
-                style={{ fontSize: 'clamp(1.6rem, 3vw, 2.6rem)', color: '#fff', lineHeight: 1.15 }}
-              >
-                Toda organización<br />tiene una capacidad.
-              </h2>
-              <p className="mx-auto" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420, lineHeight: 1.65 }}>
-                Conforme crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana deja de ser suficiente.
-              </p>
-            </AnimatedSection>
+            <div>
+              <AnimatedSection className="text-center mb-10">
+                <p className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'rgba(155,109,255,0.7)' }}>
+                  El límite
+                </p>
+                <h2
+                  className="font-bold tracking-tight mb-4"
+                  style={{ fontSize: 'clamp(1.6rem, 3vw, 2.6rem)', color: '#fff', lineHeight: 1.15 }}
+                >
+                  Toda organización<br />tiene una capacidad.
+                </h2>
+                <p className="mx-auto" style={{ color: 'rgba(255,255,255,0.52)', maxWidth: 420, lineHeight: 1.65 }}>
+                  Conforme crece, también crecen las conversaciones, tareas y seguimientos. Llega un punto donde la capacidad humana deja de ser suficiente.
+                </p>
+              </AnimatedSection>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {LIMITS.map((p, i) => (
+                  <AnimatedSection key={p.title} delay={i * 0.1}>
+                    <div
+                      className="rounded-2xl p-6 h-full"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
+                        style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
+                      >
+                        {p.icon}
+                      </div>
+                      <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
+                        {p.label}
+                      </p>
+                      <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
+                        {p.title}
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {p.items.map(item => (
+                          <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            {item}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </AnimatedSection>
+                ))}
+              </div>
+
+              <AnimatedSection delay={0.2} className="mt-8">
+                <div
+                  className="mx-auto rounded-2xl px-7 py-5"
+                  style={{
+                    maxWidth: 400,
+                    background: 'rgba(108,59,255,0.09)',
+                    border: '1px solid rgba(108,59,255,0.2)',
+                    borderLeftWidth: 3,
+                    borderLeftColor: 'rgba(108,59,255,0.55)',
+                    borderLeftStyle: 'solid',
+                  }}
+                >
+                  <p className="font-semibold" style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.72)', lineHeight: 1.55 }}>
+                    Las ventas generan crecimiento.<br />
+                    <span style={{ color: '#C4A8FF' }}>La capacidad determina hasta dónde puedes crecer.</span>
+                  </p>
+                </div>
+              </AnimatedSection>
+            </div>
 
             <div className="hidden lg:block" style={{ position: 'relative', minHeight: 420, overflow: 'visible' }}>
               <OverloadIllustration half="right" />
             </div>
 
           </div>
-
-          {/* Row 2 — 3 cards full width */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {LIMITS.map((p, i) => (
-              <AnimatedSection key={p.title} delay={i * 0.1}>
-                <div
-                  className="rounded-2xl p-6 h-full"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-4"
-                    style={{ background: `${p.color}18`, border: `1px solid ${p.color}28` }}
-                  >
-                    {p.icon}
-                  </div>
-                  <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: p.color }}>
-                    {p.label}
-                  </p>
-                  <p className="font-bold text-sm mb-3" style={{ color: '#fff', lineHeight: 1.3 }}>
-                    {p.title}
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    {p.items.map(item => (
-                      <p key={item} className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {item}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </AnimatedSection>
-            ))}
-          </div>
-
-          {/* Row 3 — quote compact centered */}
-          <AnimatedSection delay={0.2} className="mt-8">
-            <div
-              className="mx-auto rounded-2xl px-7 py-5"
-              style={{
-                maxWidth: 400,
-                background: 'rgba(108,59,255,0.09)',
-                border: '1px solid rgba(108,59,255,0.2)',
-                borderLeftWidth: 3,
-                borderLeftColor: 'rgba(108,59,255,0.55)',
-                borderLeftStyle: 'solid',
-              }}
-            >
-              <p className="font-semibold" style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.72)', lineHeight: 1.55 }}>
-                Las ventas generan crecimiento.<br />
-                <span style={{ color: '#C4A8FF' }}>La capacidad determina hasta dónde puedes crecer.</span>
-              </p>
-            </div>
-          </AnimatedSection>
 
         </div>
       </section>
