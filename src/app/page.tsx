@@ -346,7 +346,7 @@ export default function LandingPage() {
                 </p>
               </AnimatedSection>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 {LIMITS.map((p, i) => (
                   <AnimatedSection key={p.title} delay={i * 0.1}>
                     <div
@@ -379,11 +379,14 @@ export default function LandingPage() {
 
               <AnimatedSection delay={0.2} className="mt-6">
                 <div
-                  className="mx-auto rounded-xl px-5 py-4 text-center"
+                  className="mx-auto rounded-2xl px-7 py-5"
                   style={{
-                    maxWidth: 380,
+                    maxWidth: 400,
                     background: 'rgba(108,59,255,0.09)',
                     border: '1px solid rgba(108,59,255,0.2)',
+                    borderLeftWidth: 3,
+                    borderLeftColor: 'rgba(108,59,255,0.55)',
+                    borderLeftStyle: 'solid',
                   }}
                 >
                   <p className="font-semibold" style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.72)', lineHeight: 1.55 }}>
