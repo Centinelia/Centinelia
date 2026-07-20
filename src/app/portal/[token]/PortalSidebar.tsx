@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
-type SubItem    = { label: string; id: string; href?: string };
+type SubItem    = { label: string; id: string; href?: string; icon?: React.ReactNode };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
 type Section    = { id: string; moduleId?: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
@@ -85,7 +85,26 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Mis empleados', id: 'lista-agentes' },
       ],
     },
-    {
+    ...(hasOpsAgent ? [{
+      id: 'oficina', moduleId: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
+      directHref: `/portal/${token}/oficina`,
+      items: [
+        // Llamadas (dentro de oficina)
+        { label: 'Llamadas entrantes', id: 'llamadas-entrantes', href: `/portal/${token}/llamadas/entrantes`, icon: <PhoneCall size={10} /> },
+        ...(showOutbound ? [{ label: 'Llamadas salientes', id: 'llamadas-salientes', href: `/portal/${token}/llamadas/salientes`, icon: <PhoneOutgoing size={10} /> }] : []),
+        // Oficina sub-páginas
+        { label: 'Actividad',            id: '' },
+        { label: 'Bandeja de entrada',   id: 'bandeja' },
+        { label: 'Reportes automáticos', id: 'reportes' },
+        { label: 'Contratos',            id: 'contratos' },
+        { label: 'Documentos',           id: 'documentos' },
+        { label: 'Juntas',               id: 'juntas' },
+        { label: 'Onboarding',           id: 'onboarding' },
+        { label: 'Chat con tu empleado', id: 'chat' },
+      ],
+    }] as Section[] : []),
+    // Llamadas sin OpsAgent (empleados de voz puro)
+    ...(!hasOpsAgent ? [{
       id: 'llamadas', moduleId: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
       toggleOnly: true,
       items: [],
@@ -105,20 +124,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
             { label: 'Contactos', id: 'contactos', href: `/portal/${token}/llamadas/salientes?view=contactos` },
           ],
         }] : []),
-      ],
-    },
-    ...(hasOpsAgent ? [{
-      id: 'oficina', moduleId: 'oficina', label: 'Oficina', icon: <Briefcase size={14} />,
-      directHref: `/portal/${token}/oficina`,
-      items: [
-        { label: 'Actividad',          id: '' },
-        { label: 'Bandeja de entrada', id: 'bandeja' },
-        { label: 'Reportes automáticos', id: 'reportes' },
-        { label: 'Contratos',          id: 'contratos' },
-        { label: 'Documentos',         id: 'documentos' },
-        { label: 'Juntas',             id: 'juntas' },
-        { label: 'Onboarding',         id: 'onboarding' },
-        { label: 'Chat con tu empleado', id: 'chat' },
       ],
     }] as Section[] : []),
     {
@@ -148,10 +153,19 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
 
   // Filter sections by allowed modules (owners see all)
   const sections = modules
-    ? allSections.filter(s => !s.moduleId || modules.includes(s.moduleId))
+    ? allSections.filter(s => {
+        if (!s.moduleId) return true;
+        if (modules.includes(s.moduleId)) return true;
+        // Oficina is accessible if user has llamadas or salientes module
+        if (s.id === 'oficina' && ['llamadas', 'salientes'].some(m => modules.includes(m))) return true;
+        return false;
+      })
     : allSections;
 
   const hasChildren = (s: Section) => s.items.length > 0 || (s.subSections?.length ?? 0) > 0;
+
+  // Detect active state for llamadas pages (now inside oficina)
+  const isOnLlamadas = pathname.includes('/llamadas/');
 
   return (
     <aside
@@ -167,8 +181,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     >
       <nav className="flex flex-col py-2 px-2">
         {sections.map(section => {
-          const isActive = currentTab === section.id;
-          const isOpen   = openIds.includes(section.id);
+          const isActive = currentTab === section.id || (section.id === 'oficina' && isOnLlamadas);
+          const isOpen   = openIds.includes(section.id) || (section.id === 'oficina' && isOnLlamadas);
           return (
             <div key={section.id} className="mb-0.5">
               <div className="flex items-center gap-0.5">
@@ -215,26 +229,33 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
               {isOpen && (
                 <div className="mt-0.5 mb-1 pl-2 flex flex-col gap-0.5">
 
-                  {/* Flat items (most sections) */}
-                  {section.items.map(item => (
-                    <Link
-                      key={item.id}
-                      href={section.id === 'oficina'
+                  {/* Flat items */}
+                  {section.items.map(item => {
+                    const itemHref = item.href ?? (
+                      section.id === 'oficina'
                         ? `/portal/${token}/oficina${item.id ? `/${item.id}` : ''}`
-                        : `/portal/${token}?tab=${section.id}#${item.id}`}
-                      scroll={false}
-                      onClick={() => {
-                        if (item.id) setPendingId(item.id);
-                      }}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-                      style={{ color: 'var(--c-text-2)' }}
-                    >
-                      <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
-                      {item.label}
-                    </Link>
-                  ))}
+                        : `/portal/${token}?tab=${section.id}#${item.id}`
+                    );
+                    const itemActive = item.href ? pathname === item.href || pathname.startsWith(item.href + '?') : false;
+                    return (
+                      <Link
+                        key={item.id || item.label}
+                        href={itemHref}
+                        scroll={false}
+                        onClick={() => { if (!item.href && item.id) setPendingId(item.id); }}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
+                        style={{ color: itemActive ? '#9B6DFF' : 'var(--c-text-2)', background: itemActive ? 'rgba(108,59,255,0.08)' : 'transparent' }}
+                      >
+                        {item.icon
+                          ? <span style={{ opacity: itemActive ? 1 : 0.55, flexShrink: 0 }}>{item.icon}</span>
+                          : <span className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'currentColor', opacity: 0.45 }} />
+                        }
+                        {item.label}
+                      </Link>
+                    );
+                  })}
 
-                  {/* Sub-sections (llamadas: Entrantes / Salientes) */}
+                  {/* Sub-sections (Entrantes / Salientes for non-ops llamadas) */}
                   {section.subSections?.map(sub => {
                     const subHref   = `/portal/${token}/llamadas/${sub.id}`;
                     const isSubActive = pathname === subHref || pathname.startsWith(subHref + '/');
@@ -315,7 +336,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                 <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999, transition: 'width 0.4s' }} />
               </div>
             </div>
-            {/* Ops */}
+            {/* Tareas */}
             {aiOpsLimit > 0 && (
               <div>
                 <div className="flex justify-between mb-1">

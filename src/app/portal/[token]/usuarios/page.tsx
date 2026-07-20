@@ -105,7 +105,7 @@ export default async function UsuariosPage({ params }: Props) {
           />
 
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 sm:px-6 py-6 max-w-3xl flex-1">
+            <div className="px-4 sm:px-6 py-6 flex-1">
 
               <div className="mb-6">
                 <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--c-text)', fontFamily: 'var(--font-sora)' }}>
@@ -122,14 +122,6 @@ export default async function UsuariosPage({ params }: Props) {
                   initialUsers={(existingUsers ?? []) as any[]}
                   accountGiro={(agent as any).features?.vertical ?? undefined}
                 />
-              </div>
-
-              {/* Info box */}
-              <div className="mt-4 px-4 py-3 rounded-xl text-xs flex flex-col gap-1"
-                style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
-                <p className="font-semibold" style={{ color: 'var(--c-text-2)' }}>Acerca de los usuarios</p>
-                <p>Cada usuario tiene su propio correo y contraseña. Al iniciar sesión, solo ven las secciones que tú les asignas.</p>
-                <p>El propietario (tú) siempre tiene acceso completo.</p>
               </div>
 
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronUp, Users, Info } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Plus, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronUp, Users, Info, Search } from 'lucide-react';
 import { PORTAL_MODULES, GIRO_GROUPS } from '@/lib/portal/modules';
 
 interface PortalUser {
@@ -19,22 +19,20 @@ interface Props {
   accountGiro?: string;
 }
 
-const GENERAL_GROUPS = ['Portal', 'Oficina'] as const;
+// ── Module Selector ────────────────────────────────────────────────────────────
 
 function ModuleSelector({
   selected,
   onChange,
   accountGiro,
 }: {
-  selected:    string[];
-  onChange:    (m: string[]) => void;
+  selected:     string[];
+  onChange:     (m: string[]) => void;
   accountGiro?: string;
 }) {
   const [openGiros, setOpenGiros] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const g of GIRO_GROUPS) {
-      initial[g.id] = g.id === accountGiro;
-    }
+    for (const g of GIRO_GROUPS) initial[g.id] = g.id === accountGiro;
     return initial;
   });
 
@@ -50,19 +48,17 @@ function ModuleSelector({
   const generalModules = (group: string) =>
     PORTAL_MODULES.filter(m => m.group === group && m.giros.includes('all'));
 
-  const allInSet = (ids: string[]) => ids.every(id => selected.includes(id));
+  const allInSet  = (ids: string[]) => ids.every(id => selected.includes(id));
   const someInSet = (ids: string[]) => ids.some(id => selected.includes(id));
 
   return (
     <div className="flex flex-col gap-4">
-
-      {/* General groups — always visible */}
-      {GENERAL_GROUPS.map(group => {
+      {/* General groups */}
+      {(['Portal', 'Oficina'] as const).map(group => {
         const mods = generalModules(group);
         const ids  = mods.map(m => m.id);
         const all  = allInSet(ids);
         const some = someInSet(ids) && !all;
-
         return (
           <div key={group}>
             <button
@@ -71,30 +67,19 @@ function ModuleSelector({
               className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
               style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              <div
-                className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
-                style={{
-                  border:     '1px solid rgba(108,59,255,0.6)',
-                  background: all ? '#6C3BFF' : some ? 'rgba(108,59,255,0.35)' : 'transparent',
-                }}
-              >
-                {all && <Check size={9} color="#fff" />}
-                {some && <span style={{ width: 6, height: 2, background: '#fff', display: 'block', borderRadius: 1 }} />}
-              </div>
+              <Checkbox all={all} some={some} />
               {group === 'Oficina' ? 'Oficina (general)' : group}
             </button>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-2">
-              {mods.map(m => (
-                <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />
-              ))}
+            <div className="grid grid-cols-1 gap-1.5 pl-2">
+              {mods.map(m => <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />)}
             </div>
           </div>
         );
       })}
 
-      {/* Industry-specific groups — collapsible */}
+      {/* Industry groups */}
       {GIRO_GROUPS.map(giroGroup => {
-        const mods = PORTAL_MODULES.filter(m => m.giros.includes(giroGroup.id));
+        const mods     = PORTAL_MODULES.filter(m => m.giros.includes(giroGroup.id));
         if (mods.length === 0) return null;
         const ids      = mods.map(m => m.id);
         const all      = allInSet(ids);
@@ -103,43 +88,20 @@ function ModuleSelector({
         const isActive = giroGroup.id === accountGiro;
 
         return (
-          <div key={giroGroup.id}
-            className="rounded-xl overflow-hidden"
-            style={{
-              border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
-              background: isActive ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)',
-            }}
-          >
-            {/* Group header */}
-            <div className="flex items-center gap-2 px-3 py-2.5">
-              {/* Check all */}
-              <button
-                type="button"
-                onClick={() => toggleAll(ids)}
-                className="flex-shrink-0"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                <div
-                  className="w-3.5 h-3.5 rounded flex items-center justify-center"
-                  style={{
-                    border:     '1px solid rgba(108,59,255,0.6)',
-                    background: all ? '#6C3BFF' : some ? 'rgba(108,59,255,0.35)' : 'transparent',
-                  }}
-                >
-                  {all && <Check size={9} color="#fff" />}
-                  {some && <span style={{ width: 6, height: 2, background: '#fff', display: 'block', borderRadius: 1 }} />}
-                </div>
-              </button>
+          <div key={giroGroup.id} className="rounded-xl"
+            style={{ border: isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)', background: isActive ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)' }}>
 
-              {/* Label + expand */}
+            <div className="flex items-center gap-2 px-3 py-2.5">
+              <button type="button" onClick={() => toggleAll(ids)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                <Checkbox all={all} some={some} />
+              </button>
               <button
                 type="button"
                 onClick={() => setOpenGiros(p => ({ ...p, [giroGroup.id]: !p[giroGroup.id] }))}
                 className="flex-1 flex items-center gap-2 text-left"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
-                <span className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: isActive ? '#9B6DFF' : 'var(--c-text-3)' }}>
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isActive ? '#9B6DFF' : 'var(--c-text-3)' }}>
                   {giroGroup.label}
                 </span>
                 {isActive && (
@@ -154,19 +116,25 @@ function ModuleSelector({
               </button>
             </div>
 
-            {/* Module list */}
             {isOpen && (
-              <div className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5"
-                style={{ borderTop: '1px solid var(--c-border)' }}>
-                <div className="col-span-full h-2" />
-                {mods.map(m => (
-                  <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />
-                ))}
+              <div className="px-3 pb-3 grid grid-cols-1 gap-1.5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="h-2" />
+                {mods.map(m => <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />)}
               </div>
             )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function Checkbox({ all, some }: { all: boolean; some: boolean }) {
+  return (
+    <div className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
+      style={{ border: '1px solid rgba(108,59,255,0.6)', background: all ? '#6C3BFF' : some ? 'rgba(108,59,255,0.35)' : 'transparent' }}>
+      {all && <Check size={9} color="#fff" />}
+      {some && <span style={{ width: 6, height: 2, background: '#fff', display: 'block', borderRadius: 1 }} />}
     </div>
   );
 }
@@ -193,18 +161,16 @@ function ModuleToggle({ id, label, selected, onToggle }: {
       <button
         type="button"
         onClick={() => onToggle(id)}
-        className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left"
+        className="flex-1 flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors text-left"
         style={{
-          background:  on ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-          border:      on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
-          color:       on ? '#9B6DFF' : 'var(--c-text-2)',
+          background:   on ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
+          border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+          color:        on ? '#9B6DFF' : 'var(--c-text-2)',
           borderRadius: desc ? '8px 0 0 8px' : 8,
         }}
       >
-        <div
-          className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
-          style={{ border: '1px solid rgba(108,59,255,0.5)', background: on ? '#6C3BFF' : 'transparent' }}
-        >
+        <div className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
+          style={{ border: '1px solid rgba(108,59,255,0.5)', background: on ? '#6C3BFF' : 'transparent' }}>
           {on && <Check size={8} color="#fff" />}
         </div>
         {label}
@@ -217,12 +183,12 @@ function ModuleToggle({ id, label, selected, onToggle }: {
             onClick={() => setTip(v => !v)}
             className="h-full px-1.5 flex items-center justify-center"
             style={{
-              background:  on ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
-              border:      on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
-              borderLeft:  'none',
+              background:   on ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
+              border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+              borderLeft:   'none',
               borderRadius: '0 8px 8px 0',
-              color:       'var(--c-text-4)',
-              cursor:      'pointer',
+              color:        'var(--c-text-4)',
+              cursor:       'pointer',
             }}
           >
             <Info size={10} />
@@ -230,13 +196,8 @@ function ModuleToggle({ id, label, selected, onToggle }: {
 
           {tip && (
             <div
-              className="absolute z-50 bottom-full right-0 mb-1.5 w-52 rounded-xl px-3 py-2.5 text-xs leading-relaxed shadow-2xl"
-              style={{
-                background:  'var(--c-modal)',
-                border:      '1px solid rgba(108,59,255,0.25)',
-                color:       'var(--c-text-2)',
-                boxShadow:   '0 8px 32px rgba(0,0,0,0.4)',
-              }}
+              className="absolute z-50 bottom-full right-0 mb-1.5 w-52 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
+              style={{ background: 'var(--c-modal)', border: '1px solid rgba(108,59,255,0.25)', color: 'var(--c-text-2)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
             >
               <p className="font-semibold mb-0.5" style={{ color: '#9B6DFF' }}>{label}</p>
               {desc}
@@ -248,8 +209,11 @@ function ModuleToggle({ id, label, selected, onToggle }: {
   );
 }
 
+// ── Module chips (compact view) ────────────────────────────────────────────────
+
 function ModuleChips({ modules }: { modules: string[] }) {
-  if (modules.length === 0) return <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin acceso</span>;
+  if (modules.length === 0)
+    return <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin acceso</span>;
   const labels = modules.map(id => PORTAL_MODULES.find(m => m.id === id)?.label ?? id);
   const shown  = labels.slice(0, 3);
   const rest   = labels.length - 3;
@@ -270,6 +234,8 @@ function ModuleChips({ modules }: { modules: string[] }) {
     </div>
   );
 }
+
+// ── Password field ─────────────────────────────────────────────────────────────
 
 function PasswordField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   const [show, setShow] = useState(false);
@@ -292,12 +258,15 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
   );
 }
 
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function SubUserManager({ token, initialUsers, accountGiro }: Props) {
-  const [users, setUsers]           = useState<PortalUser[]>(initialUsers);
-  const [showAdd, setShowAdd]       = useState(false);
-  const [editId, setEditId]         = useState<string | null>(null);
-  const [error, setError]           = useState('');
-  const [saving, setSaving]         = useState(false);
+  const [users, setUsers]         = useState<PortalUser[]>(initialUsers);
+  const [showAdd, setShowAdd]     = useState(false);
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [error, setError]         = useState('');
+  const [saving, setSaving]       = useState(false);
+  const [search, setSearch]       = useState('');
 
   const [newEmail,    setNewEmail]    = useState('');
   const [newName,     setNewName]     = useState('');
@@ -309,15 +278,19 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
   const [editPassword, setEditPassword] = useState('');
   const [editOpen,     setEditOpen]     = useState(false);
 
-  const startEdit = (u: PortalUser) => {
-    setEditId(u.id);
-    setEditName(u.name ?? '');
-    setEditModules(u.modules);
-    setEditPassword('');
-    setEditOpen(false);
-    setError('');
-  };
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(u =>
+      u.email.toLowerCase().includes(q) ||
+      (u.name ?? '').toLowerCase().includes(q)
+    );
+  }, [users, search]);
 
+  const startEdit = (u: PortalUser) => {
+    setEditId(u.id); setEditName(u.name ?? ''); setEditModules(u.modules);
+    setEditPassword(''); setEditOpen(false); setError('');
+  };
   const cancelEdit = () => { setEditId(null); setError(''); };
 
   const handleAdd = async () => {
@@ -325,9 +298,8 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
     setSaving(true); setError('');
     try {
       const res = await fetch(`/api/portal/${token}/users`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email: newEmail.trim(), name: newName.trim() || undefined, password: newPassword, modules: newModules }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail.trim(), name: newName.trim() || undefined, password: newPassword, modules: newModules }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al crear usuario'); return; }
       const { user } = await res.json();
@@ -343,9 +315,8 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
       const body: Record<string, unknown> = { name: editName, modules: editModules };
       if (editPassword.trim()) body.password = editPassword;
       const res = await fetch(`/api/portal/${token}/users/${editId}`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(body),
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al guardar'); return; }
       const { user } = await res.json();
@@ -366,216 +337,217 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Users size={16} style={{ color: '#6C3BFF' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-            Usuarios ({users.length})
-          </h2>
+      {/* ── LEFT PANEL: form ──────────────────────────────────────────────── */}
+      <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-4">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users size={16} style={{ color: '#6C3BFF' }} />
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+              Usuarios ({users.length})
+            </h2>
+          </div>
+          {!showAdd && (
+            <button
+              onClick={() => { setShowAdd(true); setError(''); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}
+            >
+              <Plus size={12} /> Añadir usuario
+            </button>
+          )}
         </div>
-        {!showAdd && (
-          <button
-            onClick={() => { setShowAdd(true); setError(''); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-            style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}
-          >
-            <Plus size={12} />
-            Añadir usuario
-          </button>
+
+        {error && (
+          <div className="px-3 py-2 rounded-lg text-xs"
+            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Add form */}
+        {showAdd ? (
+          <div className="rounded-xl p-4 flex flex-col gap-3"
+            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
+            <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo usuario</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Correo *</label>
+                <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  placeholder="usuario@empresa.com" className="w-full px-3 py-2 rounded-lg text-xs"
+                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+              </div>
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
+                <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                  placeholder="Nombre del usuario" className="w-full px-3 py-2 rounded-lg text-xs"
+                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Contraseña inicial *</label>
+              <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" />
+            </div>
+
+            <div>
+              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+              <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleAdd} disabled={saving}
+                className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Guardando...' : 'Crear usuario'}
+              </button>
+              <button onClick={resetAdd}
+                className="px-4 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
+                style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Info box when no form is open */
+          <div className="px-4 py-3 rounded-xl text-xs flex flex-col gap-1"
+            style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
+            <p className="font-semibold" style={{ color: 'var(--c-text-2)' }}>Acerca de los usuarios</p>
+            <p>Cada usuario tiene su propio correo y contraseña. Al iniciar sesión, solo ven las secciones que tú les asignas.</p>
+            <p>El propietario siempre tiene acceso completo.</p>
+          </div>
         )}
       </div>
 
-      {error && (
-        <div className="px-3 py-2 rounded-lg text-xs"
-          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
-          {error}
+      {/* ── RIGHT PANEL: user list ────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 flex flex-col gap-3">
+
+        {/* Search bar */}
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-4)' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o correo…"
+            className="w-full pl-8 pr-3 py-2 rounded-lg text-xs outline-none"
+            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          />
         </div>
-      )}
 
-      {/* Add new user form */}
-      {showAdd && (
-        <div className="rounded-xl p-4 flex flex-col gap-3"
-          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
-          <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo usuario</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Correo electrónico *</label>
-              <input
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                placeholder="usuario@empresa.com"
-                className="w-full px-3 py-2 rounded-lg text-xs"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
-              />
-            </div>
-            <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
-              <input
-                type="text"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Nombre del usuario"
-                className="w-full px-3 py-2 rounded-lg text-xs"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
-              />
-            </div>
+        {/* Empty state */}
+        {users.length === 0 && (
+          <div className="text-center py-14" style={{ color: 'var(--c-text-4)' }}>
+            <Users size={32} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Sin usuarios aún.</p>
+            <p className="text-xs mt-1">Añade colaboradores desde el panel de la izquierda.</p>
           </div>
+        )}
 
-          <div>
-            <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Contraseña inicial *</label>
-            <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" />
+        {users.length > 0 && filteredUsers.length === 0 && (
+          <div className="text-center py-10 text-xs" style={{ color: 'var(--c-text-4)' }}>
+            Sin resultados para "{search}"
           </div>
+        )}
 
-          <div>
-            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
-            <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
-          </div>
+        {/* User cards */}
+        {filteredUsers.map(u => (
+          <div key={u.id} className="rounded-xl overflow-hidden"
+            style={{ border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)', background: 'var(--c-surface)' }}>
 
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={handleAdd}
-              disabled={saving}
-              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? 'Guardando...' : 'Crear usuario'}
-            </button>
-            <button
-              onClick={resetAdd}
-              className="px-4 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-              style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* User list */}
-      {users.length === 0 && !showAdd && (
-        <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
-          <Users size={32} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No hay usuarios configurados aún.</p>
-          <p className="text-xs mt-1">Añade colaboradores con acceso limitado a secciones específicas.</p>
-        </div>
-      )}
-
-      {users.map(u => (
-        <div key={u.id} className="rounded-xl overflow-hidden"
-          style={{ border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)', background: 'var(--c-surface)' }}>
-
-          {/* User header */}
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                  {u.name ?? u.email}
-                </p>
-                {u.is_owner && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                    style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
-                    Propietario
-                  </span>
-                )}
+            {/* User header */}
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                    {u.name ?? u.email}
+                  </p>
+                  {u.is_owner && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                      style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
+                      Propietario
+                    </span>
+                  )}
+                </div>
+                {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
               </div>
-              {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
+              {!u.is_owner && (
+                <div className="flex items-center gap-1 shrink-0">
+                  {editId !== u.id ? (
+                    <>
+                      <button onClick={() => startEdit(u)}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleDelete(u.id, u.email)}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={handleSaveEdit} disabled={saving}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(34,197,94,0.1)]"
+                        style={{ background: 'none', border: 'none', color: '#22c55e', cursor: saving ? 'not-allowed' : 'pointer' }}>
+                        <Check size={13} />
+                      </button>
+                      <button onClick={cancelEdit}
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
+                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        <X size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-            {!u.is_owner && (
-              <div className="flex items-center gap-1 shrink-0">
-                {editId !== u.id ? (
-                  <>
-                    <button
-                      onClick={() => startEdit(u)}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(u.id, u.email)}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleSaveEdit}
-                      disabled={saving}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(34,197,94,0.1)]"
-                      style={{ background: 'none', border: 'none', color: '#22c55e', cursor: saving ? 'not-allowed' : 'pointer' }}
-                    >
-                      <Check size={13} />
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                      style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}
-                    >
-                      <X size={13} />
-                    </button>
-                  </>
-                )}
+
+            {/* Modules chips (view mode) */}
+            {editId !== u.id && (
+              <div className="px-4 pb-3">
+                <ModuleChips modules={u.modules} />
+              </div>
+            )}
+
+            {/* Edit mode */}
+            {editId === u.id && (
+              <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="pt-3">
+                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
+                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                    placeholder="Nombre del usuario" className="w-full px-3 py-2 rounded-lg text-xs"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                </div>
+
+                <div>
+                  <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+                  <ModuleSelector selected={editModules} onChange={setEditModules} accountGiro={accountGiro} />
+                </div>
+
+                <div>
+                  <button type="button" onClick={() => setEditOpen(v => !v)}
+                    className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                    style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer', padding: 0 }}>
+                    {editOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                    Cambiar contraseña
+                  </button>
+                  {editOpen && (
+                    <div className="mt-2">
+                      <PasswordField value={editPassword} onChange={setEditPassword} placeholder="Nueva contraseña" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
-
-          {/* Modules chips (view mode) */}
-          {editId !== u.id && (
-            <div className="px-4 pb-3">
-              <ModuleChips modules={u.modules} />
-            </div>
-          )}
-
-          {/* Edit mode */}
-          {editId === u.id && (
-            <div className="px-4 pb-4 flex flex-col gap-3"
-              style={{ borderTop: '1px solid var(--c-border)' }}>
-              <div className="pt-3">
-                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  placeholder="Nombre del usuario"
-                  className="w-full px-3 py-2 rounded-lg text-xs"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
-                <ModuleSelector selected={editModules} onChange={setEditModules} accountGiro={accountGiro} />
-              </div>
-
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(v => !v)}
-                  className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-                  style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer', padding: 0 }}
-                >
-                  {editOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                  Cambiar contraseña
-                </button>
-                {editOpen && (
-                  <div className="mt-2">
-                    <PasswordField value={editPassword} onChange={setEditPassword} placeholder="Nueva contraseña" />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-
+        ))}
+      </div>
     </div>
   );
 }

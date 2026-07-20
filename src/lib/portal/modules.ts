@@ -9,16 +9,16 @@ export const PORTAL_MODULES = [
     desc: 'Manual de la organización, horarios de atención y configuración del empleado.',
   },
   {
+    id: 'oficina', label: 'Oficina (acceso general)', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno, incluyendo llamadas.',
+  },
+  {
     id: 'llamadas', label: 'Llamadas entrantes', group: 'Portal', giros: ['all'] as string[],
     desc: 'Historial de llamadas recibidas, grabaciones y transcripciones.',
   },
   {
     id: 'salientes', label: 'Llamadas salientes', group: 'Portal', giros: ['all'] as string[],
     desc: 'Campañas y registros de llamadas que el empleado realiza de forma proactiva.',
-  },
-  {
-    id: 'oficina', label: 'Oficina (acceso general)', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
   },
   {
     id: 'agentes', label: 'Empleados', group: 'Portal', giros: ['all'] as string[],
@@ -47,7 +47,7 @@ export const PORTAL_MODULES = [
   },
   {
     id: 'of_contratos', label: 'Contratos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Contratos y documentos legales que el empleado puede consultar y refernciar.',
+    desc: 'Contratos y documentos legales que el empleado puede consultar y referenciar.',
   },
   {
     id: 'of_documentos', label: 'Documentos', group: 'Oficina', giros: ['all'] as string[],
@@ -66,6 +66,10 @@ export const PORTAL_MODULES = [
     desc: 'Flujos de bienvenida y capacitación que el empleado gestiona para nuevos colaboradores.',
   },
   {
+    id: 'of_encuestas', label: 'Encuestas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Encuestas de satisfacción o recopilación de datos realizadas por llamada.',
+  },
+  {
     id: 'of_chat', label: 'Consultar empleado', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Chat directo con el empleado para hacerle preguntas sobre la operación.',
   },
@@ -78,10 +82,6 @@ export const PORTAL_MODULES = [
     id: 'of_cabildo', label: 'Cabildo', group: 'Oficina', giros: ['gobierno'] as string[],
     desc: 'Gestión de sesiones de cabildo: puntos de acuerdo, actas y votaciones.',
   },
-  {
-    id: 'of_encuestas', label: 'Encuestas', group: 'Oficina', giros: ['gobierno', 'educacion'] as string[],
-    desc: 'Encuestas de satisfacción o recopilación de datos realizadas por llamada.',
-  },
   // ── Oficina sector — Tecnología / IT ────────────────────────────────────
   {
     id: 'of_helpdesk', label: 'Mesa de ayuda', group: 'Oficina', giros: ['tecnologia', 'gobierno'] as string[],
@@ -91,7 +91,6 @@ export const PORTAL_MODULES = [
 
 export const GIRO_GROUPS: { id: string; label: string }[] = [
   { id: 'gobierno',   label: 'Gobierno / Municipio' },
-  { id: 'educacion',  label: 'Educación' },
   { id: 'tecnologia', label: 'Tecnología / IT' },
 ];
 

@@ -93,7 +93,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
         <div className="flex min-h-[calc(100vh-53px)]">
           <PortalSidebar
             token={token}
-            currentTab="llamadas"
+            currentTab="oficina"
             hasOpsAgent={hasOpsAgent}
             showOutbound={showOutbound}
             hasStripe={hasStripe}
