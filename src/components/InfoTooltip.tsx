@@ -6,15 +6,19 @@ import { createPortal } from 'react-dom';
 
 export default function InfoTooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const [pos,  setPos]  = useState({ top: 0, left: 0 });
+  const [pos,  setPos]  = useState({ top: 0, left: 0, caretLeft: 12 });
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  const TOOLTIP_W = 300;
 
   const updatePos = useCallback(() => {
     if (!btnRef.current) return;
-    const rect    = btnRef.current.getBoundingClientRect();
-    const width   = Math.min(320, Math.max(240, window.innerWidth * 0.2));
-    const left    = Math.min(rect.left, window.innerWidth - width - 12);
-    setPos({ top: rect.bottom + 6, left: Math.max(8, left) });
+    const rect        = btnRef.current.getBoundingClientRect();
+    const btnCenterX  = rect.left + rect.width / 2;
+    const rawLeft     = btnCenterX - TOOLTIP_W / 2;
+    const left        = Math.max(8, Math.min(rawLeft, window.innerWidth - TOOLTIP_W - 8));
+    const caretLeft   = Math.max(12, Math.min(btnCenterX - left, TOOLTIP_W - 24));
+    setPos({ top: rect.bottom + 10, left, caretLeft });
   }, []);
 
   useEffect(() => {
@@ -39,36 +43,72 @@ export default function InfoTooltip({ text }: { text: string }) {
         onClick={() => setOpen(v => !v)}
         aria-label="Más información"
         style={{
-          display: 'inline-flex', alignItems: 'center', background: 'none',
-          border: 'none', padding: '0 2px', cursor: 'pointer',
-          color: open ? 'var(--c-text-2)' : 'var(--c-text-4)',
-          transition: 'color 0.15s', lineHeight: 1,
+          display:         'inline-flex',
+          alignItems:      'center',
+          justifyContent:  'center',
+          width:           16,
+          height:          16,
+          borderRadius:    '50%',
+          background:      open ? 'rgba(108,59,255,0.18)' : 'rgba(108,59,255,0.1)',
+          border:          'none',
+          padding:         0,
+          cursor:          'pointer',
+          color:           open ? '#7C4DFF' : '#9B6DFF',
+          transition:      'background 0.15s, color 0.15s',
+          flexShrink:      0,
         }}
       >
-        <Info size={11} />
+        <Info size={10} strokeWidth={2.5} />
       </button>
 
       {open && createPortal(
         <div
           style={{
-            position:     'fixed',
-            top:          pos.top,
-            left:         pos.left,
-            zIndex:       9999,
-            width:        'max(240px, 20vw)',
-            maxWidth:     320,
-            background:   'var(--c-modal)',
-            border:       '1px solid var(--c-border)',
-            borderRadius: 10,
-            padding:      '10px 12px',
-            boxShadow:    '0 8px 24px rgba(0,0,0,0.25)',
-            color:        'var(--c-text-2)',
-            fontSize:     12,
-            lineHeight:   1.65,
-            whiteSpace:   'pre-line',
+            position:  'fixed',
+            top:       pos.top,
+            left:      pos.left,
+            zIndex:    9999,
+            width:     TOOLTIP_W,
+            animation: 'infotip-in 0.14s ease',
           }}
         >
-          {text}
+          <style>{`
+            @keyframes infotip-in {
+              from { opacity: 0; transform: translateY(-4px); }
+              to   { opacity: 1; transform: translateY(0);    }
+            }
+          `}</style>
+
+          {/* Caret */}
+          <div style={{
+            position:          'absolute',
+            top:               -5,
+            left:              pos.caretLeft - 5,
+            width:             10,
+            height:            10,
+            background:        'var(--c-modal, #1e1b2e)',
+            border:            '1px solid rgba(108,59,255,0.25)',
+            borderBottomColor: 'transparent',
+            borderRightColor:  'transparent',
+            transform:         'rotate(45deg)',
+            borderRadius:      2,
+          }} />
+
+          {/* Content card */}
+          <div style={{
+            background:   'var(--c-modal, #1e1b2e)',
+            border:       '1px solid rgba(108,59,255,0.22)',
+            borderTop:    '2px solid rgba(108,59,255,0.5)',
+            borderRadius: '0 0 10px 10px',
+            padding:      '11px 14px 12px',
+            boxShadow:    '0 16px 40px rgba(0,0,0,0.28), 0 2px 10px rgba(108,59,255,0.12)',
+            color:        'var(--c-text-2)',
+            fontSize:     12,
+            lineHeight:   1.7,
+            whiteSpace:   'pre-line',
+          }}>
+            {text}
+          </div>
         </div>,
         document.body
       )}

@@ -112,9 +112,6 @@ export default function KnowledgeBaseEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-        Tu empleado consulta esta información en todas sus interacciones — llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deba conocer.
-      </p>
       <textarea
         value={value}
         onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}

@@ -58,7 +58,7 @@ import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
-type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta';
+type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta' | 'equipo';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -89,9 +89,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
 
-  if (tab === 'oficina')   redirect(`/portal/${token}/oficina`);
-  if (tab === 'agentes')   redirect(`/portal/${token}/agentes`);
-  if (tab === 'llamadas' || tab === 'salientes') redirect(`/portal/${token}/llamadas`);
+  if (tab === 'oficina')                          redirect(`/portal/${token}/oficina`);
+  if (tab === 'agentes')                          redirect(`/portal/${token}/agentes`);
+  if (tab === 'llamadas' || tab === 'salientes')  redirect(`/portal/${token}/llamadas`);
+  if (tab === 'integraciones')                    redirect(`/portal/${token}/oficina/integraciones`);
+  if (tab === 'equipo')                           redirect(`/portal/${token}/usuarios`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
   const cookieStore    = await cookies();
@@ -316,13 +318,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   });
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'inicio',        label: 'Inicio' },
-    { id: 'llamadas',      label: 'Llamadas' },
-    ...(hasOpsAgent ? [{ id: 'oficina' as Tab, label: 'Oficina' }] : []),
-    { id: 'agentes' as Tab, label: 'Empleados' },
-    { id: 'negocio',       label: 'Negocio' },
-    { id: 'integraciones', label: 'Integraciones' },
-    { id: 'cuenta',        label: 'Cuenta' },
+    { id: 'inicio',   label: 'Inicio' },
+    { id: 'negocio',  label: 'Organización' },
+    { id: 'agentes',  label: 'Empleados' },
+    { id: 'oficina',  label: 'Oficina' },
+    { id: 'cuenta',   label: 'Cuenta' },
+    { id: 'equipo',   label: 'Equipo de gestión' },
   ];
 
   return (
@@ -445,7 +446,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="flex flex-col gap-2 lg:hidden">
                   {reauthAlerts.map(alert => (
                     <Link key={alert.provider}
-                      href={`/portal/${token}?tab=integraciones`}
+                      href={`/portal/${token}/oficina/integraciones`}
                       className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-80"
                       style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
                       <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
@@ -492,7 +493,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
                   {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
                   {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
-                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas IA" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
+                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
                 </div>
 
                 {/* Peak hours */}
@@ -697,10 +698,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── OFICINA (ops only) ───────────────────────────────────────── */}
           {/* ── NEGOCIO ──────────────────────────────────────────────────── */}
           {tab === 'negocio' && (
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+            <div className="flex flex-col lg:flex-row gap-5 items-start">
 
               {/* Main column */}
-              <div className="flex flex-col gap-5">
+              <div className="flex-1 min-w-0 flex flex-col gap-5">
                 {agent.portal_email && (
                   <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={(agent as any).business_description ?? ''} />
                 )}
@@ -726,7 +727,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
-                    <InfoTooltip text="Todo lo que tu empleado debe saber sobre la organización: servicios, precios, horarios, políticas y preguntas frecuentes. Se usa en llamadas, correos y mensajes." />
+                    <InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />
                   </div>
                   <KnowledgeBaseEditor
                     token={token}
@@ -739,12 +740,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="perfil-dueno" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Perfil del responsable</h2>
-                    <InfoTooltip text="Cuéntale a tu empleado quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Se comparte con todos tus empleados automáticamente." />
+                    <InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />
                   </div>
                   <OwnerProfileEditor
                     token={token}
                     initialValue={(agent as any).owner_profile ?? ''}
                   />
+                </div>
+
+              </div>
+
+              {/* Right column — Horario, Sitio web, Reseñas */}
+              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
+                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
+                  </div>
+                  <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
                 </div>
 
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -762,31 +775,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
-              {/* Right column — Horario de atención */}
-              <div>
-                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
-                  </div>
-                  <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ── INTEGRACIONES ────────────────────────────────────────────── */}
-          {tab === 'integraciones' && (
-            <div className="flex flex-col gap-5">
-              <IntegrationsHub
-                token={token}
-                plan={agent.plan as Plan}
-                hasOpsAgent={hasOpsAgent}
-                hasNotion={!!(agent as any).notion_access_token}
-                inboxAddress={inboxAddress}
-              />
-              <PoliciesSection token={token} />
             </div>
           )}
 

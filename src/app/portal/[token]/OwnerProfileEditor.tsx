@@ -44,10 +44,6 @@ export default function OwnerProfileEditor({ token, initialValue }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        Cuéntale a tu empleado quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepa de ti, mejor se adaptará a tu estilo.
-      </p>
-
       <textarea
         value={value}
         onChange={e => { setValue(e.target.value); setSaved(false); }}
