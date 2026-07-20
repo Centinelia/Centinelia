@@ -440,15 +440,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   }}
                 >
                   {/* Team — grows from bottom edge, clipped at top */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, width: 210, height: 150, pointerEvents: 'none' }}>
-                    <Image src="/meerkats-team.png" alt="" fill sizes="210px"
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, width: 160, height: 112, pointerEvents: 'none' }}>
+                    <Image src="/meerkats-team.png" alt="" fill sizes="160px"
                       style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
                   </div>
 
                   {/* Text — offset right of image */}
-                  <div style={{ paddingLeft: 214, paddingRight: 16, paddingTop: 18, paddingBottom: 18 }}>
+                  <div style={{ paddingLeft: 164, paddingRight: 20, paddingTop: 18, paddingBottom: 18 }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', maxWidth: 320 }}>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>
