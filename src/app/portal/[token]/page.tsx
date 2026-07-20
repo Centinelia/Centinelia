@@ -782,13 +782,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
 
-              {/* Account serial */}
-              {accountSerial && (
-                <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  <AccountSerialBadge serial={accountSerial} variant="card" />
-                </div>
-              )}
-
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Left column ── */}
@@ -877,8 +870,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   )}
                 </div>
 
-                {/* ── Right column — Historial de minutos ── */}
-                <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                {/* ── Right column — Historial de minutos + Número de cuenta ── */}
+                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
                     <div className="relative">
@@ -889,6 +882,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                     </div>
                   </div>
+                  {accountSerial && (
+                    <AccountSerialBadge serial={accountSerial} variant="card" />
+                  )}
                 </div>
 
               </div>
