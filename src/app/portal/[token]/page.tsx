@@ -564,29 +564,42 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
                     <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria." />
                   </div>
-                  <div className="flex flex-col gap-3">
-                    {agentContextCards.map((a, i) => {
-                      const ctx   = Math.min(a.tokens, 32_000);
-                      const pct   = Math.round((ctx / 32_000) * 100);
-                      const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                      return (
-                        <div key={i} className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                              {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                  {agentContextCards.some(a => a.tokens > 0) ? (
+                    <div className="flex flex-col gap-3">
+                      {agentContextCards.map((a, i) => {
+                        const ctx   = Math.min(a.tokens, 32_000);
+                        const pct   = Math.round((ctx / 32_000) * 100);
+                        const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                        return (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                                {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                              </div>
+                              <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                              </span>
                             </div>
-                            <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                              {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
-                            </span>
+                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center gap-2 py-2">
+                      <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+                        Tu empleado aún no tiene base de conocimiento configurada. Agrégala para que aprenda tu organización.
+                      </p>
+                      <Link href={`/portal/${token}/empleados`}
+                        className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
+                        style={{ color: '#9B6DFF' }}>
+                        Configurar en Empleados →
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
               </div>{/* end main column */}
@@ -630,29 +643,42 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
                     <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (base de conocimiento + instrucciones de rol + aprendizajes). A más contexto, más informado está el empleado." />
                   </div>
-                  <div className="flex flex-col gap-3">
-                    {agentContextCards.map((a, i) => {
-                      const ctx   = Math.min(a.tokens, 32_000);
-                      const pct   = Math.round((ctx / 32_000) * 100);
-                      const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                      return (
-                        <div key={i} className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                              {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                  {agentContextCards.some(a => a.tokens > 0) ? (
+                    <div className="flex flex-col gap-3">
+                      {agentContextCards.map((a, i) => {
+                        const ctx   = Math.min(a.tokens, 32_000);
+                        const pct   = Math.round((ctx / 32_000) * 100);
+                        const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                        return (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                                {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                              </div>
+                              <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                              </span>
                             </div>
-                            <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                              {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
-                            </span>
+                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                            </div>
                           </div>
-                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center gap-2 py-1">
+                      <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+                        Tu empleado aún no tiene base de conocimiento configurada. Agrégala para que aprenda tu organización.
+                      </p>
+                      <Link href={`/portal/${token}/empleados`}
+                        className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
+                        style={{ color: '#9B6DFF' }}>
+                        Configurar en Empleados →
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
               </div>
