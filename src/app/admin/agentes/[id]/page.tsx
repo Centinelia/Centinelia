@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrCreateSerial }  from '@/lib/portal/serial';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Phone, Globe, Calendar, CheckCircle, XCircle, Pencil, ExternalLink, Check, Lock } from 'lucide-react';
@@ -49,6 +50,9 @@ export default async function AgentDetailPage({ params }: Props) {
 
   const calls = (callsData ?? []) as VoiceCall[];
 
+  const accountSerial = agent.portal_email
+    ? await getOrCreateSerial(agent.portal_email).catch(() => null)
+    : null;
 
   const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
@@ -92,6 +96,12 @@ export default async function AgentDetailPage({ params }: Props) {
               )}
             </div>
             <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.client_name}</p>
+            {accountSerial && (
+              <p className="text-xs mt-1 font-mono font-semibold tracking-widest"
+                style={{ color: '#6C3BFF', letterSpacing: '0.08em' }}>
+                {accountSerial}
+              </p>
+            )}
             {/* Actions — mobile: below pills, right-aligned to sit under "Cerrado" */}
             <div className="sm:hidden flex items-center justify-end gap-2 mt-2 pr-4">
               <Link href={`/admin/agentes/${agent.id}/editar`}

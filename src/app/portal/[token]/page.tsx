@@ -53,6 +53,8 @@ import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
 import InfoTooltip              from '@/components/InfoTooltip';
+import AccountSerialBadge       from './AccountSerialBadge';
+import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
 
@@ -198,6 +200,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const supportEmail       = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
   const centineliReviewUrl = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
 
+  const accountSerial = agent.portal_email
+    ? await getOrCreateSerial(agent.portal_email).catch(() => null)
+    : null;
+
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
 
@@ -342,6 +348,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
+              {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
               <NotificationBell token={token} />
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
@@ -786,6 +793,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── CUENTA ───────────────────────────────────────────────────── */}
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
+
+              {/* Account serial */}
+              {accountSerial && (
+                <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  <AccountSerialBadge serial={accountSerial} variant="card" />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Left column ── */}

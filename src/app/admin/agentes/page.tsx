@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveSerial }     from '@/lib/portal/serial';
 import Link from 'next/link';
 import { Bot, Plus } from 'lucide-react';
 import AgentesClient from './AgentesClient';
@@ -35,9 +36,19 @@ export default async function AgentesPage({ searchParams }: Props) {
   if (status === 'pausados') query = query.eq('active', false);
   if (plan === 'comercial')  query = query.eq('plan', 'comercial');
   if (plan === 'pro')        query = query.eq('plan', 'pro');
-  if (search)                query = query.or(
-    `business_name.ilike.%${search}%,client_name.ilike.%${search}%,phone_number.ilike.%${search}%`
-  );
+
+  if (search) {
+    const isSerial = /^CNT-[A-Z0-9]{5}$/i.test(search.trim());
+    if (isSerial) {
+      const portalEmail = await resolveSerial(search.trim());
+      if (portalEmail) query = query.eq('portal_email', portalEmail);
+      else             query = query.eq('id', 'no-match'); // serial not found → empty results
+    } else {
+      query = query.or(
+        `business_name.ilike.%${search}%,client_name.ilike.%${search}%,phone_number.ilike.%${search}%,portal_email.ilike.%${search}%`
+      );
+    }
+  }
 
   const { data, count } = await query
     .order(sort === 'name' ? 'business_name' : 'created_at', { ascending: sort === 'name' })
