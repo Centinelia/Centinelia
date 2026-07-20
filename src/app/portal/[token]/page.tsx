@@ -464,6 +464,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
+              {/* Contract gate notice */}
+              {!agent.contract_accepted_at && (
+                <a href={`/portal/${token}?tab=cuenta#contrato`}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-90"
+                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  <p className="flex-1 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+                    Tienes un contrato de servicios pendiente de firma.
+                  </p>
+                  <span className="text-xs font-semibold whitespace-nowrap" style={{ color: '#f59e0b' }}>Firmar ahora</span>
+                  <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                </a>
+              )}
+
               {/* Reauth alerts — mobile strip */}
               {reauthAlerts.length > 0 && (
                 <div className="flex flex-col gap-2 lg:hidden">
@@ -805,6 +819,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
 
+              {/* Contract gate banner */}
+              {!agent.contract_accepted_at && (
+                <a href="#contrato" className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
+                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
+                  <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Puedes verlo en la columna de la derecha.
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+                </a>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Left column ── */}
@@ -893,7 +922,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   )}
                 </div>
 
-                {/* ── Right column — Historial de minutos + Número de cuenta ── */}
+                {/* ── Right column — Historial de minutos + Contrato + Número de cuenta ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
@@ -905,21 +934,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                     </div>
                   </div>
+                  <div id="contrato">
+                    <ContractSection
+                      token={token}
+                      businessName={agent.business_name}
+                      signedAt={agent.contract_accepted_at ?? null}
+                      contractPreviewUrl={`/portal/${token}/contrato`}
+                    />
+                  </div>
                   {accountSerial && (
                     <AccountSerialBadge serial={accountSerial} variant="card" />
                   )}
                 </div>
 
-              </div>
-
-              {/* Contract — full width below grid */}
-              <div id="contrato" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={agent.contract_accepted_at ?? null}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
               </div>
             </div>
           )}

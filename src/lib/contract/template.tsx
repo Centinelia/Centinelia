@@ -1,5 +1,5 @@
-﻿import { FEATURE_LABELS, PLAN_LABELS } from '@/types/agent';
-import type { VoiceAgent } from '@/types/agent';
+import { PLAN_LABELS } from '@/types/agent';
+import type { VoiceAgent, AgentFeatures } from '@/types/agent';
 import { MINUTES_TIER_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
 
@@ -7,23 +7,59 @@ function fmt(date: string) {
   return new Date(date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const BASE_CAPABILITIES = [
+  'Disponibilidad 24/7 sin interrupciones',
+  'Grabaciones y transcripciones de cada interacción',
+  'Portal de reportes, estadísticas y actividad en tiempo real',
+  'Notificaciones al equipo por correo electrónico y WhatsApp',
+  'Aprendizaje continuo supervisado por el administrador',
+  'Check-in automático con reporte programable',
+  'Metas medibles con seguimiento activo en cada conversación',
+  'Límites de autoridad y reglas de escalación configurables',
+  'Personalización de nombre, voz y personalidad del empleado',
+  'Sub-usuarios del portal con permisos granulares por módulo',
+  'Soporte técnico por WhatsApp y correo (hasta 24 h hábiles)',
+];
+
+const DYNAMIC_LABELS: Partial<Record<keyof AgentFeatures, string>> = {
+  receptionist:            'Recepcionista — atención general e información del negocio',
+  lead_qualification:      'Calificación y captura de prospectos',
+  appointment_booking:     'Agendamiento, modificación y cancelación de citas',
+  existing_client_support: 'Atención a clientes existentes con consulta de historial',
+  smart_transfer:          'Transferencia inteligente a miembro del equipo humano',
+  order_taking:            'Toma y registro de pedidos',
+  multilingual:            'Atención en español e inglés de forma automática',
+  client_memory:           'Memoria persistente de cliente entre sesiones',
+  whatsapp_escalation:     'Escalación a WhatsApp cuando la línea está ocupada',
+  outbound_calls:          'Llamadas salientes desde el portal',
+  helpdesk:                'Mesa de ayuda IT: tickets, incidentes y directorio',
+  is_coordinator:          'Coordinación de equipos y delegación entre empleados digitales',
+};
+
 export function ContractDocument({ agent }: { agent: VoiceAgent }) {
-  const features       = agent.features ?? {};
-  const planLabel      = PLAN_LABELS[agent.plan] ?? agent.plan;
+  const features        = agent.features ?? {};
+  const planLabel       = PLAN_LABELS[agent.plan] ?? agent.plan;
   const tierCfg         = agent.minutes_plan ? MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier] : null;
-  const monthlyCfg      = (agent.plan && agent.minutes_plan) ? MONTHLY_CONFIG[agent.plan as 'comercial' | 'pro']?.[agent.minutes_plan as MinutesTier] : null;
+  const monthlyCfg      = (agent.plan && agent.minutes_plan)
+    ? MONTHLY_CONFIG[agent.plan as 'comercial' | 'pro']?.[agent.minutes_plan as MinutesTier]
+    : null;
   const monthlyPrice    = monthlyCfg?.mxn ?? 0;
   const minutesIncluded = agent.minutes_included ?? (tierCfg?.minutes ?? 0);
-  const signedAt       = agent.contract_accepted_at ? fmt(agent.contract_accepted_at) : null;
-  const today          = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const signedAt        = agent.contract_accepted_at ? fmt(agent.contract_accepted_at) : null;
+  const today           = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const included = (Object.entries(features) as [keyof typeof FEATURE_LABELS, boolean][])
-    .filter(([, v]) => v)
-    .map(([k]) => FEATURE_LABELS[k]);
+  const dynamicIncluded = (Object.entries(features) as [keyof AgentFeatures, unknown][])
+    .filter(([k, v]) => v && DYNAMIC_LABELS[k])
+    .map(([k]) => DYNAMIC_LABELS[k] as string);
 
-  const excluded = (Object.entries(features) as [keyof typeof FEATURE_LABELS, boolean][])
-    .filter(([, v]) => !v)
-    .map(([k]) => FEATURE_LABELS[k]);
+  const dynamicExcluded = (Object.entries(features) as [keyof AgentFeatures, unknown][])
+    .filter(([k, v]) => !v && DYNAMIC_LABELS[k])
+    .map(([k]) => DYNAMIC_LABELS[k] as string);
+
+  const allIncluded = [...BASE_CAPABILITIES, ...dynamicIncluded];
+
+  // Clause numbering shifts if there are excluded services
+  const n = (base: number) => `${dynamicExcluded.length > 0 ? base : base - 1}`;
 
   if (agent.contract_text) {
     return (
@@ -41,152 +77,167 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <div style={{ fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Contrato de Servicios de Agente de Voz IA
+          Contrato de Prestación de Servicios
         </div>
-        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.6 }}>Centinelia: Pneuma Studio</div>
+        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.55 }}>Centinelia · Pneuma Studio</div>
       </div>
 
       <Clause title="1. PARTES">
         <p>
-          <strong>Prestador de servicios:</strong> Pneuma Studio, desarrollador de la plataforma Centinelia, en adelante &ldquo;Centinelia&rdquo;.
+          <strong>Prestador de servicios:</strong> Pneuma Studio, desarrollador de la plataforma Centinelia, en
+          adelante &ldquo;Centinelia&rdquo;.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          <strong>Cliente:</strong> {agent.business_name}, representado por {agent.client_name}, en adelante &ldquo;el Cliente&rdquo;.
+          <strong>Cliente:</strong> {agent.business_name}, representado por {agent.client_name}, en
+          adelante &ldquo;el Cliente&rdquo;.
         </p>
       </Clause>
 
       <Clause title="2. OBJETO DEL CONTRATO">
         <p>
-          Centinelia se compromete a proporcionar al Cliente un agente de voz impulsado por inteligencia artificial bajo el
-          plan <strong>{planLabel}</strong>, configurado específicamente para el negocio <strong>{agent.business_name}</strong>.
-          El agente operará en el número telefónico asignado{agent.phone_number ? ` (${agent.phone_number})` : ''} y
-          atenderá llamadas entrantes de acuerdo con la configuración acordada.
+          Centinelia se compromete a poner a disposición del Cliente uno o más empleados digitales de inteligencia
+          artificial bajo el plan <strong>{planLabel}</strong>, configurados específicamente para la
+          organización <strong>{agent.business_name}</strong>.{' '}
+          {agent.phone_number
+            ? `Los empleados operarán en el número telefónico asignado (${agent.phone_number}) y ejecutarán las funciones descritas en la Cláusula 3, disponibles 24/7 de forma autónoma.`
+            : 'Los empleados ejecutarán las funciones descritas en la Cláusula 3, disponibles 24/7 de forma autónoma.'}
         </p>
       </Clause>
 
       <Clause title="3. SERVICIOS INCLUIDOS">
-        <p>El plan <strong>{planLabel}</strong> incluye los siguientes servicios:</p>
-        <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
-          {included.map(s => <li key={s} style={{ marginTop: '0.25rem' }}>✓ {s}</li>)}
+        <p>El plan <strong>{planLabel}</strong> incluye los siguientes servicios y capacidades:</p>
+        <ul style={{ marginTop: '0.5rem', paddingLeft: 0, listStyle: 'none' }}>
+          {allIncluded.map(s => (
+            <li key={s} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.3rem' }}>
+              <span style={{ color: '#16a34a', flexShrink: 0, fontWeight: 700, lineHeight: 1.6 }}>✓</span>
+              <span>{s}</span>
+            </li>
+          ))}
         </ul>
         <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', opacity: 0.7 }}>
-          El agente también cuenta con {minutesIncluded} minutos mensuales de conversación incluidos.
-          Los minutos no utilizados se transfieren al mes siguiente, con un límite de acumulación equivalente a un mes adicional de tu plan.
+          El plan incluye <strong>{minutesIncluded} minutos mensuales</strong> de conversación. Los minutos no
+          utilizados se acumulan al mes siguiente con un límite de un mes adicional de tu plan.
         </p>
       </Clause>
 
-      {excluded.length > 0 && (
+      {dynamicExcluded.length > 0 && (
         <Clause title="4. SERVICIOS NO INCLUIDOS">
-          <p>Los siguientes servicios <strong>no están incluidos</strong> en el plan contratado y requerirán una actualización de plan para ser habilitados:</p>
-          <ul style={{ marginTop: '0.5rem', paddingLeft: '1.25rem' }}>
-            {excluded.map(s => <li key={s} style={{ marginTop: '0.25rem' }}>✗ {s}</li>)}
+          <p>
+            Los siguientes servicios <strong>no están incluidos</strong> en el plan contratado y requieren una
+            actualización de plan para ser habilitados:
+          </p>
+          <ul style={{ marginTop: '0.5rem', paddingLeft: 0, listStyle: 'none' }}>
+            {dynamicExcluded.map(s => (
+              <li key={s} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.3rem' }}>
+                <span style={{ color: '#dc2626', flexShrink: 0, fontWeight: 700, lineHeight: 1.6 }}>✗</span>
+                <span>{s}</span>
+              </li>
+            ))}
           </ul>
         </Clause>
       )}
 
-      <Clause title={`${excluded.length > 0 ? '5' : '4'}. FACTURACIÓN`}>
+      <Clause title={`${n(5)}. FACTURACIÓN`}>
         <p>
-          La mensualidad del servicio es de <strong>${monthlyPrice.toLocaleString('es-MX')} MXN + IVA</strong> por mes, correspondiente
-          al plan de minutos <strong>{tierCfg?.label ?? agent.minutes_plan ?? ','}</strong> ({minutesIncluded} min/mes).
-          El cobro se realizará de forma automática a través de Stripe en la fecha de renovación mensual.
+          La mensualidad del servicio es de{' '}
+          <strong>${monthlyPrice > 0 ? monthlyPrice.toLocaleString('es-MX') : '___'} MXN + IVA</strong> por mes,
+          correspondiente al plan <strong>{tierCfg?.label ?? agent.minutes_plan ?? planLabel}</strong>{' '}
+          ({minutesIncluded} min/mes). El cobro se realiza de forma automática a través de Stripe en la fecha de
+          renovación mensual.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          En caso de fallo en el pago, el Cliente recibirá notificación por correo electrónico y/o WhatsApp y contará con un período de gracia de
-          3 días naturales para regularizar el pago antes de que el agente sea pausado automáticamente.
-          El servicio se reanuda al actualizar el método de pago.
+          En caso de fallo en el pago, el Cliente recibirá notificación y contará con un período de gracia de 3
+          días naturales para regularizar antes de que el servicio sea pausado. El servicio se reanuda al
+          actualizar el método de pago.
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '6' : '5'}. DURACIÓN Y TERMINACIÓN`}>
+      <Clause title={`${n(6)}. DURACIÓN Y TERMINACIÓN`}>
         <p>
-          El contrato tiene vigencia mensual con renovación automática. Para cancelar el servicio, el Cliente deberá
-          contactar al equipo de Centinelia con al menos 5 días naturales de anticipación a la fecha de renovación.
-          No se realizan reembolsos de períodos parciales.
-          Centinelia se reserva el derecho de dar de baja el servicio con previo aviso de 15 días naturales.
+          El contrato tiene vigencia mensual con renovación automática. Para cancelar, el Cliente deberá
+          contactar a Centinelia con al menos 5 días naturales de anticipación a la fecha de renovación.
+          No se realizan reembolsos por períodos parciales.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          Si el agente permanece pausado por un período continuo superior a 3 meses consecutivos sin que el Cliente
-          regularice el servicio, Centinelia se reserva el derecho de reasignar el número telefónico asignado a otro
-          cliente. Esta reasignación se notificará al Cliente con al menos 15 días naturales de anticipación.
+          Si el servicio permanece pausado por más de 3 meses consecutivos sin regularizar, Centinelia se
+          reserva el derecho de reasignar el número telefónico asignado, notificando al Cliente con al menos
+          15 días naturales de anticipación.
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '7' : '6'}. LIMITACIONES DE RESPONSABILIDAD`}>
+      <Clause title={`${n(7)}. LIMITACIONES DE RESPONSABILIDAD`}>
         <p>
-          Centinelia es un agente de voz automatizado. No sustituye la asesoría profesional legal, médica o financiera.
-          Centinelia no se hace responsable de decisiones tomadas por terceros basadas en información proporcionada por el agente.
-          El Cliente es responsable de mantener actualizada la base de conocimiento del agente y de verificar la exactitud
-          de la información compartida con sus clientes finales.
+          Los empleados digitales de Centinelia son asistentes de inteligencia artificial y no sustituyen la
+          asesoría profesional legal, médica, financiera ni ninguna otra especialidad regulada. Centinelia no
+          se hace responsable de decisiones tomadas por terceros con base en la información proporcionada por
+          el empleado digital.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          Las llamadas pueden ser grabadas con fines de calidad y entrenamiento del modelo. El Cliente acepta notificar a
-          sus clientes finales de esta posibilidad de conformidad con la Ley Federal de Protección de Datos Personales en
-          Posesión de los Particulares (México).
+          El Cliente es responsable de mantener actualizada la base de conocimiento del empleado y de
+          verificar la exactitud de la información compartida con sus clientes finales. Las interacciones
+          pueden ser grabadas con fines de calidad y mejora del modelo. El Cliente acepta notificar a sus
+          clientes finales de esta posibilidad conforme a la Ley Federal de Protección de Datos Personales
+          en Posesión de los Particulares (México).
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '8' : '7'}. USO RESPONSABLE DEL SERVICIO Y CUMPLIMIENTO LEGAL`}>
+      <Clause title={`${n(8)}. USO RESPONSABLE Y CUMPLIMIENTO LEGAL`}>
         <p>
-          <strong>Uso permitido.</strong> El Cliente utilizará el agente de voz exclusivamente para comunicaciones
-          con personas que tengan o hayan manifestado interés en establecer una relación comercial con el
-          negocio del Cliente, incluyendo: (i) atender llamadas entrantes; (ii) devolver llamadas que el negocio
-          no pudo contestar; (iii) confirmar, modificar o cancelar citas con clientes existentes; y (iv) dar
-          seguimiento a prospectos que hayan proporcionado sus datos de contacto voluntariamente.
+          <strong>Uso permitido.</strong> El Cliente utilizará al empleado digital exclusivamente para
+          comunicaciones con personas que tengan o hayan manifestado interés en establecer una relación
+          comercial con el negocio del Cliente: (i) atender comunicaciones entrantes; (ii) dar seguimiento a
+          prospectos que proporcionaron sus datos voluntariamente; (iii) confirmar, modificar o cancelar
+          compromisos con clientes existentes; y (iv) ejecutar tareas operativas internas autorizadas.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          <strong>Lista Nacional de No Llamar (LNCL).</strong> El Cliente reconoce que las llamadas salientes
-          realizadas a través del agente se rigen por la Ley Federal de Protección al Consumidor (LFPC),
-          artículos 17 BIS y 17 BIS 2, y por la Lista Nacional de No Llamar (LNCL) administrada por
-          PROFECO. El Cliente, como proveedor que origina las llamadas, es el único responsable de verificar
-          que los números de destino no estén registrados en la LNCL cuando la naturaleza de las llamadas
-          así lo requiera.
+          <strong>Lista Nacional de No Llamar (LNCL).</strong> Para llamadas salientes, el Cliente es el
+          único responsable de verificar que los números de destino no estén registrados en la LNCL
+          administrada por PROFECO, conforme a la LFPC artículos 17 BIS y 17 BIS 2.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          <strong>Usos prohibidos.</strong> Queda expresamente prohibido utilizar el agente para: (i) realizar
-          llamadas de prospección a listas masivas sin consentimiento previo del destinatario; (ii) contactar
-          de forma reiterada a personas que hayan solicitado no ser contactadas; o (iii) cualquier actividad
-          que contravenga la legislación mexicana aplicable.
+          <strong>Usos prohibidos.</strong> Queda expresamente prohibido utilizar al empleado digital para:
+          (i) prospección masiva sin consentimiento previo; (ii) contactar reiteradamente a personas que
+          hayan solicitado no ser contactadas; o (iii) cualquier actividad contraria a la legislación
+          mexicana aplicable.
         </p>
         <p style={{ marginTop: '0.5rem' }}>
-          <strong>Responsabilidad e indemnización.</strong> Centinelia actúa exclusivamente como proveedor
-          de tecnología y no como parte en las comunicaciones que el agente realiza en nombre del Cliente.
+          <strong>Responsabilidad.</strong> Centinelia actúa exclusivamente como proveedor de tecnología.
           El Cliente libera a Centinelia de toda responsabilidad derivada del uso que dé al servicio y se
-          compromete a indemnizar y sacar en paz a Centinelia respecto de cualquier reclamación, sanción o
-          multa iniciada por PROFECO, IFT o cualquier autoridad competente, derivada de llamadas realizadas
-          o recibidas a través del agente.
+          compromete a indemnizar a Centinelia respecto de cualquier reclamación, sanción o multa iniciada
+          por PROFECO, IFT o cualquier autoridad competente derivada de las comunicaciones realizadas.
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '9' : '8'}. SOPORTE`}>
+      <Clause title={`${n(9)}. SOPORTE`}>
         <p>
-          El Cliente tiene acceso a soporte técnico por WhatsApp y correo electrónico. Los tiempos de respuesta son de
-          hasta 24 horas hábiles. Actualizaciones de configuración del agente (guión, horarios, base de conocimiento)
-          pueden realizarse directamente desde el portal del cliente.
+          El Cliente tiene acceso a soporte técnico por WhatsApp y correo electrónico con tiempos de
+          respuesta de hasta 24 horas hábiles. Actualizaciones de configuración del empleado (personalidad,
+          base de conocimiento, horarios, metas, límites de autoridad) pueden realizarse directamente desde
+          el portal sin necesidad de contactar soporte.
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '10' : '9'}. USO DE MARCA Y CASOS DE ÉXITO`}>
+      <Clause title={`${n(10)}. USO DE MARCA Y CASOS DE ÉXITO`}>
         <p>
           Al aceptar este contrato, el Cliente autoriza a Centinelia y a Pneuma Studio a mencionar el nombre
-          y logotipo de <strong>{agent.business_name}</strong> como caso de éxito en materiales de marketing,
-          sitio web, redes sociales y presentaciones comerciales. Esta autorización no implica ningún
-          respaldo activo del Cliente hacia Centinelia y puede ser revocada en cualquier momento mediante
-          solicitud escrita a <strong>hola@centinelia.mx</strong>.
+          y logotipo de <strong>{agent.business_name}</strong> como caso de éxito en materiales de
+          marketing, sitio web, redes sociales y presentaciones comerciales. Esta autorización no implica
+          ningún respaldo activo del Cliente hacia Centinelia y puede revocarse en cualquier momento
+          mediante solicitud escrita a <strong>hola@centinelia.mx</strong>.
         </p>
       </Clause>
 
-      <Clause title={`${excluded.length > 0 ? '11' : '10'}. ACEPTACIÓN`}>
+      <Clause title={`${n(11)}. ACEPTACIÓN`}>
         <p>
-          Al firmar este contrato, el Cliente declara haber leído, entendido y aceptado todos los términos y condiciones
-          establecidos en el presente documento. Este contrato entra en vigor en la fecha de aceptación.
+          Al firmar este contrato, el Cliente declara haber leído, entendido y aceptado todos los términos
+          y condiciones establecidos en el presente documento. Este contrato entra en vigor en la fecha de
+          aceptación digital y se considera vinculante para ambas partes.
         </p>
       </Clause>
 
       {signedAt
         ? <SignatureBlock name={agent.client_name} date={signedAt} ip={agent.contract_ip} />
-        : (
-          <div style={{ marginTop: '2.5rem', borderTop: '1px solid currentColor', opacity: 0.15 }} />
-        )
+        : <div style={{ marginTop: '2.5rem', borderTop: '1px solid currentColor', opacity: 0.12 }} />
       }
 
       <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', opacity: 0.4, textAlign: 'center' }}>
