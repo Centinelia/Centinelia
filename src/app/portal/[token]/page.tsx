@@ -527,8 +527,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </h2>
                   {resumenFeed.length === 0 ? (
                     <div className="flex flex-col items-center py-8 gap-3">
-                      <div className="relative" style={{ width: 64, height: 88 }}>
-                        <Image src="/agent-f2.png" alt="" fill sizes="64px"
+                      <div className="relative" style={{ width: 96, height: 132 }}>
+                        <Image src="/agent-f2.png" alt="" fill sizes="96px"
                           style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
                       </div>
                       <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
