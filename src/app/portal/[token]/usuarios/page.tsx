@@ -12,6 +12,8 @@ import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import PortalSidebar                    from '../PortalSidebar';
 import SubUserManager                   from './SubUserManager';
+import AccountSerialBadge               from '../AccountSerialBadge';
+import { getOrCreateSerial }            from '@/lib/portal/serial';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -55,22 +57,27 @@ export default async function UsuariosPage({ params }: Props) {
         .order('created_at', { ascending: true })
     : { data: [] };
 
-  const hasOpsAgent = !!(agent as any).features?.outbound_calls;
-  const hasStripe   = !!(agent as any).stripe_customer_id;
+  const hasStripe    = !!(agent as any).stripe_customer_id;
   const showOutbound = !!(agent as any).features?.outbound_calls;
 
-  // Business switcher
+  // Business switcher — also used to determine hasOpsAgent (any agent with a role)
   const { data: clientAgents } = agent.portal_email
-    ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token').eq('portal_email', agent.portal_email)
+    ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token, role').eq('portal_email', agent.portal_email)
     : { data: [] };
+
+  const hasOpsAgent = (clientAgents ?? []).some((a: any) => !!(a.role as string | null));
   const businessGroups = [...new Map(
     (clientAgents ?? []).map((a: any) => [a.business_name, {
       business_name: a.business_name, logo_url: a.logo_url ?? null, first_token: a.portal_token,
     }])
   ).values()];
 
+  const accountSerial = agent.portal_email
+    ? await getOrCreateSerial(agent.portal_email).catch(() => null)
+    : null;
+
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         {/* Header */}
@@ -82,6 +89,7 @@ export default async function UsuariosPage({ params }: Props) {
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
+              {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
               <NotificationBell token={token} />
               <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
@@ -121,11 +129,12 @@ export default async function UsuariosPage({ params }: Props) {
                   token={token}
                   initialUsers={(existingUsers ?? []) as any[]}
                   accountGiro={(agent as any).features?.vertical ?? undefined}
+                  accountSerial={accountSerial ?? undefined}
                 />
               </div>
 
             </div>
-            <PortalFooter />
+            <PortalFooter token={token} />
           </div>
         </div>
 

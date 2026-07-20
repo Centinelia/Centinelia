@@ -43,7 +43,7 @@ const PROVIDERS = [
   },
 ];
 
-export default function EmailOAuthSection({ token }: { token: string }) {
+export default function EmailOAuthSection({ token, only }: { token: string; only?: 'gmail' | 'outlook' }) {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [toggling,     setToggling]     = useState<string | null>(null);
@@ -96,7 +96,7 @@ export default function EmailOAuthSection({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {PROVIDERS.map(provider => {
+      {PROVIDERS.filter(p => !only || p.id === only).map(provider => {
         const connected = connectedFor(provider.id);
         return (
           <div key={provider.id}

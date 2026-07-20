@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!agent) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
   if (!agent.allow_bug_reports) return NextResponse.json({ error: 'Función no habilitada' }, { status: 403 });
 
-  const { category, description, reporter_name, reporter_email } = await req.json();
+  const { category, description } = await req.json();
   if (!description?.trim()) return NextResponse.json({ error: 'Descripción requerida' }, { status: 400 });
 
   const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     subject: `Reporte de falla: ${agent.business_name ?? 'Sin nombre'}`,
     html: bugReportHtml({
       businessName:  agent.business_name  ?? 'Sin nombre',
-      reporterName:  reporter_name?.trim() || agent.client_name  || 'Desconocido',
-      reporterEmail: reporter_email?.trim() || agent.client_email || '',
+      reporterName:  agent.client_name  || 'Desconocido',
+      reporterEmail: agent.client_email || '',
       category:      category ?? 'General',
       description:   description.trim(),
     }),

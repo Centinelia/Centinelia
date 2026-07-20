@@ -14,9 +14,10 @@ interface PortalUser {
 }
 
 interface Props {
-  token:        string;
-  initialUsers: PortalUser[];
-  accountGiro?: string;
+  token:          string;
+  initialUsers:   PortalUser[];
+  accountGiro?:   string;
+  accountSerial?: string;
 }
 
 // ── Module Selector ────────────────────────────────────────────────────────────
@@ -260,7 +261,7 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function SubUserManager({ token, initialUsers, accountGiro }: Props) {
+export default function SubUserManager({ token, initialUsers, accountGiro, accountSerial }: Props) {
   const [users, setUsers]         = useState<PortalUser[]>(initialUsers);
   const [showAdd, setShowAdd]     = useState(false);
   const [editId, setEditId]       = useState<string | null>(null);
@@ -281,11 +282,12 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
+    if (accountSerial && q === accountSerial.toLowerCase()) return users;
     return users.filter(u =>
       u.email.toLowerCase().includes(q) ||
       (u.name ?? '').toLowerCase().includes(q)
     );
-  }, [users, search]);
+  }, [users, search, accountSerial]);
 
   const startEdit = (u: PortalUser) => {
     setEditId(u.id); setEditName(u.name ?? ''); setEditModules(u.modules);
@@ -413,7 +415,6 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
             </div>
           </div>
         ) : (
-          /* Info box when no form is open */
           <div className="px-4 py-3 rounded-xl text-xs flex flex-col gap-1"
             style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
             <p className="font-semibold" style={{ color: 'var(--c-text-2)' }}>Acerca de los usuarios</p>
@@ -433,7 +434,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o correo…"
+            placeholder="Buscar por nombre, correo o número de cuenta…"
             className="w-full pl-8 pr-3 py-2 rounded-lg text-xs outline-none"
             style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
           />
@@ -510,8 +511,16 @@ export default function SubUserManager({ token, initialUsers, accountGiro }: Pro
 
             {/* Modules chips (view mode) */}
             {editId !== u.id && (
-              <div className="px-4 pb-3">
+              <div className="px-4 pb-3 flex items-end justify-between gap-2">
                 <ModuleChips modules={u.modules} />
+                {accountSerial && (
+                  <span
+                    className="shrink-0 text-[10px] font-semibold"
+                    style={{ color: 'var(--c-text-4)', fontFamily: 'monospace', letterSpacing: '0.04em' }}
+                  >
+                    {accountSerial}
+                  </span>
+                )}
               </div>
             )}
 

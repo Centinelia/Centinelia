@@ -74,7 +74,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     : null;
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         {/* Header */}
@@ -304,7 +304,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
         </div>
 
-        <PortalFooter noSidebar />
+        <PortalFooter noSidebar token={token} />
 
       </div>
     </ThemeProvider>

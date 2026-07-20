@@ -12,8 +12,9 @@ interface HeartbeatConfig {
 }
 
 interface Props {
-  token:      string;
-  initConfig: HeartbeatConfig | null;
+  token:         string;
+  initConfig:    HeartbeatConfig | null;
+  isCoordinator?: boolean;
 }
 
 const HOURS = [
@@ -30,8 +31,9 @@ const DAYS = [
 ];
 
 const DEFAULT_TASK = 'Revisa las llamadas del día y envíame un resumen con los puntos más importantes: leads capturados, solicitudes pendientes y cualquier situación que requiera mi atención.';
+const DEFAULT_TASK_COORDINATOR = 'Revisa la actividad operativa del día: tareas completadas, pendientes sin resolver y cualquier situación que requiera decisión. Envíame un resumen ejecutivo con lo más relevante.';
 
-export default function HeartbeatEditor({ token, initConfig }: Props) {
+export default function HeartbeatEditor({ token, initConfig, isCoordinator = false }: Props) {
   const base: HeartbeatConfig = {
     enabled:     false,
     frequency:   'daily',
@@ -82,7 +84,9 @@ export default function HeartbeatEditor({ token, initConfig }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        Tu empleado ejecuta una tarea de forma autónoma en el horario que configures: revisar llamadas, preparar resúmenes, dar seguimiento a prospectos. Sin que tengas que pedírselo.
+        {isCoordinator
+          ? 'El director ejecuta una revisión operativa en el horario que configures: estado de tareas, pendientes del equipo, situaciones que requieren decisión. El reporte queda disponible en la Oficina sin que tengas que pedírselo.'
+          : 'Tu empleado ejecuta una tarea de forma autónoma en el horario que configures: revisar llamadas, preparar resúmenes, dar seguimiento a prospectos. Sin que tengas que pedírselo.'}
       </p>
 
       {/* Toggle */}
@@ -141,7 +145,7 @@ export default function HeartbeatEditor({ token, initConfig }: Props) {
               value={config.task}
               onChange={e => update({ task: e.target.value })}
               rows={4}
-              placeholder={DEFAULT_TASK}
+              placeholder={isCoordinator ? DEFAULT_TASK_COORDINATOR : DEFAULT_TASK}
               className="w-full rounded-xl text-xs leading-relaxed outline-none resize-y"
               style={{
                 padding:    '10px 12px',
@@ -158,7 +162,9 @@ export default function HeartbeatEditor({ token, initConfig }: Props) {
       <div className="flex items-center justify-between">
         <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
           {config.enabled
-            ? 'Consume 3–8 tareas por check-in · el resultado llega por tus canales de notificación'
+            ? isCoordinator
+              ? 'Consume 3–8 tareas por check-in · el resultado queda en Reportes de la Oficina'
+              : 'Consume 3–8 tareas por check-in · el resultado llega por tus canales de notificación'
             : 'Activa para que tu empleado trabaje sin que tengas que pedírselo'}
         </p>
         {saving && <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>}

@@ -40,9 +40,14 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, knowledge_base, role_knowledge_base, role, portal_email')
+    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email')
     .eq('id', integration.agent_id)
     .single();
+
+  const { data: orgData } = agent?.portal_email
+    ? await supabase.from('organizations').select('knowledge_base').eq('portal_email', agent.portal_email).single()
+    : { data: null };
+  const knowledge_base = orgData?.knowledge_base ?? null;
 
   if (!agent?.client_email) return;
 
@@ -117,7 +122,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       attachments:   [],
       agentName:     (agent.agent_name as string | null) ?? 'Centinelia',
       businessName:  agent.business_name as string,
-      knowledgeBase: agent.knowledge_base as string | null,
+      knowledgeBase: knowledge_base,
       roleKB:        agent.role_knowledge_base as string | null,
       agentRole:     agent.role as string | null,
       ownerEmail:    agent.client_email as string,

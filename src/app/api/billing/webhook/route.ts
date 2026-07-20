@@ -159,6 +159,38 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // New agent hired from portal
+      if (session.metadata?.type === 'new_agent') {
+        const agentId    = session.metadata?.agent_id;
+        const agentToken = session.metadata?.agent_token;
+        if (!agentId) break;
+
+        const { data: pendingAgent } = await supabase
+          .from('voice_agents')
+          .select('*')
+          .eq('id', agentId)
+          .single();
+
+        if (!pendingAgent) break;
+
+        await supabase.from('voice_agents').update({
+          active:                 true,
+          billing_status:         'activo',
+          stripe_customer_id:     session.customer as string,
+          stripe_subscription_id: session.subscription as string ?? null,
+          minutes_plan:           session.metadata?.minutes_plan ?? null,
+        }).eq('id', agentId);
+
+        const vapiId = await createVapiAssistant(pendingAgent as any).catch(() => null);
+        if (vapiId) {
+          await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', agentId);
+          resyncPeerAgents(pendingAgent.portal_email, agentId).catch(console.error);
+        }
+
+        void agentToken; // used in success_url redirect — no extra action needed here
+        break;
+      }
+
       const agentId     = session.metadata?.agent_id;
       const featurePlan = session.metadata?.feature_plan as Plan | undefined;
       const minutesPlan = session.metadata?.minutes_plan as MinutesTier | undefined;

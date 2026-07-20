@@ -1,53 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient }        from '@/lib/supabase/admin';
-import { cookies }                  from 'next/headers';
-import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
-import { randomUUID }               from 'crypto';
+import { NextRequest, NextResponse }      from 'next/server';
+import { createAdminClient }             from '@/lib/supabase/admin';
+import { cookies }                       from 'next/headers';
+import { verifySession, PORTAL_COOKIE }  from '@/lib/portal/auth';
+import { MEERKAT_MAP, type MeerkatRoleId, type MeerkatRole } from '@/lib/portal/meerkat-roles';
+import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
+import { stripe }                        from '@/lib/stripe';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { randomUUID }                    from 'crypto';
+import type { Plan }                     from '@/types/agent';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
-) {
-  const { token } = await params;
-
-  const cookieStore = await cookies();
-  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-  if (!session || session.isSubUser) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
-
-  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string };
-  const { meerkat_role_id, agent_name } = body;
-
-  const role = MEERKAT_MAP[meerkat_role_id];
-  if (!role) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
-
-  const supabase = createAdminClient();
-
-  const { data: base } = await supabase
-    .from('voice_agents')
-    .select(`
-      portal_email, portal_password, client_name, client_email,
-      business_name, business_description, plan,
-      stripe_customer_id, billing_status, active, timezone,
-      organization_mission, service_definition, speech_style,
-      auto_refill_enabled, auto_refill_threshold, auto_refill_minutes,
-      minutes_reset_date, minutes_plan, minutes_included
-    `)
-    .eq('portal_token', token)
-    .single();
-
-  if (!base) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  if (session.portalEmail && base.portal_email && session.portalEmail !== base.portal_email) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
+// ─── Shared agent-creation logic ──────────────────────────────────────────────
+// Called directly (bypass) or from webhook after payment confirmation.
+export async function createPortalAgent({
+  base,
+  role,
+  agentName,
+  active,
+}: {
+  base: {
+    portal_email: string | null;
+    portal_password_hash: string | null;
+    client_name: string | null;
+    client_email: string | null;
+    business_name: string;
+    business_description: string | null;
+    plan: string | null;
+    stripe_customer_id: string | null;
+    billing_status: string | null;
+    active: boolean | null;
+    timezone: string | null;
+    organization_mission: string | null;
+    service_definition: string | null;
+    speech_style: string | null;
+    auto_refill_enabled: boolean | null;
+    auto_refill_threshold: number | null;
+    auto_refill_minutes: number | null;
+    minutes_reset_date: string | null;
+    minutes_plan: string | null;
+    minutes_included: number | null;
+  };
+  role: MeerkatRole;
+  agentName: string;
+  active: boolean;
+}) {
+  const supabase   = createAdminClient();
   const newToken   = randomUUID();
-  const agentName  = agent_name?.trim() || (role.id === 'custom' ? 'Empleado' : role.nombre);
   const features   = {
     ...role.features,
     role_color:      role.color,
@@ -59,7 +58,7 @@ export async function POST(
     .from('voice_agents')
     .insert({
       portal_email:          base.portal_email,
-      portal_password:       base.portal_password,
+      portal_password_hash:  base.portal_password_hash,
       client_name:           base.client_name,
       client_email:          base.client_email,
       portal_token:          newToken,
@@ -71,8 +70,8 @@ export async function POST(
       minutes_used:          0,
       minutes_reset_date:    base.minutes_reset_date,
       stripe_customer_id:    base.stripe_customer_id,
-      billing_status:        base.billing_status,
-      active:                base.active,
+      billing_status:        active ? (base.billing_status ?? 'activo') : 'pendiente_pago',
+      active,
       timezone:              base.timezone ?? 'America/Monterrey',
       organization_mission:  base.organization_mission,
       service_definition:    base.service_definition,
@@ -93,13 +92,107 @@ export async function POST(
       wa_messages_included:  0,
       wa_messages_used:      0,
     })
-    .select('portal_token')
+    .select('id, portal_token')
     .single();
 
-  if (error) {
-    console.error('Error creating agent:', error);
-    return NextResponse.json({ error: 'Failed to create agent' }, { status: 500 });
+  if (error || !newAgent) throw new Error(error?.message ?? 'Failed to create agent');
+
+  if (active) {
+    const vapiId = await createVapiAssistant({ ...newAgent, ...base, agent_name: agentName, features } as any).catch(() => null);
+    if (vapiId) {
+      await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', newAgent.id);
+      resyncPeerAgents(base.portal_email, newAgent.id).catch(console.error);
+    }
   }
 
-  return NextResponse.json({ token: newAgent.portal_token });
+  return newAgent;
+}
+
+// ─── POST /api/portal/[token]/agentes ────────────────────────────────────────
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ token: string }> },
+) {
+  const { token } = await params;
+
+  const cookieStore = await cookies();
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session || session.isSubUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string; minutes_plan?: string };
+  const { meerkat_role_id, agent_name, minutes_plan } = body;
+
+  const role = MEERKAT_MAP[meerkat_role_id];
+  if (!role) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+
+  const supabase = createAdminClient();
+  const { data: base } = await supabase
+    .from('voice_agents')
+    .select(`
+      portal_email, portal_password_hash, client_name, client_email,
+      business_name, business_description, plan,
+      stripe_customer_id, billing_status, active, timezone,
+      organization_mission, service_definition, speech_style,
+      auto_refill_enabled, auto_refill_threshold, auto_refill_minutes,
+      minutes_reset_date, minutes_plan, minutes_included
+    `)
+    .eq('portal_token', token)
+    .single();
+
+  if (!base) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && base.portal_email && session.portalEmail !== base.portal_email)
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const agentName = agent_name?.trim() || (role.id === 'custom' ? 'Empleado' : role.nombre);
+
+  // ── BYPASS: create agent directly (development / pre-production) ──────────
+  const bypass = process.env.BYPASS_AGENT_PAYMENT === 'true';
+  if (bypass) {
+    try {
+      const newAgent = await createPortalAgent({ base: base as any, role, agentName, active: true });
+      return NextResponse.json({ token: newAgent.portal_token });
+    } catch (e: any) {
+      console.error('Error creating agent (bypass):', e);
+      return NextResponse.json({ error: e.message ?? 'Failed to create agent' }, { status: 500 });
+    }
+  }
+
+  // ── PRODUCTION: create pending agent → Stripe Checkout ───────────────────
+  try {
+    const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false });
+
+    const plan       = (base.plan ?? 'comercial') as Plan;
+    const planCfg    = FEATURE_PLAN_CONFIG[plan];
+    const tier       = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
+    const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];
+    const customerId = base.stripe_customer_id ?? undefined;
+    const appUrl     = process.env.NEXT_PUBLIC_APP_URL!;
+
+    const checkoutSession = await stripe.checkout.sessions.create({
+      ...(customerId ? { customer: customerId } : {}),
+      mode: 'subscription',
+      line_items: [
+        { price: planCfg.setupPriceId(), quantity: 1 },           // one-time setup fee
+        ...(monthlyCfg ? [{ price: monthlyCfg.priceId(), quantity: 1 }] : []), // recurring jornada
+      ],
+      metadata: {
+        type:         'new_agent',
+        agent_id:     pendingAgent.id,
+        agent_token:  pendingAgent.portal_token,
+        minutes_plan: tier,
+      },
+      subscription_data: {
+        metadata: { agent_id: pendingAgent.id, minutes_plan: tier },
+      },
+      success_url: `${appUrl}/portal/${pendingAgent.portal_token}/configurar?checkout=success`,
+      cancel_url:  `${appUrl}/portal/${token}/agentes`,
+    });
+
+    return NextResponse.json({ checkoutUrl: checkoutSession.url });
+  } catch (e: any) {
+    console.error('Error creating agent checkout:', e);
+    return NextResponse.json({ error: e.message ?? 'Error al iniciar pago' }, { status: 500 });
+  }
 }

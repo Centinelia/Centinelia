@@ -1,9 +1,27 @@
 import { Mail, MessageCircle, Star } from 'lucide-react';
+import { createAdminClient } from '@/lib/supabase/admin';
+import BugReportButton from './BugReportButton';
 
-export default function PortalFooter({ noSidebar = false }: { noSidebar?: boolean }) {
+interface Props {
+  noSidebar?: boolean;
+  token?:     string;
+}
+
+export default async function PortalFooter({ noSidebar = false, token }: Props) {
   const wa         = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '+52 811 633 3559').replace(/\D/g, '');
   const email      = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
   const reviewUrl  = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
+
+  let showBugReport = false;
+  if (token) {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('voice_agents')
+      .select('allow_bug_reports')
+      .eq('portal_token', token)
+      .single();
+    showBugReport = !!((data as any)?.allow_bug_reports);
+  }
 
   return (
     <div
@@ -35,8 +53,8 @@ export default function PortalFooter({ noSidebar = false }: { noSidebar?: boolea
         </div>
       </div>
 
-      {/* Center — Centinelia review CTA */}
-      <div className="flex justify-center">
+      {/* Center — review CTA + bug report */}
+      <div className="flex flex-col items-center gap-3">
         {reviewUrl && (
           <a
             href={reviewUrl}
@@ -50,6 +68,9 @@ export default function PortalFooter({ noSidebar = false }: { noSidebar?: boolea
             <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>¿Te gusta Centinelia?</p>
             <p className="text-[10px] font-semibold" style={{ color: '#9B6DFF' }}>Déjanos una reseña</p>
           </a>
+        )}
+        {showBugReport && token && (
+          <BugReportButton token={token} variant="link" />
         )}
       </div>
 

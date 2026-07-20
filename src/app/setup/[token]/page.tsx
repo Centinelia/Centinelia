@@ -36,7 +36,7 @@ export default async function SetupPage({ params }: Props) {
   if ((agent as any).onboarding_completed === true) redirect(`/portal/${token}`);
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <SetupFlow
         token={token}
         businessName={agent.business_name}

@@ -6,6 +6,9 @@ import type { VoiceAgent } from '@/types/agent';
 
 interface Params { params: Promise<{ token: string }> }
 
+// Fields that live in organizations (account-level source of truth)
+const ORG_FIELDS = new Set(['knowledge_base', 'business_hours', 'business_description', 'owner_passphrase', 'owner_profile']);
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);
@@ -32,40 +35,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
 
-  const { data, error } = await supabase
-    .from('voice_agents').update(update).eq('id', agent.id).select('*').single();
+  const agentUpdate = Object.fromEntries(Object.entries(update).filter(([k]) => !ORG_FIELDS.has(k)));
+  const orgUpdate   = Object.fromEntries(Object.entries(update).filter(([k]) => ORG_FIELDS.has(k)));
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Sync to Vapi so the agent picks up the new content immediately
-  if (agent.vapi_agent_id) {
-    updateVapiAssistant(agent.vapi_agent_id, data as VoiceAgent).catch(console.error);
+  if (Object.keys(agentUpdate).length > 0) {
+    const { error } = await supabase.from('voice_agents').update(agentUpdate).eq('id', agent.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Business-level fields (knowledge_base) propagate to all agents of the same account
-  const businessFields = ['knowledge_base', 'business_hours', 'business_description', 'owner_passphrase', 'owner_profile'];
-  const businessUpdate = Object.fromEntries(Object.entries(update).filter(([k]) => businessFields.includes(k)));
-  if (Object.keys(businessUpdate).length > 0 && agent.portal_email) {
-    const { data: siblings } = await supabase
-      .from('voice_agents')
-      .select('id, vapi_agent_id')
-      .eq('portal_email', agent.portal_email)
-      .neq('id', agent.id);
+  if (Object.keys(orgUpdate).length > 0 && agent.portal_email) {
+    await supabase
+      .from('organizations')
+      .upsert({ portal_email: agent.portal_email, ...orgUpdate }, { onConflict: 'portal_email' });
+  }
 
-    if (siblings?.length) {
-      await supabase
-        .from('voice_agents')
-        .update(businessUpdate)
-        .eq('portal_email', agent.portal_email)
-        .neq('id', agent.id);
-
-      for (const s of siblings) {
-        if (s.vapi_agent_id) {
-          const { data: full } = await supabase.from('voice_agents').select('*').eq('id', s.id).single();
-          if (full) updateVapiAssistant(s.vapi_agent_id, full as VoiceAgent).catch(console.error);
-        }
-      }
-    }
+  // Sync to Vapi — syncAgentToVapi enriches with latest org data internally
+  if (agent.vapi_agent_id) {
+    const { data: fullAgent } = await supabase.from('voice_agents').select('*').eq('id', agent.id).single();
+    if (fullAgent) updateVapiAssistant(agent.vapi_agent_id, fullAgent as VoiceAgent).catch(console.error);
   }
 
   return NextResponse.json({ ok: true });

@@ -30,20 +30,21 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  // Allow updating URL from portal
   const newUrl: string | null = body.url?.trim() || agent.business_website || null;
   if (!newUrl) return NextResponse.json({ error: 'No hay URL configurada' }, { status: 400 });
 
   const scraped = await scrapeWebsite(newUrl);
   if (!scraped) return NextResponse.json({ error: 'No se pudo acceder al sitio web. Verifica la URL.' }, { status: 422 });
 
-  // Apply to all agents of the same account
+  // Write to organizations — single source of truth for org-level data
   await supabase
-    .from('voice_agents')
-    .update({ business_website: newUrl, website_knowledge: scraped })
-    .eq('portal_email', agent.portal_email);
+    .from('organizations')
+    .upsert(
+      { portal_email: agent.portal_email, business_website: newUrl, website_knowledge: scraped },
+      { onConflict: 'portal_email' }
+    );
 
-  // Re-fetch and sync all agents so Vapi picks up the new content
+  // Sync all agents — syncAgentToVapi enriches from organizations internally
   const { data: allAgents } = await supabase
     .from('voice_agents')
     .select('*')

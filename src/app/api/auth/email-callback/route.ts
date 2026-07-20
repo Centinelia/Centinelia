@@ -8,9 +8,13 @@ import { encrypt }             from '@/lib/crypto';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const provider = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
-  const code     = req.nextUrl.searchParams.get('code');
-  const state    = req.nextUrl.searchParams.get('state'); // portal_token
+  const provider  = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
+  const code      = req.nextUrl.searchParams.get('code');
+  const rawState  = req.nextUrl.searchParams.get('state') ?? '';
+
+  // __agent suffix means per-agent connect from configurar page
+  const isAgentScope = rawState.endsWith('__agent');
+  const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
 
   if (!provider || !code || !state) {
     return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=integraciones&email=error`);
@@ -49,9 +53,8 @@ export async function GET(req: NextRequest) {
       reauth_notified_at: null,
     }, { onConflict: 'agent_id,provider' });
 
-    // ── 2. Also write to integration_accounts (org-level, portal UI source of truth) ──
-    if (agent.portal_email) {
-      // Preserve existing metadata (e.g. auto_reply preference)
+    // ── 2. For account-level connects (IntegrationsHub), also write to integration_accounts ──
+    if (!isAgentScope && agent.portal_email) {
       const { data: existing } = await supabase
         .from('integration_accounts')
         .select('metadata')
@@ -74,9 +77,12 @@ export async function GET(req: NextRequest) {
       }, { onConflict: 'portal_email,provider' });
     }
 
-    return NextResponse.redirect(
-      `${appUrl}/portal/${state}?tab=integraciones&email=connected&provider=${provider}`,
-    );
+    // Per-agent connect → redirect back to configurar; account-level → integraciones tab
+    const successUrl = isAgentScope
+      ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
+      : `${appUrl}/portal/${state}?tab=integraciones&email=connected&provider=${provider}`;
+
+    return NextResponse.redirect(successUrl);
   } catch (err) {
     console.error('[email-callback] error:', err);
     return NextResponse.redirect(`${appUrl}/portal/${state}?tab=integraciones&email=error`);

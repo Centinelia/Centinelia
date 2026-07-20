@@ -76,7 +76,7 @@ export default async function AgentesLayout({
   const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         {/* Header */}
@@ -125,7 +125,7 @@ export default async function AgentesLayout({
             <div className="px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>
-            <PortalFooter />
+            <PortalFooter token={token} />
           </div>
         </div>
 

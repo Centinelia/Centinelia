@@ -73,7 +73,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -132,7 +132,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
               )}
 
             </div>
-            <PortalFooter />
+            <PortalFooter token={token} />
           </div>
         </div>
       </div>

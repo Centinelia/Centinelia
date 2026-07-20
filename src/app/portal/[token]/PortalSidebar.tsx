@@ -127,16 +127,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     }] as Section[] : []),
     {
-      id: 'integraciones', moduleId: 'integraciones', label: 'Integraciones', icon: <Link2 size={14} />,
-      items: [
-        { label: 'Correo',      id: 'correo' },
-        { label: 'Calendario',  id: 'calendario' },
-        { label: 'CRM',         id: 'crm' },
-        ...(hasOpsAgent ? [{ label: 'Mensajería', id: 'mensajeria' }] : []),
-        { label: 'Reglamento interno', id: 'politicas' },
-      ],
-    },
-    {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
         { label: 'Minutos y uso', id: 'minutos' },

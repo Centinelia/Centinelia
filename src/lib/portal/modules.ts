@@ -2,11 +2,11 @@ export const PORTAL_MODULES = [
   // ── Portal principal — todos los giros ──────────────────────────────────
   {
     id: 'inicio', label: 'Inicio (dashboard)', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Resumen general: llamadas, tareas, métricas y actividad reciente del empleado.',
+    desc: 'Resumen general: llamadas, tareas, métricas y actividad reciente de tus empleados.',
   },
   {
     id: 'negocio', label: 'Negocio (KB, horarios)', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Manual de la organización, horarios de atención y configuración del empleado.',
+    desc: 'Manual de la organización, horarios de atención y configuración de tus empleados.',
   },
   {
     id: 'oficina', label: 'Oficina (acceso general)', group: 'Portal', giros: ['all'] as string[],
@@ -18,7 +18,7 @@ export const PORTAL_MODULES = [
   },
   {
     id: 'salientes', label: 'Llamadas salientes', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Campañas y registros de llamadas que el empleado realiza de forma proactiva.',
+    desc: 'Campañas y registros de llamadas que tus empleados realizan de forma proactiva.',
   },
   {
     id: 'agentes', label: 'Empleados', group: 'Portal', giros: ['all'] as string[],
@@ -35,43 +35,47 @@ export const PORTAL_MODULES = [
   // ── Oficina general — todos los giros ───────────────────────────────────
   {
     id: 'of_actividad', label: 'Actividad', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Registro de todo lo que ha hecho el empleado: tareas completadas y pendientes.',
+    desc: 'Registro de todo lo que han hecho tus empleados: tareas completadas y pendientes.',
   },
   {
     id: 'of_bandeja', label: 'Bandeja de entrada', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Mensajes, correos y notificaciones que el empleado ha procesado o tiene pendientes.',
+    desc: 'Mensajes, correos y notificaciones que tus empleados han procesado o tienen pendientes.',
   },
   {
     id: 'of_reportes', label: 'Reportes automáticos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Resúmenes periódicos generados por el empleado sobre la operación.',
+    desc: 'Resúmenes periódicos generados por tus empleados sobre la operación.',
   },
   {
     id: 'of_contratos', label: 'Contratos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Contratos y documentos legales que el empleado puede consultar y referenciar.',
+    desc: 'Contratos y documentos legales que tus empleados pueden consultar y referenciar.',
   },
   {
     id: 'of_documentos', label: 'Documentos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Archivos generados por el empleado o subidos para que los utilice como referencia.',
+    desc: 'Archivos generados por tus empleados o subidos para que los utilicen como referencia.',
   },
   {
     id: 'of_juntas', label: 'Juntas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Actas y resúmenes de reuniones procesadas por el empleado.',
+    desc: 'Actas y resúmenes de reuniones procesadas por tus empleados.',
   },
   {
     id: 'of_investigacion', label: 'Investigación', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Búsquedas e investigaciones realizadas por el empleado sobre clientes o temas.',
+    desc: 'Búsquedas e investigaciones realizadas por tus empleados sobre clientes o temas.',
   },
   {
     id: 'of_onboarding', label: 'Onboarding', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Flujos de bienvenida y capacitación que el empleado gestiona para nuevos colaboradores.',
+    desc: 'Flujos de bienvenida y capacitación que tus empleados gestionan para nuevos colaboradores.',
   },
   {
     id: 'of_encuestas', label: 'Encuestas', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Encuestas de satisfacción o recopilación de datos realizadas por llamada.',
   },
   {
+    id: 'of_aprendizajes', label: 'Aprendizajes', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Revisión y aprobación de lo que tus empleados aprenden de llamadas, correos y conversaciones.',
+  },
+  {
     id: 'of_chat', label: 'Consultar empleado', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Chat directo con el empleado para hacerle preguntas sobre la operación.',
+    desc: 'Chat directo con tus empleados para hacerles preguntas sobre la operación.',
   },
   // ── Oficina sector — Gobierno / Municipio ───────────────────────────────
   {

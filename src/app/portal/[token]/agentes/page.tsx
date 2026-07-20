@@ -9,6 +9,7 @@ import { Settings2, Briefcase, Bot, Zap } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
+import { COORDINATOR_ROLE_IDS }        from '@/lib/portal/meerkat-roles';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -27,7 +28,7 @@ export default async function AgentesPage({ params }: Props) {
   const supabase = createAdminClient();
   const { data: baseAgent } = await supabase
     .from('voice_agents')
-    .select('portal_email, business_name')
+    .select('portal_email, business_name, plan, minutes_plan')
     .eq('portal_token', token)
     .single();
   if (!baseAgent) notFound();
@@ -45,7 +46,16 @@ export default async function AgentesPage({ params }: Props) {
         .order('created_at', { ascending: true })
     : { data: [] };
 
-  const agents = agentsRaw ?? [];
+  const agentsUnsorted = agentsRaw ?? [];
+
+  function agentSortKey(a: { features: unknown }): number {
+    const mid = ((a.features as any)?.meerkat_role_id as string | null) ?? null;
+    if (mid && (COORDINATOR_ROLE_IDS as readonly string[]).includes(mid)) return 0;
+    if ((a.features as any)?.receptionist) return 1;
+    return 2;
+  }
+
+  const agents = [...agentsUnsorted].sort((a, b) => agentSortKey(a) - agentSortKey(b));
 
   // Calls this month per agent
   const monthStart = new Date();
@@ -73,7 +83,11 @@ export default async function AgentesPage({ params }: Props) {
             {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
           </p>
         </div>
-        <MeerkatPicker token={token} />
+        <MeerkatPicker
+          token={token}
+          plan={(baseAgent.plan ?? 'comercial') as 'comercial' | 'pro'}
+          defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+        />
       </div>
 
       {/* Empty state */}
@@ -101,6 +115,7 @@ export default async function AgentesPage({ params }: Props) {
           const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
           const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
           const avatarLocked    = !!meerkatId && meerkatId !== 'custom';
+          const isCoordinator   = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
           const callCount       = callCountMap[a.id] ?? 0;
 
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
@@ -142,10 +157,12 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Stats */}
               <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
-                <span className="flex items-center gap-1 text-sm sm:text-base">
-                  <Bot size={14} />
-                  {callCount} llam. este mes
-                </span>
+                {!isCoordinator && (
+                  <span className="flex items-center gap-1 text-sm sm:text-base">
+                    <Bot size={14} />
+                    {callCount} llam. este mes
+                  </span>
+                )}
                 {hasRole && (
                   <span className="flex items-center gap-1 text-sm sm:text-base">
                     <Zap size={14} />

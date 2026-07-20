@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, business_description, business_website, website_knowledge, business_hours, knowledge_base, first_message, transfer_rules, role_knowledge_base, role_learnings')
+    .select('id, portal_email, business_name, first_message, transfer_rules, role_knowledge_base, role_learnings')
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
@@ -41,14 +41,23 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!process.env.ANTHROPIC_API_KEY)
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 });
 
+  // Org-level fields come from organizations table
+  const { data: org } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('business_description, business_website, website_knowledge, business_hours, knowledge_base')
+        .eq('portal_email', agent.portal_email)
+        .single()
+    : { data: null };
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const businessName   = agent.business_name ?? 'este negocio';
-  const description    = (agent as any).business_description?.trim() || null;
-  const website        = (agent as any).business_website?.trim()     || null;
-  const websiteContent = (agent as any).website_knowledge?.trim()    || null;
-  const hours          = (agent as any).business_hours               || null;
-  const existingKb     = (agent as any).knowledge_base?.trim()       || null;
+  const description    = org?.business_description?.trim()  || null;
+  const website        = org?.business_website?.trim()      || null;
+  const websiteContent = org?.website_knowledge?.trim()     || null;
+  const hours          = org?.business_hours                || null;
+  const existingKb     = org?.knowledge_base?.trim()        || null;
   const firstMessage   = (agent as any).first_message?.trim()        || null;
   const transferRules  = (agent as any).transfer_rules?.trim()       || null;
   const existingRole   = (agent as any).role_knowledge_base?.trim()  || null;

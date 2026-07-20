@@ -40,7 +40,7 @@ export interface ReplyParams {
 
 export interface EmailConnector {
   fetchUnread(since: Date): Promise<EmailMessage[]>;
-  send(to: string, subject: string, body: string, attachment?: Attachment): Promise<void>;
+  send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void>;
   sendReply(params: ReplyParams): Promise<void>;
   markRead(messageId: string): Promise<void>;
 }

@@ -95,7 +95,6 @@ export async function POST(req: NextRequest) {
       portal_email:           email,
       registration_ip:        ip,
       business_name:          business_name.trim(),
-      business_description:   business_description.trim(),
       business_phone_display: business_phone_display?.trim() ?? '',
       giro_template:          giro_template ?? 'general',
       agent_name:             agent_name?.trim() || meerkat?.nombre || null,
@@ -114,6 +113,10 @@ export async function POST(req: NextRequest) {
       active:                 false,
       billing_status:         'pendiente',
     });
+
+    // Org-level fields go to organizations
+    await supabase.from('organizations')
+      .upsert({ portal_email: email, business_description: business_description.trim() }, { onConflict: 'portal_email' });
 
     const adminWa     = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? process.env.SUPPORT_WHATSAPP ?? '';
     const contactEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
@@ -166,7 +169,6 @@ export async function POST(req: NextRequest) {
       portal_email:           email,
       registration_ip:        ip,
       business_name:          business_name.trim(),
-      business_description:   business_description.trim(),
       business_phone_display: business_phone_display.trim(),
       giro_template:          giro_template ?? 'general',
       agent_name:             agent_name?.trim() || meerkat?.nombre || null,
@@ -193,18 +195,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al registrar el agente' }, { status: 500 });
   }
 
-  // Persist KYC data and AUP acceptance in the org record
-  const kycPatch: Record<string, unknown> = {};
+  // Persist org-level fields + KYC data + AUP acceptance in the org record
+  const kycPatch: Record<string, unknown> = {
+    business_description: business_description.trim(),
+  };
   if (rfc?.trim())  kycPatch.rfc  = rfc.trim().toUpperCase();
   if (curp?.trim()) kycPatch.curp = curp.trim().toUpperCase();
   if (aup_accepted) kycPatch.aup_accepted_at = new Date().toISOString();
   if (rfc?.trim() && curp?.trim()) kycPatch.kyc_completed_at = new Date().toISOString();
-  if (Object.keys(kycPatch).length > 0) {
-    await supabase
-      .from('organizations')
-      .update(kycPatch)
-      .eq('portal_email', email);
-  }
+  await supabase
+    .from('organizations')
+    .upsert({ portal_email: email, ...kycPatch }, { onConflict: 'portal_email' });
 
   const customer = await stripe.customers.create({
     name:     `${client_name.trim()}, ${business_name.trim()}`,

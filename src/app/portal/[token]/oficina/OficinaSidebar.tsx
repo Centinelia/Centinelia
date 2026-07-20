@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen, ClipboardList, Gavel, Headphones, PieChart } from 'lucide-react';
+import { Activity, Inbox, BarChart2, FileText, Mic, UserCheck, ArrowLeft, MessageSquare, Zap, Search, CreditCard, FolderOpen, ClipboardList, Gavel, Headphones, PieChart, Brain, Plug } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
 
 const NAV_ITEMS = [
   { href: '',               moduleId: 'of_actividad',           label: 'Actividad',             icon: Activity,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-actividad',           vertical: null       },
+  { href: '/aprendizajes',  moduleId: 'of_aprendizajes',        label: 'Aprendizajes',          icon: Brain,         badgeKey: '',                   opsHint: '',                            pulseId: 'of-aprendizajes',        vertical: null       },
   { href: '/bandeja',       moduleId: 'of_bandeja',             label: 'Bandeja de entrada',    icon: Inbox,         badgeKey: 'bandeja',            opsHint: '1 tarea/correo',              pulseId: 'of-bandeja',             vertical: null       },
   { href: '/reportes',      moduleId: 'of_reportes',            label: 'Reportes automáticos',  icon: BarChart2,     badgeKey: '',                   opsHint: '1 tarea/reporte',             pulseId: 'of-reportes',            vertical: null       },
   { href: '/contratos',     moduleId: 'of_contratos',           label: 'Contratos',             icon: FileText,      badgeKey: 'contratos',          opsHint: '1 tarea/análisis',            pulseId: 'of-contratos',           vertical: null       },
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: '/helpdesk',      moduleId: 'of_helpdesk',            label: 'Mesa de ayuda',         icon: Headphones,    badgeKey: '',                   opsHint: '',                            pulseId: 'of-helpdesk',            vertical: null       },
   { href: '/encuestas',     moduleId: 'of_encuestas',           label: 'Encuestas',             icon: PieChart,      badgeKey: '',                   opsHint: '',                            pulseId: 'of-encuestas',           vertical: null       },
   { href: '/chat',          moduleId: 'of_chat',                label: 'CHAT_PLACEHOLDER',      icon: MessageSquare, badgeKey: '',                   opsHint: '3–13 tareas/mensaje',         pulseId: 'of-chat',                vertical: null       },
+  { href: '/integraciones', moduleId: 'of_integraciones',       label: 'Integraciones',         icon: Plug,          badgeKey: '',                   opsHint: '',                            pulseId: 'of-integraciones',       vertical: null       },
 ];
 
 export default function OficinaSidebar({ token, badges = {}, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, hasStripe = false, vertical, modules, agentName }: Props) {

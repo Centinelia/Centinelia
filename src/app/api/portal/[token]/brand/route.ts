@@ -33,7 +33,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (!Object.keys(patch).length) return NextResponse.json({ ok: true });
 
-  await supabase.from('voice_agents').update(patch).eq('portal_email', agent.portal_email);
+  await supabase
+    .from('organizations')
+    .upsert({ portal_email: agent.portal_email, ...patch }, { onConflict: 'portal_email' });
 
   return NextResponse.json({ ok: true });
 }

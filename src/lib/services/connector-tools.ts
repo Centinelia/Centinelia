@@ -61,14 +61,16 @@ export async function executeSendEmail(
   let sent = false;
 
   const ic = await getFileConnector(agentId, supabase);
+  const sendFrom = ic ? ((ic.integration as unknown as Record<string, unknown>).send_as_email as string | null | undefined) ?? undefined : undefined;
+
   if (ic) {
     if (attFileId) {
       const dl = await ic.conn.files.download(attFileId, attMimeType ?? '');
       if (dl) attachment = { filename: attFileName ?? 'adjunto', content: dl.buffer, mimeType: dl.contentType };
     }
     try {
-      await ic.conn.email.send(to, subject, body, attachment);
-      if (cc) await ic.conn.email.send(cc, subject, body);
+      await ic.conn.email.send(to, subject, body, attachment, sendFrom);
+      if (cc) await ic.conn.email.send(cc, subject, body, undefined, sendFrom);
       sent = true;
     } catch { /* fall through to Resend */ }
   }
@@ -77,8 +79,10 @@ export async function executeSendEmail(
     const resendAtts = attachment
       ? [{ filename: attachment.filename, content: attachment.content.toString('base64') }]
       : undefined;
-    const ok = await sendEmail({ to, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>`, attachments: resendAtts });
-    if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: `${businessName} <notificaciones@centinelia.mx>` });
+    const fromAddr = sendFrom ? sendFrom : `notificaciones@centinelia.mx`;
+    const fromHeader = `${businessName} <${fromAddr}>`;
+    const ok = await sendEmail({ to, subject, html: htmlBody, from: fromHeader, attachments: resendAtts });
+    if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: fromHeader });
     sent = ok;
   }
 

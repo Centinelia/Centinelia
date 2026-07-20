@@ -62,13 +62,14 @@ class GoogleEmail implements EmailConnector {
     return '';
   }
 
-  async send(to: string, subject: string, body: string, attachment?: Attachment): Promise<void> {
+  async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void> {
     let raw: string;
     if (attachment) {
       const boundary = `centinelia_${Date.now()}`;
       raw = [
         'MIME-Version: 1.0',
         `To: ${to}`,
+        ...(fromEmail ? [`From: ${fromEmail}`] : []),
         `Subject: ${subject}`,
         `Content-Type: multipart/mixed; boundary="${boundary}"`,
         '',
@@ -87,7 +88,8 @@ class GoogleEmail implements EmailConnector {
         `--${boundary}--`,
       ].join('\r\n');
     } else {
-      raw = [`To: ${to}`, `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('\r\n');
+      const headers = [`To: ${to}`, ...(fromEmail ? [`From: ${fromEmail}`] : []), `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8'];
+      raw = [...headers, '', body].join('\r\n');
     }
     await fetch(`${GMAIL}/messages/send`, {
       method:  'POST',

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   resetDate.setMonth(resetDate.getMonth() + 1);
   resetDate.setDate(1);
 
-  // 1. Save agent to Supabase
+  // 1. Save agent to Supabase (org-level fields go to organizations, not voice_agents)
   const { data, error } = await supabase
     .from('voice_agents')
     .insert({
@@ -61,10 +61,7 @@ export async function POST(req: NextRequest) {
       client_email:           client_email?.trim() ?? null,
       portal_email:           inheritedPortalEmail,
       portal_password_hash:   inheritedPasswordHash,
-      business_website:       businessWebsite,
-      website_knowledge:      websiteKnowledge,
       business_name:          business_name.trim(),
-      business_description:   business_description?.trim() ?? '',
       business_address:       business_address?.trim() ?? null,
       business_phone_display: business_phone_display?.trim() ?? '',
       transfer_whatsapp:      transfer_whatsapp?.trim() ?? null,
@@ -72,7 +69,6 @@ export async function POST(req: NextRequest) {
       calendar_url:           calendar_url?.trim() ?? null,
       timezone:               timezone?.trim() ?? 'America/Monterrey',
       phone_number:           phone_number?.trim() ?? '',
-      knowledge_base:         knowledge_base?.trim() ?? null,
       agent_name:             plan === 'pro' ? (agent_name?.trim() ?? null) : null,
       giro_template:          body.giro_template ?? null,
       plan:                   plan ?? 'comercial',
@@ -87,7 +83,21 @@ export async function POST(req: NextRequest) {
 
   const agent = data as VoiceAgent;
 
-  // 2. Create Vapi assistant with full system prompt
+  // 1b. Upsert org-level fields to organizations (single source of truth)
+  if (inheritedPortalEmail) {
+    const orgPatch: Record<string, string | null> = {};
+    if (businessWebsite)                   orgPatch.business_website  = businessWebsite;
+    if (websiteKnowledge)                  orgPatch.website_knowledge = websiteKnowledge;
+    if (business_description?.trim())      orgPatch.business_description = business_description.trim();
+    if (knowledge_base?.trim())            orgPatch.knowledge_base    = knowledge_base.trim();
+    if (Object.keys(orgPatch).length > 0) {
+      await supabase
+        .from('organizations')
+        .upsert({ portal_email: inheritedPortalEmail, ...orgPatch }, { onConflict: 'portal_email' });
+    }
+  }
+
+  // 2. Create Vapi assistant — enrichWithOrgData in sync.ts will pull from organizations
   const vapiAssistantId = await createVapiAssistant(agent);
 
   if (vapiAssistantId) {

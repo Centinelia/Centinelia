@@ -33,7 +33,7 @@ export default async function OficinaLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features, nombre')
+    .select('business_name, logo_url, portal_email, minutes_included, minutes_used, ai_ops_used, ai_ops_limit, stripe_customer_id, features, agent_name')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -130,7 +130,7 @@ export default async function OficinaLayout({
   }
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         {/* Header */}
@@ -174,13 +174,13 @@ export default async function OficinaLayout({
             hasStripe={hasStripe}
             vertical={vertical}
             modules={modules}
-            agentName={(agent as any).nombre ?? undefined}
+            agentName={(agent as any).agent_name ?? undefined}
           />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="max-w-4xl px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>
-            <PortalFooter />
+            <PortalFooter token={token} />
           </div>
         </div>
 

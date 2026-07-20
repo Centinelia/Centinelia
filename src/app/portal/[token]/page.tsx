@@ -129,6 +129,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     : { data: [] };
   const allClientAgents = clientAgents ?? [];
 
+  // Org-level settings — single source of truth for the Negocio tab
+  const { data: orgSettings } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+        .eq('portal_email', agent.portal_email)
+        .single()
+    : { data: null };
+
   // Agents with outbound calling enabled — available to select when scheduling
   const outboundAgents = allClientAgents
     .filter(a => {
@@ -332,7 +341,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   ];
 
   return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="dark">
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
         {/* Ambient orb, top center */}
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
@@ -425,7 +434,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className={`px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' || tab === 'negocio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`flex-1 px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' || tab === 'negocio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
@@ -440,13 +449,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   }}
                 >
                   {/* Team — grows from bottom edge, clipped at top */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, width: 160, height: 112, pointerEvents: 'none' }}>
+                  <div style={{ position: 'absolute', bottom: 0, left: 16, width: 160, height: 112, pointerEvents: 'none' }}>
                     <Image src="/meerkats-team.png" alt="" fill sizes="160px"
                       style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
                   </div>
 
-                  {/* Text — offset right of image */}
-                  <div style={{ paddingLeft: 164, paddingRight: 20, paddingTop: 18, paddingBottom: 18 }}>
+                  {/* Text — offset right of image, vertically centered */}
+                  <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
@@ -717,7 +726,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {/* Main column */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
                 {agent.portal_email && (
-                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={(agent as any).business_description ?? ''} />
+                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
                 )}
 
                 <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -730,11 +739,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     logoUrl={(agent as any).logo_url ?? null}
                     businessName={agent.business_name}
                     agentName={agent.agent_name ?? agent.business_name}
-                    initialColor={(agent as any).email_brand_color ?? '#6C3BFF'}
-                    initialColorSecondary={(agent as any).brand_color_secondary ?? ''}
-                    initialWebsite={(agent as any).brand_website ?? ''}
-                    initialAddress={(agent as any).brand_address ?? ''}
-                    initialFooter={(agent as any).email_footer_text ?? ''}
+                    initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
+                    initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
+                    initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
+                    initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                    initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                   />
                 </div>
 
@@ -745,9 +754,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <KnowledgeBaseEditor
                     token={token}
-                    initialValue={(agent as any).knowledge_base ?? ''}
-                    websiteSynced={!!((agent as any).website_knowledge)}
-                    hasDescription={!!((agent as any).business_description?.trim())}
+                    initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
+                    websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
+                    hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
                   />
                 </div>
 
@@ -758,7 +767,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <OwnerProfileEditor
                     token={token}
-                    initialValue={(agent as any).owner_profile ?? ''}
+                    initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
                   />
                 </div>
 
@@ -771,7 +780,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
                     <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
                   </div>
-                  <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
+                  <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
                 </div>
 
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -779,13 +788,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
                     <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
                   </div>
-                  <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
+                  <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
                   <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
                   <div className="flex items-center gap-1.5 mb-3">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
                     <InfoTooltip text="Tu empleado envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
                   </div>
-                  <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
+                  <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
                 </div>
               </div>
 
@@ -916,7 +925,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           )}
         </div>
 
-            <PortalFooter />
+            <PortalFooter token={token} />
           </div>{/* /main content column */}
         </div>{/* /body flex */}
 

@@ -36,13 +36,11 @@ export async function POST(req: NextRequest) {
     .insert({
       client_name:           client_name.trim(),
       business_name:         business_name.trim(),
-      business_description:  business_description?.trim() ?? '',
       wa_phone_number:       wa_phone_number.trim().replace(/\s/g, ''),
       phone_number:          wa_phone_number.trim().replace(/\s/g, ''),
       business_phone_display: '',
       agent_name:            agent_name?.trim() ?? null,
       timezone:              timezone?.trim() ?? 'America/Monterrey',
-      knowledge_base:        knowledge_base?.trim() ?? null,
       transfer_whatsapp:     transfer_whatsapp?.trim() ?? null,
       client_email:          client_email?.trim() ?? null,
       capture_leads:         capture_leads ?? true,

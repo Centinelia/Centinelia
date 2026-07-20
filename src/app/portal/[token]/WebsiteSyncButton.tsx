@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, RefreshCw, Check, AlertCircle } from 'lucide-react';
+import { Globe, Scan, RefreshCw, Check, AlertCircle } from 'lucide-react';
 
 type Status = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -50,7 +50,8 @@ export default function WebsiteSyncButton({ token, currentUrl }: { token: string
         <button
           onClick={sync}
           disabled={!url.trim() || status === 'loading'}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity whitespace-nowrap"
+          title={currentUrl ? 'Re-sincronizar' : 'Sincronizar'}
+          className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-semibold transition-opacity shrink-0 whitespace-nowrap"
           style={{
             background: status === 'ok' ? 'rgba(34,197,94,0.12)' : 'rgba(108,59,255,0.1)',
             color:      status === 'ok' ? '#16a34a' : '#6C3BFF',
@@ -59,10 +60,10 @@ export default function WebsiteSyncButton({ token, currentUrl }: { token: string
           }}
         >
           {status === 'loading'
-            ? <><RefreshCw size={11} className="animate-spin" /> Sincronizando…</>
+            ? <><RefreshCw size={13} className="animate-spin" /> Escaneando…</>
             : status === 'ok'
-            ? <><Check size={11} /> Sincronizado</>
-            : <><RefreshCw size={11} /> {currentUrl ? 'Re-sincronizar' : 'Sincronizar'}</>
+            ? <><Check size={13} /> Escaneado</>
+            : <><Scan size={13} /> Escanear</>
           }
         </button>
       </div>

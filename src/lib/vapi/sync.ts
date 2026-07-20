@@ -50,6 +50,7 @@ interface TeamPeer {
   agent_name: string | null;
   role: string | null;
   features: Record<string, boolean>;
+  role_knowledge_base: string | null;
 }
 
 function peerToolName(peer: TeamPeer): string {
@@ -77,13 +78,50 @@ function peerRoleDesc(peer: TeamPeer): string {
   return 'atiende solicitudes especializadas';
 }
 
+// Returns a capability summary for use in peer-awareness blocks.
+// Prefers the first sentence of role_knowledge_base (actual responsibilities),
+// falls back to the generic role description.
+function peerCapabilitySummary(peer: TeamPeer): string {
+  const kb = peer.role_knowledge_base?.trim();
+  if (kb) {
+    const match = kb.match(/^[^.!?\n]+[.!?]/);
+    if (match && match[0].length <= 220) return match[0].trim();
+    const truncated = kb.slice(0, 200);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return (lastSpace > 80 ? truncated.slice(0, lastSpace) : truncated) + '…';
+  }
+  return peerRoleDesc(peer);
+}
+
+// ─── Org-level data enrichment ───────────────────────────────────────────────
+// Org fields are stored in `organizations` (single source of truth).
+// Before building any Vapi assistant, merge them over the per-agent row.
+
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text';
+
+async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
+  if (!agent.portal_email) return agent;
+  try {
+    const supabase = createAdminClient();
+    const { data: org } = await supabase
+      .from('organizations')
+      .select(ORG_SELECT)
+      .eq('portal_email', agent.portal_email)
+      .single();
+    if (!org) return agent;
+    return { ...agent, ...org } as VoiceAgent;
+  } catch {
+    return agent;
+  }
+}
+
 async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
   if (!agent.portal_email) return [];
   try {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from('voice_agents')
-      .select('id, vapi_agent_id, agent_name, role, features')
+      .select('id, vapi_agent_id, agent_name, role, features, role_knowledge_base')
       .eq('portal_email', agent.portal_email)
       .eq('active', true)
       .neq('id', agent.id);
@@ -488,13 +526,12 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   for (const peer of peers) {
     const toolName  = peerToolName(peer);
     const roleLabel = peerRoleLabel(peer);
-    const roleDesc  = peerRoleDesc(peer);
     const peerName  = peer.agent_name || roleLabel;
     tools.push({
       type: 'transferCall',
       function: {
         name: toolName,
-        description: `Transfiere la llamada a ${peerName} (${roleLabel}): ${roleDesc}. Úsalo cuando el cliente necesite este especialista.`,
+        description: `Transfiere la llamada a ${peerName} (${roleLabel}): ${peerCapabilitySummary(peer)} Úsalo cuando el cliente necesite este especialista.`,
         parameters: {
           type: 'object',
           properties: {
@@ -577,7 +614,8 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
         const label    = peerRoleLabel(p);
         const toolName = peerToolName(p);
         const peerName = p.agent_name || label;
-        return `- ${peerName} (${label}): ${peerRoleDesc(p)}. Herramienta: ${toolName}.`;
+        const cap      = peerCapabilitySummary(p);
+        return `- ${peerName} (${label}): ${cap} Herramienta: ${toolName}.`;
       }),
       'Si el cliente solicita algo que corresponde a un compañero especialista, transfiérelo de inmediato con la herramienta indicada. No le hagas esperar ni expliques el proceso técnico.',
     ];
@@ -679,15 +717,16 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
 
 // Internal: sync one agent without triggering cascade (prevents infinite loops)
 async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learnings?: AgentLearnings | null): Promise<boolean> {
-  const peers          = await fetchTeamPeers(agent);
-  const toolIds        = await createVapiTools(agent, peers);
+  const enrichedAgent     = await enrichWithOrgData(agent);
+  const peers             = await fetchTeamPeers(enrichedAgent);
+  const toolIds           = await createVapiTools(enrichedAgent, peers);
   const resolvedLearnings = learnings !== undefined
     ? learnings
     : await fetchConversationalLearnings();
   const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers, resolvedLearnings)),
+    body: JSON.stringify(buildVapiAssistant(enrichedAgent, toolIds, peers, resolvedLearnings)),
   });
   if (!res.ok) {
     const errText = await res.text();
@@ -721,12 +760,13 @@ export async function resyncPeerAgents(portalEmail: string | null | undefined, e
 }
 
 export async function createVapiAssistant(agent: VoiceAgent): Promise<string | null> {
-  const peers   = await fetchTeamPeers(agent);
-  const toolIds = await createVapiTools(agent, peers);
+  const enrichedAgent = await enrichWithOrgData(agent);
+  const peers   = await fetchTeamPeers(enrichedAgent);
+  const toolIds = await createVapiTools(enrichedAgent, peers);
   const res = await fetch(`${VAPI_URL}/assistant`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(agent, toolIds, peers)),
+    body: JSON.stringify(buildVapiAssistant(enrichedAgent, toolIds, peers)),
   });
   if (!res.ok) {
     console.error('Vapi createAssistant error:', await res.text());

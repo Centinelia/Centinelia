@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import SupportChat       from './SupportChat';
 import OpsAgentChatFab, { type AgentOption } from './OpsAgentChatFab';
-import BugReportButton   from './BugReportButton';
 
 export default async function TokenLayout({
   children,
@@ -100,7 +99,6 @@ export default async function TokenLayout({
       {children}
       <SupportChat />
       {opsAgents.length > 0 && <OpsAgentChatFab token={token} agents={opsAgents} />}
-      {account?.allow_bug_reports && <BugReportButton token={token} />}
     </>
   );
 }

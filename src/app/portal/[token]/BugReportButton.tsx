@@ -11,15 +11,14 @@ const CATEGORIES = [
 ];
 
 interface Props {
-  token: string;
+  token:     string;
+  variant?: 'fab' | 'link';
 }
 
-export default function BugReportButton({ token }: Props) {
+export default function BugReportButton({ token, variant = 'fab' }: Props) {
   const [open,        setOpen]        = useState(false);
   const [category,    setCategory]    = useState(CATEGORIES[0]);
   const [description, setDescription] = useState('');
-  const [name,        setName]        = useState('');
-  const [email,       setEmail]       = useState('');
   const [sending,     setSending]     = useState(false);
   const [sent,        setSent]        = useState(false);
   const [error,       setError]       = useState('');
@@ -27,8 +26,6 @@ export default function BugReportButton({ token }: Props) {
   function reset() {
     setCategory(CATEGORIES[0]);
     setDescription('');
-    setName('');
-    setEmail('');
     setSent(false);
     setError('');
   }
@@ -42,7 +39,7 @@ export default function BugReportButton({ token }: Props) {
       const res = await fetch(`/api/portal/${token}/bug-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, description, reporter_name: name, reporter_email: email }),
+        body: JSON.stringify({ category, description }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? 'Error al enviar.'); return; }
       setSent(true);
@@ -55,23 +52,34 @@ export default function BugReportButton({ token }: Props) {
 
   return (
     <>
-      {/* FAB */}
-      <button
-        onClick={() => { reset(); setOpen(true); }}
-        title="Reportar falla"
-        style={{
-          position: 'fixed', bottom: 24, left: 20, zIndex: 40,
-          width: 44, height: 44, borderRadius: '50%',
-          background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'background 0.2s, transform 0.2s',
-          backdropFilter: 'blur(8px)',
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.22)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
-      >
-        <Bug size={18} color="#ef4444" />
-      </button>
+      {/* Trigger — FAB or inline footer link */}
+      {variant === 'fab' ? (
+        <button
+          onClick={() => { reset(); setOpen(true); }}
+          title="Reportar falla"
+          style={{
+            position: 'fixed', bottom: 24, left: 20, zIndex: 40,
+            width: 44, height: 44, borderRadius: '50%',
+            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'background 0.2s',
+            backdropFilter: 'blur(8px)',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.22)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
+        >
+          <Bug size={18} color="#ef4444" />
+        </button>
+      ) : (
+        <button
+          onClick={() => { reset(); setOpen(true); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+        >
+          <Bug size={11} color="#ef4444" />
+          <p style={{ fontSize: 10, color: 'var(--c-text-4)', margin: 0 }}>¿Encontraste algo raro?</p>
+          <p style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', margin: 0 }}>Reportar falla</p>
+        </button>
+      )}
 
       {/* Modal backdrop */}
       {open && (
@@ -80,8 +88,8 @@ export default function BugReportButton({ token }: Props) {
           style={{
             position: 'fixed', inset: 0, zIndex: 50,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            padding: '0 0 24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24,
           }}
         >
           {/* Modal */}
@@ -184,38 +192,6 @@ export default function BugReportButton({ token }: Props) {
                       fontFamily: 'inherit',
                     }}
                   />
-                </div>
-
-                {/* Name + Email */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
-                      Tu nombre
-                    </label>
-                    <input
-                      value={name} onChange={e => setName(e.target.value)}
-                      placeholder="Opcional"
-                      style={{
-                        width: '100%', padding: '9px 12px', borderRadius: 10, boxSizing: 'border-box',
-                        background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)',
-                        color: 'var(--c-text)', fontSize: 13, fontFamily: 'inherit',
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
-                      Tu correo
-                    </label>
-                    <input
-                      value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="Opcional" type="email"
-                      style={{
-                        width: '100%', padding: '9px 12px', borderRadius: 10, boxSizing: 'border-box',
-                        background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)',
-                        color: 'var(--c-text)', fontSize: 13, fontFamily: 'inherit',
-                      }}
-                    />
-                  </div>
                 </div>
 
                 {error && (

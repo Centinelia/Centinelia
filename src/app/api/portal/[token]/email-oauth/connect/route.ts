@@ -20,9 +20,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
   }
 
+  // scope=agent → per-agent connect from configurar page; encodes in state so callback knows
+  const scope  = req.nextUrl.searchParams.get('scope');
+  const state  = scope === 'agent' ? `${token}__agent` : token;
+
   const url = provider === 'gmail'
-    ? gmailAuthUrl(token)
-    : outlookAuthUrl(token);
+    ? gmailAuthUrl(state)
+    : outlookAuthUrl(state);
 
   return NextResponse.redirect(url);
 }

@@ -48,7 +48,7 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
         style={{ width: size, height: size, borderRadius: size * 0.27, background: `${color}20`, border: `1px solid ${color}35` }}
       >
         {current
-          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', padding: size * 0.05 }} />
+          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', objectPosition: 'center bottom', padding: `${size * 0.05}px ${size * 0.05}px 0` }} />
           : <span className="w-full h-full flex items-center justify-center font-bold"
               style={{ color, fontSize: size * 0.36 }}>{initial}</span>
         }
@@ -70,7 +70,7 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
         }}
       >
         {current
-          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', padding: size * 0.05 }} />
+          ? <Image src={current} alt="" fill sizes={`${size}px`} style={{ objectFit: 'contain', objectPosition: 'center bottom', padding: `${size * 0.05}px ${size * 0.05}px 0` }} />
           : <span className="w-full h-full flex items-center justify-center font-bold"
               style={{ color, fontSize: size * 0.36 }}>{initial}</span>
         }
