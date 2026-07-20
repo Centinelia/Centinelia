@@ -426,15 +426,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'inicio' && (
             <div className="flex flex-col gap-5">
               {isFirstTime && (
-                <div className="flex items-end gap-4 px-5 pt-2 pb-4 rounded-xl overflow-hidden"
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl overflow-hidden"
                   style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                  <div className="relative flex-shrink-0" style={{ width: 72, height: 100 }}>
-                    <Image src="/agent-m1.png" alt="" fill sizes="72px"
+                  <div className="relative flex-shrink-0" style={{ width: 44, height: 60 }}>
+                    <Image src="/agent-m1.png" alt="" fill sizes="44px"
                       style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
                   </div>
-                  <div className="pb-1">
-                    <p className="text-sm font-semibold mb-1" style={{ color: '#6C3BFF' }}>¡Tu equipo está listo!</p>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                  <div>
+                    <p className="text-xs font-semibold mb-0.5" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>
