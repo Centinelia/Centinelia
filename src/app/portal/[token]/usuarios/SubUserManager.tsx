@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronUp, Users } from 'lucide-react';
-import { PORTAL_MODULES } from '@/lib/portal/modules';
+import { useState, useRef, useEffect } from 'react';
+import { Plus, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronUp, Users, Info } from 'lucide-react';
+import { PORTAL_MODULES, GIRO_GROUPS } from '@/lib/portal/modules';
 
 interface PortalUser {
   id:         string;
@@ -16,70 +16,234 @@ interface PortalUser {
 interface Props {
   token:        string;
   initialUsers: PortalUser[];
+  accountGiro?: string;
 }
 
-const GROUPS = ['Portal', 'Oficina'] as const;
+const GENERAL_GROUPS = ['Portal', 'Oficina'] as const;
 
-function ModuleSelector({ selected, onChange }: { selected: string[]; onChange: (m: string[]) => void }) {
+function ModuleSelector({
+  selected,
+  onChange,
+  accountGiro,
+}: {
+  selected:    string[];
+  onChange:    (m: string[]) => void;
+  accountGiro?: string;
+}) {
+  const [openGiros, setOpenGiros] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const g of GIRO_GROUPS) {
+      initial[g.id] = g.id === accountGiro;
+    }
+    return initial;
+  });
+
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
 
-  const allInGroup = (g: string) => PORTAL_MODULES.filter(m => m.group === g).every(m => selected.includes(m.id as string));
-  const toggleGroup = (g: string) => {
-    const ids: string[] = PORTAL_MODULES.filter(m => m.group === g).map(m => m.id as string);
-    if (allInGroup(g)) onChange(selected.filter(id => !ids.includes(id)));
+  const toggleAll = (ids: string[]) => {
+    const allSel = ids.every(id => selected.includes(id));
+    if (allSel) onChange(selected.filter(id => !ids.includes(id)));
     else onChange([...new Set([...selected, ...ids])]);
   };
 
+  const generalModules = (group: string) =>
+    PORTAL_MODULES.filter(m => m.group === group && m.giros.includes('all'));
+
+  const allInSet = (ids: string[]) => ids.every(id => selected.includes(id));
+  const someInSet = (ids: string[]) => ids.some(id => selected.includes(id));
+
   return (
-    <div className="flex flex-col gap-3">
-      {GROUPS.map(group => (
-        <div key={group}>
-          <button
-            type="button"
-            onClick={() => toggleGroup(group)}
-            className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            <div
-              className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
-              style={{
-                border:     '1px solid rgba(108,59,255,0.6)',
-                background: allInGroup(group) ? '#6C3BFF' : 'transparent',
-              }}
+    <div className="flex flex-col gap-4">
+
+      {/* General groups — always visible */}
+      {GENERAL_GROUPS.map(group => {
+        const mods = generalModules(group);
+        const ids  = mods.map(m => m.id);
+        const all  = allInSet(ids);
+        const some = someInSet(ids) && !all;
+
+        return (
+          <div key={group}>
+            <button
+              type="button"
+              onClick={() => toggleAll(ids)}
+              className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
+              style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              {allInGroup(group) && <Check size={9} color="#fff" />}
-            </div>
-            {group}
-          </button>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-2">
-            {PORTAL_MODULES.filter(m => m.group === group).map(m => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => toggle(m.id)}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left"
+              <div
+                className="w-3.5 h-3.5 rounded flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: selected.includes(m.id) ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-                  border:     selected.includes(m.id) ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
-                  color:      selected.includes(m.id) ? '#9B6DFF' : 'var(--c-text-2)',
+                  border:     '1px solid rgba(108,59,255,0.6)',
+                  background: all ? '#6C3BFF' : some ? 'rgba(108,59,255,0.35)' : 'transparent',
                 }}
               >
+                {all && <Check size={9} color="#fff" />}
+                {some && <span style={{ width: 6, height: 2, background: '#fff', display: 'block', borderRadius: 1 }} />}
+              </div>
+              {group === 'Oficina' ? 'Oficina (general)' : group}
+            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-2">
+              {mods.map(m => (
+                <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Industry-specific groups — collapsible */}
+      {GIRO_GROUPS.map(giroGroup => {
+        const mods = PORTAL_MODULES.filter(m => m.giros.includes(giroGroup.id));
+        if (mods.length === 0) return null;
+        const ids      = mods.map(m => m.id);
+        const all      = allInSet(ids);
+        const some     = someInSet(ids) && !all;
+        const isOpen   = !!openGiros[giroGroup.id];
+        const isActive = giroGroup.id === accountGiro;
+
+        return (
+          <div key={giroGroup.id}
+            className="rounded-xl overflow-hidden"
+            style={{
+              border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
+              background: isActive ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)',
+            }}
+          >
+            {/* Group header */}
+            <div className="flex items-center gap-2 px-3 py-2.5">
+              {/* Check all */}
+              <button
+                type="button"
+                onClick={() => toggleAll(ids)}
+                className="flex-shrink-0"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
                 <div
-                  className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
+                  className="w-3.5 h-3.5 rounded flex items-center justify-center"
                   style={{
-                    border:     '1px solid rgba(108,59,255,0.5)',
-                    background: selected.includes(m.id) ? '#6C3BFF' : 'transparent',
+                    border:     '1px solid rgba(108,59,255,0.6)',
+                    background: all ? '#6C3BFF' : some ? 'rgba(108,59,255,0.35)' : 'transparent',
                   }}
                 >
-                  {selected.includes(m.id) && <Check size={8} color="#fff" />}
+                  {all && <Check size={9} color="#fff" />}
+                  {some && <span style={{ width: 6, height: 2, background: '#fff', display: 'block', borderRadius: 1 }} />}
                 </div>
-                {m.label}
               </button>
-            ))}
+
+              {/* Label + expand */}
+              <button
+                type="button"
+                onClick={() => setOpenGiros(p => ({ ...p, [giroGroup.id]: !p[giroGroup.id] }))}
+                className="flex-1 flex items-center gap-2 text-left"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                <span className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: isActive ? '#9B6DFF' : 'var(--c-text-3)' }}>
+                  {giroGroup.label}
+                </span>
+                {isActive && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                    style={{ background: 'rgba(108,59,255,0.15)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                    Tu sector
+                  </span>
+                )}
+                <span className="ml-auto" style={{ color: 'var(--c-text-4)' }}>
+                  {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </span>
+              </button>
+            </div>
+
+            {/* Module list */}
+            {isOpen && (
+              <div className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5"
+                style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="col-span-full h-2" />
+                {mods.map(m => (
+                  <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />
+                ))}
+              </div>
+            )}
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ModuleToggle({ id, label, selected, onToggle }: {
+  id: string; label: string; selected: string[]; onToggle: (id: string) => void;
+}) {
+  const on   = selected.includes(id);
+  const desc = PORTAL_MODULES.find(m => m.id === id)?.desc;
+  const [tip, setTip] = useState(false);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!tip) return;
+    const hide = (e: MouseEvent) => {
+      if (tipRef.current && !tipRef.current.contains(e.target as Node)) setTip(false);
+    };
+    document.addEventListener('mousedown', hide);
+    return () => document.removeEventListener('mousedown', hide);
+  }, [tip]);
+
+  return (
+    <div className="relative flex">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left"
+        style={{
+          background:  on ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
+          border:      on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+          color:       on ? '#9B6DFF' : 'var(--c-text-2)',
+          borderRadius: desc ? '8px 0 0 8px' : 8,
+        }}
+      >
+        <div
+          className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
+          style={{ border: '1px solid rgba(108,59,255,0.5)', background: on ? '#6C3BFF' : 'transparent' }}
+        >
+          {on && <Check size={8} color="#fff" />}
         </div>
-      ))}
+        {label}
+      </button>
+
+      {desc && (
+        <div className="relative flex-shrink-0" ref={tipRef}>
+          <button
+            type="button"
+            onClick={() => setTip(v => !v)}
+            className="h-full px-1.5 flex items-center justify-center"
+            style={{
+              background:  on ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
+              border:      on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+              borderLeft:  'none',
+              borderRadius: '0 8px 8px 0',
+              color:       'var(--c-text-4)',
+              cursor:      'pointer',
+            }}
+          >
+            <Info size={10} />
+          </button>
+
+          {tip && (
+            <div
+              className="absolute z-50 bottom-full right-0 mb-1.5 w-52 rounded-xl px-3 py-2.5 text-xs leading-relaxed shadow-2xl"
+              style={{
+                background:  'var(--c-modal)',
+                border:      '1px solid rgba(108,59,255,0.25)',
+                color:       'var(--c-text-2)',
+                boxShadow:   '0 8px 32px rgba(0,0,0,0.4)',
+              }}
+            >
+              <p className="font-semibold mb-0.5" style={{ color: '#9B6DFF' }}>{label}</p>
+              {desc}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -128,20 +292,18 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
   );
 }
 
-export default function SubUserManager({ token, initialUsers }: Props) {
+export default function SubUserManager({ token, initialUsers, accountGiro }: Props) {
   const [users, setUsers]           = useState<PortalUser[]>(initialUsers);
   const [showAdd, setShowAdd]       = useState(false);
   const [editId, setEditId]         = useState<string | null>(null);
   const [error, setError]           = useState('');
   const [saving, setSaving]         = useState(false);
 
-  // New user form
   const [newEmail,    setNewEmail]    = useState('');
   const [newName,     setNewName]     = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newModules,  setNewModules]  = useState<string[]>([]);
 
-  // Edit form
   const [editName,     setEditName]     = useState('');
   const [editModules,  setEditModules]  = useState<string[]>([]);
   const [editPassword, setEditPassword] = useState('');
@@ -197,6 +359,10 @@ export default function SubUserManager({ token, initialUsers }: Props) {
     const res = await fetch(`/api/portal/${token}/users/${id}`, { method: 'DELETE' });
     if (res.ok) setUsers(u => u.filter(x => x.id !== id));
     else setError('Error al eliminar usuario');
+  };
+
+  const resetAdd = () => {
+    setShowAdd(false); setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]); setError('');
   };
 
   return (
@@ -267,7 +433,7 @@ export default function SubUserManager({ token, initialUsers }: Props) {
 
           <div>
             <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
-            <ModuleSelector selected={newModules} onChange={setNewModules} />
+            <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
           </div>
 
           <div className="flex gap-2 pt-1">
@@ -280,7 +446,7 @@ export default function SubUserManager({ token, initialUsers }: Props) {
               {saving ? 'Guardando...' : 'Crear usuario'}
             </button>
             <button
-              onClick={() => { setShowAdd(false); setNewEmail(''); setNewName(''); setNewPassword(''); setNewModules([]); setError(''); }}
+              onClick={resetAdd}
               className="px-4 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
               style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
             >
@@ -386,10 +552,9 @@ export default function SubUserManager({ token, initialUsers }: Props) {
 
               <div>
                 <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
-                <ModuleSelector selected={editModules} onChange={setEditModules} />
+                <ModuleSelector selected={editModules} onChange={setEditModules} accountGiro={accountGiro} />
               </div>
 
-              {/* Optional password change */}
               <div>
                 <button
                   type="button"

@@ -23,7 +23,7 @@ export default async function UsuariosPage({ params }: Props) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
+    .select('portal_email, business_name, logo_url, active, billing_status, plan, stripe_customer_id, features, giro_template, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -120,6 +120,7 @@ export default async function UsuariosPage({ params }: Props) {
                 <SubUserManager
                   token={token}
                   initialUsers={(existingUsers ?? []) as any[]}
+                  accountGiro={(agent as any).features?.vertical ?? undefined}
                 />
               </div>
 
