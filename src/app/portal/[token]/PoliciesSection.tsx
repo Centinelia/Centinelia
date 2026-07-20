@@ -8,35 +8,35 @@ const CAPABILITIES_CONFIG = [
   {
     capability:  'email',
     label:       'Correo electrónico',
-    description: 'El agente puede enviar correos en nombre de la organización.',
+    description: 'Tu empleado puede enviar correos en nombre de la organización.',
     icon:        Mail,
     active:      true,
   },
   {
     capability:  'files',
     label:       'Archivos',
-    description: 'El agente puede buscar, leer y guardar archivos en Drive o OneDrive.',
+    description: 'Tu empleado puede buscar, leer y guardar archivos en Drive o OneDrive.',
     icon:        FolderOpen,
     active:      true,
   },
   {
     capability:  'phone',
     label:       'Llamadas salientes',
-    description: 'El agente puede iniciar llamadas telefónicas salientes.',
+    description: 'Tu empleado puede iniciar llamadas telefónicas salientes.',
     icon:        PhoneOutgoing,
     active:      true,
   },
   {
     capability:  'calendar',
     label:       'Calendario',
-    description: 'El agente puede crear y gestionar eventos en tu calendario.',
+    description: 'Tu empleado puede crear y gestionar eventos en tu calendario.',
     icon:        Calendar,
     active:      true,
   },
   {
     capability:  'crm',
     label:       'CRM',
-    description: 'El agente puede leer y escribir registros en tu CRM.',
+    description: 'Tu empleado puede leer y escribir registros en tu CRM.',
     icon:        Users2,
     active:      true,
   },
@@ -126,7 +126,7 @@ export default function PoliciesSection({ token }: { token: string }) {
           <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
             Políticas de acceso
           </h2>
-          <InfoTooltip text="Controla qué puede hacer el agente. Los cambios toman efecto de inmediato." />
+          <InfoTooltip text="Controla qué puede hacer tu empleado. Los cambios toman efecto de inmediato." />
         </div>
 
         {loading ? (

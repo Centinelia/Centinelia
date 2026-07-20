@@ -63,7 +63,7 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
       {open && (
         <div className="px-4 pb-4 pt-3 flex flex-col gap-4" style={{ background: 'var(--c-surface)', borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            Define el formato de los documentos que el agente genera. Usa{' '}
+            Define el formato de los documentos que tu empleado genera. Usa{' '}
             <span className="font-mono text-[11px] px-1 rounded" style={{ background: 'var(--c-bg)', color: '#9B6DFF' }}>
               {'{variable}'}
             </span>{' '}

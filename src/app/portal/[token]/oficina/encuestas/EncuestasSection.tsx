@@ -449,7 +449,7 @@ export default function EncuestasSection({ token }: { token: string }) {
         <div>
           <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>Encuestas telefónicas</h2>
           <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            El agente recaba las respuestas de forma natural durante la llamada o al final, y los resultados se acumulan aquí.
+            Tu empleado recaba las respuestas de forma natural durante la llamada o al final, y los resultados se acumulan aquí.
           </p>
         </div>
         <button
@@ -501,7 +501,7 @@ export default function EncuestasSection({ token }: { token: string }) {
           style={{ border: '1px dashed var(--c-border-2)', color: 'var(--c-text-4)' }}>
           <BarChart2 size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
           <p className="text-sm font-medium">Sin encuestas</p>
-          <p className="text-xs mt-1">Crea una encuesta para que el agente la aplique al terminar las llamadas.</p>
+          <p className="text-xs mt-1">Crea una encuesta para que el empleado la aplique al terminar las llamadas.</p>
         </div>
       )}
       {surveys.map(s => (

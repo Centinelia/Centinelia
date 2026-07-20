@@ -299,7 +299,7 @@ function ScheduleForm({ token, agents, onCreated }: {
               )}
 
               <p className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>
-                Agente que llamará
+                Empleado que llamará
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {visibleAgents.map(a => (
@@ -341,7 +341,7 @@ function ScheduleForm({ token, agents, onCreated }: {
                     style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
                 </Field>
               </div>
-              <Field label="¿De qué hablará el agente?" required hint="El agente usa este contexto para guiar la conversación.">
+              <Field label="¿De qué hablará el empleado?" required hint="El agente usa este contexto para guiar la conversación.">
                 <textarea value={motivo} onChange={e => setMotivo(e.target.value)} rows={3}
                   placeholder="Ej: Recordatorio de cita del viernes 11 de julio a las 10am para revisión de A/C"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF] resize-none"
@@ -382,7 +382,7 @@ function ScheduleForm({ token, agents, onCreated }: {
                     onChange={e => handleFileChange(e.target.files?.[0] ?? null)} />
                 </label>
               </Field>
-              <Field label="¿De qué hablará el agente?" required hint="Se aplica el mismo contexto a todos los contactos de la lista.">
+              <Field label="¿De qué hablará el empleado?" required hint="Se aplica el mismo contexto a todos los contactos de la lista.">
                 <textarea value={motivoBulk} onChange={e => setMotivoBulk(e.target.value)} rows={3}
                   placeholder="Ej: Recordatorio de renovación de contrato — vence el 31 de julio"
                   className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF] resize-none"

@@ -52,7 +52,7 @@ export default function DirectorioEditor({ token, initial }: { token: string; in
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs pt-3" style={{ color: 'var(--c-text-3)' }}>
-            El agente consulta este directorio para saber a quién asignar tickets y referir al usuario.
+            Tu empleado consulta este directorio para saber a quién asignar tickets y referir al usuario.
           </p>
 
           {contacts.map(c => (

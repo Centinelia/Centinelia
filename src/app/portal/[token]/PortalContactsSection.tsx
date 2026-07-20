@@ -270,7 +270,7 @@ function ScheduleModal({
           {agents.length > 1 && (
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>
-                Agente que llamará
+                Empleado que llamará
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {agents.map(a => {
@@ -300,7 +300,7 @@ function ScheduleModal({
 
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
-              ¿De qué hablará el agente? <span style={{ color: '#ef4444' }}>*</span>
+              ¿De qué hablará el empleado? <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <textarea value={motivo} onChange={e => setMotivo(e.target.value)} rows={3}
               placeholder="Ej: Recordatorio de cita del viernes 11 de julio a las 10am"

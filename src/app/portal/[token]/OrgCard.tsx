@@ -158,7 +158,7 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
       <div className="mt-4 flex flex-col gap-1">
         <div className="flex items-center gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Descripción</span>
-          <InfoTooltip text={"Describe brevemente a qué se dedica tu organización y tus servicios principales.\nEl agente IA usará esto para generar bases de conocimiento más precisas."} />
+          <InfoTooltip text={"Describe brevemente a qué se dedica tu organización y tus servicios principales.\nTu empleado usará esto para generar bases de conocimiento más precisas."} />
           {descSaved && <Check size={10} style={{ color: '#22c55e', marginLeft: 2 }} />}
         </div>
         <textarea

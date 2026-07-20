@@ -309,7 +309,7 @@ export default function AgentKnowledgeBaseEditor({
         )}
         {!websiteSynced && !generatingRole && role.trim() && (
           <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-            Consejo: sincroniza tu sitio web en <strong>Negocio → Sitio web</strong> para mejores resultados. Si no tienes sitio, la KB del negocio es suficiente.
+            Consejo: sincroniza tu sitio web en <strong>Negocio → Sitio web</strong> para mejores resultados. Si no tienes sitio, el manual de la organización es suficiente.
           </p>
         )}
       </div>

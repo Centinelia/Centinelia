@@ -69,7 +69,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs pt-3" style={{ color: 'var(--c-text-3)' }}>
-            Cuando hay un incidente activo, el agente lo menciona automáticamente a cualquier llamada antes de crear tickets.
+            Cuando hay un incidente activo, tu empleado lo menciona automáticamente a cualquier llamada antes de crear tickets.
           </p>
 
           {/* Active incidents */}
@@ -109,7 +109,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
                 className="w-full px-3 py-2 rounded-lg text-xs"
                 style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
               <textarea value={mensajeVoz} onChange={e => setMensajeVoz(e.target.value)} rows={2}
-                placeholder="Mensaje que dice el agente al contestar llamadas *"
+                placeholder="Mensaje que dice el empleado al contestar llamadas *"
                 className="w-full px-3 py-2 rounded-lg text-xs resize-none"
                 style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
               <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={1}

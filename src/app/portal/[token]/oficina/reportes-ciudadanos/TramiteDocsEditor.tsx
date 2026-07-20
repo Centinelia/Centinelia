@@ -89,7 +89,7 @@ export default function TramiteDocsEditor({ token, initial }: Props) {
       {open && (
         <div className="px-4 pb-4 pt-3 flex flex-col gap-4" style={{ background: 'var(--c-surface)', borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            Define qué documentos se requieren por tipo de trámite. El agente consultará esta lista cuando un ciudadano pregunte qué le falta.
+            Define qué documentos se requieren por tipo de trámite. Tu empleado consultará esta lista cuando un ciudadano pregunte qué le falta.
           </p>
 
           {/* Trámite types */}

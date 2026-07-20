@@ -35,7 +35,7 @@ function sourceColor(source: string | null | undefined): string {
 
 function agentLabel(l: Learning): string {
   const va = l.voice_agents;
-  if (!va) return 'Agente';
+  if (!va) return 'Empleado';
   if (va.agent_name) return va.agent_name;
   return va.business_name;
 }
@@ -182,7 +182,7 @@ export default function LearningsSection({ token }: { token: string }) {
                     border:     '1px solid rgba(108,59,255,0.3)',
                   }}
                 >
-                  <Check size={13} /> Agregar a KB
+                  <Check size={13} /> Agregar al manual
                 </button>
                 <button
                   onClick={() => act(l.id, 'reject')}

@@ -35,7 +35,7 @@ export default async function HelpdeskPage({ params }: Props) {
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-widest"
           style={{ color: 'var(--c-text-4)' }}>
-          Configuración del agente
+          Configuración del empleado
         </p>
         <DirectorioEditor token={token} initial={directorio} />
         <GuardiaEditor    token={token} initial={guardia} />

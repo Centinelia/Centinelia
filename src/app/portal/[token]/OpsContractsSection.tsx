@@ -378,7 +378,7 @@ function PlantillaTab({ token }: { token: string }) {
           <div className="text-center max-w-xs px-4">
             <p className="text-sm font-semibold mb-1.5" style={{ color: 'var(--c-text-2)' }}>Plantilla vacía</p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-              Esta es la plantilla base que el agente usa para generar contratos de prestación de servicios para tus clientes.
+              Esta es la plantilla base que tu empleado usa para generar contratos de prestación de servicios para tus clientes.
               Carga las cláusulas estándar y edita el texto según las necesidades de tu organización.
             </p>
           </div>
@@ -408,7 +408,7 @@ function PlantillaTab({ token }: { token: string }) {
         <div>
           <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantilla base de contrato</p>
           <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-            El agente usará esta plantilla para generar borradores. Edita las cláusulas con el ícono de lápiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
+            Tu empleado usará esta plantilla para generar borradores. Edita las cláusulas con el ícono de lápiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
           </p>
         </div>
         <button onClick={save} disabled={saving}
@@ -426,7 +426,7 @@ function PlantillaTab({ token }: { token: string }) {
             <code key={v} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(108,59,255,0.12)', color: '#C4A8FF', fontFamily: 'monospace' }}>{v}</code>
           ))}
         </div>
-        <p className="text-xs mt-2" style={{ color: 'var(--c-text-4)' }}>El agente sustituirá estas variables con los datos del cliente al generar un borrador.</p>
+        <p className="text-xs mt-2" style={{ color: 'var(--c-text-4)' }}>Tu empleado sustituirá estas variables con los datos del cliente al generar un borrador.</p>
       </div>
 
       {/* Clauses */}
@@ -491,7 +491,7 @@ function PlantillaTab({ token }: { token: string }) {
                   <div className="flex items-center gap-2 mt-2">
                     <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: 'var(--c-text-3)' }}>
                       <input type="checkbox" checked={clause.required} onChange={e => updateClause(clause.id, { required: e.target.checked })} className="rounded" />
-                      Cláusula requerida (el agente no puede desactivarla)
+                      Cláusula requerida (tu empleado no puede desactivarla)
                     </label>
                   </div>
                 )}
@@ -580,7 +580,7 @@ function BorradoresTab({ token }: { token: string }) {
         <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
           <FileText size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
           <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin borradores aún</p>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>El agente generará borradores desde conversaciones, o puedes crear uno manualmente.</p>
+          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu empleado generará borradores desde conversaciones, o puedes crear uno manualmente.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -677,7 +677,7 @@ function BorradoresTab({ token }: { token: string }) {
 
                     {draft.notes && (
                       <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                        <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Notas del agente</p>
+                        <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Notas del empleado</p>
                         <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{draft.notes}</p>
                       </div>
                     )}

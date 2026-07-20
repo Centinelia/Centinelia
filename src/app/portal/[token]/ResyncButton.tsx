@@ -35,16 +35,16 @@ export default function ResyncButton({ token }: { token: string }) {
         }}
       >
         {state === 'success' ? (
-          <><Check size={14} /> Agente actualizado</>
+          <><Check size={14} /> Empleado actualizado</>
         ) : state === 'error' ? (
           <><AlertCircle size={14} /> Error al sincronizar</>
         ) : (
           <><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          {isLoading ? 'Aplicando cambios…' : 'Aplicar cambios al agente'}</>
+          {isLoading ? 'Aplicando cambios…' : 'Aplicar cambios al empleado'}</>
         )}
       </button>
       <p className="text-xs text-center" style={{ color: 'var(--c-text-4)' }}>
-        Presiona este botón cuando termines de configurar tu agente para activar todos los cambios.
+        Presiona este botón cuando termines de configurar tu empleado para activar todos los cambios.
       </p>
     </div>
   );

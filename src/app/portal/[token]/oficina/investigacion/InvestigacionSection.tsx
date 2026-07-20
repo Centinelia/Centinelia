@@ -104,7 +104,7 @@ export default function InvestigacionSection({ token }: { token: string }) {
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Investigación</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            Busca en internet sin gastar ops. Úsalo para preparar a tu agente antes de actuar.
+            Busca en internet sin gastar tareas. Úsalo para preparar a tu empleado antes de actuar.
           </p>
         </div>
         <button
@@ -117,7 +117,7 @@ export default function InvestigacionSection({ token }: { token: string }) {
           }}
         >
           <Info size={12} />
-          ¿Cuántas ops gasta?
+          ¿Cuántas tareas consume?
         </button>
       </div>
 
@@ -129,10 +129,10 @@ export default function InvestigacionSection({ token }: { token: string }) {
         >
           <p className="font-semibold" style={{ color: '#9B6DFF' }}>Costo en operaciones IA</p>
           <div className="flex flex-col gap-1.5" style={{ color: 'var(--c-text-2)', lineHeight: 1.6 }}>
-            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Buscar desde aquí: 0 ops.</span> Va directo a internet, sin IA de por medio.</p>
-            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle la búsqueda al agente en el chat: 5 ops</span> — Claude procesa la instrucción y los resultados.</p>
-            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Buscar aquí + pedirle al agente que llame o escriba con esa info: 5 ops</span> — solo cobra la acción.</p>
-            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle al agente que busque y actúe en un solo mensaje: 5–10 ops</span> según si lo resuelve en uno o dos turnos.</p>
+            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Buscar desde aquí: 0 tareas.</span> Va directo a internet, sin IA de por medio.</p>
+            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle la búsqueda al empleado en el chat: 5 tareas</span> — Claude procesa la instrucción y los resultados.</p>
+            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Buscar aquí + pedirle al empleado que llame o escriba con esa info: 5 tareas</span> — solo cobra la acción.</p>
+            <p><span className="font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle al empleado que busque y actúe en un solo mensaje: 5–10 tareas</span> según si lo resuelve en uno o dos turnos.</p>
           </div>
         </div>
       )}
@@ -254,7 +254,7 @@ export default function InvestigacionSection({ token }: { token: string }) {
       <div className="flex items-center justify-center gap-1 -mt-4">
         <Zap size={10} style={{ color: '#9B6DFF' }} />
         <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
-          Esta búsqueda no consume ops
+          Esta búsqueda no consume tareas
         </span>
       </div>
 

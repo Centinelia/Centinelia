@@ -14,8 +14,8 @@ export default function PauseResumeButton({ agentId, clientPaused }: {
   const handleToggle = async () => {
     const action = clientPaused ? 'resume' : 'pause';
     const confirm_msg = clientPaused
-      ? '¿Reanudar tu agente? Volverá a atender llamadas de inmediato.'
-      : '¿Pausar tu agente? Dejará de atender llamadas hasta que lo reanudes.';
+      ? '¿Reanudar tu empleado? Volverá a atender llamadas de inmediato.'
+      : '¿Pausar tu empleado? Dejará de atender llamadas hasta que lo reanudes.';
     if (!confirm(confirm_msg)) return;
 
     setLoading(true);

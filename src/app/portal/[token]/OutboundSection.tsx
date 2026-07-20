@@ -342,7 +342,7 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
       {/* Instrucciones */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Instrucciones especiales para el agente
+          Instrucciones especiales para el empleado
         </label>
         <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)}
           rows={3}
@@ -706,7 +706,7 @@ export default function OutboundSection({
             <div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                Agrega contactos, selecciónalos y el agente los llama automáticamente.
+                Agrega contactos, selecciónalos y el empleado los llama automáticamente.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">

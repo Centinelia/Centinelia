@@ -99,7 +99,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs pt-3" style={{ color: 'var(--c-text-3)' }}>
-            Define quién está de guardia por área y horario. El agente lo consulta para escalar tickets urgentes automáticamente.
+            Define quién está de guardia por área y horario. Tu empleado lo consulta para escalar tickets urgentes automáticamente.
           </p>
 
           {schedule.areas.map(area => (

@@ -318,7 +318,7 @@ export default function OpsReportsSection({ token, agents }: {
         <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
           <BarChart2 size={28} className="mx-auto mb-3 opacity-40" />
           <p className="text-sm">Sin reportes configurados.</p>
-          <p className="text-xs mt-1">Crea uno para que el agente los envíe automáticamente.</p>
+          <p className="text-xs mt-1">Crea uno para que tu empleado los envíe automáticamente.</p>
         </div>
       )}
 

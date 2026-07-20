@@ -213,7 +213,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</span>
               <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
                 <Zap size={9} style={{ color: '#9B6DFF' }} />
-                3–13 ops/msg
+                3–13 tareas/msg
               </span>
               <button
                 onClick={() => setOpen(false)}
@@ -280,7 +280,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Pregunta a tu agente… (Enter)"
+              placeholder="Pregunta a tu empleado… (Enter)"
               disabled={streaming}
               rows={1}
               className="flex-1 text-sm outline-none resize-none leading-relaxed"
@@ -322,7 +322,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           boxShadow:  '0 8px 32px rgba(108,59,255,0.45)',
           border:     '1px solid rgba(255,255,255,0.15)',
         }}
-        aria-label="Consultar agente"
+        aria-label="Consultar empleado"
       >
         {open ? (
           <X size={22} color="#fff" />

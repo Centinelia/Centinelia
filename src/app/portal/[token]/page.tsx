@@ -383,7 +383,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
                 <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
                 <p className="text-sm" style={{ color: 'var(--c-text)' }}>
-                  Tu agente está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
+                  Tu empleado está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
                 </p>
               </div>
             )}
@@ -392,7 +392,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
                 <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0" />
                 <p className="text-sm" style={{ color: 'var(--c-text)' }}>
-                  Tu agente está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
+                  Tu empleado está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
                 </p>
               </div>
             )}
@@ -485,7 +485,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
                   {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
                   {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
-                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Ops IA" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
+                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas IA" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
                 </div>
 
                 {/* Peak hours */}
@@ -578,7 +578,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
                               </div>
                               <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
                               </span>
                             </div>
                             <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
@@ -657,7 +657,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
                               </div>
                               <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} tok
+                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
                               </span>
                             </div>
                             <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
@@ -701,7 +701,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                    <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu agente." />
+                    <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />
                   </div>
                   <BrandKitEditor
                     token={token}
@@ -743,13 +743,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                    <InfoTooltip text="Sincroniza tu sitio para que el agente tenga siempre la información actualizada de tu organización." />
+                    <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
                   </div>
                   <WebsiteSyncButton token={token} currentUrl={(agent as any).business_website ?? null} />
                   <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
                   <div className="flex items-center gap-1.5 mb-3">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
-                    <InfoTooltip text="El agente envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
+                    <InfoTooltip text="Tu empleado envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
                   </div>
                   <ReviewLinkEditor token={token} initialValue={(agent as any).google_review_url ?? ''} />
                 </div>
@@ -760,7 +760,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                    <InfoTooltip text="Define los días y horarios en que tu agente está disponible para atender llamadas." />
+                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
                   </div>
                   <BusinessHoursEditor token={token} initialHours={(agent.business_hours ?? null) as BusinessHours | null} />
                 </div>
@@ -829,7 +829,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
                       <div className="flex items-end gap-2 mb-2">
                         <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
-                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} ops</span>
+                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} tareas</span>
                       </div>
                       <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
                         <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />

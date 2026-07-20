@@ -113,7 +113,7 @@ export default function DocumentosPage() {
           <FilePlus size={32} style={{ color: 'var(--c-text-3)', opacity: 0.35 }} />
           <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Sin documentos aún</p>
           <p className="text-xs text-center max-w-xs" style={{ color: 'var(--c-text-3)' }}>
-            Pídele a tu agente en <strong>Consultar agente</strong> que genere una propuesta, carta o documento y aparecerá aquí.
+            Pídele a tu empleado en <strong>Consultar agente</strong> que genere una propuesta, carta o documento y aparecerá aquí.
           </p>
         </div>
       ) : (
@@ -181,7 +181,7 @@ export default function DocumentosPage() {
         <div className="flex items-start gap-2.5 rounded-xl p-3.5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
           <Mail size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 2 }} />
           <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-            Para enviar un documento directamente a un cliente, pídele a tu agente en <strong style={{ color: 'var(--c-text-3)' }}>Consultar agente</strong> que lo envíe por correo — puede adjuntarlo automáticamente.
+            Para enviar un documento directamente a un cliente, pídele a tu empleado en <strong style={{ color: 'var(--c-text-3)' }}>Consultar agente</strong> que lo envíe por correo — puede adjuntarlo automáticamente.
           </p>
         </div>
       )}
