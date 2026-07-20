@@ -209,15 +209,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // ── Data per tab ───────────────────────────────────────────────────────────
   const since = days ? new Date(Date.now() - days * 86400000).toISOString() : undefined;
 
+  // Inicio and stats are account-level — include all sibling agents
+  const agentIdsForCalls = allClientAgents.length > 0
+    ? allClientAgents.map(a => a.id)
+    : [agent.id];
+
   const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
-    // Calls, always needed (resumen + minutos tab for allCalls)
+    // Calls — account-level for Inicio activity and Llamadas
     since
-      ? supabase.from('voice_calls').select('*').eq('agent_id', agent.id).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
-      : supabase.from('voice_calls').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(100),
+      ? supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
+      : supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).order('created_at', { ascending: false }).limit(100),
     showLeads  ? supabase.from('leads_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     showOrders ? supabase.from('orders_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     showAppts  ? supabase.from('appointments_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-    supabase.from('voice_calls').select('duration_seconds, created_at').eq('agent_id', agent.id).order('created_at', { ascending: true }),
+    supabase.from('voice_calls').select('duration_seconds, created_at').in('agent_id', agentIdsForCalls).order('created_at', { ascending: true }),
     showOutbound ? supabase.from('outbound_calls').select('*').eq('agent_id', agent.id).order('scheduled_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     // Contacts tab
     supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
@@ -426,15 +431,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'inicio' && (
             <div className="flex flex-col gap-5">
               {isFirstTime && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl overflow-hidden"
-                  style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                  <div className="relative flex-shrink-0" style={{ width: 44, height: 60 }}>
-                    <Image src="/agent-m1.png" alt="" fill sizes="44px"
-                      style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                <div
+                  className="relative rounded-xl overflow-hidden"
+                  style={{
+                    background: 'rgba(108,59,255,0.06)',
+                    border:     '1px solid rgba(108,59,255,0.15)',
+                    minHeight:  96,
+                  }}
+                >
+                  {/* Team — grows from bottom edge, clipped at top */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, width: 210, height: 150, pointerEvents: 'none' }}>
+                    <Image src="/meerkats-team.png" alt="" fill sizes="210px"
+                      style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold mb-0.5" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+
+                  {/* Text — offset right of image */}
+                  <div style={{ paddingLeft: 214, paddingRight: 16, paddingTop: 18, paddingBottom: 18 }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', maxWidth: 320 }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>
