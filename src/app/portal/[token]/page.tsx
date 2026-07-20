@@ -591,7 +591,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   ) : (
                     <div className="flex flex-col items-center text-center gap-2 py-2">
                       <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                        Tu empleado aún no tiene base de conocimiento configurada. Agrégala para que aprenda tu organización.
+                        Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
                       </p>
                       <Link href={`/portal/${token}/empleados`}
                         className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
@@ -641,7 +641,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
-                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (base de conocimiento + instrucciones de rol + aprendizajes). A más contexto, más informado está el empleado." />
+                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (manual de la organización + instrucciones del puesto + aprendizajes). A más memoria, más informado está el empleado." />
                   </div>
                   {agentContextCards.some(a => a.tokens > 0) ? (
                     <div className="flex flex-col gap-3">
@@ -670,7 +670,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   ) : (
                     <div className="flex flex-col items-center text-center gap-2 py-1">
                       <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                        Tu empleado aún no tiene base de conocimiento configurada. Agrégala para que aprenda tu organización.
+                        Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
                       </p>
                       <Link href={`/portal/${token}/empleados`}
                         className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"

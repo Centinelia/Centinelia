@@ -76,7 +76,7 @@ export default function WebsiteSyncButton({ token, currentUrl }: { token: string
       )}
 
       <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-        El agente usará el contenido de tu sitio como referencia adicional cuando no encuentre algo en la base de conocimiento.
+        Tu empleado usará el contenido de tu sitio como referencia adicional cuando no encuentre algo en el manual de la organización.
       </p>
     </div>
   );

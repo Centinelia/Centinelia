@@ -45,7 +45,7 @@ function welcomeMsg(agent: AgentOption): Message {
   const role = agent.role?.trim();
   return {
     role: 'assistant',
-    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y base de conocimiento. ¿En qué te puedo ayudar?`,
+    content: `Hola, soy ${name}${role ? `, ${role} de ${agent.business_name}` : ''}. Tengo acceso completo a la operación de ${agent.business_name}: llamadas recientes, bandeja de entrada, juntas, contratos y manual de la organización. ¿En qué te puedo ayudar?`,
   };
 }
 
