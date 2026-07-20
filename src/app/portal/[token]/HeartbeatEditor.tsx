@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Check, Clock } from 'lucide-react';
 
+
 interface HeartbeatConfig {
   enabled:     boolean;
   frequency:   'daily' | 'weekly';
