@@ -526,7 +526,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     Actividad reciente
                   </h2>
                   {resumenFeed.length === 0 ? (
-                    <div className="flex flex-col items-center py-8 gap-3">
+                    <div className="flex flex-col items-center py-8 gap-1">
                       <div className="relative" style={{ width: 96, height: 132 }}>
                         <Image src="/agent-f2.png" alt="" fill sizes="96px"
                           style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
