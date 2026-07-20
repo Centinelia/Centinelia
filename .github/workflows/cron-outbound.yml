@@ -1,8 +1,6 @@
 name: Cron — Llamadas Salientes (cada 5 min)
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:

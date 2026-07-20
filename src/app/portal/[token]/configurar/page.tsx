@@ -17,6 +17,7 @@ import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import PortalFooter              from '../PortalFooter';
 import InfoTooltip               from '@/components/InfoTooltip';
+import { COORDINATOR_ROLE_IDS }  from '@/lib/portal/meerkat-roles';
 
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 import TeamNumbersEditor             from '../TeamNumbersEditor';
@@ -58,8 +59,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const features     = (agent.features ?? {}) as Record<string, unknown>;
   const roleColor    = (features.role_color as string) || '#6C3BFF';
   const agentRole    = (agent as any).role?.trim() ?? '';
-  const meerkatId    = (features.meerkat_role_id as string | null) ?? null;
-  const colorLocked  = !!meerkatId && meerkatId !== 'custom';
+  const meerkatId      = (features.meerkat_role_id as string | null) ?? null;
+  const colorLocked    = !!meerkatId && meerkatId !== 'custom';
+  const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
   const teamNumbers  = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
 
   const { data: emailIntegration } = await supabase
@@ -120,7 +122,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         {/* Config sections */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-5">
 
-          {agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom') && (
+          {!isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom') && (
             <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               <div className="flex items-center gap-1.5 mb-4">
                 <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -184,8 +186,25 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <GuardrailsEditor
               token={token}
               initialValue={(agent as any).agent_guardrails ?? ''}
+              initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
             />
           </div>
+
+          {!isCoordinator && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Llamadas entrantes
+                </h2>
+                <InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />
+              </div>
+              <AgentCustomization
+                token={token}
+                initGreeting={(agent as any).first_message ?? ''}
+                initTransferRules={(agent as any).transfer_rules ?? ''}
+              />
+            </div>
+          )}
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <div className="flex items-center gap-1.5 mb-4">
@@ -210,67 +229,35 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             <HeartbeatEditor
               token={token}
               initConfig={(agent as any).heartbeat_config ?? null}
+              isCoordinator={isCoordinator}
             />
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <div className="flex items-center gap-1.5 mb-4">
-              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Llamadas entrantes
-              </h2>
-              <InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />
-            </div>
-            <AgentCustomization
-              token={token}
-              initGreeting={(agent as any).first_message ?? ''}
-              initTransferRules={(agent as any).transfer_rules ?? ''}
-            />
-          </div>
-
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <div className="flex items-center gap-1.5 mb-4">
-              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Notificaciones
-              </h2>
-              <InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />
-            </div>
-            <NotificationsToggle
-              token={token}
-              initWhatsApp={(agent as any).notify_whatsapp ?? true}
-              initEmail={(agent as any).notify_email ?? true}
-            />
-          </div>
-
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <div className="flex items-center gap-1.5 mb-4">
-              <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Números del equipo
-              </h2>
-              <InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />
-            </div>
-            <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
-          </div>
-
-          {isOwner && (
+          {!isCoordinator && (
             <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               <div className="flex items-center gap-1.5 mb-4">
                 <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                  Reportes de fallas
+                  Notificaciones
                 </h2>
+                <InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />
               </div>
-              <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+              <NotificationsToggle
+                token={token}
+                initWhatsApp={(agent as any).notify_whatsapp ?? true}
+                initEmail={(agent as any).notify_email ?? true}
+              />
             </div>
           )}
 
-          {isOwner && (
+          {!isCoordinator && (
             <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               <div className="flex items-center gap-1.5 mb-4">
                 <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                  Frase de verificación interna
+                  Números del equipo
                 </h2>
-                <InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />
+                <InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />
               </div>
-              <PassphraseEditor token={token} initial={(agent as any).owner_passphrase ?? ''} />
+              <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
             </div>
           )}
 
@@ -287,6 +274,29 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               agentRole={agentRole || agentName}
             />
           </div>
+
+          {!isCoordinator && isOwner && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Frase de verificación interna
+                </h2>
+                <InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />
+              </div>
+              <PassphraseEditor token={token} initial={(agent as any).owner_passphrase ?? ''} />
+            </div>
+          )}
+
+          {!isCoordinator && isOwner && (
+            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <div className="flex items-center gap-1.5 mb-4">
+                <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                  Reportes de fallas
+                </h2>
+              </div>
+              <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+            </div>
+          )}
 
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
             <ResyncButton token={token} />

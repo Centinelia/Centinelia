@@ -68,10 +68,14 @@ Ejemplos de lo que NO extraer:
 - Información puntual ("la reunión es el martes")
 - Cosas que ya son obvias del rol
 
+Para cada aprendizaje, clasifícalo:
+- "role_kb": preferencia o procedimiento que el empleado debe recordar para hacer mejor su trabajo.
+- "guardrails": límite de autoridad que el dueño dejó claro (qué no hacer sin preguntar, cuándo escalar, qué no aprobar solo).
+
 Responde ÚNICAMENTE con JSON:
 {
   "learnings": [
-    { "content": "Regla clara y accionable", "confidence": 0.88 }
+    { "content": "Regla clara y accionable", "confidence": 0.88, "category": "role_kb" }
   ]
 }
 
@@ -91,10 +95,11 @@ Máximo 2 aprendizajes. Si no hay reglas generalizables, responde con learnings 
   try { parsed = JSON.parse(match[0]); } catch { return; }
 
   const extracted = (parsed.learnings ?? [])
-    .filter((l): l is { content: string; confidence: number } =>
+    .filter((l): l is { content: string; confidence: number; category: 'role_kb' | 'guardrails' } =>
       typeof (l as any)?.content === 'string' &&
       (l as any).content.trim().length > 10 &&
-      typeof (l as any)?.confidence === 'number',
+      typeof (l as any)?.confidence === 'number' &&
+      ['role_kb', 'guardrails'].includes((l as any)?.category),
     )
     .slice(0, 2);
 
@@ -106,6 +111,7 @@ Máximo 2 aprendizajes. Si no hay reglas generalizables, responde con learnings 
       portalEmail,
       content:    e.content.trim().slice(0, 500),
       confidence: Math.min(1, Math.max(0, e.confidence)),
+      category:   e.category,
       source:     'chat' as const,
     })),
   );

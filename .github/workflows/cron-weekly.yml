@@ -1,8 +1,6 @@
 name: Cron — Tareas Semanales (lunes 8am CST)
 
 on:
-  schedule:
-    - cron: '0 14 * * 1'
   workflow_dispatch:
 
 jobs:

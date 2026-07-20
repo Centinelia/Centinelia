@@ -601,7 +601,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     sections.push(`# Instrucciones del rol${agentRole ? ` — ${agentRole}` : ''}\n${agent.role_knowledge_base}`);
   }
   if ((agent.role_learnings as string | null)?.trim()) {
-    sections.push(`# Aprendizajes del agente\n${agent.role_learnings}`);
+    sections.push(`# Aprendizajes del agente — instrucciones del puesto\n${agent.role_learnings}`);
+  }
+  if ((agent as any).guardrails_learnings?.trim()) {
+    sections.push(`# Aprendizajes del agente — límites de autoridad\n${(agent as any).guardrails_learnings}`);
   }
 
   // Account-wide agent IDs for cross-agent data visibility

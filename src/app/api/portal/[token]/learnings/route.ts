@@ -8,6 +8,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  if (auth.isSubUser && !auth.modules?.includes('of_aprendizajes'))
+    return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
 
   const { token } = await params;
   const supabase = createAdminClient();
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data } = await supabase
     .from('agent_learnings')
     .select(`
-      id, content, status, created_at, vapi_call_id, agent_id,
+      id, content, status, created_at, vapi_call_id, agent_id, source, confidence, category,
       voice_agents!agent_id(agent_name, business_name, role)
     `)
     .eq('portal_email', agent.portal_email)

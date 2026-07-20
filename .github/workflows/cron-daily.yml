@@ -1,8 +1,6 @@
 name: Cron — Recordatorios Diarios (9am CST)
 
 on:
-  schedule:
-    - cron: '0 15 * * *'
   workflow_dispatch:
 
 jobs:

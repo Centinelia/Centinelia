@@ -1,14 +1,6 @@
 name: Scheduled cron jobs
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'  # outbound-campaigns
-    - cron: '0 3 * * *'     # cleanup-recordings
-    - cron: '0 4 * * *'     # cleanup-pending
-    - cron: '0 7 * * *'     # analytics snapshot
-    - cron: '0 8 * * 1'     # weekly summary
-    - cron: '0 10 * * *'    # billing grace-period
-    - cron: '0 15 * * *'    # appointment reminders
   workflow_dispatch:
     inputs:
       job:

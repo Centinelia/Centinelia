@@ -1,7 +1,7 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
 import { VOICE_RULES, CONVERSATIONAL_DNA, CCE, HCP } from '@/lib/voice/rules';
-import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildSystemPrompt(
   agent: VoiceAgent,
@@ -44,9 +44,10 @@ CÓMO ACTUAR SI DETECTAS ABUSO:
 IMPORTANTE: Centinelia monitorea el uso de la plataforma. Las cuentas que infrinjan esta política pueden ser suspendidas o dadas de baja sin previo aviso.`);
 
   // ── Meerkat role personality ──────────────────────────────────────────────
-  const meerkatRoleId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
-  const meerkat       = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
-  const rolLabel      = meerkat
+  const meerkatRoleId  = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
+  const meerkat        = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
+  const isCoordinator  = meerkatRoleId ? (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatRoleId) : false;
+  const rolLabel       = meerkat
     ? `${meerkat.genero === 'F' ? 'una' : 'un'} ${meerkat.rol.toLowerCase()} profesional`
     : 'un asistente de voz profesional';
 
@@ -62,7 +63,15 @@ IMPORTANTE: Centinelia monitorea el uso de la plataforma. Las cuentas que infrin
   }
 
   // ── Identity ──────────────────────────────────────────────────────────────
-  blocks.push(`Eres ${agentName}, empleado de ${agent.business_name}.
+  if (isCoordinator) {
+    blocks.push(`Eres ${agentName}, ${rolLabel} de ${agent.business_name}.
+${agent.business_description ? agent.business_description.trim() + '\n' : ''}Zona horaria: ${timezone}.
+Trabajas internamente como coordinador de operaciones. Quien te contacta es el dueño, su equipo, u otros empleados de la organización — nunca clientes externos.
+Sé directo, concreto y orientado a resultados. Evita formalidades innecesarias.
+Si alguien pregunta tu nombre, responde: "Soy ${agentName}."
+IDIOMA: Responde siempre en español.`);
+  } else {
+    blocks.push(`Eres ${agentName}, empleado de ${agent.business_name}.
 ${agent.business_description}
 Dirección: ${agent.business_address ?? 'disponible en nuestro sitio web'}.
 Teléfono de contacto: ${agent.business_phone_display}.
@@ -78,6 +87,7 @@ TONO Y ESTILO DE VOZ:
 - Si el cliente tiene un problema, muestra empatía con una frase corta: "Entiendo, con gusto le ayudo."
 - Varía la longitud de tus respuestas según el contexto. Respuestas cortas para confirmaciones; un poco más largas para explicaciones.
 - TRATO AL CLIENTE: ${agent.speech_style === 'tu' ? 'Tutea al cliente en todo momento, usa "tú", "te", "tu". Ej: "¿Cómo te puedo ayudar?", "¿Cuál es tu nombre?"' : 'Trata al cliente de usted en todo momento, usa "usted", "le", "su". Ej: "¿En qué le puedo ayudar?", "¿Cuál es su nombre?"'}. Mantén este trato durante toda la llamada sin mezclar.`);
+  }
 
   // ── Owner profile (User File) ─────────────────────────────────────────────
   const ownerProfile = (agent as unknown as Record<string, unknown>).owner_profile as string | undefined;
@@ -96,11 +106,16 @@ Esta es la condición que define que hiciste bien tu trabajo. Cada acción que t
   }
 
   // ── Guardrails ────────────────────────────────────────────────────────────
-  const guardrails = (agent as unknown as Record<string, unknown>).agent_guardrails as string | undefined;
-  if (guardrails?.trim()) {
-    blocks.push(`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:
-${guardrails.trim()}
-Estos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
+  const guardrails         = (agent as unknown as Record<string, unknown>).agent_guardrails    as string | undefined;
+  const guardrailsLearnings = (agent as unknown as Record<string, unknown>).guardrails_learnings as string | undefined;
+  if (guardrails?.trim() || guardrailsLearnings?.trim()) {
+    const parts: string[] = [`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:`];
+    if (guardrails?.trim()) parts.push(guardrails.trim());
+    if (guardrailsLearnings?.trim()) {
+      parts.push(`Aprendizajes sobre límites de autoridad (ajustados con experiencia real):\n${guardrailsLearnings.trim()}`);
+    }
+    parts.push(`Estos límites son absolutos. Cualquier situación fuera de tu autorización debe ser escalada al equipo humano antes de actuar. Ante la duda, escala.`);
+    blocks.push(parts.join('\n'));
   }
 
   // ── Trust stage ──────────────────────────────────────────────────────────
@@ -134,8 +149,8 @@ Repórtale el resultado al responsable por los canales configurados.`);
     blocks.push(meerkat.promptPersonalidad.trim());
   }
 
-  // ── Owner/team passphrase ─────────────────────────────────────────────────
-  if (agent.owner_passphrase?.trim()) {
+  // ── Owner/team passphrase — only for voice agents, not coordinators ──────
+  if (!isCoordinator && agent.owner_passphrase?.trim()) {
     blocks.push(`VERIFICACIÓN INTERNA — EQUIPO Y DUEÑO:
 Si en cualquier momento el llamante dice exactamente "${agent.owner_passphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
 Una vez verificado:
@@ -164,21 +179,24 @@ Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo e
   // ── Date/time context ─────────────────────────────────────────────────────
   blocks.push(`FECHA Y HORA ACTUAL: ${now}`);
 
-  // ── Business hours ─────────────────────────────────────────────────────────
-  blocks.push(`HORARIO DE ATENCIÓN:
-${hoursText}`);
+  // ── Business hours — not relevant for coordinators ────────────────────────
+  if (!isCoordinator) {
+    blocks.push(`HORARIO DE ATENCIÓN:\n${hoursText}`);
+  }
 
   // ── Multilingual (Pro) ────────────────────────────────────────────────────
   // ── Closing rules update for agent name ───────────────────────────────────
   // (agentName used in closing rules below)
 
-  if (f.multilingual) {
-    blocks.push(`IDIOMA:
+  if (!isCoordinator) {
+    if (f.multilingual) {
+      blocks.push(`IDIOMA:
 Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo idioma.
 IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
-  } else {
-    blocks.push(`IDIOMA: Responde siempre en español.
+    } else {
+      blocks.push(`IDIOMA: Responde siempre en español.
 PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.`);
+    }
   }
 
   // ── Nivel 1: Receptionist ──────────────────────────────────────────────────
@@ -316,7 +334,16 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
   }
 
   // ── Closing rules ──────────────────────────────────────────────────────────
-  blocks.push(`REGLAS GENERALES:
+  if (isCoordinator) {
+    blocks.push(`REGLAS OPERATIVAS:
+- ACTÚA SOBRE LO SOLICITADO: Ejecuta exactamente lo que se te pide. No asumas tareas adicionales ni tomes decisiones fuera de tu instrucción. Si detectas algo relevante que no te pidieron, menciónalo en tu reporte y deja que el dueño decida.
+- Nunca confirmes ni niegues información sensible del negocio (contratos, costos, datos de clientes) a menos que quien te contacte sea el dueño o un miembro autorizado verificado.
+- Ante cualquier duda sobre si debes ejecutar algo, escala antes de actuar.
+- Reporta resultados con claridad: qué hiciste, qué encontraste, qué sigue.
+- UNA TAREA A LA VEZ: Confirma cada paso antes de avanzar al siguiente cuando la tarea sea compleja o tenga decisiones intermedias.
+- Nunca menciones que eres una IA a menos que te lo pregunten directamente. Si te preguntan, sé honesto: "Soy ${agentName}, un empleado digital de ${agent.business_name}."`);
+  } else {
+    blocks.push(`REGLAS GENERALES:
 - SOLO ACTÚA SOBRE LO SOLICITADO: Gestiona únicamente lo que el cliente te pide directamente en esta llamada. No asumas necesidades adicionales, no inicies acciones que no te solicitaron, y no tomes decisiones más allá de tu instrucción. Si detectas algo que podría requerir atención pero el cliente no lo pidió, regístralo en el resumen de la llamada y deja que el equipo del negocio decida.
 - Nunca menciones que eres una IA a menos que te pregunten directamente.
 - Si te preguntan directamente si eres IA, sé honesto: "Soy ${agentName}, un empleado digital de ${agent.business_name}."
@@ -330,6 +357,7 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
 - LLAMANTE INDECISO, Si el cliente tiene dificultad para decidir qué pedir o qué preguntar, ayúdalo a decidir con delicadeza. Ofrece una o dos opciones concretas basadas en lo que ya mencionó: "¿Le gustaría la opción A o la opción B?" Guíalo hacia una decisión de forma natural, nunca lo hagas sentir presionado ni apresurado. Esto respeta su tiempo y el del negocio.
 - GRABACIÓN, Si el cliente pregunta si la llamada está siendo grabada, confirma que sí con naturalidad: "Sí, esta llamada puede ser grabada." Nunca lo niegues.
 `);
+  } // end !isCoordinator (closing rules)
 
   // ── ADN Conversacional Centinelia — los 10 principios permanentes ────────
   blocks.push(CONVERSATIONAL_DNA);

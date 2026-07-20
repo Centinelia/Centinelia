@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
+import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 const SOFT = 5_000;
 const HARD = 10_000;
@@ -39,10 +40,16 @@ function SaveButton({ saving, saved, onSave, accent }: { saving: boolean; saved:
   );
 }
 
-const ROLE_COLORS = [
-  '#6C3BFF', '#3b82f6', '#22c55e', '#f59e0b',
-  '#ef4444', '#a855f7', '#06b6d4', '#ec4899',
+const LOCKED_COLORS = new Set(
+  MEERKAT_ROLES.filter(r => r.id !== 'custom').map(r => r.color.toLowerCase())
+);
+
+const COLOR_POOL = [
+  '#a855f7', '#d946ef', '#10b981', '#0ea5e9',
+  '#84cc16', '#f43f5e', '#64748b', '#fb923c',
 ];
+
+const ROLE_COLORS = COLOR_POOL.filter(c => !LOCKED_COLORS.has(c));
 
 export default function AgentKnowledgeBaseEditor({
   token,

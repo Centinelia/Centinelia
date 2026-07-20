@@ -14,6 +14,7 @@ export async function saveLearning(opts: {
   source?:     LearningSource;
   confidence?: number; // 0–1
   vapiCallId?: string | null;
+  category?:   'role_kb' | 'guardrails';
 }): Promise<void> {
   const {
     agentId,
@@ -22,6 +23,7 @@ export async function saveLearning(opts: {
     source      = 'call',
     confidence  = undefined,
     vapiCallId  = null,
+    category    = 'role_kb',
   } = opts;
 
   const supabase     = createAdminClient();
@@ -34,6 +36,7 @@ export async function saveLearning(opts: {
     vapi_call_id: vapiCallId,
     content:      content.trim().slice(0, 500),
     confidence:   confidence ?? null,
+    category,
     source,
     status:       autoApprove ? 'approved' : 'pending',
     ...(autoApprove ? { approved_at: now } : {}),
@@ -41,7 +44,7 @@ export async function saveLearning(opts: {
 
   await supabase.from('agent_learnings').insert(row);
 
-  // Auto-approve path: immediately incorporate into role_learnings + sync to Vapi
+  // Auto-approve path: immediately incorporate into the correct field + sync to Vapi
   if (autoApprove) {
     const { data: agent } = await supabase
       .from('voice_agents')
@@ -50,16 +53,16 @@ export async function saveLearning(opts: {
       .single();
 
     if (agent) {
-      const existing     = ((agent as any).role_learnings as string | null) ?? '';
-      const separator    = existing.trim() ? '\n\n' : '';
-      const newLearnings = `${existing}${separator}• ${content.trim()}`;
+      const field      = category === 'guardrails' ? 'guardrails_learnings' : 'role_learnings';
+      const existing   = ((agent as any)[field] as string | null) ?? '';
+      const separator  = existing.trim() ? '\n\n' : '';
+      const updated    = `${existing}${separator}• ${content.trim()}`;
 
       await Promise.all([
         supabase
           .from('voice_agents')
-          .update({ role_learnings: newLearnings })
+          .update({ [field]: updated })
           .eq('id', agentId),
-        // Mirror to team feed
         portalEmail
           ? supabase.from('agent_messages').insert({
               portal_email:  portalEmail,
@@ -67,7 +70,7 @@ export async function saveLearning(opts: {
               to_agent_id:   null,
               type:          'learning',
               content:       content.trim(),
-              metadata:      { source, auto_approved: true },
+              metadata:      { source, auto_approved: true, category },
             })
           : Promise.resolve(),
       ]);
@@ -75,7 +78,7 @@ export async function saveLearning(opts: {
       if ((agent as any).vapi_agent_id) {
         updateVapiAssistant(
           (agent as any).vapi_agent_id,
-          { ...agent, role_learnings: newLearnings } as VoiceAgent,
+          { ...agent, [field]: updated } as VoiceAgent,
         ).catch(console.error);
       }
     }
