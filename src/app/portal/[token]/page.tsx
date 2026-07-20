@@ -586,22 +586,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </div>
                       );
                     })}
-                    {aiOpsLimit > 0 && (
-                      <>
-                        <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 4 }} />
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Ops IA del mes</p>
-                            <span className="text-xs tabular-nums" style={{ color: aiOpsColor }}>
-                              {aiOpsUsed} / {aiOpsLimit}
-                            </span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, aiOpsPct)}%`, background: aiOpsColor }} />
-                          </div>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
 
@@ -668,22 +652,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </div>
                       );
                     })}
-                    {aiOpsLimit > 0 && (
-                      <>
-                        <div style={{ borderTop: '1px solid var(--c-border)', marginTop: 4 }} />
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Ops IA del mes</p>
-                            <span className="text-xs tabular-nums" style={{ color: aiOpsColor }}>
-                              {aiOpsUsed} / {aiOpsLimit}
-                            </span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, aiOpsPct)}%`, background: aiOpsColor }} />
-                          </div>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
 
