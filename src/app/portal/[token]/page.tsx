@@ -933,76 +933,80 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Col 1: Uso + Compras + Recarga ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
 
-                  {minutesIncluded > 0 && (
+                  {/* ── Uso del mes: minutos + tareas en una sola tarjeta ── */}
+                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (
                     <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos del mes</h2>
-                      <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
-                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                      <div className="flex flex-col gap-4">
+                        {minutesIncluded > 0 && (
+                          <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                              <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+                            </div>
+                            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                              <span>{minutesRemain} disponibles</span>
+                              <span>Renueva el {resetDate}</span>
+                            </div>
+                            {rolloverMinutes > 0 && (
+                              <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                            )}
+                          </div>
+                        )}
+                        {aiOpsLimit > 0 && (
+                          <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
+                              <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                            </div>
+                            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                              <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                              <span>Renueva el {resetDate}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                        <div className="h-3 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
-                      </div>
-                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        <span>{Math.round(minutesPct)}% consumido · {minutesRemain} disponibles</span>
-                        <span>Se renueva el {resetDate}</span>
-                      </div>
-                      {rolloverMinutes > 0 && (
-                        <p className="text-xs mt-2" style={{ color: '#6C3BFF' }}>
-                          {planBaseMinutes} base + {rolloverMinutes} del mes anterior
-                        </p>
-                      )}
                     </div>
                   )}
 
-                  {aiOpsLimit > 0 && (
-                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas del mes</h2>
-                      <div className="flex items-end gap-2 mb-2">
-                        <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
-                        <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} tareas</span>
+                  {/* ── Comprar: minutos + tareas en una sola tarjeta ── */}
+                  {(() => {
+                    const warnPct  = Math.max(minutesPct, aiOpsPct);
+                    const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
+                    const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
+                    return (
+                      <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                        <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar saldo</h2>
+                        {warnPct >= 70 && (
+                          <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                            <AlertTriangle size={11} />
+                            {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
+                          </p>
+                        )}
+                        <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
+                        <div className={minutesIncluded > 0 && aiOpsLimit > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                          {minutesIncluded > 0 && (
+                            <div>
+                              {aiOpsLimit > 0 && <p className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>Minutos</p>}
+                              <BuyMinutesSection token={token} />
+                            </div>
+                          )}
+                          {aiOpsLimit > 0 && (
+                            <div>
+                              {minutesIncluded > 0 && <p className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>Tareas</p>}
+                              <BuyOpsSection token={token} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full h-3 rounded-full overflow-hidden mb-2" style={{ background: 'var(--c-border)' }}>
-                        <div className="h-3 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
-                      </div>
-                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        <span>{Math.round(aiOpsPct)}% consumido · {Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                        <span>Se renueva el {resetDate}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div id="comprar" className="rounded-xl p-5" style={{
-                    background:     minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
-                    border:         minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
-                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos</h2>
-                    {minutesPct >= 70 && (
-                      <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                        <AlertTriangle size={11} />
-                        {minutesPct >= 90 ? 'Te quedan muy pocos minutos' : 'Tu saldo está bajando'}
-                      </p>
-                    )}
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
-                    <BuyMinutesSection token={token} />
-                  </div>
-
-                  <div className="rounded-xl p-5" style={{
-                    background:     aiOpsPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
-                    border:         aiOpsPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : aiOpsPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
-                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                  }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar tareas</h2>
-                    {aiOpsPct >= 70 && (
-                      <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: aiOpsPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                        <AlertTriangle size={11} />
-                        {aiOpsPct >= 90 ? 'Te quedan muy pocas tareas' : 'Tu saldo de tareas está bajando'}
-                      </p>
-                    )}
-                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Pool compartido entre todos tus empleados. Disponibles al instante.</p>
-                    <BuyOpsSection token={token} />
-                  </div>
+                    );
+                  })()}
 
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
