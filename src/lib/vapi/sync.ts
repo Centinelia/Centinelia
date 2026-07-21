@@ -585,7 +585,7 @@ interface MeerkatModelConfig {
 }
 
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.93, minChars: 15, voiceModel: 'eleven_flash_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.93, minChars: 30, voiceModel: 'eleven_turbo_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
   noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 0.98, minChars: 40 },
   nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
   nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 110, speed: 0.98, minChars: 40 },
@@ -644,12 +644,12 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       provider: '11labs',
       voiceId: agent.elevenlabs_voice_id || 'jUxkp8eMgszgJX3XU2pV',
       model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
-      stability: 0.35,
+      stability: 0.50,
       similarityBoost: 0.75,
-      style: 0.45,
+      style: 0.20,
       speed: cfg.speed,
       useSpeakerBoost: true,
-      optimizeStreamingLatency: 3,
+      optimizeStreamingLatency: 1,
       chunkPlan: {
         enabled: true,
         minCharacters: cfg.minChars,
