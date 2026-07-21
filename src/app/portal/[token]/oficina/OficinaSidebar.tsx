@@ -7,6 +7,7 @@ import {
   Activity, Inbox, BarChart2, FileText, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
@@ -88,6 +89,26 @@ export default function OficinaSidebar({
   const base      = `/portal/${token}/oficina`;
   const [pendingId, setPendingId] = useState<string | null>(null);
 
+  // Open the group that contains the currently active item by default
+  const activeGroup = NAV_SECTIONS.find(s =>
+    s.items
+      .filter(i => !i.vertical || i.vertical === vertical)
+      .filter(i => !modules || modules.includes(i.moduleId))
+      .some(i => {
+        const href = `${base}${i.href}`;
+        return i.href === '' ? pathname === base || pathname === `${base}/` : pathname.startsWith(href);
+      })
+  )?.group ?? NAV_SECTIONS[0]?.group ?? '';
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set([activeGroup]));
+
+  const toggleGroup = (group: string) =>
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      next.has(group) ? next.delete(group) : next.add(group);
+      return next;
+    });
+
   useEffect(() => {
     if (!pendingId) return;
     let attempts = 0;
@@ -140,16 +161,29 @@ export default function OficinaSidebar({
 
           if (visibleItems.length === 0) return null;
 
+          const isOpen = openGroups.has(section.group);
+          const hasActiveBadge = visibleItems.some(i => i.badgeKey && (badges[i.badgeKey] ?? 0) > 0);
+
           return (
-            <div key={section.group} className={si > 0 ? 'mt-3' : ''}>
-              <p
-                className="px-3 pb-1 text-[10px] font-semibold tracking-widest uppercase"
+            <div key={section.group} className={si > 0 ? 'mt-1' : ''}>
+              <button
+                onClick={() => toggleGroup(section.group)}
+                className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
                 style={{ color: 'var(--c-text-4)' }}
               >
-                {section.group}
-              </p>
+                <span className="text-[10px] font-semibold tracking-widest uppercase">{section.group}</span>
+                <div className="flex items-center gap-1">
+                  {!isOpen && hasActiveBadge && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                  )}
+                  {isOpen
+                    ? <ChevronDown size={10} />
+                    : <ChevronRight size={10} />
+                  }
+                </div>
+              </button>
 
-              {visibleItems.map(item => {
+              {isOpen && visibleItems.map(item => {
                 const href     = `${base}${item.href}`;
                 const isActive = item.href === ''
                   ? pathname === base || pathname === `${base}/`
@@ -187,6 +221,7 @@ export default function OficinaSidebar({
           );
         })}
       </nav>
+
 
       {/* Usage widget */}
       {minutesIncluded > 0 && (() => {
