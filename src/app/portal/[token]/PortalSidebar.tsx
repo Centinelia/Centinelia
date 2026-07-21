@@ -136,7 +136,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Minutos y uso',    id: 'minutos' },
         { label: 'Comprar saldo',    id: 'comprar' },
         { label: 'Historial',        id: 'historial' },
-        { label: 'Contrato',         id: 'contrato-link', href: `/portal/${token}/contrato` },
       ],
     },
     ...(isOwner ? [{
