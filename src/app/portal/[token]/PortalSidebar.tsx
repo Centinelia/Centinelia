@@ -133,8 +133,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Minutos y uso',    id: 'minutos' },
-        { label: 'Comprar saldo',    id: 'comprar' },
+        { label: 'Consumo',    id: 'minutos' },
+        { label: 'Saldo',      id: 'comprar' },
         { label: 'Historial',        id: 'historial' },
       ],
     },
