@@ -948,7 +948,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   {/* ── Uso del mes: minutos + tareas en una sola tarjeta ── */}
                   {(minutesIncluded > 0 || aiOpsLimit > 0) && (
-                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div id="uso-del-mes" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
                       <div className="flex flex-col gap-4">
                         {minutesIncluded > 0 && (

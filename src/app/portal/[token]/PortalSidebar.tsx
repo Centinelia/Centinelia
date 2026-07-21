@@ -137,7 +137,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Consumo',   id: 'minutos',  ids: ['minutos', 'consumo-promedio'] },
+        { label: 'Consumo',   id: 'uso-del-mes',  ids: ['uso-del-mes', 'consumo-promedio'] },
         { label: 'Saldo',     id: 'comprar',  ids: ['comprar', 'recarga'] },
         { label: 'Historial', id: 'historial' },
       ],
@@ -317,7 +317,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
         return (
           <Link
-            href={`/portal/${token}?tab=cuenta#minutos`}
+            href={`/portal/${token}?tab=cuenta#uso-del-mes`}
             className="block px-3 py-3 mt-auto shrink-0 hover:opacity-80 transition-opacity"
             style={{ borderTop: '1px solid var(--c-border)' }}
           >
