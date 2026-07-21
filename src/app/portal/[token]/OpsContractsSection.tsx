@@ -6,6 +6,7 @@ import {
   Clock, Search, Send, Check, Edit2, X, GripVertical, ToggleLeft,
   ToggleRight, RefreshCw, Mail,
 } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -178,6 +179,7 @@ function SeguimientoTab({ token }: { token: string }) {
         <div>
           <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
             <FileText size={13} /> Contratos y fechas críticas
+            <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por análisis de contrato." />
           </h2>
           {expiringSoon.length > 0 && (
             <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#f59e0b' }}>

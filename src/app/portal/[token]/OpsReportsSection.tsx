@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface OpsReport {
   id:                  string;
@@ -156,6 +157,7 @@ export default function OpsReportsSection({ token, agents }: {
         <div className="flex items-center gap-2">
           <BarChart2 size={16} style={{ color: '#6C3BFF' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Reportes automáticos</span>
+          <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por reporte generado." />
         </div>
         {!creating && (
           <button onClick={() => setCreating(true)}

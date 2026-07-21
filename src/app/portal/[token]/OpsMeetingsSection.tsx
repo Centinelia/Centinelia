@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, ChevronDown, ChevronUp, Trash2, Upload, Clock, Users, Search } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface ActionItem {
   task:     string;
@@ -159,6 +160,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
           <Mic size={13} /> Juntas e inteligencia
+          <InfoTooltip text="¿Cuántas tareas consume?\n1 a 6 tareas por junta, según duración y complejidad." />
         </h2>
         <button
           onClick={() => setShowForm(v => !v)}

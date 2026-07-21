@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface InboxItem {
   id:                 string;
@@ -117,6 +118,7 @@ export default function OpsInboxSection({ token }: { token: string }) {
         <div className="flex items-center gap-2">
           <Inbox size={16} style={{ color: '#6C3BFF' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Bandeja de entrada</span>
+          <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por correo procesado." />
           {pendingCount > 0 && (
             <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
               {pendingCount}

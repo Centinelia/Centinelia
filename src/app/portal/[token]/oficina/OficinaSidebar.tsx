@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Activity, Inbox, BarChart2, FileText, Mic, UserCheck,
-  ArrowLeft, Zap, Search, CreditCard, FolderOpen,
+  ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
@@ -180,14 +180,6 @@ export default function OficinaSidebar({
                         </span>
                       )}
                     </div>
-                    {item.opsHint && (
-                      <div className="flex items-center gap-1 pl-[22px]">
-                        <Zap size={9} style={{ color: '#9B6DFF', opacity: 0.7 }} />
-                        <span className="text-[10px]" style={{ color: 'var(--c-text-3)', fontWeight: 500 }}>
-                          {item.opsHint}
-                        </span>
-                      </div>
-                    )}
                   </Link>
                 );
               })}
