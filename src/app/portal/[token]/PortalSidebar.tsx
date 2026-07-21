@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
-type SubItem    = { label: string; id: string; href?: string; icon?: React.ReactNode };
+type SubItem    = { label: string; id: string; ids?: string[]; href?: string; icon?: React.ReactNode };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
 type Section    = { id: string; moduleId?: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
@@ -31,30 +31,34 @@ interface Props {
 export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, isOwner = true, modules, jornadaType = 'combinada' }: Props) {
   const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingIds, setPendingIds] = useState<string[] | null>(null);
 
   useEffect(() => {
-    if (!pendingId) return;
+    if (!pendingIds || pendingIds.length === 0) return;
     let attempts = 0;
     const timer = setInterval(() => {
       attempts++;
-      if (attempts > 100) { clearInterval(timer); setPendingId(null); return; }
-      const el = document.getElementById(pendingId);
-      if (!el) return;
+      if (attempts > 100) { clearInterval(timer); setPendingIds(null); return; }
+      const firstEl = document.getElementById(pendingIds[0]);
+      if (!firstEl) return;
       clearInterval(timer);
-      setPendingId(null);
-      const rect = el.getBoundingClientRect();
+      setPendingIds(null);
+      const rect = firstEl.getBoundingClientRect();
       window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
-      el.style.transition = 'box-shadow 0.15s';
-      el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
-      setTimeout(() => {
-        el.style.transition = 'box-shadow 1.5s ease-out';
-        el.style.boxShadow = '';
-        setTimeout(() => { el.style.transition = ''; }, 1500);
-      }, 600);
+      for (const id of pendingIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.style.transition = 'box-shadow 0.15s';
+        el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
+        setTimeout(() => {
+          el.style.transition = 'box-shadow 1.5s ease-out';
+          el.style.boxShadow = '';
+          setTimeout(() => { el.style.transition = ''; }, 1500);
+        }, 600);
+      }
     }, 50);
     return () => clearInterval(timer);
-  }, [pendingId]);
+  }, [pendingIds]);
 
   const toggle = (id: string) =>
     setOpenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -133,9 +137,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Consumo',    id: 'minutos' },
-        { label: 'Saldo',      id: 'comprar' },
-        { label: 'Historial',        id: 'historial' },
+        { label: 'Consumo',   id: 'minutos',  ids: ['minutos', 'consumo-promedio'] },
+        { label: 'Saldo',     id: 'comprar',  ids: ['comprar', 'recarga'] },
+        { label: 'Historial', id: 'historial' },
       ],
     },
     ...(isOwner ? [{
@@ -236,7 +240,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                         key={item.id || item.label}
                         href={itemHref}
                         scroll={false}
-                        onClick={() => { if (!item.href && item.id) setPendingId(item.id); }}
+                        onClick={() => { if (!item.href && item.id) setPendingIds(item.ids ?? [item.id]); }}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                         style={{ color: itemActive ? '#9B6DFF' : 'var(--c-text-2)', background: itemActive ? 'rgba(108,59,255,0.08)' : 'transparent' }}
                       >
@@ -285,7 +289,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                                 key={item.id}
                                 href={item.href ?? `${subHref}#${item.id}`}
                                 scroll={false}
-                                onClick={() => { if (!item.href && item.id) setPendingId(item.id); }}
+                                onClick={() => { if (!item.href && item.id) setPendingIds(item.ids ?? [item.id]); }}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                                 style={{ color: 'var(--c-text-2)' }}
                               >

@@ -1024,7 +1024,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     );
                   })()}
 
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
                     <AutoRefillSection token={token} />
@@ -1034,7 +1034,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
                       <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
                         {allCalls.length > 0 && (
