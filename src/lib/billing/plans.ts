@@ -1,4 +1,4 @@
-import type { Plan } from '@/types/agent';
+import type { Plan, JornadaType } from '@/types/agent';
 
 export type { Plan };
 export type MinutesTier = 'starter' | 'growth' | 'scale' | 'enterprise';
@@ -63,6 +63,35 @@ export const MINUTES_TIER_CONFIG: Record<MinutesTier, { label: string; minutes: 
 
 /** @deprecated Use MONTHLY_CONFIG[plan][tier] for pricing, MINUTES_TIER_CONFIG for display */
 export const MINUTES_PLAN_CONFIG = MINUTES_TIER_CONFIG as Record<MinutesTier, { label: string; minutes: number; mxn?: number; priceId?: () => string }>;
+
+// ─── Jornada resource allocations (same price, different mix) ─────────────────
+// Coordinators (Nox/Niva) use NOX_MONTHLY_CONFIG instead, not JORNADA_CONFIG.
+
+export interface JornadaAllocation {
+  minutes: number;
+  aiOps:   number;
+}
+
+export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaAllocation>> = {
+  combinada: {
+    starter:    { minutes: 300,  aiOps: 120 },
+    growth:     { minutes: 600,  aiOps: 220 },
+    scale:      { minutes: 1200, aiOps: 320 },
+    enterprise: { minutes: 0,    aiOps: 0   },
+  },
+  minutos: {
+    starter:    { minutes: 500,  aiOps: 20 },
+    growth:     { minutes: 1000, aiOps: 20 },
+    scale:      { minutes: 2000, aiOps: 20 },
+    enterprise: { minutes: 0,    aiOps: 0  },
+  },
+  tareas: {
+    starter:    { minutes: 0, aiOps: 270  },
+    growth:     { minutes: 0, aiOps: 520  },
+    scale:      { minutes: 0, aiOps: 1020 },
+    enterprise: { minutes: 0, aiOps: 0    },
+  },
+};
 
 // ─── Nox coordinator tiers (ops-only, no Vapi/minutes cost) ─────────────────
 // 500 ops/$1,997 · 1,200 ops/$3,994 · 3,000 ops/$7,994 (+ IVA)

@@ -5,7 +5,7 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Link                             from 'next/link';
-import { Settings2, Briefcase, Bot, Zap } from 'lucide-react';
+import { Settings2, Bot, Zap, Clock } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
@@ -41,7 +41,7 @@ export default async function AgentesPage({ params }: Props) {
   const { data: agentsRaw } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used')
+        .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used, jornada_type')
         .eq('portal_email', lookupEmail)
         .order('created_at', { ascending: true })
     : { data: [] };
@@ -121,6 +121,14 @@ export default async function AgentesPage({ params }: Props) {
           const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
           const statusColor = isBillingPaused ? '#dc2626' : isClientPaused ? '#f59e0b' : isOnline ? '#16a34a' : '#6b7280';
 
+          const jornadaType  = ((a as any).jornada_type as string) ?? 'combinada';
+          const JORNADA_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
+            combinada: { label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></>, color: '#6C3BFF', bg: 'rgba(108,59,255,0.08)', border: 'rgba(108,59,255,0.2)' },
+            minutos:   { label: 'Solo minutos', icon: <Clock size={10} />,                       color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)'  },
+            tareas:    { label: 'Solo tareas',  icon: <Zap size={10} />,                         color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)'  },
+          };
+          const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
+
           return (
             <div key={a.id}
               className="rounded-2xl p-5 flex flex-col items-center justify-between aspect-square"
@@ -172,37 +180,34 @@ export default async function AgentesPage({ params }: Props) {
               </div>
 
               {/* Botones — abajo */}
-              <div className="flex items-center gap-2 w-full pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <Link
-                  href={`/portal/${a.portal_token as string}/configurar`}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
-                >
-                  <Settings2 size={11} />
-                  Configurar
-                </Link>
-                {hasRole && (
+              <div className="flex items-center w-full pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="flex-1 flex justify-start">
                   <Link
-                    href={`/portal/${a.portal_token as string}/oficina`}
+                    href={`/portal/${a.portal_token as string}/configurar`}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}
+                    style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
                   >
-                    <Briefcase size={11} />
-                    Oficina
+                    <Settings2 size={11} />
+                    Configurar
                   </Link>
-                )}
-                <div className="flex-1" />
-                {!isBillingPaused
-                  ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                  : (
-                    <a
-                      href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                      Resolver pago →
-                    </a>
-                  )
-                }
+                </div>
+                <span className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium flex-shrink-0"
+                  style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color }}>
+                  {jornada.icon}{jornada.label}
+                </span>
+                <div className="flex-1 flex justify-end">
+                  {!isBillingPaused
+                    ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                    : (
+                      <a
+                        href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        Resolver pago →
+                      </a>
+                    )
+                  }
+                </div>
               </div>
             </div>
           );

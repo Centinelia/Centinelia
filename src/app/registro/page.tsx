@@ -10,6 +10,7 @@ import {
 import Image from 'next/image';
 import { MEERKAT_ROLES, MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import { FEATURE_LABELS } from '@/types/agent';
+import { JORNADA_CONFIG } from '@/lib/billing/plans';
 
 type FormPlan = 'pro' | 'empresarial';
 type FormTier = 'starter' | 'growth' | 'scale';
@@ -155,9 +156,9 @@ const AGENT_PLANS: AgentPlanDef[] = [
 type TierDef = { id: FormTier; label: string; minutes: number; aiOps: number; price: number; popular?: boolean };
 
 const TIERS: TierDef[] = [
-  { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 100, price: 2997 },
-  { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 200, price: 5994, popular: true },
-  { id: 'scale',   label: 'Alta Demanda',     minutes: 1200, aiOps: 300, price: 11988 },
+  { id: 'starter', label: 'Media Jornada',    minutes: 300,  aiOps: 120, price: 2997 },
+  { id: 'growth',  label: 'Jornada Completa', minutes: 600,  aiOps: 220, price: 5994, popular: true },
+  { id: 'scale',   label: 'Alta Demanda',     minutes: 1200, aiOps: 320, price: 11988 },
 ];
 
 // Ops-only tiers for Nox (no minutes cost)
@@ -592,8 +593,9 @@ function RegistroInner() {
   const [meerkatRoleId, setMeerkatRoleId] = useState<MeerkatRoleId | null>(initRole);
 
   // Step 2 — Plan
-  const [plan, setPlan] = useState<FormPlan>(initPlan);
-  const [tier, setTier] = useState<FormTier>(initTier);
+  const [plan, setPlan]     = useState<FormPlan>(initPlan);
+  const [tier, setTier]     = useState<FormTier>(initTier);
+  const [jornada, setJornada] = useState<'combinada' | 'minutos' | 'tareas'>('combinada');
 
   // Step 3 — Business
   const [businessName,  setBusinessName]  = useState('');
@@ -635,6 +637,7 @@ function RegistroInner() {
   const selectedMeerkat    = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
   const selectedAgentPlan  = AGENT_PLANS.find(p => p.id === plan)!;
   const isCoordinator      = !!((selectedMeerkat?.features as Record<string, unknown>)?.is_coordinator);
+  const effectiveJornada   = isCoordinator ? 'tareas' : jornada;
   const selectedTier       = TIERS.find(t => t.id === tier) ?? TIERS[1];
   const selectedNoxTier    = NOX_TIERS.find(t => t.id === tier) ?? NOX_TIERS[1];
   const monthlyPrice       = plan !== 'empresarial' ? (isCoordinator ? selectedNoxTier.price : selectedTier.price) : 0;
@@ -753,7 +756,7 @@ function RegistroInner() {
     } else if (step === 3) {
       if (!businessName.trim())  { setError('Escribe el nombre de tu organización'); return; }
       if (!businessDesc.trim())  { setError('Escribe una descripción de la organización'); return; }
-      if (!businessPhone.trim()) { setError('Escribe el teléfono de la organización'); return; }
+      if (!businessPhone.trim() && effectiveJornada !== 'tareas') { setError('Escribe el teléfono de la organización'); return; }
       setStep(4);
     }
   };
@@ -786,7 +789,8 @@ function RegistroInner() {
           business_description:   businessDesc.trim(),
           business_phone_display: businessPhone.trim(),
           giro_template:          giro,
-          area_code:              cityLada || undefined,
+          jornada_type:           effectiveJornada,
+          area_code:              effectiveJornada !== 'tareas' ? cityLada || undefined : undefined,
           country:                country,
           agent_name:             agentName.trim() || null,
           client_name:            `${clientFirstName.trim()} ${clientLastName.trim()}`,
@@ -1311,11 +1315,37 @@ function RegistroInner() {
               }
             </p>
 
+            {/* Jornada type tabs — only for non-coordinator employees */}
+            {!isCoordinator && (
+              <div className="flex gap-2 mb-4" style={{ paddingTop: 20 }}>
+                {([
+                  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></> },
+                  { id: 'minutos',   label: 'Solo minutos', icon: <Clock size={10} /> },
+                  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={10} /> },
+                ] as const).map(j => {
+                  const sel = jornada === j.id;
+                  return (
+                    <button key={j.id} type="button" onClick={() => setJornada(j.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all"
+                      style={{
+                        background: sel ? 'rgba(108,59,255,0.2)' : 'rgba(255,255,255,0.05)',
+                        border:     `1.5px solid ${sel ? '#6C3BFF' : 'rgba(255,255,255,0.08)'}`,
+                        color:      sel ? '#9B6DFF' : 'rgba(255,255,255,0.45)',
+                      }}>
+                      <span className="flex items-center gap-0.5 flex-shrink-0">{j.icon}</span>
+                      <span>{j.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Standard tiers */}
             {!isCoordinator && (
-              <div className="flex flex-col gap-3 mb-6" style={{ paddingTop: 20 }}>
+              <div className="flex flex-col gap-3 mb-6">
                 {TIERS.map(t => {
-                  const sel = tier === t.id;
+                  const sel   = tier === t.id;
+                  const alloc = JORNADA_CONFIG[jornada][t.id];
                   return (
                     <div key={t.id} onClick={() => setTier(t.id)}
                       className="rounded-xl cursor-pointer transition-all"
@@ -1348,13 +1378,15 @@ function RegistroInner() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-white text-sm mb-2">{t.label}</p>
                         <div className="flex flex-col gap-1">
-                          <p className="text-xs flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                            <Clock size={11} style={{ flexShrink: 0 }} />
-                            Hasta {t.minutes} minutos de conversación al mes
-                          </p>
+                          {alloc.minutes > 0 && (
+                            <p className="text-xs flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                              <Clock size={11} style={{ flexShrink: 0 }} />
+                              Hasta {alloc.minutes} minutos de conversación al mes
+                            </p>
+                          )}
                           <p className="text-xs flex items-center gap-1.5" style={{ color: sel ? '#9B6DFF' : 'rgba(255,255,255,0.4)' }}>
                             <Zap size={11} style={{ flexShrink: 0 }} />
-                            {t.aiOps} tareas inteligentes
+                            {alloc.aiOps} tareas inteligentes{jornada === 'minutos' && alloc.aiOps <= 20 ? ' (buffer)' : ''}
                           </p>
                         </div>
                       </div>
@@ -1497,8 +1529,8 @@ function RegistroInner() {
                 />
               </div>
 
-              {/* Country + area code — not needed for coordinator agents */}
-              {!isCoordinator && (
+              {/* Country + area code — only for agents with voice channel */}
+              {!isCoordinator && effectiveJornada !== 'tareas' && (
                 <div className="flex flex-col gap-3">
                   <label style={labelStyle}>
                     País de la organización
@@ -1540,9 +1572,11 @@ function RegistroInner() {
 
               <div>
                 <label style={labelStyle}>
-                  Teléfono de la organización *
+                  Teléfono de la organización{effectiveJornada !== 'tareas' ? ' *' : ''}
                   <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: 6 }}>
-                    {isCoordinator ? '(para contacto y reportes)' : '(tu empleado lo menciona en llamadas)'}
+                    {effectiveJornada === 'tareas'
+                      ? '(opcional, para referencia interna)'
+                      : isCoordinator ? '(para contacto y reportes)' : '(tu empleado lo menciona en llamadas)'}
                   </span>
                 </label>
                 <div className="relative">
@@ -1787,7 +1821,7 @@ function RegistroInner() {
                 <div style={{ padding: '14px 18px 18px' }}>
                   {[
                     { label: 'Cargo',          value: selectedMeerkat?.id !== 'custom' ? (selectedMeerkat?.rol ?? 'Personalizado') : 'Personalizado' },
-                    { label: 'Jornada',        value: isCoordinator ? `${selectedNoxTier.label} tareas inteligentes` : selectedTier.label },
+                    { label: 'Jornada',        value: isCoordinator ? `${selectedNoxTier.label} tareas` : `${selectedTier.label} · ${jornada === 'tareas' ? 'solo tareas' : jornada === 'minutos' ? 'solo minutos' : 'combinada'}` },
                     { label: 'Organización',   value: businessName || '—' },
                     { label: 'Inicio',         value: 'Hoy' },
                     { label: 'Estado',         value: 'Activo al completar' },

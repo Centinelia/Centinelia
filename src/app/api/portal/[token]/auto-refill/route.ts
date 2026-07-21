@@ -17,13 +17,12 @@ export async function GET(
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, stripe_customer_id')
+    .select('auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, auto_refill_ops_enabled, auto_refill_ops_threshold, auto_refill_ops_amount, stripe_customer_id')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Check if the customer actually has a saved card
   let hasCard = false;
   if (agent.stripe_customer_id) {
     const pms = await stripe.paymentMethods.list({ customer: agent.stripe_customer_id, type: 'card' });
@@ -31,9 +30,12 @@ export async function GET(
   }
 
   return NextResponse.json({
-    enabled:   agent.auto_refill_enabled   ?? false,
-    threshold: agent.auto_refill_threshold ?? 50,
-    minutes:   agent.auto_refill_minutes   ?? 100,
+    enabled:          agent.auto_refill_enabled          ?? false,
+    threshold:        agent.auto_refill_threshold        ?? 50,
+    minutes:          agent.auto_refill_minutes          ?? 100,
+    opsEnabled:       agent.auto_refill_ops_enabled      ?? false,
+    opsThreshold:     agent.auto_refill_ops_threshold    ?? 50,
+    opsAmount:        agent.auto_refill_ops_amount       ?? 100,
     hasCard,
   });
 }
@@ -48,12 +50,18 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json() as { enabled: boolean; threshold: number; minutes: number };
+  const body = await req.json() as {
+    enabled: boolean; threshold: number; minutes: number;
+    opsEnabled: boolean; opsThreshold: number; opsAmount: number;
+  };
 
   if (
-    typeof body.enabled   !== 'boolean'       ||
-    ![25, 50, 75, 100].includes(body.threshold) ||
-    ![100, 200].includes(body.minutes)
+    typeof body.enabled      !== 'boolean'          ||
+    ![25, 50, 75, 100].includes(body.threshold)     ||
+    ![100, 200].includes(body.minutes)              ||
+    typeof body.opsEnabled   !== 'boolean'          ||
+    ![50, 100, 150, 200].includes(body.opsThreshold) ||
+    ![100, 300].includes(body.opsAmount)
   ) {
     return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
   }
@@ -62,9 +70,12 @@ export async function PATCH(
   const { error } = await supabase
     .from('voice_agents')
     .update({
-      auto_refill_enabled:   body.enabled,
-      auto_refill_threshold: body.threshold,
-      auto_refill_minutes:   body.minutes,
+      auto_refill_enabled:        body.enabled,
+      auto_refill_threshold:      body.threshold,
+      auto_refill_minutes:        body.minutes,
+      auto_refill_ops_enabled:    body.opsEnabled,
+      auto_refill_ops_threshold:  body.opsThreshold,
+      auto_refill_ops_amount:     body.opsAmount,
     })
     .eq('portal_token', token);
 

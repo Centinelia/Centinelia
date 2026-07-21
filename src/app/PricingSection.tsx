@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, Star, Lightbulb } from 'lucide-react';
+import { Check, Star, Clock, Zap, Phone } from 'lucide-react';
 import AnimatedSection from './AnimatedSection';
 
 const fmt = (n: number) => new Intl.NumberFormat('es-MX').format(n);
@@ -53,19 +53,43 @@ const AGENT_TYPES = [
   },
 ];
 
-const MINUTE_TIERS = [
-  { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',         minutes: 300,  ops: 100, price: 2997,  callsPerDay: 5  },
-  { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 600,  ops: 200, price: 5994,  callsPerDay: 10, popular: true },
-  { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.', minutes: 1200, ops: 300, price: 11988, callsPerDay: 20 },
+type JornadaId = 'combinada' | 'minutos' | 'tareas';
+
+const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color: string }[] = [
+  { id: 'combinada', label: 'Combinada',    icon: <><Clock size={11} /><Zap size={11} /></>, color: '#6C3BFF' },
+  { id: 'minutos',   label: 'Solo minutos', icon: <Phone size={11} />,                       color: '#3b82f6' },
+  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10b981' },
 ];
 
+const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay?: number; popular?: boolean }[]> = {
+  combinada: [
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Ideal para organizaciones pequeñas.',          minutes: 300,  ops: 120, price: 2997,  callsPerDay: 5  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Ideal para la mayoría de las organizaciones.', minutes: 600,  ops: 220, price: 5994,  callsPerDay: 10, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Ideal para operaciones con alto volumen.',     minutes: 1200, ops: 320, price: 11988, callsPerDay: 20 },
+  ],
+  minutos: [
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Más minutos, canal de voz dedicado.',         minutes: 500,  ops: 20, price: 2997,  callsPerDay: 8  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para operaciones con alto volumen de llamadas.', minutes: 1000, ops: 20, price: 5994,  callsPerDay: 16, popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Máximos minutos disponibles.',                minutes: 2000, ops: 20, price: 11988, callsPerDay: 33 },
+  ],
+  tareas: [
+    { id: 'starter', label: 'Media Jornada',    subtitle: 'Sin llamadas: solo inteligencia y tareas.',   minutes: 0, ops: 270,  price: 2997  },
+    { id: 'growth',  label: 'Jornada Completa', subtitle: 'Para equipos con alta carga de tareas.',      minutes: 0, ops: 520,  price: 5994,  popular: true },
+    { id: 'scale',   label: 'Alta Demanda',     subtitle: 'Automatización de alto volumen.',             minutes: 0, ops: 1020, price: 11988 },
+  ],
+};
+
 export default function PricingSection() {
-  const [selectedId, setSelectedId] = useState('growth');
-  const agent      = AGENT_TYPES[0];
-  const tier       = MINUTE_TIERS.find(t => t.id === selectedId)!;
-  const todayBase  = agent.setupFee + tier.price;
-  const todayIVA   = Math.round(todayBase * IVA);
-  const tierIVA    = Math.round(tier.price * IVA);
+  const [selectedId,  setSelectedId]  = useState('growth');
+  const [jornadaId,   setJornadaId]   = useState<JornadaId>('combinada');
+
+  const agent   = AGENT_TYPES[0];
+  const tiers   = JORNADA_TIERS[jornadaId];
+  const tier    = tiers.find(t => t.id === selectedId) ?? tiers[1];
+  const todayBase = agent.setupFee + tier.price;
+  const todayIVA  = Math.round(todayBase * IVA);
+  const tierIVA   = Math.round(tier.price * IVA);
+  const jornadaColor = JORNADA_TABS.find(j => j.id === jornadaId)?.color ?? '#6C3BFF';
 
   return (
     <>
@@ -163,24 +187,50 @@ export default function PricingSection() {
             </div>
           </AnimatedSection>
 
+          {/* Jornada type tabs */}
+          <AnimatedSection>
+            <div className="flex gap-2 mb-4 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {JORNADA_TABS.map(j => {
+                const active = j.id === jornadaId;
+                return (
+                  <button
+                    key={j.id}
+                    onClick={() => { setJornadaId(j.id); setSelectedId('growth'); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      background: active ? `${j.color}22` : 'transparent',
+                      border: active ? `1px solid ${j.color}55` : '1px solid transparent',
+                      color: active ? j.color : 'rgba(255,255,255,0.4)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {j.icon}
+                    <span className="hidden sm:inline">{j.label}</span>
+                    <span className="sm:hidden">{j.id === 'combinada' ? 'Combinada' : j.id === 'minutos' ? 'Minutos' : 'Tareas'}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </AnimatedSection>
+
           <div className="flex flex-col flex-1 gap-3">
-            {MINUTE_TIERS.map((t, i) => {
+            {tiers.map((t, i) => {
               const isSelected = t.id === selectedId;
               return (
-                <AnimatedSection key={t.id} delay={i * 0.08} className="flex-1">
+                <AnimatedSection key={`${jornadaId}-${t.id}`} delay={i * 0.08} className="flex-1">
                 <motion.button
                   onClick={() => setSelectedId(t.id)}
                   className="h-full w-full text-left rounded-2xl p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden"
                   initial={false}
                   animate={{
                     boxShadow: isSelected
-                      ? '0 8px 36px rgba(108,59,255,0.32), 0 0 0 1.5px rgba(108,59,255,0.65)'
+                      ? `0 8px 36px ${jornadaColor}52, 0 0 0 1.5px ${jornadaColor}a6`
                       : '0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(255,255,255,0.09)',
                   }}
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                   style={{
                     background: isSelected
-                      ? 'linear-gradient(135deg, rgba(108,59,255,0.22), rgba(108,59,255,0.1))'
+                      ? `linear-gradient(135deg, ${jornadaColor}38, ${jornadaColor}1a)`
                       : 'rgba(255,255,255,0.04)',
                     cursor: 'pointer',
                     transition: 'background 0.35s ease',
@@ -188,7 +238,7 @@ export default function PricingSection() {
                 >
                   {isSelected && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                      background: 'linear-gradient(90deg, #6C3BFF, #9B6DFF88)' }} />
+                      background: `linear-gradient(90deg, ${jornadaColor}, ${jornadaColor}88)` }} />
                   )}
                   {/* Top row */}
                   <div className="flex items-start gap-4">
@@ -199,29 +249,45 @@ export default function PricingSection() {
                           <Star size={11} className="absolute top-2.5 right-3" color="#9B6DFF" style={{ fill: '#9B6DFF' }} />
                         )}
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? '#9B6DFF' : '#fff' }}>
-                          {fmt(t.minutes)}
-                        </span>
-                        <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
-                      </div>
-                      <p className="text-xs mt-0.5" style={{ color: 'rgba(155,109,255,0.6)' }}>
-                        {t.ops} tareas incluidas
+                      {/* Resource line */}
+                      {jornadaId !== 'tareas' ? (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
+                            {fmt(t.minutes)}
+                          </span>
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>min/mes</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
+                            {fmt(t.ops)}
+                          </span>
+                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>tareas/mes</span>
+                        </div>
+                      )}
+                      <p className="text-xs mt-0.5" style={{ color: `${jornadaColor}99` }}>
+                        {jornadaId === 'combinada'
+                          ? `${t.ops} tareas incluidas`
+                          : jornadaId === 'minutos'
+                          ? `${t.ops} tareas (buffer)`
+                          : t.minutes === 0 ? 'Sin canal de voz' : `${fmt(t.minutes)} min`}
                       </p>
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0 self-stretch">
                       <div className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? '#9B6DFF' : '#fff' }}>
+                        <span className="text-2xl font-bold tabular-nums" style={{ color: isSelected ? jornadaColor : '#fff' }}>
                           ${fmt(t.price)}
                         </span>
                         <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>/mes + IVA</span>
                       </div>
-                      <p className="text-xs mt-auto" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        ≈ <span style={{ color: isSelected ? '#9B6DFF' : 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{t.callsPerDay} llamadas</span>/día
-                      </p>
+                      {t.callsPerDay !== undefined && (
+                        <p className="text-xs mt-auto" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          ≈ <span style={{ color: isSelected ? jornadaColor : 'rgba(255,255,255,0.55)', fontWeight: 600 }}>{t.callsPerDay} llamadas</span>/día
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <p className="text-xs text-center w-full font-bold" style={{ color: 'rgba(155,109,255,0.6)', fontStyle: 'italic' }}>
+                  <p className="text-xs text-center w-full font-bold" style={{ color: `${jornadaColor}99`, fontStyle: 'italic' }}>
                     {t.subtitle}
                   </p>
                 </motion.button>

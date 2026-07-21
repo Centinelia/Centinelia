@@ -93,3 +93,66 @@ export async function executeAutoRefill(
 
   return { ok: true, minutesAdded: minutes };
 }
+
+const OPS_PACKAGES: Record<number, number> = { 100: 800, 300: 2100 };
+const PRICE_PER_OP = 8.5;
+
+function calcOpsPrice(ops: number): number {
+  return OPS_PACKAGES[ops] ?? Math.round(ops * PRICE_PER_OP);
+}
+
+export async function executeAutoRefillOps(
+  agentId: string,
+): Promise<{ ok: boolean; opsAdded?: number; error?: string }> {
+  const supabase = createAdminClient();
+
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, stripe_customer_id, portal_email, auto_refill_ops_amount, ai_ops_limit')
+    .eq('id', agentId)
+    .single();
+
+  if (!agent)                    return { ok: false, error: 'agent_not_found' };
+  if (!agent.stripe_customer_id) return { ok: false, error: 'no_stripe_customer' };
+
+  const ops       = (agent.auto_refill_ops_amount as number) ?? 100;
+  const amountMxn = calcOpsPrice(ops);
+
+  const pms = await stripe.paymentMethods.list({ customer: agent.stripe_customer_id, type: 'card' });
+  const pm  = pms.data[0];
+  if (!pm) return { ok: false, error: 'no_payment_method' };
+
+  const now    = new Date();
+  const window = `${now.getUTCFullYear()}${now.getUTCMonth()}${now.getUTCDate()}${now.getUTCHours()}`;
+  const idempotencyKey = `auto_refill_ops_${agentId}_${window}`;
+
+  let pi;
+  try {
+    pi = await stripe.paymentIntents.create(
+      {
+        amount:         amountMxn * 100,
+        currency:       'mxn',
+        customer:       agent.stripe_customer_id,
+        payment_method: pm.id,
+        confirm:        true,
+        off_session:    true,
+        description:    `Auto-recarga ${ops} tareas · ${agent.business_name}`,
+        metadata: { type: 'auto_refill_ops', agent_id: agentId, ops: String(ops) },
+      },
+      { idempotencyKey },
+    );
+  } catch (err: any) {
+    return { ok: false, error: err?.message ?? 'stripe_error' };
+  }
+
+  if (pi.status !== 'succeeded') return { ok: false, error: `pi_status_${pi.status}` };
+
+  // Credit ops to every agent in the account
+  const currentLimit = (agent.ai_ops_limit as number) ?? 0;
+  await supabase
+    .from('voice_agents')
+    .update({ ai_ops_limit: currentLimit + ops })
+    .eq('portal_email', agent.portal_email);
+
+  return { ok: true, opsAdded: ops };
+}

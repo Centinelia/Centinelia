@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
-import type { BusinessHours, Plan } from '@/types/agent';
+import type { BusinessHours } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
 import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
@@ -25,11 +25,10 @@ import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
 import PortalAppointmentsSection from './PortalAppointmentsSection';
 import BuyMinutesSection       from './BuyMinutesSection';
-import UpgradePlanSection      from './UpgradePlanSection';
+import BuyOpsSection           from './BuyOpsSection';
 import MinutesLedgerSection    from './MinutesLedgerSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
-import ContractSection         from './ContractSection';
 import CollapsibleSection      from './CollapsibleSection';
 import PeakHoursChart          from './PeakHoursChart';
 import NotificationBell        from './NotificationBell';
@@ -200,7 +199,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
   // AI ops: account-level pool (SUM of all agents in account)
   const { data: opsAgents } = agent.portal_email
-    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
+    ? await supabase.from('voice_agents').select('id, ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
     : { data: null };
   const aiOpsUsed  = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
   const aiOpsLimit = (opsAgents ?? []).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
@@ -302,7 +301,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       id:         c.id,
       label:      callerNames[normPhone(c.caller_number ?? '')] ?? c.caller_number,
       badge:      c.outcome as string,
-      sub:        `${Math.max(1, Math.ceil(c.duration_seconds / 60))} min`,
+      sub:        callOutcomeDesc(c.outcome as string),
       created_at: c.created_at,
     })),
     ...(showLeads  ? leads.map((l: any)  => ({ type: 'lead'  as const, id: l.id, label: (l.nombre  ?? 'Cliente') as string, badge: 'lead',  sub: null as string|null, created_at: l.created_at as string })) : []),
@@ -330,6 +329,38 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       tokens: total,
     };
   });
+
+  // Per-agent call counts for "Tu equipo hoy"
+  const callsByAgentId: Record<string, number> = {};
+  for (const c of calls) {
+    const aid = (c as any).agent_id as string;
+    if (aid) callsByAgentId[aid] = (callsByAgentId[aid] ?? 0) + 1;
+  }
+
+  const opsById: Record<string, number> = {};
+  for (const a of opsAgents ?? []) {
+    opsById[(a as any).id as string] = ((a as any).ai_ops_used as number) ?? 0;
+  }
+
+  const teamToday = allClientAgents.map(a => ({
+    name:   a.agent_name?.trim() || 'Empleado',
+    role:   ((a as any).role?.trim() as string | null) ?? null,
+    color:  (((a as any).features as any)?.role_color as string) ?? '#6C3BFF',
+    calls:  callsByAgentId[a.id] ?? 0,
+    ops:    opsById[a.id] ?? 0,
+    active: !!(a.active) && !((a as any).client_paused) && a.billing_status !== 'pago_fallido',
+    token:  a.portal_token as string,
+  }));
+
+  const RESOLVED_OUTCOMES = new Set(['info_provided', 'lead_created', 'appointment_booked', 'order_taken', 'escalated_whatsapp', 'other']);
+  const resolvedCount  = calls.filter(c => RESOLVED_OUTCOMES.has((c.outcome as string) ?? '')).length;
+  const autonomousRate = calls.length > 0 ? Math.round((resolvedCount / calls.length) * 100) : 0;
+
+  const agentTimezone = ((agent as any).timezone as string | null) ?? 'America/Monterrey';
+  const localHourStr  = new Date().toLocaleString('en-US', { timeZone: agentTimezone, hour: 'numeric', hour12: false });
+  const localHour     = parseInt(localHourStr) || 12;
+  const greeting      = localHour < 12 ? 'Buenos días' : localHour < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const officeOk      = !!(agent.active) && !clientPaused && !billingPaused;
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'inicio',   label: 'Inicio' },
@@ -385,6 +416,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             aiOpsLimit={aiOpsLimit}
             isOwner={isOwner}
             modules={modules}
+            jornadaType={(agent as any).jornada_type ?? 'combinada'}
           />
 
           {/* Main content column */}
@@ -439,6 +471,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
             <div className="flex flex-col gap-5">
+
+              {/* Greeting banner */}
+              <div className="rounded-xl px-5 py-4"
+                style={{ background: officeOk ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${officeOk ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
+                  <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                    <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
+                    <span style={{ color: 'var(--c-text-2)' }}>
+                      {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
               {isFirstTime && (
                 <div
                   className="relative rounded-xl overflow-hidden"
@@ -448,13 +496,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     minHeight:  96,
                   }}
                 >
-                  {/* Team — grows from bottom edge, clipped at top */}
                   <div style={{ position: 'absolute', bottom: 0, left: 16, width: 160, height: 112, pointerEvents: 'none' }}>
                     <Image src="/meerkats-team.png" alt="" fill sizes="160px"
                       style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
                   </div>
-
-                  {/* Text — offset right of image, vertically centered */}
                   <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
                     <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
@@ -466,7 +511,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Contract gate notice */}
               {!agent.contract_accepted_at && (
-                <a href={`/portal/${token}?tab=cuenta#contrato`}
+                <a href={`/portal/${token}/configurar#contrato`}
                   className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-90"
                   style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
                   <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
@@ -524,8 +569,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* KPI cards */}
                 <div id="resumen" className={`grid ${kpiGridClass} gap-3`}>
-                  <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}     value={String(calls.length)}        label="Llamadas"        sub={`prom. ${avgDuration} min`}                                                                                  valueColor="#6C3BFF"       accentColor="#6C3BFF"  />
-                  <KpiCard icon={<Clock size={16} color="#6b7280" />}         value={`${totalMinutes} min`}       label="Tiempo atendido"                                                                                                                   valueColor="var(--c-text)" accentColor="#6b7280"  />
+                  <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}    value={String(calls.length)}   label="Conversaciones"   sub={`prom. ${avgDuration} min`}                                                                                   valueColor="#6C3BFF"  accentColor="#6C3BFF"  />
+                  <KpiCard icon={<CheckCircle size={16} color="#22c55e" />}  value={String(resolvedCount)}  label="Sin intervención" sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}                                                valueColor="#22c55e"  accentColor="#22c55e"  />
                   {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
                   {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
                   {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
@@ -533,13 +578,50 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
                 </div>
 
-                {/* Peak hours */}
+                {/* Autonomous resolution rate */}
                 {calls.length > 0 && (
-                  <div id="horas-pico" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                      Horas pico
-                    </h2>
-                    <PeakHoursChart hourCounts={hourCounts} />
+                  <p className="text-sm -mt-1" style={{ color: 'var(--c-text-2)' }}>
+                    Tu oficina resolvió el{' '}
+                    <span className="font-semibold" style={{ color: '#22c55e' }}>{autonomousRate}%</span>
+                    {' '}de las solicitudes sin intervención humana.
+                  </p>
+                )}
+
+                {/* Tu equipo hoy */}
+                {teamToday.length > 0 && (
+                  <div id="equipo-hoy" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tu equipo hoy</h2>
+                    <div className="flex flex-col">
+                      {teamToday.map((m, idx) => (
+                        <div key={m.token}
+                          className="flex items-center gap-3 py-2.5"
+                          style={{ borderBottom: idx < teamToday.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                          <div className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: m.active ? '#22c55e' : '#9ca3af', boxShadow: m.active ? '0 0 5px #22c55e' : 'none' }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{m.name}</p>
+                            {m.role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{m.role}</p>}
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                            {m.calls > 0 && (
+                              <span className="flex items-center gap-1">
+                                <PhoneCall size={11} style={{ color: '#6C3BFF' }} /> {m.calls}
+                              </span>
+                            )}
+                            {m.ops > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Zap size={11} style={{ color: '#06b6d4' }} /> {m.ops}
+                              </span>
+                            )}
+                          </div>
+                          <Link href={`/portal/${m.token}/configurar`}
+                            className="text-xs transition-opacity hover:opacity-70 flex-shrink-0"
+                            style={{ color: '#9B6DFF' }}>
+                            Ver →
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -594,6 +676,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   )}
                 </div>
+
+                {/* Actividad de tu oficina — chart, after feed */}
+                {calls.length > 0 && (
+                  <div id="horas-pico" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                      Actividad de tu oficina
+                    </h2>
+                    <PeakHoursChart hourCounts={hourCounts} />
+                  </div>
+                )}
+
                 {/* Reporte mensual — visible en mobile al final de la columna principal */}
                 <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
@@ -651,7 +744,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* ── Right column (desktop only) ── */}
               <div className="hidden lg:flex flex-col gap-4">
-
 
                 {showOutbound && (
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -821,38 +913,27 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Contract gate banner */}
               {!agent.contract_accepted_at && (
-                <a href="#contrato" className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
+                <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
                   style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
                   <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Puedes verlo en la columna de la derecha.
+                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
                     </p>
                   </div>
                   <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
                 </a>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
 
-                {/* ── Left column ── */}
-                <div className="flex flex-col gap-5">
-                  {/* Minutes & billing */}
-                  <div id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                    {allCalls.length > 0 && (
-                      <div className="rounded-xl p-5 mb-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                        <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                        <div className="grid grid-cols-3 gap-3">
-                          <StatBox label="Por día"   value={`${avgMinPerDay} min`} />
-                          <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                          <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                        </div>
-                        <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
-                      </div>
-                    )}
+                {/* ── Col 1: Uso + Compras + Recarga ── */}
+                <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+
+                  {minutesIncluded > 0 && (
                     <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos del mes</h2>
                       <div className="flex items-end gap-2 mb-2">
                         <span className="text-4xl font-bold tabular-nums" style={{ color: minutesColor }}>{minutesUsed}</span>
                         <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {minutesIncluded} min</span>
@@ -870,11 +951,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </p>
                       )}
                     </div>
-                  </div>
+                  )}
 
                   {aiOpsLimit > 0 && (
                     <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Operaciones AI este mes</h2>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas del mes</h2>
                       <div className="flex items-end gap-2 mb-2">
                         <span className="text-4xl font-bold tabular-nums" style={{ color: aiOpsColor }}>{aiOpsUsed}</span>
                         <span className="text-sm mb-1" style={{ color: 'var(--c-text-3)' }}>/ {aiOpsLimit} tareas</span>
@@ -894,7 +975,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     border:         minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
                     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
                   }}>
-                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos extra</h2>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar minutos</h2>
                     {minutesPct >= 70 && (
                       <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: minutesPct >= 90 ? '#ef4444' : '#f59e0b' }}>
                         <AlertTriangle size={11} />
@@ -903,27 +984,44 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     )}
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al saldo actual al instante. No afectan tu plan mensual.</p>
                     <BuyMinutesSection token={token} />
+                  </div>
 
-                    <div style={{ borderTop: '1px solid var(--c-border)', margin: '16px -20px', paddingLeft: 20, paddingRight: 20 }} />
+                  <div className="rounded-xl p-5" style={{
+                    background:     aiOpsPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
+                    border:         aiOpsPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : aiOpsPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
+                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  }}>
+                    <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar tareas</h2>
+                    {aiOpsPct >= 70 && (
+                      <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: aiOpsPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                        <AlertTriangle size={11} />
+                        {aiOpsPct >= 90 ? 'Te quedan muy pocas tareas' : 'Tu saldo de tareas está bajando'}
+                      </p>
+                    )}
+                    <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Pool compartido entre todos tus empleados. Disponibles al instante.</p>
+                    <BuyOpsSection token={token} />
+                  </div>
 
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
                     <AutoRefillSection token={token} />
                   </div>
-
-                  {agent.plan && (
-                    <div id="plan" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <div className="flex items-center gap-1.5 mb-4">
-                        <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Cambiar plan</h2>
-                        <InfoTooltip text="Sube o baja de tier según las necesidades de tu organización." />
-                      </div>
-                      <UpgradePlanSection token={token} currentPlan={agent.plan as Plan} currentTier={(agent as any).minutes_plan ?? 'starter'} />
-                    </div>
-                  )}
                 </div>
 
-                {/* ── Right column — Historial de minutos + Contrato + Número de cuenta ── */}
+                {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  {allCalls.length > 0 && (
+                    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
+                      <div className="flex flex-col gap-3">
+                        <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                        <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                        <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                      </div>
+                      <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
+                    </div>
+                  )}
                   <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
                     <div className="relative">
@@ -934,14 +1032,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                     </div>
                   </div>
-                  <div id="contrato">
-                    <ContractSection
-                      token={token}
-                      businessName={agent.business_name}
-                      signedAt={agent.contract_accepted_at ?? null}
-                      contractPreviewUrl={`/portal/${token}/contrato`}
-                    />
-                  </div>
+                </div>
+
+                {/* ── Col 3: Serial ── */}
+                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   {accountSerial && (
                     <AccountSerialBadge serial={accountSerial} variant="card" />
                   )}
@@ -1003,4 +1097,18 @@ function fmtRelative(iso: string): string {
   if (days === 1) return 'ayer';
   if (days < 7)  return `hace ${days} días`;
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+}
+
+function callOutcomeDesc(outcome: string): string {
+  switch (outcome) {
+    case 'lead_created':        return 'Preguntó y dejó sus datos de contacto.';
+    case 'appointment_booked':  return 'Agendó una cita con el equipo.';
+    case 'order_taken':         return 'Realizó un pedido.';
+    case 'transferred':         return 'Fue transferido al equipo.';
+    case 'info_provided':       return 'Recibió información y fue atendido.';
+    case 'escalated_whatsapp':  return 'La conversación continuó por WhatsApp.';
+    case 'missed':              return 'Llamada perdida.';
+    case 'unanswered':          return 'No fue atendido.';
+    default:                    return 'Llamada completada.';
+  }
 }

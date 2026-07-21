@@ -7,7 +7,8 @@ import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { stripe }                        from '@/lib/stripe';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { randomUUID }                    from 'crypto';
-import type { Plan }                     from '@/types/agent';
+import type { Plan, JornadaType }        from '@/types/agent';
+import { JORNADA_CONFIG }               from '@/lib/billing/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export async function createPortalAgent({
   role,
   agentName,
   active,
+  jornadaType,
 }: {
   base: {
     portal_email: string | null;
@@ -44,10 +46,15 @@ export async function createPortalAgent({
   role: MeerkatRole;
   agentName: string;
   active: boolean;
+  jornadaType?: JornadaType;
 }) {
-  const supabase   = createAdminClient();
-  const newToken   = randomUUID();
-  const features   = {
+  const supabase      = createAdminClient();
+  const newToken      = randomUUID();
+  const isCoordinator = !!(role.features as any)?.is_coordinator;
+  const effectiveJornada: JornadaType = isCoordinator ? 'tareas' : (jornadaType ?? 'combinada');
+  const tier          = (base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
+  const alloc         = JORNADA_CONFIG[effectiveJornada][tier];
+  const features      = {
     ...role.features,
     role_color:      role.color,
     meerkat_role_id: role.id,
@@ -65,7 +72,9 @@ export async function createPortalAgent({
       business_name:         base.business_name,
       business_description:  base.business_description,
       plan:                  base.plan,
-      minutes_included:      base.minutes_included,
+      jornada_type:          effectiveJornada,
+      minutes_included:      alloc.minutes,
+      ai_ops_limit:          alloc.aiOps,
       minutes_plan:          base.minutes_plan,
       minutes_used:          0,
       minutes_reset_date:    base.minutes_reset_date,
@@ -121,8 +130,8 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string; minutes_plan?: string };
-  const { meerkat_role_id, agent_name, minutes_plan } = body;
+  const body = await req.json() as { meerkat_role_id: MeerkatRoleId; agent_name?: string; minutes_plan?: string; jornada_type?: JornadaType };
+  const { meerkat_role_id, agent_name, minutes_plan, jornada_type } = body;
 
   const role = MEERKAT_MAP[meerkat_role_id];
   if (!role) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -151,7 +160,7 @@ export async function POST(
   const bypass = process.env.BYPASS_AGENT_PAYMENT === 'true';
   if (bypass) {
     try {
-      const newAgent = await createPortalAgent({ base: base as any, role, agentName, active: true });
+      const newAgent = await createPortalAgent({ base: base as any, role, agentName, active: true, jornadaType: jornada_type });
       return NextResponse.json({ token: newAgent.portal_token });
     } catch (e: any) {
       console.error('Error creating agent (bypass):', e);
@@ -161,14 +170,16 @@ export async function POST(
 
   // ── PRODUCTION: create pending agent → Stripe Checkout ───────────────────
   try {
-    const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false });
+    const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false, jornadaType: jornada_type });
 
     const plan       = (base.plan ?? 'comercial') as Plan;
     const planCfg    = FEATURE_PLAN_CONFIG[plan];
     const tier       = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
     const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];
-    const customerId = base.stripe_customer_id ?? undefined;
-    const appUrl     = process.env.NEXT_PUBLIC_APP_URL!;
+    const customerId      = base.stripe_customer_id ?? undefined;
+    const appUrl          = process.env.NEXT_PUBLIC_APP_URL!;
+    const isCoord2        = !!(role.features as any)?.is_coordinator;
+    const effectiveJornada: JornadaType = isCoord2 ? 'tareas' : ((jornada_type ?? 'combinada') as JornadaType);
 
     const checkoutSession = await stripe.checkout.sessions.create({
       ...(customerId ? { customer: customerId } : {}),
@@ -182,6 +193,7 @@ export async function POST(
         agent_id:     pendingAgent.id,
         agent_token:  pendingAgent.portal_token,
         minutes_plan: tier,
+        jornada_type: effectiveJornada,
       },
       subscription_data: {
         metadata: { agent_id: pendingAgent.id, minutes_plan: tier },

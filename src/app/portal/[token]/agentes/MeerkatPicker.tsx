@@ -2,8 +2,10 @@
 
 import { useState }                         from 'react';
 import { useRouter }                        from 'next/navigation';
-import { Plus, X, Check, ArrowLeft }        from 'lucide-react';
+import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone } from 'lucide-react';
 import { MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
+import { JORNADA_CONFIG }                   from '@/lib/billing/plans';
+import type { JornadaType }                 from '@/types/agent';
 
 type Plan        = 'comercial' | 'pro';
 type MinutesTier = 'starter' | 'growth' | 'scale';
@@ -81,28 +83,34 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
   const [selected,  setSelected]  = useState<MeerkatRole | null>(null);
   const [agentName, setAgentName] = useState('');
   const [tier,      setTier]      = useState<MinutesTier>(defaultTier);
+  const [jornada,   setJornada]   = useState<JornadaType>('combinada');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
   const router = useRouter();
 
-  const openPicker  = () => { setOpen(true); setSelected(null); setAgentName(''); setError(''); setTier(defaultTier); };
+  const openPicker  = () => { setOpen(true); setSelected(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
   const closePicker = () => { setOpen(false); setSelected(null); setAgentName(''); setError(''); };
 
   const handleSelect = (role: MeerkatRole) => {
     setSelected(role);
     setAgentName(role.id === 'custom' ? '' : role.nombre);
     setError('');
+    // coordinators are always tareas
+    const isCoord = !!(role.features as any)?.is_coordinator;
+    setJornada(isCoord ? 'tareas' : 'combinada');
   };
 
   const handleCreate = async () => {
     if (!selected || !agentName.trim()) return;
     setLoading(true);
     setError('');
+    const isCoord       = !!(selected.features as any)?.is_coordinator;
+    const effectiveJornada: JornadaType = isCoord ? 'tareas' : jornada;
     try {
       const res  = await fetch(`/api/portal/${token}/agentes`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ meerkat_role_id: selected.id, agent_name: agentName.trim(), minutes_plan: tier }),
+        body:    JSON.stringify({ meerkat_role_id: selected.id, agent_name: agentName.trim(), minutes_plan: tier, jornada_type: effectiveJornada }),
       });
       const data = await res.json() as { token?: string; checkoutUrl?: string; error?: string };
       if (data.token) {
@@ -213,7 +221,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
               </div>
             ) : (
               /* ── Confirmation step ── */
-              <div className="p-6 flex flex-col gap-5">
+              <div className="p-6 flex flex-col gap-5 overflow-y-auto">
                 <div className="flex items-center gap-4 p-4 rounded-xl"
                   style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
                   <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0" style={{ background: `${selected.color}10` }}>
@@ -256,14 +264,46 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                   />
                 </div>
 
-                {/* Jornada */}
+                {/* Tipo de jornada */}
+                {!((selected.features as any)?.is_coordinator) && (() => {
+                  const JORNADA_OPTS: { key: JornadaType; label: string; desc: string; color: string; bg: string; border: string; icon: React.ReactNode }[] = [
+                    { key: 'combinada', label: 'Combinada',    desc: 'Voz + tareas',      color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)', border: 'rgba(108,59,255,0.4)', icon: <><Clock size={11} /><Zap size={11} /></>  },
+                    { key: 'minutos',   label: 'Solo minutos', desc: 'Solo canal de voz', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.4)', icon: <Phone size={11} />                          },
+                    { key: 'tareas',    label: 'Solo tareas',  desc: 'Sin canal de voz',  color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.4)', icon: <Zap size={11} />                            },
+                  ];
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>Tipo de jornada</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {JORNADA_OPTS.map(o => {
+                          const active = jornada === o.key;
+                          return (
+                            <button key={o.key} type="button" onClick={() => setJornada(o.key)}
+                              className="flex flex-col items-center gap-1 p-3 rounded-xl text-center transition-all"
+                              style={{ background: active ? o.bg : 'var(--c-surface-2)', border: `1px solid ${active ? o.border : 'var(--c-border)'}`, cursor: 'pointer' }}>
+                              <span className="flex items-center gap-0.5" style={{ color: active ? o.color : 'var(--c-text-3)' }}>{o.icon}</span>
+                              <span className="text-xs font-bold" style={{ color: active ? o.color : 'var(--c-text)' }}>{o.label}</span>
+                              <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>{o.desc}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Tier mensual */}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-                    Jornada mensual
+                    Volumen mensual
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {JORNADAS[plan].map(j => {
-                      const active = tier === j.tier;
+                      const active   = tier === j.tier;
+                      const alloc    = JORNADA_CONFIG[((selected.features as any)?.is_coordinator ? 'tareas' : jornada)][j.tier];
+                      const minLabel = alloc.minutes > 0 ? `${alloc.minutes} min` : null;
+                      const opsLabel = alloc.aiOps   > 0 ? `${alloc.aiOps} tareas` : null;
+                      const allocStr = [minLabel, opsLabel].filter(Boolean).join(' · ');
                       return (
                         <button
                           key={j.tier}
@@ -280,7 +320,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                             {j.label}
                           </span>
                           <span className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>
-                            {j.minutes} min/mes
+                            {allocStr}/mes
                           </span>
                           <span className="text-[11px] font-semibold mt-0.5" style={{ color: active ? '#9B6DFF' : 'var(--c-text-2)' }}>
                             {fmt(j.mxn)}/mes
@@ -293,10 +333,16 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
 
                 {/* Resumen de costo */}
                 {(() => {
-                  const j        = JORNADAS[plan].find(x => x.tier === tier)!;
-                  const subtotal = SETUP_FEE[plan] + j.mxn;
-                  const iva      = Math.round(subtotal * 0.16);
-                  const total    = subtotal + iva;
+                  const isCoord      = !!(selected.features as any)?.is_coordinator;
+                  const effJornada   = isCoord ? 'tareas' : jornada;
+                  const j            = JORNADAS[plan].find(x => x.tier === tier)!;
+                  const alloc        = JORNADA_CONFIG[effJornada][j.tier];
+                  const subtotal     = SETUP_FEE[plan] + j.mxn;
+                  const iva          = Math.round(subtotal * 0.16);
+                  const total        = subtotal + iva;
+                  const minLabel     = alloc.minutes > 0 ? `${alloc.minutes} min` : null;
+                  const opsLabel     = alloc.aiOps   > 0 ? `${alloc.aiOps} tareas` : null;
+                  const allocStr     = [minLabel, opsLabel].filter(Boolean).join(' · ');
                   return (
                     <div className="rounded-xl p-4 flex flex-col gap-2"
                       style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.18)' }}>
@@ -308,7 +354,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                         <span className="font-semibold">{fmt(SETUP_FEE[plan])}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
-                        <span>Jornada {j.label} · {j.minutes} min/mes</span>
+                        <span>{j.label} · {allocStr}/mes</span>
                         <span className="font-semibold">{fmt(j.mxn)}/mes</span>
                       </div>
                       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-3)', borderTop: '1px solid rgba(108,59,255,0.12)', paddingTop: 6, marginTop: 2 }}>

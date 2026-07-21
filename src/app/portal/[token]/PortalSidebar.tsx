@@ -25,9 +25,10 @@ interface Props {
   aiOpsLimit?:      number;
   isOwner?:         boolean;
   modules?:         string[]; // undefined = all access (owner)
+  jornadaType?:     string;   // 'combinada' | 'minutos' | 'tareas'
 }
 
-export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, isOwner = true, modules }: Props) {
+export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutbound, hasStripe = false, minutesRemain = 0, minutesIncluded = 0, aiOpsUsed = 0, aiOpsLimit = 0, isOwner = true, modules, jornadaType = 'combinada' }: Props) {
   const pathname  = usePathname();
   const [openIds, setOpenIds] = useState<string[]>([currentTab]);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -62,10 +63,11 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'inicio', moduleId: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
-        { label: 'Resumen',          id: 'resumen' },
-        { label: 'Horas pico',       id: 'horas-pico' },
-        { label: 'Actividad',        id: 'actividad' },
-        { label: 'Reporte mensual',  id: 'reporte-mensual' },
+        { label: 'Resultados',        id: 'resumen' },
+        { label: 'Tu equipo',         id: 'equipo-hoy' },
+        { label: 'Actividad reciente',id: 'actividad' },
+        { label: 'Actividad horaria', id: 'horas-pico' },
+        { label: 'Reporte mensual',   id: 'reporte-mensual' },
       ],
     },
     {
@@ -103,8 +105,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Chat con tu empleado', id: 'chat' },
       ],
     }] as Section[] : []),
-    // Llamadas sin OpsAgent (empleados de voz puro)
-    ...(!hasOpsAgent ? [{
+    // Llamadas sin OpsAgent — solo para agentes con canal de voz (no tareas)
+    ...(!hasOpsAgent && jornadaType !== 'tareas' ? [{
       id: 'llamadas', moduleId: 'llamadas', label: 'Llamadas', icon: <Phone size={14} />,
       toggleOnly: true,
       items: [],
@@ -135,7 +137,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     ...(isOwner ? [{
-      id: 'usuarios', label: 'Equipo de gestión', icon: <Users size={14} />,
+      id: 'usuarios', label: 'Usuarios y permisos', icon: <Users size={14} />,
       directHref: `/portal/${token}/usuarios`,
       items: [],
     }] as Section[] : []),
@@ -352,7 +354,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
             style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', textDecoration: 'none' }}
           >
             <CreditCard size={14} style={{ flexShrink: 0 }} />
-            Suscripción
+            Plan y consumo
           </a>
         </div>
       )}

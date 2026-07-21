@@ -5,6 +5,7 @@ export type { WaMessagesPlan };
 
 export type Plan = 'comercial' | 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
+export type JornadaType = 'combinada' | 'minutos' | 'tareas';
 
 
 // ─── Feature flags ────────────────────────────────────────────────────────────
@@ -89,6 +90,7 @@ export interface VoiceAgent {
   portal_token?: string;          // UUID único para el portal del cliente
   portal_email?: string;          // email del cliente; todos los agentes con el mismo email comparten el pool de minutos
   minutes_plan?: MinutesPlan;
+  jornada_type?: JornadaType;
   minutes_included: number;
   minutes_used: number;
   minutes_reset_date: string;     // ISO date del próximo reset
@@ -120,6 +122,9 @@ export interface VoiceAgent {
   auto_refill_enabled?: boolean | null;
   auto_refill_threshold?: number | null;
   auto_refill_minutes?: number | null;
+  auto_refill_ops_enabled?: boolean | null;
+  auto_refill_ops_threshold?: number | null;
+  auto_refill_ops_amount?: number | null;
   // Outbound role
   outbound_role?: string | null;
   // WhatsApp capabilities (Fase 2)

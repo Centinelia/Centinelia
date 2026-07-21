@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, WA_MESSAGES_PLAN_CONFIG, waMsgsPlanFromPriceId } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, WA_MESSAGES_PLAN_CONFIG, waMsgsPlanFromPriceId, JORNADA_CONFIG } from '@/lib/billing/plans';
 import { resetAiOps, setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
@@ -10,7 +10,7 @@ import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
 import type { VoiceAgent } from '@/types/agent';
 import { PLAN_FEATURES, PLAN_CONCURRENT_CALLS } from '@/types/agent';
-import type { Plan } from '@/types/agent';
+import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import type Stripe from 'stripe';
 
@@ -159,6 +159,28 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // Extra ops top-up
+      if (session.metadata?.type === 'extra_ops') {
+        const agentId = session.metadata?.agent_id;
+        const ops     = parseInt(session.metadata?.ops ?? '0');
+        if (!agentId || !ops) break;
+
+        const { data: agent } = await supabase
+          .from('voice_agents')
+          .select('id, portal_email, ai_ops_limit')
+          .eq('id', agentId)
+          .single();
+
+        if (!agent) break;
+
+        await supabase
+          .from('voice_agents')
+          .update({ ai_ops_limit: ((agent.ai_ops_limit as number) ?? 0) + ops })
+          .eq('portal_email', agent.portal_email);
+
+        break;
+      }
+
       // New agent hired from portal
       if (session.metadata?.type === 'new_agent') {
         const agentId    = session.metadata?.agent_id;
@@ -192,14 +214,16 @@ export async function POST(req: NextRequest) {
       }
 
       const agentId     = session.metadata?.agent_id;
-      const featurePlan = session.metadata?.feature_plan as Plan | undefined;
-      const minutesPlan = session.metadata?.minutes_plan as MinutesTier | undefined;
+      const featurePlan  = session.metadata?.feature_plan as Plan | undefined;
+      const minutesPlan  = session.metadata?.minutes_plan as MinutesTier | undefined;
+      const jornadaTypeMeta = (session.metadata?.jornada_type ?? 'combinada') as JornadaType;
 
       if (!agentId || !featurePlan || !minutesPlan
         || !FEATURE_PLAN_CONFIG[featurePlan]
         || !MONTHLY_CONFIG[featurePlan]?.[minutesPlan]) break;
 
       const minutesCfg = MONTHLY_CONFIG[featurePlan][minutesPlan];
+      const jornadaAlloc = JORNADA_CONFIG[jornadaTypeMeta]?.[minutesPlan] ?? { minutes: minutesCfg.minutes, aiOps: minutesCfg.aiOps };
 
       const { data: agentForActivation } = await supabase
         .from('voice_agents').select('portal_email').eq('id', agentId).single();
@@ -208,13 +232,14 @@ export async function POST(req: NextRequest) {
       await supabase.from('voice_agents').update({
         plan:                   featurePlan,
         minutes_plan:           minutesPlan,
+        jornada_type:           jornadaTypeMeta,
         active:                 true,
         billing_status:         'activo',
         stripe_customer_id:     session.customer as string,
         stripe_subscription_id: session.subscription as string,
         grace_period_ends_at:   null,
         ...(activationEmail ? {} : {
-          minutes_included:   minutesCfg.minutes,
+          minutes_included:   jornadaAlloc.minutes,
           minutes_used:       0,
           minutes_reset_date: nextResetDate(),
         }),
@@ -223,13 +248,13 @@ export async function POST(req: NextRequest) {
       if (activationEmail) {
         await supabase.from('account_minutes').upsert({
           portal_email:      activationEmail,
-          minutes_included:  minutesCfg.minutes,
+          minutes_included:  jornadaAlloc.minutes,
           minutes_used:      0,
           minutes_plan:      minutesPlan,
           minutes_reset_date: nextResetDate(),
           updated_at:        new Date().toISOString(),
         }, { onConflict: 'portal_email' });
-        await setAiOpsLimit(activationEmail, minutesCfg.aiOps);
+        await setAiOpsLimit(activationEmail, jornadaAlloc.aiOps);
       }
 
       await supabase.from('minutes_ledger').insert({
@@ -266,11 +291,11 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 2. Buy Twilio number + import to Vapi + assign assistant
+        // 2. Buy Twilio number + import to Vapi + assign assistant (skip for tareas-only agents)
         const areaCode = session.metadata?.area_code || undefined;
         const concurrencyLimit = PLAN_CONCURRENT_CALLS[(fullAgent.plan ?? 'comercial') as Plan];
         let phoneNumber: string | null = null;
-        if (vapiId) {
+        if (vapiId && jornadaTypeMeta !== 'tareas') {
           const provisioned = await provisionPhoneNumber(vapiId, areaCode, concurrencyLimit);
           if (provisioned) {
             phoneNumber = provisioned.phoneNumber;

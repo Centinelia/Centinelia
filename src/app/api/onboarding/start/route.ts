@@ -2,10 +2,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe } from '@/lib/stripe';
 import { PLAN_FEATURES } from '@/types/agent';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG, JORNADA_CONFIG } from '@/lib/billing/plans';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, empresarialConfirmationHtml } from '@/lib/email/send';
-import type { Plan } from '@/types/agent';
+import type { Plan, JornadaType } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
     client_email,
     transfer_whatsapp,
     area_code,
+    jornada_type,
     meerkat_role_id,
     rfc,
     curp,
@@ -155,11 +156,17 @@ export async function POST(req: NextRequest) {
   if (!['comercial', 'pro'].includes(plan))
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
   const tier: MinutesTier = (['starter', 'growth', 'scale'] as MinutesTier[]).includes(minutes_tier) ? minutes_tier : 'starter';
-  if (!business_phone_display?.trim())
+  const jornadaType: JornadaType = (['combinada', 'minutos', 'tareas'] as JornadaType[]).includes(jornada_type) ? jornada_type : 'combinada';
+  const effectiveJornada: JornadaType = isCoordinator ? 'tareas' : jornadaType;
+
+  if (!business_phone_display?.trim() && effectiveJornada !== 'tareas')
     return NextResponse.json({ error: 'Teléfono requerido' }, { status: 400 });
 
   const p = plan as Plan;
   const monthlyConfig = isCoordinator ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[p][tier];
+  const allocation    = isCoordinator
+    ? { minutes: 0, aiOps: monthlyConfig.aiOps }
+    : JORNADA_CONFIG[effectiveJornada][tier];
 
   const { data: agent, error } = await supabase
     .from('voice_agents')
@@ -169,7 +176,7 @@ export async function POST(req: NextRequest) {
       portal_email:           email,
       registration_ip:        ip,
       business_name:          business_name.trim(),
-      business_phone_display: business_phone_display.trim(),
+      business_phone_display: business_phone_display?.trim() ?? '',
       giro_template:          giro_template ?? 'general',
       agent_name:             agent_name?.trim() || meerkat?.nombre || null,
       role:                   meerkat?.rol || null,
@@ -181,7 +188,8 @@ export async function POST(req: NextRequest) {
         ? { ...meerkat.features, role_color: meerkat.color, meerkat_role_id: meerkat.id, ...(meerkat.imagen ? { avatar: meerkat.imagen } : {}) }
         : PLAN_FEATURES[p],
       ...(meerkat?.voiceId ? { elevenlabs_voice_id: meerkat.voiceId } : {}),
-      minutes_included:       monthlyConfig.minutes,
+      jornada_type:           effectiveJornada,
+      minutes_included:       allocation.minutes,
       minutes_plan:           tier,
       minutes_reset_date:     resetDate.toISOString().slice(0, 10),
       active:                 false,
@@ -227,8 +235,9 @@ export async function POST(req: NextRequest) {
       agent_id:     agent.id,
       feature_plan: p,
       minutes_plan: tier,
+      jornada_type: effectiveJornada,
       source:       'onboarding',
-      area_code:    area_code ?? '',
+      area_code:    effectiveJornada !== 'tareas' ? (area_code ?? '') : '',
     },
     subscription_data: {
       metadata: {
