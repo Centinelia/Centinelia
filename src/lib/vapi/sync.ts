@@ -585,7 +585,7 @@ interface MeerkatModelConfig {
 }
 
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.93, minChars: 15, voiceModel: 'eleven_flash_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.93, minChars: 15, voiceModel: 'eleven_flash_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
   noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 0.98, minChars: 40 },
   nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
   nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 110, speed: 0.98, minChars: 40 },
@@ -682,7 +682,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     })(),
     backgroundSound: 'office',
     backchannelingEnabled: true,
-    backgroundDenoisingEnabled: false,
+    backgroundDenoisingEnabled: true,
     silenceTimeoutSeconds: 10,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
