@@ -1036,29 +1036,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
                     <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                      {allCalls.length > 0 && (
-                        <>
-                          {aiOpsLimit > 0 && <p className="text-[11px] font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                          <div className="flex flex-col gap-3">
+                      <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                        {allCalls.length > 0 && (
+                          <div className="flex flex-col gap-2">
+                            {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
                             <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
                             <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
                             <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
                           </div>
-                          <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
-                        </>
-                      )}
-                      {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                        <>
-                          {allCalls.length > 0 && <div className="mt-4 mb-4" style={{ borderTop: '1px solid var(--c-border)' }} />}
-                          {allCalls.length > 0 && <p className="text-[11px] font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                          <div className="flex flex-col gap-3">
-                            <StatBox label="Por día"    value={`${avgOpsPerDay} tareas`} />
-                            <StatBox label="Por semana" value={`${avgOpsPerWeek} tareas`} />
-                            <StatBox label="Por mes"    value={`${avgOpsPerMonth} tareas`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                        )}
+                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                          <div className="flex flex-col gap-2">
+                            {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                            <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                            <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                            <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
                           </div>
-                          <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Este mes: {aiOpsUsed} tareas en {daysSinceReset} días</p>
-                        </>
-                      )}
+                        )}
+                      </div>
                     </div>
                   )}
                   <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
