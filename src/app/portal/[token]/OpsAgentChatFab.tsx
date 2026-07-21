@@ -49,6 +49,40 @@ function welcomeMsg(agent: AgentOption): Message {
   };
 }
 
+// ── Bubble messages ───────────────────────────────────────────────────────────
+
+type MsgFn = (name: string) => string;
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h >= 6  && h < 12) return 'Buenos días';
+  if (h >= 12 && h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+const BUBBLE_MSGS: MsgFn[] = [
+  name => `${greeting()}, jefe. Aquí ${name}.`,
+  name => `${greeting()}. ¿En qué te puedo ayudar hoy?`,
+  _    => '¿Hay más trabajo para nosotros?',
+  name => `${name} por aquí. Aquí cuando me necesites.`,
+  _    => 'Todo en orden por el momento.',
+  _    => 'Sin incidentes por aquí.',
+  _    => 'Acabo de terminar con lo de antes.',
+  _    => '¿Checamos la bandeja juntos?',
+  _    => 'Detecté algo interesante. ¿Lo revisamos?',
+  _    => '¿Quieres un resumen de lo que pasó hoy?',
+  _    => '¿En qué podemos ayudarte hoy?',
+  name => `Soy ${name}. Lista para lo que sigue.`,
+];
+
+interface BubbleState {
+  text:     string;
+  agent:    AgentOption;
+  key:      number;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 interface Props {
   token:  string;
   agents: AgentOption[];
@@ -60,11 +94,51 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
   const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
   const [input, setInput]         = useState('');
   const [streaming, setStreaming] = useState(false);
+
+  // Bubble state
+  const [bubble,        setBubble]        = useState<BubbleState | null>(null);
+  const [bubbleVisible, setBubbleVisible] = useState(false);
+  const openRef    = useRef(open);
+  const bubbleKey  = useRef(0);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
   const selectedAgent = agents.find(a => a.id === selectedId) ?? agents[0];
   const messages: Message[] = chatHistory[selectedId] ?? (selectedAgent ? [welcomeMsg(selectedAgent)] : []);
+
+  useEffect(() => { openRef.current = open; }, [open]);
+
+  // Bubble timer — starts once, runs independently of open state
+  useEffect(() => {
+    if (agents.length === 0) return;
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    function showBubble() {
+      if (!openRef.current) {
+        const agent = agents[Math.floor(Math.random() * agents.length)];
+        const fn    = BUBBLE_MSGS[Math.floor(Math.random() * BUBBLE_MSGS.length)];
+        const name  = agent.agent_name?.trim() || 'tu empleado';
+
+        setBubble({ text: fn(name), agent, key: ++bubbleKey.current });
+        setBubbleVisible(true);
+
+        setTimeout(() => {
+          setBubbleVisible(false);
+          setTimeout(() => setBubble(null), 400);
+        }, 5_500);
+      }
+
+      // Next bubble: 3–4 minutes (randomized)
+      const delay = (180 + Math.floor(Math.random() * 60)) * 1_000;
+      timeoutId = setTimeout(showBubble, delay);
+    }
+
+    // First bubble: 20 seconds after mount
+    timeoutId = setTimeout(showBubble, 20_000);
+    return () => clearTimeout(timeoutId);
+  }, [agents]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -309,6 +383,61 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                 : <Send size={14} color={input.trim() ? '#fff' : '#A07CFF'} />
               }
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating bubble — appears above the FAB */}
+      {bubble && !open && (
+        <div
+          key={bubble.key}
+          className="fixed right-4 z-50 flex items-end gap-2"
+          style={{
+            bottom:     84,
+            maxWidth:   240,
+            opacity:    bubbleVisible ? 1 : 0,
+            transform:  bubbleVisible ? 'translateY(0) scale(1)' : 'translateY(6px) scale(0.97)',
+            transition: bubbleVisible
+              ? 'opacity 0.25s ease, transform 0.25s ease'
+              : 'opacity 0.35s ease, transform 0.35s ease',
+            pointerEvents: 'none',
+          }}
+        >
+          {/* Avatar */}
+          <div
+            className="flex-shrink-0 overflow-hidden flex items-center justify-center"
+            style={{
+              width:        28,
+              height:       28,
+              borderRadius: 8,
+              background:   `${bubble.agent.role_color || agentColor(bubble.agent.id)}20`,
+              border:       `1px solid ${bubble.agent.role_color || agentColor(bubble.agent.id)}35`,
+            }}
+          >
+            {bubble.agent.avatar_url
+              ? <img src={bubble.agent.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              : <span style={{ fontSize: 11, fontWeight: 700, color: bubble.agent.role_color || agentColor(bubble.agent.id) }}>
+                  {(bubble.agent.agent_name?.trim() || bubble.agent.business_name).charAt(0).toUpperCase()}
+                </span>
+            }
+          </div>
+
+          {/* Speech bubble */}
+          <div
+            style={{
+              background:    'var(--c-modal)',
+              border:        '1px solid var(--c-border)',
+              borderRadius:  14,
+              borderBottomRightRadius: 4,
+              padding:       '8px 12px',
+              boxShadow:     '0 4px 20px rgba(0,0,0,0.18)',
+              fontSize:      13,
+              lineHeight:    1.4,
+              color:         'var(--c-text)',
+              whiteSpace:    'nowrap',
+            }}
+          >
+            {bubble.text}
           </div>
         </div>
       )}

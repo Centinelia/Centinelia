@@ -63,11 +63,12 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'inicio', moduleId: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
-        { label: 'Resultados',        id: 'resumen' },
-        { label: 'Tu equipo',         id: 'equipo-hoy' },
-        { label: 'Actividad reciente',id: 'actividad' },
-        { label: 'Actividad horaria', id: 'horas-pico' },
-        { label: 'Reporte mensual',   id: 'reporte-mensual' },
+        { label: 'Resultados',         id: 'resumen' },
+        { label: 'Tu equipo',          id: 'equipo-hoy' },
+        { label: 'Actividad reciente', id: 'actividad' },
+        { label: 'Actividad horaria',  id: 'horas-pico' },
+        { label: 'Contexto del equipo',id: 'contexto' },
+        { label: 'Reporte mensual',    id: 'reporte-mensual' },
       ],
     },
     {
@@ -76,8 +77,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Organización',              id: 'organizacion' },
         { label: 'Branding',                  id: 'branding' },
         { label: 'Manual de la organización', id: 'conocimiento' },
-        { label: 'Sitio web y reseñas',  id: 'sitio' },
-        { label: 'Horarios',             id: 'horarios' },
+        { label: 'Perfil del responsable',    id: 'perfil-dueno' },
+        { label: 'Sitio web y reseñas',       id: 'sitio' },
+        { label: 'Horarios',                  id: 'horarios' },
       ],
     },
     {
@@ -131,9 +133,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Minutos y uso', id: 'minutos' },
-        { label: 'Plan y cambios',id: 'plan' },
-        { label: 'Contrato',      id: 'contrato' },
+        { label: 'Minutos y uso',    id: 'minutos' },
+        { label: 'Comprar saldo',    id: 'comprar' },
+        { label: 'Historial',        id: 'historial' },
+        { label: 'Contrato',         id: 'contrato-link', href: `/portal/${token}/contrato` },
       ],
     },
     ...(isOwner ? [{

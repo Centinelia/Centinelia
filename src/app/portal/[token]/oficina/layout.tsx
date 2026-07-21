@@ -174,7 +174,6 @@ export default async function OficinaLayout({
             hasStripe={hasStripe}
             vertical={vertical}
             modules={modules}
-            agentName={(agent as any).agent_name ?? undefined}
           />
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="max-w-4xl px-4 sm:px-6 py-6 flex-1">

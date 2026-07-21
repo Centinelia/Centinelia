@@ -775,7 +775,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
 
                 {/* Contexto de empleados */}
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div id="contexto" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
                     <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (manual de la organización + instrucciones del puesto + aprendizajes). A más memoria, más informado está el empleado." />
@@ -831,9 +831,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Main column */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
-                {agent.portal_email && (
-                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
-                )}
+                <div id="organizacion">
+                  {agent.portal_email && (
+                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                  )}
+                </div>
 
                 <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
@@ -970,7 +972,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   )}
 
-                  <div className="rounded-xl p-5" style={{
+                  <div id="comprar" className="rounded-xl p-5" style={{
                     background:     minutesPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)',
                     border:         minutesPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : minutesPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
                     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
@@ -1022,7 +1024,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>Histórico: {allTimeTotalMin} min en {daysSinceFirst} días</p>
                     </div>
                   )}
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
                     <div className="relative">
                       <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
