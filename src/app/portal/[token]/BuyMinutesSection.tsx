@@ -4,16 +4,11 @@ import { useState } from 'react';
 import { Zap } from 'lucide-react';
 
 const PRICE_PER_MIN = 12;
-const OPS_PER_100_MIN = 35;
 
 const PACKAGES = [
   { minutes: 100, label: '100 min', price: 1200 },
   { minutes: 200, label: '200 min', price: 2400 },
 ];
-
-function bonusOps(minutes: number): number {
-  return Math.floor(minutes / 100) * OPS_PER_100_MIN;
-}
 
 function calcPrice(minutes: number): number {
   const pkg = PACKAGES.find(p => p.minutes === minutes);
@@ -29,7 +24,6 @@ export default function BuyMinutesSection({ token }: { token: string }) {
   const activeMinutes = selected === 'custom' ? (customMinutes > 0 ? customMinutes : null) : selected;
   const price         = activeMinutes ? calcPrice(activeMinutes) : null;
   const ready         = activeMinutes !== null && activeMinutes >= 10;
-  const ops           = activeMinutes ? bonusOps(activeMinutes) : 0;
 
   const handleBuy = async () => {
     if (!ready || loading) return;
@@ -52,7 +46,6 @@ export default function BuyMinutesSection({ token }: { token: string }) {
       <div className="grid grid-cols-3 gap-1.5">
         {PACKAGES.map(pkg => {
           const active = selected === pkg.minutes;
-          const ops    = bonusOps(pkg.minutes);
           return (
             <button
               key={pkg.minutes}
@@ -66,7 +59,6 @@ export default function BuyMinutesSection({ token }: { token: string }) {
             >
               <span className="text-sm font-bold">{pkg.label}</span>
               <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${pkg.price.toLocaleString('es-MX')} MXN</span>
-              <span className="text-[10px] mt-1 font-medium" style={{ color: '#6C3BFF' }}>+{ops} tareas</span>
             </button>
           );
         })}
@@ -83,7 +75,6 @@ export default function BuyMinutesSection({ token }: { token: string }) {
         >
           <span className="text-sm font-bold">Personalizado</span>
           <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_MIN}/min</span>
-          <span className="text-[10px] mt-1 font-medium" style={{ color: '#6C3BFF' }}>+35 tareas c/100 min</span>
         </button>
       </div>
 
@@ -110,9 +101,6 @@ export default function BuyMinutesSection({ token }: { token: string }) {
               ${price.toLocaleString('es-MX')}
             </span>
           )}
-          {ops > 0 && (
-            <span className="text-[10px] font-medium flex-shrink-0" style={{ color: '#6C3BFF' }}>+{ops} tareas</span>
-          )}
         </div>
       )}
 
@@ -131,7 +119,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
         {loading
           ? 'Redirigiendo…'
           : price
-            ? `Comprar, $${price.toLocaleString('es-MX')} MXN${ops > 0 ? ` · +${ops} tareas` : ''}`
+            ? `Comprar, $${price.toLocaleString('es-MX')} MXN`
             : 'Comprar minutos'}
       </button>
     </div>

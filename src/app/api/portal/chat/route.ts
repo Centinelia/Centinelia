@@ -121,12 +121,11 @@ Exactamente por esto: los aprendizajes conversacionales se van integrando. Si el
 - Al 80% de uso el cliente recibe alerta por WhatsApp y correo.
 - Al 100% el agente se pausa automáticamente.
 - **Minutos adicionales** (compra desde el portal, Cuenta → Minutos y uso):
-  - 100 min: $1,200 MXN → incluye +35 ops IA de regalo
-  - 200 min: $2,400 MXN → incluye +70 ops IA de regalo
-  - Personalizado: $12 MXN/min → +35 ops IA por cada 100 min comprados
+  - 100 min: $1,200 MXN
+  - 200 min: $2,400 MXN
+  - Personalizado: $12 MXN/min
   - Por minuto suelto (referencia): $12.99 MXN/min
 - Los minutos comprados se acreditan de inmediato y reactivan el agente si estaba pausado.
-- Las ops IA bonificadas se suman al límite mensual de la cuenta.
 
 ---
 
