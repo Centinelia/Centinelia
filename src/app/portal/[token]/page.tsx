@@ -990,16 +990,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           </p>
                         )}
                         <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
-                        <div className={minutesIncluded > 0 && aiOpsLimit > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                        <div className="flex flex-col gap-5">
                           {minutesIncluded > 0 && (
                             <div>
-                              {aiOpsLimit > 0 && <p className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>Minutos</p>}
+                              {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
                               <BuyMinutesSection token={token} />
                             </div>
                           )}
+                          {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                            <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                          )}
                           {aiOpsLimit > 0 && (
                             <div>
-                              {minutesIncluded > 0 && <p className="text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>Tareas</p>}
+                              {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
                               <BuyOpsSection token={token} />
                             </div>
                           )}
