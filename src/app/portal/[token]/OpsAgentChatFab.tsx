@@ -434,7 +434,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               fontSize:      13,
               lineHeight:    1.4,
               color:         'var(--c-text)',
-              whiteSpace:    'nowrap',
+              wordBreak:     'break-word',
             }}
           >
             {bubble.text}
