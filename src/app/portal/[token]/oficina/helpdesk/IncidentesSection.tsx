@@ -69,7 +69,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs pt-3" style={{ color: 'var(--c-text-3)' }}>
-            Cuando hay un incidente activo, tu empleado lo menciona automáticamente a cualquier llamada antes de crear tickets.
+            Tu empleado informará estos incidentes antes de registrar nuevas solicitudes.
           </p>
 
           {/* Active incidents */}
@@ -124,7 +124,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
                 <button onClick={handleAdd} disabled={saving || !titulo.trim() || !mensajeVoz.trim()}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold"
                   style={{ background: '#ef4444', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                  {saving ? 'Publicando...' : 'Publicar incidente'}
+                  {saving ? 'Reportando...' : 'Reportar incidente'}
                 </button>
                 <button onClick={() => setShowAdd(false)}
                   className="px-3 py-1.5 rounded-lg text-xs"
@@ -137,7 +137,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
             <button onClick={() => setShowAdd(true)}
               className="flex items-center gap-1.5 text-xs self-start transition-opacity hover:opacity-70"
               style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}>
-              <Plus size={12} /> Publicar incidente
+              <Plus size={12} /> Reportar incidente
             </button>
           )}
 

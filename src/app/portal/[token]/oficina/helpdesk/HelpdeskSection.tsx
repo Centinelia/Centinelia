@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren } from 'lucide-react';
 
 const OVERDUE_MS: Record<string, number> = {
-  critica: 4  * 60 * 60 * 1000,  // 4 h
-  alta:    24 * 60 * 60 * 1000,  // 24 h
+  critica: 4  * 60 * 60 * 1000,
+  alta:    24 * 60 * 60 * 1000,
 };
 const ACTIVE_STATUSES = new Set(['abierto', 'en_proceso', 'pendiente']);
 
@@ -29,6 +29,14 @@ const CAT_COLOR: Record<string, string> = {
 const PRI_COLOR: Record<string, string> = {
   baja: '#6b7280', normal: '#3b82f6', alta: '#f59e0b', critica: '#ef4444',
 };
+const STATUS_LABELS: Record<string, string> = {
+  '':         'Todos',
+  abierto:    'Abierto',
+  en_proceso: 'En proceso',
+  pendiente:  'En espera',
+  resuelto:   'Resuelto',
+  cerrado:    'Cerrado',
+};
 const STA_ICON: Record<string, React.ReactNode> = {
   abierto:    <Clock size={11} />,
   en_proceso: <Loader2 size={11} className="animate-spin" />,
@@ -40,6 +48,14 @@ const STA_ICON: Record<string, React.ReactNode> = {
 const CATEGORIAS = ['red','servidores','usuario','software','hardware','accesos','otro'];
 const PRIORIDADES = ['baja','normal','alta','critica'];
 const STATUSES    = ['abierto','en_proceso','pendiente','resuelto','cerrado'];
+const FILTERS     = ['', 'abierto', 'en_proceso', 'pendiente', 'resuelto'] as const;
+const FILTER_LABELS: Record<string, string> = {
+  '':         'Todos',
+  abierto:    'Abiertos',
+  en_proceso: 'En proceso',
+  pendiente:  'En espera',
+  resuelto:   'Resueltos',
+};
 
 export default function HelpdeskSection({ token }: { token: string }) {
   const [tickets, setTickets]   = useState<Ticket[]>([]);
@@ -49,12 +65,11 @@ export default function HelpdeskSection({ token }: { token: string }) {
   const [showAdd, setShowAdd]   = useState(false);
   const [saving, setSaving]     = useState(false);
 
-  // New ticket form
-  const [newTitulo, setNewTitulo]     = useState('');
-  const [newCat,    setNewCat]        = useState('otro');
-  const [newPri,    setNewPri]        = useState('normal');
-  const [newDesc,   setNewDesc]       = useState('');
-  const [newAsig,   setNewAsig]       = useState('');
+  const [newTitulo, setNewTitulo] = useState('');
+  const [newCat,    setNewCat]    = useState('otro');
+  const [newPri,    setNewPri]    = useState('normal');
+  const [newDesc,   setNewDesc]   = useState('');
+  const [newAsig,   setNewAsig]   = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,46 +104,49 @@ export default function HelpdeskSection({ token }: { token: string }) {
     setSaving(false);
   };
 
-  const open     = tickets.filter(t => t.status === 'abierto').length;
-  const urgent   = tickets.filter(t => t.prioridad === 'critica' && t.status !== 'cerrado' && t.status !== 'resuelto').length;
-  const overdue  = tickets.filter(isOverdue);
-
-  const display = filter ? tickets : tickets.slice(0, 50);
+  const pendientes = tickets.filter(t => ['abierto', 'en_proceso', 'pendiente'].includes(t.status)).length;
+  const enAtencion = tickets.filter(t => t.status === 'en_proceso').length;
+  const criticos   = tickets.filter(t => t.prioridad === 'critica' && !['resuelto','cerrado'].includes(t.status)).length;
+  const resueltos  = tickets.filter(t => ['resuelto','cerrado'].includes(t.status)).length;
+  const overdue    = tickets.filter(isOverdue);
+  const display    = filter ? tickets : tickets.slice(0, 50);
 
   return (
     <div className="flex flex-col gap-4" id="of-helpdesk">
-      {/* Overdue alert banner */}
+
+      {/* Overdue alert */}
       {overdue.length > 0 && (
         <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
           <Siren size={14} className="shrink-0 animate-pulse" style={{ color: '#ef4444' }} />
           <p className="text-xs font-medium" style={{ color: '#fca5a5' }}>
             {overdue.length === 1
-              ? `1 ticket requiere atención inmediata (${overdue[0].folio})`
-              : `${overdue.length} tickets requieren atención inmediata`}
+              ? `1 solicitud requiere atención inmediata (${overdue[0].folio})`
+              : `${overdue.length} solicitudes requieren atención inmediata`}
           </p>
         </div>
       )}
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {[
-          { label: 'Abiertos',  value: open,   color: '#3b82f6' },
-          { label: 'Críticos',  value: urgent,  color: '#ef4444' },
-          { label: 'Total',     value: tickets.length, color: 'var(--c-text-2)' },
+          { label: 'Pendientes',  value: pendientes, color: '#3b82f6' },
+          { label: 'En atención', value: enAtencion, color: '#6C3BFF' },
+          { label: 'Críticos',    value: criticos,   color: '#ef4444' },
+          { label: 'Resueltos',   value: resueltos,  color: '#22c55e' },
         ].map(s => (
           <div key={s.label} className="rounded-xl p-3 text-center"
             style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
-            <div className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</div>
+            <div className="text-xl font-bold tabular-nums" style={{ color: s.value > 0 ? s.color : 'var(--c-text-3)' }}>{s.value}</div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Header + filter */}
+      {/* Filters + action */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {['', 'abierto', 'en_proceso', 'pendiente', 'resuelto'].map(s => (
+          {FILTERS.map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
               style={{
@@ -136,14 +154,14 @@ export default function HelpdeskSection({ token }: { token: string }) {
                 color:      filter === s ? '#fff' : 'var(--c-text-3)',
                 border:     '1px solid ' + (filter === s ? '#6C3BFF' : 'var(--c-border)'),
               }}>
-              {s === '' ? 'Todos' : s.replace('_', ' ')}
+              {FILTER_LABELS[s]}
             </button>
           ))}
         </div>
         <button onClick={() => setShowAdd(v => !v)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
           style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          <Plus size={12} /> Nuevo ticket
+          <Plus size={12} /> Registrar solicitud
         </button>
       </div>
 
@@ -152,7 +170,7 @@ export default function HelpdeskSection({ token }: { token: string }) {
         <div className="rounded-xl p-4 flex flex-col gap-3"
           style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
           <input value={newTitulo} onChange={e => setNewTitulo(e.target.value)}
-            placeholder="Título del ticket *"
+            placeholder="Título de la solicitud *"
             className="w-full px-3 py-2 rounded-lg text-sm"
             style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
           <div className="grid grid-cols-2 gap-2">
@@ -194,8 +212,24 @@ export default function HelpdeskSection({ token }: { token: string }) {
       {loading ? (
         <div className="text-center py-8" style={{ color: 'var(--c-text-4)' }}>Cargando...</div>
       ) : display.length === 0 ? (
-        <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
-          <p className="text-sm">No hay tickets{filter ? ` con estatus "${filter}"` : ''}.</p>
+        <div className="flex flex-col items-center py-12 gap-3">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+            style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+            <CheckCircle size={22} style={{ color: '#22c55e' }} />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Todo está bajo control</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
+              {filter ? 'No hay solicitudes con este estado.' : 'No hay solicitudes pendientes en este momento.'}
+            </p>
+          </div>
+          {!filter && !showAdd && (
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mt-1"
+              style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)', cursor: 'pointer' }}>
+              <Plus size={12} /> Registrar solicitud
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -227,12 +261,12 @@ export default function HelpdeskSection({ token }: { token: string }) {
                       </span>
                       <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
                         style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>
-                        {STA_ICON[ticket.status]} {ticket.status.replace('_', ' ')}
+                        {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? ticket.status.replace('_',' ')}
                       </span>
                     </div>
                     <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{ticket.titulo}</p>
                     {ticket.asignado_a && (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>→ {ticket.asignado_a}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Asignado a {ticket.asignado_a}</p>
                     )}
                   </div>
                   <div className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
@@ -253,7 +287,7 @@ export default function HelpdeskSection({ token }: { token: string }) {
                           onChange={e => updateTicket(ticket.id, { status: e.target.value })}
                           className="px-2 py-1 rounded-lg text-xs"
                           style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}>
-                          {STATUSES.map(s => <option key={s} value={s}>{s.replace('_',' ')}</option>)}
+                          {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</option>)}
                         </select>
                       </div>
                       <div>

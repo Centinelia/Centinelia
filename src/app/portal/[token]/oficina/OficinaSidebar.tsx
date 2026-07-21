@@ -7,19 +7,20 @@ import {
   Activity, Inbox, BarChart2, FileText, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Phone,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
 interface NavItem {
-  href:      string;
-  moduleId:  string;
-  label:     string;
-  icon:      React.ElementType;
-  badgeKey:  string;
-  opsHint:   string;
-  pulseId:   string;
-  vertical?: string;
+  href:        string;
+  fromPortal?: boolean;   // href is relative to /portal/${token}, not /portal/${token}/oficina
+  moduleId:    string;
+  label:       string;
+  icon:        React.ElementType;
+  badgeKey:    string;
+  opsHint:     string;
+  pulseId:     string;
+  vertical?:   string;
 }
 
 interface NavSection {
@@ -32,6 +33,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'ACTIVIDAD',
     items: [
       { href: '',          moduleId: 'of_actividad',  label: 'Hoy en la oficina', icon: Activity,  badgeKey: '',        opsHint: '',               pulseId: 'of-actividad'  },
+      { href: '/llamadas', moduleId: 'of_llamadas', label: 'Llamadas', icon: Phone, badgeKey: '', opsHint: '', pulseId: '' },
       { href: '/bandeja',  moduleId: 'of_bandeja',    label: 'Bandeja',           icon: Inbox,     badgeKey: 'bandeja', opsHint: '1 tarea/correo', pulseId: 'of-bandeja'    },
       { href: '/reportes', moduleId: 'of_reportes',   label: 'Reportes',          icon: BarChart2, badgeKey: '',        opsHint: '1 tarea/reporte',pulseId: 'of-reportes'   },
     ],
@@ -95,6 +97,7 @@ export default function OficinaSidebar({
       .filter(i => !i.vertical || i.vertical === vertical)
       .filter(i => !modules || modules.includes(i.moduleId))
       .some(i => {
+        if (i.fromPortal) return pathname.startsWith(`/portal/${token}${i.href}`);
         const href = `${base}${i.href}`;
         return i.href === '' ? pathname === base || pathname === `${base}/` : pathname.startsWith(href);
       })
@@ -184,10 +187,12 @@ export default function OficinaSidebar({
               </button>
 
               {isOpen && visibleItems.map(item => {
-                const href     = `${base}${item.href}`;
-                const isActive = item.href === ''
-                  ? pathname === base || pathname === `${base}/`
-                  : pathname.startsWith(href);
+                const href     = item.fromPortal ? `/portal/${token}${item.href}` : `${base}${item.href}`;
+                const isActive = item.fromPortal
+                  ? pathname.startsWith(`/portal/${token}${item.href}`)
+                  : item.href === ''
+                    ? pathname === base || pathname === `${base}/`
+                    : pathname.startsWith(href);
                 const count = item.badgeKey ? (badges[item.badgeKey] ?? 0) : 0;
                 const Icon  = item.icon;
 
@@ -195,7 +200,7 @@ export default function OficinaSidebar({
                   <Link
                     key={item.href}
                     href={href}
-                    onClick={() => setPendingId(item.pulseId)}
+                    onClick={() => { if (item.pulseId) setPendingId(item.pulseId); }}
                     className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5"
                     style={{
                       background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',

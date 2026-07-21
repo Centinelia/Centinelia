@@ -32,9 +32,11 @@ export default async function IntegracionesPage({ params }: Props) {
     ? await supabase.from('voice_agents').select('role, features').eq('portal_email', agent.portal_email)
     : { data: [] };
 
-  const hasOpsAgent  = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
-  const hasNotion    = !!(agent as any).notion_access_token;
-  const inboxAddress = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
+  const hasOpsAgent     = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
+  const hasNotion       = !!(agent as any).notion_access_token;
+  const inboxAddress    = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
+  const meerkatRoleId   = (agent as any).features?.meerkat_role_id as string | undefined;
+  const isReceptionist  = ['nia', 'nelia', 'nico', 'neo'].includes(meerkatRoleId ?? '');
 
   return (
     <div id="of-integraciones" className="flex flex-col gap-8">
@@ -54,14 +56,16 @@ export default async function IntegracionesPage({ params }: Props) {
         />
       </div>
 
-      <div>
-        <div className="flex items-center gap-1.5 mb-5">
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-            Correo por empleado
-          </h2>
+      {!isReceptionist && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-5">
+            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Correo por empleado
+            </h2>
+          </div>
+          <AgentIntegrationsPanel token={token} />
         </div>
-        <AgentIntegrationsPanel token={token} />
-      </div>
+      )}
 
     </div>
   );
