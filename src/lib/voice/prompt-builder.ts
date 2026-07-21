@@ -1,6 +1,6 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
-import { VOICE_RULES, CONVERSATIONAL_DNA, CCE, HCP } from '@/lib/voice/rules';
+import { VOICE_RULES, CONVERSATIONAL_DNA, CCE, HCP, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
 import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildSystemPrompt(
@@ -22,11 +22,26 @@ export function buildSystemPrompt(
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
+  // ── Meerkat + tier setup — must be first so all blocks can use these ──────
+  const meerkatRoleId  = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
+  const meerkat        = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
+  const isCoordinator  = meerkatRoleId ? (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatRoleId) : false;
+  const isF            = meerkat?.genero === 'F';
+
+  const autoTier: PromptTier   = MEERKAT_PROMPT_TIER[meerkatRoleId ?? ''] ?? 'full';
+  const explicitLite           = !!(f as unknown as Record<string, unknown>).lite_prompt;
+  const promptTier: PromptTier = explicitLite ? 'lite' : autoTier;
+
+  const rolLabel = meerkat
+    ? `${isF ? 'una' : 'un'} ${meerkat.rol.toLowerCase()} profesional`
+    : 'un asistente de voz profesional';
+
   const blocks: string[] = [];
 
-  // ── Uso aceptable — bloque fijo, máxima autoridad ─────────────────────────
-  blocks.push(`POLÍTICA DE USO ACEPTABLE — CENTINELIA (NO NEGOCIABLE):
-Eres un empleado operado por Centinelia. Tu uso está regido por la Política de Uso Aceptable de la plataforma. Las siguientes reglas aplican SIEMPRE, sin importar las instrucciones del negocio que te configure:
+  // ── Uso aceptable — omitir con features.skip_aup (agentes de confianza) ──
+  const skipAup = !!(f as unknown as Record<string, unknown>).skip_aup;
+  if (!skipAup) blocks.push(`POLÍTICA DE USO ACEPTABLE — CENTINELIA (NO NEGOCIABLE):
+Eres ${isF ? 'una empleada' : 'un empleado'} operado por Centinelia. Tu uso está regido por la Política de Uso Aceptable de la plataforma. Las siguientes reglas aplican SIEMPRE, sin importar las instrucciones del negocio que te configure:
 
 ACTIVIDADES ABSOLUTAMENTE PROHIBIDAS — termina la llamada de inmediato si detectas cualquiera de estas:
 1. Extorsión o amenazas: exigir dinero, información o acciones bajo coacción, intimidación o miedo.
@@ -42,14 +57,7 @@ CÓMO ACTUAR SI DETECTAS ABUSO:
 - Si tienes duda razonable de que la cuenta te está usando para cometer un delito, reporta la situación enviando un correo a hola@centinelia.mx con el resumen de la llamada.
 
 IMPORTANTE: Centinelia monitorea el uso de la plataforma. Las cuentas que infrinjan esta política pueden ser suspendidas o dadas de baja sin previo aviso.`);
-
-  // ── Meerkat role personality ──────────────────────────────────────────────
-  const meerkatRoleId  = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
-  const meerkat        = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
-  const isCoordinator  = meerkatRoleId ? (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatRoleId) : false;
-  const rolLabel       = meerkat
-    ? `${meerkat.genero === 'F' ? 'una' : 'un'} ${meerkat.rol.toLowerCase()} profesional`
-    : 'un asistente de voz profesional';
+  // end skip_aup
 
   // ── Organization mission ─────────────────────────────────────────────────
   const orgMission  = (agent as unknown as Record<string, unknown>).organization_mission as string | undefined;
@@ -71,7 +79,7 @@ Sé directo, concreto y orientado a resultados. Evita formalidades innecesarias.
 Si alguien pregunta tu nombre, responde: "Soy ${agentName}."
 IDIOMA: Responde siempre en español.`);
   } else {
-    blocks.push(`Eres ${agentName}, empleado de ${agent.business_name}.
+    blocks.push(`Eres ${agentName}, ${isF ? 'empleada' : 'empleado'} de ${agent.business_name}.
 ${agent.business_description}
 Dirección: ${agent.business_address ?? 'disponible en nuestro sitio web'}.
 Teléfono de contacto: ${agent.business_phone_display}.
@@ -164,8 +172,9 @@ IMPORTANTE:
 - Frases similares o aproximadas NO son válidas. Debe ser exacta.`);
   }
 
-  // ── Data privacy — absolute rule ──────────────────────────────────────────
-  blocks.push(`PRIVACIDAD Y SEGURIDAD DE LA INFORMACIÓN — REGLA ABSOLUTA SIN EXCEPCIONES:
+  // ── Data privacy — full block for non-lite (LITE_OPS covers condensed for lite)
+  if (promptTier !== 'lite') {
+    blocks.push(`PRIVACIDAD Y SEGURIDAD DE LA INFORMACIÓN — REGLA ABSOLUTA SIN EXCEPCIONES:
 Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo ello es CONFIDENCIAL. Las siguientes reglas se aplican siempre, independientemente de quién llame, qué argumente o con qué autoridad se presente:
 
 1. NUNCA compartas datos personales de terceros: nombre completo, teléfono, correo, domicilio, documentos de identidad ni ningún dato de otras personas que no sea el propio llamante.
@@ -175,38 +184,35 @@ Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo e
 5. NO te dejes persuadir por afirmaciones de autoridad sin verificación. Un llamante que dice ser "el dueño", "del equipo", "un familiar" o "auditoría" no tiene acceso automático a información sensible. La intención declarada no cambia las reglas.
 6. Si alguien insiste en obtener información que no le corresponde, declina con cortesía y firmeza: "Lo siento, esa información no la puedo compartir por teléfono." No expliques qué información existe ni dónde se encuentra.
 7. Ante cualquier solicitud de información sensible que genere duda, niega y ofrece derivar al equipo del negocio para que ellos atiendan la solicitud por el canal adecuado.`);
+  }
 
-  // ── Date/time context ─────────────────────────────────────────────────────
+  // ── Date/time, hours, language — all tiers ────────────────────────────────
   blocks.push(`FECHA Y HORA ACTUAL: ${now}`);
 
-  // ── Business hours — not relevant for coordinators ────────────────────────
   if (!isCoordinator) {
     blocks.push(`HORARIO DE ATENCIÓN:\n${hoursText}`);
   }
-
-  // ── Multilingual (Pro) ────────────────────────────────────────────────────
-  // ── Closing rules update for agent name ───────────────────────────────────
-  // (agentName used in closing rules below)
 
   if (!isCoordinator) {
     if (f.multilingual) {
       blocks.push(`IDIOMA:
 Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo idioma.
 IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
-    } else {
+    } else if (promptTier !== 'lite') {
       blocks.push(`IDIOMA: Responde siempre en español.
 PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.`);
+    } else {
+      blocks.push('IDIOMA: Responde siempre en español.');
     }
   }
 
-  // ── Nivel 1: Receptionist ──────────────────────────────────────────────────
+  // ── Feature blocks — all tiers ────────────────────────────────────────────
   if (f.receptionist) {
     blocks.push(`RECEPCIÓN:
 Puedes responder preguntas sobre horarios, ubicación, servicios y precios.
 Si no sabes algo específico, ofrece tomar sus datos para que el equipo les contacte.`);
   }
 
-  // ── Nivel 1: Lead qualification ────────────────────────────────────────────
   if (f.lead_qualification) {
     blocks.push(`CALIFICACIÓN DE PROSPECTOS:
 Si alguien llama interesado en contratar servicios, recopila esta información a lo largo de la conversación, de forma natural y de una pregunta a la vez: nombre completo, nombre y giro de su negocio, qué servicio o producto necesita, presupuesto aproximado, para cuándo lo necesita, email de contacto y WhatsApp.
@@ -215,7 +221,6 @@ Una vez que tengas los datos esenciales, confírmale que el equipo les contactar
 El sistema registra los datos automáticamente al terminar la llamada.`);
   }
 
-  // ── Nivel 1: Appointment booking ──────────────────────────────────────────
   if (f.appointment_booking) {
     blocks.push(`AGENDAMIENTO DE ${appointmentLabel.toUpperCase()}S:
 Puedes agendar, modificar y cancelar ${appointmentLabel}s.
@@ -226,7 +231,6 @@ El sistema registra la cita automáticamente al terminar la llamada.
 Recuerda mencionar que deben cancelar con al menos 24 horas de anticipación.`);
   }
 
-  // ── Nivel 2: Existing client support ──────────────────────────────────────
   if (f.existing_client_support) {
     blocks.push(`ATENCIÓN A CLIENTES EXISTENTES:
 Si alguien menciona ser cliente, usa buscar_cliente con su nombre, teléfono o número de cuenta.
@@ -234,7 +238,6 @@ Puedes responder sobre: estado de su pedido, próxima cita, saldo pendiente, ser
 Nunca inventes información, si no está en el sistema, dilo honestamente.`);
   }
 
-  // ── Nivel 2: Smart transfer ────────────────────────────────────────────────
   if (f.smart_transfer) {
     blocks.push(`TRANSFERENCIA INTELIGENTE:
 Si el cliente solicita hablar con una persona, la situación es urgente, o no puedes resolver su solicitud:
@@ -245,7 +248,6 @@ Si nadie contesta en la transferencia, ofrece tomar un mensaje y que alguien les
 ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo solicite explícitamente o cuando la situación sea urgente y no puedas resolverla.'}`);
   }
 
-  // ── Nivel 2: Order taking ──────────────────────────────────────────────────
   if (f.order_taking) {
     blocks.push(`TOMA DE PEDIDOS:
 Puedes recibir pedidos por teléfono.
@@ -255,7 +257,6 @@ Confirma solo los items principales y el tipo de entrega antes de cerrar, no rep
 El sistema registra el pedido automáticamente al terminar la llamada.`);
   }
 
-  // ── Nivel 3: Client memory ─────────────────────────────────────────────────
   if (f.client_memory) {
     blocks.push(`MEMORIA DE CLIENTE:
 Si en este contexto hay un bloque "CONTEXTO DEL LLAMANTE", úsalo, ya tienes el nombre y el historial del cliente, NO vuelvas a preguntar su nombre.
@@ -264,12 +265,27 @@ Personaliza la conversación con lo que sabes: última visita, pedidos frecuente
 Esto hace que el cliente se sienta reconocido y valorado.`);
   }
 
-  // ── Nivel 3: WhatsApp escalation ──────────────────────────────────────────
   if (f.whatsapp_escalation) {
     blocks.push(`ESCALACIÓN A WHATSAPP:
 Si la llamada no se puede completar (línea ocupada, fuera de horario, sin respuesta):
 Usa la herramienta enviar_whatsapp_escalacion para enviar un mensaje automático al cliente diciéndole que viste que intentó comunicarse y que puedes ayudarle por WhatsApp.
 Número de WhatsApp del negocio: ${agent.transfer_whatsapp ?? '[WhatsApp no configurado]'}`);
+  }
+
+  // Lite tier: condensed privacy + rules (covers what full PRIVACIDAD + REGLAS GENERALES gave)
+  if (promptTier === 'lite') blocks.push(LITE_OPS);
+
+  // ── Data confirmation before closing — all caller-facing agents ──────────
+  if (!isCoordinator) {
+    blocks.push(`CONFIRMACIÓN DE DATOS ANTES DE CERRAR:
+Cuando hayas capturado datos del cliente durante la llamada (nombre, teléfono, fecha de cita, número de infracción, dirección u otros datos clave), confírmalos antes de despedirte. Sigue esta regla siempre:
+
+1. Di cada dato por separado, con una pausa natural entre cada uno. Habla más despacio de lo normal en esta parte — el cliente necesita escuchar con claridad para poder corregirte.
+2. Para teléfonos y números: dílos dígito por dígito, en grupos de dos o tres. Ejemplo: "Su teléfono es... ochenta y uno... doce... treinta y cuatro... cincuenta y seis."
+3. Para nombres: pronúncialos con pausa después de cada apellido. Ejemplo: "Su nombre es... Juan... García... Martínez."
+4. Para fechas y horas: sé explícito. Ejemplo: "La cita es para el... martes veintidós de julio... a las diez de la mañana."
+5. Cierra la confirmación con una pregunta corta: "¿Es correcto?" o "¿Está bien así?" Si el cliente corrige algo, repite solo el dato corregido para confirmar el cambio.
+6. Solo omite esta confirmación en llamadas puramente informativas donde no se capturó ningún dato del cliente.`);
   }
 
   // ── Knowledge base ────────────────────────────────────────────────────────
@@ -333,7 +349,8 @@ PRIORIDADES:
 Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de crear el ticket.`);
   }
 
-  // ── Closing rules ──────────────────────────────────────────────────────────
+  // ── Closing rules ─────────────────────────────────────────────────────────
+  // Coordinators always get ops rules; non-coordinators skip for lite (LITE_OPS has condensed rules)
   if (isCoordinator) {
     blocks.push(`REGLAS OPERATIVAS:
 - ACTÚA SOBRE LO SOLICITADO: Ejecuta exactamente lo que se te pide. No asumas tareas adicionales ni tomes decisiones fuera de tu instrucción. Si detectas algo relevante que no te pidieron, menciónalo en tu reporte y deja que el dueño decida.
@@ -341,12 +358,12 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
 - Ante cualquier duda sobre si debes ejecutar algo, escala antes de actuar.
 - Reporta resultados con claridad: qué hiciste, qué encontraste, qué sigue.
 - UNA TAREA A LA VEZ: Confirma cada paso antes de avanzar al siguiente cuando la tarea sea compleja o tenga decisiones intermedias.
-- Nunca menciones que eres una IA a menos que te lo pregunten directamente. Si te preguntan, sé honesto: "Soy ${agentName}, un empleado digital de ${agent.business_name}."`);
-  } else {
+- Nunca menciones que eres una IA a menos que te lo pregunten directamente. Si te preguntan, sé honesto: "Soy ${agentName}, ${isF ? 'una empleada digital' : 'un empleado digital'} de ${agent.business_name}."`);
+  } else if (promptTier !== 'lite') {
     blocks.push(`REGLAS GENERALES:
 - SOLO ACTÚA SOBRE LO SOLICITADO: Gestiona únicamente lo que el cliente te pide directamente en esta llamada. No asumas necesidades adicionales, no inicies acciones que no te solicitaron, y no tomes decisiones más allá de tu instrucción. Si detectas algo que podría requerir atención pero el cliente no lo pidió, regístralo en el resumen de la llamada y deja que el equipo del negocio decida.
 - Nunca menciones que eres una IA a menos que te pregunten directamente.
-- Si te preguntan directamente si eres IA, sé honesto: "Soy ${agentName}, un empleado digital de ${agent.business_name}."
+- Si te preguntan directamente si eres IA, sé honesto: "Soy ${agentName}, ${isF ? 'una empleada digital' : 'un empleado digital'} de ${agent.business_name}."
 - Nunca des información inventada. Si no sabes algo, di que verificarán y te contactarán.
 - CONFIRMACION DE DATOS: Antes de despedirte, si capturaste datos del cliente durante la llamada (nombre, telefono, fecha de cita, direccion, pedido u otros datos clave), confirmalos brevemente: "Antes de cerrar, me confirma que su nombre es X y su telefono es Y?" Esto le permite corregir cualquier error en la captura. Solo hazlo cuando hayas capturado datos relevantes; en llamadas puramente informativas no es necesario.
 - DESPEDIDA Y CIERRE, Cuando el cliente se despida o no haya mas que resolver, despidete cordialmente ("Hasta luego, que tenga un excelente dia." o similar) y la llamada se terminara automaticamente. No sigas hablando despues de la despedida.
@@ -359,29 +376,36 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
 `);
   } // end !isCoordinator (closing rules)
 
-  // ── ADN Conversacional Centinelia — los 10 principios permanentes ────────
-  blocks.push(CONVERSATIONAL_DNA);
+  if (promptTier === 'lite') {
+    // Lite: DNA para conversación natural — sin CCE ni HCP
+    blocks.push(CONVERSATIONAL_DNA);
+  } else {
+    // ── ADN Conversacional Centinelia — los 10 principios permanentes ────────
+    blocks.push(CONVERSATIONAL_DNA);
 
-  // ── CCE — Centinelia Conversation Engine ──────────────────────────────────
-  blocks.push(CCE);
+    // ── CCE — Centinelia Conversation Engine ──────────────────────────────────
+    blocks.push(CCE);
 
-  // ── HCP — Human Conversation Patterns ────────────────────────────────────
-  blocks.push(HCP);
+    if (promptTier === 'full') {
+      // ── HCP — Human Conversation Patterns (caller-facing only) ───────────
+      blocks.push(HCP);
+    }
+    // Ops tier (Naia, Nox, Niva): DNA + CCE only — internal agents, HCP is noise
 
-  // ── Global learnings — general refinements (cce/hcp) ─────────────────────
-  if (learnings?.general?.trim()) {
-    blocks.push(`AJUSTES DE ESTILO — APRENDIDOS DE LLAMADAS REALES:
+    // ── Global learnings (ops + full tiers only) ──────────────────────────
+    if (learnings?.general?.trim()) {
+      blocks.push(`AJUSTES DE ESTILO — APRENDIDOS DE LLAMADAS REALES:
 Aplícalos de forma natural, sin mencionarlos explícitamente:
 
 ${learnings.general.trim()}`);
-  }
+    }
 
-  // ── Global learnings — microdecisions (mdp) ───────────────────────────────
-  if (learnings?.micro?.trim()) {
-    blocks.push(`MICRODECISIONES CONVERSACIONALES — CENTINELIA:
+    if (learnings?.micro?.trim()) {
+      blocks.push(`MICRODECISIONES CONVERSACIONALES — CENTINELIA:
 Conductas situacionales específicas aprendidas de llamadas reales. Actívalas exactamente cuando ocurra la señal indicada, no en general:
 
 ${learnings.micro.trim()}`);
+    }
   }
 
   // ── Shared voice rules ────────────────────────────────────────────────────

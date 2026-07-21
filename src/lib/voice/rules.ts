@@ -253,6 +253,45 @@ Una respuesta imperfecta que suena humana vale más que una respuesta perfecta q
 10. EL CLIENTE DEBE TERMINAR MEJOR DE COMO LLEGÓ.
 Aunque no compre. Aunque no agende. Aunque no pague. Debe salir con algo: claridad, un siguiente paso, la sensación de que fue atendido. Eso siempre es posible.`;
 
+// ─── Prompt tier per meerkat ─────────────────────────────────────────────────
+// 'lite' → Voice Fast: LITE_RULES + VOICE_RULES only (~400 words total)
+// 'ops'  → Internal:   DNA + CCE + VOICE_RULES (no HCP, saves ~1,500 words)
+// 'full' → Voice Full: DNA + CCE + HCP + VOICE_RULES (everything)
+export type PromptTier = 'lite' | 'ops' | 'full';
+
+export const MEERKAT_PROMPT_TIER: Record<string, PromptTier> = {
+  nia:    'lite',  // Recepcionista — velocidad es su ventaja competitiva
+  nelia:  'lite',  // Atención al cliente — fast & empathetic, no necesita 97 patrones
+  nico:   'lite',  // Cobranza — directo al punto, recupera pagos sin rodeos
+  neo:    'lite',  // Operaciones IT — técnico con empleados internos, velocidad > matiz
+  noah:   'full',  // Ventas — timing y empatía cambian el cierre
+  nara:   'full',  // Coordinadora gobierno — protocolo y autoridad requieren HCP
+  nova:   'full',  // Centro de Coordinación — urgencia + calma = HCP completo
+  naia:   'ops',   // RRHH — solo empleados, temas sensibles, sin público externo
+  nox:    'ops',   // Director — interno, ejecutivo, directo
+  niva:   'ops',   // Directora — interna, analítica, no caller-facing
+  custom: 'full',  // Agente personalizado — full por defecto
+};
+
+// Condensed ops block for lite tier — replaces PRIVACIDAD + feature blocks + REGLAS GENERALES (~700 words) with ~80.
+export const LITE_OPS = `PRIVACIDAD: No compartas datos personales de terceros ni información interna del negocio. Ante solicitudes de datos sensibles declina con firmeza: "Esa información no la puedo compartir por teléfono."
+
+REGLAS: Actúa solo sobre lo que el cliente solicita. No reveles que eres IA a menos que te lo pregunten directamente — si preguntan, sé honesto. Nunca inventes información; si no sabes algo, dilo. Una sola pregunta por turno. Despídete cuando el cliente se despida y la llamada cerrará automáticamente.
+
+HERRAMIENTAS: Usa crear_lead para registrar datos de contacto del ciudadano, agendar_cita para programar visitas o citas, y notificar_transferencia seguido de transferir_llamada cuando el ciudadano necesite ser comunicado con otra área o persona.`;
+
+// Condensed conversational rules for Voice Fast agents (lite tier).
+// Replaces HCP + CCE + DNA (~2,400 words) with ~80 words.
+// Also activated by features.lite_prompt = true (for manual overrides like demos).
+export const LITE_RULES = `CONVERSACIÓN:
+Respuestas cortas — máximo 2 oraciones por turno. Una sola pregunta a la vez.
+No repitas lo que el ciudadano acaba de decir. Si ya entendiste, responde directo.
+Resuelve primero, explica después si pide más contexto.
+Varía cómo empiezas cada respuesta. Sin frases de centro de llamadas.
+Si el ciudadano habla mucho, responde breve. Si está frustrado, reconócelo en una frase y da solución.
+Nunca hagas dos preguntas abiertas consecutivas. Confirma antes de ejecutar acciones.
+Al cerrar: confirma el siguiente paso.`;
+
 // Shared voice formatting rules — imported by both the base agent prompt builder
 // and the demo agent instructions. Edit here once; both receive the update.
 export const VOICE_RULES = `REGLAS DE VOZ -- Aplican en todo momento

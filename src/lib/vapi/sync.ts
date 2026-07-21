@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
 import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
+import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -291,7 +292,8 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     });
   }
 
-  // ── Owner ops tools (available to all agents) ────────────────────────────────
+  // ── Owner ops tools — only when passphrase is set (otherwise unreachable) ────
+  if (agent.owner_passphrase?.trim()) {
   tools.push({
     type: 'function',
     function: {
@@ -370,6 +372,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     },
     server: server('buscar-archivo'),
   });
+  } // end owner_passphrase gate
 
   if (agent.features.helpdesk) {
     tools.push({
@@ -463,8 +466,8 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     });
   }
 
-  // ── Surveys (always available) ──────────────────────────────────────────────
-  tools.push({
+  // ── Surveys — only when module is active ────────────────────────────────────
+  if ((agent.features as unknown as Record<string, unknown>).of_encuestas) tools.push({
     type: 'function',
     function: {
       name: 'registrar_encuesta',
@@ -571,16 +574,18 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
 // These params shape output behavior only: how fast, how long, how deterministic.
 
 interface MeerkatModelConfig {
-  provider:    string;
-  model:       string;
-  temperature: number;
-  maxTokens:   number;
-  speed:       number;
-  minChars:    number;
+  provider:              string;
+  model:                 string;
+  temperature:           number;
+  maxTokens:             number;
+  speed:                 number;
+  minChars:              number;
+  voiceModel?:           string;
+  punctuationBoundaries?: string[];
 }
 
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.93, minChars: 50 },
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.93, minChars: 15, voiceModel: 'eleven_flash_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
   noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 0.98, minChars: 40 },
   nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
   nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 110, speed: 0.98, minChars: 40 },
@@ -638,7 +643,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     voice: {
       provider: '11labs',
       voiceId: agent.elevenlabs_voice_id || 'jUxkp8eMgszgJX3XU2pV',
-      model: 'eleven_turbo_v2_5',
+      model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
       stability: 0.35,
       similarityBoost: 0.75,
       style: 0.45,
@@ -648,29 +653,36 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       chunkPlan: {
         enabled: true,
         minCharacters: cfg.minChars,
-        punctuationBoundaries: ['.', '!', '?'],
+        punctuationBoundaries: cfg.punctuationBoundaries ?? ['.', '!', '?'],
       },
     },
     firstMessage: (() => {
-      const notice = 'Esta llamada puede ser grabada.';
-      const custom = agent.first_message?.trim();
+      const notice  = 'Esta llamada puede ser grabada.';
+      const noNotice = !!(agent.features as unknown as Record<string, unknown>).skip_recording_notice;
+      const custom  = agent.first_message?.trim();
       if (custom) {
-        return custom.toLowerCase().includes('grabada') ? custom : `${custom} ${notice}`;
+        if (noNotice || custom.toLowerCase().includes('grabada')) return custom;
+        return `${custom} ${notice}`;
       }
       return `${agent.business_name}, buenos días. Le habla ${agentName}. ${notice} ¿En qué le puedo ayudar?`;
     })(),
     endCallMessage: 'Hasta luego, que tenga un excelente día.',
     endCallPhrases: ['hasta luego', 'hasta pronto', 'que tenga un excelente día', 'que tenga buen día', 'adiós', 'fue un placer atenderle'],
-    transcriber: {
-      provider: 'deepgram',
-      model: 'nova-2',
-      language: agent.features.multilingual ? 'multi' : 'es',
-      smartFormat: true,
-      endpointing: 300,
-    },
+    transcriber: (() => {
+      const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
+      const explicitLite = !!(agent.features as unknown as Record<string, unknown>).lite_prompt;
+      const isLite      = explicitLite || tier === 'lite';
+      return {
+        provider:    'deepgram',
+        model:       'nova-3',
+        language:    agent.features.multilingual ? 'multi' : 'es',
+        smartFormat: false,
+        endpointing: isLite ? 150 : 200,
+      };
+    })(),
     backgroundSound: 'office',
     backchannelingEnabled: true,
-    backgroundDenoisingEnabled: true,
+    backgroundDenoisingEnabled: false,
     silenceTimeoutSeconds: 10,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
