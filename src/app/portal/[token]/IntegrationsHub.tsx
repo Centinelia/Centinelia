@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, FolderOpen, MessageSquare, Database, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection   from './IntegrationsSection';
@@ -17,7 +17,7 @@ import MercadoLibreSection    from './MercadoLibreSection';
 
 interface CalStatus    { calendar_type: string | null }
 interface NotionStatus { connected: boolean }
-interface EmailStatus  { provider: 'gmail' | 'outlook' }
+interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
 interface HubStatus    {
   cal:        CalStatus | null;
@@ -27,7 +27,7 @@ interface HubStatus    {
   ml:         MLStatus | null;
 }
 
-/* ── provider icons (small, for row header badges) ──────────────────────── */
+/* ── provider icons (for workspace callout) ─────────────────────────────── */
 
 const PIcons = {
   gmail: (
@@ -38,13 +38,9 @@ const PIcons = {
   ),
   drive: (
     <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
-      <path d="M16 38L4 18l12-18h16l12 18-12 20H16z" fill="none" />
       <path d="M6 38h36l-6-10H12L6 38z" fill="#FBBC04" />
-      <path d="M24 4L12 24h12l12-20H24z" fill="#4285F4" />
-      <path d="M12 24L6 38l6-10 6-10-6 6z" fill="none" />
-      <path d="M4 38l8-14L24 4 12 24 6 38H4z" fill="#34A853" />
-      <path d="M4 38h8l4-7H6L4 38z" fill="#34A853" />
       <path d="M24 4h12L24 24H12L24 4z" fill="#4285F4" />
+      <path d="M4 38l8-14L24 4 12 24 6 38H4z" fill="#34A853" />
       <path d="M36 24l6 14H18l6-14h12z" fill="#FBBC04" />
     </svg>
   ),
@@ -62,89 +58,7 @@ const PIcons = {
       <path d="M34 34H20a6 6 0 01-1-12 9 9 0 0116.5-2A7 7 0 0134 34z" fill="#28A8E8" />
     </svg>
   ),
-  'google-calendar': (
-    <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
-      <rect x="2" y="6" width="44" height="38" rx="4" fill="#fff" stroke="#ddd" strokeWidth="2" />
-      <rect x="2" y="6" width="44" height="13" rx="4" fill="#4285F4" />
-      <rect x="2" y="13" width="44" height="6" fill="#4285F4" />
-      <circle cx="16" cy="33" r="3.5" fill="#EA4335" />
-      <circle cx="24" cy="33" r="3.5" fill="#34A853" />
-      <circle cx="32" cy="33" r="3.5" fill="#FBBC05" />
-    </svg>
-  ),
-  'outlook-calendar': (
-    <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="6" fill="#0078D4" />
-      <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
-      <circle cx="17" cy="24" r="7" fill="#0078D4" />
-      <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
-    </svg>
-  ),
-  notion: (
-    <svg width="13" height="13" viewBox="0 0 100 100" fill="none">
-      <path fillRule="evenodd" clipRule="evenodd"
-        d="M61.35.227l-55.333 4.086C1.553 4.7 0 7.617 0 11.113v61.197c0 2.723.967 5.057 3.3 8.167l13.16 16.387c2.137 2.723 4.08 3.307 8.16 3.113l64.257-3.89c5.433-.387 6.99-2.917 6.99-7.193V19.64c0-2.21-.873-2.847-3.443-4.733L74.167 2.143C69.893-.963 68.147-1.357 61.35.227z"
-        fill="#000" />
-    </svg>
-  ),
-  teams: (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-      <rect width="24" height="24" rx="4" fill="#5865F2" />
-      <path d="M5 17c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#fff" strokeWidth="1.5" fill="none" />
-      <circle cx="11" cy="8" r="2.5" fill="#fff" />
-    </svg>
-  ),
-  mercadolibre: (
-    <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="8" fill="#FFE600" />
-      <path d="M24 10c-7.7 0-14 6.3-14 14s6.3 14 14 14 14-6.3 14-14S31.7 10 24 10z" fill="#E3002A" />
-      <path d="M24 14c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z" fill="#FFE600" />
-    </svg>
-  ),
 };
-
-/* ── provider badge ─────────────────────────────────────────────────────── */
-
-function ProviderBadge({ label, icon }: { label: string; icon?: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap"
-      style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-      {icon && <span className="flex-shrink-0 flex items-center">{icon}</span>}
-      {label}
-    </span>
-  );
-}
-
-function EmailProviderBadge({ emails }: { emails: EmailStatus[] }) {
-  if (emails.length === 0) return null;
-  return (
-    <div className="flex items-center gap-1">
-      {emails.map(e => {
-        const isGmail = e.provider === 'gmail';
-        return (
-          <span key={e.provider}
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-            <span className="flex items-center">{PIcons[isGmail ? 'gmail' : 'outlook']}</span>
-            <span style={{ opacity: 0.4, fontSize: 9 }}>+</span>
-            <span className="flex items-center">{PIcons[isGmail ? 'drive' : 'onedrive']}</span>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function CalProviderBadge({ cal }: { cal: CalStatus | null }) {
-  if (!cal?.calendar_type) return null;
-  const isGoogle = cal.calendar_type === 'google';
-  return (
-    <ProviderBadge
-      label={isGoogle ? 'Google Calendar' : 'Outlook Calendar'}
-      icon={PIcons[isGoogle ? 'google-calendar' : 'outlook-calendar']}
-    />
-  );
-}
 
 /* ── status dot ─────────────────────────────────────────────────────────── */
 
@@ -156,16 +70,120 @@ function StatusDot({ on }: { on: boolean }) {
   );
 }
 
+/* ── office summary bar ──────────────────────────────────────────────────── */
+
+interface CapabilitySummary { id: string; label: string; connected: boolean }
+
+function OfficeSummaryBar({ caps }: { caps: CapabilitySummary[] }) {
+  const connected = caps.filter(c => c.connected);
+  const pending   = caps.filter(c => !c.connected);
+  if (caps.length === 0) return null;
+
+  return (
+    <div className="rounded-xl px-4 py-3.5 flex flex-col gap-3"
+      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+
+      {connected.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] font-semibold tracking-widest uppercase"
+            style={{ color: 'var(--c-text-4)' }}>
+            Tu equipo tiene acceso a
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {connected.map(c => (
+              <span key={c.id}
+                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <Check size={10} /> {c.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] font-semibold tracking-widest uppercase"
+            style={{ color: 'var(--c-text-4)' }}>
+            {connected.length === 0 ? 'Para equipar la oficina' : 'Todavía no pueden usar'}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {pending.map(c => (
+              <span key={c.id}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
+                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: 'var(--c-border-2)' }} />
+                {c.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── workspace capabilities callout ─────────────────────────────────────── */
+
+function WorkspaceCallout() {
+  const suites = [
+    {
+      name:  'Google Workspace',
+      items: [
+        { label: 'Correo',  icon: PIcons.gmail   },
+        { label: 'Drive',   icon: PIcons.drive   },
+      ],
+    },
+    {
+      name:  'Microsoft 365',
+      items: [
+        { label: 'Correo',   icon: PIcons.outlook  },
+        { label: 'OneDrive', icon: PIcons.onedrive },
+      ],
+    },
+  ];
+
+  return (
+    <div className="rounded-xl overflow-hidden"
+      style={{ border: '1px solid var(--c-border)', background: 'var(--c-bg)' }}>
+      <p className="px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-widest uppercase"
+        style={{ color: 'var(--c-text-4)', borderBottom: '1px solid var(--c-border)' }}>
+        Incluye acceso a
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+        {suites.map((suite, i) => (
+          <div key={suite.name}
+            className="flex flex-col gap-1.5 px-3 py-3"
+            style={i === 1 ? { borderLeft: '1px solid var(--c-border)' } : {}}>
+            <span className="text-[11px] font-semibold mb-0.5" style={{ color: 'var(--c-text-2)' }}>
+              {suite.name}
+            </span>
+            {suite.items.map(item => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <Check size={10} style={{ color: '#22c55e', flexShrink: 0 }} />
+                <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                  {item.icon} {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── capability row ─────────────────────────────────────────────────────── */
 
 function CapabilityRow({
-  icon, label, connected, comingSoon, badge, children,
+  icon, label, subtitle, connected, comingSoon, children,
 }: {
   icon:        React.ReactNode;
   label:       string;
+  subtitle?:   string;
   connected?:  boolean;
   comingSoon?: boolean;
-  badge?:      React.ReactNode;
   children?:   React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -190,12 +208,18 @@ function CapabilityRow({
           {icon}
         </div>
 
-        <span className="flex-1 text-sm font-semibold"
-          style={{ color: comingSoon ? 'var(--c-text-4)' : 'var(--c-text)' }}>
-          {label}
-        </span>
+        <div className="flex flex-col flex-1 min-w-0">
+          <span className="text-sm font-semibold"
+            style={{ color: comingSoon ? 'var(--c-text-4)' : 'var(--c-text)', lineHeight: 1.3 }}>
+            {label}
+          </span>
+          {subtitle && (
+            <span className="text-xs truncate" style={{ color: 'var(--c-text-3)', marginTop: 1, lineHeight: 1.3 }}>
+              {subtitle}
+            </span>
+          )}
+        </div>
 
-        {badge}
         <StatusDot on={!!connected} />
 
         {comingSoon ? (
@@ -236,6 +260,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, s
   const [status, setStatus] = useState<HubStatus>({
     cal: null, notion: null, emails: [], teamsEmail: null, ml: null,
   });
+  const [statusLoaded, setStatusLoaded] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -250,95 +275,128 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, s
       setStatus({
         cal:        calData    ?? null,
         notion:     notionData ?? null,
-        emails:     emailData?.integrations ?? [],
+        emails:     (emailData?.integrations ?? []).map((i: any) => ({ provider: i.provider, email: i.email })),
         teamsEmail: teamsData?.teams_user_email ?? null,
         ml:         mlData    ?? null,
       });
+      setStatusLoaded(true);
     });
   }, [token, hasOpsAgent]);
 
+  /* ── computed subtitles ─────────────────────────────────────────────── */
+
+  const emailConn      = status.emails[0] ?? null;
+  const emailSubtitle  = emailConn
+    ? `${emailConn.provider === 'gmail' ? 'Google Workspace' : 'Microsoft 365'}${emailConn.email ? ` · ${emailConn.email}` : ''}`
+    : undefined;
+
+  const calSubtitle    = status.cal?.calendar_type
+    ? (status.cal.calendar_type === 'google' ? 'Google Calendar' : 'Outlook Calendar')
+    : undefined;
+
+  const notionSubtitle = status.notion?.connected ? 'Notion' : undefined;
+
+  const teamsSubtitle  = status.teamsEmail
+    ? `Microsoft Teams · ${status.teamsEmail}`
+    : undefined;
+
+  const mlSubtitle     = status.ml?.connected
+    ? `Mercado Libre${status.ml.nickname ? ` · ${status.ml.nickname}` : ''}`
+    : undefined;
+
+  /* ── summary caps ───────────────────────────────────────────────────── */
+
+  const caps: CapabilitySummary[] = [
+    { id: 'correo',   label: 'Correo',                   connected: status.emails.length > 0 },
+    { id: 'agenda',   label: 'Agenda',                   connected: !!status.cal?.calendar_type },
+    { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
+    ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
+    { id: 'comercio', label: 'Comercio',                 connected: !!status.ml?.connected },
+  ];
+
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-3">
 
-      {/* ── Correo ─────────────────────────────────────────────────────── */}
-      <CapabilityRow
-        icon={<Mail size={16} style={{ color: '#9B6DFF' }} />}
-        label="Correo"
-        connected={status.emails.length > 0}
-        badge={<EmailProviderBadge emails={status.emails} />}
-      >
-        <div className="flex flex-col gap-4">
-          <EmailOAuthSection token={token} />
-          {status.emails.length > 0 && <EmailSettings token={token} />}
-          <div className="flex gap-2 rounded-lg px-3 py-2.5"
-            style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}>
-            <FolderOpen size={13} style={{ color: '#06b6d4', flexShrink: 0, marginTop: 1 }} />
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-              Al conectar Gmail tu empleado también tiene acceso a Google Drive. Al conectar Outlook, tiene acceso a OneDrive. No se requiere configuración adicional.
-            </p>
-          </div>
+      {/* ── Summary bar ────────────────────────────────────────────────── */}
+      {statusLoaded && <OfficeSummaryBar caps={caps} />}
 
-          {showPerAgent && (
-            <div className="flex flex-col gap-3 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
-              <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-                  Correo por empleado
-                </p>
-                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                  Cada empleado atiende una bandeja distinta. Asigna aquí qué cuenta lee y desde cuál envía.
-                </p>
-              </div>
-              <AgentIntegrationsPanel token={token} />
-            </div>
-          )}
-        </div>
-      </CapabilityRow>
+      {/* ── Category rows ──────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1.5">
 
-      {/* ── Agenda ─────────────────────────────────────────────────────── */}
-      <CapabilityRow
-        icon={<Calendar size={16} style={{ color: '#6C3BFF' }} />}
-        label="Agenda"
-        connected={!!status.cal?.calendar_type}
-        badge={<CalProviderBadge cal={status.cal} />}
-      >
-        <IntegrationsSection token={token} plan={plan} />
-      </CapabilityRow>
-
-      {/* ── CRM ────────────────────────────────────────────────────────── */}
-      <CapabilityRow
-        icon={<Database size={16} style={{ color: '#6C3BFF' }} />}
-        label="CRM"
-        connected={!!status.notion?.connected}
-        badge={status.notion?.connected ? <ProviderBadge label="Notion" icon={PIcons.notion} /> : undefined}
-      >
-        <div className="flex flex-col gap-5">
-          <NotionSection token={token} />
-          {hasNotion && <NotionSchemasSection token={token} />}
-        </div>
-      </CapabilityRow>
-
-      {/* ── Mensajería ─────────────────────────────────────────────────── */}
-      {hasOpsAgent && (
+        {/* Correo */}
         <CapabilityRow
-          icon={<MessageSquare size={16} style={{ color: '#5865F2' }} />}
-          label="Mensajería"
-          connected={!!status.teamsEmail}
-          badge={status.teamsEmail ? <ProviderBadge label="Teams" icon={PIcons.teams} /> : undefined}
+          icon={<Mail size={16} style={{ color: '#9B6DFF' }} />}
+          label="Correo"
+          subtitle={emailSubtitle}
+          connected={status.emails.length > 0}
         >
-          <TeamsSection token={token} />
+          <div className="flex flex-col gap-4">
+            <EmailOAuthSection token={token} />
+            {status.emails.length > 0 && <EmailSettings token={token} />}
+            <WorkspaceCallout />
+
+            {showPerAgent && (
+              <div className="flex flex-col gap-3 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div>
+                  <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
+                    Correo por empleado
+                  </p>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                    Cada empleado atiende una bandeja distinta. Asigna aquí qué cuenta lee y desde cuál envía.
+                  </p>
+                </div>
+                <AgentIntegrationsPanel token={token} />
+              </div>
+            )}
+          </div>
         </CapabilityRow>
-      )}
 
-      {/* ── Comercio ───────────────────────────────────────────────────── */}
-      <CapabilityRow
-        icon={<ShoppingCart size={16} style={{ color: '#F5D000' }} />}
-        label="Comercio"
-        connected={!!status.ml?.connected}
-        badge={status.ml?.connected ? <ProviderBadge label="MercadoLibre" icon={PIcons.mercadolibre} /> : undefined}
-      >
-        <MercadoLibreSection token={token} />
-      </CapabilityRow>
+        {/* Agenda */}
+        <CapabilityRow
+          icon={<Calendar size={16} style={{ color: '#6C3BFF' }} />}
+          label="Agenda"
+          subtitle={calSubtitle}
+          connected={!!status.cal?.calendar_type}
+        >
+          <IntegrationsSection token={token} plan={plan} />
+        </CapabilityRow>
 
+        {/* Conocimiento del cliente */}
+        <CapabilityRow
+          icon={<Users size={16} style={{ color: '#6C3BFF' }} />}
+          label="Conocimiento del cliente"
+          subtitle={notionSubtitle}
+          connected={!!status.notion?.connected}
+        >
+          <div className="flex flex-col gap-5">
+            <NotionSection token={token} />
+            {hasNotion && <NotionSchemasSection token={token} />}
+          </div>
+        </CapabilityRow>
+
+        {/* Mensajería */}
+        {hasOpsAgent && (
+          <CapabilityRow
+            icon={<MessageSquare size={16} style={{ color: '#5865F2' }} />}
+            label="Mensajería"
+            subtitle={teamsSubtitle}
+            connected={!!status.teamsEmail}
+          >
+            <TeamsSection token={token} />
+          </CapabilityRow>
+        )}
+
+        {/* Comercio */}
+        <CapabilityRow
+          icon={<ShoppingCart size={16} style={{ color: '#F5D000' }} />}
+          label="Comercio"
+          subtitle={mlSubtitle}
+          connected={!!status.ml?.connected}
+        >
+          <MercadoLibreSection token={token} />
+        </CapabilityRow>
+
+      </div>
     </div>
   );
 }

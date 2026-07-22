@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 
 interface Integration {
   id:           string;
@@ -48,6 +48,7 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
   const [loading,      setLoading]      = useState(true);
   const [toggling,     setToggling]     = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [showAll,      setShowAll]      = useState(false);
 
   const load = useCallback(async () => {
     const res  = await fetch(`/api/portal/${token}/email-oauth`);
@@ -83,7 +84,15 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
     });
     setIntegrations(prev => prev.filter(i => i.provider !== provider));
     setDisconnecting(null);
+    setShowAll(false);
   }
+
+  const connectedProvider = integrations.find(i => !i.needs_reauth)?.provider ?? null;
+  const visibleProviders  = only
+    ? PROVIDERS.filter(p => p.id === only)
+    : (connectedProvider && !showAll)
+      ? PROVIDERS.filter(p => p.id === connectedProvider)
+      : PROVIDERS;
 
   if (loading) {
     return (
@@ -96,7 +105,7 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
 
   return (
     <div className="flex flex-col gap-4">
-      {PROVIDERS.filter(p => !only || p.id === only).map(provider => {
+      {visibleProviders.map(provider => {
         const connected = connectedFor(provider.id);
         return (
           <div key={provider.id}
@@ -210,6 +219,23 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
           </div>
         );
       })}
+
+      {!only && connectedProvider && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="self-start flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
+          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+        >
+          <ArrowLeftRight size={11} />
+          Cambiar proveedor
+        </button>
+      )}
+
+      {!only && connectedProvider && showAll && (
+        <p className="text-xs px-1" style={{ color: 'var(--c-text-4)' }}>
+          Para cambiar, desconecta el proveedor actual y luego conecta el nuevo.
+        </p>
+      )}
 
       <div className="flex gap-2 rounded-lg px-3 py-2.5"
         style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}>
