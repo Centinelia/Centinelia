@@ -53,6 +53,7 @@ import OrgCard                  from './OrgCard';
 import ContractTrackerSection   from './ContractTrackerSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
+import InsightsSection          from './InsightsSection';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
@@ -635,6 +636,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </div>
                   </div>
                 )}
+
+                {/* Insights de la semana */}
+                <InsightsSection token={token} />
 
                 {/* Activity feed */}
                 <div id="actividad" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
