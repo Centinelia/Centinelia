@@ -120,8 +120,9 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
 
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Investigación</h1>
-        <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--c-text-3)', maxWidth: 560 }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Investigación</p>
+        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>Investigación</h1>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
           Pide a tu empleado que investigue antes de tomar una decisión. Puede analizar competidores, encontrar prospectos, revisar regulaciones, estudiar el mercado o investigar cualquier tema en internet.
         </p>
       </div>

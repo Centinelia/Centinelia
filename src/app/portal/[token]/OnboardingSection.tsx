@@ -180,13 +180,13 @@ export default function OnboardingSection({ token, agents }: {
 
       {/* Hero */}
       <div>
-        <h1 className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
           Onboarding
-        </h1>
-        <p className="text-base font-semibold mt-2" style={{ color: 'var(--c-text)' }}>
-          Tu empleado guía a cada persona en su proceso de incorporación.
         </p>
-        <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
+          Tu empleado guía a cada persona en su proceso de incorporación.
+        </h1>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
           Define plantillas con los pasos y documentos que necesitas de nuevos empleados, clientes o proveedores.
           Tu empleado envía el formulario por correo y lleva el seguimiento desde aquí.
         </p>

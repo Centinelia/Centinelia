@@ -43,7 +43,7 @@ export default async function IntegracionesPage({ params }: Props) {
 
       <div>
         <div className="flex items-center gap-1.5 mb-5">
-          <h1 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
             Integraciones de la organización
           </h1>
         </div>
@@ -59,10 +59,10 @@ export default async function IntegracionesPage({ params }: Props) {
       {!isReceptionist && (
         <div>
           <div className="mb-5">
-            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            <h2 className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
               Correo por empleado
             </h2>
-            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--c-text-3)', maxWidth: 520 }}>
+            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
               Cada empleado tiene dos correos: la bandeja de su área (soporte@, ventas@…) que lee y atiende, y su correo propio desde donde envía correos personales como Neo@empresa.com.
             </p>
           </div>

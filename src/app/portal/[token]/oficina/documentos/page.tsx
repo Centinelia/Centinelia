@@ -169,10 +169,13 @@ export default function DocumentosPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+          Documentos
+        </p>
+        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
           Centro de documentos
         </h1>
-        <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
           Archivos generados por tus empleados. Disponibles 30 dias para descargar, conservar o reenviar.
         </p>
       </div>

@@ -591,13 +591,13 @@ export default function PlantillasPage() {
 
       {/* Hero */}
       <div>
-        <h1 className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
           Plantillas
-        </h1>
-        <p className="text-base font-semibold mt-2" style={{ color: 'var(--c-text)' }}>
-          Ensenale a tu equipo como se hacen los documentos de tu negocio.
         </p>
-        <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
+          Ensenale a tu equipo como se hacen los documentos de tu negocio.
+        </h1>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
           Sube tu formato de factura, orden de compra o cualquier documento membretado.
           Tus empleados respetaran el formato y lo usaran cada vez que se los pidas, sin importar cuantos documentos generen.
         </p>
