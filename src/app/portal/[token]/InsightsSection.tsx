@@ -34,15 +34,15 @@ const MODE_CONFIG = {
   llm: {
     label:    'IA generativa',
     desc:     'La IA revisa las llamadas de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
-    costNote: (n: number) => `${n * 2} tareas por empleado`,
-    costTag:  (n: number) => `${n * 2} tareas`,
+    costNote: () => '2 tareas por empleado',
+    costTag:  (n: number) => `${n * 2} tareas en total`,
     tagColor: '#9B6DFF',
     tagBg:    'rgba(108,59,255,0.1)',
   },
   rules: {
     label:    'Reglas fijas',
     desc:     'Detecta problemas comunes automáticamente: muchas escalaciones, llamadas sin resolver, metas retrasadas.',
-    costNote: () => 'Sin costo de tareas',
+    costNote: () => 'Sin costo',
     costTag:  () => 'Sin costo',
     tagColor: '#22c55e',
     tagBg:    'rgba(34,197,94,0.1)',
@@ -165,7 +165,7 @@ export default function InsightsSection({ token }: { token: string }) {
             {modeCfg.desc}
           </p>
           <p className="text-[11px] font-medium px-1" style={{ color: modeCfg.tagColor }}>
-            {modeCfg.costNote(agentCount)}
+            {modeCfg.costNote()}
           </p>
         </div>
 
