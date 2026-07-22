@@ -8,6 +8,7 @@ import Link                             from 'next/link';
 import { Settings2, Bot, Zap, Clock } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
+import AgentIntegrationsPanel          from '../AgentIntegrationsPanel';
 import MeerkatPicker                   from './MeerkatPicker';
 import { COORDINATOR_ROLE_IDS }        from '@/lib/portal/meerkat-roles';
 
@@ -103,7 +104,7 @@ export default async function AgentesPage({ params }: Props) {
       )}
 
       {/* Agent cards */}
-      <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {agents.map(a => {
           const color           = agentColor(a.id);
           const initial         = ((a.agent_name as string | null)?.trim() || (a.business_name as string)).charAt(0).toUpperCase();
@@ -213,6 +214,23 @@ export default async function AgentesPage({ params }: Props) {
           );
         })}
       </div>
+      {/* Herramientas por empleado */}
+      {agents.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>Herramientas</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              Asigna el correo que atiende cada empleado. Conecta servicios en{' '}
+              <a href={`/portal/${token}/oficina/integraciones`}
+                className="underline" style={{ color: 'var(--c-text-2)' }}>
+                Integraciones
+              </a>.
+            </p>
+          </div>
+          <AgentIntegrationsPanel token={token} />
+        </div>
+      )}
+
     </div>
   );
 }

@@ -30,10 +30,8 @@ export default async function IntegracionesPage({ params }: Props) {
     ? await supabase.from('voice_agents').select('role, features').eq('portal_email', agent.portal_email)
     : { data: [] };
 
-  const hasOpsAgent     = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
-  const hasNotion       = !!(agent as any).notion_access_token;
-  const meerkatRoleId   = (agent as any).features?.meerkat_role_id as string | undefined;
-  const isReceptionist  = ['nia', 'nelia', 'nico', 'neo'].includes(meerkatRoleId ?? '');
+  const hasOpsAgent = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
+  const hasNotion   = !!(agent as any).notion_access_token;
 
   return (
     <div id="of-integraciones" className="flex flex-col gap-8">
@@ -49,7 +47,6 @@ export default async function IntegracionesPage({ params }: Props) {
           plan={agent.plan as Plan}
           hasOpsAgent={hasOpsAgent}
           hasNotion={hasNotion}
-          showPerAgent={!isReceptionist}
         />
       </div>
 

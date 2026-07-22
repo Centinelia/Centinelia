@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
-import IntegrationsSection   from './IntegrationsSection';
-import NotionSection         from './NotionSection';
-import NotionSchemasSection  from './NotionSchemasSection';
-import TeamsSection          from './TeamsSection';
-import EmailOAuthSection      from './EmailOAuthSection';
-import EmailSettings          from './EmailSettings';
-import AgentIntegrationsPanel from './AgentIntegrationsPanel';
-import MercadoLibreSection    from './MercadoLibreSection';
+import IntegrationsSection  from './IntegrationsSection';
+import NotionSection        from './NotionSection';
+import NotionSchemasSection from './NotionSchemasSection';
+import TeamsSection         from './TeamsSection';
+import EmailOAuthSection    from './EmailOAuthSection';
+import EmailSettings        from './EmailSettings';
+import MercadoLibreSection  from './MercadoLibreSection';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -249,14 +248,13 @@ function CapabilityRow({
 /* ── main ───────────────────────────────────────────────────────────────── */
 
 interface Props {
-  token:          string;
-  plan:           Plan;
-  hasOpsAgent:    boolean;
-  hasNotion:      boolean;
-  showPerAgent:   boolean;
+  token:       string;
+  plan:        Plan;
+  hasOpsAgent: boolean;
+  hasNotion:   boolean;
 }
 
-export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, showPerAgent }: Props) {
+export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
     cal: null, notion: null, emails: [], teamsEmail: null, ml: null,
   });
@@ -334,20 +332,6 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion, s
             <EmailOAuthSection token={token} />
             {status.emails.length > 0 && <EmailSettings token={token} />}
             <WorkspaceCallout />
-
-            {showPerAgent && (
-              <div className="flex flex-col gap-3 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <div>
-                  <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-                    Correo por empleado
-                  </p>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                    Cada empleado atiende una bandeja distinta. Asigna aquí qué cuenta lee y desde cuál envía.
-                  </p>
-                </div>
-                <AgentIntegrationsPanel token={token} />
-              </div>
-            )}
           </div>
         </CapabilityRow>
 
