@@ -67,6 +67,36 @@ export async function POST(
   return NextResponse.json({ question: data }, { status: 201 });
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ token: string; id: string }> },
+) {
+  const { token, id } = await params;
+  const access        = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const sp         = req.nextUrl.searchParams;
+  const questionId = sp.get('question_id');
+  if (!questionId) return NextResponse.json({ error: 'question_id requerido' }, { status: 400 });
+
+  const supabase = createAdminClient();
+  if (!await surveyBelongsToAccess(id, access.ids, supabase))
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const body = await req.json() as { conditions?: Record<string, unknown> | null };
+
+  const { data, error } = await supabase
+    .from('survey_questions')
+    .update({ conditions: body.conditions ?? null })
+    .eq('id', questionId)
+    .eq('survey_id', id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ question: data });
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ token: string; id: string }> },

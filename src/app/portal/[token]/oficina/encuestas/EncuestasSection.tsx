@@ -12,13 +12,20 @@ import {
 
 type QuestionType = 'rating_5' | 'rating_10' | 'si_no' | 'multiple' | 'texto';
 
+interface QuestionCondition {
+  if_rating_lte?: number;
+  if_answer?:     string;
+  then_say:       string;
+}
+
 interface Question {
-  id:        string;
-  survey_id: string;
-  orden:     number;
-  texto:     string;
-  tipo:      QuestionType;
-  opciones:  string[] | null;
+  id:         string;
+  survey_id:  string;
+  orden:      number;
+  texto:      string;
+  tipo:       QuestionType;
+  opciones:   string[] | null;
+  conditions: QuestionCondition | null;
 }
 
 interface Survey {
@@ -265,6 +272,137 @@ function deriveHallazgo(agg: Aggregate): string | null {
     }
   }
   return null;
+}
+
+// ── Condition editor ──────────────────────────────────────────────────────────
+
+function ConditionEditor({
+  question,
+  token,
+  surveyId,
+  onUpdate,
+}: {
+  question:  Question;
+  token:     string;
+  surveyId:  string;
+  onUpdate:  (qid: string, conditions: QuestionCondition | null) => void;
+}) {
+  const existing   = question.conditions;
+  const isRating   = question.tipo === 'rating_5' || question.tipo === 'rating_10';
+  const isSiNo     = question.tipo === 'si_no';
+  if (!isRating && !isSiNo) return null;
+
+  const maxVal     = question.tipo === 'rating_5' ? 4 : 9;
+
+  const [open,      setOpen]      = useState(!!existing);
+  const [threshold, setThreshold] = useState<number>(existing?.if_rating_lte ?? 2);
+  const [ifAnswer,  setIfAnswer]  = useState<string>(existing?.if_answer ?? 'no');
+  const [script,    setScript]    = useState(existing?.then_say ?? '');
+  const [saving,    setSaving]    = useState(false);
+
+  async function save() {
+    if (!script.trim()) return;
+    setSaving(true);
+    const conditions: QuestionCondition = isRating
+      ? { if_rating_lte: threshold, then_say: script.trim() }
+      : { if_answer: ifAnswer,      then_say: script.trim() };
+    const res = await fetch(
+      `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions }) },
+    );
+    if (res.ok) onUpdate(question.id, conditions);
+    setSaving(false);
+  }
+
+  async function remove() {
+    setSaving(true);
+    const res = await fetch(
+      `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions: null }) },
+    );
+    if (res.ok) {
+      onUpdate(question.id, null);
+      setScript('');
+      setOpen(false);
+    }
+    setSaving(false);
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-text-4)', fontSize: 11, marginTop: 4, display: 'block' }}
+      >
+        + Añadir reacción
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 8, background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.12)' }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-3)', margin: '0 0 6px' }}>Reacción del empleado</p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>Si el cliente responde</span>
+        {isRating ? (
+          <select
+            value={threshold}
+            onChange={e => setThreshold(Number(e.target.value))}
+            style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
+          >
+            {Array.from({ length: maxVal }, (_, i) => i + 1).map(n => (
+              <option key={n} value={n}>{n} o menos</option>
+            ))}
+          </select>
+        ) : (
+          <select
+            value={ifAnswer}
+            onChange={e => setIfAnswer(e.target.value)}
+            style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
+          >
+            <option value="no">No</option>
+            <option value="si">Sí</option>
+          </select>
+        )}
+        <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>el empleado dice:</span>
+      </div>
+
+      <textarea
+        value={script}
+        onChange={e => setScript(e.target.value)}
+        rows={2}
+        placeholder='Ej: "Lamento mucho escuchar eso. ¿Hay algo específico que podríamos mejorar?"'
+        style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+      />
+
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <button
+          onClick={save}
+          disabled={saving || !script.trim()}
+          style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving || !script.trim() ? 'not-allowed' : 'pointer', opacity: saving || !script.trim() ? 0.6 : 1 }}
+        >
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+        {existing ? (
+          <button
+            onClick={remove}
+            disabled={saving}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', cursor: 'pointer' }}
+          >
+            Quitar
+          </button>
+        ) : (
+          <button
+            onClick={() => setOpen(false)}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: 'none', border: 'none', color: 'var(--c-text-4)', cursor: 'pointer' }}
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── Wizard modal ──────────────────────────────────────────────────────────────
@@ -628,6 +766,10 @@ function SurveyCard({
     ? null
     : agents.filter(a => survey.agent_ids!.includes(a.id));
 
+  const handleConditionUpdate = (qid: string, conditions: QuestionCondition | null) => {
+    setQuestions(prev => prev.map(q => q.id === qid ? { ...q, conditions } : q));
+  };
+
   const addQuestion = async () => {
     if (!qTexto.trim()) return;
     setSaving(true);
@@ -844,21 +986,31 @@ function SurveyCard({
                 <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin preguntas. Agrega la primera.</p>
               )}
               {questions.map((q, idx) => (
-                <div key={q.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg"
+                <div key={q.id} className="flex flex-col px-3 py-2.5 rounded-lg"
                   style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                  <span className="text-[10px] font-bold tabular-nums mt-0.5 shrink-0" style={{ color: 'var(--c-text-4)', minWidth: 16 }}>{idx + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{q.texto}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
-                      {QUESTION_TYPE_LABELS[q.tipo]}
-                      {q.tipo === 'multiple' && q.opciones?.length ? `: ${q.opciones.join(', ')}` : ''}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[10px] font-bold tabular-nums mt-0.5 shrink-0" style={{ color: 'var(--c-text-4)', minWidth: 16 }}>{idx + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{q.texto}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                        {QUESTION_TYPE_LABELS[q.tipo]}
+                        {q.tipo === 'multiple' && q.opciones?.length ? `: ${q.opciones.join(', ')}` : ''}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteQuestion(q.id)}
+                      className="p-1 transition-opacity hover:opacity-60 shrink-0"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)' }}>
+                      <X size={12} />
+                    </button>
                   </div>
-                  <button onClick={() => deleteQuestion(q.id)}
-                    className="p-1 transition-opacity hover:opacity-60 shrink-0"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)' }}>
-                    <X size={12} />
-                  </button>
+                  <div className="pl-5">
+                    <ConditionEditor
+                      question={q}
+                      token={token}
+                      surveyId={survey.id}
+                      onUpdate={handleConditionUpdate}
+                    />
+                  </div>
                 </div>
               ))}
               {addOpen ? (

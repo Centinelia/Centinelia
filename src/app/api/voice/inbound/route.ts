@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
   {
     const { data: activeSurveys } = await supabase
       .from('surveys')
-      .select('id, nombre, descripcion, survey_questions(id, orden, texto, tipo, opciones)')
+      .select('id, nombre, descripcion, survey_questions(id, orden, texto, tipo, opciones, conditions)')
       .eq('agent_id', typedAgent.id)
       .eq('activa', true)
       .eq('auto_apply', true)
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
     if (activeSurveys?.length) {
       const blocks: string[] = [];
       for (const s of activeSurveys) {
-        const questions = ((s as Record<string, unknown>).survey_questions as Array<{ id: string; orden: number; texto: string; tipo: string; opciones: string[] | null }> | null) ?? [];
+        const questions = ((s as Record<string, unknown>).survey_questions as Array<{ id: string; orden: number; texto: string; tipo: string; opciones: string[] | null; conditions: { if_rating_lte?: number; if_answer?: string; then_say?: string } | null }> | null) ?? [];
         if (!questions.length) continue;
         const lines = [
           `ENCUESTA ACTIVA — "${s.nombre}"${s.descripcion ? ` (${s.descripcion})` : ''}`,
@@ -207,7 +207,16 @@ export async function POST(req: NextRequest) {
             if (q.tipo === 'rating_10') hint = ' [escala 1–10]';
             if (q.tipo === 'si_no')     hint = ' [sí / no]';
             if (q.tipo === 'multiple' && q.opciones?.length) hint = ` [opciones: ${q.opciones.join(', ')}]`;
-            return `  ${q.orden}. ${q.texto}${hint}`;
+            const cond = q.conditions;
+            let condLine = '';
+            if (cond?.then_say?.trim()) {
+              if (cond.if_rating_lte != null) {
+                condLine = `\n     → Si responde ${cond.if_rating_lte} o menos, di exactamente: "${cond.then_say.trim()}"`;
+              } else if (cond.if_answer) {
+                condLine = `\n     → Si responde "${cond.if_answer}", di exactamente: "${cond.then_say.trim()}"`;
+              }
+            }
+            return `  ${q.orden}. ${q.texto}${hint}${condLine}`;
           }),
           '',
           'INSTRUCCIONES DE ENCUESTA:',
