@@ -119,7 +119,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     for (const agent of agents) {
       const result = await consumeAiOp(agent.id, 2);
       if (!result.ok) {
-        return NextResponse.json({ error: 'sin_ops', agentName: agent.business_name }, { status: 402 });
+        return NextResponse.json({ error: 'sin_tareas', agentName: agent.business_name }, { status: 402 });
       }
     }
   }
