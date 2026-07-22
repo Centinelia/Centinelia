@@ -9,7 +9,7 @@ const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string 
   order_taken:        { label: 'Pedido',       color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'  },
   transferred:        { label: 'Transferido',  color: '#a855f7', bg: 'rgba(168,85,247,0.1)'  },
   info_provided:      { label: 'Información',  color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
-  escalated_whatsapp: { label: 'WhatsApp',     color: '#16a34a', bg: 'rgba(22,163,74,0.1)'   },
+  escalated_whatsapp: { label: 'Escalada',     color: '#16a34a', bg: 'rgba(22,163,74,0.1)'   },
   missed:             { label: 'Perdida',      color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
   other:              { label: 'Otro',         color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
 };
@@ -105,7 +105,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
   const [modalTab, setModalTab] = useState<ModalTab>('resumen');
 
   const outcome     = OUTCOME_LABELS[call.outcome] ?? OUTCOME_LABELS.other;
-  const showRec     = isPro && !!call.recording_url;
+  const showRec     = !!(isPro && call.recording_url);
   const hasDetails  = !!(call.summary || call.transcript || showRec);
   const displayName = clientName || call.caller_number || 'Número desconocido';
 
