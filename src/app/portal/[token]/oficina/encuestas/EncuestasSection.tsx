@@ -54,10 +54,19 @@ interface Aggregate {
   texts?:        string[];
 }
 
+interface Trend {
+  current_avg:   number | null;
+  prev_avg:      number | null;
+  delta:         number | null;
+  current_count: number;
+  prev_count:    number;
+}
+
 interface Results {
   total:      number;
   aggregates: Aggregate[];
   questions:  Question[];
+  trends?:    Record<string, Trend>;
 }
 
 interface AgentMini {
@@ -188,7 +197,21 @@ function ResultBar({ label, count, total, color = '#6C3BFF' }: { label: string; 
   );
 }
 
-function AggregateBlock({ agg, question }: { agg: Aggregate; question: Question }) {
+function TrendChip({ trend, isSiNo = false }: { trend: Trend; isSiNo?: boolean }) {
+  if (trend.delta == null || trend.current_count === 0) return null;
+  const isUp    = trend.delta > 0;
+  const isDown  = trend.delta < 0;
+  if (!isUp && !isDown) return null;
+  const color   = isSiNo ? (isUp ? '#22c55e' : '#ef4444') : (isUp ? '#22c55e' : '#ef4444');
+  const label   = isSiNo
+    ? `${isUp ? '↑' : '↓'} ${Math.abs(trend.delta)}pp vs período ant.`
+    : `${isUp ? '↑' : '↓'} ${Math.abs(trend.delta).toFixed(1)} vs período ant.`;
+  return (
+    <span className="text-[10px] font-semibold" style={{ color }}>{label}</span>
+  );
+}
+
+function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Question; trend?: Trend | null }) {
   if (!agg.count) return <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas aún.</p>;
 
   if (agg.tipo === 'rating_5' || agg.tipo === 'rating_10') {
@@ -196,10 +219,18 @@ function AggregateBlock({ agg, question }: { agg: Aggregate; question: Question 
     const dist = agg.distribution ?? {};
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-          Promedio: <span style={{ color: '#9B6DFF' }}>{agg.avg?.toFixed(1) ?? '—'}</span>
-          <span className="font-normal ml-1" style={{ color: 'var(--c-text-4)' }}>/ {max} · {agg.count} respuestas</span>
-        </p>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+            Promedio: <span style={{ color: '#9B6DFF' }}>{agg.avg?.toFixed(1) ?? '—'}</span>
+            <span className="font-normal ml-1" style={{ color: 'var(--c-text-4)' }}>/ {max} · {agg.count} resp.</span>
+          </p>
+          {trend && <TrendChip trend={trend} />}
+        </div>
+        {trend?.current_count != null && trend.current_count < agg.count && (
+          <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+            Últimos 30d: {trend.current_count} resp.{trend.prev_count > 0 ? ` · Per. anterior: ${trend.prev_count}` : ''}
+          </p>
+        )}
         <div className="flex flex-col gap-1 mt-1">
           {Array.from({ length: max }, (_, i) => i + 1).map(n => (
             <ResultBar key={n} label={String(n)} count={dist[String(n)] ?? 0} total={agg.count} />
@@ -212,9 +243,12 @@ function AggregateBlock({ agg, question }: { agg: Aggregate; question: Question 
   if (agg.tipo === 'si_no') {
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-          {agg.count} respuestas · <span style={{ color: '#22c55e' }}>{agg.pct_si ?? 0}% sí</span>
-        </p>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+            {agg.count} respuestas · <span style={{ color: '#22c55e' }}>{agg.pct_si ?? 0}% sí</span>
+          </p>
+          {trend && <TrendChip trend={trend} isSiNo />}
+        </div>
         <div className="flex flex-col gap-1 mt-1">
           <ResultBar label="Sí" count={agg.si ?? 0} total={agg.count} color="#22c55e" />
           <ResultBar label="No" count={agg.no ?? 0} total={agg.count} color="#ef4444" />
@@ -757,8 +791,13 @@ function SurveyCard({
     if (!results?.aggregates.length) return null;
     const ra = results.aggregates.find(a => a.tipo === 'rating_5' || a.tipo === 'rating_10');
     if (!ra || ra.avg == null) return null;
-    return { avg: ra.avg, max: ra.tipo === 'rating_5' ? 5 : 10 };
+    return { avg: ra.avg, max: ra.tipo === 'rating_5' ? 5 : 10, question_id: ra.question_id };
   }, [results]);
+
+  const primaryTrend = useMemo(() => {
+    if (!primaryAvg || !results?.trends) return null;
+    return results.trends[primaryAvg.question_id] ?? null;
+  }, [primaryAvg, results]);
 
   // Derived trigger + agent labels for display
   const triggerLabels = (survey.triggers ?? []).map(t => TRIGGER_SHORT[t] ?? t);
@@ -823,6 +862,11 @@ function SurveyCard({
             {primaryAvg && (
               <span className="text-[10px] font-semibold shrink-0" style={{ color: '#F59E0B' }}>
                 {primaryAvg.avg.toFixed(1)} / {primaryAvg.max}
+              </span>
+            )}
+            {primaryAvg && primaryTrend?.delta != null && primaryTrend.delta !== 0 && (
+              <span className="text-[9px] font-semibold shrink-0" style={{ color: primaryTrend.delta > 0 ? '#22c55e' : '#ef4444' }}>
+                {primaryTrend.delta > 0 ? '↑' : '↓'} {Math.abs(primaryTrend.delta).toFixed(1)}
               </span>
             )}
             {loadingRes && <Loader2 size={10} className="animate-spin shrink-0" style={{ color: 'var(--c-text-4)' }} />}
@@ -962,12 +1006,13 @@ function SurveyCard({
                       </p>
                     )}
                     {results.questions.map(q => {
-                      const agg = results.aggregates.find(a => a.question_id === q.id);
+                      const agg   = results.aggregates.find(a => a.question_id === q.id);
+                      const trend = results.trends?.[q.id] ?? null;
                       return (
                         <div key={q.id} className="flex flex-col gap-2">
                           <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>{q.orden}. {q.texto}</p>
                           {agg
-                            ? <AggregateBlock agg={agg} question={q} />
+                            ? <AggregateBlock agg={agg} question={q} trend={trend} />
                             : <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas.</p>
                           }
                         </div>
@@ -1124,7 +1169,7 @@ export default function EncuestasSection({ token, agentName }: { token: string; 
         <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
           Cada llamada hace más inteligente a tu negocio.
         </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)', maxWidth: 520 }}>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
           Define una vez las preguntas y tus empleados las aplicarán automáticamente cuando corresponda. Mide satisfacción, calidad, entregas o cualquier proceso sin depender de que alguien recuerde preguntar.
         </p>
       </div>
