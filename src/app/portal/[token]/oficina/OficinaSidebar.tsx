@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Activity, Inbox, BarChart2, FileText, Mic, UserCheck,
+  Activity, BarChart2, FileText, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
-  ChevronDown, ChevronRight, Phone,
+  ChevronDown, ChevronRight, Phone, LayoutTemplate,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
@@ -33,40 +33,39 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'ACTIVIDAD',
     items: [
       { href: '',          moduleId: 'of_actividad',  label: 'Hoy en la oficina', icon: Activity,  badgeKey: '',        opsHint: '',               pulseId: 'of-actividad'  },
-      { href: '/llamadas', moduleId: 'of_llamadas', label: 'Llamadas', icon: Phone, badgeKey: '', opsHint: '', pulseId: '' },
-      { href: '/bandeja',  moduleId: 'of_bandeja',    label: 'Bandeja',           icon: Inbox,     badgeKey: 'bandeja', opsHint: '1 tarea/correo', pulseId: 'of-bandeja'    },
       { href: '/reportes', moduleId: 'of_reportes',   label: 'Reportes',          icon: BarChart2, badgeKey: '',        opsHint: '1 tarea/reporte',pulseId: 'of-reportes'   },
     ],
   },
   {
     group: 'CONOCIMIENTO',
     items: [
-      { href: '/aprendizajes',  moduleId: 'of_aprendizajes',  label: 'Cómo trabajamos', icon: Brain,     badgeKey: '',          opsHint: '',                        pulseId: 'of-aprendizajes'  },
-      { href: '/investigacion', moduleId: 'of_investigacion', label: 'Investigación',   icon: Search,    badgeKey: '',          opsHint: '0 aquí · 7–13 vía chat',  pulseId: 'of-investigacion' },
-      { href: '/documentos',   moduleId: 'of_documentos',    label: 'Documentos',      icon: FolderOpen,badgeKey: '',          opsHint: '',                        pulseId: 'of-documentos'    },
-      { href: '/contratos',    moduleId: 'of_contratos',     label: 'Contratos',       icon: FileText,  badgeKey: 'contratos', opsHint: '1 tarea/análisis',        pulseId: 'of-contratos'     },
+      { href: '/aprendizajes',  moduleId: 'of_aprendizajes',  label: 'Cómo trabajamos', icon: Brain,  badgeKey: '', opsHint: '',                       pulseId: 'of-aprendizajes'  },
+      { href: '/investigacion', moduleId: 'of_investigacion', label: 'Investigación',   icon: Search, badgeKey: '', opsHint: '0 aquí · 7–13 vía chat', pulseId: 'of-investigacion' },
     ],
   },
   {
     group: 'OPERACIÓN',
     items: [
-      { href: '/juntas',               moduleId: 'of_juntas',               label: 'Juntas',               icon: Mic,         badgeKey: 'juntas',            opsHint: '1–6 tareas/junta', pulseId: 'of-juntas'               },
-      { href: '/onboarding',           moduleId: 'of_onboarding',           label: 'Onboarding',           icon: UserCheck,   badgeKey: '',                  opsHint: '',                 pulseId: 'of-onboarding'           },
-      { href: '/helpdesk',             moduleId: 'of_helpdesk',             label: 'Mesa de ayuda',        icon: Headphones,  badgeKey: '',                  opsHint: '',                 pulseId: 'of-helpdesk'             },
-      { href: '/reportes-ciudadanos',  moduleId: 'of_reportes_ciudadanos',  label: 'Reportes ciudadanos',  icon: ClipboardList, badgeKey: 'reportesCiudadanos', opsHint: '',             pulseId: 'of-reportes-ciudadanos', vertical: 'gobierno' },
-      { href: '/cabildo',              moduleId: 'of_cabildo',              label: 'Cabildo',              icon: Gavel,       badgeKey: '',                  opsHint: '',                 pulseId: 'of-cabildo',             vertical: 'gobierno' },
+      { href: '/documentos',          moduleId: 'of_documentos',          label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'          },
+      { href: '/plantillas',          moduleId: 'of_plantillas',          label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'          },
+      { href: '/juntas',              moduleId: 'of_juntas',              label: 'Juntas',              icon: Mic,            badgeKey: 'juntas',         opsHint: '1–6 tareas/junta', pulseId: 'of-juntas'              },
+      { href: '/reportes-ciudadanos', moduleId: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', icon: ClipboardList,  badgeKey: 'reportesCiudadanos', opsHint: '',             pulseId: 'of-reportes-ciudadanos', vertical: 'gobierno' },
+      { href: '/cabildo',             moduleId: 'of_cabildo',             label: 'Cabildo',             icon: Gavel,          badgeKey: '',               opsHint: '',                 pulseId: 'of-cabildo',             vertical: 'gobierno' },
     ],
   },
   {
     group: 'PERSONAS',
     items: [
-      { href: '/encuestas', moduleId: 'of_encuestas', label: 'Encuestas', icon: PieChart, badgeKey: '', opsHint: '', pulseId: 'of-encuestas' },
+      { href: '/llamadas',   moduleId: 'of_llamadas',   label: 'Llamadas',   icon: Phone,     badgeKey: '', opsHint: '', pulseId: ''               },
+      { href: '/onboarding', moduleId: 'of_onboarding', label: 'Onboarding', icon: UserCheck, badgeKey: '', opsHint: '', pulseId: 'of-onboarding'  },
+      { href: '/encuestas',  moduleId: 'of_encuestas',  label: 'Calidad',    icon: PieChart,  badgeKey: '', opsHint: '', pulseId: 'of-encuestas'   },
     ],
   },
   {
     group: 'SISTEMA',
     items: [
-      { href: '/integraciones', moduleId: 'of_integraciones', label: 'Integraciones', icon: Plug, badgeKey: '', opsHint: '', pulseId: 'of-integraciones' },
+      { href: '/helpdesk',      moduleId: 'of_helpdesk',      label: 'Mesa de ayuda', icon: Headphones, badgeKey: '', opsHint: '', pulseId: 'of-helpdesk'      },
+      { href: '/integraciones', moduleId: 'of_integraciones', label: 'Integraciones', icon: Plug,       badgeKey: '', opsHint: '', pulseId: 'of-integraciones' },
     ],
   },
 ];

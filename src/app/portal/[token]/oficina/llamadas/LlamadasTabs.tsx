@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PhoneCall, PhoneOutgoing } from 'lucide-react';
 import type { VoiceCall } from '@/types/agent';
 import CallsSearch      from '../../CallsSearch';
@@ -17,6 +17,7 @@ interface Props {
   token:             string;
   isPro:             boolean;
   businessName:      string;
+  agentName?:        string;
   calls:             VoiceCall[];
   leads:             any[];
   orders:            any[];
@@ -34,7 +35,7 @@ interface Props {
 }
 
 export default function LlamadasTabs({
-  token, isPro, businessName,
+  token, isPro, businessName, agentName,
   calls, leads, orders, appts,
   showLeads, showOrders, showAppts,
   showOutbound, initOutbound, initMissedCall,
@@ -43,10 +44,20 @@ export default function LlamadasTabs({
 }: Props) {
   const [tab, setTab] = useState<Tab>('entrantes');
 
+  const pulseText = useMemo(() => {
+    if (!calls.length || !agentName) return null;
+    const recent   = calls[0];
+    const minsAgo  = Math.floor((Date.now() - new Date(recent.created_at).getTime()) / 60000);
+    if (minsAgo > 120) return null;
+    if (minsAgo < 2)   return `${agentName} está atendiendo una llamada`;
+    if (minsAgo < 60)  return `${agentName} atendió su última llamada hace ${minsAgo} min`;
+    return `${agentName} atendió su última llamada hace ${Math.floor(minsAgo / 60)}h`;
+  }, [calls, agentName]);
+
   return (
     <div className="flex flex-col gap-5">
 
-      {/* Selector */}
+      {/* Tab selector */}
       <div className="flex items-center gap-2">
         <button
           onClick={() => setTab('entrantes')}
@@ -79,6 +90,15 @@ export default function LlamadasTabs({
       {/* Entrantes */}
       {tab === 'entrantes' && (
         <>
+          {/* Live pulse */}
+          {pulseText && (
+            <p className="text-xs flex items-center gap-2 px-1" style={{ color: 'var(--c-text-3)' }}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
+                style={{ background: '#22c55e' }} />
+              {pulseText}
+            </p>
+          )}
+
           <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -98,7 +118,13 @@ export default function LlamadasTabs({
                 <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
               </div>
             ) : (
-              <CallsSearch calls={calls as any} isPro={isPro} callerNames={callerNames} token={token} />
+              <CallsSearch
+                calls={calls as any}
+                isPro={isPro}
+                callerNames={callerNames}
+                token={token}
+                agentName={agentName}
+              />
             )}
           </div>
 

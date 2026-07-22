@@ -60,6 +60,7 @@ export default async function OficinaLlamadasPage({ params }: Props) {
         token={token}
         isPro={agent.plan === 'pro'}
         businessName={agent.business_name}
+        agentName={(agent as any).agent_name ?? agent.business_name}
         calls={calls}
         leads={leads as any[]}
         orders={orders as any[]}

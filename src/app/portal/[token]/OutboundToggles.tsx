@@ -284,9 +284,37 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {rows.map(r => (
-          <div key={r.field} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div className="flex flex-col gap-5">
+
+        {/* Delegation narrative */}
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: 'var(--c-text)' }}>
+              Tu empleado puede salir a trabajar
+            </h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+              Activa las llamadas salientes para que llame a tus contactos automáticamente.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {['Seguimientos', 'Confirmaciones', 'Cobranza', 'Recordatorios'].map(item => (
+              <div key={item} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#6C3BFF' }} />
+                <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Permisos */}
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>
+            Permisos
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {rows.map(r => (
+              <div key={r.field} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             <div style={{
               display:        'flex',
               alignItems:     'center',
@@ -339,7 +367,9 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
               </div>
             )}
           </div>
-        ))}
+            ))}
+          </div>
+        </div>
       </div>
     </>
   );

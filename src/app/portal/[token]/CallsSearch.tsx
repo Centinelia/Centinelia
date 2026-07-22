@@ -17,14 +17,39 @@ const OUTCOME_LABELS: Record<string, string> = {
   other:              'Otro',
 };
 
-export default function CallsSearch({ calls, isPro, callerNames = {}, token }: {
-  calls: VoiceCall[];
-  isPro: boolean;
+export default function CallsSearch({ calls, isPro, callerNames = {}, token, agentName }: {
+  calls:        VoiceCall[];
+  isPro:        boolean;
   callerNames?: Record<string, string>;
-  token?: string;
+  token?:       string;
+  agentName?:   string;
 }) {
   const [query,      setQuery]      = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  const statsLine = useMemo(() => {
+    const today      = new Date().toLocaleDateString('en-CA');
+    const todayCalls = calls.filter(c => c.created_at?.slice(0, 10) === today);
+    if (!todayCalls.length) return null;
+
+    const answered = todayCalls.filter(c => !['missed', 'unanswered'].includes(c.outcome ?? ''));
+    const leads    = todayCalls.filter(c => c.outcome === 'lead_created');
+    const appts    = todayCalls.filter(c => c.outcome === 'appointment_booked');
+    const avgSecs  = answered.length > 0
+      ? Math.round(answered.reduce((s, c) => s + (c.duration_seconds ?? 0), 0) / answered.length)
+      : 0;
+    const avgLabel = avgSecs > 0
+      ? `${Math.floor(avgSecs / 60)}:${String(avgSecs % 60).padStart(2, '0')}`
+      : null;
+
+    return [
+      `${todayCalls.length} llamada${todayCalls.length !== 1 ? 's' : ''}`,
+      `${answered.length} atendida${answered.length !== 1 ? 's' : ''}`,
+      ...(leads.length > 0 ? [`${leads.length} lead${leads.length !== 1 ? 's' : ''}`] : []),
+      ...(appts.length > 0 ? [`${appts.length} cita${appts.length !== 1 ? 's' : ''}`] : []),
+      ...(avgLabel        ? [`Prom. ${avgLabel}`]                                     : []),
+    ].join(' · ');
+  }, [calls]);
 
   const availableOutcomes = useMemo(() => {
     const seen = new Set(calls.map(c => c.outcome).filter(Boolean));
@@ -49,6 +74,15 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token }: {
 
   return (
     <div className="flex flex-col gap-3">
+
+      {/* Stats bar */}
+      {statsLine && (
+        <p className="text-[11px] px-1" style={{ color: 'var(--c-text-3)' }}>
+          <span className="font-semibold" style={{ color: '#9B6DFF' }}>Hoy</span>
+          {' · '}{statsLine}
+        </p>
+      )}
+
       <div className="flex gap-2">
         {/* Search */}
         <div className="relative flex-1">
@@ -75,7 +109,6 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token }: {
           )}
         </div>
 
-        {/* Type filter — only render when there are multiple distinct outcome types */}
         {availableOutcomes.length > 1 && (
           <div className="relative shrink-0">
             <select
@@ -119,6 +152,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token }: {
                   call={call}
                   isPro={isPro}
                   clientName={callerNames[(call.caller_number ?? '').replace(/\D/g, '')]}
+                  agentName={agentName}
                   token={token}
                 />
               ))

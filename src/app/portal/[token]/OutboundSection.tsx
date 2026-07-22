@@ -69,12 +69,6 @@ const STATUS_TEXT: Record<Contact['status'], string> = {
   cancelled: 'var(--c-text-3)',
 };
 
-const SOURCE_CONFIG = {
-  llamada_entrante: { label: 'Llamada entrante', color: '#6C3BFF', bg: 'rgba(108,59,255,0.10)' },
-  csv:              { label: 'CSV',              color: '#0ea5e9', bg: 'rgba(14,165,233,0.10)'  },
-  manual:           { label: 'Manual',           color: '#6b7280', bg: 'rgba(107,114,128,0.10)' },
-} as const;
-
 const CAMPAIGN_STATUS = {
   active:    { label: 'Activa',     color: '#22c55e', bg: 'rgba(34,197,94,0.10)'    },
   paused:    { label: 'Pausada',    color: '#f59e0b', bg: 'rgba(245,158,11,0.10)'   },
@@ -131,16 +125,6 @@ function parseCSV(text: string): Array<{ nombre?: string; telefono: string; moti
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function SourceBadge({ source }: { source: Contact['source'] }) {
-  const cfg = SOURCE_CONFIG[source] ?? SOURCE_CONFIG.manual;
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-      style={{ background: cfg.bg, color: cfg.color }}>
-      {cfg.label}
-    </span>
-  );
-}
-
 function StatusPill({ status }: { status: Contact['status'] }) {
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
@@ -159,6 +143,15 @@ function CampaignStatusBadge({ status }: { status: Campaign['status'] }) {
       {cfg.label}
     </span>
   );
+}
+
+function narrativeStatus(c: Contact): string {
+  if (c.status === 'pending')   return 'Esperando llamada.';
+  if (c.status === 'calling')   return 'Llamando ahora...';
+  if (c.status === 'completed') return 'Llamada completada.';
+  if (c.status === 'failed')    return c.fail_count > 1 ? `No contestó ${c.fail_count} veces. Se reintentará.` : 'No contestó. Se reintentará.';
+  if (c.status === 'cancelled') return 'Cancelada.';
+  return '';
 }
 
 // ── Campaign result types & sub-components ───────────────────────────────────
@@ -464,9 +457,6 @@ export default function OutboundSection({
   agents:            Agent[];
   initialTab?:       'contactos' | 'campanas';
 }) {
-  // ── Tab ──────────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'contactos' | 'campanas'>(initialTab);
-
   // ── Contacts state ────────────────────────────────────────────────────────────
   const [contacts,        setContacts]        = useState<Contact[]>(initialContacts);
   const [selected,        setSelected]        = useState<Set<string>>(new Set());
@@ -674,6 +664,9 @@ export default function OutboundSection({
     setEditCampaign(null);
   };
 
+  const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const agentLabel    = selectedAgent?.agent_name ?? selectedAgent?.business_name ?? 'El empleado';
+
   const inputStyle = {
     background: 'var(--c-input-bg)',
     border:     '1px solid var(--c-input-border)',
@@ -682,45 +675,20 @@ export default function OutboundSection({
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
 
-      {/* Tab nav */}
-      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface-2)' }}>
-        {(['contactos', 'campanas'] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)}
-            className="flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all"
-            style={{
-              background: activeTab === t ? 'var(--c-modal)' : 'transparent',
-              color:      activeTab === t ? 'var(--c-text)'  : 'var(--c-text-3)',
-              boxShadow:  activeTab === t ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
-            }}>
-            {t === 'contactos' ? 'Contactos' : 'Campañas'}
-          </button>
-        ))}
-      </div>
+        {/* ── CONTACTOS ── */}
+        <div id="contactos" className="flex flex-col gap-4">
 
-      {/* ── CONTACTOS ─────────────────────────────────────────────────────────── */}
-      {activeTab === 'contactos' && (
-        <div id="contactos" className="flex flex-col gap-5">
-          {/* Header row */}
+          {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Contactos</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                Agrega contactos, selecciónalos y el empleado los llama automáticamente.
+                Selecciona contactos y el empleado los llama.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={sourceFilter}
-                onChange={e => setSourceFilter(e.target.value as SourceFilter)}
-                className="rounded-lg px-3 py-2 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text-2)' }}
-              >
-                <option value="all">Todas las fuentes</option>
-                <option value="llamada_entrante">Llamada entrante</option>
-                <option value="csv">Importación CSV</option>
-                <option value="manual">Manual</option>
-              </select>
               <button type="button" onClick={refresh} disabled={refreshing}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
@@ -731,7 +699,7 @@ export default function OutboundSection({
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
                 <Upload size={12} />
-                Subir CSV
+                CSV
               </button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSV} />
               <button type="button" onClick={() => { setShowContactForm(f => !f); setContactError(''); }}
@@ -746,15 +714,15 @@ export default function OutboundSection({
           {/* Add contact form */}
           {showContactForm && (
             <form onSubmit={handleAddContact}
-              className="rounded-2xl p-5 flex flex-col gap-4"
+              className="rounded-2xl p-4 flex flex-col gap-3"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Nuevo contacto</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex flex-col gap-2">
                 <input placeholder="Nombre (opcional)" value={nombre} onChange={e => setNombre(e.target.value)}
                   className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
                 <input placeholder="Teléfono *" value={telefono} onChange={e => setTelefono(e.target.value)} required
                   className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
-                <input placeholder="Motivo de la llamada (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
+                <input placeholder="Motivo (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
                   className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
               </div>
               <div className="flex items-center gap-2">
@@ -774,16 +742,16 @@ export default function OutboundSection({
             </form>
           )}
 
-          {/* Search + CSV hint row */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[180px]">
+          {/* Search + source filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[140px]">
               <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ color: 'var(--c-text-3)' }} />
               <input
                 type="text"
                 value={contactSearch}
                 onChange={e => setContactSearch(e.target.value)}
-                placeholder="Buscar por nombre o teléfono…"
+                placeholder="Buscar…"
                 className="w-full pl-8 pr-8 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
               />
@@ -794,129 +762,100 @@ export default function OutboundSection({
                 </button>
               )}
             </div>
-            <p className="text-xs shrink-0" style={{ color: 'var(--c-text-3)' }}>
-              CSV: columnas <span className="font-mono">nombre, telefono, motivo</span>
-            </p>
+            <select
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value as SourceFilter)}
+              className="rounded-lg px-3 py-2 text-xs outline-none"
+              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text-2)' }}
+            >
+              <option value="all">Todas</option>
+              <option value="llamada_entrante">Entrante</option>
+              <option value="csv">CSV</option>
+              <option value="manual">Manual</option>
+            </select>
           </div>
 
-          {/* Contacts table */}
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
-            {contacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ background: 'var(--c-surface)' }}>
-                <PhoneCall size={32} style={{ color: 'var(--c-text-3)' }} />
-                <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay contactos aún</p>
-                <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Agrega contactos manualmente o sube un CSV</p>
+          {/* Work queue panel */}
+          {pendingContacts.length > 0 && (
+            <div className="rounded-xl p-3 flex flex-col gap-2"
+              style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+              <span className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>
+                {agentLabel} — {pendingContacts.length} pendiente{pendingContacts.length !== 1 ? 's' : ''}
+              </span>
+              <div className="flex flex-col gap-1">
+                {pendingContacts.slice(0, 5).map(c => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#6C3BFF' }} />
+                    <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                      {c.nombre ? `Llamar a ${c.nombre}` : c.telefono}
+                      {c.motivo && <span style={{ color: 'var(--c-text-3)' }}> · {c.motivo}</span>}
+                    </span>
+                  </div>
+                ))}
+                {pendingContacts.length > 5 && (
+                  <span className="text-xs pl-3.5" style={{ color: 'var(--c-text-4)' }}>
+                    +{pendingContacts.length - 5} más
+                  </span>
+                )}
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ background: 'var(--c-surface-2)', borderBottom: '1px solid var(--c-border)' }}>
-                    <th className="px-4 py-3 text-left w-10">
-                      <input type="checkbox"
-                        checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
-                        onChange={toggleAll} disabled={visiblePending.length === 0}
-                        className="rounded" style={{ accentColor: '#6C3BFF' }} />
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Nombre</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Teléfono</th>
-                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Motivo</th>
-                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Fuente</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleContacts.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        {sourceFilter === 'all' ? 'No hay contactos aún' : 'Sin contactos con este origen'}
-                      </td>
-                    </tr>
-                  ) : visibleContacts.map((c, i) => (
-                    <tr key={c.id} onClick={() => c.status === 'pending' && toggle(c.id)}
-                      style={{
-                        background:   selected.has(c.id) ? 'rgba(108,59,255,0.06)' : (i % 2 === 0 ? 'var(--c-surface)' : 'var(--c-surface-2)'),
-                        borderBottom: '1px solid var(--c-border)',
-                        cursor:       c.status === 'pending' ? 'pointer' : 'default',
-                      }}>
-                      <td className="px-4 py-3">
-                        {c.status === 'pending' && (
-                          <input type="checkbox" checked={selected.has(c.id)}
-                            onChange={() => toggle(c.id)} onClick={e => e.stopPropagation()}
-                            style={{ accentColor: '#6C3BFF' }} />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--c-text)' }}>
-                        {c.nombre ?? <span style={{ color: 'var(--c-text-3)' }}>—</span>}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--c-text-2)' }}>{c.telefono}</td>
-                      <td className="hidden sm:table-cell px-4 py-3 text-xs max-w-[200px] truncate" style={{ color: 'var(--c-text-3)' }}>
-                        {c.motivo ?? '—'}
-                      </td>
-                      <td className="hidden md:table-cell px-4 py-3">
-                        <SourceBadge source={c.source} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <StatusPill status={c.status} />
-                          {c.fail_count > 0 && c.status !== 'completed' && c.status !== 'cancelled' && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums"
-                              style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-                              ×{c.fail_count}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Action bar */}
+          {/* Selection + action bar */}
           {contacts.length > 0 && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs flex-1" style={{ color: 'var(--c-text-3)' }}>
-                  {selectedPending.length} seleccionado{selectedPending.length !== 1 ? 's' : ''} de {pendingContacts.length}
-                </span>
+                <label className="flex items-center gap-2 text-xs cursor-pointer flex-shrink-0"
+                  style={{ color: 'var(--c-text-3)' }}>
+                  <input type="checkbox"
+                    checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
+                    onChange={toggleAll} disabled={visiblePending.length === 0}
+                    style={{ accentColor: '#6C3BFF' }} />
+                  {selectedPending.length > 0
+                    ? `${selectedPending.length} de ${pendingContacts.length} seleccionados`
+                    : `${pendingContacts.length} pendiente${pendingContacts.length !== 1 ? 's' : ''}`}
+                </label>
 
-                {/* Agent selector (multi-agent) or label (single agent) */}
-                {agents.length > 1 ? (
-                  <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
-                    className="rounded-xl px-3 py-2 text-xs outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                    {agents.map(a => (
-                      <option key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</option>
-                    ))}
-                  </select>
-                ) : agents.length === 1 ? (
-                  <span className="text-xs px-2.5 py-1 rounded-full"
-                    style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                    {agents[0].agent_name ?? agents[0].business_name}
-                  </span>
-                ) : null}
+                {selectedPending.length > 0 && (
+                  <>
+                    {agents.length > 1 ? (
+                      <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
+                        className="rounded-xl px-3 py-1.5 text-xs outline-none"
+                        style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
+                        {agents.map(a => (
+                          <option key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</option>
+                        ))}
+                      </select>
+                    ) : agents.length === 1 ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                        {agents[0].agent_name ?? agents[0].business_name}
+                      </span>
+                    ) : null}
 
-                <button type="button"
-                  onClick={() => selectedPending.length > 0 && !showCallConfirm && setShowCallConfirm(true)}
-                  disabled={calling || selectedPending.length === 0}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-40"
-                  style={{ background: selectedPending.length > 0 ? '#6C3BFF' : 'var(--c-surface-2)', color: selectedPending.length > 0 ? '#fff' : 'var(--c-text-3)' }}>
-                  {calling ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
-                  {calling ? 'Llamando…' : `Llamar seleccionados${selectedPending.length > 0 ? ` (${selectedPending.length})` : ''}`}
-                </button>
+                    <button type="button"
+                      onClick={() => !showCallConfirm && setShowCallConfirm(true)}
+                      disabled={calling}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-40"
+                      style={{ background: '#6C3BFF', color: '#fff' }}>
+                      {calling ? <Loader2 size={12} className="animate-spin" /> : <Phone size={12} />}
+                      {calling ? 'Llamando…' : `Llamar (${selectedPending.length})`}
+                    </button>
 
-                {selected.size > 0 && !showCallConfirm && (
-                  <button type="button" onClick={handleDelete} disabled={deleting}
-                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                    Eliminar {selected.size > 1 ? `(${selected.size})` : ''}
-                  </button>
+                    {!showCallConfirm && (
+                      <button type="button" onClick={handleDelete} disabled={deleting}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
+                        style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        Eliminar
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {callResult && (
-                  <span className="text-xs flex items-center gap-1.5" style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
+                  <span className="text-xs flex items-center gap-1.5"
+                    style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
                     <Check size={12} />
                     {callResult.triggered} llamada{callResult.triggered !== 1 ? 's' : ''} iniciada{callResult.triggered !== 1 ? 's' : ''}
                     {callResult.failed > 0 && `, ${callResult.failed} fallida${callResult.failed !== 1 ? 's' : ''}`}
@@ -924,7 +863,6 @@ export default function OutboundSection({
                 )}
               </div>
 
-              {/* Confirmation panel */}
               {showCallConfirm && (
                 <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-wrap"
                   style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
@@ -949,6 +887,65 @@ export default function OutboundSection({
             </div>
           )}
 
+          {/* Contact cards */}
+          {contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-2xl"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <PhoneCall size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
+              <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay contactos aún</p>
+              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Agrega uno o sube un CSV</p>
+            </div>
+          ) : visibleContacts.length === 0 ? (
+            <p className="text-xs text-center py-6" style={{ color: 'var(--c-text-3)' }}>
+              {sourceFilter === 'all' ? 'Sin resultados' : 'Sin contactos con este origen'}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {visibleContacts.map(c => (
+                <div key={c.id}
+                  className="rounded-xl overflow-hidden transition-colors"
+                  style={{
+                    background: selected.has(c.id) ? 'rgba(108,59,255,0.06)' : 'var(--c-surface-2)',
+                    border:     selected.has(c.id) ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+                    cursor:     c.status === 'pending' ? 'pointer' : 'default',
+                  }}
+                  onClick={() => c.status === 'pending' && toggle(c.id)}
+                >
+                  <div className="px-3 py-2.5 flex items-start gap-2.5">
+                    {c.status === 'pending' && (
+                      <input type="checkbox" checked={selected.has(c.id)}
+                        onChange={() => toggle(c.id)} onClick={e => e.stopPropagation()}
+                        className="mt-0.5 flex-shrink-0"
+                        style={{ accentColor: '#6C3BFF' }} />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
+                          {c.nombre ?? c.telefono}
+                        </span>
+                        {c.nombre && (
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--c-text-3)' }}>
+                            {c.telefono}
+                          </span>
+                        )}
+                        <StatusPill status={c.status} />
+                        {c.fail_count > 0 && c.status !== 'completed' && c.status !== 'cancelled' && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums"
+                            style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                            ×{c.fail_count}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                        {[c.motivo, narrativeStatus(c)].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {contactError && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
@@ -956,10 +953,8 @@ export default function OutboundSection({
             </div>
           )}
         </div>
-      )}
 
-      {/* ── CAMPAÑAS ──────────────────────────────────────────────────────────── */}
-      {activeTab === 'campanas' && (
+        {/* ── CAMPAÑAS ── */}
         <div id="campanas" className="flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-center justify-between gap-3">
@@ -1162,7 +1157,8 @@ export default function OutboundSection({
             </div>
           )}
         </div>
-      )}
+
+      </div>
     </div>
   );
 }
