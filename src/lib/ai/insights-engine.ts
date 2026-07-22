@@ -27,11 +27,16 @@ export interface CallRow {
   ces_data?:         CesData | null;
 }
 
-const CES_DIMS = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'] as const;
+const CES_DIMS: string[] = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'];
 const DIM_ES: Record<string, string> = {
   fluidez: 'Fluidez', comprension: 'Comprensión', naturalidad: 'Naturalidad',
   conduccion: 'Conducción', confianza: 'Confianza', resolucion: 'Resolución',
 };
+
+function getCesDimScore(cesData: CesData, dim: string): number | null {
+  const entry = (cesData as Record<string, CesDim | undefined>)[dim];
+  return entry && typeof entry.score === 'number' ? entry.score : null;
+}
 
 function cesAverages(calls: CallRow[]): Record<string, number> {
   const totals: Record<string, number> = {};
@@ -39,8 +44,8 @@ function cesAverages(calls: CallRow[]): Record<string, number> {
   for (const c of calls) {
     if (!c.ces_data) continue;
     for (const d of CES_DIMS) {
-      const s = (c.ces_data as Record<string, CesDim>)[d]?.score;
-      if (typeof s === 'number') {
+      const s = getCesDimScore(c.ces_data, d);
+      if (s !== null) {
         totals[d] = (totals[d] ?? 0) + s;
         counts[d] = (counts[d] ?? 0) + 1;
       }
@@ -132,10 +137,18 @@ Responde ÚNICAMENTE con un array JSON válido (sin texto adicional):
   if (!match) return [];
 
   try {
-    const parsed = JSON.parse(match[0]) as unknown[];
+    const parsed: unknown = JSON.parse(match[0]);
     if (!Array.isArray(parsed)) return [];
-    return (parsed as InsightRec[])
-      .filter(r => r.title && r.body && ['high', 'medium', 'low'].includes(r.priority))
-      .slice(0, 4);
+    const items = parsed as Array<Record<string, unknown>>;
+    return items
+      .filter(r => r.title && r.body && ['high', 'medium', 'low'].includes(r.priority as string))
+      .slice(0, 4)
+      .map(r => ({
+        title:         r.title         as string,
+        body:          r.body          as string,
+        metric_key:    r.metric_key    as string | undefined,
+        current_value: r.current_value as number | undefined,
+        priority:      r.priority      as 'high' | 'medium' | 'low',
+      }));
   } catch { return []; }
 }

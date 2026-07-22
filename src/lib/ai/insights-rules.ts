@@ -1,7 +1,7 @@
 import { getGoalsWithProgress } from '@/lib/goals/progress';
 import type { CallRow, InsightRec } from './insights-engine';
 
-const CES_DIMS = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'] as const;
+const CES_DIMS: string[] = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'];
 const DIM_ES: Record<string, string> = {
   fluidez: 'Fluidez', comprension: 'Comprensión', naturalidad: 'Naturalidad',
   conduccion: 'Conducción', confianza: 'Confianza', resolucion: 'Resolución',
@@ -15,10 +15,18 @@ const DIM_ADVICE: Record<string, string> = {
   resolucion: 'Verifica que el empleado tenga todas las herramientas y datos necesarios para resolver el caso principal.',
 };
 
+function getDimScore(cesData: Record<string, unknown>, dim: string): number | null {
+  const entry = cesData[dim] as { score?: number } | undefined;
+  return entry && typeof entry.score === 'number' ? entry.score : null;
+}
+
 function cesAvg(calls: CallRow[], dim: string): number | null {
-  const scores = calls
-    .filter(c => c.ces_data && (c.ces_data as Record<string, { score: number }>)[dim]?.score)
-    .map(c => (c.ces_data as Record<string, { score: number }>)[dim].score);
+  const scores: number[] = [];
+  for (const c of calls) {
+    if (!c.ces_data) continue;
+    const s = getDimScore(c.ces_data as Record<string, unknown>, dim);
+    if (s !== null) scores.push(s);
+  }
   if (scores.length < 3) return null;
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
