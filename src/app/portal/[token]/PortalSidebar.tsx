@@ -89,7 +89,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       id: 'agentes', moduleId: 'agentes', label: 'Empleados', icon: <Bot size={14} />,
       directHref: `/portal/${token}/agentes`,
       items: [
-        { label: 'Mis empleados', id: 'lista-agentes' },
+        { label: 'Mis empleados', id: 'lista-agentes', href: `/portal/${token}/agentes#lista-agentes` },
+        { label: 'Herramientas',  id: 'herramientas',  href: `/portal/${token}/agentes#herramientas`  },
       ],
     },
     ...(hasOpsAgent ? [{

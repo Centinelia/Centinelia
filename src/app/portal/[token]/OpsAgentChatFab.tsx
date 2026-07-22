@@ -36,6 +36,7 @@ export interface AgentOption {
   business_name: string;
   avatar_url?:   string | null;
   role_color?:   string | null;
+  genero?:       'M' | 'F';
 }
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -51,7 +52,7 @@ function welcomeMsg(agent: AgentOption): Message {
 
 // ── Bubble messages ───────────────────────────────────────────────────────────
 
-type MsgFn = (name: string) => string;
+type MsgFn = (name: string, genero: 'M' | 'F') => string;
 
 function greeting() {
   const h = new Date().getHours();
@@ -61,18 +62,18 @@ function greeting() {
 }
 
 const BUBBLE_MSGS: MsgFn[] = [
-  name => `${greeting()}, jefe. Aquí ${name}.`,
-  name => `${greeting()}. ¿En qué te puedo ayudar hoy?`,
-  _    => '¿Hay más trabajo para nosotros?',
-  name => `${name} por aquí. Aquí cuando me necesites.`,
-  _    => 'Todo en orden por el momento.',
-  _    => 'Sin incidentes por aquí.',
-  _    => 'Acabo de terminar con lo de antes.',
-  _    => '¿Checamos la bandeja juntos?',
-  _    => 'Detecté algo interesante. ¿Lo revisamos?',
-  _    => '¿Quieres un resumen de lo que pasó hoy?',
-  _    => '¿En qué podemos ayudarte hoy?',
-  name => `Soy ${name}. Lista para lo que sigue.`,
+  (name)       => `${greeting()}, jefe. Aquí ${name}.`,
+  (name)       => `${greeting()}. ¿En qué te puedo ayudar hoy?`,
+  ()           => '¿Hay más trabajo para nosotros?',
+  (name)       => `${name} por aquí. Aquí cuando me necesites.`,
+  ()           => 'Todo en orden por el momento.',
+  ()           => 'Sin incidentes por aquí.',
+  ()           => 'Acabo de terminar con lo de antes.',
+  ()           => '¿Checamos la bandeja juntos?',
+  ()           => 'Detecté algo interesante. ¿Lo revisamos?',
+  ()           => '¿Quieres un resumen de lo que pasó hoy?',
+  ()           => '¿En qué podemos ayudarte hoy?',
+  (name, g)    => `Soy ${name}. ${g === 'F' ? 'Lista' : 'Listo'} para lo que sigue.`,
 ];
 
 interface BubbleState {
@@ -121,7 +122,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
         const fn    = BUBBLE_MSGS[Math.floor(Math.random() * BUBBLE_MSGS.length)];
         const name  = agent.agent_name?.trim() || 'tu empleado';
 
-        setBubble({ text: fn(name), agent, key: ++bubbleKey.current });
+        setBubble({ text: fn(name, agent.genero ?? 'M'), agent, key: ++bubbleKey.current });
         setBubbleVisible(true);
 
         setTimeout(() => {

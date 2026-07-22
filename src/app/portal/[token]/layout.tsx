@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import SupportChat       from './SupportChat';
 import OpsAgentChatFab, { type AgentOption } from './OpsAgentChatFab';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 export default async function TokenLayout({
   children,
@@ -41,14 +42,19 @@ export default async function TokenLayout({
       .eq('active', true)
       .not('role', 'is', null)
       .order('created_at', { ascending: true });
-    opsAgents = (data ?? []).map((a: any) => ({
-      id:            a.id,
-      agent_name:    a.agent_name,
-      role:          a.role,
-      business_name: a.business_name,
-      avatar_url:    (a.features?.avatar     as string | null) ?? null,
-      role_color:    (a.features?.role_color as string | null) ?? null,
-    })) as AgentOption[];
+    opsAgents = (data ?? []).map((a: any) => {
+      const mid     = (a.features?.meerkat_role_id as string | undefined) ?? 'custom';
+      const meerkat = (MEERKAT_MAP as Record<string, { genero?: 'M' | 'F' }>)[mid];
+      return {
+        id:            a.id,
+        agent_name:    a.agent_name,
+        role:          a.role,
+        business_name: a.business_name,
+        avatar_url:    (a.features?.avatar     as string | null) ?? null,
+        role_color:    (a.features?.role_color as string | null) ?? null,
+        genero:        meerkat?.genero ?? 'M',
+      } satisfies AgentOption;
+    });
   }
 
   const untilLabel = org?.suspended_until

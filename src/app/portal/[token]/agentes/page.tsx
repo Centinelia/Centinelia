@@ -216,7 +216,7 @@ export default async function AgentesPage({ params }: Props) {
       </div>
       {/* Herramientas por empleado */}
       {agents.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div id="herramientas" className="flex flex-col gap-4">
           <div>
             <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>Herramientas</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
