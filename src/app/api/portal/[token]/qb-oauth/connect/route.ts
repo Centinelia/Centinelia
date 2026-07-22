@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const redirectUri = `${appUrl}/api/portal/${token}/qb-oauth/callback`;
+  const redirectUri = `${appUrl}/api/qb-oauth/callback`;
 
   const authParams = new URLSearchParams({
     client_id:     process.env.INTUIT_CLIENT_ID!,
