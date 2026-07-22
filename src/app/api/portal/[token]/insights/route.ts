@@ -109,24 +109,28 @@ export async function POST(_req: NextRequest, { params }: Params) {
     supabase.from('voice_agents').select('id, business_name, role').eq('portal_email', portalEmail).eq('active', true),
   ]);
 
-  const mode    = (orgRes.data?.insight_mode ?? 'llm') as 'llm' | 'rules';
+  const rawMode = orgRes.data?.insight_mode ?? 'llm';
+  const mode: 'llm' | 'rules' = rawMode === 'rules' ? 'rules' : 'llm';
   const agents  = agentsRes.data ?? [];
 
   if (!agents.length) return NextResponse.json({ error: 'sin_agentes' }, { status: 400 });
 
-  // For LLM mode: consume 2 ops per agent upfront
+  // For LLM mode: consume 2 ops per agent upfront (sequential — atomic check)
   if (mode === 'llm') {
-    for (const agent of agents) {
-      const result = await consumeAiOp(agent.id, 2);
-      if (!result.ok) {
-        return NextResponse.json({ error: 'sin_tareas', agentName: agent.business_name }, { status: 402 });
-      }
+    let failedAgent: string | null = null;
+    for (let i = 0; i < agents.length && failedAgent === null; i++) {
+      const result = await consumeAiOp(agents[i].id, 2);
+      if (!result.ok) failedAgent = agents[i].business_name;
+    }
+    if (failedAgent !== null) {
+      return NextResponse.json({ error: 'sin_tareas', agentName: failedAgent }, { status: 402 });
     }
   }
 
-  const allRows: object[] = [];
+  const allRows: Array<Record<string, unknown>> = [];
 
-  for (const agent of agents) {
+  for (let i = 0; i < agents.length; i++) {
+    const agent = agents[i];
     const [thisRes, prevRes] = await Promise.all([
       supabase.from('voice_calls').select('outcome, self_eval_score, self_eval_notes, ces_data').eq('agent_id', agent.id).gte('created_at', weekAgo),
       supabase.from('voice_calls').select('outcome, self_eval_score, ces_data').eq('agent_id', agent.id).gte('created_at', twoWeeksAgo).lt('created_at', weekAgo),
@@ -135,11 +139,15 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
 
-    const recs = mode === 'llm'
-      ? await generateLLMInsights({ agentId: agent.id, agentName: agent.business_name, agentRole: agent.role ?? '', calls, prevWeekCalls: prevCalls })
-      : await generateRulesInsights({ agentId: agent.id, agentName: agent.business_name, calls, prevWeekCalls: prevCalls });
+    let recs: Awaited<ReturnType<typeof generateLLMInsights>>;
+    if (mode === 'llm') {
+      recs = await generateLLMInsights({ agentId: agent.id, agentName: agent.business_name, agentRole: agent.role ?? '', calls, prevWeekCalls: prevCalls });
+    } else {
+      recs = await generateRulesInsights({ agentId: agent.id, agentName: agent.business_name, calls, prevWeekCalls: prevCalls });
+    }
 
-    for (const r of recs) {
+    for (let j = 0; j < recs.length; j++) {
+      const r = recs[j];
       allRows.push({
         org_id:        portalEmail,
         agent_id:      agent.id,

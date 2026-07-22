@@ -39,16 +39,19 @@ export async function GET(req: NextRequest) {
     .select('portal_email, insight_mode')
     .in('portal_email', emails);
 
-  const modeByOrg: Record<string, 'llm' | 'rules'> = {};
-  for (const o of orgs ?? []) {
-    modeByOrg[o.portal_email] = (o.insight_mode ?? 'llm') as 'llm' | 'rules';
+  const modeByOrg: Record<string, string> = {};
+  const orgList = orgs ?? [];
+  for (let oi = 0; oi < orgList.length; oi++) {
+    modeByOrg[orgList[oi].portal_email] = orgList[oi].insight_mode ?? 'llm';
   }
 
   let totalRecs = 0;
 
-  for (const agent of agents) {
+  for (let i = 0; i < agents.length; i++) {
+    const agent    = agents[i];
     const orgEmail = agent.portal_email as string;
-    const mode     = modeByOrg[orgEmail] ?? 'llm';
+    const rawMode  = modeByOrg[orgEmail] ?? 'llm';
+    const mode: 'llm' | 'rules' = rawMode === 'rules' ? 'rules' : 'llm';
 
     const [thisRes, prevRes] = await Promise.all([
       supabase
@@ -67,20 +70,23 @@ export async function GET(req: NextRequest) {
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
 
-    const recs = mode === 'llm'
-      ? await generateLLMInsights({
-          agentId:       agent.id,
-          agentName:     agent.business_name,
-          agentRole:     agent.role ?? '',
-          calls,
-          prevWeekCalls: prevCalls,
-        })
-      : await generateRulesInsights({
-          agentId:       agent.id,
-          agentName:     agent.business_name,
-          calls,
-          prevWeekCalls: prevCalls,
-        });
+    let recs: Awaited<ReturnType<typeof generateLLMInsights>>;
+    if (mode === 'llm') {
+      recs = await generateLLMInsights({
+        agentId:       agent.id,
+        agentName:     agent.business_name,
+        agentRole:     agent.role ?? '',
+        calls,
+        prevWeekCalls: prevCalls,
+      });
+    } else {
+      recs = await generateRulesInsights({
+        agentId:       agent.id,
+        agentName:     agent.business_name,
+        calls,
+        prevWeekCalls: prevCalls,
+      });
+    }
 
     if (!recs.length) continue;
 
