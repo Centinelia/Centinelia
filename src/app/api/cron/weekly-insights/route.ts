@@ -2,8 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateLLMInsights }   from '@/lib/ai/insights-engine';
-import { generateRulesInsights } from '@/lib/ai/insights-rules';
+import { generateLLMInsights, type InsightRec } from '@/lib/ai/insights-engine';
+import { generateRulesInsights }                from '@/lib/ai/insights-rules';
 
 function currentWeekStart(): string {
   const d = new Date();
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
 
-    let recs: Awaited<ReturnType<typeof generateLLMInsights>>;
+    let recs: InsightRec[] = [];
     if (mode === 'llm') {
       recs = await generateLLMInsights({
         agentId:       agent.id,

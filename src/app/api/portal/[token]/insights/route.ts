@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { generateLLMInsights }   from '@/lib/ai/insights-engine';
-import { generateRulesInsights } from '@/lib/ai/insights-rules';
+import { generateLLMInsights, type InsightRec } from '@/lib/ai/insights-engine';
+import { generateRulesInsights }                from '@/lib/ai/insights-rules';
 import { consumeAiOp }           from '@/lib/ai/ops-guard';
 
 interface Params { params: Promise<{ token: string }> }
@@ -139,7 +139,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     const calls     = thisRes.data ?? [];
     const prevCalls = prevRes.data ?? [];
 
-    let recs: Awaited<ReturnType<typeof generateLLMInsights>>;
+    let recs: InsightRec[] = [];
     if (mode === 'llm') {
       recs = await generateLLMInsights({ agentId: agent.id, agentName: agent.business_name, agentRole: agent.role ?? '', calls, prevWeekCalls: prevCalls });
     } else {
