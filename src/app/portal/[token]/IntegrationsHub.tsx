@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection  from './IntegrationsSection';
@@ -11,6 +11,7 @@ import TeamsSection         from './TeamsSection';
 import EmailOAuthSection    from './EmailOAuthSection';
 import EmailSettings        from './EmailSettings';
 import MercadoLibreSection  from './MercadoLibreSection';
+import QuickBooksSection    from './QuickBooksSection';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -18,12 +19,14 @@ interface CalStatus    { calendar_type: string | null }
 interface NotionStatus { connected: boolean }
 interface EmailStatus  { provider: 'gmail' | 'outlook'; email?: string }
 interface MLStatus     { connected: boolean; nickname: string | null }
+interface QBStatus     { connected: boolean; company_name: string | null }
 interface HubStatus    {
   cal:        CalStatus | null;
   notion:     NotionStatus | null;
   emails:     EmailStatus[];
   teamsEmail: string | null;
   ml:         MLStatus | null;
+  qb:         QBStatus | null;
 }
 
 /* ── provider icons (for workspace callout) ─────────────────────────────── */
@@ -256,7 +259,7 @@ interface Props {
 
 export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }: Props) {
   const [status, setStatus] = useState<HubStatus>({
-    cal: null, notion: null, emails: [], teamsEmail: null, ml: null,
+    cal: null, notion: null, emails: [], teamsEmail: null, ml: null, qb: null,
   });
   const [statusLoaded, setStatusLoaded] = useState(false);
 
@@ -266,16 +269,18 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       fetch(`/api/portal/${token}/notion`).then(r => r.json()).catch(() => null),
       fetch(`/api/portal/${token}/email-oauth`).then(r => r.json()).catch(() => null),
       fetch(`/api/portal/${token}/ml-oauth`).then(r => r.json()).catch(() => null),
+      fetch(`/api/portal/${token}/qb-oauth`).then(r => r.json()).catch(() => null),
       hasOpsAgent
         ? fetch(`/api/portal/${token}/teams`).then(r => r.json()).catch(() => null)
         : Promise.resolve(null),
-    ]).then(([calData, notionData, emailData, mlData, teamsData]) => {
+    ]).then(([calData, notionData, emailData, mlData, qbData, teamsData]) => {
       setStatus({
         cal:        calData    ?? null,
         notion:     notionData ?? null,
         emails:     (emailData?.integrations ?? []).map((i: any) => ({ provider: i.provider, email: i.email })),
         teamsEmail: teamsData?.teams_user_email ?? null,
         ml:         mlData    ?? null,
+        qb:         qbData    ?? null,
       });
       setStatusLoaded(true);
     });
@@ -302,6 +307,10 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     ? `Mercado Libre${status.ml.nickname ? ` · ${status.ml.nickname}` : ''}`
     : undefined;
 
+  const qbSubtitle     = status.qb?.connected
+    ? `QuickBooks${status.qb.company_name ? ` · ${status.qb.company_name}` : ''}`
+    : undefined;
+
   /* ── summary caps ───────────────────────────────────────────────────── */
 
   const caps: CapabilitySummary[] = [
@@ -309,7 +318,8 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     { id: 'agenda',   label: 'Agenda',                   connected: !!status.cal?.calendar_type },
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),
-    { id: 'comercio', label: 'Comercio',                 connected: !!status.ml?.connected },
+    { id: 'comercio',  label: 'Comercio',   connected: !!status.ml?.connected },
+    { id: 'finanzas',  label: 'Finanzas',   connected: !!status.qb?.connected },
   ];
 
   return (
@@ -378,6 +388,16 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           connected={!!status.ml?.connected}
         >
           <MercadoLibreSection token={token} />
+        </CapabilityRow>
+
+        {/* Finanzas */}
+        <CapabilityRow
+          icon={<DollarSign size={16} style={{ color: '#2CA01C' }} />}
+          label="Finanzas"
+          subtitle={qbSubtitle}
+          connected={!!status.qb?.connected}
+        >
+          <QuickBooksSection token={token} />
         </CapabilityRow>
 
       </div>

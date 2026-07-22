@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
-type SubItem    = { label: string; id: string; ids?: string[]; href?: string; icon?: React.ReactNode };
+type SubItem    = { label: string; id: string; ids?: string[]; href?: string; icon?: React.ReactNode; anchorId?: string };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
 type Section    = { id: string; moduleId?: string; label: string; icon: React.ReactNode; items: SubItem[]; subSections?: SubSection[]; directHref?: string; toggleOnly?: boolean };
 
@@ -89,8 +89,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       id: 'agentes', moduleId: 'agentes', label: 'Empleados', icon: <Bot size={14} />,
       directHref: `/portal/${token}/agentes`,
       items: [
-        { label: 'Mis empleados', id: 'lista-agentes', href: `/portal/${token}/agentes#lista-agentes` },
-        { label: 'Herramientas',  id: 'herramientas',  href: `/portal/${token}/agentes#herramientas`  },
+        { label: 'Herramientas', id: 'herramientas', href: `/portal/${token}/agentes`, anchorId: 'herramientas' },
       ],
     },
     ...(hasOpsAgent ? [{
@@ -241,7 +240,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                         key={item.id || item.label}
                         href={itemHref}
                         scroll={false}
-                        onClick={() => { if (!item.href && item.id) setPendingIds(item.ids ?? [item.id]); }}
+                        onClick={() => {
+                          const scrollId = item.anchorId ?? (!item.href ? item.id : null);
+                          if (scrollId) setPendingIds(item.ids ?? [scrollId]);
+                        }}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                         style={{ color: itemActive ? '#9B6DFF' : 'var(--c-text-2)', background: itemActive ? 'rgba(108,59,255,0.08)' : 'transparent' }}
                       >
