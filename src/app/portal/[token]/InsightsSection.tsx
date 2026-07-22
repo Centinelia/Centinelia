@@ -128,7 +128,7 @@ export default function InsightsSection({ token }: { token: string }) {
         <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
           Insights de la semana
         </h2>
-        <InfoTooltip text="Recomendaciones accionables para mejorar a cada empleado, basadas en sus conversaciones, CES y metas. Se generan automáticamente cada lunes o puedes pedirlas ahora." />
+        <InfoTooltip text="Sugerencias para mejorar a tu equipo basadas en lo que pasó esta semana. Se actualizan cada lunes o las puedes pedir cuando quieras." />
         {data && data.recs.length > 0 && (
           <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
             style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF' }}>
