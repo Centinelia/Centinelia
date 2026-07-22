@@ -58,7 +58,7 @@ const FEATURES = [
   { label: 'Agenda y confirma reservaciones con nombre, fecha y número de personas' },
   { label: 'Responde preguntas del menú: precios, ingredientes, opciones sin gluten, etc.' },
   { label: 'Informa horarios, ubicación y tiempo de espera estimado' },
-  { label: 'Registra cada pedido y lo notifica al equipo por WhatsApp' },
+  { label: 'Registra cada pedido y notifica al equipo al instante' },
   { label: 'Disponible las 24 horas, incluso cuando el local está cerrado' },
 ];
 
@@ -79,7 +79,7 @@ const OUTBOUND_CASES = [
 
 const TESTIMONIALS = [
   {
-    quote: 'En viernes a las 8pm no podíamos contestar el teléfono sin descuidar las mesas. Ahora el agente toma los pedidos y me los manda por WhatsApp. Ya no perdemos ventas en horas pico.',
+    quote: 'En viernes a las 8pm no podíamos contestar el teléfono sin descuidar las mesas. Ahora el agente toma los pedidos y quedan en el portal al instante. Ya no perdemos ventas en horas pico.',
     author: 'Dueño de restaurante familiar, Monterrey',
   },
   {
@@ -99,7 +99,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo me llegan los pedidos y reservaciones?',
-    a: 'Al instante por WhatsApp y correo electrónico. También quedan registrados en tu portal donde puedes verlos todos en un solo lugar. Si tu sistema POS lo permite, los pedidos y reservaciones se registran ahí automáticamente también.',
+    a: 'Al instante por correo electrónico y en tu portal donde puedes verlos todos en un solo lugar. Si tu sistema POS lo permite, los pedidos y reservaciones se registran ahí automáticamente también.',
   },
   {
     q: '¿Puede coordinar con plataformas de delivery como Rappi o Uber Eats?',

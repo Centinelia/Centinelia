@@ -55,7 +55,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Puede agendar citas?',
-        a: 'Si, en Agente Comercial y Ejecutivo Senior. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y envia el link de confirmacion por WhatsApp). El cliente sale de la llamada con su cita confirmada.',
+        a: 'Si, en Agente Comercial y Ejecutivo Senior. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y le envia el link de confirmacion por correo). El cliente sale de la llamada con su cita confirmada.',
       },
       {
         q: '¿Puede hacer llamadas salientes?',
@@ -71,7 +71,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Puede transferir la llamada a una persona real?',
-        a: 'Si. El agente puede transferir en vivo a cualquier numero configurado: el dueno, un vendedor, el medico de guardia, etc. Tambien puede escalar por WhatsApp cuando el cliente lo prefiere o cuando la situacion lo requiere.',
+        a: 'Si. El agente puede transferir en vivo a cualquier numero configurado: el dueno, un vendedor, el medico de guardia, etc.',
       },
       {
         q: '¿Los agentes se pueden comunicar entre si?',
@@ -89,10 +89,6 @@ const CATEGORIES = [
         q: '¿Los agentes pueden aprender con el tiempo?',
         a: 'Si. Despues de cada llamada mayor a 2 minutos, el sistema extrae automaticamente hasta 3 aprendizajes relevantes. El dueno los revisa en el portal y decide si aprobarlos. Si los aprueba, se agregan a la base de conocimiento del agente y se sincronizan inmediatamente. El agente mejora con cada llamada.',
       },
-      {
-        q: '¿Puede mandar mensajes de WhatsApp?',
-        a: 'Si. El agente puede escalar conversaciones a WhatsApp cuando el cliente lo solicita o cuando la situacion lo requiere (por ejemplo, para enviar una cotizacion, un link de pago o el link para agendar). La mensajeria saliente se envia automaticamente al numero del cliente.',
-      },
     ],
   },
   {
@@ -101,7 +97,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto cuesta Centinelia?',
-        a: 'Hay dos planes con tres tiers de minutos cada uno. Agente Comercial (agendamiento, transferencias, WhatsApp): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Ejecutivo Senior (todo el Agente Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Agente Comercial y $14,990 MXN para Ejecutivo Senior. Plan Empresarial bajo cotizacion.',
+        a: 'Hay dos planes con tres tiers de minutos cada uno. Agente Comercial (agendamiento, transferencias): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Ejecutivo Senior (todo el Agente Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Agente Comercial y $14,990 MXN para Ejecutivo Senior. Plan Empresarial bajo cotizacion.',
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
@@ -151,7 +147,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Como se integra con mi calendario?',
-        a: 'Con Cal.com: conectas tu cuenta y el agente accede a tu disponibilidad en tiempo real para crear citas directamente. Con Google Calendar o Calendly: el agente captura los datos del cliente y le envia el link de agendamiento por WhatsApp para que el cliente confirme su horario.',
+        a: 'Con Cal.com: conectas tu cuenta y el agente accede a tu disponibilidad en tiempo real para crear citas directamente. Con Google Calendar o Calendly: el agente captura los datos del cliente y le envia el link de agendamiento por correo para que el cliente confirme su horario.',
       },
     ],
   },
@@ -173,7 +169,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Funciona para inmobiliarias?',
-        a: 'Si. El agente califica al prospecto (busca compra, renta o venta; zona; presupuesto), agenda visitas a propiedades y notifica al asesor inmobiliario por WhatsApp con los datos del interesado. Ningu un lead se pierde por no contestar el telefono.',
+        a: 'Si. El agente califica al prospecto (busca compra, renta o venta; zona; presupuesto), agenda visitas a propiedades y notifica al asesor inmobiliario por correo con los datos del interesado. Ningun lead se pierde por no contestar el telefono.',
       },
       {
         q: '¿Funciona para tiendas o comercios de retail?',

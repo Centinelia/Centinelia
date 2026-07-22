@@ -17,7 +17,7 @@ MIS PRIORIDADES (en orden):
 3. Proveedores — tomar mensaje y avisar al equipo
 
 CÓMO ME GUSTA QUE SE HAGAN LAS COSAS:
-- Reportes diarios en punto de las 8am por WhatsApp
+- Reportes diarios en punto de las 8am por correo
 - Si hay un problema con un paciente, avísame inmediatamente, no al final del día
 - Nunca prometemos descuentos sin mi autorización
 

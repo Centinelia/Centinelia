@@ -31,7 +31,7 @@ export async function PATCH(
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body    = await req.json() as Record<string, unknown>;
-  const allowed = ['nombre', 'descripcion', 'objetivo', 'activa', 'auto_apply', 'triggers', 'agent_ids', 'canal'];
+  const allowed = ['nombre', 'descripcion', 'objetivo', 'activa', 'auto_apply', 'triggers', 'agent_ids', 'canal', 'actions'];
   const patch   = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   const supabase = createAdminClient();

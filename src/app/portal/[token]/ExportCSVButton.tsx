@@ -16,7 +16,7 @@ interface Lead {
 
 export default function ExportCSVButton({ leads, filename }: { leads: Lead[]; filename?: string }) {
   const handleExport = () => {
-    const headers = ['Nombre', 'Negocio', 'Giro', 'Servicio', 'Presupuesto', 'Para cuándo', 'WhatsApp', 'Email', 'Fecha'];
+    const headers = ['Nombre', 'Negocio', 'Giro', 'Servicio', 'Presupuesto', 'Para cuándo', 'Teléfono', 'Email', 'Fecha'];
     const rows = leads.map(l => [
       l.nombre ?? '',
       l.negocio ?? '',

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendWhatsApp } from '@/lib/whatsapp/send';
 
 // Receives call completion events from Vapi
 // Configure in Vapi dashboard: Server URL → /api/outbound/vapi-webhook
@@ -72,25 +71,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // WhatsApp fallback on second failed attempt
-    if (!isFirstAttempt && !outboundCall.wa_fallback_sent && outboundCall.telefono) {
-      const agent = outboundCall.voice_agents as { phone_number: string } | null;
-
-      const msg = [
-        `Hola${outboundCall.nombre ? `, ${outboundCall.nombre}` : ''}.`,
-        `Te contactamos con un ${outboundCall.motivo ?? 'recordatorio'}.`,
-        `No pudimos comunicarnos por llamada. Responde este mensaje si necesitas ayuda.`,
-      ].join(' ');
-
-      const sent = await sendWhatsApp(outboundCall.telefono, msg, agent?.phone_number);
-
-      if (sent) {
-        await supabase
-          .from('outbound_calls')
-          .update({ wa_fallback_sent: true })
-          .eq('id', outboundCall.id);
-      }
-    }
   } else {
     // Call was answered — mark completed
     await supabase

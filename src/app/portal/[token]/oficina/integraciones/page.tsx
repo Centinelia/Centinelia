@@ -4,10 +4,8 @@ import { createAdminClient }            from '@/lib/supabase/admin';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { inboxAddressFor }              from '@/lib/email/inbox';
-import IntegrationsHub            from '../../IntegrationsHub';
-import AgentIntegrationsPanel    from '../../AgentIntegrationsPanel';
-import type { Plan }             from '@/types/agent';
+import IntegrationsHub from '../../IntegrationsHub';
+import type { Plan }   from '@/types/agent';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -34,7 +32,6 @@ export default async function IntegracionesPage({ params }: Props) {
 
   const hasOpsAgent     = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
   const hasNotion       = !!(agent as any).notion_access_token;
-  const inboxAddress    = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
   const meerkatRoleId   = (agent as any).features?.meerkat_role_id as string | undefined;
   const isReceptionist  = ['nia', 'nelia', 'nico', 'neo'].includes(meerkatRoleId ?? '');
 
@@ -52,23 +49,9 @@ export default async function IntegracionesPage({ params }: Props) {
           plan={agent.plan as Plan}
           hasOpsAgent={hasOpsAgent}
           hasNotion={hasNotion}
-          inboxAddress={inboxAddress}
+          showPerAgent={!isReceptionist}
         />
       </div>
-
-      {!isReceptionist && (
-        <div>
-          <div className="mb-5">
-            <h2 className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-              Correo por empleado
-            </h2>
-            <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-              Cada empleado tiene dos correos: la bandeja de su área (soporte@, ventas@…) que lee y atiende, y su correo propio desde donde envía correos personales como Neo@empresa.com.
-            </p>
-          </div>
-          <AgentIntegrationsPanel token={token} />
-        </div>
-      )}
 
     </div>
   );

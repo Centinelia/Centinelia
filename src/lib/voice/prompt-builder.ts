@@ -200,7 +200,19 @@ Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo i
 IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
     } else if (promptTier !== 'lite') {
       blocks.push(`IDIOMA: Responde siempre en español.
-PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.`);
+PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.
+DICTADO DE CÓDIGOS ALFANUMÉRICOS: Cuando el cliente te dicte un código que mezcla letras y números (placa de vehículo, RFC, CURP, número de folio, número de serie u otro código similar), pídele que lo deletree usando el alfabeto fonético: "¿Me lo podría deletrear letra por letra? Por ejemplo: A de Amor, B de Bueno, C de Casa..." Así evitas errores de transcripción. Una vez que lo hayas capturado, repítelo completo para que el cliente lo confirme antes de continuar: "Entonces es [código], ¿correcto?"`);
+      blocks.push(`INVESTIGACIÓN ASÍNCRONA:
+Si el cliente solicita información que requiere buscar en archivos, consultar a un compañero o hacer una búsqueda en internet, NO te pongas a investigar en tiempo real mientras el cliente espera en línea.
+En su lugar, ofrécele elegir cómo prefiere recibir la información:
+- Por correo: le envías la información a su email en cuanto la tengas lista.
+- Por llamada: le marcamos de regreso cuando ya tengamos la respuesta preparada.
+- Ambas: le enviamos el correo y además le llamamos para confirmar que lo recibió.
+Pregunta de forma natural: "¿Prefiere que le enviemos la información por correo, que le llamemos de regreso cuando la tengamos lista, o ambas opciones?"
+Según lo que elija, recopila su correo, su número de devolución de llamada, o ambos. Luego cierra la llamada de forma amable.
+Una vez terminada la llamada, usa enviar_correo o delegar_tarea para cumplir con lo prometido de manera asíncrona.
+Ejemplos de solicitudes que deben manejarse así: cotizaciones detalladas, revisión de contratos o documentos, consultas técnicas que requieren investigar, información que no tienes de memoria.
+No dejes al cliente esperando en silencio. Sé proactivo desde el inicio de la solicitud.`);
     } else {
       blocks.push('IDIOMA: Responde siempre en español.');
     }

@@ -20,7 +20,7 @@ const BADGES_LEFT: Badge[] = [
     rots: [0, 0.5, -1, 0.8, -0.5, 0.8, -0.5, 0],
   },
   {
-    label: 'WhatsApp', Icon: MessageCircle, color: '#4ade80', count: 12,
+    label: 'Mensajes', Icon: MessageCircle, color: '#60a5fa', count: 12,
     left: '-6%', top: '42%', delay: 1.1, dur: 7.5,
     xs:   [0, 34, 58, 42, 14, 40, 20, 0],
     ys:   [0, 28, 46, 32, -14, -32, -16, 0],

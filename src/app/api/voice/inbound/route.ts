@@ -548,5 +548,118 @@ function buildTools(agent: VoiceAgent) {
     });
   }
 
+  // Available to all agents: ask a sibling agent for info from their knowledge base
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'consultar_agente',
+      description: 'Consulta a un compañero del equipo digital cuando necesitas información que está fuera de tu área o de tu base de conocimiento. El compañero responde usando su propia especialidad y KB.',
+      parameters: {
+        type: 'object',
+        properties: {
+          rol:      { type: 'string', description: 'Nombre o rol del compañero a consultar. Ej: "Nox", "contabilidad", "soporte técnico".' },
+          tarea:    { type: 'string', description: 'Qué necesitas que el compañero te responda o resuelva.' },
+          contexto: { type: 'string', description: 'Contexto breve de la conversación con el cliente que ayude al compañero a responder mejor (opcional).' },
+        },
+        required: ['rol', 'tarea'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/consultar-agente?agent_id=${agent.id}`,
+    },
+  });
+
+  // Available to all agents: delegate a task to a sibling agent
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'delegar_tarea',
+      description: 'Delega una tarea a un compañero del equipo digital para que la ejecute ahora mismo. El compañero usa sus propias herramientas y te reporta el resultado. Úsala cuando algo deba hacerse pero esté fuera de tu área o no puedas resolverlo en esta llamada.',
+      parameters: {
+        type: 'object',
+        properties: {
+          agente:   { type: 'string', description: 'Nombre o rol del compañero al que delegar. Ej: "Nox", "Nova", "contador".' },
+          tarea:    { type: 'string', description: 'Descripción clara de lo que debe hacer el compañero.' },
+          contexto: { type: 'string', description: 'Contexto de la conversación que ayude al compañero a ejecutar mejor la tarea. Opcional.' },
+        },
+        required: ['agente', 'tarea'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/delegar-tarea?agent_id=${agent.id}`,
+    },
+  });
+
+  // Available to all agents: search files in connected Drive (Google Drive / OneDrive)
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'buscar_archivo',
+      description: 'Busca un archivo en el Drive conectado del negocio (Google Drive u OneDrive) por nombre o descripción. Devuelve el ID, nombre y tipo del archivo para usarlo como adjunto en enviar_correo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          busqueda: { type: 'string', description: 'Nombre o descripción del archivo que buscas. Ej: "contrato de servicio", "catálogo de precios 2025".' },
+        },
+        required: ['busqueda'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/buscar-archivo?agent_id=${agent.id}`,
+    },
+  });
+
+  // Available to all agents: read a file found with buscar_archivo
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'leer_archivo',
+      description: 'Lee el contenido de un archivo encontrado con buscar_archivo. Úsala para conocer el contenido de un documento y poder responder preguntas sobre él o resumirlo al cliente.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_id:   { type: 'string', description: 'ID del archivo obtenido de buscar_archivo.' },
+          file_name: { type: 'string', description: 'Nombre del archivo con extensión.' },
+          mime_type: { type: 'string', description: 'Tipo MIME del archivo. Ej: application/pdf, text/plain.' },
+        },
+        required: ['file_id', 'file_name'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/leer-archivo?agent_id=${agent.id}`,
+    },
+  });
+
+  // Available to all agents: search the web for information not in KB or Drive
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'buscar_en_web',
+      description: 'Busca información en internet cuando no está en tu base de conocimiento ni en el Drive. Úsala para precios actuales, noticias, datos públicos o cualquier consulta que requiera información externa.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Términos de búsqueda en español o el idioma más apropiado.' },
+        },
+        required: ['query'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/buscar-en-web?agent_id=${agent.id}`,
+    },
+  });
+
+  // Available to all agents: send email to client or any contact
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'enviar_correo',
+      description: 'Envía un correo electrónico al cliente u otro destinatario. Úsalo para enviar confirmaciones, información solicitada, cotizaciones, seguimientos o cualquier comunicación escrita que el cliente pida. Si el cliente pidió un documento, primero usa buscar_archivo para obtener el ID y luego adjúntalo aquí.',
+      parameters: {
+        type: 'object',
+        properties: {
+          to:                   { type: 'string', description: 'Dirección de correo del destinatario' },
+          subject:              { type: 'string', description: 'Asunto del correo' },
+          body:                 { type: 'string', description: 'Contenido del correo en texto plano' },
+          attachment_file_id:   { type: 'string', description: 'ID del archivo a adjuntar, obtenido de buscar_archivo (opcional)' },
+          attachment_file_name: { type: 'string', description: 'Nombre del archivo adjunto con extensión, ej: "catalogo.pdf" (opcional)' },
+          attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo, ej: "application/pdf" (opcional)' },
+        },
+        required: ['to', 'subject', 'body'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/enviar-correo?agent_id=${agent.id}`,
+    },
+  });
+
   return tools;
 }

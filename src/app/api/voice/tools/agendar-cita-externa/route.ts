@@ -74,31 +74,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3. Send WhatsApp to client with calendar link if available
-  const callerWa = whatsapp_cliente
-    ? (() => {
-        const digits = whatsapp_cliente.replace(/\D/g, '');
-        return digits.startsWith('52') ? `+${digits}` : `+52${digits}`;
-      })()
-    : null;
-
-  if (callerWa && agent.calendar_link) {
-    const msg = calBooked
-      ? `¡Hola ${nombre}! Tu cita${servicio ? ` de ${servicio}` : ''} el ${fecha} a las ${hora} con *${agent.business_name}* fue confirmada. ¡Te esperamos!`
-      : `¡Hola ${nombre}! Para confirmar tu cita${servicio ? ` de ${servicio}` : ''} el ${fecha} a las ${hora} con *${agent.business_name}*, usa este link:\n\n${agent.calendar_link}`;
-    await sendWhatsApp(callerWa, msg).catch(console.error);
-  }
-
-  // 4. Notify business owner
+  // 3. Notify business owner
   if (agent.transfer_whatsapp) {
     const ownerMsg = `📅 *Nueva cita, ${agent.business_name}*\n\nCliente: ${nombre}\nServicio: ${servicio ?? ','}\nFecha: ${fecha} · ${hora}${whatsapp_cliente ? `\nWA: ${whatsapp_cliente}` : ''}${calBooked ? '\n✅ Confirmada en Cal.com' : agent.calendar_link ? '\n📎 Link enviado al cliente' : ''}`;
     await sendWhatsApp(agent.transfer_whatsapp, ownerMsg).catch(console.error);
   }
 
   const result = calBooked
-    ? `Cita confirmada directamente en el calendario de ${agent.business_name}. ${callerWa ? 'Se envió confirmación por WhatsApp al cliente.' : ''}`
+    ? `Cita confirmada directamente en el calendario de ${agent.business_name}.`
     : agent.calendar_link
-      ? `Datos de la cita registrados. ${callerWa ? `Se envió el link de reserva por WhatsApp a ${nombre} para que confirme.` : 'Dile al cliente que recibirá el link de reserva por WhatsApp.'}`
+      ? `Datos de la cita registrados. Comparte el link de reserva con el cliente para que confirme.`
       : `Cita registrada: ${nombre}, ${servicio ?? 'sin servicio'}, ${fecha} a las ${hora}.`;
 
   return NextResponse.json({ result });

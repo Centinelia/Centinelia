@@ -320,15 +320,15 @@ export async function POST(req: NextRequest) {
           return;
         }
 
-        // B. WhatsApp call summary to owner
-        if (agent?.transfer_whatsapp && (agent.notify_whatsapp ?? true)) {
+        // B. WhatsApp call summary to owner (opt-in, off by default)
+        if (agent?.transfer_whatsapp && (agent.notify_whatsapp ?? false)) {
           const outcomeLabels: Record<string, string> = {
             lead_created:       '🎯 Nuevo lead',
             appointment_booked: '📅 Cita agendada',
             order_taken:        '🛒 Pedido tomado',
             transferred:        '📞 Transferida',
             info_provided:      'ℹ️ Info proporcionada',
-            escalated_whatsapp: '💬 Escalada a WhatsApp',
+            escalated_whatsapp: '💬 Escalada',
             missed:             '📵 Llamada perdida',
             other:              '📱 Llamada terminada',
           };
@@ -446,15 +446,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // F. Google review request to caller
-        const reviewUrl = agent?.google_review_url ?? null;
-        const callerWa  = structured?.whatsapp ?? callerNumber;
-        const goodCall  = ['info_provided', 'appointment_booked', 'lead_created', 'order_taken'].includes(outcome);
-        if (reviewUrl && callerWa && goodCall && durationSeconds >= 60) {
-          await sendWhatsApp(callerWa, `¡Hola! Gracias por contactar a *${agent?.business_name}*. Si le atendimos bien, nos ayudaría mucho dejar una reseña en Google 🙏\n\n${reviewUrl}`).catch(() => null);
-        }
-
-        // G. Customer profile + cross-agent trigger chain
+        // F. Customer profile + cross-agent trigger chain
         if (callerNumber && agent?.portal_email && durationSeconds > 5) {
           const customerId = await upsertCustomer(
             agent.portal_email,

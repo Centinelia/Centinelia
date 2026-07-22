@@ -199,7 +199,7 @@ export default function ActivityDetailModal({ type, item, isPro, token, onClose 
 
             {type === 'lead' && <>
               {item.nombre     && <InfoRow icon={<User size={13} />}          label="Nombre"       value={item.nombre} />}
-              {item.whatsapp   && <InfoRow icon={<MessageCircle size={13} />} label="WhatsApp"     value={item.whatsapp} href={`https://wa.me/${item.whatsapp.replace(/\D/g, '')}`} />}
+              {item.whatsapp   && <InfoRow icon={<Phone size={13} />}         label="Teléfono"     value={item.whatsapp} href={`tel:${item.whatsapp.replace(/\D/g, '')}`} />}
               {item.email      && <InfoRow icon={<Mail size={13} />}          label="Correo"       value={item.email} href={`mailto:${item.email}`} />}
               {item.servicio   && <InfoRow icon={<Tag size={13} />}           label="Servicio"     value={item.servicio} />}
               {item.presupuesto && <InfoRow icon={<DollarSign size={13} />}   label="Presupuesto"  value={item.presupuesto} />}

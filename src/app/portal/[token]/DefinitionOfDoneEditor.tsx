@@ -44,7 +44,7 @@ export default function DefinitionOfDoneEditor({ token, initDod }: Props) {
           onChange={e => { setValue(e.target.value); setSaved(false); }}
           onBlur={handleBlur}
           rows={3}
-          placeholder='Ej: "Listo significa que cada mañana a las 9am la bandeja de correos está vacía, los leads del día anterior están en Notion y cualquier urgencia fue notificada al equipo por WhatsApp."'
+          placeholder='Ej: "Listo significa que cada mañana a las 9am la bandeja de correos está vacía, los leads del día anterior están en Notion y cualquier urgencia fue notificada al equipo por correo."'
           className="w-full rounded-xl text-xs leading-relaxed outline-none resize-none"
           style={{
             padding:    '10px 12px 10px 32px',

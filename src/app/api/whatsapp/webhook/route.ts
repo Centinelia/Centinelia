@@ -71,6 +71,99 @@ const LEAD_TOOL: Anthropic.Tool = {
   },
 };
 
+const DELEGAR_TAREA_TOOL: Anthropic.Tool = {
+  name: 'delegar_tarea',
+  description: 'Delega una tarea a un compañero del equipo digital para que la ejecute. El compañero trabaja en la tarea usando sus herramientas y reporta el resultado.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      agente:   { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nox", "Nova", "contabilidad".' },
+      tarea:    { type: 'string', description: 'Descripción clara de lo que debe hacer el compañero.' },
+      contexto: { type: 'string', description: 'Contexto del chat que ayude al compañero a entender la solicitud. Opcional.' },
+    },
+    required: ['agente', 'tarea'],
+  },
+};
+
+const CONSULTAR_AGENTE_TOOL: Anthropic.Tool = {
+  name: 'consultar_agente',
+  description: 'Consulta a un compañero del equipo digital cuando no tienes la información y esa es su área. El compañero puede buscar en su Drive e internet antes de responder.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      rol:      { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nova", "contador", "almacén".' },
+      tarea:    { type: 'string', description: 'Qué necesitas que el compañero te responda o resuelva.' },
+      contexto: { type: 'string', description: 'Contexto del chat que ayude al compañero a responder mejor. Opcional.' },
+    },
+    required: ['rol', 'tarea'],
+  },
+};
+
+const BUSCAR_ARCHIVO_TOOL: Anthropic.Tool = {
+  name: 'buscar_archivo',
+  description: 'Busca un archivo en el Drive del negocio por nombre o descripción. Devuelve nombre e ID del archivo para poder leerlo con leer_archivo.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      busqueda: { type: 'string', description: 'Nombre o descripción del archivo a buscar.' },
+    },
+    required: ['busqueda'],
+  },
+};
+
+const LEER_ARCHIVO_TOOL: Anthropic.Tool = {
+  name: 'leer_archivo',
+  description: 'Lee el contenido de un archivo encontrado con buscar_archivo. Úsala para conocer el contenido de un documento y responder preguntas sobre él.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      file_id:   { type: 'string', description: 'ID del archivo obtenido de buscar_archivo.' },
+      file_name: { type: 'string', description: 'Nombre del archivo con extensión.' },
+      mime_type: { type: 'string', description: 'Tipo MIME del archivo. Ej: application/pdf.' },
+    },
+    required: ['file_id', 'file_name'],
+  },
+};
+
+const BUSCAR_EN_WEB_TOOL: Anthropic.Tool = {
+  name: 'buscar_en_web',
+  description: 'Busca información en internet cuando no está en tu base de conocimiento ni en el Drive del negocio.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Términos de búsqueda.' },
+    },
+    required: ['query'],
+  },
+};
+
+async function callVoiceRoute(
+  routeName: string,
+  agentId:   string,
+  input:     Record<string, unknown>,
+): Promise<string> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  try {
+    const res = await fetch(`${appUrl}/api/voice/tools/${routeName}?agent_id=${agentId}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(input),
+    });
+    if (!res.ok) return 'No pude completar la acción en este momento.';
+    const data = await res.json() as { result?: string; results?: Array<{ result: string }> };
+    return data.result ?? data.results?.[0]?.result ?? 'Acción completada.';
+  } catch {
+    return 'Error al ejecutar la acción.';
+  }
+}
+
+const WA_ROUTE_MAP: Record<string, string> = {
+  consultar_agente: 'consultar-agente',
+  buscar_archivo:   'buscar-archivo',
+  leer_archivo:     'leer-archivo',
+  buscar_en_web:    'buscar-en-web',
+};
+
 export async function POST(req: NextRequest) {
   const text = await req.text();
 
@@ -137,7 +230,13 @@ export async function POST(req: NextRequest) {
     .map(m => ({ role: m.role, content: m.content }));
 
   // 4. Call Claude with optional tool use
-  const tools: Anthropic.Tool[] = [];
+  const tools: Anthropic.Tool[] = [
+    DELEGAR_TAREA_TOOL,
+    CONSULTAR_AGENTE_TOOL,
+    BUSCAR_ARCHIVO_TOOL,
+    LEER_ARCHIVO_TOOL,
+    BUSCAR_EN_WEB_TOOL,
+  ];
   if (agent.capture_appointments) {
     tools.push(CITA_TOOL);
   }
@@ -224,6 +323,72 @@ export async function POST(req: NextRequest) {
                 }],
               },
             ],
+          });
+          claudeReply = followUp.content
+            .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+            .map(b => b.text)
+            .join('');
+        }
+      } else if (block.type === 'tool_use' && block.name === 'delegar_tarea') {
+        const dtInput  = block.input as { agente: string; tarea: string; contexto?: string };
+        const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+        let   dtResult = 'Tarea procesada.';
+
+        try {
+          const dtRes = await fetch(
+            `${appUrl}/api/voice/tools/delegar-tarea?agent_id=${agent.id}`,
+            {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify(dtInput),
+            },
+          );
+          if (dtRes.ok) {
+            const dtData = await dtRes.json() as { results?: Array<{ result: string }> };
+            dtResult = dtData.results?.[0]?.result ?? dtResult;
+          }
+        } catch (e) {
+          console.error('wa/webhook: delegar_tarea error', e);
+        }
+
+        if (!claudeReply) {
+          const followUp = await anthropic.messages.create({
+            model:   'claude-haiku-4-5-20251001',
+            max_tokens: 512,
+            system:  systemPrompt,
+            messages: [
+              ...claudeMessages,
+              { role: 'assistant', content: response.content },
+              {
+                role: 'user',
+                content: [{ type: 'tool_result', tool_use_id: block.id, content: dtResult }],
+              },
+            ],
+            tools,
+          });
+          claudeReply = followUp.content
+            .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+            .map(b => b.text)
+            .join('');
+        }
+      } else if (block.type === 'tool_use' && block.name in WA_ROUTE_MAP) {
+        const waResult = await callVoiceRoute(
+          WA_ROUTE_MAP[block.name],
+          agent.id as string,
+          block.input as Record<string, unknown>,
+        );
+
+        if (!claudeReply) {
+          const followUp = await anthropic.messages.create({
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 512,
+            system:     systemPrompt,
+            messages: [
+              ...claudeMessages,
+              { role: 'assistant', content: response.content },
+              { role: 'user', content: [{ type: 'tool_result', tool_use_id: block.id, content: waResult }] },
+            ],
+            tools,
           });
           claudeReply = followUp.content
             .filter((b): b is Anthropic.TextBlock => b.type === 'text')

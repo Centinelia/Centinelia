@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import AnimatedSection from './AnimatedSection';
-import { MessageCircle, PhoneOutgoing } from 'lucide-react';
+import { PhoneOutgoing } from 'lucide-react';
 
 const C = {
   bg:       '#FAFBFF',
@@ -18,11 +18,6 @@ const C = {
 };
 
 const ITEMS = [
-  {
-    icon:  <MessageCircle size={22} color={C.accent} />,
-    title: 'Agentes para WhatsApp',
-    desc:  'Atiende conversaciones de WhatsApp con el mismo número de tu negocio, de forma automática y sin perder el hilo.',
-  },
   {
     icon:  <PhoneOutgoing size={22} color={C.accent} />,
     title: 'Llamadas de salida automatizadas',
@@ -91,7 +86,7 @@ export default function WaitlistSection() {
         </AnimatedSection>
 
         {/* Feature cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-12">
+        <div className="grid grid-cols-1 gap-5 mb-12 max-w-sm mx-auto w-full">
           {ITEMS.map((item) => (
             <AnimatedSection key={item.title}>
               <div

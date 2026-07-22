@@ -40,6 +40,37 @@ function matchScore(query: string, c: { agent_name?: string | null; role?: strin
 
 const DELEGATION_TOOLS: Anthropic.Tool[] = [
   {
+    name:        'buscar_archivo',
+    description: 'Busca un archivo en el Drive del negocio por nombre o descripción.',
+    input_schema: {
+      type: 'object',
+      properties: { busqueda: { type: 'string', description: 'Nombre o descripción del archivo.' } },
+      required: ['busqueda'],
+    },
+  },
+  {
+    name:        'leer_archivo',
+    description: 'Lee el contenido de un archivo del Drive encontrado con buscar_archivo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_id:   { type: 'string', description: 'ID del archivo.' },
+        file_name: { type: 'string', description: 'Nombre del archivo.' },
+        mime_type: { type: 'string', description: 'Tipo MIME del archivo.' },
+      },
+      required: ['file_id', 'file_name'],
+    },
+  },
+  {
+    name:        'buscar_en_web',
+    description: 'Busca información en internet cuando no está en el KB ni en el Drive.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Términos de búsqueda.' } },
+      required: ['query'],
+    },
+  },
+  {
     name:        'enviar_correo',
     description: 'Envía un correo electrónico a la persona indicada.',
     input_schema: {
@@ -50,6 +81,19 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
         body:    { type: 'string', description: 'Cuerpo del correo en texto plano' },
       },
       required: ['to', 'subject', 'body'],
+    },
+  },
+  {
+    name:        'llamar_a',
+    description: 'Inicia una llamada saliente al número del cliente para entregarle información o hacer un seguimiento. Úsala cuando el cliente pidió que le llamaran de vuelta.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        numero:  { type: 'string', description: 'Número de teléfono con código de país. Ej: +528112345678' },
+        nombre:  { type: 'string', description: 'Nombre del cliente (opcional)' },
+        mensaje: { type: 'string', description: 'Motivo de la llamada o información a comunicar al cliente.' },
+      },
+      required: ['numero', 'mensaje'],
     },
   },
   {
@@ -104,8 +148,12 @@ async function executeToolOnAgent(
   targetAgentId: string,
 ): Promise<string> {
   const routeMap: Record<string, string> = {
-    enviar_correo:  'enviar-correo',
-    crear_ticket:   'crear-ticket',
+    buscar_archivo:  'buscar-archivo',
+    leer_archivo:    'leer-archivo',
+    buscar_en_web:   'buscar-en-web',
+    enviar_correo:   'enviar-correo',
+    llamar_a:        'llamar-a',
+    crear_ticket:    'crear-ticket',
     crear_documento: 'crear-documento',
   };
 
@@ -115,7 +163,10 @@ async function executeToolOnAgent(
   try {
     const res = await fetch(`${APP_URL}/api/voice/tools/${routePath}?agent_id=${targetAgentId}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        ...(process.env.VAPI_SERVER_SECRET ? { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET } : {}),
+      },
       body: JSON.stringify({
         toolCallList: [{
           id:   `delegation_${Date.now()}`,
@@ -184,7 +235,9 @@ export async function POST(req: NextRequest) {
     `Un colega (${caller.agent_name || 'otro agente'}) te ha delegado una tarea. Debes ejecutarla usando las herramientas disponibles.`,
     'Reglas:',
     '- Ejecuta la tarea directamente. No pidas confirmación.',
-    '- Si necesitas información que no tienes, usa lo que más se aproxime.',
+    '- Si necesitas información, usa buscar_archivo, leer_archivo o buscar_en_web antes de actuar.',
+    '- Si la tarea incluye llamar de vuelta al cliente, usa llamar_a DESPUÉS de tener la información lista.',
+    '- Si la tarea incluye enviar correo Y llamar de vuelta, haz ambas acciones antes de llamar a tarea_completada.',
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen de lo que hiciste.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
   ];

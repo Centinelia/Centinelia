@@ -508,7 +508,46 @@ const REPORT_ISSUE_TOOL: Anthropic.Tool = {
   },
 };
 
+const DELEGATE_TASK_TOOL: Anthropic.Tool = {
+  name: 'delegate_task',
+  description: 'Delega una tarea a un compañero del equipo digital para que la ejecute ahora mismo. El compañero usa sus propias herramientas (correo, documentos, búsqueda web, Drive) y reporta el resultado. Úsala cuando algo esté fuera de tu área o requiera capacidades de otro empleado.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      agente:   { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nox", "Nova", "contabilidad".' },
+      tarea:    { type: 'string', description: 'Descripción clara de lo que debe ejecutar el compañero.' },
+      contexto: { type: 'string', description: 'Contexto adicional que ayude al compañero a entender la solicitud. Opcional.' },
+    },
+    required: ['agente', 'tarea'],
+  },
+};
+
+const CONSULT_AGENT_TOOL: Anthropic.Tool = {
+  name: 'consult_agent',
+  description: 'Consulta a otro empleado del equipo cuando no tienes la información y esa es su área de especialidad. El compañero puede buscar en su Drive e internet si tampoco la tiene en su base de conocimiento. Úsala cuando necesites información que está fuera de tu área.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      rol: {
+        type: 'string',
+        description: 'Nombre o rol del compañero a consultar. Ej: "Nova", "contador", "almacén".',
+      },
+      tarea: {
+        type: 'string',
+        description: 'Qué necesitas saber o que te consiga. Sé específico.',
+      },
+      contexto: {
+        type: 'string',
+        description: 'Contexto adicional relevante para que tu compañero entienda mejor la solicitud. Opcional.',
+      },
+    },
+    required: ['rol', 'tarea'],
+  },
+};
+
 const ALL_TOOLS = [
+  DELEGATE_TASK_TOOL,
+  CONSULT_AGENT_TOOL,
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
   CREATE_DOCUMENT_TOOL,
@@ -1616,6 +1655,181 @@ ${context}`;
                   data.visits ? `\nDatos de visitas disponibles para ${data.item_count} publicación(es).` : '',
                 ].filter(Boolean).join('\n'),
               };
+            }
+
+          } else if (pendingToolName === 'delegate_task') {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+            const dtRes  = await fetch(
+              `${appUrl}/api/voice/tools/delegar-tarea?agent_id=${agent.id as string}`,
+              {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(toolInput),
+              },
+            );
+            if (!dtRes.ok) {
+              toolResult = { ok: false, error: 'No se pudo delegar la tarea en este momento.' };
+            } else {
+              const dtData = await dtRes.json() as { results?: Array<{ result: string }> };
+              toolResult   = { ok: true, message: dtData.results?.[0]?.result ?? 'Tarea procesada.' };
+            }
+
+          } else if (pendingToolName === 'consult_agent') {
+            const cRol      = toolInput.rol      as string;
+            const cTarea    = toolInput.tarea    as string;
+            const cContexto = (toolInput.contexto as string | undefined) ?? '';
+
+            if (!cRol || !cTarea) {
+              toolResult = { ok: false, error: 'Parámetros insuficientes para consultar al agente.' };
+            } else {
+              const { data: siblings } = await supabase
+                .from('voice_agents')
+                .select('id, agent_name, role, knowledge_base, role_knowledge_base')
+                .eq('portal_email', agent.portal_email as string)
+                .eq('active', true)
+                .neq('id', agent.id as string);
+
+              if (!siblings?.length) {
+                toolResult = { ok: false, error: 'No hay otros agentes disponibles en el equipo en este momento.' };
+              } else {
+                const normalizeStr = (s: string) =>
+                  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '');
+
+                const scoreFor = (query: string, c: { agent_name?: string | null; role?: string | null }) => {
+                  const q    = normalizeStr(query);
+                  const name = normalizeStr(c.agent_name ?? '');
+                  const role = normalizeStr(c.role ?? '');
+                  if (name === q || role === q)              return 3;
+                  if (name.includes(q) || q.includes(name)) return 2;
+                  if (role.includes(q) || q.includes(role)) return 1;
+                  const all = `${name} ${role}`;
+                  return q.split(/\s+/).filter(t => t.length > 2 && all.includes(t)).length;
+                };
+
+                const target = siblings
+                  .map(s => ({ s, score: scoreFor(cRol, s) }))
+                  .sort((a, b) => b.score - a.score)[0].s;
+
+                const systemParts: string[] = [
+                  `Eres ${target.agent_name || 'un agente especializado'} del equipo de ${agent.business_name as string}.`,
+                  target.role ? `Tu especialidad: ${target.role}.` : '',
+                  '',
+                  `Tu compañero ${agentName} te está consultando. Responde de forma concisa y precisa.`,
+                  '',
+                  'REGLAS:',
+                  '- Si la información está en tu base de conocimiento, responde directamente.',
+                  '- Si no está en tu KB pero puede estar en el Drive o en internet, búscala — tienes herramientas.',
+                  '- Cuando encuentres la respuesta, dala de forma concisa. No menciones que usaste herramientas.',
+                  '- Si después de buscar genuinamente no encuentras nada, dilo claramente.',
+                ];
+
+                if ((target.knowledge_base as string | null)?.trim())
+                  systemParts.push('', '## Tu base de conocimiento', (target.knowledge_base as string).trim());
+                if ((target.role_knowledge_base as string | null)?.trim())
+                  systemParts.push('', '## Conocimiento de tu rol', (target.role_knowledge_base as string).trim());
+
+                const consultSystem = systemParts.filter(Boolean).join('\n');
+                const consultUser   = cContexto?.trim()
+                  ? `Contexto: ${cContexto.trim()}\n\nNecesito: ${cTarea}`
+                  : cTarea;
+
+                const INNER_TOOLS: Anthropic.Tool[] = [
+                  {
+                    name: 'buscar_archivo',
+                    description: 'Busca un archivo en el Drive conectado por nombre o descripción.',
+                    input_schema: {
+                      type: 'object' as const,
+                      properties: { busqueda: { type: 'string', description: 'Nombre o descripción del archivo.' } },
+                      required: ['busqueda'],
+                    },
+                  },
+                  {
+                    name: 'leer_archivo',
+                    description: 'Lee el contenido de un archivo encontrado con buscar_archivo.',
+                    input_schema: {
+                      type: 'object' as const,
+                      properties: {
+                        file_id:   { type: 'string', description: 'ID del archivo.' },
+                        file_name: { type: 'string', description: 'Nombre del archivo.' },
+                        mime_type: { type: 'string', description: 'Tipo MIME.' },
+                      },
+                      required: ['file_id', 'file_name', 'mime_type'],
+                    },
+                  },
+                  {
+                    name: 'buscar_en_web',
+                    description: 'Busca información en internet.',
+                    input_schema: {
+                      type: 'object' as const,
+                      properties: { query: { type: 'string', description: 'Términos de búsqueda.' } },
+                      required: ['query'],
+                    },
+                  },
+                ];
+
+                const consultClient   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+                const consultMessages: Anthropic.MessageParam[] = [{ role: 'user', content: consultUser }];
+                let   consultAnswer   = `${target.agent_name || cRol} no pudo encontrar la información solicitada.`;
+
+                try {
+                  for (let ct = 0; ct < 5; ct++) {
+                    const resp = await consultClient.messages.create({
+                      model:      'claude-haiku-4-5-20251001',
+                      max_tokens: 1024,
+                      system:     consultSystem,
+                      tools:      INNER_TOOLS,
+                      messages:   consultMessages,
+                    });
+
+                    if (resp.stop_reason === 'end_turn') {
+                      const txt = resp.content
+                        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+                        .map(b => b.text)
+                        .join('')
+                        .trim();
+                      consultAnswer = `[${target.agent_name || cRol}]: ${txt}`;
+                      break;
+                    }
+
+                    if (resp.stop_reason !== 'tool_use') break;
+
+                    consultMessages.push({ role: 'assistant', content: resp.content });
+                    const innerResults: Anthropic.ToolResultBlockParam[] = [];
+
+                    for (const blk of resp.content) {
+                      if (blk.type !== 'tool_use') continue;
+                      const inp = blk.input as Record<string, string>;
+                      let   r   = '';
+
+                      if (blk.name === 'buscar_archivo') {
+                        const res = await executeSearchFiles(target.id as string, inp.busqueda, supabase);
+                        r = (res as { message?: string; error?: string }).message
+                          ?? (res as { message?: string; error?: string }).error
+                          ?? 'Error al buscar archivo.';
+                      } else if (blk.name === 'leer_archivo') {
+                        const res = await executeReadFile(target.id as string, inp.file_id, inp.file_name, inp.mime_type, supabase);
+                        r = (res as { content?: string; error?: string }).content
+                          ?? (res as { content?: string; error?: string }).error
+                          ?? 'No se pudo leer el archivo.';
+                      } else if (blk.name === 'buscar_en_web') {
+                        const webRes = await searchWeb(inp.query, 5);
+                        r = webRes.length
+                          ? webRes.map(x => `${x.title}: ${x.description}`).join('\n')
+                          : 'No se encontraron resultados en internet.';
+                      }
+
+                      innerResults.push({ type: 'tool_result', tool_use_id: blk.id, content: r });
+                    }
+
+                    consultMessages.push({ role: 'user', content: innerResults });
+                  }
+                } catch (err) {
+                  console.error('[consult_agent] error:', err);
+                  consultAnswer = 'El agente no está disponible en este momento.';
+                }
+
+                toolResult = { ok: true, message: consultAnswer };
+              }
             }
 
           } else {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, MessageCircle, Mail } from 'lucide-react';
+import { Check, Mail, MessageCircle } from 'lucide-react';
 
 interface Props {
   token:        string;
@@ -79,7 +79,7 @@ export default function NotificationsToggle({ token, initWhatsApp, initEmail }: 
       field: 'notify_whatsapp',
       icon:  <MessageCircle size={15} color="#25D366" />,
       label: 'Resumen por WhatsApp',
-      desc:  'Recibe un mensaje al finalizar cada llamada con el resultado y resumen.',
+      desc:  'Recibe un mensaje por WhatsApp al finalizar cada llamada con el resultado y resumen.',
       value: wa,
       set:   (v) => { setWa(v); update('notify_whatsapp', v); },
     },

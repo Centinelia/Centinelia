@@ -91,9 +91,9 @@ const CATEGORIES = [
 ];
 
 const CONTACT_OPTIONS = [
-  { icon: <Phone size={14} />,       label: 'Llamar',    href: TEL_LINK,  color: '#22c55e' },
+  { icon: <Phone size={14} />,        label: 'Llamar',    href: TEL_LINK,  color: '#22c55e' },
   { icon: <WhatsAppIcon size={14} />, label: 'WhatsApp',  href: WA_LINK,   color: '#25D366' },
-  { icon: <Mail size={14} />,        label: 'Correo',    href: MAIL_LINK, color: '#6C3BFF' },
+  { icon: <Mail size={14} />,         label: 'Correo',    href: MAIL_LINK, color: '#6C3BFF' },
 ];
 
 function ClosingCard({ accent, text, textSub }: { accent: string; text: string; textSub: string }) {

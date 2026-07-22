@@ -126,7 +126,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
                       className="px-2.5 py-1.5 rounded-lg text-xs"
                       style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
                     <input value={turno.telefono} onChange={e => updateTurno(area.id, turno.id, 'telefono', e.target.value)}
-                      placeholder="Teléfono / WhatsApp"
+                      placeholder="Teléfono"
                       className="px-2.5 py-1.5 rounded-lg text-xs"
                       style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
                   </div>

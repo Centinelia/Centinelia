@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { User, MessageCircle, Mail, DollarSign, Calendar, Pencil, X, Check, Loader2, Filter } from 'lucide-react';
+import { User, MessageCircle, Mail, DollarSign, Calendar, Pencil, X, Check, Loader2, Filter, Phone } from 'lucide-react';
 import ExportCSVButton from './ExportCSVButton';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
 
@@ -65,7 +65,7 @@ const EDIT_FIELDS: { key: keyof Lead; label: string; placeholder?: string }[] = 
   { key: 'servicio',    label: 'Servicio de interés', placeholder: 'Ej: Agente de voz' },
   { key: 'presupuesto', label: 'Presupuesto',          placeholder: 'Ej: $5,000 MXN' },
   { key: 'timeline',    label: 'Tiempo estimado',      placeholder: 'Ej: Este mes' },
-  { key: 'whatsapp',    label: 'WhatsApp',             placeholder: 'Ej: +52 81 1234 5678' },
+  { key: 'whatsapp',    label: 'Teléfono',             placeholder: 'Ej: +52 81 1234 5678' },
   { key: 'email',       label: 'Correo electrónico',   placeholder: 'Ej: contacto@empresa.com' },
 ];
 
@@ -224,8 +224,8 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
                         {lead.presupuesto && <Chip icon={<DollarSign size={10} />}>{lead.presupuesto}</Chip>}
                         {lead.timeline    && <Chip icon={<Calendar size={10} />}>{lead.timeline}</Chip>}
                         {lead.whatsapp && (
-                          <a href={`https://wa.me/${lead.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-                            <Chip icon={<MessageCircle size={10} />} highlight>{lead.whatsapp}</Chip>
+                          <a href={`tel:${lead.whatsapp.replace(/\D/g, '')}`}>
+                            <Chip icon={<Phone size={10} />} highlight>{lead.whatsapp}</Chip>
                           </a>
                         )}
                         {lead.email && (

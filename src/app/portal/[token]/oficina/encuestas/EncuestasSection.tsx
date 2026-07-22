@@ -5,7 +5,7 @@ import {
   Plus, Trash2, BarChart2, ChevronDown, ChevronUp,
   ToggleLeft, ToggleRight, X, MessageSquare, Loader2,
   Star, Phone, Wrench, Building2, Package, Headphones,
-  Pencil, ArrowLeft,
+  Pencil, ArrowLeft, Zap, Bell, PhoneCall, AlertTriangle, ClipboardList,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -28,6 +28,14 @@ interface Question {
   conditions: QuestionCondition | null;
 }
 
+interface SurveyActions {
+  threshold:         number;
+  create_ticket:     boolean;
+  notify_manager:    boolean;
+  schedule_callback: boolean;
+  mark_churn_risk:   boolean;
+}
+
 interface Survey {
   id:               string;
   nombre:           string;
@@ -38,6 +46,7 @@ interface Survey {
   triggers:         string[] | null;
   agent_ids:        string[] | null;
   canal:            string | null;
+  actions?:         SurveyActions | null;
   created_at:       string;
   survey_questions?: Question[];
 }
@@ -439,6 +448,158 @@ function ConditionEditor({
   );
 }
 
+// ── Actions tab ───────────────────────────────────────────────────────────────
+
+const ACTION_DEFS: Array<{
+  key:   keyof Omit<SurveyActions, 'threshold'>;
+  label: string;
+  desc:  string;
+  Icon:  React.ElementType;
+}> = [
+  { key: 'create_ticket',     label: 'Crear ticket en Mesa de ayuda',   desc: 'Abre un ticket de alta prioridad en helpdesk.',            Icon: ClipboardList },
+  { key: 'notify_manager',    label: 'Notificar al manager por correo', desc: 'Envía un correo de alerta al responsable del portal.',     Icon: Bell          },
+  { key: 'schedule_callback', label: 'Programar callback al cliente',   desc: 'Crea una tarea pendiente para dar seguimiento al cliente.', Icon: PhoneCall     },
+  { key: 'mark_churn_risk',   label: 'Marcar como riesgo de churn',     desc: 'Registra la respuesta con bandera de riesgo de abandono.', Icon: AlertTriangle },
+];
+
+function ActionsTab({
+  survey,
+  token,
+  questions,
+}: {
+  survey:    Survey;
+  token:     string;
+  questions: Question[];
+}) {
+  const [actions, setActions] = useState<SurveyActions>({
+    threshold:         survey.actions?.threshold         ?? 2,
+    create_ticket:     survey.actions?.create_ticket     ?? false,
+    notify_manager:    survey.actions?.notify_manager    ?? false,
+    schedule_callback: survey.actions?.schedule_callback ?? false,
+    mark_churn_risk:   survey.actions?.mark_churn_risk   ?? false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  const hasPrimaryRating = questions.some(q => q.tipo === 'rating_5' || q.tipo === 'rating_10');
+  const hasSiNo          = questions.some(q => q.tipo === 'si_no');
+  const hasEligible      = hasPrimaryRating || hasSiNo;
+  const maxThreshold     = questions.some(q => q.tipo === 'rating_10') ? 9 : 4;
+
+  function toggle(key: keyof Omit<SurveyActions, 'threshold'>) {
+    setActions(prev => ({ ...prev, [key]: !prev[key] }));
+    setSaved(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/portal/${token}/surveys/${survey.id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ actions }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="px-4 pb-4 flex flex-col gap-4">
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        Cuando la calificación caiga por debajo del umbral, el empleado ejecuta estas acciones automáticamente al terminar la llamada. Todas vienen desactivadas por defecto.
+      </p>
+
+      {!hasEligible && (
+        <p className="text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(245,158,11,0.08)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}>
+          Agrega una pregunta de calificación o Sí / No en la pestaña Preguntas para habilitar las acciones.
+        </p>
+      )}
+
+      {hasPrimaryRating && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Umbral</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Activar cuando la calificación sea</span>
+            <select
+              value={actions.threshold}
+              onChange={e => { setActions(prev => ({ ...prev, threshold: Number(e.target.value) })); setSaved(false); }}
+              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 7, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
+            >
+              {Array.from({ length: maxThreshold }, (_, i) => i + 1).map(n => (
+                <option key={n} value={n}>{n} o menos</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {hasSiNo && !hasPrimaryRating && (
+        <p className="text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+          Se activa cuando el cliente responde <strong>No</strong>.
+        </p>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Acciones automáticas</p>
+        <div className="flex flex-col gap-2">
+          {ACTION_DEFS.map(({ key, label, desc, Icon }) => {
+            const on = actions[key];
+            return (
+              <button
+                key={key}
+                onClick={() => toggle(key)}
+                disabled={!hasEligible}
+                className="flex items-start gap-3 p-3 rounded-xl text-left transition-all"
+                style={{
+                  background: on ? 'rgba(108,59,255,0.07)' : 'var(--c-surface-2)',
+                  border:     on ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+                  cursor:     hasEligible ? 'pointer' : 'not-allowed',
+                  opacity:    hasEligible ? 1 : 0.45,
+                }}
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ background: on ? 'rgba(108,59,255,0.15)' : 'var(--c-bg)' }}>
+                  <Icon size={13} style={{ color: on ? '#9B6DFF' : 'var(--c-text-3)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-2)' }}>{label}</p>
+                  <p className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--c-text-4)' }}>{desc}</p>
+                </div>
+                <div className="shrink-0 mt-1">
+                  {on
+                    ? <ToggleRight size={18} style={{ color: '#6C3BFF' }} />
+                    : <ToggleLeft  size={18} style={{ color: 'var(--c-text-4)' }} />
+                  }
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {hasEligible && (
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold self-end transition-all hover:opacity-90"
+          style={{
+            background: saved ? 'rgba(34,197,94,0.1)' : '#6C3BFF',
+            color:      saved ? '#22c55e'              : '#fff',
+            border:     saved ? '1px solid rgba(34,197,94,0.3)' : 'none',
+            cursor:     saving ? 'wait' : 'pointer',
+            opacity:    saving ? 0.7 : 1,
+          }}
+        >
+          {saving && <Loader2 size={11} className="animate-spin" />}
+          {saved ? 'Guardado' : 'Guardar'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Wizard modal ──────────────────────────────────────────────────────────────
 
 function WizardModal({
@@ -741,7 +902,7 @@ function SurveyCard({
   onDelete: (id: string) => void;
 }) {
   const [open,       setOpen]       = useState(false);
-  const [view,       setView]       = useState<'hallazgos' | 'preguntas'>('hallazgos');
+  const [view,       setView]       = useState<'hallazgos' | 'preguntas' | 'acciones'>('hallazgos');
   const [questions,  setQuestions]  = useState<Question[]>(survey.survey_questions ?? []);
   const [results,    setResults]    = useState<Results | null>(null);
   const [loadingRes, setLoadingRes] = useState(false);
@@ -949,7 +1110,7 @@ function SurveyCard({
 
           {/* Tabs */}
           <div className="flex gap-1 px-4 pb-2">
-            {(['hallazgos', 'preguntas'] as const).map(v => (
+            {(['hallazgos', 'preguntas', 'acciones'] as const).map(v => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -962,7 +1123,9 @@ function SurveyCard({
               >
                 {v === 'hallazgos'
                   ? <span className="flex items-center gap-1"><BarChart2 size={11} /> Hallazgos</span>
-                  : 'Preguntas'
+                  : v === 'preguntas'
+                  ? 'Preguntas'
+                  : <span className="flex items-center gap-1"><Zap size={11} /> Acciones</span>
                 }
               </button>
             ))}
@@ -1022,6 +1185,11 @@ function SurveyCard({
                 </>
               )}
             </div>
+          )}
+
+          {/* Acciones */}
+          {view === 'acciones' && (
+            <ActionsTab survey={survey} token={token} questions={questions} />
           )}
 
           {/* Preguntas */}

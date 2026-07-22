@@ -229,7 +229,7 @@ export default function LegalPage() {
 
               <Clause title="Finalidades">
                 <Item>Prestar el servicio de agente de voz y generar los reportes del portal del cliente.</Item>
-                <Item>Enviar resúmenes de llamadas y notificaciones operativas por WhatsApp y correo.</Item>
+                <Item>Enviar resúmenes de llamadas y notificaciones operativas por correo.</Item>
                 <Item>Mejorar la precisión del servicio con datos anonimizados.</Item>
                 <Item>Cumplir con obligaciones legales y fiscales.</Item>
               </Clause>

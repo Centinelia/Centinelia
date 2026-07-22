@@ -4,6 +4,7 @@ import { sendEmail } from '@/lib/email/send';
 import { approvalEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
+import { executeSearchFiles, executeReadFile } from '@/lib/services/connector-tools';
 
 const anthropic = new Anthropic();
 
@@ -110,11 +111,37 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
   const opsResult = await consumeAiOp(agentId, 1);
   if (opsResult.ok) {
+    // Enrich draft context with a relevant Drive document (best-effort, non-blocking)
+    let driveContext = '';
+    try {
+      // Subject carries the densest keywords; add up to 500 chars of body to catch the actual ask
+      const driveQuery = [emailSubject, emailBody.slice(0, 500)].filter(Boolean).join(' ');
+      if (driveQuery.trim()) {
+        const supabaseDrive = createAdminClient();
+        const sr    = await executeSearchFiles(agentId, driveQuery, supabaseDrive);
+        const files = (sr.ok && sr.files)
+          ? (sr.files as Array<{ id: string; name: string; mimeType?: string }>).slice(0, 2)
+          : [];
+
+        const sections: string[] = [];
+        await Promise.all(files.map(async f => {
+          const rr = await executeReadFile(agentId, f.id, f.name, f.mimeType ?? '', supabaseDrive);
+          if (rr.ok && rr.content) {
+            sections.push(`### ${f.name}\n${rr.content as string}`);
+          }
+        }));
+
+        if (sections.length) {
+          driveContext = `\n\nDOCUMENTOS RELEVANTES DEL DRIVE:\n${sections.join('\n\n')}`;
+        }
+      }
+    } catch { /* Drive not connected or search failed — continue without enrichment */ }
+
     try {
       const msg = await anthropic.messages.create({
         model:      'claude-haiku-4-5-20251001',
         max_tokens: 800,
-        system:     systemPrompt,
+        system:     systemPrompt + driveContext,
         messages:   [{ role: 'user', content: userPrompt }],
       });
       const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}';

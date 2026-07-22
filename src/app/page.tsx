@@ -49,7 +49,7 @@ const LIMITS = [
   {
     icon:  <Inbox size={20} color="#dc2626" />,
     title: 'Las conversaciones se acumulan.',
-    items: ['Clientes esperando.', 'WhatsApps sin responder.', 'Correos pendientes.'],
+    items: ['Clientes esperando.', 'Mensajes sin responder.', 'Correos pendientes.'],
     color: '#dc2626',
     label: 'Conversaciones',
   },

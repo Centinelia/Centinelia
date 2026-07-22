@@ -1,10 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { agentInboxAddressFor } from '@/lib/email/inbox';
+import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
+const MAX_QA_CYCLES  = 2;
 const TIME_BUDGET_MS = 55_000;
+const QA_TIME_MIN_MS = 15_000; // minimum remaining budget to attempt a QA review
 
 export interface AgentInfo {
   id:                   string;
@@ -16,7 +19,66 @@ export interface AgentInfo {
   portal_email?:        string | null;
 }
 
+// ── Tools available to the executing agent ─────────────────────────────────────
+
 const DELEGATION_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'buscar_archivo',
+    description: 'Busca un archivo en el Drive del negocio por nombre o descripción.',
+    input_schema: {
+      type: 'object',
+      properties: { busqueda: { type: 'string', description: 'Nombre o descripción del archivo.' } },
+      required: ['busqueda'],
+    },
+  },
+  {
+    name:        'leer_archivo',
+    description: 'Lee el contenido de un archivo del Drive encontrado con buscar_archivo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        file_id:   { type: 'string', description: 'ID del archivo.' },
+        file_name: { type: 'string', description: 'Nombre del archivo.' },
+        mime_type: { type: 'string', description: 'Tipo MIME del archivo.' },
+      },
+      required: ['file_id', 'file_name'],
+    },
+  },
+  {
+    name:        'buscar_en_web',
+    description: 'Busca información en internet cuando no está en el KB ni en el Drive.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Términos de búsqueda.' } },
+      required: ['query'],
+    },
+  },
+  {
+    name:        'consultar_agente',
+    description: 'Consulta a un compañero del equipo para obtener información de su área de especialidad.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        rol:      { type: 'string', description: 'Nombre o rol del compañero a consultar.' },
+        tarea:    { type: 'string', description: 'Qué necesitas que te responda.' },
+        contexto: { type: 'string', description: 'Contexto adicional. Opcional.' },
+      },
+      required: ['rol', 'tarea'],
+    },
+  },
+  {
+    name:        'llamar_a',
+    description: 'Inicia una llamada saliente al número del cliente para entregarle información o hacer un seguimiento. Úsala cuando el cliente pidió que le llamaran de vuelta con la respuesta.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        numero:  { type: 'string', description: 'Número de teléfono con código de país. Ej: +528112345678' },
+        nombre:  { type: 'string', description: 'Nombre del cliente (opcional)' },
+        mensaje: { type: 'string', description: 'Motivo de la llamada o información a comunicar al cliente.' },
+      },
+      required: ['numero', 'mensaje'],
+    },
+  },
   {
     name:        'enviar_correo',
     description: 'Envía un correo electrónico a la persona indicada.',
@@ -46,7 +108,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'crear_documento',
-    description: 'Genera un documento y lo envía al correo del dueño.',
+    description: 'Genera un documento PDF y lo envía al correo del dueño.',
     input_schema: {
       type: 'object',
       properties: {
@@ -63,16 +125,18 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'tarea_completada',
-    description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado TODAS las acciones necesarias.',
+    description: 'Señala que la tarea fue completada. Llama a esta herramienta SOLO cuando hayas terminado todas las acciones necesarias.',
     input_schema: {
       type: 'object',
       properties: {
-        resultado: { type: 'string', description: 'Descripción de lo que se hizo y el resultado obtenido.' },
+        resultado: { type: 'string', description: 'Descripción clara de lo que se hizo y el resultado obtenido.' },
       },
       required: ['resultado'],
     },
   },
 ];
+
+// ── Tool executor — calls existing voice tool routes ───────────────────────────
 
 async function executeToolOnAgent(
   toolName: string,
@@ -80,9 +144,14 @@ async function executeToolOnAgent(
   targetAgentId: string,
 ): Promise<string> {
   const routeMap: Record<string, string> = {
-    enviar_correo:   'enviar-correo',
-    crear_ticket:    'crear-ticket',
-    crear_documento: 'crear-documento',
+    buscar_archivo:   'buscar-archivo',
+    leer_archivo:     'leer-archivo',
+    buscar_en_web:    'buscar-en-web',
+    consultar_agente: 'consultar-agente',
+    llamar_a:         'llamar-a',
+    enviar_correo:    'enviar-correo',
+    crear_ticket:     'crear-ticket',
+    crear_documento:  'crear-documento',
   };
 
   const routePath = routeMap[toolName];
@@ -91,7 +160,10 @@ async function executeToolOnAgent(
   try {
     const res = await fetch(`${APP_URL}/api/voice/tools/${routePath}?agent_id=${targetAgentId}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.VAPI_SERVER_SECRET ? { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET } : {}),
+      },
       body: JSON.stringify({
         toolCallList: [{
           id:   `queue_${Date.now()}`,
@@ -107,6 +179,89 @@ async function executeToolOnAgent(
     return 'Error de conexión al ejecutar la acción.';
   }
 }
+
+// ── Nox QA review ──────────────────────────────────────────────────────────────
+// Nox reviews the agent's completed work before it is marked as delivered.
+// Returns approved=true (fail-open) if the review itself errors.
+
+const QA_TOOLS: Anthropic.Tool[] = [
+  {
+    name:        'aprobar',
+    description: 'El trabajo está bien hecho y listo para entregar.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name:        'rechazar',
+    description: 'El trabajo tiene errores, está incompleto o no cumple con lo solicitado.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        feedback: {
+          type: 'string',
+          description: 'Descripción específica y accionable de qué está mal y qué debe corregirse.',
+        },
+      },
+      required: ['feedback'],
+    },
+  },
+];
+
+interface NoxForQA {
+  agent_name:    string | null;
+  business_name?: string | null;
+}
+
+async function noxQAReview(params: {
+  nox:       NoxForQA;
+  tarea:     string;
+  contexto:  string | null;
+  resultado: string;
+  agentName: string;
+}): Promise<{ approved: boolean; feedback: string }> {
+  const { nox, tarea, contexto, resultado, agentName } = params;
+
+  const systemPrompt = [
+    `Eres ${nox.agent_name || 'Nox'}, coordinador del equipo de ${nox.business_name || 'la empresa'}.`,
+    'Tu función ahora es revisar el trabajo de un compañero antes de que sea entregado.',
+    '',
+    'CRITERIOS DE REVISIÓN:',
+    '- ¿La tarea quedó completa? ¿Se ejecutaron todas las acciones necesarias?',
+    '- ¿El resultado es coherente y útil para lo que se pedía?',
+    '- ¿Hay errores evidentes, información faltante o pasos omitidos?',
+    '',
+    'Si el trabajo cumple: llama a aprobar.',
+    'Si tiene problemas claros: llama a rechazar con feedback específico y accionable.',
+    'Decide con lo que tienes. No pidas más información.',
+  ].join('\n');
+
+  const userMsg = [
+    `Compañero: ${agentName}`,
+    contexto ? `Contexto: ${contexto}` : '',
+    `Tarea solicitada: ${tarea}`,
+    `\nResultado entregado:\n${resultado}`,
+  ].filter(Boolean).join('\n');
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  try {
+    const resp = await client.messages.create({
+      model:       'claude-haiku-4-5-20251001',
+      max_tokens:  512,
+      system:      systemPrompt,
+      tools:       QA_TOOLS,
+      tool_choice: { type: 'any' },
+      messages:    [{ role: 'user', content: userMsg }],
+    });
+
+    const toolUse = resp.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+    if (!toolUse || toolUse.name === 'aprobar') return { approved: true, feedback: '' };
+
+    return { approved: false, feedback: (toolUse.input as { feedback: string }).feedback };
+  } catch {
+    return { approved: true, feedback: '' };
+  }
+}
+
+// ── Main task executor ─────────────────────────────────────────────────────────
 
 export async function executeTask(params: {
   taskId:      string;
@@ -127,19 +282,19 @@ export async function executeTask(params: {
       : 'Se te ha asignado una tarea para ejecutar con las herramientas disponibles.',
     'Reglas:',
     '- Ejecuta la tarea directamente. No pidas confirmación.',
-    '- Si necesitas información que no tienes, usa lo que más se aproxime al contexto.',
+    '- Si necesitas información, usa buscar_archivo, leer_archivo o buscar_en_web antes de actuar.',
+    '- Si algo está fuera de tu área, usa consultar_agente.',
+    '- Si la tarea incluye llamar de vuelta al cliente, usa llamar_a DESPUÉS de tener la información lista.',
+    '- Si la tarea incluye enviar correo Y llamar de vuelta, haz ambas acciones antes de llamar a tarea_completada.',
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen claro.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
   ];
 
-  if (targetAgent.knowledge_base?.trim()) {
+  if (targetAgent.knowledge_base?.trim())
     promptLines.push('', '## Base de conocimiento', targetAgent.knowledge_base.trim());
-  }
-  if (targetAgent.role_knowledge_base?.trim()) {
+  if (targetAgent.role_knowledge_base?.trim())
     promptLines.push('', '## Conocimiento de tu rol', targetAgent.role_knowledge_base.trim());
-  }
 
-  // Build sibling directory so agents can email each other
   if (targetAgent.portal_email) {
     const { data: siblings } = await supabase
       .from('voice_agents')
@@ -158,17 +313,26 @@ export async function executeTask(params: {
   }
 
   const systemPrompt = promptLines.filter(Boolean).join('\n');
-  const userMsg = contexto?.trim()
+  const userMsg      = contexto?.trim()
     ? `Contexto: ${contexto.trim()}\n\nTarea: ${tarea}`
     : `Tarea: ${tarea}`;
+
+  // Resolve Nox once — used for QA reviews after tarea_completada
+  const nox = targetAgent.portal_email
+    ? await findNoxAgent(targetAgent.portal_email).catch(() => null)
+    : null;
+  const noxActive = !!(nox && nox.id !== targetAgent.id);
 
   const client   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMsg }];
   let finalResult  = '';
   let taskDone     = false;
+  let qaExhausted  = false;
+  let qaCycles     = 0;
   const loopStart  = Date.now();
 
-  for (let i = 0; i < MAX_ITER; i++) {
+  // Extra iterations to accommodate QA retry loops
+  outer: for (let i = 0; i < MAX_ITER * (MAX_QA_CYCLES + 1); i++) {
     if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
     const response = await client.messages.create({
@@ -186,25 +350,64 @@ export async function executeTask(params: {
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map(b => b.text).join('').trim();
       finalResult = text || finalResult;
+      taskDone    = true;
       break;
     }
 
     if (response.stop_reason !== 'tool_use') break;
 
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    let hitDone = false;
 
     for (const block of response.content) {
       if (block.type !== 'tool_use') continue;
 
       if (block.name === 'tarea_completada') {
-        finalResult = (block.input as { resultado: string }).resultado;
+        const resultado = (block.input as { resultado: string }).resultado;
+
+        // QA cycles exhausted — work was rejected MAX_QA_CYCLES times, fail the task
+        if (noxActive && qaCycles >= MAX_QA_CYCLES) {
+          finalResult  = resultado;
+          qaExhausted  = true;
+          hitDone      = true;
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Trabajo no aprobado por el coordinador.' });
+          break outer;
+        }
+
+        // QA: run coordinator review if available and time permits
+        const timeLeft = TIME_BUDGET_MS - (Date.now() - loopStart);
+        if (noxActive && timeLeft > QA_TIME_MIN_MS) {
+          const review = await noxQAReview({
+            nox:       nox as NoxForQA,
+            tarea,
+            contexto,
+            resultado,
+            agentName: targetAgent.agent_name ?? 'el empleado',
+          });
+
+          if (!review.approved) {
+            qaCycles++;
+            const noxName = nox.agent_name ?? 'el coordinador';
+            // Deliver feedback inside the tool_result to keep message alternation valid
+            toolResults.push({
+              type:        'tool_result',
+              tool_use_id: block.id,
+              content: `Trabajo registrado. Sin embargo, ${noxName} lo revisó y encontró lo siguiente:\n\n${review.feedback}\n\nCorrige los problemas y vuelve a llamar a tarea_completada cuando esté listo.`,
+            });
+            break; // agent continues the loop with this feedback
+          }
+        }
+
+        // Approved (or no coordinator / no time for QA)
+        finalResult = resultado;
         taskDone    = true;
-        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Tarea marcada como completada.' });
+        hitDone     = true;
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Tarea completada y aprobada.' });
         break;
       }
 
       const toolResult = await executeToolOnAgent(block.name, block.input as Record<string, unknown>, targetAgent.id);
-      finalResult = `${block.name}: ${toolResult}`;
+      if (!hitDone) finalResult = `${block.name}: ${toolResult}`;
       toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: toolResult });
     }
 
@@ -219,9 +422,12 @@ export async function executeTask(params: {
       .update({ status: 'completed', result: finalResult, completed_at: now })
       .eq('id', taskId);
   } else {
+    const failReason = qaExhausted
+      ? `Rechazado por el coordinador tras ${MAX_QA_CYCLES} intentos. Último entregable guardado.`
+      : (finalResult || 'Sin respuesta del empleado.');
     await supabase
       .from('agent_tasks')
-      .update({ status: 'failed', result: finalResult || 'Sin respuesta del empleado.' })
+      .update({ status: 'failed', result: failReason })
       .eq('id', taskId);
   }
 

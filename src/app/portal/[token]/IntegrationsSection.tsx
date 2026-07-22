@@ -38,7 +38,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   {
     id:           'calendly',
     label:        'Calendly',
-    description:  'Agendamiento vía link, tu empleado comparte tu URL por WhatsApp',
+    description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva',
     requiredPlan: 'comercial',
     accentColor:  '#006BFF',
     icon: (
@@ -51,7 +51,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   {
     id:           'google',
     label:        'Google Calendar',
-    description:  'Agendamiento vía link, tu empleado comparte tu URL por WhatsApp',
+    description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva',
     requiredPlan: 'comercial',
     accentColor:  '#4285F4',
     icon: (
@@ -229,20 +229,20 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
 
                   {intg.id === 'google' && (
                     <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(66,133,244,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(66,133,244,0.15)' }}>
-                      Tu empleado captura nombre, servicio y horario durante la llamada. Al terminar, envía tu link de reserva por WhatsApp para que el cliente confirme.
+                      Tu empleado captura nombre, servicio y horario durante la llamada. Al terminar, comparte tu link de reserva por correo para que el cliente confirme.
                     </p>
                   )}
 
                   {intg.id === 'calendly' && (
                     <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(0,107,255,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(0,107,255,0.15)' }}>
-                      Tu empleado captura nombre y servicio durante la llamada. Al terminar, envía tu link de Calendly por WhatsApp para que el cliente seleccione su horario. Para agendamiento directo sin link, usa Cal.com.
+                      Tu empleado captura nombre y servicio durante la llamada. Al terminar, comparte tu link de Calendly por correo para que el cliente seleccione su horario. Para agendamiento directo sin link, usa Cal.com.
                     </p>
                   )}
 
                   <div>
                     <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>
                       {intg.id === 'cal_com'
-                        ? 'Link de reserva (fallback por WhatsApp si falla la API)'
+                        ? 'Link de reserva (fallback por correo si falla la API)'
                         : intg.id === 'calendly'
                         ? 'Link de tu agenda en Calendly'
                         : 'Link de tu agenda de citas'}

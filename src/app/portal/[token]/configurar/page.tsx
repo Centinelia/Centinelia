@@ -274,7 +274,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   </div>
                   <NotificationsToggle
                     token={token}
-                    initWhatsApp={(agent as any).notify_whatsapp ?? true}
+                    initWhatsApp={(agent as any).notify_whatsapp ?? false}
                     initEmail={(agent as any).notify_email ?? true}
                   />
                 </div>

@@ -130,14 +130,14 @@ const AGENT_PLANS: AgentPlanDef[] = [
     features: [
       { label: 'Atención telefónica 24/7', desc: 'Contesta a cualquier hora con el nombre e información de tu organización.' },
       { label: 'Captura de leads y agendamiento', desc: 'Obtiene datos del prospecto y confirma o modifica citas durante la llamada.' },
-      { label: 'Transferencia inteligente y escalación', desc: 'Transfiere al staff o dirige a WhatsApp cuando el cliente lo necesita.' },
+      { label: 'Transferencia inteligente', desc: 'Transfiere al staff cuando el cliente lo necesita.' },
       { label: 'Hasta 3 llamadas simultáneas', desc: 'Tu agente atiende hasta 3 llamadas al mismo tiempo sin dar señal de ocupado.' },
       { label: 'Llamadas salientes y devolución automática', desc: 'Llama a contactos para confirmar citas y devuelve llamadas perdidas.' },
-      { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los manda a tu WhatsApp.' },
+      { label: 'Toma de pedidos', desc: 'Recibe pedidos completos durante la llamada y los registra en el portal.' },
       { label: 'Memoria de cliente', desc: 'Recuerda quién ha llamado antes, qué pidió y sus preferencias.' },
       { label: 'Multiidioma (ES + EN)', desc: 'Detecta el idioma del cliente y responde en español o inglés.' },
       { label: 'Voz y nombre personalizables', desc: 'Elige nombre, voz y diseña lógica conversacional a medida de tu operación.' },
-      { label: 'Reseñas Google automáticas', desc: 'Tras cada llamada exitosa manda el link de tu reseña Google por WhatsApp.' },
+      { label: 'Reseñas Google automáticas', desc: 'Tras cada llamada exitosa manda el link de tu reseña Google por correo.' },
       { label: 'Módulo Oficina completo', desc: 'Bandeja, contratos, juntas, reportes y herramientas de IA integradas.' },
     ],
   },
@@ -232,7 +232,7 @@ const CUSTOM_PORTAL_FEATURES: { label: string; desc: string }[] = [
   { label: 'Base de conocimiento',           desc: 'Carga información de tu organización para que responda con precisión.' },
   { label: 'Capacidades activas',            desc: 'Activa o desactiva recepción, agendamiento, cobranza, ventas y más.' },
   { label: 'Horarios de atención',           desc: 'Configura cuándo atiende llamadas y cuándo redirige al personal.' },
-  { label: 'Transferencias y escalación',    desc: 'Define a quién y cuándo transferir llamadas o escalar a WhatsApp.' },
+  { label: 'Transferencias',                  desc: 'Define a quién y cuándo transferir llamadas.' },
   { label: 'Instrucciones personalizadas',   desc: 'Dale un guion, tono de voz y estilo de conversación propio.' },
   { label: 'Llamadas salientes',             desc: 'Activa marcación automática para confirmaciones o seguimiento.' },
 ];
@@ -471,7 +471,7 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
   nia: {
     name:  { filled: n => `Anotado. Bienvenidos, ${n}.`, cleared: '¿No era ese el nombre? Sin problema, aquí lo cambio.' },
     desc:  { filled: 'Perfecto. Ya sé cómo presentar tu organización con cada llamada.', cleared: 'Sin prisa. Puedes reescribirla cuando quieras.' },
-    phone: { filled: 'Listo. Ese será el número que mencione en las llamadas.', cleared: '¿Cambiaste el teléfono? Cuando tengas el correcto, lo anoto.' },
+    phone: { filled: 'Anotado. Ese será el número que mencione en las llamadas.', cleared: '¿Cambiaste el teléfono? Cuando tengas el correcto, lo anoto.' },
   },
   noah: {
     name:  { filled: n => `${n}. Bien. ¿Qué vendemos?`, cleared: '¿Distinto nombre? No hay problema.' },
@@ -491,7 +491,7 @@ const MEERKAT_CHAT: Record<string, MeerkatChatDef> = {
   naia: {
     name:  { filled: n => `¿${n}?, ¡sí los conozco! Hace mucho que quiero trabajar con ustedes.`, cleared: '¿No era ese el nombre? Cuando lo confirmes, lo registro.' },
     desc:  { filled: 'Todo bien documentado. Ya sé cómo funciona el equipo.', cleared: '¿Revisando la descripción? Tómate tu tiempo.' },
-    phone: { filled: 'Número registrado. Listo para las comunicaciones del equipo.', cleared: '¿Cambio de número? Aquí lo actualizo.' },
+    phone: { filled: 'Número registrado. Lista para las comunicaciones del equipo.', cleared: '¿Cambio de número? Aquí lo actualizo.' },
   },
   nelia: {
     name:  { filled: n => `¡${n}! Ya los tengo en mi lista.`, cleared: '¿Cambiaste el nombre? Sin problema, dime el correcto.' },
@@ -616,7 +616,6 @@ function RegistroInner() {
   const [clientFirstName, setClientFirstName] = useState('');
   const [clientLastName,  setClientLastName]  = useState('');
   const [clientEmail,     setClientEmail]     = useState('');
-  const [whatsapp,        setWhatsapp]        = useState('');
 
   // Step 4 — KYC
   const [rfc,         setRfc]         = useState('');
@@ -766,7 +765,6 @@ function RegistroInner() {
     if (!clientFirstName.trim())                           { setError('Escribe tu nombre'); return; }
     if (!clientLastName.trim())                            { setError('Escribe tu apellido'); return; }
     if (!clientEmail.trim() || !clientEmail.includes('@')) { setError('Escribe un correo electrónico válido'); return; }
-    if (!whatsapp.trim())                                  { setError('Escribe tu número de WhatsApp'); return; }
     if (country === 'mx') {
       const rfcClean = rfc.trim().toUpperCase().replace(/\s/g, '');
       if (rfcClean.length < 12 || rfcClean.length > 13 || !/^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(rfcClean)) {
@@ -795,7 +793,6 @@ function RegistroInner() {
           agent_name:             agentName.trim() || null,
           client_name:            `${clientFirstName.trim()} ${clientLastName.trim()}`,
           client_email:           clientEmail.trim(),
-          transfer_whatsapp:      whatsapp.trim(),
           meerkat_role_id:        meerkatRoleId ?? undefined,
           rfc:                    country === 'mx' ? rfc.trim().toUpperCase().replace(/\s/g, '') : undefined,
           curp:                   country === 'mx' ? curp.trim().toUpperCase().replace(/\s/g, '') : undefined,
@@ -838,7 +835,7 @@ function RegistroInner() {
             te contactaremos en menos de 24 horas con una propuesta a medida.
           </p>
           <div className="flex flex-col gap-2 text-left mb-6">
-            {['Revisión de necesidades de integración', 'Propuesta personalizada vía WhatsApp / correo', 'Llamada de onboarding con el equipo'].map((s, i) => (
+            {['Revisión de necesidades de integración', 'Propuesta personalizada vía correo', 'Llamada de onboarding con el equipo'].map((s, i) => (
               <div key={s} className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                   style={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b' }}>
@@ -1654,17 +1651,6 @@ function RegistroInner() {
                   </label>
                   <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="tu@correo.com" style={inputStyle} />
                 </div>
-                <div>
-                  <label style={labelStyle}>
-                    WhatsApp *
-                    <span style={{ color: 'rgba(255,255,255,0.5)', marginLeft: 6 }}>(resúmenes en tiempo real)</span>
-                  </label>
-                  <div className="relative">
-                    <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)' }} />
-                    <input value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+52 81 1234 5678" style={{ ...inputStyle, paddingLeft: 40 }} />
-                  </div>
-                </div>
-
                 {country === 'mx' && (
                   <>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '4px 0' }} />
@@ -1813,7 +1799,7 @@ function RegistroInner() {
                   <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full"
                     style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.22)' }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 4px rgba(34,197,94,0.7)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#4ade80' }}>Listo para incorporarse</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#4ade80' }}>{selectedMeerkat?.genero === 'F' ? 'Lista' : 'Listo'} para incorporarse</span>
                   </div>
                 </div>
 

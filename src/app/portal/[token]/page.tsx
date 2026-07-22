@@ -42,7 +42,6 @@ import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
-import PortalOutboundSection     from './PortalOutboundSection';
 import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
 import OutboundToggles           from './OutboundToggles';
@@ -56,7 +55,7 @@ import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
-import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
+import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
 
 type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta' | 'equipo';
 
@@ -72,7 +71,7 @@ const FEED_OUTCOME: Record<string, { label: string; color: string; bg: string }>
   order_taken:        { label: 'Pedido',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'   },
   transferred:        { label: 'Transfer.',  color: '#a855f7', bg: 'rgba(168,85,247,0.1)'   },
   info_provided:      { label: 'Info',       color: '#6b7280', bg: 'rgba(107,114,128,0.1)'  },
-  escalated_whatsapp: { label: 'WhatsApp',   color: '#16a34a', bg: 'rgba(22,163,74,0.1)'    },
+  escalated_whatsapp: { label: 'Escalada',   color: '#16a34a', bg: 'rgba(22,163,74,0.1)'    },
   unanswered:         { label: 'Sin resp.',  color: '#9ca3af', bg: 'rgba(156,163,175,0.08)' },
   missed:             { label: 'Perdida',    color: '#ef4444', bg: 'rgba(239,68,68,0.1)'    },
   other:              { label: 'Completada', color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
@@ -223,7 +222,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     ? allClientAgents.map(a => a.id)
     : [agent.id];
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactWALeadsRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
     // Calls — account-level for Inicio activity and Llamadas
     since
       ? supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -235,7 +234,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     showOutbound ? supabase.from('outbound_calls').select('*').eq('agent_id', agent.id).order('scheduled_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     // Contacts tab
     supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
-    supabase.from('wa_leads').select('id, nombre, customer_number, whatsapp, email, negocio, giro, servicio, presupuesto, timeline, notas, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
     supabase.from('email_integrations').select('provider, email, needs_reauth').eq('agent_id', agent.id),
@@ -248,8 +246,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const allCalls          = allCallsRes.data         ?? [];
   const outboundCalls     = (outboundRes.data        ?? []) as OutboundCall[];
   const contactVoiceLeads = (contactLeadsRes.data    ?? []) as ContactVoiceLead[];
-  const contactWALeads    = (contactWALeadsRes.data  ?? []) as ContactWALead[];
-  const contactOutbound   = (contactOutboundRes.data   ?? []) as ContactOutbound[];
+  const contactOutbound   = (contactOutboundRes.data ?? []) as ContactOutbound[];
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
   const reauthAlerts      = (emailIntsRes.data ?? []).filter((i: any) => i.needs_reauth) as { provider: 'gmail' | 'outlook'; email: string }[];
 
@@ -918,7 +915,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
                   <div className="flex items-center gap-1.5 mb-3">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
-                    <InfoTooltip text="Tu empleado envía este link a tus clientes por WhatsApp al finalizar llamadas exitosas para que dejen una reseña." />
+                    <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
                   </div>
                   <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
                 </div>
@@ -1145,7 +1142,7 @@ function callOutcomeDesc(outcome: string): string {
     case 'order_taken':         return 'Realizó un pedido.';
     case 'transferred':         return 'Fue transferido al equipo.';
     case 'info_provided':       return 'Recibió información y fue atendido.';
-    case 'escalated_whatsapp':  return 'La conversación continuó por WhatsApp.';
+    case 'escalated_whatsapp':  return 'Llamada escalada para seguimiento.';
     case 'missed':              return 'Llamada perdida.';
     case 'unanswered':          return 'No fue atendido.';
     default:                    return 'Llamada completada.';

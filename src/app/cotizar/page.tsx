@@ -23,7 +23,7 @@ const EMPLEADOS_OPTS = [
 const BENEFICIOS = [
   'Onboarding personalizado con tu equipo',
   'Oficina digital completa en menos de 48 h',
-  'Soporte prioritario por WhatsApp',
+  'Soporte prioritario',
   'Precio por volumen',
 ];
 

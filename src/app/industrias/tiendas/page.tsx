@@ -51,7 +51,7 @@ const FEATURES = [
   { label: 'Responde disponibilidad, precios, tallas y características de productos' },
   { label: 'Toma pedidos para recoger en tienda o envío a domicilio' },
   { label: 'Informa horarios, ubicación y políticas de devolución' },
-  { label: 'Registra cada pedido y notifica al equipo por WhatsApp' },
+  { label: 'Registra cada pedido y notifica al equipo al instante' },
   { label: 'Captura datos de clientes interesados cuando el producto no está disponible' },
   { label: 'Atiende fuera de horario para no perder ventas nocturnas ni de fin de semana' },
 ];
@@ -93,7 +93,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo maneja el agente los pedidos que toma?',
-    a: 'Cada pedido llega a tu WhatsApp y al portal con todos los datos: producto, cantidad, nombre del cliente y tipo de entrega. También queda registrado para que puedas exportarlo. Si tu sistema POS lo permite, los pedidos se registran ahí automáticamente también.',
+    a: 'Cada pedido queda registrado en el portal con todos los datos: producto, cantidad, nombre del cliente y tipo de entrega. También puedes exportarlos. Si tu sistema POS lo permite, los pedidos se registran ahí automáticamente también.',
   },
   {
     q: '¿Puede el agente dar seguimiento a pedidos ya realizados?',

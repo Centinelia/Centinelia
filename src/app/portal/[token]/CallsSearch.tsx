@@ -12,7 +12,7 @@ const OUTCOME_LABELS: Record<string, string> = {
   transferred:        'Transferida',
   info_provided:      'Información',
   unanswered:         'Sin respuesta',
-  escalated_whatsapp: 'WhatsApp',
+  escalated_whatsapp: 'Escalada',
   missed:             'Perdida',
   other:              'Otro',
 };

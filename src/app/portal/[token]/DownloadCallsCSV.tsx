@@ -8,7 +8,7 @@ const OUTCOME_LABELS: Record<string, string> = {
   order_taken:        'Pedido',
   transferred:        'Transferido',
   info_provided:      'Información',
-  escalated_whatsapp: 'WhatsApp',
+  escalated_whatsapp: 'Escalada',
   unanswered:         'No contestó',
   other:              'Otro',
 };

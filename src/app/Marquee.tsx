@@ -2,7 +2,7 @@
 
 import {
   ArrowLeftRight, Globe, Cpu, Zap,
-  Mic, ShieldCheck, PhoneIncoming, FileText, Clock, BadgeCheck, MessageCircle, Phone,
+  Mic, ShieldCheck, PhoneIncoming, FileText, Clock, BadgeCheck, Mail, Phone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -18,7 +18,7 @@ const ITEMS: { icon: LucideIcon; label: string }[] = [
   { icon: FileText,       label: 'Grabaciones y transcripciones' },
   { icon: Clock,          label: 'Soporte en español' },
   { icon: BadgeCheck,     label: 'Recuperador de llamadas perdidas' },
-  { icon: MessageCircle, label: 'Resúmenes por WhatsApp' },
+  { icon: Mail,          label: 'Resúmenes por correo' },
 ];
 
 export default function Marquee() {

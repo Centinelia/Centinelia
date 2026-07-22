@@ -57,9 +57,9 @@ const FEATURES = [
   { label: 'Agenda, modifica y cancela citas, sin intervención humana' },
   { label: 'Responde preguntas frecuentes: costos, seguros, horarios, ubicación' },
   { label: 'Captura datos de nuevos pacientes interesados' },
-  { label: 'Transfiere a WhatsApp si el caso requiere atención directa' },
+  { label: 'Transfiere a tu número directo si el caso requiere atención inmediata' },
   { label: 'Funciona las 24 horas, los 7 días, sin descansos ni incapacidades' },
-  { label: 'Resumen de cada llamada directo a tu WhatsApp o correo' },
+  { label: 'Resumen de cada llamada directo a tu correo' },
 ];
 
 const OUTBOUND_CASES = [
@@ -103,7 +103,7 @@ const FAQS = [
   },
   {
     q: '¿Qué pasa si un paciente llama por algo urgente o de emergencia?',
-    a: 'Tu empleado detecta urgencias y puede transferir la llamada de inmediato a tu número personal o enviar una alerta por WhatsApp para que atiendas tú directamente.',
+    a: 'Tu empleado detecta urgencias y puede transferir la llamada de inmediato a tu número personal para que atiendas tú directamente.',
   },
   {
     q: '¿Puede manejar información médica sensible?',

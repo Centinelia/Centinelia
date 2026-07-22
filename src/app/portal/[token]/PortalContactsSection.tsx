@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Search, Phone, MessageCircle, PhoneOutgoing, User, Filter, X,
+  Search, Phone, PhoneOutgoing, User, Filter, X,
   Check, Loader2, PhoneCall, CheckSquare, Square, Bot,
 } from 'lucide-react';
 import type { OutboundAgent } from './PortalOutboundSection';
@@ -45,7 +45,7 @@ export interface ContactOutbound {
   created_at: string;
 }
 
-type Source = 'voice' | 'whatsapp' | 'outbound';
+type Source = 'voice' | 'outbound';
 
 interface UnifiedContact {
   id: string;
@@ -61,14 +61,12 @@ interface UnifiedContact {
 
 const SOURCE_CONFIG: Record<Source, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
   voice:    { label: 'Llamada',  color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)', Icon: Phone         },
-  whatsapp: { label: 'WhatsApp', color: '#16a34a', bg: 'rgba(22,163,74,0.1)',  Icon: MessageCircle },
   outbound: { label: 'Saliente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', Icon: PhoneOutgoing },
 };
 
 const SOURCE_FILTERS: { label: string; value: Source | 'all' }[] = [
   { label: 'Todos',     value: 'all'      },
   { label: 'Llamadas',  value: 'voice'    },
-  { label: 'WhatsApp',  value: 'whatsapp' },
   { label: 'Salientes', value: 'outbound' },
 ];
 
@@ -80,7 +78,6 @@ function normalizePhone(p: string): string {
 
 function buildUnified(
   voiceLeads: ContactVoiceLead[],
-  waLeads: ContactWALead[],
   outbound: ContactOutbound[],
 ): UnifiedContact[] {
   const seen = new Map<string, UnifiedContact>();
@@ -94,10 +91,6 @@ function buildUnified(
   for (const l of voiceLeads) {
     const tel = l.whatsapp ?? l.telefono ?? '';
     add({ id: `voice-${l.id}`, nombre: l.nombre ?? null, telefono: tel, email: l.email ?? null, source: 'voice', extra: l.servicio ?? null, created_at: l.created_at });
-  }
-  for (const l of waLeads) {
-    const tel = l.customer_number ?? l.whatsapp ?? '';
-    add({ id: `wa-${l.id}`, nombre: l.nombre ?? null, telefono: tel, email: l.email ?? null, source: 'whatsapp', extra: l.servicio ?? l.negocio ?? null, created_at: l.created_at });
   }
   for (const o of outbound) {
     add({ id: `ob-${o.id}`, nombre: o.nombre ?? null, telefono: o.telefono, email: null, source: 'outbound', extra: o.motivo ?? null, created_at: o.created_at });
@@ -354,13 +347,11 @@ function ScheduleModal({
 
 export default function PortalContactsSection({
   voiceLeads,
-  waLeads,
   outbound,
   token,
   agents = [],
 }: {
   voiceLeads: ContactVoiceLead[];
-  waLeads: ContactWALead[];
   outbound: ContactOutbound[];
   token: string;
   agents?: OutboundAgent[];
@@ -371,8 +362,8 @@ export default function PortalContactsSection({
   const [modalOpen, setModalOpen]       = useState(false);
 
   const contacts = useMemo(
-    () => buildUnified(voiceLeads, waLeads, outbound),
-    [voiceLeads, waLeads, outbound],
+    () => buildUnified(voiceLeads, outbound),
+    [voiceLeads, outbound],
   );
 
   const filtered = useMemo(() => {
@@ -419,7 +410,6 @@ export default function PortalContactsSection({
   const selectedContacts = contacts.filter(c => selected.has(c.id));
 
   const voiceCount    = contacts.filter(c => c.source === 'voice').length;
-  const waCount       = contacts.filter(c => c.source === 'whatsapp').length;
   const outboundCount = contacts.filter(c => c.source === 'outbound').length;
 
   return (
@@ -427,10 +417,9 @@ export default function PortalContactsSection({
 
       {/* KPI strip */}
       {contacts.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Llamadas',  value: voiceCount,    color: '#6C3BFF', Icon: Phone         },
-            { label: 'WhatsApp',  value: waCount,       color: '#16a34a', Icon: MessageCircle },
             { label: 'Salientes', value: outboundCount, color: '#f59e0b', Icon: PhoneOutgoing },
           ].map(({ label, value, color, Icon: Ic }) => (
             <div key={label} className="rounded-xl overflow-hidden"
@@ -528,7 +517,7 @@ export default function PortalContactsSection({
             </p>
             {contacts.length === 0 && (
               <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
-                Los leads de llamadas, WhatsApp y contactos de salientes aparecerán aquí automáticamente.
+                Los leads de llamadas y contactos de salientes aparecerán aquí automáticamente.
               </p>
             )}
           </div>

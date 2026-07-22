@@ -2,12 +2,12 @@
 
 import { useState, useMemo, type ReactNode } from 'react';
 import {
-  Phone, MessageCircle, X, RefreshCw, RotateCcw,
+  Phone, X, RefreshCw, RotateCcw,
   CheckCircle2, PhoneMissed, Loader, Filter, Plus,
   ChevronDown, Check, Loader2, Upload, List, Users, Bot,
 } from 'lucide-react';
 import PortalContactsSection from './PortalContactsSection';
-import type { ContactVoiceLead, ContactWALead, ContactOutbound } from './PortalContactsSection';
+import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
 import { OUTBOUND_ROLES_MAP } from './OutboundRoleSelector';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -494,12 +494,6 @@ function OutboundCard({ call }: { call: OutboundCall }) {
                   <RotateCcw size={10} />Intento {call.attempt}
                 </span>
               )}
-              {call.wa_fallback_sent && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
-                  <MessageCircle size={10} />WA enviado
-                </span>
-              )}
             </div>
             <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-text-3)' }}>{scheduledDate}</span>
           </div>
@@ -591,14 +585,12 @@ export default function PortalOutboundSection({
   calls: initialCalls,
   token,
   voiceLeads,
-  waLeads,
   outboundContacts,
   agents = [],
 }: {
   calls: OutboundCall[];
   token: string;
   voiceLeads: ContactVoiceLead[];
-  waLeads: ContactWALead[];
   outboundContacts: ContactOutbound[];
   agents?: OutboundAgent[];
 }) {
@@ -646,7 +638,6 @@ export default function PortalOutboundSection({
       {outboundTab === 'contactos' && (
         <PortalContactsSection
           voiceLeads={voiceLeads}
-          waLeads={waLeads}
           outbound={outboundContacts}
           token={token}
           agents={agents}
