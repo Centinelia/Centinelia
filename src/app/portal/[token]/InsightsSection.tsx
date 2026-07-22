@@ -53,6 +53,7 @@ export default function InsightsSection({ token }: { token: string }) {
   const [data,       setData]       = useState<ApiResponse | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [genError,   setGenError]   = useState<string | null>(null);
   const [pending,    setPending]    = useState<Record<string, boolean>>({});
 
@@ -87,6 +88,7 @@ export default function InsightsSection({ token }: { token: string }) {
   };
 
   const generate = async () => {
+    setConfirming(false);
     setGenerating(true);
     setGenError(null);
     try {
@@ -167,20 +169,49 @@ export default function InsightsSection({ token }: { token: string }) {
           </p>
         </div>
 
-        {/* Generate button */}
+        {/* Generate button / confirmation */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
-          <button
-            onClick={generate}
-            disabled={generating}
-            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: '#6C3BFF', color: '#fff' }}>
-            <RefreshCw size={12} className={generating ? 'animate-spin' : ''} />
-            {generating ? 'Generando...' : 'Generar ahora'}
-          </button>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-            style={{ background: modeCfg.tagBg, color: modeCfg.tagColor }}>
-            {modeCfg.costTag(agentCount)}
-          </span>
+          {confirming ? (
+            <div className="flex flex-col items-end gap-2 rounded-xl p-3"
+              style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)' }}>
+              <p className="text-xs text-right" style={{ color: 'var(--c-text-2)', maxWidth: 180 }}>
+                Se usarán{' '}
+                <span className="font-semibold" style={{ color: '#9B6DFF' }}>
+                  {modeCfg.costTag(agentCount)}
+                </span>{' '}
+                de tu saldo. ¿Continuar?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-70"
+                  style={{ background: 'var(--c-border)', color: 'var(--c-text-3)' }}>
+                  Cancelar
+                </button>
+                <button
+                  onClick={generate}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: '#6C3BFF', color: '#fff' }}>
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={mode === 'llm' ? () => setConfirming(true) : generate}
+                disabled={generating}
+                className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-40"
+                style={{ background: '#6C3BFF', color: '#fff' }}>
+                <RefreshCw size={12} className={generating ? 'animate-spin' : ''} />
+                {generating ? 'Generando...' : 'Generar ahora'}
+              </button>
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                style={{ background: modeCfg.tagBg, color: modeCfg.tagColor }}>
+                {modeCfg.costTag(agentCount)}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
