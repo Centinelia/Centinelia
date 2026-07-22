@@ -32,15 +32,15 @@ const PRIORITY_LABEL: Record<string, string> = {
 
 const MODE_CONFIG = {
   llm: {
-    label:    'IA generativa',
-    desc:     'La IA revisa las llamadas de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
+    label:    'Profundo',
+    desc:     'Revisa las conversaciones de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
     costNote: () => '2 tareas por empleado',
     costTag:  (n: number) => `${n * 2} tareas en total`,
     tagColor: '#9B6DFF',
     tagBg:    'rgba(108,59,255,0.1)',
   },
   rules: {
-    label:    'Reglas fijas',
+    label:    'Básico',
     desc:     'Detecta problemas comunes automáticamente: muchas escalaciones, llamadas sin resolver, metas retrasadas.',
     costNote: () => 'Sin costo',
     costTag:  () => 'Sin costo',
