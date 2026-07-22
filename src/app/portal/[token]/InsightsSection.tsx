@@ -33,7 +33,7 @@ const PRIORITY_LABEL: Record<string, string> = {
 const MODE_CONFIG = {
   llm: {
     label:    'IA generativa',
-    desc:     'Claude analiza conversaciones, CES y metas para generar recomendaciones contextuales específicas para tu negocio.',
+    desc:     'La IA revisa las llamadas de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
     costNote: (n: number) => `${n * 2} tareas por empleado`,
     costTag:  (n: number) => `${n * 2} tareas`,
     tagColor: '#9B6DFF',
@@ -41,7 +41,7 @@ const MODE_CONFIG = {
   },
   rules: {
     label:    'Reglas fijas',
-    desc:     'Verifica umbrales automáticos: escalación >30%, CES <3.5, caída de llamadas, metas retrasadas. Predecible y sin costo.',
+    desc:     'Detecta problemas comunes automáticamente: muchas escalaciones, llamadas sin resolver, metas retrasadas.',
     costNote: () => 'Sin costo de tareas',
     costTag:  () => 'Sin costo',
     tagColor: '#22c55e',
@@ -159,7 +159,7 @@ export default function InsightsSection({ token }: { token: string }) {
               );
             })}
           </div>
-          <p className="text-[11px] leading-relaxed px-1" style={{ color: 'var(--c-text-3)', maxWidth: 360 }}>
+          <p className="text-[11px] leading-relaxed px-1" style={{ color: 'var(--c-text-3)' }}>
             {modeCfg.desc}
             {' '}
             <span className="font-medium" style={{ color: modeCfg.tagColor }}>
