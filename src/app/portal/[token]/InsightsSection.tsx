@@ -161,10 +161,9 @@ export default function InsightsSection({ token }: { token: string }) {
           </div>
           <p className="text-[11px] leading-relaxed px-1" style={{ color: 'var(--c-text-3)' }}>
             {modeCfg.desc}
-            {' '}
-            <span className="font-medium" style={{ color: modeCfg.tagColor }}>
-              {modeCfg.costNote(agentCount)}.
-            </span>
+          </p>
+          <p className="text-[11px] font-medium px-1" style={{ color: modeCfg.tagColor }}>
+            {modeCfg.costNote(agentCount)}
           </p>
         </div>
 
