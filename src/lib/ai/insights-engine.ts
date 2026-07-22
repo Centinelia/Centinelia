@@ -58,6 +58,24 @@ function cesAverages(calls: CallRow[]): Record<string, number> {
   return result;
 }
 
+const PROMPT_SUFFIX = [
+  '',
+  'Genera entre 2 y 4 recomendaciones accionables y especificas para mejorar el desempeno de este empleado.',
+  'Se concreto: no "mejorar la comunicacion" sino que hacer exactamente.',
+  'Solo genera recomendaciones donde haya evidencia real de problema.',
+  '',
+  'Responde UNICAMENTE con un array JSON valido (sin texto adicional):',
+  '[',
+  '  {',
+  '    "title": "<titulo corto, max 60 caracteres>",',
+  '    "body": "<accion concreta en 1-2 oraciones>",',
+  '    "metric_key": "<ces_fluidez|ces_comprension|ces_naturalidad|ces_conduccion|ces_confianza|ces_resolucion|escalation_rate|auto_rate|self_eval|goal o null>",',
+  '    "current_value": null,',
+  '    "priority": "<high|medium|low>"',
+  '  }',
+  ']',
+].join('\n');
+
 export async function generateLLMInsights(opts: {
   agentId:       string;
   agentName:     string;
@@ -110,21 +128,7 @@ export async function generateLLMInsights(opts: {
     }
   }
 
-  lines.push(`
-Genera entre 2 y 4 recomendaciones accionables y específicas para mejorar el desempeño de este empleado.
-Sé concreto: no "mejorar la comunicación" sino qué hacer exactamente.
-Solo genera recomendaciones donde haya evidencia real de problema.
-
-Responde ÚNICAMENTE con un array JSON válido (sin texto adicional):
-[
-  {
-    "title": "<título corto, máx 60 caracteres>",
-    "body": "<acción concreta en 1-2 oraciones>",
-    "metric_key": "<ces_fluidez|ces_comprension|ces_naturalidad|ces_conduccion|ces_confianza|ces_resolucion|escalation_rate|auto_rate|self_eval|goal — opcional>",
-    "current_value": <número opcional>,
-    "priority": "<high|medium|low>"
-  }
-]`);
+  lines.push(PROMPT_SUFFIX);
 
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',

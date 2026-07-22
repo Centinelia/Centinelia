@@ -30,7 +30,16 @@ const PRIORITY_LABEL: Record<string, string> = {
   high: 'Urgente', medium: 'Importante', low: 'Mejora',
 };
 
-const MODE_CONFIG = {
+interface ModeConfig {
+  label:    string;
+  desc:     string;
+  costNote: () => string;
+  costTag:  (n: number) => string;
+  tagColor: string;
+  tagBg:    string;
+}
+
+const MODE_CONFIG: Record<'llm' | 'rules', ModeConfig> = {
   llm: {
     label:    'Profundo',
     desc:     'Revisa las conversaciones de tu equipo y genera sugerencias específicas para mejorar su desempeño.',
@@ -47,7 +56,7 @@ const MODE_CONFIG = {
     tagColor: '#22c55e',
     tagBg:    'rgba(34,197,94,0.1)',
   },
-} as const;
+};
 
 export default function InsightsSection({ token }: { token: string }) {
   const [data,       setData]       = useState<ApiResponse | null>(null);
@@ -146,7 +155,7 @@ export default function InsightsSection({ token }: { token: string }) {
         <div className="flex flex-col gap-2 flex-1">
           <div className="flex gap-1 p-1 rounded-xl w-fit"
             style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-            {(['llm', 'rules'] as const).map(m => {
+            {(['llm', 'rules'] as Array<'llm' | 'rules'>).map(m => {
               const active = mode === m;
               const cfg    = MODE_CONFIG[m];
               return (
