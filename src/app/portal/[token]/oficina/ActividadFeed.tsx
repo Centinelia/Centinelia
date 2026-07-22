@@ -4,20 +4,23 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Phone, UserPlus, CalendarDays, ShoppingBag,
   Ticket, AlertTriangle, FileText, PieChart, RefreshCw,
+  ArrowRightLeft, Mail,
 } from 'lucide-react';
 import type { ActivityEvent, EventType } from '@/app/api/portal/[token]/actividad/route';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const TYPE_CFG: Record<EventType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  llamada:   { label: 'Llamada',   icon: Phone,         color: '#6C3BFF', bg: 'rgba(108,59,255,0.12)' },
-  lead:      { label: 'Lead',      icon: UserPlus,      color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
-  cita:      { label: 'Cita',      icon: CalendarDays,  color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  pedido:    { label: 'Pedido',    icon: ShoppingBag,   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  ticket:    { label: 'Ticket IT', icon: Ticket,        color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
-  incidente: { label: 'Incidente', icon: AlertTriangle, color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  reporte:   { label: 'Reporte',   icon: FileText,      color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
-  encuesta:  { label: 'Encuesta',  icon: PieChart,      color: '#9B6DFF', bg: 'rgba(155,109,255,0.12)'},
+  llamada:    { label: 'Llamada',    icon: Phone,           color: '#6C3BFF', bg: 'rgba(108,59,255,0.12)' },
+  lead:       { label: 'Lead',       icon: UserPlus,        color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
+  cita:       { label: 'Cita',       icon: CalendarDays,    color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  pedido:     { label: 'Pedido',     icon: ShoppingBag,     color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  ticket:     { label: 'Ticket IT',  icon: Ticket,          color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
+  incidente:  { label: 'Incidente',  icon: AlertTriangle,   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  reporte:    { label: 'Reporte',    icon: FileText,        color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+  encuesta:   { label: 'Encuesta',   icon: PieChart,        color: '#9B6DFF', bg: 'rgba(155,109,255,0.12)'},
+  delegacion: { label: 'Delegación', icon: ArrowRightLeft,  color: '#14b8a6', bg: 'rgba(20,184,166,0.12)' },
+  correo:     { label: 'Correo',     icon: Mail,            color: '#64748b', bg: 'rgba(100,116,139,0.12)'},
 };
 
 const DAYS_OPTIONS = [
@@ -27,7 +30,7 @@ const DAYS_OPTIONS = [
   { value: 90, label: '90 días'    },
 ];
 
-const EVENT_TYPES: EventType[] = ['llamada', 'lead', 'cita', 'pedido', 'ticket', 'incidente', 'reporte', 'encuesta'];
+const EVENT_TYPES: EventType[] = ['llamada', 'lead', 'cita', 'pedido', 'ticket', 'incidente', 'reporte', 'encuesta', 'delegacion', 'correo'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

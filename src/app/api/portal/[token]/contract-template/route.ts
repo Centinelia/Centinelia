@@ -62,13 +62,18 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, features').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
   const { data: tpl } = await supabase
     .from('contract_templates').select('*').eq('agent_id', agent.id).single();
 
-  return NextResponse.json({ template: tpl ?? { clauses: DEFAULT_CLAUSES }, defaults: DEFAULT_CLAUSES });
+  const features       = (agent.features as Record<string, unknown>) ?? {};
+  const contratoCfg    = (features.contrato_config as Record<string, unknown>) ?? {};
+  const templateName   = (contratoCfg.template_name as string | undefined) ?? null;
+  const templatePath   = (contratoCfg.template_path as string | undefined) ?? null;
+
+  return NextResponse.json({ template: tpl ?? { clauses: DEFAULT_CLAUSES }, defaults: DEFAULT_CLAUSES, templateName, templatePath });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {

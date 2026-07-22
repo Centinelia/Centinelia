@@ -12,6 +12,7 @@ type SiblingAgent = {
   role_knowledge_base: string | null;
   transfer_whatsapp: string | null;
   portal_email: string;
+  portal_token: string | null;
 };
 
 const MAX_ITER       = 4;
@@ -164,7 +165,7 @@ export async function POST(req: NextRequest) {
   // Find sibling agents
   const { data: siblings } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, knowledge_base, role_knowledge_base, transfer_whatsapp, portal_email')
+    .select('id, agent_name, role, knowledge_base, role_knowledge_base, transfer_whatsapp, portal_email, portal_token')
     .eq('portal_email', caller.portal_email)
     .eq('active', true)
     .neq('id', agentId);

@@ -176,12 +176,44 @@ export default function OnboardingSection({ token, agents }: {
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '');
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6 p-5 sm:p-7 w-full">
+
+      {/* Hero */}
+      <div>
+        <h1 className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          Onboarding
+        </h1>
+        <p className="text-base font-semibold mt-2" style={{ color: 'var(--c-text)' }}>
+          Tu empleado guía a cada persona en su proceso de incorporación.
+        </p>
+        <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+          Define plantillas con los pasos y documentos que necesitas de nuevos empleados, clientes o proveedores.
+          Tu empleado envía el formulario por correo y lleva el seguimiento desde aquí.
+        </p>
+      </div>
+
+      {/* How it works */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {[
+          { n: '1', t: 'Crea una plantilla', d: 'Define los pasos del proceso y los documentos que necesitas recibir.' },
+          { n: '2', t: 'Envíala por correo', d: 'El contacto recibe un link con su formulario personalizado para completarlo.' },
+          { n: '3', t: 'Supervisa el avance', d: 'Ve el estatus y descarga los documentos recibidos desde esta pantalla.' },
+        ].map(s => (
+          <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1" style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.1)' }}>
+            <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"
+              style={{ background: 'rgba(108,59,255,0.12)', color: '#6C3BFF' }}>{s.n}</span>
+            <div>
+              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{s.t}</p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-4)' }}>{s.d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-          <UserCheck size={13} /> Onboarding
-        </h2>
+        <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantillas y procesos</p>
         <button
           onClick={() => { setShowTplForm(v => !v); setShowSendForm(null); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
@@ -317,11 +349,37 @@ export default function OnboardingSection({ token, agents }: {
       ) : view === 'templates' ? (
         /* Templates list */
         templates.length === 0 ? (
-          <div className="flex flex-col items-center py-10 gap-2 rounded-xl"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <UserCheck size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
-            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin plantillas</p>
-            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Crea una plantilla para iniciar procesos de onboarding.</p>
+          <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
+                <UserCheck size={16} style={{ color: '#9B6DFF' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin plantillas todavía</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Crea una plantilla con los pasos y documentos que necesitas de cada contacto.</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 pl-12">
+              {[
+                'Empleado nuevo: contrato, INE, CURP, comprobante de domicilio',
+                'Cliente nuevo: RFC, acta constitutiva, firma de contrato de servicios',
+                'Proveedor: alta en sistema, datos bancarios, CFDI de servicios',
+              ].map(ex => (
+                <div key={ex} className="flex items-start gap-2">
+                  <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
+                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+                </div>
+              ))}
+            </div>
+            <div className="pl-12">
+              <button
+                onClick={() => { setShowTplForm(true); setView('templates'); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}
+              >
+                <Plus size={12} /> Crear primera plantilla
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -376,11 +434,31 @@ export default function OnboardingSection({ token, agents }: {
       ) : (
         /* Instances list */
         instances.length === 0 ? (
-          <div className="flex flex-col items-center py-10 gap-2 rounded-xl"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <Users size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
-            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin procesos activos</p>
-            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Envía una plantilla para iniciar el proceso de un empleado o cliente.</p>
+          <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(34,197,94,0.1)' }}>
+                <Users size={16} style={{ color: '#22c55e' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin procesos activos</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                  {templates.length === 0
+                    ? 'Primero crea una plantilla y luego envíala al contacto que quieres incorporar.'
+                    : 'Abre una plantilla en la pestaña "Plantillas" y usa el botón Enviar para iniciar un proceso.'}
+                </p>
+              </div>
+            </div>
+            {templates.length > 0 && (
+              <div className="pl-12">
+                <button
+                  onClick={() => setView('templates')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                  style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}
+                >
+                  <Send size={12} /> Ver plantillas para enviar
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -484,6 +562,8 @@ export default function OnboardingSection({ token, agents }: {
           </div>
         )
       )}
+
+      </div>{/* end inner flex col */}
 
       {/* Send modal */}
       {showSendForm && (

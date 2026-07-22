@@ -30,11 +30,15 @@ export async function POST(
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await req.json() as {
-    nombre: string;
+    nombre:      string;
     descripcion?: string;
-    activa?: boolean;
+    objetivo?:   string;
+    activa?:     boolean;
     auto_apply?: boolean;
-    questions?: Array<{ orden: number; texto: string; tipo: string; opciones?: string[] }>;
+    triggers?:   string[];
+    agent_ids?:  string[];
+    canal?:      string;
+    questions?:  Array<{ orden: number; texto: string; tipo: string; opciones?: string[] }>;
   };
   if (!body.nombre?.trim()) return NextResponse.json({ error: 'Nombre requerido' }, { status: 400 });
 
@@ -43,17 +47,22 @@ export async function POST(
   const { data: survey, error } = await supabase
     .from('surveys')
     .insert({
-      agent_id:    access.primaryId,
-      nombre:      body.nombre.trim(),
+      agent_id:   access.primaryId,
+      nombre:     body.nombre.trim(),
       descripcion: body.descripcion ?? null,
-      activa:      body.activa      ?? true,
-      auto_apply:  body.auto_apply  ?? true,
+      objetivo:   body.objetivo   ?? null,
+      activa:     body.activa     ?? true,
+      auto_apply: body.auto_apply ?? true,
+      triggers:   body.triggers   ?? [],
+      agent_ids:  body.agent_ids  ?? [],
+      canal:      body.canal      ?? 'llamada',
     })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  let insertedQuestions: unknown[] = [];
   if (body.questions?.length) {
     const rows = body.questions.map(q => ({
       survey_id: survey.id,
@@ -62,8 +71,9 @@ export async function POST(
       tipo:      q.tipo,
       opciones:  q.opciones ?? null,
     }));
-    await supabase.from('survey_questions').insert(rows);
+    const { data: qs } = await supabase.from('survey_questions').insert(rows).select();
+    insertedQuestions = qs ?? [];
   }
 
-  return NextResponse.json({ survey }, { status: 201 });
+  return NextResponse.json({ survey: { ...survey, survey_questions: insertedQuestions } }, { status: 201 });
 }

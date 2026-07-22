@@ -11,6 +11,29 @@ export function inboxAddressFor(portalEmail: string): string {
   return `${inboxTokenFor(portalEmail)}@${INBOX_DOMAIN}`;
 }
 
+export function agentInboxTokenFor(agentId: string): string {
+  return crypto.createHash('sha256').update(`agt:${agentId}`).digest('hex').slice(0, 12);
+}
+
+export function agentInboxAddressFor(agentId: string): string {
+  return `${agentInboxTokenFor(agentId)}@${INBOX_DOMAIN}`;
+}
+
+export async function resolveAgentFromToken(token: string): Promise<{ agentId: string; portalEmail: string } | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('voice_agents')
+    .select('id, portal_email')
+    .not('portal_email', 'is', null);
+
+  for (const row of data ?? []) {
+    if (agentInboxTokenFor(row.id) === token) {
+      return { agentId: row.id, portalEmail: row.portal_email as string };
+    }
+  }
+  return null;
+}
+
 // Reverse lookup: enumerate all accounts and find matching hash (fine for small scale)
 export async function resolveInboxToken(token: string): Promise<string | null> {
   const supabase = createAdminClient();

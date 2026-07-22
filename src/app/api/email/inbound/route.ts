@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveInboxToken, parseSenderName, parseToToken } from '@/lib/email/inbox';
+import { resolveInboxToken, parseSenderName, parseToToken, resolveAgentFromToken } from '@/lib/email/inbox';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { applyCommsRouting } from '@/lib/comms/routing';
 import { findNoxAgent, processEmailWithNox } from '@/lib/ops/nox-coordinator';
@@ -57,10 +57,54 @@ export async function POST(req: NextRequest) {
   const token = parseToToken(to);
   if (!token) return NextResponse.json({ ok: true });
 
+  const supabase = createAdminClient();
+
+  // Check if this is a direct reply to a specific agent
+  const agentMatch = await resolveAgentFromToken(token);
+
+  if (agentMatch) {
+    // Route directly to the targeted agent — create a task so the agent processes the reply
+    const { data: targetAgent } = await supabase
+      .from('voice_agents')
+      .select('id, portal_email, agent_name, role, knowledge_base, role_knowledge_base, business_name')
+      .eq('id', agentMatch.agentId)
+      .single();
+
+    if (targetAgent) {
+      const senderName = parseSenderName(from);
+      const preview    = text.trim().slice(0, 220);
+      const content    = [
+        subject ? `"${subject}"` : null,
+        preview ? (preview.length < text.trim().length ? preview + '…' : preview) : null,
+      ].filter(Boolean).join(' — ') || 'Correo sin cuerpo.';
+
+      await supabase.from('agent_messages').insert({
+        portal_email:  agentMatch.portalEmail,
+        from_agent_id: null,
+        to_agent_id:   targetAgent.id,
+        vapi_call_id:  null,
+        type:          'email',
+        content:       content.slice(0, 400),
+        metadata:      { from, from_name: senderName, subject: subject || null },
+      });
+
+      await supabase.from('agent_tasks').insert({
+        portal_email:   agentMatch.portalEmail,
+        created_by:     null,
+        assigned_to:    targetAgent.id,
+        title:          `Respuesta por correo${senderName ? ` de ${senderName}` : ''}: ${subject || '(sin asunto)'}`.slice(0, 200),
+        description:    `El compañero humano ${senderName || from} respondió tu correo.`,
+        status:         'pending',
+        trigger_type:   'email_reply',
+        source_context: `De: ${from}\nAsunto: ${subject}\n\n${text.trim().slice(0, 500)}`,
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   const portalEmail = await resolveInboxToken(token);
   if (!portalEmail) return NextResponse.json({ ok: true }); // unknown inbox, ignore
-
-  const supabase = createAdminClient();
 
   // Find the ops agent (with role) or fall back to first agent
   const { data: agents } = await supabase

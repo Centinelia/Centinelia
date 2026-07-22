@@ -38,10 +38,6 @@ export const PORTAL_MODULES = [
     desc: 'Registro de todo lo que han hecho tus empleados: tareas completadas y pendientes.',
   },
   {
-    id: 'of_bandeja', label: 'Bandeja de entrada', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Mensajes, correos y notificaciones que tus empleados han procesado o tienen pendientes.',
-  },
-  {
     id: 'of_reportes', label: 'Reportes automáticos', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Resúmenes periódicos generados por tus empleados sobre la operación.',
   },

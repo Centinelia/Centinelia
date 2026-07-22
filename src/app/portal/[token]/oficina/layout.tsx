@@ -176,7 +176,7 @@ export default async function OficinaLayout({
             modules={modules}
           />
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="max-w-4xl px-4 sm:px-6 py-6 flex-1">
+            <div className="px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>
             <PortalFooter token={token} />

@@ -11,6 +11,8 @@ import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF } from '@/lib/pdf/doc';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
+import { FacturaPdf } from '@/lib/pdf/factura';
+import { OrdenCompraPdf } from '@/lib/pdf/orden-compra';
 import {
   executeSendEmail,
   executeSaveToDrive,
@@ -122,20 +124,41 @@ const SEND_EMAIL_TOOL: Anthropic.Tool = {
 
 const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   name: 'create_document',
-  description: 'Genera un documento PDF con branding del negocio (logo y colores). Elige el template correcto según el tipo: "proposal" para propuestas de servicios/cotizaciones, "letter" para cartas formales, "general" para cualquier otro documento. Úsala cuando el dueño pida redactar o generar cualquier documento.',
+  description: 'Genera un documento PDF con branding del negocio (logo y colores). Elige el template correcto según el tipo: "proposal" para propuestas de servicios/cotizaciones, "letter" para cartas formales, "factura" para facturas con conceptos e IVA (usa items[]), "orden_compra" para órdenes de compra a proveedores (usa items[]), "general" para cualquier otro documento.',
   input_schema: {
     type: 'object' as const,
     properties: {
       title:         { type: 'string', description: 'Título del documento (aparece en el encabezado)' },
-      content:       { type: 'string', description: 'Contenido completo. Usa # para secciones principales y ## para subsecciones.' },
+      content:       { type: 'string', description: 'Contenido completo. Usa # para secciones y ## para subsecciones. Para factura/orden_compra: notas adicionales (puede quedar vacío).' },
       filename:      { type: 'string', description: 'Nombre del archivo sin extensión. Usa guiones, sin espacios.' },
-      template_type: { type: 'string', enum: ['general', 'proposal', 'letter'], description: '"proposal" para propuestas/cotizaciones con sección de cliente y precio destacado. "letter" para cartas formales con destinatario. "general" para cualquier otro documento.' },
-      client_name:   { type: 'string', description: 'Nombre del cliente (solo para template proposal)' },
-      client_email:  { type: 'string', description: 'Correo del cliente (solo para template proposal)' },
+      template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra'], description: '"proposal" para propuestas. "letter" para cartas formales. "factura" para facturas (emisor → receptor, IVA). "orden_compra" para órdenes de compra (comprador → proveedor). "general" para todo lo demás.' },
+      client_name:   { type: 'string', description: 'Nombre del cliente o receptor (para proposal y factura)' },
+      client_email:  { type: 'string', description: 'Correo del cliente (para proposal y factura)' },
+      client_rfc:    { type: 'string', description: 'RFC del receptor (solo para factura)' },
       total_price:   { type: 'string', description: 'Precio total destacado. Ej: "$50,000 MXN" (solo para template proposal)' },
       validity_days: { type: 'number', description: 'Días de validez de la propuesta (solo para template proposal)' },
       recipient_name:  { type: 'string', description: 'Nombre del destinatario (solo para template letter)' },
       recipient_email: { type: 'string', description: 'Correo del destinatario (solo para template letter)' },
+      vendor_name:   { type: 'string', description: 'Nombre del proveedor (solo para orden_compra)' },
+      vendor_rfc:    { type: 'string', description: 'RFC del proveedor (solo para orden_compra)' },
+      vendor_email:  { type: 'string', description: 'Correo del proveedor (solo para orden_compra)' },
+      delivery_terms:{ type: 'string', description: 'Términos de entrega. Ej: "Entrega en 5 días hábiles" (solo para orden_compra)' },
+      items: {
+        type: 'array',
+        description: 'Conceptos del documento (para factura y orden_compra). Cada concepto incluye descripcion, cantidad y precio_unitario en MXN.',
+        items: {
+          type: 'object',
+          properties: {
+            descripcion:     { type: 'string' },
+            cantidad:        { type: 'number' },
+            precio_unitario: { type: 'number' },
+            unidad:          { type: 'string', description: 'Unidad de medida. Ej: pza, kg, hrs (opcional)' },
+          },
+          required: ['descripcion', 'cantidad', 'precio_unitario'],
+        },
+      },
+      payment_terms: { type: 'string', description: 'Condiciones de pago. Ej: "30 días netos", "Pago al contado" (para factura y orden_compra)' },
+      include_iva:   { type: 'boolean', description: 'Si se incluye IVA 16%. Para factura: true por defecto. Para orden_compra: false por defecto.' },
     },
     required: ['title', 'content'],
   },
@@ -725,7 +748,7 @@ Responde como el empleado que conoce profundamente el negocio. Usa los datos dis
 Herramientas disponibles:
 - create_contract_draft: cuando el dueño pida generar un contrato para un cliente.
 - send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
-- create_document: cuando el dueño pida generar un documento PDF con branding (logo y colores del negocio). Usa template_type="proposal" para propuestas/cotizaciones, "letter" para cartas formales, "general" para todo lo demás.
+- create_document: cuando el dueño pida generar un documento PDF con branding (logo y colores del negocio). Usa template_type="proposal" para propuestas/cotizaciones, "letter" para cartas formales, "factura" para facturas con conceptos e IVA (pasa items[] con descripcion/cantidad/precio_unitario), "orden_compra" para órdenes de compra a proveedores (usa vendor_name y items[]), "general" para todo lo demás. Para facturas y órdenes, pasa SIEMPRE items[] con al menos un concepto.
 - create_file: cuando el dueño pida un archivo Excel, Word o PowerPoint. Usa format="excel" para tablas y hojas de cálculo con datos estructurados (pasa sheets con headers y rows), format="word" para documentos de texto editables (mismo sistema de templates que create_document), format="powerpoint" para presentaciones de diapositivas (pasa slides con title y content cada una). El archivo queda disponible en Oficina → Documentos.
 - save_to_drive: después de create_document o create_file, si el dueño quiere guardar el archivo en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió el tool. Si da un folder_name, la carpeta se crea automáticamente si no existe.
 - organize_files: para reorganizar Drive/OneDrive del dueño. Acciones: "list" (listar carpeta), "move" (mover archivo a otra carpeta, se crea si no existe), "rename" (renombrar archivo o carpeta), "create_folder" (crear carpeta nueva). Cuando el dueño pida ordenar archivos, empieza listando la raíz para ver qué hay, luego mueve o renombra según sus instrucciones. Cada acción consume ops.
@@ -1007,12 +1030,13 @@ ${context}`;
               const filename = `${slug}-${Date.now()}.pdf`;
               const path     = `${agent.id}/${filename}`;
 
-              // ── Quality pipeline ─────────────────────────────────────────────
+              // ── Quality pipeline (skip for factura — data-driven, not prose) ──
               const userInstruction = lastUserText(conversationMessages);
               const businessCtx     = [agent.knowledge_base, agent.role_knowledge_base].filter(Boolean).join('\n').slice(0, 1200) as string;
-              let content = toolInput.content as string;
+              let content = (toolInput.content as string | undefined) ?? '';
 
-              const enhanceOps = await consumeAiOp(agent.id as string, 1);
+              const isDataDriven = templateType === 'factura' || templateType === 'orden_compra';
+              const enhanceOps = !isDataDriven ? await consumeAiOp(agent.id as string, 1) : { ok: false };
               if (enhanceOps.ok) {
                 content = await enhanceTextContent({
                   format: 'pdf', templateType, content, userInstruction,
@@ -1049,6 +1073,51 @@ ${context}`;
                   brand, content,
                   recipientName:  toolInput.recipient_name  as string | undefined,
                   recipientEmail: toolInput.recipient_email as string | undefined,
+                });
+              } else if (templateType === 'factura') {
+                const featCfg  = ((agent.features as Record<string, unknown>)?.factura_config ?? {}) as Record<string, unknown>;
+                const rawItems = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number }> | undefined) ?? [];
+                pdfElement = createElement(FacturaPdf, {
+                  brand,
+                  data: {
+                    clienteNombre:    (toolInput.client_name  as string | null) ?? 'Cliente',
+                    clienteRFC:       toolInput.client_rfc    as string | undefined,
+                    clienteEmail:     toolInput.client_email  as string | undefined,
+                    items:            rawItems.map(it => ({
+                      descripcion:    it.descripcion,
+                      cantidad:       it.cantidad,
+                      precioUnitario: it.precio_unitario,
+                    })),
+                    incluirIVA:       (toolInput.include_iva as boolean | undefined) ?? true,
+                    condicionesPago:  (toolInput.payment_terms as string | undefined) ?? (featCfg.condiciones_pago as string | undefined) ?? null,
+                    emisorRFC:        featCfg.rfc       as string | undefined,
+                    emisorDireccion:  featCfg.direccion as string | undefined,
+                    notas:            content || null,
+                  },
+                });
+              } else if (templateType === 'orden_compra') {
+                const ordenCfg = ((agent.features as Record<string, unknown>)?.orden_config ?? {}) as Record<string, unknown>;
+                const factCfg  = ((agent.features as Record<string, unknown>)?.factura_config ?? {}) as Record<string, unknown>;
+                const rawItems = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number; unidad?: string }> | undefined) ?? [];
+                pdfElement = createElement(OrdenCompraPdf, {
+                  brand,
+                  data: {
+                    proveedorNombre:   (toolInput.vendor_name  as string | null) ?? 'Proveedor',
+                    proveedorRFC:      toolInput.vendor_rfc    as string | undefined,
+                    proveedorEmail:    toolInput.vendor_email  as string | undefined,
+                    items:             rawItems.map(it => ({
+                      descripcion:    it.descripcion,
+                      cantidad:       it.cantidad,
+                      precioUnitario: it.precio_unitario,
+                      unidad:         it.unidad,
+                    })),
+                    incluirIVA:        (toolInput.include_iva as boolean | undefined) ?? (ordenCfg.incluir_iva as boolean | undefined) ?? false,
+                    condicionesPago:   (toolInput.payment_terms as string | undefined) ?? (ordenCfg.condiciones_pago as string | undefined) ?? null,
+                    terminosEntrega:   (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? null,
+                    emisorRFC:         (factCfg.rfc as string | undefined),
+                    emisorDireccion:   (factCfg.direccion as string | undefined),
+                    notas:             content || null,
+                  },
                 });
               } else {
                 pdfElement = createElement(GenericDocPDF, { brand, title, content });

@@ -160,7 +160,13 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
           <Mic size={13} /> Juntas e inteligencia
-          <InfoTooltip text="¿Cuántas tareas consume?\n1 a 6 tareas por junta, según duración y complejidad." />
+          <InfoTooltip text={"Sube el audio de una junta y tu empleado lo analiza con IA: extrae decisiones tomadas, tareas asignadas y próximos pasos, y genera el acta lista para compartir.\n\nSoporta audios de hasta 90 minutos."} />
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.18)', color: 'var(--c-text-4)' }}
+          >
+            1–6 tareas / junta
+          </span>
         </h2>
         <button
           onClick={() => setShowForm(v => !v)}
@@ -237,11 +243,37 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       {loading ? (
         <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
       ) : meetings.length === 0 ? (
-        <div className="flex flex-col items-center py-10 gap-2 rounded-xl"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <Mic size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin juntas registradas</p>
-          <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>Sube el audio de una junta y la IA extraerá decisiones, tareas y próximos pasos.</p>
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
+              <Mic size={16} style={{ color: '#9B6DFF' }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin juntas registradas</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Sube el audio de una reunión y tu empleado genera el acta automáticamente.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 pl-12">
+            {[
+              'Revisión semanal de equipo — decisiones y tareas asignadas',
+              'Junta con cliente — acuerdos y compromisos de entrega',
+              'Sesión de planeación — objetivos y responsables del trimestre',
+            ].map(ex => (
+              <div key={ex} className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
+                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+              </div>
+            ))}
+          </div>
+          <div className="pl-12">
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+              style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}
+            >
+              <Upload size={12} /> Subir primer audio
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">

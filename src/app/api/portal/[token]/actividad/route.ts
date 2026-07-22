@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export type EventType =
   | 'llamada' | 'lead' | 'cita' | 'pedido'
-  | 'ticket'  | 'incidente' | 'reporte' | 'encuesta';
+  | 'ticket'  | 'incidente' | 'reporte' | 'encuesta'
+  | 'delegacion' | 'correo';
 
 export interface ActivityEvent {
   id:         string;
@@ -238,6 +239,54 @@ export async function GET(
           agent_name: agentLabel(r.agent_id as string),
           created_at: r.created_at as string,
           meta:       { caller_number: r.caller_number, survey_id: r.survey_id },
+        });
+      }
+    })(),
+
+    // ── Delegaciones entre agentes ────────────────────────────────────────
+    want('delegacion') && (async () => {
+      const { data } = await supabase
+        .from('agent_tasks')
+        .select('id, created_by, assigned_to, title, status, created_at')
+        .or(`created_by.in.(${ids.join(',')}),assigned_to.in.(${ids.join(',')})`)
+        .eq('trigger_type', 'delegation')
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      for (const r of data ?? []) {
+        const from = agentLabel(r.created_by as string);
+        const to   = agentLabel(r.assigned_to as string);
+        events.push({
+          id:         `delegacion-${r.id}`,
+          type:       'delegacion',
+          title:      r.title as string,
+          subtitle:   `${from} → ${to}`,
+          agent_name: to,
+          created_at: r.created_at as string,
+          meta:       { status: r.status, created_by: r.created_by, assigned_to: r.assigned_to },
+        });
+      }
+    })(),
+
+    // ── Correos recibidos por agentes ─────────────────────────────────────
+    want('correo') && (async () => {
+      const { data } = await supabase
+        .from('agent_tasks')
+        .select('id, assigned_to, title, description, created_at')
+        .in('assigned_to', ids)
+        .eq('trigger_type', 'email_reply')
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      for (const r of data ?? []) {
+        events.push({
+          id:         `correo-${r.id}`,
+          type:       'correo',
+          title:      r.title as string,
+          subtitle:   (r.description as string | null) ?? '',
+          agent_name: agentLabel(r.assigned_to as string),
+          created_at: r.created_at as string,
+          meta:       { assigned_to: r.assigned_to },
         });
       }
     })(),

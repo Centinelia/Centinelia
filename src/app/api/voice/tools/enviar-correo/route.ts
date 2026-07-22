@@ -4,6 +4,7 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeSendEmail } from '@/lib/services/connector-tools';
 import { checkAccount } from '@/lib/compliance/account-guard';
+import { agentInboxAddressFor } from '@/lib/email/inbox';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para enviar correos.' });
 
   const result = await executeSendEmail(
-    { agentId: agent_id, to, subject, body: emailBody, businessName: agent.business_name as string, attFileId, attFileName, attMimeType },
+    { agentId: agent_id, to, subject, body: emailBody, businessName: agent.business_name as string, replyTo: agentInboxAddressFor(agent_id), attFileId, attFileName, attMimeType },
     supabase,
   );
 

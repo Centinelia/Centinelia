@@ -157,7 +157,13 @@ export default function OpsReportsSection({ token, agents }: {
         <div className="flex items-center gap-2">
           <BarChart2 size={16} style={{ color: '#6C3BFF' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Reportes automáticos</span>
-          <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por reporte generado." />
+          <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte con IA y lo despacha sin que tengas que pedírselo."} />
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.18)', color: 'var(--c-text-4)' }}
+          >
+            1 tarea / reporte
+          </span>
         </div>
         {!creating && (
           <button onClick={() => setCreating(true)}
@@ -317,10 +323,40 @@ export default function OpsReportsSection({ token, agents }: {
 
       {/* Reports list */}
       {reports.length === 0 && !creating && (
-        <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
-          <BarChart2 size={28} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Sin reportes configurados.</p>
-          <p className="text-xs mt-1">Crea uno para que tu empleado los envíe automáticamente.</p>
+        <div
+          className="rounded-xl p-6 flex flex-col gap-4"
+          style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
+              <BarChart2 size={16} style={{ color: '#9B6DFF' }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin reportes configurados</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Tu empleado puede generar y enviar resúmenes periódicos de forma automática.</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 pl-12">
+            {[
+              'Resumen semanal de llamadas y leads — cada lunes a las 8:00',
+              'Reporte mensual de pedidos y citas — el día 1 de cada mes',
+              'Actividad del viernes — para cerrar la semana con visibilidad total',
+            ].map(ex => (
+              <div key={ex} className="flex items-start gap-2">
+                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
+                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+              </div>
+            ))}
+          </div>
+          <div className="pl-12">
+            <button
+              onClick={() => setCreating(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+              style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}
+            >
+              <Plus size={12} />Crear primer reporte
+            </button>
+          </div>
         </div>
       )}
 

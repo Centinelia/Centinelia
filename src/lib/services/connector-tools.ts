@@ -19,6 +19,7 @@ export interface SendEmailInput {
   body:         string;
   businessName: string;
   cc?:          string;
+  replyTo?:     string;
   attFileId?:   string;
   attFileName?: string;
   attMimeType?: string;
@@ -50,7 +51,7 @@ export async function executeSendEmail(
   input:    SendEmailInput,
   supabase: SupabaseClient,
 ): Promise<ToolResult> {
-  const { agentId, to, subject, body, businessName, cc, attFileId, attFileName, attMimeType } = input;
+  const { agentId, to, subject, body, businessName, cc, replyTo, attFileId, attFileName, attMimeType } = input;
 
   const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.7;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px">
     ${body.split('\n').map(p => p.trim() ? `<p style="margin:0 0 12px">${p}</p>` : '<br>').join('')}
@@ -81,8 +82,8 @@ export async function executeSendEmail(
       : undefined;
     const fromAddr = sendFrom ? sendFrom : `notificaciones@centinelia.mx`;
     const fromHeader = `${businessName} <${fromAddr}>`;
-    const ok = await sendEmail({ to, subject, html: htmlBody, from: fromHeader, attachments: resendAtts });
-    if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: fromHeader });
+    const ok = await sendEmail({ to, subject, html: htmlBody, from: fromHeader, replyTo, attachments: resendAtts });
+    if (ok && cc) await sendEmail({ to: cc, subject, html: htmlBody, from: fromHeader, replyTo });
     sent = ok;
   }
 

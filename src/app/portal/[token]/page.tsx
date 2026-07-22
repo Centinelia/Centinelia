@@ -51,6 +51,7 @@ import { inboxAddressFor }       from '@/lib/email/inbox';
 import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
+import ContractTrackerSection   from './ContractTrackerSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
@@ -890,6 +891,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     token={token}
                     initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
                   />
+                </div>
+
+                <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <ContractTrackerSection token={token} />
                 </div>
 
               </div>

@@ -90,6 +90,7 @@ export async function sendEmail(opts: {
   subject:      string;
   html:         string;
   from?:        string;
+  replyTo?:     string;
   attachments?: { filename: string; content: string }[]; // content = base64
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -101,6 +102,7 @@ export async function sendEmail(opts: {
     subject: opts.subject,
     html:    opts.html,
   };
+  if (opts.replyTo) payload.reply_to = [opts.replyTo];
   if (opts.attachments?.length) payload.attachments = opts.attachments;
 
   const res = await fetch('https://api.resend.com/emails', {

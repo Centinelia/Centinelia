@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { agentInboxAddressFor } from '@/lib/email/inbox';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
@@ -12,6 +13,7 @@ export interface AgentInfo {
   knowledge_base:       string | null;
   role_knowledge_base:  string | null;
   business_name:        string | null;
+  portal_email?:        string | null;
 }
 
 const DELEGATION_TOOLS: Anthropic.Tool[] = [
@@ -135,6 +137,24 @@ export async function executeTask(params: {
   }
   if (targetAgent.role_knowledge_base?.trim()) {
     promptLines.push('', '## Conocimiento de tu rol', targetAgent.role_knowledge_base.trim());
+  }
+
+  // Build sibling directory so agents can email each other
+  if (targetAgent.portal_email) {
+    const { data: siblings } = await supabase
+      .from('voice_agents')
+      .select('id, agent_name, role')
+      .eq('portal_email', targetAgent.portal_email)
+      .eq('active', true)
+      .neq('id', targetAgent.id);
+
+    if (siblings?.length) {
+      const directory = siblings
+        .map(s => `- ${s.agent_name ?? 'Compañero'}${s.role ? ` (${s.role})` : ''}: ${agentInboxAddressFor(s.id)}`)
+        .join('\n');
+      promptLines.push('', '## Correos de tus compañeros de equipo', directory);
+      promptLines.push('Puedes usar enviar_correo para comunicarte con ellos directamente.');
+    }
   }
 
   const systemPrompt = promptLines.filter(Boolean).join('\n');

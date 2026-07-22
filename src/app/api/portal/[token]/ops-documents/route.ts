@@ -10,7 +10,7 @@ async function resolveAgent(token: string) {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('voice_agents')
-    .select('id, portal_email')
+    .select('id, portal_email, agent_name')
     .eq('portal_token', token)
     .single();
   return data;
@@ -37,7 +37,39 @@ export async function GET(req: NextRequest, { params }: Params) {
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 
-  return NextResponse.json({ documents: docs ?? [] });
+  return NextResponse.json({
+    documents: docs ?? [],
+    agentName: (agent.agent_name as string | null) ?? null,
+  });
+}
+
+// PATCH — "Conservar": extend TTL 30 days without downloading
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const auth   = await verifySession(cookie);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { token } = await params;
+  const agent = await resolveAgent(token);
+  if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (agent.portal_email && auth.portalEmail && agent.portal_email !== auth.portalEmail) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { id } = await req.json() as { id: string };
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  const supabase  = createAdminClient();
+  const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase
+    .from('ops_documents')
+    .update({ expires_at: newExpiry })
+    .eq('id', id)
+    .eq('agent_id', agent.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, expires_at: newExpiry });
 }
 
 // DELETE — remove a document and its storage object
