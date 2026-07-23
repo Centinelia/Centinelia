@@ -10,7 +10,298 @@ import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import AgentIntegrationsPanel          from '../AgentIntegrationsPanel';
 import MeerkatPicker                   from './MeerkatPicker';
-import { COORDINATOR_ROLE_IDS }        from '@/lib/portal/meerkat-roles';
+import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
+
+interface ToolChip { label: string; color: string }
+
+const MEERKAT_TOOL_DISTRIBUTION: Record<string, ToolChip[]> = {
+  nia: [
+    { label: 'crear_lead',              color: '#22c55e' },
+    { label: 'agendar_cita',            color: '#3b82f6' },
+    { label: 'registrar_pedido',        color: '#f59e0b' },
+    { label: 'buscar_cliente',          color: '#9B6DFF' },
+    { label: 'notificar_transferencia', color: '#6C3BFF' },
+    { label: 'transferir_llamada',      color: '#6C3BFF' },
+    { label: 'registrar_encuesta',      color: '#a855f7' },
+    { label: 'consultar_agente',        color: '#0d9488' },
+    { label: 'delegar_tarea',           color: '#0d9488' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+  noah: [
+    { label: 'crear_lead',                color: '#22c55e' },
+    { label: 'registrar_pedido',          color: '#f59e0b' },
+    { label: 'notificar_transferencia',   color: '#6C3BFF' },
+    { label: 'transferir_llamada',        color: '#6C3BFF' },
+    { label: 'llamar_a',                  color: '#06b6d4' },
+    { label: 'buscar_en_web',             color: '#3b82f6' },
+    { label: 'search_leads',              color: '#22c55e' },
+    { label: 'analizar_publicaciones_ml', color: '#f59e0b' },
+    { label: 'crear_publicacion_ml',      color: '#f59e0b' },
+    { label: 'actualizar_publicacion_ml', color: '#f59e0b' },
+    { label: 'ver_metricas_ml',           color: '#f59e0b' },
+    { label: 'consultar_agente',          color: '#0d9488' },
+    { label: 'reportar_falla',            color: '#6b7280' },
+  ],
+  nico: [
+    { label: 'buscar_cliente',          color: '#9B6DFF' },
+    { label: 'notificar_transferencia', color: '#6C3BFF' },
+    { label: 'transferir_llamada',      color: '#6C3BFF' },
+    { label: 'llamar_a',                color: '#06b6d4' },
+    { label: 'enviar_correo',           color: '#06b6d4' },
+    { label: 'crear_documento',         color: '#06b6d4' },
+    { label: 'qb_consultar_facturas',   color: '#22c55e' },
+    { label: 'qb_buscar_cliente',       color: '#22c55e' },
+    { label: 'qb_registrar_pago',       color: '#22c55e' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+  nelia: [
+    { label: 'buscar_cliente',          color: '#9B6DFF' },
+    { label: 'notificar_transferencia', color: '#6C3BFF' },
+    { label: 'transferir_llamada',      color: '#6C3BFF' },
+    { label: 'registrar_encuesta',      color: '#a855f7' },
+    { label: 'enviar_correo',           color: '#06b6d4' },
+    { label: 'buscar_archivo',          color: '#06b6d4' },
+    { label: 'consultar_agente',        color: '#0d9488' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+  neo: [
+    { label: 'crear_ticket',         color: '#ef4444' },
+    { label: 'consultar_incidentes', color: '#ef4444' },
+    { label: 'buscar_directorio',    color: '#ef4444' },
+    { label: 'buscar_archivo',       color: '#06b6d4' },
+    { label: 'leer_archivo',         color: '#06b6d4' },
+    { label: 'delegar_tarea',        color: '#0d9488' },
+    { label: 'consultar_agente',     color: '#0d9488' },
+    { label: 'reportar_falla',       color: '#6b7280' },
+  ],
+  nara: [
+    { label: 'create_civic_report',     color: '#3b82f6' },
+    { label: 'lookup_civic_report',     color: '#3b82f6' },
+    { label: 'update_civic_report',     color: '#3b82f6' },
+    { label: 'buscar_cliente',          color: '#9B6DFF' },
+    { label: 'notificar_transferencia', color: '#6C3BFF' },
+    { label: 'transferir_llamada',      color: '#6C3BFF' },
+    { label: 'delegar_tarea',           color: '#0d9488' },
+    { label: 'consultar_agente',        color: '#0d9488' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+  naia: [
+    { label: 'agendar_cita',           color: '#3b82f6' },
+    { label: 'buscar_cliente',         color: '#9B6DFF' },
+    { label: 'registrar_encuesta',     color: '#a855f7' },
+    { label: 'enviar_correo',          color: '#06b6d4' },
+    { label: 'crear_documento',        color: '#06b6d4' },
+    { label: 'list_calendar_events',   color: '#3b82f6' },
+    { label: 'create_calendar_event',  color: '#3b82f6' },
+    { label: 'delete_calendar_event',  color: '#3b82f6' },
+    { label: 'buscar_archivo',         color: '#06b6d4' },
+    { label: 'leer_archivo',           color: '#06b6d4' },
+    { label: 'reportar_falla',         color: '#6b7280' },
+  ],
+  nova: [
+    { label: 'buscar_cliente',          color: '#9B6DFF' },
+    { label: 'notificar_transferencia', color: '#6C3BFF' },
+    { label: 'transferir_llamada',      color: '#6C3BFF' },
+    { label: 'llamar_a',                color: '#06b6d4' },
+    { label: 'crear_ticket',            color: '#ef4444' },
+    { label: 'crear_documento',         color: '#06b6d4' },
+    { label: 'delegar_tarea',           color: '#0d9488' },
+    { label: 'consultar_agente',        color: '#0d9488' },
+    { label: 'buscar_en_web',           color: '#3b82f6' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+  nox: [
+    { label: 'consultar_agente',       color: '#0d9488' },
+    { label: 'delegar_tarea',          color: '#0d9488' },
+    { label: 'enviar_correo',          color: '#06b6d4' },
+    { label: 'llamar_a',               color: '#06b6d4' },
+    { label: 'crear_documento',        color: '#06b6d4' },
+    { label: 'create_file',            color: '#06b6d4' },
+    { label: 'create_contract_draft',  color: '#06b6d4' },
+    { label: 'buscar_archivo',         color: '#06b6d4' },
+    { label: 'leer_archivo',           color: '#06b6d4' },
+    { label: 'save_to_drive',          color: '#06b6d4' },
+    { label: 'organize_files',         color: '#06b6d4' },
+    { label: 'list_calendar_events',   color: '#3b82f6' },
+    { label: 'create_calendar_event',  color: '#3b82f6' },
+    { label: 'delete_calendar_event',  color: '#3b82f6' },
+    { label: 'qb_consultar_facturas',  color: '#22c55e' },
+    { label: 'reportar_falla',         color: '#6b7280' },
+  ],
+  niva: [
+    { label: 'consultar_agente',        color: '#0d9488' },
+    { label: 'delegar_tarea',           color: '#0d9488' },
+    { label: 'enviar_correo',           color: '#06b6d4' },
+    { label: 'llamar_a',                color: '#06b6d4' },
+    { label: 'crear_documento',         color: '#06b6d4' },
+    { label: 'create_file',             color: '#06b6d4' },
+    { label: 'save_to_drive',           color: '#06b6d4' },
+    { label: 'buscar_en_web',           color: '#3b82f6' },
+    { label: 'read_url',                color: '#3b82f6' },
+    { label: 'search_leads',            color: '#22c55e' },
+    { label: 'list_calendar_events',    color: '#3b82f6' },
+    { label: 'create_calendar_event',   color: '#3b82f6' },
+    { label: 'qb_consultar_facturas',   color: '#22c55e' },
+    { label: 'qb_buscar_cliente',       color: '#22c55e' },
+    { label: 'qb_reporte_ingresos',     color: '#22c55e' },
+    { label: 'qb_crear_factura',        color: '#22c55e' },
+    { label: 'qb_registrar_pago',       color: '#22c55e' },
+    { label: 'analizar_publicaciones_ml', color: '#f59e0b' },
+    { label: 'ver_metricas_ml',         color: '#f59e0b' },
+    { label: 'reportar_falla',          color: '#6b7280' },
+  ],
+};
+
+const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
+  { label: 'Atiende clientes',      color: '#22c55e', tools: ['crear_lead', 'buscar_cliente', 'registrar_encuesta', 'registrar_pedido'] },
+  { label: 'Agenda y citas',        color: '#3b82f6', tools: ['agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event'] },
+  { label: 'Transfiere llamadas',   color: '#6C3BFF', tools: ['notificar_transferencia', 'transferir_llamada'] },
+  { label: 'Llama saliente',        color: '#06b6d4', tools: ['llamar_a'] },
+  { label: 'Correo y documentos',   color: '#06b6d4', tools: ['enviar_correo', 'crear_documento', 'create_file', 'create_contract_draft'] },
+  { label: 'Archivos y Drive',      color: '#06b6d4', tools: ['buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files'] },
+  { label: 'Web e investigación',   color: '#3b82f6', tools: ['buscar_en_web', 'read_url', 'search_leads'] },
+  { label: 'Trabajo en equipo',     color: '#0d9488', tools: ['consultar_agente', 'delegar_tarea'] },
+  { label: 'MercadoLibre',          color: '#f59e0b', tools: ['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'] },
+  { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura'] },
+  { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
+  { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
+];
+
+const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string; label: string }[] }[] = [
+  {
+    label: 'Ventas',
+    color: '#22c55e',
+    tools: [
+      { key: 'crear_lead',       label: 'Capturar leads' },
+      { key: 'registrar_pedido', label: 'Registrar pedidos' },
+      { key: 'search_leads',     label: 'Buscar prospectos en internet' },
+    ],
+  },
+  {
+    label: 'Atención a clientes',
+    color: '#9B6DFF',
+    tools: [
+      { key: 'buscar_cliente',          label: 'Buscar información de clientes' },
+      { key: 'registrar_encuesta',      label: 'Registrar encuestas telefónicas' },
+      { key: 'notificar_transferencia', label: 'Avisar al equipo antes de transferir' },
+      { key: 'transferir_llamada',      label: 'Transferir llamadas a personas' },
+    ],
+  },
+  {
+    label: 'Agenda',
+    color: '#3b82f6',
+    tools: [
+      { key: 'agendar_cita',          label: 'Agendar citas' },
+      { key: 'list_calendar_events',  label: 'Consultar la agenda' },
+      { key: 'create_calendar_event', label: 'Crear eventos en el calendario' },
+      { key: 'delete_calendar_event', label: 'Cancelar eventos' },
+    ],
+  },
+  {
+    label: 'Comunicación',
+    color: '#06b6d4',
+    tools: [
+      { key: 'enviar_correo', label: 'Enviar correos electrónicos' },
+      { key: 'llamar_a',      label: 'Hacer llamadas salientes' },
+    ],
+  },
+  {
+    label: 'Documentos y archivos',
+    color: '#8b5cf6',
+    tools: [
+      { key: 'crear_documento',       label: 'Crear documentos' },
+      { key: 'create_file',           label: 'Crear archivos de texto' },
+      { key: 'create_contract_draft', label: 'Redactar contratos' },
+      { key: 'buscar_archivo',        label: 'Buscar archivos' },
+      { key: 'leer_archivo',          label: 'Leer contenido de archivos' },
+      { key: 'save_to_drive',         label: 'Guardar archivos en la nube' },
+      { key: 'organize_files',        label: 'Organizar carpetas y archivos' },
+    ],
+  },
+  {
+    label: 'Investigación',
+    color: '#6366f1',
+    tools: [
+      { key: 'buscar_en_web', label: 'Buscar información en internet' },
+      { key: 'read_url',      label: 'Leer páginas web' },
+    ],
+  },
+  {
+    label: 'Finanzas',
+    color: '#10b981',
+    tools: [
+      { key: 'qb_consultar_facturas', label: 'Consultar facturas' },
+      { key: 'qb_buscar_cliente',     label: 'Buscar clientes en QuickBooks' },
+      { key: 'qb_registrar_pago',     label: 'Registrar pagos recibidos' },
+      { key: 'qb_reporte_ingresos',   label: 'Ver reporte de ingresos' },
+      { key: 'qb_crear_factura',      label: 'Crear facturas nuevas' },
+    ],
+  },
+  {
+    label: 'Colaboración',
+    color: '#0d9488',
+    tools: [
+      { key: 'consultar_agente', label: 'Consultar a otro empleado' },
+      { key: 'delegar_tarea',    label: 'Delegar tareas a otro empleado' },
+    ],
+  },
+  {
+    label: 'MercadoLibre',
+    color: '#f59e0b',
+    tools: [
+      { key: 'analizar_publicaciones_ml',  label: 'Analizar publicaciones' },
+      { key: 'crear_publicacion_ml',       label: 'Crear publicaciones' },
+      { key: 'actualizar_publicacion_ml',  label: 'Actualizar publicaciones' },
+      { key: 'ver_metricas_ml',            label: 'Ver métricas de ventas' },
+    ],
+  },
+  {
+    label: 'Helpdesk',
+    color: '#ef4444',
+    tools: [
+      { key: 'crear_ticket',         label: 'Abrir tickets de soporte' },
+      { key: 'consultar_incidentes', label: 'Consultar incidentes abiertos' },
+      { key: 'buscar_directorio',    label: 'Buscar en el directorio de empleados' },
+    ],
+  },
+  {
+    label: 'Servicios municipales',
+    color: '#1d4ed8',
+    tools: [
+      { key: 'create_civic_report', label: 'Registrar reporte ciudadano' },
+      { key: 'lookup_civic_report', label: 'Consultar estado de reporte' },
+      { key: 'update_civic_report', label: 'Actualizar reporte ciudadano' },
+    ],
+  },
+];
+
+function getAgentCapabilities(tools: ToolChip[]): { label: string; color: string }[] {
+  const names = new Set(tools.map(t => t.label));
+  return CAPABILITY_GROUPS.filter(g => g.tools.some(t => names.has(t)));
+}
+
+function getAgentTools(features: Record<string, unknown>): ToolChip[] {
+  const meerkatId = (features.meerkat_role_id as string | null) ?? null;
+  if (meerkatId && meerkatId !== 'custom' && MEERKAT_TOOL_DISTRIBUTION[meerkatId]) {
+    return MEERKAT_TOOL_DISTRIBUTION[meerkatId];
+  }
+  // Fallback for custom agents
+  const tools: ToolChip[] = [];
+  if (features.lead_qualification)                                tools.push({ label: 'crear_lead',              color: '#22c55e' });
+  if (features.appointment_booking)                               tools.push({ label: 'agendar_cita',            color: '#3b82f6' });
+  if (features.order_taking)                                      tools.push({ label: 'registrar_pedido',        color: '#f59e0b' });
+  if (features.existing_client_support || features.client_memory) tools.push({ label: 'buscar_cliente',          color: '#9B6DFF' });
+  if (features.smart_transfer)                                    tools.push({ label: 'notificar_transferencia', color: '#6C3BFF' });
+  if (features.smart_transfer)                                    tools.push({ label: 'transferir_llamada',      color: '#6C3BFF' });
+  if (features.helpdesk)                                          tools.push({ label: 'crear_ticket',            color: '#ef4444' });
+  if (features.helpdesk)                                          tools.push({ label: 'consultar_incidentes',    color: '#ef4444' });
+  if (features.helpdesk)                                          tools.push({ label: 'buscar_directorio',       color: '#ef4444' });
+  if (features.of_encuestas)                                      tools.push({ label: 'registrar_encuesta',      color: '#a855f7' });
+  tools.push({ label: 'consultar_agente', color: '#0d9488' });
+  tools.push({ label: 'reportar_falla',   color: '#6b7280' });
+  return tools;
+}
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -73,6 +364,51 @@ export default async function AgentesPage({ params }: Props) {
   }));
   const callCountMap = Object.fromEntries(callCounts.map(c => [c.id, c.count]));
 
+  const { data: orgRow } = baseAgent.portal_email
+    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', baseAgent.portal_email).single()
+    : { data: null };
+  const hasPassphrase = !!orgRow?.owner_passphrase?.trim();
+
+  // Tool coverage by business category
+  const coveredToolKeys = new Set<string>();
+  for (const a of agents) {
+    for (const t of getAgentTools((a.features as Record<string, unknown>) ?? {})) {
+      coveredToolKeys.add(t.label);
+    }
+  }
+  const categoryStats = BUSINESS_CATEGORIES.map(cat => ({
+    label:   cat.label,
+    color:   cat.color,
+    tools:   cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key) })),
+    covered: cat.tools.filter(t => coveredToolKeys.has(t.key)).length,
+    total:   cat.tools.length,
+  }));
+  const totalBizTools  = categoryStats.reduce((s, c) => s + c.total, 0);
+  const coveredBizTotal = categoryStats.reduce((s, c) => s + c.covered, 0);
+  const overallPct     = totalBizTools > 0 ? Math.round((coveredBizTotal / totalBizTools) * 100) : 0;
+  const missingCats    = categoryStats.filter(c => c.covered < c.total);
+
+  // Per-meerkat recommendation: which roles cover missing categories, and what they add
+  const meerkatRecs = missingCats.length > 0
+    ? Object.entries(MEERKAT_TOOL_DISTRIBUTION)
+        .map(([roleId, tools]) => {
+          const toolKeySet = new Set(tools.map(t => t.label));
+          const newCats = missingCats
+            .filter(cat => cat.tools.some(t => !t.covered && toolKeySet.has(t.key)))
+            .map(cat => ({
+              label:    cat.label,
+              color:    cat.color,
+              newTools: cat.tools.filter(t => !t.covered && toolKeySet.has(t.key)).map(t => t.label),
+            }));
+          if (newCats.length === 0) return null;
+          const allCaps = CAPABILITY_GROUPS
+            .filter(g => g.tools.some(toolName => toolKeySet.has(toolName)))
+            .map(g => ({ label: g.label, color: g.color }));
+          return { roleId, newCats, allCaps };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+    : [];
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -88,6 +424,7 @@ export default async function AgentesPage({ params }: Props) {
           token={token}
           plan={(baseAgent.plan ?? 'comercial') as 'comercial' | 'pro'}
           defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+          recommendations={meerkatRecs}
         />
       </div>
 
@@ -130,58 +467,107 @@ export default async function AgentesPage({ params }: Props) {
           };
           const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
 
+          const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
+          const agentFeatures = (a.features as Record<string, unknown>) ?? {};
+          const tools         = getAgentTools(agentFeatures);
+          const capabilities  = getAgentCapabilities(tools);
+
           return (
             <div key={a.id}
-              className="rounded-2xl p-5 flex flex-col items-center justify-between aspect-square"
+              className="rounded-2xl flex flex-col"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
 
-              {/* Avatar — grande, centrado arriba */}
-              <AgentAvatarPicker
-                token={a.portal_token as string}
-                avatarSrc={avatarSrc}
-                initial={initial}
-                color={hasRole ? roleColor : color}
-                size={148}
-                locked={avatarLocked}
-              />
+              {/* Color bar */}
+              <div style={{ height: 3, borderRadius: '12px 12px 0 0', background: `linear-gradient(90deg, ${hasRole ? roleColor : color}, ${hasRole ? roleColor : color}55)` }} />
 
-              {/* Nombre + rol + badges */}
-              <div className="flex flex-col items-center gap-1 text-center w-full">
-                <span className="font-bold text-base sm:text-xl leading-tight" style={{ color: 'var(--c-text)' }}>
-                  {(a.agent_name as string | null)?.trim() || 'Centinelia'}
-                </span>
-                {hasRole && (
-                  <span className="text-sm sm:text-base font-medium" style={{ color: roleColor }}>
-                    {a.role as string}
+              <div className="p-5 flex flex-col items-center gap-4 flex-1">
+
+                {/* Avatar — grande, centrado arriba */}
+                <AgentAvatarPicker
+                  token={a.portal_token as string}
+                  avatarSrc={avatarSrc}
+                  initial={initial}
+                  color={hasRole ? roleColor : color}
+                  size={120}
+                  locked={avatarLocked}
+                />
+
+                {/* Nombre + rol + estado */}
+                <div className="flex flex-col items-center gap-1 text-center w-full">
+                  <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: 'var(--c-text)' }}>
+                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                   </span>
-                )}
-                <div className="flex items-center gap-1.5 flex-wrap justify-center mt-1">
-                  <span className="flex items-center gap-1 text-xs sm:text-sm" style={{ color: statusColor }}>
+                  {hasRole && (
+                    <span className="text-sm font-medium" style={{ color: roleColor }}>
+                      {a.role as string}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1 text-xs mt-0.5" style={{ color: statusColor }}>
                     <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
                       style={{ background: 'currentColor' }} />
                     {statusLabel}
                   </span>
                 </div>
-              </div>
 
-              {/* Stats */}
-              <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
-                {!isCoordinator && (
-                  <span className="flex items-center gap-1 text-sm sm:text-base">
-                    <Bot size={14} />
-                    {callCount} llam. este mes
-                  </span>
+                {/* Descripción del meerkat */}
+                {meerkatDef?.descripcion && (
+                  <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                    {meerkatDef.descripcion}
+                  </p>
                 )}
-                {hasRole && (
-                  <span className="flex items-center gap-1 text-sm sm:text-base">
-                    <Zap size={14} />
-                    {(a.ai_ops_used as number) ?? 0} tareas este mes
-                  </span>
+
+                {/* Capacidades — colapsadas por defecto */}
+                {capabilities.length > 0 && (
+                  <details className="w-full group">
+                    <summary
+                      className="cursor-pointer list-none select-none flex items-center gap-1.5 w-fit"
+                      style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+                      <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
+                        Ver capacidades
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                    </summary>
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {capabilities.map(c => (
+                        <span key={c.label}
+                          className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg"
+                          style={{
+                            background: `${c.color}10`,
+                            color:      c.color,
+                            border:     `1px solid ${c.color}25`,
+                          }}>
+                          {c.label}
+                        </span>
+                      ))}
+                      {isCoordinator && !hasPassphrase && (
+                        <p className="w-full text-[10px] mt-1 leading-relaxed" style={{ color: '#f59e0b' }}>
+                          Sin passphrase del dueño este director no puede actuar. Configura una en Empleados → Configurar.
+                        </p>
+                      )}
+                    </div>
+                  </details>
                 )}
+
+                {/* Stats */}
+                <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
+                  {!isCoordinator && (
+                    <span className="flex items-center gap-1 text-xs">
+                      <Bot size={12} />
+                      {callCount} llam. este mes
+                    </span>
+                  )}
+                  {hasRole && (
+                    <span className="flex items-center gap-1 text-xs">
+                      <Zap size={12} />
+                      {(a.ai_ops_used as number) ?? 0} tareas este mes
+                    </span>
+                  )}
+                </div>
+
               </div>
 
               {/* Botones — abajo */}
-              <div className="flex items-center w-full pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="flex items-center px-5 py-3" style={{ borderTop: '1px solid var(--c-border)' }}>
                 <div className="flex-1 flex justify-start">
                   <Link
                     href={`/portal/${a.portal_token as string}/configurar`}
@@ -214,6 +600,97 @@ export default async function AgentesPage({ params }: Props) {
           );
         })}
       </div>
+      {/* Banner cobertura de capacidades */}
+      {agents.length > 0 && (
+        <div className="rounded-2xl p-5"
+          style={{
+            background: overallPct === 100 ? 'rgba(34,197,94,0.04)'        : 'rgba(108,59,255,0.04)',
+            border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
+          }}>
+
+          {/* Header row: title + % badge + progress bar */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: overallPct === 100 ? '#16a34a' : '#6C3BFF' }}>
+                Tu oficina está equipada al {overallPct}%.
+              </p>
+              {overallPct < 100 && missingCats.length > 0 && (
+                <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+                  Incorpora:{' '}
+                  {missingCats.length <= 3
+                    ? missingCats.map(c => c.label).join(', ')
+                    : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
+                </p>
+              )}
+              {overallPct === 100 && (
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                  Tu equipo tiene todas las capacidades disponibles.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <span className="text-sm font-bold px-2.5 py-1 rounded-lg"
+                style={{
+                  background: overallPct === 100 ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
+                  color:      overallPct === 100 ? '#16a34a' : '#6C3BFF',
+                }}>
+                {overallPct}%
+              </span>
+              <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                <div className="h-1.5 rounded-full"
+                  style={{ width: `${overallPct}%`, background: overallPct === 100 ? '#16a34a' : '#6C3BFF' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Category breakdown — 2 columns */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0">
+            {categoryStats.map(cat => (
+              <details key={cat.label}>
+                <summary
+                  className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
+                  style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
+                  <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-2)' }}>
+                    {cat.label}
+                  </span>
+                  <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
+                    {cat.covered}/{cat.total}
+                  </span>
+                  <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                </summary>
+                <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
+                  {cat.tools.map(t => (
+                    <div key={t.key} className="flex items-center gap-1 py-0.5">
+                      <span className="text-[10px] w-3 text-center flex-shrink-0"
+                        style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                        {t.covered ? '✓' : '○'}
+                      </span>
+                      <span className="text-[10px] leading-tight"
+                        style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
+                        {t.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+
+          {/* CTA */}
+          {missingCats.length > 0 && (
+            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <MeerkatPicker
+                token={token}
+                plan={(baseAgent.plan ?? 'comercial') as 'comercial' | 'pro'}
+                defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+                recommendations={meerkatRecs}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Herramientas por empleado */}
       {agents.length > 0 && (
         <div id="herramientas" className="flex flex-col gap-4">

@@ -1,14 +1,20 @@
 'use client';
 
-import { useState }                         from 'react';
-import { useRouter }                        from 'next/navigation';
-import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone } from 'lucide-react';
+import { useState }                                              from 'react';
+import { useRouter }                                             from 'next/navigation';
+import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone }         from 'lucide-react';
 import { MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
-import { JORNADA_CONFIG }                   from '@/lib/billing/plans';
-import type { JornadaType }                 from '@/types/agent';
+import { JORNADA_CONFIG }                                        from '@/lib/billing/plans';
+import type { JornadaType }                                      from '@/types/agent';
 
 type Plan        = 'comercial' | 'pro';
 type MinutesTier = 'starter' | 'growth' | 'scale';
+
+export type MeerkatRec = {
+  roleId:  string;
+  newCats: { label: string; color: string; newTools: string[] }[];
+  allCaps: { label: string; color: string }[];
+};
 
 const SETUP_FEE: Record<Plan, number> = {
   comercial: 8990,
@@ -74,28 +80,43 @@ function MeerkatCardImage({ role }: { role: MeerkatRole }) {
   );
 }
 
-export default function MeerkatPicker({ token, plan = 'comercial', defaultTier = 'starter' }: {
-  token:        string;
-  plan?:        Plan;
-  defaultTier?: MinutesTier;
+export default function MeerkatPicker({ token, plan = 'comercial', defaultTier = 'starter', recommendations }: {
+  token:            string;
+  plan?:            Plan;
+  defaultTier?:     MinutesTier;
+  recommendations?: MeerkatRec[];
 }) {
-  const [open,      setOpen]      = useState(false);
-  const [selected,  setSelected]  = useState<MeerkatRole | null>(null);
-  const [agentName, setAgentName] = useState('');
-  const [tier,      setTier]      = useState<MinutesTier>(defaultTier);
-  const [jornada,   setJornada]   = useState<JornadaType>('combinada');
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState('');
+  const [open,         setOpen]         = useState(false);
+  const [selected,     setSelected]     = useState<MeerkatRole | null>(null);
+  const [expandedRole, setExpandedRole] = useState<MeerkatRole | null>(null);
+  const [agentName,    setAgentName]    = useState('');
+  const [tier,         setTier]         = useState<MinutesTier>(defaultTier);
+  const [jornada,      setJornada]      = useState<JornadaType>('combinada');
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState('');
   const router = useRouter();
 
-  const openPicker  = () => { setOpen(true); setSelected(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
-  const closePicker = () => { setOpen(false); setSelected(null); setAgentName(''); setError(''); };
+  // Smart mode: only show roles that cover missing capabilities
+  const recMap: Record<string, MeerkatRec> = {};
+  if (recommendations) {
+    for (const r of recommendations) recMap[r.roleId] = r;
+  }
+  const smartMode    = !!recommendations && recommendations.length > 0;
+  const displayRoles = smartMode
+    ? MEERKAT_ROLES
+        .filter(r => recMap[r.id])
+        .sort((a, b) => (recMap[b.id]?.newCats.length ?? 0) - (recMap[a.id]?.newCats.length ?? 0))
+    : MEERKAT_ROLES;
+
+  const reset = () => { setSelected(null); setExpandedRole(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
+
+  const openPicker  = () => { setOpen(true);  reset(); };
+  const closePicker = () => { setOpen(false); reset(); };
 
   const handleSelect = (role: MeerkatRole) => {
     setSelected(role);
     setAgentName(role.id === 'custom' ? '' : role.nombre);
     setError('');
-    // coordinators are always tareas
     const isCoord = !!(role.features as any)?.is_coordinator;
     setJornada(isCoord ? 'tareas' : 'combinada');
   };
@@ -104,7 +125,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
     if (!selected || !agentName.trim()) return;
     setLoading(true);
     setError('');
-    const isCoord       = !!(selected.features as any)?.is_coordinator;
+    const isCoord         = !!(selected.features as any)?.is_coordinator;
     const effectiveJornada: JornadaType = isCoord ? 'tareas' : jornada;
     try {
       const res  = await fetch(`/api/portal/${token}/agentes`, {
@@ -126,6 +147,27 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
       setLoading(false);
     }
   };
+
+  // Navigation state
+  const step         = selected ? 'confirm' : expandedRole ? 'detail' : 'grid';
+  const showBack     = step !== 'grid';
+  const handleBack   = () => { if (step === 'confirm') setSelected(null); else setExpandedRole(null); };
+
+  const headerTitle = step === 'confirm'
+    ? 'Confirmar contratación'
+    : step === 'detail'
+      ? `Conoce a ${expandedRole!.nombre}`
+      : smartMode
+        ? 'Empleados recomendados'
+        : 'Elige un empleado';
+
+  const headerSubtitle = step === 'confirm'
+    ? 'Puedes cambiar el nombre y configurarlo después'
+    : step === 'detail'
+      ? 'Lo que este empleado puede aportar a tu equipo'
+      : smartMode
+        ? 'Estos empleados cubren las capacidades que todavía le faltan a tu oficina'
+        : 'Cada uno tiene un rol especializado, con herramientas listas desde el inicio';
 
   return (
     <>
@@ -152,9 +194,9 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
             <div className="flex items-center justify-between px-6 py-4 shrink-0"
               style={{ borderBottom: '1px solid var(--c-border)' }}>
               <div className="flex items-center gap-2">
-                {selected && (
+                {showBack && (
                   <button
-                    onClick={() => setSelected(null)}
+                    onClick={handleBack}
                     className="p-1 rounded-lg transition-opacity hover:opacity-70 mr-1"
                     style={{ color: 'var(--c-text-3)' }}
                   >
@@ -163,12 +205,10 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                 )}
                 <div>
                   <h2 className="font-bold text-base" style={{ color: 'var(--c-text)' }}>
-                    {selected ? 'Confirmar contratación' : 'Elige un empleado'}
+                    {headerTitle}
                   </h2>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                    {selected
-                      ? 'Puedes cambiar el nombre y configurarlo después'
-                      : 'Cada uno tiene un rol especializado, con herramientas listas desde el inicio'}
+                    {headerSubtitle}
                   </p>
                 </div>
               </div>
@@ -181,46 +221,150 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
               </button>
             </div>
 
-            {!selected ? (
-              /* ── Role grid ── */
+            {/* ── Step: grid ── */}
+            {step === 'grid' && (
               <div className="p-4 overflow-y-auto">
                 <div className="grid grid-cols-3 gap-3">
-                  {MEERKAT_ROLES.map(role => (
-                    <button
-                      key={role.id}
-                      onClick={() => handleSelect(role)}
-                      className="flex flex-col rounded-xl overflow-hidden text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      style={{
-                        background: 'var(--c-surface-2)',
-                        border:     `1px solid var(--c-border)`,
-                        cursor:     'pointer',
-                      }}
-                    >
-                      {/* Image */}
-                      <div className="w-full overflow-hidden" style={{ height: 110, flexShrink: 0, background: `${role.color}10` }}>
-                        <MeerkatCardImage role={role} />
-                      </div>
-                      {/* Text */}
-                      <div className="px-3 py-2.5 flex flex-col gap-0.5">
-                        <div className="font-bold text-sm leading-tight"
-                          style={{ color: role.id === 'custom' ? 'var(--c-text-3)' : 'var(--c-text)' }}>
-                          {role.nombre}
+                  {displayRoles.map(role => {
+                    const rec = recMap[role.id];
+                    return (
+                      <button
+                        key={role.id}
+                        onClick={() => smartMode ? setExpandedRole(role) : handleSelect(role)}
+                        className="flex flex-col rounded-xl overflow-hidden text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{
+                          background: 'var(--c-surface-2)',
+                          border:     `1px solid var(--c-border)`,
+                          cursor:     'pointer',
+                        }}
+                      >
+                        {/* Image */}
+                        <div className="w-full overflow-hidden" style={{ height: 110, flexShrink: 0, background: `${role.color}10` }}>
+                          <MeerkatCardImage role={role} />
                         </div>
-                        {role.rol && (
-                          <div className="text-[10px] font-semibold" style={{ color: role.color }}>
-                            {role.rol}
+                        {/* Text */}
+                        <div className="px-3 py-2.5 flex flex-col gap-0.5">
+                          <div className="font-bold text-sm leading-tight"
+                            style={{ color: role.id === 'custom' ? 'var(--c-text-3)' : 'var(--c-text)' }}>
+                            {role.nombre}
                           </div>
-                        )}
-                        <div className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--c-text-4)' }}>
-                          {role.descripcion}
+                          {role.rol && (
+                            <div className="text-[10px] font-semibold" style={{ color: role.color }}>
+                              {role.rol}
+                            </div>
+                          )}
+                          <div className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--c-text-4)' }}>
+                            {role.descripcion}
+                          </div>
+                          {smartMode && rec && (
+                            <div className="mt-1.5">
+                              <span
+                                className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                style={{ background: `${role.color}15`, color: role.color, border: `1px solid ${role.color}35` }}
+                              >
+                                +{rec.newCats.length} {rec.newCats.length === 1 ? 'nueva capacidad' : 'nuevas capacidades'}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            ) : (
-              /* ── Confirmation step ── */
+            )}
+
+            {/* ── Step: detail (smart mode expand) ── */}
+            {step === 'detail' && expandedRole && (() => {
+              const rec = recMap[expandedRole.id];
+              return (
+                <div className="p-6 flex flex-col gap-5 overflow-y-auto">
+
+                  {/* Hero */}
+                  <div className="flex items-center gap-4 p-4 rounded-xl"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                    <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0"
+                      style={{ background: `${expandedRole.color}10` }}>
+                      <MeerkatCardImage role={expandedRole} />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-base leading-tight" style={{ color: 'var(--c-text)' }}>
+                        {expandedRole.nombre}
+                      </span>
+                      {expandedRole.rol && (
+                        <span className="text-sm font-medium" style={{ color: expandedRole.color }}>
+                          {expandedRole.rol}
+                        </span>
+                      )}
+                      <span className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                        {expandedRole.descripcion}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* New capabilities */}
+                  {rec && rec.newCats.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+                        Con este empleado, incorporas:
+                      </p>
+                      {rec.newCats.map(cat => (
+                        <div key={cat.label}
+                          className="rounded-xl p-3 flex flex-col gap-1.5"
+                          style={{ background: `${cat.color}08`, border: `1px solid ${cat.color}22` }}>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />
+                            <span className="text-xs font-semibold" style={{ color: cat.color }}>{cat.label}</span>
+                          </div>
+                          <div className="flex flex-col gap-0.5 pl-3.5">
+                            {cat.newTools.map(tool => (
+                              <div key={tool} className="flex items-center gap-1.5">
+                                <span className="text-[10px] flex-shrink-0" style={{ color: '#16a34a' }}>✓</span>
+                                <span className="text-[11px]" style={{ color: 'var(--c-text-2)' }}>{tool}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* All capabilities */}
+                  {rec && rec.allCaps.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-4)' }}>
+                        Capacidades completas
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {rec.allCaps.map(cap => (
+                          <span key={cap.label}
+                            className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg"
+                            style={{
+                              background: `${cap.color}10`,
+                              color:      cap.color,
+                              border:     `1px solid ${cap.color}25`,
+                            }}>
+                            {cap.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => handleSelect(expandedRole)}
+                    className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                    style={{ background: expandedRole.color, color: '#fff', cursor: 'pointer' }}
+                  >
+                    Contratar a {expandedRole.nombre}
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* ── Step: confirmation ── */}
+            {step === 'confirm' && selected && (
               <div className="p-6 flex flex-col gap-5 overflow-y-auto">
                 <div className="flex items-center gap-4 p-4 rounded-xl"
                   style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>

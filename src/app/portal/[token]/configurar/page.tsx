@@ -67,7 +67,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const meerkatId      = (features.meerkat_role_id as string | null) ?? null;
   const colorLocked    = !!meerkatId && meerkatId !== 'custom';
   const isCoordinator  = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
+  const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
   const hasVoice       = !isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom');
+  const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
   const teamNumbers    = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
 
   const { data: emailIntegration } = await supabase
@@ -78,6 +80,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const connectedEmail = emailIntegration && !emailIntegration.needs_reauth
     ? (emailIntegration.email as string)
     : null;
+
+  const { data: orgRow } = agent.portal_email
+    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
+    : { data: null };
+  const ownerPassphrase = orgRow?.owner_passphrase ?? '';
 
   // Build sidebar sections list matching what's actually rendered
   const sidebarSections: SidebarSection[] = [
@@ -96,7 +103,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ...(!isCoordinator
       ? [{ id: 'equipo',     label: 'Números del equipo',     group: 'Operación'     }] : []),
     { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Operación'     },
-    ...(!isCoordinator && isOwner
+    ...(isOwner && hasVoiceJornada
       ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
     ...(!isCoordinator && isOwner
       ? [{ id: 'reportes',   label: 'Reportes de fallas',     group: 'Seguridad'     }] : []),
@@ -146,9 +153,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 {agent.business_name}
               </p>
             </div>
-            <div className="flex-shrink-0 w-72">
-              <JornadaSection token={token} jornadaType={(agent as any).jornada_type ?? 'combinada'} />
-            </div>
+            {!isCoordinator && (
+              <div className="flex-shrink-0 w-72">
+                <JornadaSection token={token} jornadaType={jornadaType} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -307,14 +316,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               </div>
             </div>
 
-            {!isCoordinator && isOwner && (
+            {isOwner && hasVoiceJornada && (
               <div id="passphrase" style={SCROLL_STYLE}>
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Frase de verificación interna</h2>
                     <InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />
                   </div>
-                  <PassphraseEditor token={token} initial={(agent as any).owner_passphrase ?? ''} />
+                  <PassphraseEditor token={token} initial={ownerPassphrase} />
                 </div>
               </div>
             )}

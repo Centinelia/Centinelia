@@ -37,6 +37,7 @@ import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { checkOfficeInitiative } from '@/lib/initiative/detector';
 import { extractChatLearnings } from '@/lib/ai/chat-learning';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
+import { MEERKAT_VOICE_DISTRIBUTION } from '@/lib/vapi/sync';
 import {
   enhanceTextContent,
   enhanceSlidesContent,
@@ -642,6 +643,102 @@ const ALL_TOOLS = [
   ML_VER_METRICAS_TOOL,
 ];
 
+// Maps voice tool names → chat tool names (null = no chat implementation yet)
+const VOICE_TO_CHAT: Record<string, string | null> = {
+  enviar_correo:             'send_email',
+  crear_documento:           'create_document',
+  llamar_a:                  'trigger_outbound_call',
+  buscar_archivo:            'search_files',
+  leer_archivo:              'read_file',
+  consultar_agente:          'consult_agent',
+  delegar_tarea:             'delegate_task',
+  // No chat implementation yet
+  crear_lead:                null,
+  agendar_cita:              null,
+  registrar_pedido:          null,
+  buscar_cliente:            null,
+  notificar_transferencia:   null,
+  transferir_llamada:        null,
+  registrar_encuesta:        null,
+  crear_ticket:              null,
+  consultar_incidentes:      null,
+  buscar_directorio:         null,
+  // Same name in both channels
+  create_contract_draft:     'create_contract_draft',
+  create_file:               'create_file',
+  save_to_drive:             'save_to_drive',
+  organize_files:            'organize_files',
+  buscar_en_web:             'buscar_en_web',
+  read_url:                  'read_url',
+  search_leads:              'search_leads',
+  list_calendar_events:      'list_calendar_events',
+  create_calendar_event:     'create_calendar_event',
+  delete_calendar_event:     'delete_calendar_event',
+  create_civic_report:       'create_civic_report',
+  lookup_civic_report:       'lookup_civic_report',
+  update_civic_report:       'update_civic_report',
+  analizar_publicaciones_ml: 'analizar_publicaciones_ml',
+  crear_publicacion_ml:      'crear_publicacion_ml',
+  actualizar_publicacion_ml: 'actualizar_publicacion_ml',
+  ver_metricas_ml:           'ver_metricas_ml',
+  reportar_falla:            'reportar_falla',
+  qb_consultar_facturas:     'qb_consultar_facturas',
+  qb_buscar_cliente:         'qb_buscar_cliente',
+  qb_registrar_pago:         'qb_registrar_pago',
+  qb_reporte_ingresos:       'qb_reporte_ingresos',
+  qb_crear_factura:          'qb_crear_factura',
+};
+
+// Chat tool name → Anthropic.Tool object
+const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
+  delegate_task:             DELEGATE_TASK_TOOL,
+  consult_agent:             CONSULT_AGENT_TOOL,
+  create_contract_draft:     CREATE_CONTRACT_DRAFT_TOOL,
+  send_email:                SEND_EMAIL_TOOL,
+  create_document:           CREATE_DOCUMENT_TOOL,
+  create_file:               CREATE_FILE_TOOL,
+  save_to_drive:             SAVE_TO_DRIVE_TOOL,
+  organize_files:            ORGANIZE_FILES_TOOL,
+  trigger_outbound_call:     TRIGGER_CALL_TOOL,
+  search_files:              SEARCH_FILES_TOOL,
+  read_file:                 READ_FILE_TOOL,
+  list_calendar_events:      LIST_CALENDAR_EVENTS_TOOL,
+  create_calendar_event:     CREATE_CALENDAR_EVENT_TOOL,
+  delete_calendar_event:     DELETE_CALENDAR_EVENT_TOOL,
+  search_leads:              SEARCH_LEADS_TOOL,
+  read_url:                  READ_URL_TOOL,
+  create_civic_report:       CREATE_CIVIC_REPORT_TOOL,
+  lookup_civic_report:       LOOKUP_CIVIC_REPORT_TOOL,
+  update_civic_report:       UPDATE_CIVIC_REPORT_TOOL,
+  buscar_en_web:             WEB_SEARCH_TOOL,
+  reportar_falla:            REPORT_ISSUE_TOOL,
+  analizar_publicaciones_ml: ML_ANALIZAR_PUBLICACIONES_TOOL,
+  crear_publicacion_ml:      ML_CREAR_PUBLICACION_TOOL,
+  actualizar_publicacion_ml: ML_ACTUALIZAR_PUBLICACION_TOOL,
+  ver_metricas_ml:           ML_VER_METRICAS_TOOL,
+  ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
+};
+
+function getToolsForRole(meerkatId: string | null, qbConnected: boolean): Anthropic.Tool[] {
+  const voiceNames = meerkatId && meerkatId !== 'custom'
+    ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? null
+    : null;
+
+  // Custom agents or unknown role → previous behavior (all tools)
+  if (!voiceNames) return qbConnected ? [...ALL_TOOLS, ...QB_TOOLS] : ALL_TOOLS;
+
+  const tools: Anthropic.Tool[] = [];
+  const seen = new Set<string>();
+  for (const voiceName of voiceNames) {
+    const chatName = VOICE_TO_CHAT[voiceName];
+    if (!chatName || seen.has(chatName)) continue;
+    if (!qbConnected && chatName.startsWith('qb_')) continue;
+    const tool = CHAT_TOOL_BY_NAME[chatName];
+    if (tool) { tools.push(tool); seen.add(chatName); }
+  }
+  return tools;
+}
+
 const SOCIAL_DOMAINS = ['facebook.com', 'linkedin.com', 'twitter.com', 'x.com', 'instagram.com', 'tiktok.com'];
 
 // ── Route ─────────────────────────────────────────────────────────────────────
@@ -705,7 +802,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
 
   const qbConnected  = !!qbRow?.realm_id;
-  const sessionTools = qbConnected ? [...ALL_TOOLS, ...QB_TOOLS] : ALL_TOOLS;
+  const meerkatId    = ((agent.features as Record<string, unknown>)?.meerkat_role_id as string | null) ?? null;
+  const sessionTools = getToolsForRole(meerkatId, qbConnected);
 
   const agentName = (agent.agent_name as string | null)?.trim() || 'Centinelia';
   const agentRole = (agent.role as string | null)?.trim() || null;
