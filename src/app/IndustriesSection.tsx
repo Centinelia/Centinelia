@@ -54,14 +54,14 @@ const INDUSTRIES: Industry[] = [
   {
     Icon: Stethoscope, color: '#0891B2', bg: 'rgba(8,145,178,0.08)',
     label: 'Clínica', article: 'una',
-    active: ['nia', 'nelia', 'nara'],
+    active: ['nia', 'naia', 'nelia'],
     flow: ['Atiende llamadas', 'Agenda pacientes', 'Confirma citas', 'Envía recordatorios', 'Da seguimiento'],
     result: 'Todas las citas quedan confirmadas.',
   },
   {
     Icon: UtensilsCrossed, color: '#D97706', bg: 'rgba(217,119,6,0.08)',
     label: 'Restaurante', article: 'un',
-    active: ['nia', 'noah', 'nara'],
+    active: ['nia', 'naia', 'noah'],
     flow: ['Atiende reservaciones', 'Confirma mesas', 'Envía ubicación', 'Gestiona esperas', 'Recupera llamadas'],
     result: 'Nunca pierdes una reservación.',
   },
@@ -75,14 +75,14 @@ const INDUSTRIES: Industry[] = [
   {
     Icon: Home, color: '#0EA5E9', bg: 'rgba(14,165,233,0.08)',
     label: 'Inmobiliaria', article: 'una',
-    active: ['nia', 'noah', 'nico'],
+    active: ['nia', 'noah', 'naia'],
     flow: ['Captura prospectos', 'Califica interesados', 'Agenda visitas', 'Da seguimiento', 'Recupera oportunidades'],
     result: 'Ninguna oportunidad cae en el olvido.',
   },
   {
     Icon: Scale, color: '#1D4ED8', bg: 'rgba(29,78,216,0.08)',
     label: 'Despacho Jurídico', article: 'un',
-    active: ['nia', 'nara', 'niva'],
+    active: ['nia', 'naia', 'nova'],
     flow: ['Recibe consulta', 'Agenda cita', 'Abre expediente', 'Da seguimiento', 'Entrega actualización'],
     result: 'Ningún expediente queda sin seguimiento.',
   },
