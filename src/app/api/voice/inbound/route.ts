@@ -244,9 +244,20 @@ export async function POST(req: NextRequest) {
     teamCallerContext = `\n\nCONTEXTO INTERNO: Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_name} (número registrado). Trátale como equipo interno, no como cliente externo. Puedes compartir información operativa cuando te la pidan. Tutéale en todo momento. No apliques flujo de captura de leads ni agendamiento de citas a menos que te lo pidan explícitamente.`;
   }
 
+  // Check if QuickBooks is connected for this account
+  let qbConnected = false;
+  if (typedAgent.portal_email) {
+    const { data: qbRow } = await supabase
+      .from('qb_integrations')
+      .select('realm_id')
+      .eq('portal_email', typedAgent.portal_email)
+      .maybeSingle();
+    qbConnected = !!qbRow?.realm_id;
+  }
+
   const systemPrompt = buildSystemPrompt(typedAgent) + (teamCallerContext || callerContext) + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
-  const tools = buildTools(typedAgent);
+  const tools = buildTools(typedAgent, qbConnected);
 
   const defaultGreeting = typedAgent.speech_style === 'tu'
     ? `Hola, gracias por llamar a ${typedAgent.business_name}. Te habla ${agentName}. ¿En qué te puedo ayudar?`
@@ -350,7 +361,7 @@ export async function POST(req: NextRequest) {
   });
 }
 
-function buildTools(agent: VoiceAgent) {
+function buildTools(agent: VoiceAgent, qbConnected = false) {
   const tools: object[] = [];
   const f = agent.features;
 
@@ -660,6 +671,98 @@ function buildTools(agent: VoiceAgent) {
       serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/enviar-correo?agent_id=${agent.id}`,
     },
   });
+
+  if (qbConnected) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'qb_consultar_facturas',
+        description: 'Consulta facturas en QuickBooks Online. Úsala cuando el cliente pregunte por facturas pendientes, saldo, o cuentas por cobrar.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cliente:         { type: 'string', description: 'Nombre del cliente (opcional, si no se da trae todas las facturas pendientes)' },
+            solo_pendientes: { type: 'boolean', description: 'true para solo facturas con saldo pendiente (default), false para todas' },
+          },
+          required: [],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/qb-consultar-facturas?agent_id=${agent.id}`,
+      },
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'qb_buscar_cliente',
+        description: 'Busca un cliente en QuickBooks y muestra su saldo y facturas abiertas. Úsala cuando pregunten por el estado de cuenta de un cliente específico.',
+        parameters: {
+          type: 'object',
+          properties: {
+            nombre: { type: 'string', description: 'Nombre o razón social del cliente en QuickBooks' },
+          },
+          required: ['nombre'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/qb-buscar-cliente?agent_id=${agent.id}`,
+      },
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'qb_crear_factura',
+        description: 'Crea una factura en QuickBooks. Confirma siempre los datos con el cliente antes de ejecutar. Consume 1 tarea.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cliente_nombre:    { type: 'string', description: 'Nombre exacto del cliente en QuickBooks' },
+            descripcion:       { type: 'string', description: 'Descripción del servicio o producto' },
+            monto:             { type: 'number', description: 'Monto total de la factura' },
+            fecha_vencimiento: { type: 'string', description: 'Fecha de vencimiento en formato YYYY-MM-DD (opcional)' },
+          },
+          required: ['cliente_nombre', 'descripcion', 'monto'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/qb-crear-factura?agent_id=${agent.id}`,
+      },
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'qb_registrar_pago',
+        description: 'Registra un pago recibido en QuickBooks y lo aplica a la factura correspondiente. Confirma siempre los datos antes de ejecutar. Consume 1 tarea.',
+        parameters: {
+          type: 'object',
+          properties: {
+            cliente_nombre:  { type: 'string', description: 'Nombre del cliente que pagó' },
+            monto:           { type: 'number', description: 'Monto recibido' },
+            factura_numero:  { type: 'string', description: 'Número de factura específica a aplicar (opcional, si no se indica se aplica a la más antigua pendiente)' },
+          },
+          required: ['cliente_nombre', 'monto'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/qb-registrar-pago?agent_id=${agent.id}`,
+      },
+    });
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'qb_reporte_ingresos',
+        description: 'Genera un reporte de ingresos, gastos y utilidad desde QuickBooks para un período determinado.',
+        parameters: {
+          type: 'object',
+          properties: {
+            periodo: {
+              type: 'string',
+              enum: ['este_mes', 'mes_pasado', 'este_año', 'año_pasado', 'este_trimestre', 'trimestre_pasado'],
+              description: 'Período del reporte (default: este_mes)',
+            },
+          },
+          required: [],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/qb-reporte-ingresos?agent_id=${agent.id}`,
+      },
+    });
+  }
 
   return tools;
 }
