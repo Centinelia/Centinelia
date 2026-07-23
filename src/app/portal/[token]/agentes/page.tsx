@@ -8,7 +8,6 @@ import Link                             from 'next/link';
 import { Settings2, Bot, Zap, Clock } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
-import AgentIntegrationsPanel          from '../AgentIntegrationsPanel';
 import MeerkatPicker                   from './MeerkatPicker';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
@@ -168,10 +167,10 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
 ];
 
-const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string; label: string }[] }[] = [
+const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean; tools: { key: string; label: string }[] }[] = [
   {
     label: 'Ventas',
-    color: '#22c55e',
+    color: '#22c55e', // noah
     tools: [
       { key: 'crear_lead',       label: 'Capturar leads' },
       { key: 'registrar_pedido', label: 'Registrar pedidos' },
@@ -180,7 +179,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Atención a clientes',
-    color: '#9B6DFF',
+    color: '#6C3BFF', // nia
     tools: [
       { key: 'buscar_cliente',          label: 'Buscar información de clientes' },
       { key: 'registrar_encuesta',      label: 'Registrar encuestas telefónicas' },
@@ -190,7 +189,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Agenda',
-    color: '#3b82f6',
+    color: '#ec4899', // naia
     tools: [
       { key: 'agendar_cita',          label: 'Agendar citas' },
       { key: 'list_calendar_events',  label: 'Consultar la agenda' },
@@ -200,7 +199,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Comunicación',
-    color: '#06b6d4',
+    color: '#3b82f6', // nelia
     tools: [
       { key: 'enviar_correo', label: 'Enviar correos electrónicos' },
       { key: 'llamar_a',      label: 'Hacer llamadas salientes' },
@@ -208,7 +207,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Documentos y archivos',
-    color: '#8b5cf6',
+    color: '#0d9488', // nox
     tools: [
       { key: 'crear_documento',       label: 'Crear documentos' },
       { key: 'create_file',           label: 'Crear archivos de texto' },
@@ -221,7 +220,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Investigación',
-    color: '#6366f1',
+    color: '#7c3aed', // niva
     tools: [
       { key: 'buscar_en_web', label: 'Buscar información en internet' },
       { key: 'read_url',      label: 'Leer páginas web' },
@@ -229,7 +228,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Finanzas',
-    color: '#10b981',
+    color: '#f59e0b', // nico
     tools: [
       { key: 'qb_consultar_facturas', label: 'Consultar facturas' },
       { key: 'qb_buscar_cliente',     label: 'Buscar clientes en QuickBooks' },
@@ -240,7 +239,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Colaboración',
-    color: '#0d9488',
+    color: '#ef4444', // nova
     tools: [
       { key: 'consultar_agente', label: 'Consultar a otro empleado' },
       { key: 'delegar_tarea',    label: 'Delegar tareas a otro empleado' },
@@ -248,7 +247,8 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'MercadoLibre',
-    color: '#f59e0b',
+    color: '#22c55e', // noah
+    specialized: true,
     tools: [
       { key: 'analizar_publicaciones_ml',  label: 'Analizar publicaciones' },
       { key: 'crear_publicacion_ml',       label: 'Crear publicaciones' },
@@ -258,7 +258,7 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Helpdesk',
-    color: '#ef4444',
+    color: '#06b6d4', // neo
     tools: [
       { key: 'crear_ticket',         label: 'Abrir tickets de soporte' },
       { key: 'consultar_incidentes', label: 'Consultar incidentes abiertos' },
@@ -267,7 +267,8 @@ const BUSINESS_CATEGORIES: { label: string; color: string; tools: { key: string;
   },
   {
     label: 'Servicios municipales',
-    color: '#1d4ed8',
+    color: '#f97316', // nara
+    specialized: true,
     tools: [
       { key: 'create_civic_report', label: 'Registrar reporte ciudadano' },
       { key: 'lookup_civic_report', label: 'Consultar estado de reporte' },
@@ -301,6 +302,14 @@ function getAgentTools(features: Record<string, unknown>): ToolChip[] {
   tools.push({ label: 'consultar_agente', color: '#0d9488' });
   tools.push({ label: 'reportar_falla',   color: '#6b7280' });
   return tools;
+}
+
+function officeTier(pct: number): string {
+  if (pct === 100) return 'Oficina Completa';
+  if (pct >= 95)   return 'Oficina Empresarial';
+  if (pct >= 80)   return 'Oficina Profesional';
+  if (pct >= 66)   return 'Oficina Básica';
+  return 'Primeros pasos';
 }
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
@@ -377,16 +386,19 @@ export default async function AgentesPage({ params }: Props) {
     }
   }
   const categoryStats = BUSINESS_CATEGORIES.map(cat => ({
-    label:   cat.label,
-    color:   cat.color,
-    tools:   cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key) })),
-    covered: cat.tools.filter(t => coveredToolKeys.has(t.key)).length,
-    total:   cat.tools.length,
+    label:       cat.label,
+    color:       cat.color,
+    specialized: !!cat.specialized,
+    tools:       cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key) })),
+    covered:     cat.tools.filter(t => coveredToolKeys.has(t.key)).length,
+    total:       cat.tools.length,
   }));
-  const totalBizTools  = categoryStats.reduce((s, c) => s + c.total, 0);
-  const coveredBizTotal = categoryStats.reduce((s, c) => s + c.covered, 0);
-  const overallPct     = totalBizTools > 0 ? Math.round((coveredBizTotal / totalBizTools) * 100) : 0;
-  const missingCats    = categoryStats.filter(c => c.covered < c.total);
+  const coreStats       = categoryStats.filter(c => !c.specialized);
+  const specializedStats = categoryStats.filter(c => c.specialized);
+  const totalBizTools   = coreStats.reduce((s, c) => s + c.total, 0);
+  const coveredBizTotal = coreStats.reduce((s, c) => s + c.covered, 0);
+  const overallPct      = totalBizTools > 0 ? Math.round((coveredBizTotal / totalBizTools) * 100) : 0;
+  const missingCats     = coreStats.filter(c => c.covered < c.total);
 
   // Per-meerkat recommendation: which roles cover missing categories, and what they add
   const meerkatRecs = missingCats.length > 0
@@ -509,7 +521,8 @@ export default async function AgentesPage({ params }: Props) {
                   </span>
                 </div>
 
-                {/* Descripción del meerkat */}
+                {/* Descripción + capacidades — siempre al fondo del cuerpo */}
+                <div className="flex flex-col gap-3 flex-1 justify-end w-full">
                 {meerkatDef?.descripcion && (
                   <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
                     {meerkatDef.descripcion}
@@ -547,6 +560,7 @@ export default async function AgentesPage({ params }: Props) {
                     </div>
                   </details>
                 )}
+                </div>{/* end description+capacidades wrapper */}
 
                 {/* Stats */}
                 <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
@@ -608,11 +622,11 @@ export default async function AgentesPage({ params }: Props) {
             border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
           }}>
 
-          {/* Header row: title + % badge + progress bar */}
+          {/* Header row: tier name + % + progress bar */}
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: overallPct === 100 ? '#16a34a' : '#6C3BFF' }}>
-                Tu oficina está equipada al {overallPct}%.
+                {officeTier(overallPct)}
               </p>
               {overallPct < 100 && missingCats.length > 0 && (
                 <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
@@ -643,9 +657,9 @@ export default async function AgentesPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Category breakdown — 2 columns */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0">
-            {categoryStats.map(cat => (
+          {/* Core categories — 3 columnas */}
+          <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+            {coreStats.map(cat => (
               <details key={cat.label}>
                 <summary
                   className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
@@ -654,9 +668,14 @@ export default async function AgentesPage({ params }: Props) {
                   <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-2)' }}>
                     {cat.label}
                   </span>
-                  <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
-                    {cat.covered}/{cat.total}
-                  </span>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                      <div className="h-1 rounded-full" style={{ width: `${Math.round((cat.covered / cat.total) * 100)}%`, background: cat.covered === cat.total ? '#16a34a' : cat.color }} />
+                    </div>
+                    <span className="text-[10px] tabular-nums w-6 text-right" style={{ color: 'var(--c-text-4)' }}>
+                      {Math.round((cat.covered / cat.total) * 100)}%
+                    </span>
+                  </div>
                   <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
                 </summary>
                 <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
@@ -677,6 +696,45 @@ export default async function AgentesPage({ params }: Props) {
             ))}
           </div>
 
+          {/* Módulos adicionales */}
+          <div className="pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--c-text-4)' }}>
+              Módulos adicionales
+            </p>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+              {specializedStats.map(cat => (
+                <details key={cat.label}>
+                  <summary
+                    className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
+                    style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-60" style={{ background: cat.color }} />
+                    <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-3)' }}>
+                      {cat.label}
+                    </span>
+                    <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
+                      {cat.covered}/{cat.total}
+                    </span>
+                    <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                  </summary>
+                  <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
+                    {cat.tools.map(t => (
+                      <div key={t.key} className="flex items-center gap-1 py-0.5">
+                        <span className="text-[10px] w-3 text-center flex-shrink-0"
+                          style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                          {t.covered ? '✓' : '○'}
+                        </span>
+                        <span className="text-[10px] leading-tight"
+                          style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
+                          {t.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+
           {/* CTA */}
           {missingCats.length > 0 && (
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
@@ -691,22 +749,6 @@ export default async function AgentesPage({ params }: Props) {
         </div>
       )}
 
-      {/* Herramientas por empleado */}
-      {agents.length > 0 && (
-        <div id="herramientas" className="flex flex-col gap-4">
-          <div>
-            <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>Herramientas</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Asigna el correo que atiende cada empleado. Conecta servicios en{' '}
-              <a href={`/portal/${token}/oficina/integraciones`}
-                className="underline" style={{ color: 'var(--c-text-2)' }}>
-                Integraciones
-              </a>.
-            </p>
-          </div>
-          <AgentIntegrationsPanel token={token} />
-        </div>
-      )}
 
     </div>
   );

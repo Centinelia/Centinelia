@@ -31,6 +31,7 @@ import TrustStageSelector           from '../TrustStageSelector';
 import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ContractSection              from '../ContractSection';
+import AgentEmailSection            from '../AgentEmailSection';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
@@ -103,6 +104,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ...(!isCoordinator
       ? [{ id: 'equipo',     label: 'Números del equipo',     group: 'Operación'     }] : []),
     { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Operación'     },
+    { id: 'correo',          label: 'Correo',                 group: 'Herramientas'  },
     ...(isOwner && hasVoiceJornada
       ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
     ...(!isCoordinator && isOwner
@@ -313,6 +315,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   connectedEmail={connectedEmail}
                   agentRole={agentRole || agentName}
                 />
+              </div>
+            </div>
+
+            <div id="correo" style={SCROLL_STYLE}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
+                  <InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />
+                </div>
+                <AgentEmailSection token={token} />
               </div>
             </div>
 
