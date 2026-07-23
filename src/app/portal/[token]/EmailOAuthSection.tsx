@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 
 interface Integration {
@@ -49,6 +49,16 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
   const [toggling,     setToggling]     = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [showAll,      setShowAll]      = useState(false);
+  const noteRef = useRef<HTMLDivElement>(null);
+
+  function flashNote() {
+    const el = noteRef.current;
+    if (!el) return;
+    el.classList.remove('anchor-active');
+    void el.offsetWidth;
+    el.classList.add('anchor-active');
+    setTimeout(() => el.classList.remove('anchor-active'), 2000);
+  }
 
   const load = useCallback(async () => {
     const res  = await fetch(`/api/portal/${token}/email-oauth`);
@@ -72,6 +82,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
     });
     setIntegrations(prev => prev.map(i => i.provider === provider ? { ...i, auto_reply: !current } : i));
     setToggling(null);
+    flashNote();
   }
 
   async function disconnect(provider: 'gmail' | 'outlook') {
@@ -208,7 +219,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 <div className="mt-3 grid gap-3 items-center" style={{ gridTemplateColumns: '4fr 7fr' }}>
                   <div>{workspacePanel}</div>
                   <div className="flex flex-col gap-2">
-                    <div className="flex items-start gap-2 rounded-lg px-3 py-2"
+                    <div ref={noteRef} className="flex items-start gap-2 rounded-lg px-3 py-2"
                       style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
                       {connected.auto_reply
                         ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
