@@ -33,7 +33,6 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   order_taking:            'Toma pedidos de productos o platillos',
   multilingual:            'Responde en inglés además de español',
   client_memory:           'Recuerda información de llamadas anteriores del mismo número',
-  whatsapp_escalation:     'Envía un WhatsApp al dueño si el agente no puede resolver',
   outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',

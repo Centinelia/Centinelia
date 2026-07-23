@@ -277,12 +277,6 @@ Personaliza la conversación con lo que sabes: última visita, pedidos frecuente
 Esto hace que el cliente se sienta reconocido y valorado.`);
   }
 
-  if (f.whatsapp_escalation) {
-    blocks.push(`ESCALACIÓN A WHATSAPP:
-Si la llamada no se puede completar (línea ocupada, fuera de horario, sin respuesta):
-Usa la herramienta enviar_whatsapp_escalacion para enviar un mensaje automático al cliente diciéndole que viste que intentó comunicarse y que puedes ayudarle por WhatsApp.
-Número de WhatsApp del negocio: ${agent.transfer_whatsapp ?? '[WhatsApp no configurado]'}`);
-  }
 
   // Lite tier: condensed privacy + rules (covers what full PRIVACIDAD + REGLAS GENERALES gave)
   if (promptTier === 'lite') blocks.push(LITE_OPS);

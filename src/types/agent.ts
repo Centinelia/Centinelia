@@ -24,7 +24,6 @@ export interface AgentFeatures {
   // Nivel 3, solo pro
   multilingual: boolean;        // Español + inglés automático
   client_memory: boolean;       // Recordar historial del cliente
-  whatsapp_escalation: boolean; // WhatsApp si línea ocupada o fuera de horario
 
   // Fase 2 — llamadas salientes (por activar cuando Phase 2 lance)
   outbound_calls: boolean;      // Permite disparar llamadas salientes desde el portal
@@ -185,7 +184,6 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     order_taking:            false,
     multilingual:            false,
     client_memory:           false,
-    whatsapp_escalation:     true,
     outbound_calls:          false,
   },
   pro: {
@@ -197,7 +195,6 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
     order_taking:            true,
     multilingual:            true,
     client_memory:           true,
-    whatsapp_escalation:     true,
     outbound_calls:          false,
   },
 };
@@ -226,7 +223,6 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   order_taking:            'Toma de pedidos',
   multilingual:            'Multiidioma (ES + EN)',
   client_memory:           'Memoria de cliente',
-  whatsapp_escalation:     'Escalación a WhatsApp',
   outbound_calls:          'Llamadas salientes',
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',

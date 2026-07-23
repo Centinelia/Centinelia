@@ -540,25 +540,6 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     }
   }
 
-  if (f.whatsapp_escalation) {
-    tools.push({
-      type: 'function',
-      function: {
-        name: 'enviar_whatsapp_escalacion',
-        description: 'Envía un WhatsApp al cliente diciéndole que pueden atenderle por ese canal cuando la llamada no pudo resolverse.',
-        parameters: {
-          type: 'object',
-          properties: {
-            numero_cliente: { type: 'string', description: 'Número del cliente con código de país, ej: +528112345678' },
-            motivo:         { type: 'string', description: 'Breve motivo de la escalación' },
-          },
-          required: ['numero_cliente'],
-        },
-        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/enviar-whatsapp-escalacion?agent_id=${agent.id}`,
-      },
-    });
-  }
-
   // Available to all agents: ask a sibling agent for info from their knowledge base
   tools.push({
     type: 'function',

@@ -658,7 +658,6 @@ function detectOutcome(message: any, structured: any): string {
   if (toolCalls.includes('agendar_cita'))                return 'appointment_booked';
   if (toolCalls.includes('registrar_pedido'))            return 'order_taken';
   if (toolCalls.includes('notificar_transferencia'))     return 'transferred';
-  if (toolCalls.includes('enviar_whatsapp_escalacion'))  return 'escalated_whatsapp';
 
   if (structured) {
     const tipo = structured.tipo_contacto ?? '';

@@ -30,7 +30,6 @@ const DYNAMIC_LABELS: Partial<Record<keyof AgentFeatures, string>> = {
   order_taking:            'Toma y registro de pedidos',
   multilingual:            'Atención en español e inglés de forma automática',
   client_memory:           'Memoria persistente de cliente entre sesiones',
-  whatsapp_escalation:     'Escalación a WhatsApp cuando la línea está ocupada',
   outbound_calls:          'Llamadas salientes desde el portal',
   helpdesk:                'Mesa de ayuda IT: tickets, incidentes y directorio',
   is_coordinator:          'Coordinación de equipos y delegación entre empleados digitales',
