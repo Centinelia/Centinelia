@@ -54,7 +54,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
       </div>
 
       {/* Center — review CTA + bug report */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-row items-center justify-center gap-6">
         {reviewUrl && (
           <a
             href={reviewUrl}
