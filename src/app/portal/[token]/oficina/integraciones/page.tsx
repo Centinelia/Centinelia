@@ -27,11 +27,12 @@ export default async function IntegracionesPage({ params }: Props) {
     redirect('/portal/login');
 
   const { data: allAgents } = agent.portal_email
-    ? await supabase.from('voice_agents').select('role, features').eq('portal_email', agent.portal_email)
+    ? await supabase.from('voice_agents').select('role, features, notion_access_token').eq('portal_email', agent.portal_email)
     : { data: [] };
 
   const hasOpsAgent = (allAgents ?? []).some((a: any) => a.role) || !!(agent as any).features?.role;
-  const hasNotion   = !!(agent as any).notion_access_token;
+  const hasNotion   = !!(agent as any).notion_access_token ||
+    (allAgents ?? []).some((a: any) => !!a.notion_access_token);
 
   return (
     <div id="of-integraciones" className="flex flex-col gap-8">

@@ -127,6 +127,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       agentRole:     agent.role as string | null,
       ownerEmail:    agent.client_email as string,
       portalToken:   agent.portal_token as string,
+      portalEmail:   agent.portal_email as string | undefined,
     });
 
     if (integration.auto_reply && inboxItem?.ai_draft) {

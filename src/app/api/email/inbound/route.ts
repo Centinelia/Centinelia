@@ -207,6 +207,7 @@ export async function POST(req: NextRequest) {
       agentRole:     opsAgent.role as string | null,
       ownerEmail,
       portalToken:   opsAgent.portal_token as string,
+      portalEmail,
     }).catch(err => console.error('[ops] inbox-processor error:', err));
   }
 

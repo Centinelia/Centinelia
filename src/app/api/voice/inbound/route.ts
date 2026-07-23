@@ -672,6 +672,243 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     },
   });
 
+  // Available to all agents: report a technical failure
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'reportar_falla',
+      description: 'Reporta una falla técnica del sistema Centinelia al equipo de soporte. Úsala cuando detectes un error real: timeout de herramienta, comportamiento inesperado, datos incorrectos o limitación técnica que impida tu trabajo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo:        { type: 'string', description: 'Categoría: "Bug de sistema", "Comportamiento inesperado", "Datos incorrectos", "Limitación técnica" u "Otro".' },
+          descripcion: { type: 'string', description: 'Qué ocurrió, cuándo, y cuál debería ser el comportamiento correcto.' },
+          contexto:    { type: 'string', description: 'Contexto de la llamada donde se detectó la falla (opcional).' },
+        },
+        required: ['tipo', 'descripcion'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/reportar-falla?agent_id=${agent.id}`,
+    },
+  });
+
+  // crear_documento — generate a PDF document during the call
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'crear_documento',
+      description: 'Genera un documento PDF con el logo y colores del negocio y lo envía al correo del dueño. Usa template_type="proposal" para propuestas (incluye cliente y precio), "letter" para cartas formales, "factura" para facturas, "orden_compra" para órdenes de compra, "general" para cualquier otro documento.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title:          { type: 'string', description: 'Título del documento' },
+          content:        { type: 'string', description: 'Contenido. Usa # para secciones y ## para subsecciones.' },
+          filename:       { type: 'string', description: 'Nombre del archivo sin extensión' },
+          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra'], description: 'Tipo de plantilla' },
+          client_name:    { type: 'string', description: 'Nombre del cliente (proposal, factura)' },
+          client_email:   { type: 'string', description: 'Correo del cliente (proposal, factura)' },
+          client_rfc:     { type: 'string', description: 'RFC del receptor (factura)' },
+          total_price:    { type: 'string', description: 'Precio total. Ej: "$50,000 MXN" (proposal)' },
+          validity_days:  { type: 'number', description: 'Días de validez (proposal)' },
+          recipient_name: { type: 'string', description: 'Nombre del destinatario (letter)' },
+          vendor_name:    { type: 'string', description: 'Nombre del proveedor (orden_compra)' },
+          payment_terms:  { type: 'string', description: 'Condiciones de pago (factura, orden_compra)' },
+          include_iva:    { type: 'boolean', description: 'Incluir IVA 16%' },
+          items: {
+            type: 'array',
+            description: 'Conceptos (factura, orden_compra)',
+            items: { type: 'object', properties: { descripcion: { type: 'string' }, cantidad: { type: 'number' }, precio_unitario: { type: 'number' } }, required: ['descripcion', 'cantidad', 'precio_unitario'] },
+          },
+        },
+        required: ['title', 'content'],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/create_document?agent_id=${agent.id}`,
+    },
+  });
+
+  // Outbound call — only for agents with outbound_calls feature
+  if ((agent as any).features?.outbound_calls) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'llamar_a',
+        description: 'Realiza una llamada telefónica saliente a un número en nombre del dueño. Úsala cuando el dueño pida llamar a alguien durante la conversación.',
+        parameters: {
+          type: 'object',
+          properties: {
+            numero:  { type: 'string', description: 'Número de teléfono con código de país. Ej: +5218113333333' },
+            nombre:  { type: 'string', description: 'Nombre del contacto a llamar' },
+            mensaje: { type: 'string', description: 'Motivo de la llamada o mensaje para el contacto' },
+          },
+          required: ['numero', 'mensaje'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/llamar-a?agent_id=${agent.id}`,
+      },
+    });
+  }
+
+  // Surveys — only for agents with of_encuestas feature
+  if ((agent as any).features?.of_encuestas) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'registrar_encuesta',
+        description: 'Registra las respuestas capturadas de una encuesta de satisfacción. Llámala cuando hayas recopilado las respuestas antes de cerrar la llamada.',
+        parameters: {
+          type: 'object',
+          properties: {
+            survey_id:    { type: 'string', description: 'ID de la encuesta activa (proporcionado en el prompt).' },
+            respuestas:   { type: 'array', description: 'Lista de respuestas por pregunta.', items: { type: 'object', properties: { orden: { type: 'number' }, valor: { type: 'string' } }, required: ['orden', 'valor'] } },
+            caller_number:{ type: 'string', description: 'Número del llamante (opcional).' },
+            call_id:      { type: 'string', description: 'ID de la llamada Vapi (opcional).' },
+          },
+          required: ['survey_id', 'respuestas'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/registrar-encuesta?agent_id=${agent.id}`,
+      },
+    });
+  }
+
+  // Civic reports — for NARA (government/civic agents)
+  const meerkatRole = (agent as any).features?.meerkat_role_id as string | undefined;
+  if (meerkatRole === 'nara' || (agent as any).features?.civic_reports) {
+    const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
+    tools.push(
+      {
+        type: 'function',
+        function: {
+          name: 'create_civic_report',
+          description: 'Registra un nuevo reporte ciudadano (bache, luminaria, basura, agua, ruido, etc.) y genera un folio de seguimiento.',
+          parameters: {
+            type: 'object',
+            properties: {
+              category:      { type: 'string', enum: ['bache', 'luminaria', 'basura', 'agua', 'ruido', 'parque', 'transporte', 'otro'], description: 'Tipo de reporte' },
+              description:   { type: 'string', description: 'Descripción del problema reportado' },
+              location_text: { type: 'string', description: 'Dirección, colonia o intersección donde está el problema' },
+              caller_name:   { type: 'string', description: 'Nombre del ciudadano (si lo proporcionó)' },
+              caller_number: { type: 'string', description: 'Número telefónico del ciudadano' },
+            },
+            required: ['category', 'description'],
+          },
+          serverUrl: `${execBase}/create_civic_report?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'lookup_civic_report',
+          description: 'Consulta el estado de un reporte ciudadano por folio o por número de teléfono del ciudadano.',
+          parameters: {
+            type: 'object',
+            properties: {
+              folio:         { type: 'string', description: 'Número de folio del reporte. Ej: REP-2026-00001' },
+              caller_number: { type: 'string', description: 'Teléfono del ciudadano para buscar todos sus reportes' },
+            },
+            required: [],
+          },
+          serverUrl: `${execBase}/lookup_civic_report?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'update_civic_report',
+          description: 'Actualiza el estado o agrega notas a un reporte ciudadano existente.',
+          parameters: {
+            type: 'object',
+            properties: {
+              folio:  { type: 'string', description: 'Folio del reporte. Ej: REP-2026-00001' },
+              status: { type: 'string', enum: ['abierto', 'en_proceso', 'resuelto', 'cerrado'], description: 'Nuevo estado del reporte' },
+              notes:  { type: 'string', description: 'Notas internas de seguimiento' },
+            },
+            required: ['folio'],
+          },
+          serverUrl: `${execBase}/update_civic_report?agent_id=${agent.id}`,
+        },
+      },
+    );
+  }
+
+  // Calendar tools — for agents with a connected calendar
+  if ((agent as any).calendar_type) {
+    const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
+    tools.push(
+      {
+        type: 'function',
+        function: {
+          name: 'list_calendar_events',
+          description: 'Consulta los eventos del calendario del dueño en un rango de fechas. Úsala para ver la agenda o verificar disponibilidad.',
+          parameters: {
+            type: 'object',
+            properties: {
+              from: { type: 'string', description: 'Fecha y hora de inicio en ISO 8601. Ej: "2026-07-28T00:00:00"' },
+              to:   { type: 'string', description: 'Fecha y hora de fin en ISO 8601. Ej: "2026-07-28T23:59:59"' },
+            },
+            required: ['from', 'to'],
+          },
+          serverUrl: `${execBase}/list_calendar_events?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'create_calendar_event',
+          description: 'Crea un evento en el calendario del dueño.',
+          parameters: {
+            type: 'object',
+            properties: {
+              title:       { type: 'string', description: 'Título del evento' },
+              start:       { type: 'string', description: 'Inicio en ISO 8601. Ej: "2026-07-28T10:00:00"' },
+              end:         { type: 'string', description: 'Fin en ISO 8601. Ej: "2026-07-28T11:00:00"' },
+              description: { type: 'string', description: 'Descripción o notas del evento (opcional)' },
+              location:    { type: 'string', description: 'Lugar del evento (opcional)' },
+              attendees:   { type: 'array', items: { type: 'string' }, description: 'Correos de invitados (opcional)' },
+            },
+            required: ['title', 'start', 'end'],
+          },
+          serverUrl: `${execBase}/create_calendar_event?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'delete_calendar_event',
+          description: 'Cancela un evento del calendario. Primero usa list_calendar_events para obtener el ID.',
+          parameters: {
+            type: 'object',
+            properties: {
+              event_id: { type: 'string', description: 'ID del evento a cancelar' },
+            },
+            required: ['event_id'],
+          },
+          serverUrl: `${execBase}/delete_calendar_event?agent_id=${agent.id}`,
+        },
+      },
+    );
+  }
+
+  // create_contract_draft — for NOX and coordinator-type agents
+  if (meerkatRole === 'nox' || (agent as any).features?.contract_drafts) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'create_contract_draft',
+        description: 'Crea un borrador de contrato de prestación de servicios. Úsala cuando el dueño pida preparar un contrato con un cliente.',
+        parameters: {
+          type: 'object',
+          properties: {
+            client_name:  { type: 'string', description: 'Nombre completo del cliente o razón social' },
+            client_email: { type: 'string', description: 'Correo del cliente' },
+            client_rfc:   { type: 'string', description: 'RFC del cliente (si se conoce)' },
+            notes:        { type: 'string', description: 'Notas adicionales del contrato' },
+            source_type:  { type: 'string', enum: ['llamada', 'correo', 'manual'], description: 'Origen del contrato' },
+          },
+          required: [],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/create_contract_draft?agent_id=${agent.id}`,
+      },
+    });
+  }
+
   if (qbConnected) {
     tools.push({
       type: 'function',
