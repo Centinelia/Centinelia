@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
-import { approvalEmailHtml } from '@/lib/ops/approval-email';
+import { approvalEmailHtml, escalationEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
@@ -25,6 +25,10 @@ interface ProcessedEmail {
   invoiceData:        Record<string, string | number | null> | null;
   invoiceValid:       boolean | null;
   invoiceDiscrepancy: string | null;
+  needsInfo:          boolean;
+  escalateToApprover: boolean;
+  infoNeeded:         string | null;
+  requestToSender:    string | null;
 }
 
 // All tools available in email context (ML tools excluded — require portal cookie)
@@ -218,11 +222,15 @@ export async function processInboxEmail(params: {
   ownerEmail:     string;
   portalToken:    string;
   portalEmail?:   string;
+  autoReply?:     boolean;
+  approvalEmail?: string | null;
+  sendReplyFn?:   (body: string) => Promise<void>;
 }): Promise<void> {
   const {
     agentId, source, rawMessageId, emailFrom, emailSubject,
     emailBody, attachments, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
+    autoReply, approvalEmail, sendReplyFn,
   } = params;
 
   const hasInvoiceAttachment = attachments.some(a =>
@@ -244,7 +252,13 @@ Categorías: proveedor, cliente, urgente, factura, spam, otro.
 - "factura": cualquier email con factura, cargo o solicitud de pago de un proveedor.
 - "spam": publicidad, marketing no solicitado.
 
-Tienes herramientas para consultar datos reales del negocio (Drive, internet, QuickBooks, calendario, reportes ciudadanos, etc.). Úsalas proactivamente si el email pide información específica para que el borrador de respuesta sea preciso y con datos reales.
+Tienes herramientas para consultar datos reales del negocio (Drive, internet, QuickBooks, calendario, reportes ciudadanos, compañeros, etc.). Úsalas proactivamente si el email pide información específica para que el borrador de respuesta sea preciso y con datos reales.
+
+Si después de usar todas las herramientas disponibles no puedes encontrar la información necesaria para responder correctamente:
+- Pon "needs_info": true en el JSON.
+- Si tu aprobador podría tener esa información (datos internos, precios, decisiones comerciales, contactos del negocio), pon "escalate_to_approver": true y describe en "info_needed" qué información exacta necesitas.
+- Si solo el remitente puede proporcionar esa información (datos de su empresa, detalles de su pedido, especificaciones que solo él conoce), pon "escalate_to_approver": false y redacta en "request_to_sender" el email solicitando esa información de forma clara y profesional.
+- Si puedes responder con la información disponible, pon "needs_info": false, "escalate_to_approver": false.
 
 Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, sin markdown, sin texto adicional.`;
 
@@ -275,7 +289,11 @@ Produce JSON con:
 {
   "category": "<categoría>",
   "summary": "<resumen de 1-2 oraciones en español>",
-  "draft": "<borrador de respuesta en español, o null si es spam o solo informativo>"
+  "draft": "<borrador de respuesta en español, o null si no aplica>",
+  "needs_info": false,
+  "escalate_to_approver": false,
+  "info_needed": null,
+  "request_to_sender": null
 }
 ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepancy' : ''}`;
 
@@ -286,6 +304,10 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     invoiceData:        null,
     invoiceValid:       null,
     invoiceDiscrepancy: null,
+    needsInfo:          false,
+    escalateToApprover: false,
+    infoNeeded:         null,
+    requestToSender:    null,
   };
 
   const supabase  = createAdminClient();
@@ -365,12 +387,16 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
       const parsed = JSON.parse(lastText);
       result = {
-        category:           parsed.category           ?? 'otro',
-        summary:            parsed.summary             ?? 'Email recibido.',
-        draft:              parsed.draft               ?? null,
-        invoiceData:        parsed.invoice_data        ?? null,
-        invoiceValid:       parsed.invoice_valid       ?? null,
-        invoiceDiscrepancy: parsed.invoice_discrepancy ?? null,
+        category:           parsed.category             ?? 'otro',
+        summary:            parsed.summary               ?? 'Email recibido.',
+        draft:              parsed.draft                 ?? null,
+        invoiceData:        parsed.invoice_data          ?? null,
+        invoiceValid:       parsed.invoice_valid         ?? null,
+        invoiceDiscrepancy: parsed.invoice_discrepancy   ?? null,
+        needsInfo:          parsed.needs_info            ?? false,
+        escalateToApprover: parsed.escalate_to_approver ?? false,
+        infoNeeded:         parsed.info_needed           ?? null,
+        requestToSender:    parsed.request_to_sender     ?? null,
       };
     } catch (err) {
       console.error('[ops/inbox-processor] AI error:', err);
@@ -387,68 +413,121 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       const textBlock = response.content.find(b => b.type === 'text');
       const parsed    = textBlock?.type === 'text' ? JSON.parse(textBlock.text.trim()) : {};
       result = {
-        category:           parsed.category           ?? 'otro',
-        summary:            parsed.summary             ?? 'Email recibido.',
-        draft:              parsed.draft               ?? null,
-        invoiceData:        parsed.invoice_data        ?? null,
-        invoiceValid:       parsed.invoice_valid       ?? null,
-        invoiceDiscrepancy: parsed.invoice_discrepancy ?? null,
+        category:           parsed.category             ?? 'otro',
+        summary:            parsed.summary               ?? 'Email recibido.',
+        draft:              parsed.draft                 ?? null,
+        invoiceData:        parsed.invoice_data          ?? null,
+        invoiceValid:       parsed.invoice_valid         ?? null,
+        invoiceDiscrepancy: parsed.invoice_discrepancy   ?? null,
+        needsInfo:          parsed.needs_info            ?? false,
+        escalateToApprover: parsed.escalate_to_approver ?? false,
+        infoNeeded:         parsed.info_needed           ?? null,
+        requestToSender:    parsed.request_to_sender     ?? null,
       };
     } catch (err) {
       console.error('[ops/inbox-processor] AI error (no portalEmail):', err);
     }
   }
 
+  // Determine final status and what to store in ai_draft
+  let finalStatus: string;
+  let finalDraft: string | null;
+
+  if (result.category === 'spam') {
+    finalStatus = 'skipped';
+    finalDraft  = null;
+  } else if (result.needsInfo && result.escalateToApprover) {
+    finalStatus = 'escalated';
+    finalDraft  = result.infoNeeded;
+  } else if (result.needsInfo && !result.escalateToApprover) {
+    finalStatus = 'info_requested';
+    finalDraft  = result.requestToSender;
+  } else if (result.draft && autoReply && sendReplyFn) {
+    finalStatus = 'auto_replied';
+    finalDraft  = result.draft;
+  } else {
+    finalStatus = 'pending';
+    finalDraft  = result.draft;
+  }
+
   const { data: item } = await supabase
     .from('ops_inbox')
     .insert({
-      agent_id:           agentId,
+      agent_id:            agentId,
       source,
-      raw_message_id:     rawMessageId ?? null,
-      email_from:         emailFrom,
-      email_subject:      emailSubject,
-      email_body:         emailBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+      raw_message_id:      rawMessageId ?? null,
+      email_from:          emailFrom,
+      email_subject:       emailSubject,
+      email_body:          emailBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
       attachments,
-      category:           result.category,
-      ai_summary:         result.summary,
-      ai_draft:           result.draft,
-      item_type:          looksLikeInvoice ? 'invoice' : 'email',
-      invoice_data:       result.invoiceData,
-      invoice_valid:      result.invoiceValid,
+      category:            result.category,
+      ai_summary:          result.summary,
+      ai_draft:            finalDraft,
+      item_type:           looksLikeInvoice ? 'invoice' : 'email',
+      invoice_data:        result.invoiceData,
+      invoice_valid:       result.invoiceValid,
       invoice_discrepancy: result.invoiceDiscrepancy,
-      status:             result.category === 'spam' ? 'skipped' : 'pending',
+      status:              finalStatus,
     })
-    .select('id, approval_token, status')
+    .select('id, approval_token')
     .single();
 
-  if (!item || item.status === 'skipped') return;
+  if (!item || finalStatus === 'skipped') return;
 
-  const baseUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const approveUrl = `${baseUrl}/api/ops/approve/${item.approval_token}`;
-  const rejectUrl  = `${baseUrl}/api/ops/reject/${item.approval_token}`;
-  const portalUrl  = `${baseUrl}/portal/${portalToken}?tab=oficina`;
+  const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const portalUrl = `${baseUrl}/portal/${portalToken}?tab=oficina`;
+  const notifyTo  = approvalEmail || ownerEmail;
 
-  const html = approvalEmailHtml({
-    businessName,
-    emailFrom,
-    emailSubject,
-    category:           result.category,
-    categoryLabel:      CATEGORY_LABELS[result.category] ?? result.category,
-    summary:            result.summary,
-    draft:              result.draft,
-    itemType:           looksLikeInvoice ? 'invoice' : 'email',
-    invoiceData:        result.invoiceData,
-    invoiceValid:       result.invoiceValid,
-    invoiceDiscrepancy: result.invoiceDiscrepancy,
-    approveUrl,
-    rejectUrl,
-    portalUrl,
-    attachmentCount:    attachments.length,
-  });
+  if (finalStatus === 'escalated') {
+    const html = escalationEmailHtml({
+      agentName,
+      businessName,
+      emailFrom,
+      emailSubject,
+      summary:    result.summary,
+      infoNeeded: result.infoNeeded ?? '',
+      portalUrl,
+    });
+    await sendEmail({
+      to:      notifyTo,
+      subject: `[Consulta de ${agentName}] ${emailSubject || '(sin asunto)'}`,
+      html,
+    });
 
-  await sendEmail({
-    to:      ownerEmail,
-    subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} — aprobación pendiente`,
-    html,
-  });
+  } else if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
+    await sendReplyFn(result.requestToSender).catch(err =>
+      console.error('[ops/inbox-processor] info_requested send failed:', err)
+    );
+
+  } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn) {
+    await sendReplyFn(result.draft).catch(err =>
+      console.error('[ops/inbox-processor] auto_reply send failed:', err)
+    );
+
+  } else if (finalStatus === 'pending') {
+    const approveUrl = `${baseUrl}/api/ops/approve/${item.approval_token}`;
+    const rejectUrl  = `${baseUrl}/api/ops/reject/${item.approval_token}`;
+    const html = approvalEmailHtml({
+      businessName,
+      emailFrom,
+      emailSubject,
+      category:           result.category,
+      categoryLabel:      CATEGORY_LABELS[result.category] ?? result.category,
+      summary:            result.summary,
+      draft:              result.draft,
+      itemType:           looksLikeInvoice ? 'invoice' : 'email',
+      invoiceData:        result.invoiceData,
+      invoiceValid:       result.invoiceValid,
+      invoiceDiscrepancy: result.invoiceDiscrepancy,
+      approveUrl,
+      rejectUrl,
+      portalUrl,
+      attachmentCount:    attachments.length,
+    });
+    await sendEmail({
+      to:      notifyTo,
+      subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} — aprobación pendiente`,
+      html,
+    });
+  }
 }

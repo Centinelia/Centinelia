@@ -143,7 +143,7 @@ const RowIcons = {
       <rect width="48" height="48" rx="8" fill="#FFE600" />
       <ellipse cx="24" cy="20" rx="13" ry="11" fill="#FFE600" stroke="#333" strokeWidth="2" />
       <path d="M13 20c0-3 4-9 11-9s11 6 11 9" fill="#FFE600" />
-      <path d="M11 22c2 7 7 12 13 12s11-5 13-12" fill="#FFE600" stroke="#333" strokeWidth="2" fill="none" />
+      <path d="M11 22c2 7 7 12 13 12s11-5 13-12" stroke="#333" strokeWidth="2" fill="none" />
       <circle cx="20" cy="22" r="2" fill="#333" />
       <circle cx="28" cy="22" r="2" fill="#333" />
       <path d="M20 28c1 2 3 3 4 3s3-1 4-3" stroke="#333" strokeWidth="1.5" strokeLinecap="round" fill="none" />

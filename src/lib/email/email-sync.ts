@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector, type IntegrationRow } from '@/lib/connectors';
-import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 
 type EmailIntegration = IntegrationRow & {
   agent_id:     string;
@@ -40,7 +39,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email')
+    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email')
     .eq('id', integration.agent_id)
     .single();
 
@@ -93,21 +92,6 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       continue;
     }
 
-    const { data: inboxItem } = await supabase
-      .from('ops_inbox')
-      .insert({
-        agent_id:       agent.id,
-        source:         integration.provider,
-        raw_message_id: msg.id,
-        email_from:     msg.from,
-        email_subject:  msg.subject,
-        email_body:     msg.body.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
-        attachments:    [],
-        status:         'pending',
-      })
-      .select('id, ai_draft, approval_token')
-      .single();
-
     await conn.email.markRead(msg.id).catch((err) =>
       console.error(`[email-sync] markRead failed for ${msg.id}:`, err)
     );
@@ -128,21 +112,15 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       ownerEmail:    agent.client_email as string,
       portalToken:   agent.portal_token as string,
       portalEmail:   agent.portal_email as string | undefined,
+      autoReply:     integration.auto_reply,
+      approvalEmail: (agent as Record<string, unknown>).approval_email as string | null | undefined,
+      sendReplyFn:   (body: string) => conn.email.sendReply({
+        messageId: msg.id,
+        threadId:  msg.threadId,
+        to:        msg.from,
+        subject:   msg.subject,
+        body,
+      }),
     });
-
-    if (integration.auto_reply && inboxItem?.ai_draft) {
-      try {
-        await conn.email.sendReply({
-          messageId: msg.id,
-          threadId:  msg.threadId,
-          to:        msg.from,
-          subject:   msg.subject,
-          body:      inboxItem.ai_draft,
-        });
-        await supabase.from('ops_inbox').update({ status: 'auto_replied' }).eq('id', inboxItem.id);
-      } catch (err) {
-        console.error('[email-sync] auto-reply failed:', err);
-      }
-    }
   }
 }
