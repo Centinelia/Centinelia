@@ -164,8 +164,12 @@ const RowIcons = {
 function StatusDot({ on }: { on: boolean }) {
   if (!on) return null;
   return (
-    <span className="w-2 h-2 rounded-full flex-shrink-0"
-      style={{ background: '#22c55e', boxShadow: '0 0 5px rgba(34,197,94,0.5)' }} />
+    <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: '#22c55e', boxShadow: '0 0 4px rgba(34,197,94,0.6)' }} />
+      Activo
+    </span>
   );
 }
 
