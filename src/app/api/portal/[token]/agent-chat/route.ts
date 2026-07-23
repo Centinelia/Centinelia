@@ -517,9 +517,11 @@ const DELEGATE_TASK_TOOL: Anthropic.Tool = {
   input_schema: {
     type: 'object' as const,
     properties: {
-      agente:   { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nox", "Nova", "contabilidad".' },
-      tarea:    { type: 'string', description: 'Descripción clara de lo que debe ejecutar el compañero.' },
-      contexto: { type: 'string', description: 'Contexto adicional que ayude al compañero a entender la solicitud. Opcional.' },
+      agente:            { type: 'string', description: 'Nombre o rol del compañero. Ej: "Nox", "Nova", "contabilidad".' },
+      tarea:             { type: 'string', description: 'Descripción clara de lo que debe ejecutar el compañero.' },
+      contexto:          { type: 'string', description: 'Contexto adicional que ayude al compañero a entender la solicitud. Opcional.' },
+      success_criteria:  { type: 'string', description: 'Criterio de éxito: descripción de qué debe haber pasado para que la tarea se considere completada. Si se define, el agente evaluará su resultado y reintentará si no lo cumple.' },
+      max_iterations:    { type: 'number', description: 'Número máximo de intentos para cumplir el criterio de éxito (1-5, default 3). Solo aplica cuando success_criteria está definido.' },
     },
     required: ['agente', 'tarea'],
   },

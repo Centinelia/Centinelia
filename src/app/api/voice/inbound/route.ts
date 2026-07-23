@@ -568,9 +568,11 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
       parameters: {
         type: 'object',
         properties: {
-          agente:   { type: 'string', description: 'Nombre o rol del compañero al que delegar. Ej: "Nox", "Nova", "contador".' },
-          tarea:    { type: 'string', description: 'Descripción clara de lo que debe hacer el compañero.' },
-          contexto: { type: 'string', description: 'Contexto de la conversación que ayude al compañero a ejecutar mejor la tarea. Opcional.' },
+          agente:           { type: 'string', description: 'Nombre o rol del compañero al que delegar. Ej: "Nox", "Nova", "contador".' },
+          tarea:            { type: 'string', description: 'Descripción clara de lo que debe hacer el compañero.' },
+          contexto:         { type: 'string', description: 'Contexto de la conversación que ayude al compañero a ejecutar mejor la tarea. Opcional.' },
+          success_criteria: { type: 'string', description: 'Qué debe haber pasado para considerar la tarea completada. Si se define, el agente reintentará si no lo cumple.' },
+          max_iterations:   { type: 'number', description: 'Intentos máximos para cumplir el criterio (1-5, default 3).' },
         },
         required: ['agente', 'tarea'],
       },

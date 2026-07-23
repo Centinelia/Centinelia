@@ -1,7 +1,7 @@
 const TENANT    = 'common';
 const AUTH_BASE = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 
-export const OUTLOOK_SCOPES = 'Mail.Read Mail.Send Files.ReadWrite Calendars.ReadWrite offline_access User.Read';
+export const OUTLOOK_SCOPES = 'Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.ReadWrite Tasks.ReadWrite offline_access User.Read';
 
 export function outlookAuthUrl(state: string): string {
   const p = new URLSearchParams({
@@ -61,7 +61,7 @@ export async function outlookRefreshToken(refresh_token: string): Promise<{ acce
   return { access_token: data.access_token, expires_in: data.expires_in };
 }
 
-function callbackUrl(provider: string): string {
+function callbackUrl(_provider: string): string {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  return `${base}/api/auth/email-callback?provider=${provider}`;
+  return `${base}/api/auth/email-callback/outlook`;
 }

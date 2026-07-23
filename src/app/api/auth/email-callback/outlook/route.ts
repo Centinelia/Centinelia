@@ -1,30 +1,26 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { gmailExchangeCode }   from '@/lib/email/gmail';
-import { outlookExchangeCode } from '@/lib/email/outlook';
-import { encrypt }             from '@/lib/crypto';
+import { createAdminClient }         from '@/lib/supabase/admin';
+import { outlookExchangeCode }       from '@/lib/email/outlook';
+import { encrypt }                   from '@/lib/crypto';
 
 export async function GET(req: NextRequest) {
   const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const provider  = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
-  const code      = req.nextUrl.searchParams.get('code');
-  const rawState  = req.nextUrl.searchParams.get('state') ?? '';
+  const code     = req.nextUrl.searchParams.get('code');
+  const rawState = req.nextUrl.searchParams.get('state') ?? '';
 
-  // __agent suffix means per-agent connect from configurar page
   const isAgentScope = rawState.endsWith('__agent');
   const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
 
-  if (!provider || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}/oficina/integraciones?email=error`);
-  }
+  const errorUrl = state
+    ? `${appUrl}/portal/${state}/oficina/integraciones?email=error`
+    : `${appUrl}/portal/login`;
+
+  if (!code || !state) return NextResponse.redirect(errorUrl);
 
   try {
-    const tokens = provider === 'gmail'
-      ? await gmailExchangeCode(code)
-      : await outlookExchangeCode(code);
-
+    const tokens  = await outlookExchangeCode(code);
     const supabase = createAdminClient();
 
     const { data: agent } = await supabase
@@ -33,17 +29,14 @@ export async function GET(req: NextRequest) {
       .eq('portal_token', state)
       .single();
 
-    if (!agent) {
-      return NextResponse.redirect(`${appUrl}/portal/${state}/oficina/integraciones?email=error`);
-    }
+    if (!agent) return NextResponse.redirect(errorUrl);
 
-    const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+    const expiresAt        = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
-    // ── 1. Keep writing to email_integrations (connectors still use this for token refresh) ──
     await supabase.from('email_integrations').upsert({
       agent_id:           agent.id,
-      provider,
+      provider:           'outlook',
       email:              tokens.email,
       access_token:       tokens.access_token,
       refresh_token:      encryptedRefresh,
@@ -53,20 +46,19 @@ export async function GET(req: NextRequest) {
       reauth_notified_at: null,
     }, { onConflict: 'agent_id,provider' });
 
-    // ── 2. For account-level connects (IntegrationsHub), also write to integration_accounts ──
     if (!isAgentScope && agent.portal_email) {
       const { data: existing } = await supabase
         .from('integration_accounts')
         .select('metadata')
         .eq('portal_email', agent.portal_email)
-        .eq('provider', provider)
+        .eq('provider', 'outlook')
         .maybeSingle();
 
       const existingMeta = (existing?.metadata as Record<string, unknown>) ?? {};
 
       await supabase.from('integration_accounts').upsert({
         portal_email:  agent.portal_email,
-        provider,
+        provider:      'outlook',
         capability:    'email',
         account_label: tokens.email,
         access_token:  tokens.access_token,
@@ -78,12 +70,12 @@ export async function GET(req: NextRequest) {
     }
 
     const successUrl = isAgentScope
-      ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
-      : `${appUrl}/portal/${state}/oficina/integraciones?email=connected&provider=${provider}`;
+      ? `${appUrl}/portal/${state}/configurar?email=connected&provider=outlook`
+      : `${appUrl}/portal/${state}/oficina/integraciones?email=connected&provider=outlook`;
 
     return NextResponse.redirect(successUrl);
   } catch (err) {
-    console.error('[email-callback] error:', err);
-    return NextResponse.redirect(`${appUrl}/portal/${state}/oficina/integraciones?email=error`);
+    console.error('[outlook-callback] error:', err);
+    return NextResponse.redirect(errorUrl);
   }
 }

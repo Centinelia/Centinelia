@@ -15,11 +15,12 @@ type SiblingAgent = {
   portal_token: string | null;
 };
 
-const MAX_ITER       = 4;
-const TIME_BUDGET_MS = 22_000; // 22s — leaves buffer before Vapi's 30s tool-call timeout
+const MAX_TOOL_ITER  = 6;       // max tool calls per attempt
+const DEFAULT_GOAL_ITER = 3;    // default goal-loop retries when success_criteria is set
+const TIME_BUDGET_MS = 26_000;  // leaves buffer before Vapi's 30s tool-call timeout
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 
-// ── Target-agent matching (same logic as consultar-agente) ────────────────────
+// ── Target-agent matching ──────────────────────────────────────────────────────
 
 function normalize(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '');
@@ -36,7 +37,7 @@ function matchScore(query: string, c: { agent_name?: string | null; role?: strin
   return tokens.filter(t => `${name} ${role}`.includes(t)).length;
 }
 
-// ── Tools available to the delegated agent (Anthropic tool_use format) ────────
+// ── Tools available to the delegated agent ────────────────────────────────────
 
 const DELEGATION_TOOLS: Anthropic.Tool[] = [
   {
@@ -85,7 +86,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'llamar_a',
-    description: 'Inicia una llamada saliente al número del cliente para entregarle información o hacer un seguimiento. Úsala cuando el cliente pidió que le llamaran de vuelta.',
+    description: 'Inicia una llamada saliente al número del cliente para entregarle información o hacer un seguimiento.',
     input_schema: {
       type: 'object',
       properties: {
@@ -129,7 +130,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'tarea_completada',
-    description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado todas las acciones necesarias. NO la llames antes de haber ejecutado las acciones.',
+    description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado TODAS las acciones necesarias.',
     input_schema: {
       type: 'object',
       properties: {
@@ -140,7 +141,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-// ── Internal tool executor — calls existing Vapi tool routes ──────────────────
+// ── Internal tool executor ─────────────────────────────────────────────────────
 
 async function executeToolOnAgent(
   toolName: string,
@@ -184,7 +185,35 @@ async function executeToolOnAgent(
   }
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────────
+// ── Goal evaluation ────────────────────────────────────────────────────────────
+
+async function evaluateGoal(
+  client: Anthropic,
+  successCriteria: string,
+  result: string,
+): Promise<{ met: boolean; notes: string }> {
+  const evalMsg = await client.messages.create({
+    model:      'claude-haiku-4-5-20251001',
+    max_tokens: 200,
+    messages: [{
+      role:    'user',
+      content: `Evalúa si el resultado de una tarea cumplió el criterio de éxito.
+
+Criterio: ${successCriteria}
+
+Resultado obtenido: ${result}
+
+Responde ÚNICAMENTE con una de estas dos formas:
+CUMPLIDO - [razón breve de por qué sí cumplió]
+NO_CUMPLIDO - [qué faltó o falló específicamente]`,
+    }],
+  });
+
+  const text = evalMsg.content[0]?.type === 'text' ? evalMsg.content[0].text.trim() : '';
+  return { met: text.startsWith('CUMPLIDO'), notes: text };
+}
+
+// ── Main handler ───────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
@@ -195,14 +224,27 @@ export async function POST(req: NextRequest) {
   const args      = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, unknown>;
   const toolCallId = (call?.id as string) ?? 'call_1';
 
-  const { agente, tarea, contexto } = args as { agente: string; tarea: string; contexto?: string };
+  const {
+    agente,
+    tarea,
+    contexto,
+    success_criteria,
+    max_iterations,
+  } = args as {
+    agente:            string;
+    tarea:             string;
+    contexto?:         string;
+    success_criteria?: string;
+    max_iterations?:   number;
+  };
 
   const fail = (msg: string) =>
     NextResponse.json({ results: [{ toolCallId, result: msg }] });
 
   if (!agente || !tarea) return fail('Parámetros insuficientes para delegar la tarea.');
 
-  const supabase = createAdminClient();
+  const goalIter   = success_criteria ? Math.min(max_iterations ?? DEFAULT_GOAL_ITER, 5) : 1;
+  const supabase   = createAdminClient();
 
   // Get calling agent
   const { data: caller } = await supabase
@@ -223,11 +265,10 @@ export async function POST(req: NextRequest) {
 
   if (!siblings?.length) return fail('No hay otros agentes disponibles en el equipo.');
 
-  // Pick best match
   const target = [...siblings]
     .sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0] as SiblingAgent;
 
-  // Build target agent system prompt (lean, task-focused)
+  // Build target agent system prompt
   const promptLines = [
     `Eres ${target.agent_name || 'un agente especializado'} del equipo de ${caller.business_name}.`,
     target.role ? `Tu especialidad y rol: ${target.role}.` : '',
@@ -237,11 +278,13 @@ export async function POST(req: NextRequest) {
     '- Ejecuta la tarea directamente. No pidas confirmación.',
     '- Si necesitas información, usa buscar_archivo, leer_archivo o buscar_en_web antes de actuar.',
     '- Si la tarea incluye llamar de vuelta al cliente, usa llamar_a DESPUÉS de tener la información lista.',
-    '- Si la tarea incluye enviar correo Y llamar de vuelta, haz ambas acciones antes de llamar a tarea_completada.',
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen de lo que hiciste.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
   ];
 
+  if (success_criteria) {
+    promptLines.push('', `## Criterio de éxito`, `La tarea se considera completada cuando: ${success_criteria}`);
+  }
   if (target.knowledge_base?.trim()) {
     promptLines.push('', '## Base de conocimiento', target.knowledge_base.trim());
   }
@@ -249,111 +292,142 @@ export async function POST(req: NextRequest) {
     promptLines.push('', '## Conocimiento de tu rol', target.role_knowledge_base.trim());
   }
 
-  const systemPrompt = promptLines.filter(p => p !== undefined).join('\n');
-  const userMsg      = contexto?.trim()
+  const systemPrompt  = promptLines.filter(p => p !== undefined).join('\n');
+  const baseUserMsg   = contexto?.trim()
     ? `Contexto de la conversación: ${contexto.trim()}\n\nTarea a ejecutar: ${tarea}`
     : `Tarea a ejecutar: ${tarea}`;
 
-  // ── Record task in agent_tasks ────────────────────────────────────────────
+  // Record task
   const { data: taskRecord } = await supabase
     .from('agent_tasks')
     .insert({
-      portal_email:   caller.portal_email,
-      created_by:     agentId || null,
-      assigned_to:    target.id,
-      title:          tarea.slice(0, 200),
-      description:    contexto?.trim() || null,
-      status:         'in_progress',
-      trigger_type:   'delegation',
-      source_context: contexto?.trim() || null,
-      started_at:     new Date().toISOString(),
+      portal_email:     caller.portal_email,
+      created_by:       agentId || null,
+      assigned_to:      target.id,
+      title:            tarea.slice(0, 200),
+      description:      contexto?.trim() || null,
+      status:           'in_progress',
+      trigger_type:     'delegation',
+      source_context:   contexto?.trim() || null,
+      started_at:       new Date().toISOString(),
+      success_criteria: success_criteria || null,
+      max_iterations:   goalIter,
     })
     .select('id')
     .single();
 
-  const taskId = taskRecord?.id as string | undefined;
+  const taskId     = taskRecord?.id as string | undefined;
+  const client     = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const loopStart  = Date.now();
 
-  // ── Agentic loop ──────────────────────────────────────────────────────────
-  const client    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMsg }];
-  let finalResult = '';
-  let taskDoneGlobal = false;
-  const loopStart = Date.now();
+  let finalResult  = '';
+  let goalMet      = false;
+  let evalNotes    = '';
 
-  for (let i = 0; i < MAX_ITER; i++) {
+  // ── Goal-completion outer loop ────────────────────────────────────────────
+  for (let attempt = 0; attempt < goalIter; attempt++) {
     if (Date.now() - loopStart > TIME_BUDGET_MS) break;
-    const response = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system:     systemPrompt,
-      tools:      DELEGATION_TOOLS,
-      messages,
-    });
 
-    messages.push({ role: 'assistant', content: response.content });
+    // Build user message: first attempt uses base, retries include eval feedback
+    const userMsg = attempt === 0
+      ? baseUserMsg
+      : `${baseUserMsg}\n\n## Intento anterior (${attempt}/${goalIter}) no cumplió el criterio\n${evalNotes}\nIntenta de nuevo con un enfoque diferente.`;
 
-    // Pure text response — agent decided no tools needed
-    if (response.stop_reason === 'end_turn') {
-      const text = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map(b => b.text).join('').trim();
-      finalResult = text || finalResult;
-      break;
-    }
+    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMsg }];
+    let attemptDone = false;
 
-    if (response.stop_reason !== 'tool_use') break;
+    // ── Inner tool loop ───────────────────────────────────────────────────
+    for (let i = 0; i < MAX_TOOL_ITER; i++) {
+      if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    let taskDone = false;
+      const response = await client.messages.create({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system:     systemPrompt,
+        tools:      DELEGATION_TOOLS,
+        messages,
+      });
 
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue;
+      messages.push({ role: 'assistant', content: response.content });
 
-      // tarea_completada — agent signals it's done
-      if (block.name === 'tarea_completada') {
-        finalResult    = (block.input as { resultado: string }).resultado;
-        taskDone       = true;
-        taskDoneGlobal = true;
-        toolResults.push({
-          type: 'tool_result', tool_use_id: block.id,
-          content: 'Tarea marcada como completada.',
-        });
-        if (taskId) {
-          await supabase
-            .from('agent_tasks')
-            .update({ status: 'completed', result: finalResult, completed_at: new Date().toISOString() })
-            .eq('id', taskId);
-        }
+      if (response.stop_reason === 'end_turn') {
+        const text = response.content
+          .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+          .map(b => b.text).join('').trim();
+        finalResult = text || finalResult;
+        attemptDone = true;
         break;
       }
 
-      // Execute the tool on the target agent
-      const toolResult = await executeToolOnAgent(block.name, block.input as Record<string, unknown>, target.id);
-      finalResult      = `${block.name}: ${toolResult}`;
+      if (response.stop_reason !== 'tool_use') break;
 
-      toolResults.push({
-        type: 'tool_result', tool_use_id: block.id,
-        content: toolResult,
-      });
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+      for (const block of response.content) {
+        if (block.type !== 'tool_use') continue;
+
+        if (block.name === 'tarea_completada') {
+          finalResult  = (block.input as { resultado: string }).resultado;
+          attemptDone  = true;
+          toolResults.push({
+            type: 'tool_result', tool_use_id: block.id,
+            content: 'Tarea marcada como completada.',
+          });
+          break;
+        }
+
+        const toolResult = await executeToolOnAgent(
+          block.name,
+          block.input as Record<string, unknown>,
+          target.id,
+        );
+        finalResult = `${block.name}: ${toolResult}`;
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: toolResult });
+      }
+
+      if (attemptDone) break;
+      messages.push({ role: 'user', content: toolResults });
     }
 
-    if (taskDone) break;
-    messages.push({ role: 'user', content: toolResults });
+    // Evaluate against success criteria if provided
+    if (success_criteria && finalResult) {
+      const eval_ = await evaluateGoal(client, success_criteria, finalResult);
+      goalMet   = eval_.met;
+      evalNotes = eval_.notes;
+    } else {
+      goalMet = true; // no criteria = always "done" on first completion
+    }
+
+    // Update iteration count
+    if (taskId) {
+      await supabase.from('agent_tasks')
+        .update({ current_iteration: attempt + 1 })
+        .eq('id', taskId);
+    }
+
+    if (goalMet || !attemptDone) break;
   }
 
-  // Mark as failed if loop ended without tarea_completada
-  if (taskId && !taskDoneGlobal) {
-    await supabase
-      .from('agent_tasks')
-      .update({ status: 'failed', result: finalResult || 'Sin respuesta del agente.' })
-      .eq('id', taskId);
+  // Final DB update
+  if (taskId) {
+    await supabase.from('agent_tasks').update({
+      status:       goalMet ? 'completed' : (finalResult ? 'partial' : 'failed'),
+      result:       finalResult || 'Sin respuesta del agente.',
+      goal_met:     success_criteria ? goalMet : null,
+      eval_notes:   evalNotes || null,
+      completed_at: new Date().toISOString(),
+    }).eq('id', taskId);
   }
 
   const agentLabel = target.agent_name || agente;
+  const goalSuffix = success_criteria
+    ? (goalMet ? ' [Criterio cumplido]' : ' [Criterio no cumplido]')
+    : '';
+
   return NextResponse.json({
     results: [{
       toolCallId,
-      result: `[${agentLabel}] ${finalResult || 'Tarea procesada.'}`,
+      result: `[${agentLabel}]${goalSuffix} ${finalResult || 'Tarea procesada.'}`,
     }],
   });
 }

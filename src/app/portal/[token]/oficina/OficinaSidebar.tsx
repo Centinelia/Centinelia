@@ -7,7 +7,7 @@ import {
   Activity, BarChart2, FileText, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
-  ChevronDown, ChevronRight, Phone, LayoutTemplate,
+  ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
@@ -46,8 +46,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     group: 'OPERACIÓN',
     items: [
-      { href: '/documentos',          moduleId: 'of_documentos',          label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'          },
-      { href: '/plantillas',          moduleId: 'of_plantillas',          label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'          },
+      { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'           },
+      { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'           },
+      { href: '/tareas-programadas',   moduleId: 'of_tareas_programadas',   label: 'Tareas programadas',  icon: CalendarClock,  badgeKey: '',               opsHint: '',                 pulseId: 'of-tareas-programadas'   },
       { href: '/juntas',              moduleId: 'of_juntas',              label: 'Juntas',              icon: Mic,            badgeKey: 'juntas',         opsHint: '1–6 tareas/junta', pulseId: 'of-juntas'              },
       { href: '/reportes-ciudadanos', moduleId: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', icon: ClipboardList,  badgeKey: 'reportesCiudadanos', opsHint: '',             pulseId: 'of-reportes-ciudadanos', vertical: 'gobierno' },
       { href: '/cabildo',             moduleId: 'of_cabildo',             label: 'Cabildo',             icon: Gavel,          badgeKey: '',               opsHint: '',                 pulseId: 'of-cabildo',             vertical: 'gobierno' },
