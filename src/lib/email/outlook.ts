@@ -3,9 +3,19 @@ const AUTH_BASE = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 
 export const OUTLOOK_SCOPES = 'Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.ReadWrite Tasks.ReadWrite offline_access User.Read';
 
+function credentials() {
+  const client_id     = process.env.MICROSOFT_CLIENT_ID;
+  const client_secret = process.env.MICROSOFT_CLIENT_SECRET;
+  if (!client_id || !client_secret) {
+    throw new Error('MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET not configured');
+  }
+  return { client_id, client_secret };
+}
+
 export function outlookAuthUrl(state: string): string {
+  const { client_id } = credentials();
   const p = new URLSearchParams({
-    client_id:     process.env.MICROSOFT_CLIENT_ID!,
+    client_id,
     response_type: 'code',
     redirect_uri:  callbackUrl('outlook'),
     scope:         OUTLOOK_SCOPES,
@@ -18,13 +28,14 @@ export function outlookAuthUrl(state: string): string {
 export async function outlookExchangeCode(code: string): Promise<{
   access_token: string; refresh_token: string; expires_in: number; email: string;
 }> {
+  const { client_id, client_secret } = credentials();
   const res = await fetch(`${AUTH_BASE}/token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({
       code,
-      client_id:     process.env.MICROSOFT_CLIENT_ID!,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+      client_id,
+      client_secret,
       redirect_uri:  callbackUrl('outlook'),
       grant_type:    'authorization_code',
       scope:         OUTLOOK_SCOPES,
@@ -45,13 +56,14 @@ export async function outlookExchangeCode(code: string): Promise<{
 }
 
 export async function outlookRefreshToken(refresh_token: string): Promise<{ access_token: string; expires_in: number }> {
+  const { client_id, client_secret } = credentials();
   const res = await fetch(`${AUTH_BASE}/token`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({
       refresh_token,
-      client_id:     process.env.MICROSOFT_CLIENT_ID!,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+      client_id,
+      client_secret,
       grant_type:    'refresh_token',
       scope:         OUTLOOK_SCOPES,
     }),
