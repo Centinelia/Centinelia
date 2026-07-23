@@ -581,30 +581,33 @@ export default async function AgentesPage({ params }: Props) {
               </div>
 
               {/* Botones — abajo */}
-              <div className="flex items-center px-5 py-3" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <div className="flex-1 flex justify-start">
+              <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+                <div className="flex-1 flex justify-start min-w-0">
                   <Link
                     href={`/portal/${a.portal_token as string}/configurar`}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
                     style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
                   >
                     <Settings2 size={11} />
-                    Configurar
+                    <span className="inline sm:hidden xl:inline">Configurar</span>
                   </Link>
                 </div>
                 <span className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium flex-shrink-0"
                   style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color }}>
-                  {jornada.icon}{jornada.label}
+                  {jornada.icon}
+                  <span className="inline sm:hidden xl:inline">{jornada.label}</span>
                 </span>
-                <div className="flex-1 flex justify-end">
+                <div className="flex-1 flex justify-end min-w-0">
                   {!isBillingPaused
                     ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
                     : (
                       <a
                         href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
                         style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                        Resolver pago →
+                        <span className="inline sm:hidden xl:inline">Resolver pago</span>
+                        <span className="hidden sm:inline xl:hidden">→</span>
+                        <span className="inline sm:hidden xl:inline">→</span>
                       </a>
                     )
                   }

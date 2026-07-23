@@ -24,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, portal_token, features')
+    .select('id, agent_name, role, portal_token, features, notion_access_token')
     .eq('portal_email', anchor.portal_email)
     .order('created_at', { ascending: true });
 
@@ -44,12 +44,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     agents: agents.map(a => ({
-      id:           a.id,
-      agent_name:   a.agent_name,
-      role:         (a as any).role ?? '',
-      portal_token: a.portal_token,
-      role_color:   ((a.features ?? {}) as Record<string, unknown>).role_color as string | null ?? null,
-      connections:  byAgent[a.id] ?? [],
+      id:              a.id,
+      agent_name:      a.agent_name,
+      role:            (a as any).role ?? '',
+      portal_token:    a.portal_token,
+      role_color:      ((a.features ?? {}) as Record<string, unknown>).role_color as string | null ?? null,
+      connections:     byAgent[a.id] ?? [],
+      notion_connected: !!((a as any).notion_access_token),
     })),
   });
 }

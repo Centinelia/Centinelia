@@ -1,44 +1,82 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Loader2, Mail } from 'lucide-react';
+import { ChevronDown, Loader2, Mail, Calendar, HardDrive, Database, CheckCircle, XCircle } from 'lucide-react';
 import AgentEmailSection from './AgentEmailSection';
 
 interface AgentRow {
-  id:           string;
-  agent_name:   string | null;
-  role:         string;
-  portal_token: string;
-  role_color:   string | null;
-  connections:  { provider: string }[];
+  id:               string;
+  agent_name:       string | null;
+  role:             string;
+  portal_token:     string;
+  role_color:       string | null;
+  connections:      { provider: string; needs_reauth?: boolean }[];
+  notion_connected: boolean;
 }
 
 function RoleChip({ label, color }: { label: string; color: string }) {
   return (
     <span
       className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-      style={{
-        background: `${color}1f`,
-        color,
-        border: `1px solid ${color}40`,
-      }}
+      style={{ background: `${color}1f`, color, border: `1px solid ${color}40` }}
     >
       {label}
     </span>
   );
 }
 
+interface IntegrationPillProps {
+  icon:      React.ReactNode;
+  label:     string;
+  connected: boolean;
+}
+function IntegrationPill({ icon, label, connected }: IntegrationPillProps) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+      style={{
+        background: connected ? 'rgba(34,197,94,0.08)' : 'var(--c-surface-2)',
+        color:      connected ? '#22c55e' : 'var(--c-text-4)',
+        border:     connected ? '1px solid rgba(34,197,94,0.2)' : '1px solid var(--c-border)',
+      }}
+      title={`${label}: ${connected ? 'conectado' : 'no conectado'}`}
+    >
+      {icon}
+      {label}
+    </span>
+  );
+}
+
+function NotionSection({ token }: { token: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+        Notion
+      </p>
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        Notion se configura a nivel de cuenta, no por empleado. Para conectar o cambiar la base de datos, ve a Integraciones.
+      </p>
+      <a
+        href={`/portal/${token}/oficina/integraciones`}
+        className="self-start text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-80"
+        style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}
+      >
+        Ir a Integraciones
+      </a>
+    </div>
+  );
+}
+
 function AgentAccordion({ agent }: { agent: AgentRow }) {
   const [open, setOpen] = useState(false);
-  const color           = agent.role_color ?? '#6C3BFF';
-  const name            = agent.agent_name?.trim() || 'Empleado';
-  const connCount       = agent.connections.length;
+  const color = agent.role_color ?? '#6C3BFF';
+  const name  = agent.agent_name?.trim() || 'Empleado';
+
+  const emailOk = agent.connections.some(c => !c.needs_reauth);
+  const hasAnyConn = emailOk || agent.notion_connected;
 
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--c-border)' }}
-    >
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
       <button
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--c-surface-2)]"
@@ -58,33 +96,43 @@ function AgentAccordion({ agent }: { agent: AgentRow }) {
             </span>
             {agent.role && <RoleChip label={agent.role} color={color} />}
           </div>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {connCount === 0
-              ? 'Sin correo conectado'
-              : connCount === 1
-                ? '1 correo conectado'
-                : `${connCount} correos conectados`}
-          </p>
+
+          {/* Integration status pills */}
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            <IntegrationPill
+              icon={<Mail size={8} />}
+              label="Correo"
+              connected={emailOk}
+            />
+            <IntegrationPill
+              icon={<Calendar size={8} />}
+              label="Calendario"
+              connected={emailOk}
+            />
+            <IntegrationPill
+              icon={<HardDrive size={8} />}
+              label="Drive"
+              connected={emailOk}
+            />
+            <IntegrationPill
+              icon={<Database size={8} />}
+              label="Notion"
+              connected={agent.notion_connected}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {connCount > 0 && (
-            <span
-              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{
-                background: 'rgba(34,197,94,0.08)',
-                color:      '#22c55e',
-                border:     '1px solid rgba(34,197,94,0.15)',
-              }}
-            >
-              <Mail size={9} /> Activo
-            </span>
+          {hasAnyConn ? (
+            <CheckCircle size={13} style={{ color: '#22c55e' }} />
+          ) : (
+            <XCircle size={13} style={{ color: 'var(--c-text-4)' }} />
           )}
           <ChevronDown
             size={15}
             style={{
-              color:     'var(--c-text-3)',
-              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              color:      'var(--c-text-3)',
+              transform:  open ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'transform 0.2s',
             }}
           />
@@ -93,10 +141,22 @@ function AgentAccordion({ agent }: { agent: AgentRow }) {
 
       {open && (
         <div
-          className="px-4 pb-4 pt-3"
+          className="px-4 pb-4 pt-3 flex flex-col gap-6"
           style={{ borderTop: '1px solid var(--c-border)', background: 'var(--c-bg)' }}
         >
-          <AgentEmailSection token={agent.portal_token} />
+          {/* Email / Calendar / Drive — all from same OAuth */}
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+              Correo, Calendario y Drive
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+              Una sola conexión de Gmail u Outlook activa los tres. Conecta el correo del area para habilitarlos.
+            </p>
+            <AgentEmailSection token={agent.portal_token} />
+          </div>
+
+          {/* Notion */}
+          <NotionSection token={agent.portal_token} />
         </div>
       )}
     </div>

@@ -616,6 +616,111 @@ const QB_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+const CREAR_LEAD_TOOL: Anthropic.Tool = {
+  name: 'crear_lead',
+  description: 'Registra un prospecto interesado en los servicios del negocio. Úsala cuando el dueño mencione un cliente nuevo que quiere darle seguimiento o que llamó pidiendo información.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      nombre:      { type: 'string', description: 'Nombre completo del prospecto' },
+      negocio:     { type: 'string', description: 'Nombre del negocio del prospecto' },
+      giro:        { type: 'string', description: 'Giro o industria del negocio' },
+      servicio:    { type: 'string', description: 'Servicio en el que está interesado' },
+      presupuesto: { type: 'string', description: 'Presupuesto aproximado' },
+      timeline:    { type: 'string', description: 'Para cuándo lo necesita' },
+      email:       { type: 'string', description: 'Correo electrónico del prospecto' },
+      whatsapp:    { type: 'string', description: 'Número de WhatsApp del prospecto' },
+    },
+    required: ['nombre', 'servicio'],
+  },
+};
+
+const AGENDAR_CITA_TOOL: Anthropic.Tool = {
+  name: 'agendar_cita',
+  description: 'Agenda, modifica o cancela una cita de un cliente. Úsala cuando el dueño quiera registrar una cita nueva, cambiar una existente o cancelarla.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      accion:   { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
+      nombre:   { type: 'string', description: 'Nombre del cliente' },
+      servicio: { type: 'string', description: 'Servicio para la cita' },
+      fecha:    { type: 'string', description: 'Fecha de la cita. Ej: "lunes 28 de julio"' },
+      hora:     { type: 'string', description: 'Hora de la cita. Ej: "10:00 AM"' },
+      telefono: { type: 'string', description: 'Teléfono del cliente (necesario para cancelar o modificar)' },
+    },
+    required: ['accion', 'nombre'],
+  },
+};
+
+const REGISTRAR_PEDIDO_TOOL: Anthropic.Tool = {
+  name: 'registrar_pedido',
+  description: 'Registra un pedido de un cliente. Úsala cuando el dueño quiera guardar un pedido nuevo.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      nombre:    { type: 'string', description: 'Nombre del cliente' },
+      telefono:  { type: 'string', description: 'Teléfono del cliente' },
+      items:     { type: 'string', description: 'Descripción de los productos o servicios pedidos' },
+      tipo:      { type: 'string', enum: ['entrega', 'recoger'], description: '"entrega" a domicilio o "recoger" en sucursal' },
+      direccion: { type: 'string', description: 'Dirección de entrega (solo si tipo es "entrega")' },
+      notas:     { type: 'string', description: 'Notas adicionales del pedido' },
+    },
+    required: ['nombre', 'items', 'tipo'],
+  },
+};
+
+const BUSCAR_CLIENTE_TOOL: Anthropic.Tool = {
+  name: 'buscar_cliente',
+  description: 'Busca el historial de un cliente por nombre, teléfono o email. Muestra llamadas, leads, pedidos y citas anteriores. Úsala cuando el dueño quiera consultar el historial de un cliente.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      identificador: { type: 'string', description: 'Nombre completo, número de teléfono o email del cliente a buscar' },
+    },
+    required: ['identificador'],
+  },
+};
+
+const CREAR_TICKET_TOOL: Anthropic.Tool = {
+  name: 'crear_ticket',
+  description: 'Crea un ticket de soporte IT en la mesa de ayuda. Úsala cuando el dueño reporte un problema técnico que quiera registrar para seguimiento.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      titulo:        { type: 'string', description: 'Título breve del problema' },
+      categoria:     { type: 'string', enum: ['red', 'servidores', 'usuario', 'software', 'hardware', 'accesos', 'otro'], description: 'Categoría del problema' },
+      prioridad:     { type: 'string', enum: ['baja', 'normal', 'alta', 'critica'], description: 'Prioridad del ticket' },
+      descripcion:   { type: 'string', description: 'Descripción detallada del problema' },
+      caller_number: { type: 'string', description: 'Teléfono del usuario afectado (opcional)' },
+    },
+    required: ['titulo', 'categoria', 'prioridad'],
+  },
+};
+
+const CONSULTAR_INCIDENTES_TOOL: Anthropic.Tool = {
+  name: 'consultar_incidentes',
+  description: 'Consulta si hay incidentes activos en el sistema de soporte IT. Úsala para verificar problemas conocidos antes de crear un ticket.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      tema: { type: 'string', description: 'Tema o sistema sobre el que preguntas (ej: internet, correo, SAP). Opcional.' },
+    },
+    required: [],
+  },
+};
+
+const BUSCAR_DIRECTORIO_TOOL: Anthropic.Tool = {
+  name: 'buscar_directorio',
+  description: 'Busca en el directorio interno quién atiende un tipo de problema o área específica. Úsala para saber con quién escalar un problema de soporte IT.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      tipo_problema: { type: 'string', description: 'Tipo de problema o área (ej: red, VPN, impresoras, SAP)' },
+    },
+    required: ['tipo_problema'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGATE_TASK_TOOL,
   CONSULT_AGENT_TOOL,
@@ -642,6 +747,13 @@ const ALL_TOOLS = [
   ML_CREAR_PUBLICACION_TOOL,
   ML_ACTUALIZAR_PUBLICACION_TOOL,
   ML_VER_METRICAS_TOOL,
+  CREAR_LEAD_TOOL,
+  AGENDAR_CITA_TOOL,
+  REGISTRAR_PEDIDO_TOOL,
+  BUSCAR_CLIENTE_TOOL,
+  CREAR_TICKET_TOOL,
+  CONSULTAR_INCIDENTES_TOOL,
+  BUSCAR_DIRECTORIO_TOOL,
 ];
 
 // Maps voice tool names → chat tool names (null = no chat implementation yet)
@@ -653,17 +765,18 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   leer_archivo:              'read_file',
   consultar_agente:          'consult_agent',
   delegar_tarea:             'delegate_task',
-  // No chat implementation yet
-  crear_lead:                null,
-  agendar_cita:              null,
-  registrar_pedido:          null,
-  buscar_cliente:            null,
+  // Voice-only (no chat equivalent)
   notificar_transferencia:   null,
   transferir_llamada:        null,
   registrar_encuesta:        null,
-  crear_ticket:              null,
-  consultar_incidentes:      null,
-  buscar_directorio:         null,
+  // Chat implementations
+  crear_lead:                'crear_lead',
+  agendar_cita:              'agendar_cita',
+  registrar_pedido:          'registrar_pedido',
+  buscar_cliente:            'buscar_cliente',
+  crear_ticket:              'crear_ticket',
+  consultar_incidentes:      'consultar_incidentes',
+  buscar_directorio:         'buscar_directorio',
   // Same name in both channels
   create_contract_draft:     'create_contract_draft',
   create_file:               'create_file',
@@ -713,6 +826,13 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   update_civic_report:       UPDATE_CIVIC_REPORT_TOOL,
   buscar_en_web:             WEB_SEARCH_TOOL,
   reportar_falla:            REPORT_ISSUE_TOOL,
+  crear_lead:                CREAR_LEAD_TOOL,
+  agendar_cita:              AGENDAR_CITA_TOOL,
+  registrar_pedido:          REGISTRAR_PEDIDO_TOOL,
+  buscar_cliente:            BUSCAR_CLIENTE_TOOL,
+  crear_ticket:              CREAR_TICKET_TOOL,
+  consultar_incidentes:      CONSULTAR_INCIDENTES_TOOL,
+  buscar_directorio:         BUSCAR_DIRECTORIO_TOOL,
   analizar_publicaciones_ml: ML_ANALIZAR_PUBLICACIONES_TOOL,
   crear_publicacion_ml:      ML_CREAR_PUBLICACION_TOOL,
   actualizar_publicacion_ml: ML_ACTUALIZAR_PUBLICACION_TOOL,
@@ -805,6 +925,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   const qbConnected  = !!qbRow?.realm_id;
   const meerkatId    = ((agent.features as Record<string, unknown>)?.meerkat_role_id as string | null) ?? null;
   const sessionTools = getToolsForRole(meerkatId, qbConnected);
+  const toolsListText = sessionTools.length
+    ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
+    : '';
 
   const agentName = (agent.agent_name as string | null)?.trim() || 'Centinelia';
   const agentRole = (agent.role as string | null)?.trim() || null;
@@ -958,27 +1081,7 @@ El dueño del negocio te está consultando directamente. Tienes acceso completo 
 
 Responde como el empleado que conoce profundamente el negocio. Usa los datos disponibles para dar respuestas precisas y concretas. Cita fechas y nombres cuando los tengas. Si la información no está en tu contexto, dilo con claridad.
 
-Herramientas disponibles:
-- create_contract_draft: cuando el dueño pida generar un contrato para un cliente.
-- send_email: cuando el dueño pida enviar un correo. Si menciona adjuntar un archivo de Drive/OneDrive, usa attachment_file_id del resultado de search_files.
-- create_document: cuando el dueño pida generar un documento PDF con branding (logo y colores del negocio). Usa template_type="proposal" para propuestas/cotizaciones, "letter" para cartas formales, "factura" para facturas con conceptos e IVA (pasa items[] con descripcion/cantidad/precio_unitario), "orden_compra" para órdenes de compra a proveedores (usa vendor_name y items[]), "general" para todo lo demás. Para facturas y órdenes, pasa SIEMPRE items[] con al menos un concepto.
-- create_file: cuando el dueño pida un archivo Excel, Word o PowerPoint. Usa format="excel" para tablas y hojas de cálculo con datos estructurados (pasa sheets con headers y rows), format="word" para documentos de texto editables (mismo sistema de templates que create_document), format="powerpoint" para presentaciones de diapositivas (pasa slides con title y content cada una). El archivo queda disponible en Oficina → Documentos.
-- save_to_drive: después de create_document o create_file, si el dueño quiere guardar el archivo en su Google Drive o OneDrive. Puedes sugerirlo proactivamente. Usa el file_id que devolvió el tool. Si da un folder_name, la carpeta se crea automáticamente si no existe.
-- organize_files: para reorganizar Drive/OneDrive del dueño. Acciones: "list" (listar carpeta), "move" (mover archivo a otra carpeta, se crea si no existe), "rename" (renombrar archivo o carpeta), "create_folder" (crear carpeta nueva). Cuando el dueño pida ordenar archivos, empieza listando la raíz para ver qué hay, luego mueve o renombra según sus instrucciones. Cada acción consume ops.
-- trigger_outbound_call: cuando el dueño pida llamar a un número de teléfono.
-- search_files: cuando el dueño pida buscar un archivo en Google Drive o OneDrive.
-- read_file: cuando el dueño quiera ver el contenido de un archivo de Drive o OneDrive (usar después de search_files).
-- list_calendar_events: cuando el dueño quiera ver su agenda o saber qué tiene agendado en un rango de fechas.
-- create_calendar_event: cuando el dueño pida agendar una reunión, cita o evento en su calendario de Google o Outlook.
-- delete_calendar_event: cuando el dueño quiera cancelar o eliminar un evento del calendario. Usa list_calendar_events primero para obtener el ID.
-- buscar_en_web: búsqueda rápida en internet con una query libre. Úsala para cualquier información que necesites durante una tarea: documentación, datos, precios, horarios, requisitos, instrucciones, etc. Después usa read_url en los resultados más relevantes.
-- search_leads: para investigaciones de mercado especializadas. Usa research_type para elegir la estrategia: "leads" (rastrea todos los canales de prospectos), "competidores", "mercado", "regulaciones", "noticias", "general". Cada tipo lanza múltiples queries optimizadas en paralelo. Usa esta cuando la tarea sea explícitamente de prospección o inteligencia de mercado.
-- read_url: después de buscar_en_web o search_leads, lee el contenido de los resultados más relevantes para obtener datos reales. No la uses en redes sociales (Facebook, LinkedIn, X, Instagram) — usan el título y descripción del resultado de búsqueda en cambio.
-- reportar_falla: cuando encuentres un error, falla o comportamiento inesperado en cualquier sistema o proceso durante tu operación (correo, archivos, calendario, POS, CRM, etc.). No afecta las ops del negocio.
-- analizar_publicaciones_ml: obtiene el catálogo de publicaciones activas del dueño en Mercado Libre (IDs, títulos, precios, stock, estado, links). Úsala antes de actualizar o cuando pidan revisar el catálogo.
-- crear_publicacion_ml: publica un producto nuevo en Mercado Libre. Requiere title, price, category_id y available_quantity mínimo.
-- actualizar_publicacion_ml: modifica precio, stock o título de una publicación existente. Usa analizar_publicaciones_ml primero para obtener el item_id.
-- ver_metricas_ml: muestra resumen de desempeño en Mercado Libre: publicaciones activas, visitas 30 días y ventas recientes pagadas.
+${toolsListText}
 
 Cuando necesites información para completar una tarea: usa buscar_en_web con la query más precisa posible, luego read_url en 1-3 resultados útiles, luego actúa con lo que encontraste.
 Cuando el dueño pida investigación de mercado o prospectos: usa search_leads con el research_type correcto, luego read_url en 2-3 resultados, luego presenta un resumen estructurado.

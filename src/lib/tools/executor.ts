@@ -20,6 +20,10 @@ import {
 } from '@/lib/services/connector-tools';
 import { searchWeb, searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 import { generateFolio, STATUS_LABELS } from '@/lib/civic/folio';
+import {
+  getNextTicketFolio, getCurrentOnCall,
+  type GuardiaArea, type GuardiaSchedule, type DirectorioContacto,
+} from '@/lib/helpdesk/folio';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
 import { getQBClient } from '@/lib/qb/client';
@@ -596,6 +600,224 @@ export async function executeAgentTool(
       if (arT > 0) rep.cuentas_por_cobrar = fmt(arT);
       return { ok: true, periodo: dm, reporte: rep };
     } catch (err) { return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // crear_lead
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'crear_lead') {
+    const args = toolInput as Record<string, string | undefined>;
+    const { error } = await supabase.from('leads_voice').insert({
+      agent_id: agentId, nombre: args.nombre ?? null, negocio: args.negocio ?? null,
+      giro: args.giro ?? null, servicio: args.servicio ?? null, presupuesto: args.presupuesto ?? null,
+      timeline: args.timeline ?? null, email: args.email ?? null, whatsapp: args.whatsapp ?? null,
+      source: 'chat',
+    });
+    return error
+      ? { ok: false, error: 'No se pudo registrar el lead.' }
+      : { ok: true, message: `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // agendar_cita
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'agendar_cita') {
+    const args = toolInput as Record<string, string | undefined>;
+    const { accion, nombre, servicio, fecha, hora, telefono } = args;
+    if (accion === 'agendar' || accion === 'modificar') {
+      if (accion === 'modificar' && telefono) {
+        await supabase.from('appointments_voice').update({ status: 'cancelada' })
+          .eq('agent_id', agentId).eq('telefono', telefono).eq('status', 'confirmada');
+      }
+      await supabase.from('appointments_voice').insert({
+        agent_id: agentId, nombre: nombre ?? null, telefono: telefono ?? null,
+        servicio: servicio ?? null, fecha: fecha ?? null, hora: hora ?? null, status: 'confirmada',
+      });
+    } else if (accion === 'cancelar' && telefono) {
+      await supabase.from('appointments_voice').update({ status: 'cancelada' })
+        .eq('agent_id', agentId).eq('telefono', telefono).eq('status', 'confirmada');
+    }
+    const labels: Record<string, string> = {
+      agendar:   `Cita agendada para ${fecha ?? ''}${hora ? ` a las ${hora}` : ''}.`,
+      modificar: `Cita modificada para ${fecha ?? ''}${hora ? ` a las ${hora}` : ''}.`,
+      cancelar:  'Cita cancelada correctamente.',
+    };
+    return { ok: true, message: labels[accion ?? ''] ?? 'Solicitud de cita procesada.' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // registrar_pedido
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'registrar_pedido') {
+    const args = toolInput as Record<string, string | undefined>;
+    const { error } = await supabase.from('orders_voice').insert({
+      agent_id: agentId, nombre: args.nombre ?? null, telefono: args.telefono ?? null,
+      items: args.items ?? '', tipo: args.tipo ?? 'recoger',
+      direccion: args.direccion ?? null, notas: args.notas ?? null, status: 'nuevo',
+    });
+    const tipoLabel = args.tipo === 'entrega' ? 'entrega a domicilio' : 'recoger en sucursal';
+    return error
+      ? { ok: false, error: 'No se pudo registrar el pedido.' }
+      : { ok: true, message: `Pedido registrado para ${tipoLabel}. Visible en Llamadas → Pedidos.` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // buscar_cliente
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_cliente') {
+    const identificador = toolInput.identificador as string;
+    if (!identificador) return { ok: false, error: 'Proporciona nombre, teléfono o email del cliente.' };
+    const normId = identificador.replace(/\D/g, '');
+
+    const [callsRes, leadsRes, ordersRes, apptsRes] = await Promise.all([
+      supabase.from('voice_calls').select('caller_number, summary, outcome, created_at')
+        .eq('agent_id', agentId).ilike('caller_number', `%${normId || identificador}%`)
+        .order('created_at', { ascending: false }).limit(5),
+      supabase.from('leads_voice').select('nombre, negocio, servicio, email, whatsapp, created_at')
+        .eq('agent_id', agentId)
+        .or(`nombre.ilike.%${identificador}%,whatsapp.ilike.%${normId || identificador}%`)
+        .order('created_at', { ascending: false }).limit(3),
+      supabase.from('orders_voice').select('nombre, items, status, created_at')
+        .eq('agent_id', agentId)
+        .or(`nombre.ilike.%${identificador}%,telefono.ilike.%${normId || identificador}%`)
+        .order('created_at', { ascending: false }).limit(3),
+      supabase.from('appointments_voice').select('nombre, servicio, fecha, hora, status, created_at')
+        .eq('agent_id', agentId)
+        .or(`nombre.ilike.%${identificador}%,telefono.ilike.%${normId || identificador}%`)
+        .order('created_at', { ascending: false }).limit(3),
+    ]);
+
+    const calls  = callsRes.data  ?? [];
+    const leads  = leadsRes.data  ?? [];
+    const orders = ordersRes.data ?? [];
+    const appts  = apptsRes.data  ?? [];
+
+    if (!calls.length && !leads.length && !orders.length && !appts.length) {
+      return { ok: true, found: false, message: 'No se encontraron registros previos de ese cliente.' };
+    }
+
+    const parts: string[] = [];
+    const lead = leads[0] as Record<string, unknown> | undefined;
+    if (lead?.nombre)   parts.push(`Nombre: ${lead.nombre}`);
+    if (lead?.negocio)  parts.push(`Negocio: ${lead.negocio}`);
+    if (lead?.servicio) parts.push(`Servicio de interés: ${lead.servicio}`);
+    if (calls.length)   parts.push(`Ha llamado ${calls.length} vez${calls.length > 1 ? 'es' : ''}${(calls[0] as any).summary ? `. Última: ${(calls[0] as any).summary}` : '.'}`);
+    const pendingAppts  = appts.filter((a: any) => a.status === 'confirmada');
+    if (pendingAppts.length) {
+      const a = pendingAppts[0] as any;
+      parts.push(`Cita agendada: ${a.servicio ?? ''} el ${a.fecha ?? '?'} a las ${a.hora ?? '?'}.`);
+    }
+    const pendingOrders = orders.filter((o: any) => o.status === 'nuevo' || o.status === 'en_proceso');
+    if (pendingOrders.length) parts.push(`Pedido pendiente: ${(pendingOrders[0] as any).items ?? ''}.`);
+
+    return { ok: true, found: true, message: parts.join(' ') };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // crear_ticket
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'crear_ticket') {
+    const { titulo, categoria = 'otro', prioridad = 'normal', descripcion, caller_number } = toolInput as Record<string, string | undefined>;
+    if (!titulo) return { ok: false, error: 'El título del ticket es requerido.' };
+
+    const { data: agentRow } = await supabase.from('voice_agents')
+      .select('directorio_interno, guardia_schedule, timezone')
+      .eq('id', agentId).single();
+
+    const directorio = (agentRow?.directorio_interno ?? []) as DirectorioContacto[];
+    let asignadoA:   string | null = null;
+    let asignadoTel: string | null = null;
+
+    if (directorio.length) {
+      const q     = `${categoria} ${titulo} ${descripcion ?? ''}`.toLowerCase();
+      const match = directorio.find(c => c.atiende.toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw)));
+      if (match) { asignadoA = match.nombre; asignadoTel = match.telefono || null; }
+    }
+    if (prioridad === 'alta' || prioridad === 'critica') {
+      const guardia = ((agentRow?.guardia_schedule as GuardiaSchedule | null)?.areas ?? []) as GuardiaArea[];
+      const q       = `${categoria} ${titulo}`.toLowerCase();
+      const area    = guardia.find(a => q.includes(a.nombre.toLowerCase().split(' ')[0].toLowerCase())) ?? guardia[0];
+      if (area) {
+        const tz     = (agentRow?.timezone as string | null) ?? 'America/Monterrey';
+        const oncall = getCurrentOnCall(area, tz);
+        if (oncall) { asignadoA = oncall.tecnico; asignadoTel = oncall.telefono; }
+      }
+    }
+
+    const folio = await getNextTicketFolio(agentId, supabase as any);
+    await supabase.from('helpdesk_tickets').insert({
+      agent_id: agentId, folio, caller_number: caller_number ?? null,
+      categoria: categoria ?? 'otro', prioridad: prioridad ?? 'normal',
+      titulo, descripcion: descripcion ?? null, asignado_a: asignadoA, asignado_tel: asignadoTel, status: 'abierto',
+    });
+
+    const assignMsg = asignadoA ? ` Asignado a ${asignadoA}.` : '';
+    return { ok: true, folio, message: `Ticket ${folio} creado.${assignMsg} Visible en Oficina → Helpdesk.` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // consultar_incidentes
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'consultar_incidentes') {
+    const tema = (toolInput.tema as string | undefined) ?? '';
+    const { data: incidents } = await supabase.from('it_incidents')
+      .select('titulo, descripcion, mensaje_voz, keywords')
+      .eq('agent_id', agentId).eq('activo', true)
+      .order('created_at', { ascending: false });
+
+    if (!incidents?.length) return { ok: true, incidents: [], message: 'No hay incidentes activos en este momento.' };
+
+    const q = tema.toLowerCase();
+    const matches = q
+      ? incidents.filter(i => {
+          const all = [...((i.keywords as string[]) ?? []), i.titulo, i.descripcion].join(' ').toLowerCase();
+          return q.split(/\s+/).some(w => w.length > 3 && all.includes(w));
+        })
+      : incidents;
+
+    const active = matches.length ? matches : incidents;
+    return { ok: true, count: active.length, incidents: active, message: active.map((i: any) => i.mensaje_voz ?? i.titulo).join(' — ') };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // buscar_directorio
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_directorio') {
+    const q = ((toolInput.tipo_problema as string | undefined) ?? '').toLowerCase();
+
+    const { data: agentRow } = await supabase.from('voice_agents')
+      .select('directorio_interno, guardia_schedule, timezone')
+      .eq('id', agentId).single();
+
+    const directorio = (agentRow?.directorio_interno ?? []) as DirectorioContacto[];
+    const guardia    = ((agentRow?.guardia_schedule as GuardiaSchedule | null)?.areas ?? []) as GuardiaArea[];
+    const tz         = (agentRow?.timezone as string | null) ?? 'America/Monterrey';
+    const lines: string[] = [];
+
+    if (directorio.length && q) {
+      const match = directorio.find(c =>
+        c.atiende.toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw)) ||
+        c.area.toLowerCase().split(/\s+/).some(kw => q.includes(kw))
+      );
+      if (match) {
+        const ext = match.extension ? ` (ext. ${match.extension})` : '';
+        const tel = match.telefono  ? `, ${match.telefono}` : '';
+        lines.push(`${match.nombre} atiende ${match.area}${ext}${tel}.`);
+      } else {
+        lines.push('No encontré un especialista exacto en el directorio.');
+      }
+    }
+
+    if (guardia.length) {
+      const area   = q ? guardia.find(a => q.includes(a.nombre.toLowerCase().split(' ')[0].toLowerCase())) : undefined;
+      const target = area ?? guardia[0];
+      if (target) {
+        const oncall = getCurrentOnCall(target, tz);
+        if (oncall) lines.push(`Guardia ahora en ${target.nombre}: ${oncall.tecnico}${oncall.telefono ? `, ${oncall.telefono}` : ''}.`);
+      }
+    }
+
+    return { ok: true, message: lines.length ? lines.join(' ') : 'No hay directorio configurado para esta área.' };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
