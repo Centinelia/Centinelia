@@ -909,6 +909,137 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     });
   }
 
+  // Drive write tools — NOX and NIVA
+  if (meerkatRole === 'nox' || meerkatRole === 'niva') {
+    const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
+    tools.push(
+      {
+        type: 'function',
+        function: {
+          name: 'save_to_drive',
+          description: 'Guarda un documento generado (PDF, Excel, Word) en el Google Drive o OneDrive del negocio. Úsala después de crear_documento o crear_archivo.',
+          parameters: {
+            type: 'object',
+            properties: {
+              file_id:     { type: 'string', description: 'ID del archivo generado (obtenido de crear_documento o crear_archivo)' },
+              filename:    { type: 'string', description: 'Nombre del archivo con extensión. Ej: "contrato-cliente.pdf"' },
+              folder_name: { type: 'string', description: 'Nombre de la carpeta de destino en Drive (opcional, se usa la raíz si no se especifica)' },
+            },
+            required: ['file_id', 'filename'],
+          },
+          serverUrl: `${execBase}/save_to_drive?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'crear_archivo',
+          description: 'Crea un archivo Excel, Word o PowerPoint con el contenido indicado y lo guarda en Documentos. Para reportes y tablas usa Excel; para borradores y cartas usa Word; para presentaciones usa PowerPoint.',
+          parameters: {
+            type: 'object',
+            properties: {
+              format:   { type: 'string', enum: ['excel', 'word', 'powerpoint'], description: 'Formato del archivo' },
+              title:    { type: 'string', description: 'Título del documento' },
+              filename: { type: 'string', description: 'Nombre del archivo sin extensión (opcional)' },
+              content:  { type: 'string', description: 'Contenido para Word/PowerPoint. Usa # para secciones.' },
+              sheets: {
+                type: 'array',
+                description: 'Hojas para Excel. Cada hoja tiene nombre, encabezados y filas.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name:    { type: 'string' },
+                    headers: { type: 'array', items: { type: 'string' } },
+                    rows:    { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+                  },
+                  required: ['name', 'headers', 'rows'],
+                },
+              },
+              slides: {
+                type: 'array',
+                description: 'Diapositivas para PowerPoint.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title:   { type: 'string' },
+                    content: { type: 'string' },
+                    bullets: { type: 'array', items: { type: 'string' } },
+                  },
+                  required: ['title'],
+                },
+              },
+            },
+            required: ['format', 'title'],
+          },
+          serverUrl: `${execBase}/create_file?agent_id=${agent.id}`,
+        },
+      },
+    );
+  }
+
+  // organize_files — NOX only (file/folder management)
+  if (meerkatRole === 'nox') {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'organizar_drive',
+        description: 'Mueve, renombra o crea carpetas en el Drive conectado del negocio. Úsala para mantener el Drive organizado según las instrucciones del dueño.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action:      { type: 'string', enum: ['move', 'rename', 'create_folder'], description: 'Acción a realizar' },
+            file_id:     { type: 'string', description: 'ID del archivo o carpeta (para move/rename)' },
+            destination: { type: 'string', description: 'ID de la carpeta de destino (para move)' },
+            new_name:    { type: 'string', description: 'Nuevo nombre (para rename)' },
+            folder_name: { type: 'string', description: 'Nombre de la carpeta a crear (para create_folder)' },
+          },
+          required: ['action'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/organize_files?agent_id=${agent.id}`,
+      },
+    });
+  }
+
+  // Prospecting tools — NIVA only
+  if (meerkatRole === 'niva') {
+    const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
+    tools.push(
+      {
+        type: 'function',
+        function: {
+          name: 'buscar_prospectos',
+          description: 'Busca prospectos, clientes potenciales o información de mercado en internet. Devuelve URLs relevantes que puedes leer con leer_url para obtener detalles.',
+          parameters: {
+            type: 'object',
+            properties: {
+              topic:         { type: 'string', description: 'Qué tipo de prospectos o información buscar. Ej: "empresas de construcción en Monterrey"' },
+              location:      { type: 'string', description: 'Ciudad, estado o región para acotar la búsqueda (opcional)' },
+              keywords:      { type: 'array', items: { type: 'string' }, description: 'Palabras clave adicionales (opcional)' },
+              research_type: { type: 'string', enum: ['general', 'local', 'competitor', 'industry'], description: 'Tipo de investigación (default: general)' },
+            },
+            required: ['topic'],
+          },
+          serverUrl: `${execBase}/search_leads?agent_id=${agent.id}`,
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'leer_url',
+          description: 'Lee el contenido de una página web. Úsala después de buscar_prospectos o buscar_en_web para obtener detalles de un resultado específico. Máximo 3 lecturas por llamada.',
+          parameters: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'URL completa de la página a leer. Ej: "https://empresa.com/contacto"' },
+            },
+            required: ['url'],
+          },
+          serverUrl: `${execBase}/read_url?agent_id=${agent.id}`,
+        },
+      },
+    );
+  }
+
   if (qbConnected) {
     tools.push({
       type: 'function',
