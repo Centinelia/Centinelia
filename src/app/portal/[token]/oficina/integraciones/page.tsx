@@ -38,10 +38,13 @@ export default async function IntegracionesPage({ params }: Props) {
     <div id="of-integraciones" className="flex flex-col gap-8">
 
       <div>
-        <div className="flex items-center gap-1.5 mb-5">
+        <div className="flex flex-col gap-1 mb-5">
           <h1 className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-            Integraciones de la organización
+            Integraciones
           </h1>
+          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+            Conecta las herramientas con las que trabajará tu equipo.
+          </p>
         </div>
         <IntegrationsHub
           token={token}
