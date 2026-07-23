@@ -28,6 +28,7 @@ import { loadTeamCallContext } from '@/lib/voice/team-context';
 import { generateFolio, STATUS_LABELS } from '@/lib/civic/folio';
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
+import { getQBClient } from '@/lib/qb/client';
 import { SUPPORT_EMAIL, SUPPORT_WA } from '@/lib/constants';
 import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
 import { generateWord } from '@/lib/documents/word';
@@ -545,6 +546,74 @@ const CONSULT_AGENT_TOOL: Anthropic.Tool = {
   },
 };
 
+const QB_TOOLS: Anthropic.Tool[] = [
+  {
+    name: 'qb_consultar_facturas',
+    description: 'Consulta facturas en QuickBooks Online. Úsala cuando el dueño pregunte por facturas pendientes, saldo de clientes o cuentas por cobrar.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cliente:         { type: 'string',  description: 'Nombre del cliente (opcional). Sin este campo trae todas las facturas pendientes.' },
+        solo_pendientes: { type: 'boolean', description: 'true para solo facturas con saldo (default), false para todas.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'qb_buscar_cliente',
+    description: 'Busca un cliente en QuickBooks y muestra su saldo total y facturas abiertas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre: { type: 'string', description: 'Nombre o razón social del cliente en QuickBooks.' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
+    name: 'qb_crear_factura',
+    description: 'Crea una factura en QuickBooks. Confirma siempre los datos con el dueño antes de ejecutar. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cliente_nombre:    { type: 'string', description: 'Nombre exacto del cliente en QuickBooks.' },
+        descripcion:       { type: 'string', description: 'Descripción del servicio o producto.' },
+        monto:             { type: 'number', description: 'Monto total de la factura.' },
+        fecha_vencimiento: { type: 'string', description: 'Fecha de vencimiento YYYY-MM-DD (opcional).' },
+      },
+      required: ['cliente_nombre', 'descripcion', 'monto'],
+    },
+  },
+  {
+    name: 'qb_registrar_pago',
+    description: 'Registra un pago recibido en QuickBooks y lo aplica a la factura correspondiente. Confirma con el dueño antes de ejecutar. Consume 1 tarea.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        cliente_nombre:  { type: 'string', description: 'Nombre del cliente que pagó.' },
+        monto:           { type: 'number', description: 'Monto recibido.' },
+        factura_numero:  { type: 'string', description: 'Número de factura a aplicar (opcional, se aplica a la más antigua pendiente si no se indica).' },
+      },
+      required: ['cliente_nombre', 'monto'],
+    },
+  },
+  {
+    name: 'qb_reporte_ingresos',
+    description: 'Genera un reporte de ingresos, gastos y utilidad desde QuickBooks para un período específico.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        periodo: {
+          type: 'string',
+          enum: ['este_mes', 'mes_pasado', 'este_año', 'año_pasado', 'este_trimestre', 'trimestre_pasado'],
+          description: 'Período del reporte (default: este_mes).',
+        },
+      },
+      required: [],
+    },
+  },
+];
+
 const ALL_TOOLS = [
   DELEGATE_TASK_TOOL,
   CONSULT_AGENT_TOOL,
@@ -629,8 +698,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const targetQuery = agentId
     ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
     : supabase.from('voice_agents').select('*').eq('portal_token', token).single();
-  const { data: agent } = await targetQuery;
+  const [{ data: agent }, { data: qbRow }] = await Promise.all([
+    targetQuery,
+    supabase.from('qb_integrations').select('realm_id').eq('portal_email', accountAgent.portal_email).maybeSingle(),
+  ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+
+  const qbConnected  = !!qbRow?.realm_id;
+  const sessionTools = qbConnected ? [...ALL_TOOLS, ...QB_TOOLS] : ALL_TOOLS;
 
   const agentName = (agent.agent_name as string | null)?.trim() || 'Centinelia';
   const agentRole = (agent.role as string | null)?.trim() || null;
@@ -912,7 +987,7 @@ ${context}`;
             model:      'claude-sonnet-4-6',
             max_tokens: 2048,
             system:     callCount === 1 ? systemWithAlert : system,
-            tools:      ALL_TOOLS,
+            tools:      sessionTools,
             messages:   conversationMessages,
           });
 
@@ -1830,6 +1905,141 @@ ${context}`;
 
                 toolResult = { ok: true, message: consultAnswer };
               }
+            }
+
+          } else if (pendingToolName === 'qb_consultar_facturas') {
+            const qb = await getQBClient(accountAgent.portal_email, supabase);
+            if (!qb) {
+              toolResult = { ok: false, error: 'QuickBooks no está conectado.' };
+            } else {
+              try {
+                const { cliente, solo_pendientes = true } = toolInput as { cliente?: string; solo_pendientes?: boolean };
+                const safe    = (cliente ?? '').replace(/'/g, '');
+                const pendClause = solo_pendientes ? " AND Balance > '0'" : '';
+                const custClause = safe ? ` AND CustomerRef.name LIKE '%${safe}%'` : '';
+                const sql  = `SELECT Id, DocNumber, CustomerRef, Balance, DueDate, TotalAmt FROM Invoice WHERE 1=1${custClause}${pendClause} ORDER BY DueDate ASC MAXRESULTS 15`;
+                const data = await qb.query(sql);
+                const invoices = data?.QueryResponse?.Invoice ?? [];
+                const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                const fmtD = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+                if (!invoices.length) {
+                  toolResult = { ok: true, facturas: [], mensaje: `No hay facturas${solo_pendientes ? ' pendientes' : ''}${safe ? ` para "${safe}"` : ''}.` };
+                } else {
+                  const total = invoices.reduce((s: number, i: any) => s + (i.Balance ?? 0), 0);
+                  toolResult = { ok: true, count: invoices.length, total: fmt(total), facturas: invoices.map((i: any) => ({ numero: i.DocNumber, cliente: i.CustomerRef?.name, pendiente: fmt(i.Balance), total: fmt(i.TotalAmt), vence: i.DueDate ? fmtD(i.DueDate) : null, vencida: i.DueDate && new Date(i.DueDate) < new Date() && i.Balance > 0 })) };
+                }
+              } catch (err) { toolResult = { ok: false, error: String(err) }; }
+            }
+
+          } else if (pendingToolName === 'qb_buscar_cliente') {
+            const qb = await getQBClient(accountAgent.portal_email, supabase);
+            if (!qb) {
+              toolResult = { ok: false, error: 'QuickBooks no está conectado.' };
+            } else {
+              try {
+                const { nombre } = toolInput as { nombre: string };
+                const safe = nombre.replace(/'/g, '');
+                const [custRes, invRes] = await Promise.all([
+                  qb.query(`SELECT Id, DisplayName, PrimaryEmailAddr, PrimaryPhone, Balance FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 5`),
+                  qb.query(`SELECT Id, DocNumber, Balance, TotalAmt, DueDate FROM Invoice WHERE CustomerRef.name LIKE '%${safe}%' AND Balance > '0' ORDER BY DueDate ASC MAXRESULTS 5`),
+                ]);
+                const customers = custRes?.QueryResponse?.Customer ?? [];
+                if (!customers.length) {
+                  toolResult = { ok: false, error: `No encontré cliente "${nombre}" en QuickBooks.` };
+                } else {
+                  const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                  const c   = customers[0];
+                  toolResult = { ok: true, cliente: { id: c.Id, nombre: c.DisplayName, email: c.PrimaryEmailAddr?.Address, telefono: c.PrimaryPhone?.FreeFormNumber, saldo: fmt(c.Balance ?? 0) }, facturas_pendientes: (invRes?.QueryResponse?.Invoice ?? []).map((i: any) => ({ numero: i.DocNumber, pendiente: fmt(i.Balance), total: fmt(i.TotalAmt), vence: i.DueDate })) };
+                }
+              } catch (err) { toolResult = { ok: false, error: String(err) }; }
+            }
+
+          } else if (pendingToolName === 'qb_crear_factura') {
+            const opsCheck = await consumeAiOp(agent.id as string, 1);
+            if (!opsCheck.ok) {
+              toolResult = { ok: false, error: 'Sin tareas disponibles para crear la factura.' };
+            } else {
+              const qb = await getQBClient(accountAgent.portal_email, supabase);
+              if (!qb) {
+                toolResult = { ok: false, error: 'QuickBooks no está conectado.' };
+              } else {
+                try {
+                  const { cliente_nombre, descripcion, monto, fecha_vencimiento } = toolInput as { cliente_nombre: string; descripcion: string; monto: number; fecha_vencimiento?: string };
+                  const safe     = cliente_nombre.replace(/'/g, '');
+                  const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
+                  const customer = custData?.QueryResponse?.Customer?.[0];
+                  if (!customer) { toolResult = { ok: false, error: `Cliente "${cliente_nombre}" no encontrado en QuickBooks.` }; }
+                  else {
+                    const itemData = await qb.query(`SELECT Id, Name FROM Item WHERE Type = 'Service' MAXRESULTS 1`);
+                    const item     = itemData?.QueryResponse?.Item?.[0];
+                    const lineDetail = item ? { DetailType: 'SalesItemLineDetail', Amount: monto, Description: descripcion, SalesItemLineDetail: { ItemRef: { value: item.Id, name: item.Name }, UnitPrice: monto, Qty: 1 } } : { DetailType: 'DescriptionOnlyLine', Amount: monto, Description: descripcion, DescriptionOnlyLineDetail: {} };
+                    const body: any = { Line: [lineDetail], CustomerRef: { value: customer.Id, name: customer.DisplayName } };
+                    if (fecha_vencimiento) body.DueDate = fecha_vencimiento;
+                    const result  = await qb.post('/invoice', body);
+                    const invoice = result?.Invoice;
+                    const fmt     = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                    toolResult = { ok: true, factura_id: invoice?.Id, numero: invoice?.DocNumber, cliente: customer.DisplayName, monto: fmt(monto), descripcion };
+                  }
+                } catch (err) { toolResult = { ok: false, error: String(err) }; }
+              }
+            }
+
+          } else if (pendingToolName === 'qb_registrar_pago') {
+            const opsCheck = await consumeAiOp(agent.id as string, 1);
+            if (!opsCheck.ok) {
+              toolResult = { ok: false, error: 'Sin tareas disponibles para registrar el pago.' };
+            } else {
+              const qb = await getQBClient(accountAgent.portal_email, supabase);
+              if (!qb) {
+                toolResult = { ok: false, error: 'QuickBooks no está conectado.' };
+              } else {
+                try {
+                  const { cliente_nombre, monto, factura_numero } = toolInput as { cliente_nombre: string; monto: number; factura_numero?: string };
+                  const safe     = cliente_nombre.replace(/'/g, '');
+                  const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
+                  const customer = custData?.QueryResponse?.Customer?.[0];
+                  if (!customer) { toolResult = { ok: false, error: `Cliente "${cliente_nombre}" no encontrado en QuickBooks.` }; }
+                  else {
+                    const invFilter = factura_numero ? `AND DocNumber = '${factura_numero}'` : `AND Balance > '0' ORDER BY DueDate ASC`;
+                    const invData   = await qb.query(`SELECT Id, DocNumber, Balance FROM Invoice WHERE CustomerRef = '${customer.Id}' ${invFilter} MAXRESULTS 1`);
+                    const invoice   = invData?.QueryResponse?.Invoice?.[0];
+                    const payBody: any = { TotalAmt: monto, CustomerRef: { value: customer.Id, name: customer.DisplayName }, TxnDate: new Date().toISOString().split('T')[0] };
+                    if (invoice) payBody.Line = [{ Amount: monto, LinkedTxn: [{ TxnId: invoice.Id, TxnType: 'Invoice' }] }];
+                    const result  = await qb.post('/payment', payBody);
+                    const fmt     = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                    toolResult = { ok: true, pago_id: result?.Payment?.Id, cliente: customer.DisplayName, monto: fmt(monto), factura: invoice?.DocNumber ?? null };
+                  }
+                } catch (err) { toolResult = { ok: false, error: String(err) }; }
+              }
+            }
+
+          } else if (pendingToolName === 'qb_reporte_ingresos') {
+            const qb = await getQBClient(accountAgent.portal_email, supabase);
+            if (!qb) {
+              toolResult = { ok: false, error: 'QuickBooks no está conectado.' };
+            } else {
+              try {
+                const PERIOD_MAP: Record<string, string> = { este_mes: 'THIS_MONTH', mes_pasado: 'LAST_MONTH', este_año: 'THIS_YEAR', año_pasado: 'LAST_YEAR', este_trimestre: 'THIS_FISCAL_QUARTER', trimestre_pasado: 'LAST_FISCAL_QUARTER' };
+                const { periodo = 'este_mes' } = toolInput as { periodo?: string };
+                const dateMacro = PERIOD_MAP[periodo] ?? 'THIS_MONTH';
+                const [plRes, arRes] = await Promise.all([
+                  qb.get(`/reports/ProfitAndLoss?date_macro=${dateMacro}`),
+                  qb.get(`/reports/AgedReceivableDetail?date_macro=${dateMacro}`),
+                ]);
+                const fmt  = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                const reporte: Record<string, string> = {};
+                for (const row of (plRes?.Rows?.Row ?? [])) {
+                  const label = row?.Header?.ColData?.[0]?.value ?? row?.Summary?.ColData?.[0]?.value ?? '';
+                  const val   = parseFloat(row?.Summary?.ColData?.[1]?.value ?? '');
+                  if (!label || isNaN(val)) continue;
+                  if (/ingreso|income|revenue/i.test(label))  reporte.ingresos   = fmt(val);
+                  if (/gasto|expense/i.test(label))           reporte.gastos     = fmt(val);
+                  if (/net|utilidad|ganancia/i.test(label))   reporte.utilidad   = fmt(val);
+                }
+                const arTotal = (arRes?.Rows?.Row ?? []).reduce((s: number, r: any) => { const v = parseFloat(r?.ColData?.[r.ColData?.length - 1]?.value ?? '0'); return s + (isNaN(v) ? 0 : v); }, 0);
+                if (arTotal > 0) reporte.cuentas_por_cobrar = fmt(arTotal);
+                toolResult = { ok: true, periodo: dateMacro, reporte };
+              } catch (err) { toolResult = { ok: false, error: String(err) }; }
             }
 
           } else {
