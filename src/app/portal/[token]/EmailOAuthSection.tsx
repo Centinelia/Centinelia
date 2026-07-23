@@ -226,7 +226,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                         : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
                       <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                         {connected.auto_reply
-                          ? 'Tu empleado responde automáticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobación.'
+                          ? 'Tu empleado lee el correo entrante, redacta una respuesta y la envía directamente sin pedir aprobación.'
                           : 'Tu empleado redacta una respuesta y se la envía a tu aprobador asignado para que la apruebe o descarte antes de que salga.'}
                       </p>
                     </div>
