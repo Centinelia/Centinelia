@@ -42,9 +42,16 @@ const INTEGRATIONS: IntegrationDef[] = [
     requiredPlan: 'comercial',
     accentColor:  '#006BFF',
     icon: (
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: '#006BFF' }}>
-        <CalendarCheck size={16} color="#fff" />
+      <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" fill="#006BFF" />
+          <rect x="8" y="7" width="16" height="18" rx="2" fill="#fff" />
+          <rect x="8" y="7" width="16" height="6" rx="2" fill="#006BFF" />
+          <rect x="11" y="17" width="4" height="4" rx="0.5" fill="#006BFF" />
+          <rect x="17" y="17" width="4" height="4" rx="0.5" fill="#006BFF" />
+          <rect x="11" y="5" width="2" height="4" rx="1" fill="#fff" />
+          <rect x="19" y="5" width="2" height="4" rx="1" fill="#fff" />
+        </svg>
       </div>
     ),
   },
@@ -55,9 +62,16 @@ const INTEGRATIONS: IntegrationDef[] = [
     requiredPlan: 'comercial',
     accentColor:  '#4285F4',
     icon: (
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.1)' }}>
-        <Calendar size={16} style={{ color: '#4285F4' }} />
+      <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" fill="#fff" />
+          <rect x="4" y="6" width="24" height="22" rx="2" fill="#fff" stroke="#E0E0E0" strokeWidth="1" />
+          <rect x="4" y="6" width="24" height="8" rx="2" fill="#4285F4" />
+          <rect x="4" y="10" width="24" height="4" fill="#4285F4" />
+          <rect x="10" y="4" width="2.5" height="5" rx="1.25" fill="#4285F4" />
+          <rect x="19.5" y="4" width="2.5" height="5" rx="1.25" fill="#4285F4" />
+          <text x="16" y="24" textAnchor="middle" fontSize="9" fontWeight="700" fill="#4285F4" fontFamily="Arial">31</text>
+        </svg>
       </div>
     ),
   },
@@ -68,9 +82,16 @@ const INTEGRATIONS: IntegrationDef[] = [
     requiredPlan: 'comercial',
     accentColor:  '#0078D4',
     icon: (
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: '#0078D4' }}>
-        <Calendar size={16} style={{ color: '#fff' }} />
+      <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" fill="#fff" />
+          <rect x="4" y="6" width="24" height="22" rx="2" fill="#fff" stroke="#E0E0E0" strokeWidth="1" />
+          <rect x="4" y="6" width="24" height="8" rx="2" fill="#0078D4" />
+          <rect x="4" y="10" width="24" height="4" fill="#0078D4" />
+          <rect x="10" y="4" width="2.5" height="5" rx="1.25" fill="#0078D4" />
+          <rect x="19.5" y="4" width="2.5" height="5" rx="1.25" fill="#0078D4" />
+          <text x="16" y="24" textAnchor="middle" fontSize="9" fontWeight="700" fill="#0078D4" fontFamily="Arial">31</text>
+        </svg>
       </div>
     ),
   },

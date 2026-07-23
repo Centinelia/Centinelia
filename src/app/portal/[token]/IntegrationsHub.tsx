@@ -124,9 +124,9 @@ const RowIcons = {
   notion: (
     <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
       <rect width="48" height="48" rx="6" fill="#fff" />
-      <path d="M12 10h16l10 10v18H12V10z" fill="#fff" stroke="#000" strokeWidth="2.5" />
-      <path d="M28 10v10h10" stroke="#000" strokeWidth="2.5" fill="none" />
-      <path d="M18 22h12M18 28h12M18 34h8" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+      <path d="M11 9c0-1.1.9-2 2-2h14.5L38 18.5V39a2 2 0 01-2 2H13a2 2 0 01-2-2V9z" fill="#fff" stroke="#000" strokeWidth="2.5" />
+      <path d="M27.5 7v9.5H38" stroke="#000" strokeWidth="2.5" fill="none" strokeLinejoin="round" />
+      <text x="24" y="35" textAnchor="middle" fontSize="16" fontWeight="900" fill="#000" fontFamily="Georgia,serif">N</text>
     </svg>
   ),
   teams: (
@@ -140,13 +140,14 @@ const RowIcons = {
   ),
   mercadolibre: (
     <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
-      <rect width="48" height="48" rx="24" fill="#FFE600" />
-      <path d="M8 24C8 15.2 15.2 8 24 8s16 7.2 16 16-7.2 16-16 16S8 32.8 8 24z" fill="#FFE600" />
-      <path d="M24 10c7.7 0 14 6.3 14 14S31.7 38 24 38 10 31.7 10 24 16.3 10 24 10z" stroke="#333" strokeWidth="1.5" fill="none" />
-      <path d="M16 20c2-4 10-4 16 0" stroke="#333" strokeWidth="2" strokeLinecap="round" fill="none" />
-      <circle cx="20" cy="26" r="2.5" fill="#333" />
-      <circle cx="28" cy="26" r="2.5" fill="#333" />
-      <path d="M20 31c1 2 7 2 8 0" stroke="#333" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <rect width="48" height="48" rx="8" fill="#FFE600" />
+      <ellipse cx="24" cy="20" rx="13" ry="11" fill="#FFE600" stroke="#333" strokeWidth="2" />
+      <path d="M13 20c0-3 4-9 11-9s11 6 11 9" fill="#FFE600" />
+      <path d="M11 22c2 7 7 12 13 12s11-5 13-12" fill="#FFE600" stroke="#333" strokeWidth="2" fill="none" />
+      <circle cx="20" cy="22" r="2" fill="#333" />
+      <circle cx="28" cy="22" r="2" fill="#333" />
+      <path d="M20 28c1 2 3 3 4 3s3-1 4-3" stroke="#333" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <path d="M15 17c2-5 6-7 9-7s7 2 9 7" stroke="#333" strokeWidth="1.8" strokeLinecap="round" fill="none" />
     </svg>
   ),
   quickbooks: (
