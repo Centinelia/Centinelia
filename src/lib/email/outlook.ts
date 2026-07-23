@@ -1,4 +1,4 @@
-const TENANT    = 'common';
+const TENANT = 'common';
 const AUTH_BASE = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0`;
 
 export const OUTLOOK_SCOPES = 'Mail.ReadWrite Mail.Send Files.ReadWrite Calendars.ReadWrite Contacts.ReadWrite Tasks.ReadWrite offline_access User.Read';
