@@ -495,14 +495,22 @@ export default async function AgentesPage({ params }: Props) {
               <div className="p-5 flex flex-col items-center gap-4 flex-1">
 
                 {/* Avatar — grande, centrado arriba */}
-                <AgentAvatarPicker
-                  token={a.portal_token as string}
-                  avatarSrc={avatarSrc}
-                  initial={initial}
-                  color={hasRole ? roleColor : color}
-                  size={120}
-                  locked={avatarLocked}
-                />
+                <div className="relative">
+                  <AgentAvatarPicker
+                    token={a.portal_token as string}
+                    avatarSrc={avatarSrc}
+                    initial={initial}
+                    color={hasRole ? roleColor : color}
+                    size={120}
+                    locked={avatarLocked}
+                  />
+                  <span
+                    className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm whitespace-nowrap"
+                    style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color, backdropFilter: 'blur(4px)' }}>
+                    {jornada.icon}
+                    {jornada.label}
+                  </span>
+                </div>
 
                 {/* Nombre + rol + estado */}
                 <div className="flex flex-col items-center gap-1 text-center w-full">
@@ -592,11 +600,6 @@ export default async function AgentesPage({ params }: Props) {
                     <span className="inline sm:hidden xl:inline">Configurar</span>
                   </Link>
                 </div>
-                <span className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium flex-shrink-0"
-                  style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color }}>
-                  {jornada.icon}
-                  <span className="inline sm:hidden xl:inline">{jornada.label}</span>
-                </span>
                 <div className="flex-1 flex justify-end min-w-0">
                   {!isBillingPaused
                     ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
@@ -16,15 +18,23 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, agent_name, phone_number, email_logo_url, email_brand_color, email_footer_text')
+    .select('portal_email, business_name, agent_name, phone_number')
     .eq('portal_token', token)
     .single();
   if (!agent) return new NextResponse('Not found', { status: 404 });
 
+  const { data: org } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('logo_url, email_brand_color, email_footer_text')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
+    : { data: null };
+
   const branding: EmailBranding = {
-    logoUrl:    agent.email_logo_url   ?? null,
-    brandColor: agent.email_brand_color ?? '#6C3BFF',
-    footerText: agent.email_footer_text ?? null,
+    logoUrl:    org?.logo_url          ?? null,
+    brandColor: org?.email_brand_color ?? '#6C3BFF',
+    footerText: org?.email_footer_text ?? null,
     senderName: agent.business_name,
   };
 

@@ -20,6 +20,7 @@ import { redirect } from 'next/navigation';
 
 import PortalLogout            from './PortalLogout';
 import BrandKitEditor          from './BrandKitEditor';
+import EmailSettings            from './EmailSettings';
 import BusinessSwitcher        from './BusinessSwitcher';
 import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
@@ -868,6 +869,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
                     initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                   />
+                </div>
+
+                <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
+                    <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
+                  </div>
+                  <EmailSettings token={token} />
                 </div>
 
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>

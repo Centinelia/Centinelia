@@ -32,6 +32,7 @@ import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ContractSection              from '../ContractSection';
 import AgentEmailSection            from '../AgentEmailSection';
+import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
@@ -325,6 +326,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />
                 </div>
                 <AgentEmailSection token={token} />
+
+                <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprobador de borradores</h3>
+                    <InfoTooltip text={'Cuando el empleado redacta una respuesta de correo, debe esperar aprobación antes de enviarla (si Auto-respuesta está desactivada).\n\nEsta persona recibirá la notificación para revisar y aprobar o descartar el borrador.'} />
+                  </div>
+                  <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
+                </div>
               </div>
             </div>
 

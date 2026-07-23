@@ -43,7 +43,7 @@ const PROVIDERS = [
   },
 ];
 
-export default function EmailOAuthSection({ token, only }: { token: string; only?: 'gmail' | 'outlook' }) {
+export default function EmailOAuthSection({ token, only, workspacePanel }: { token: string; only?: 'gmail' | 'outlook'; workspacePanel?: React.ReactNode }) {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [toggling,     setToggling]     = useState<string | null>(null);
@@ -204,21 +204,60 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
               </div>
             )}
             {connected && !connected.needs_reauth && (
-              <div className="mt-3 pt-3 flex items-start gap-2 rounded-lg px-3 py-2"
-                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
-                {connected.auto_reply
-                  ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-                  : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
-                <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                  {connected.auto_reply
-                    ? 'Tu empleado responde automaticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobacion.'
-                    : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibiras un correo para aprobar o descartar la respuesta de tu empleado.'}
-                </p>
-              </div>
+              workspacePanel ? (
+                <div className="mt-3 grid gap-3 items-center" style={{ gridTemplateColumns: '4fr 7fr' }}>
+                  <div>{workspacePanel}</div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start gap-2 rounded-lg px-3 py-2"
+                      style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+                      {connected.auto_reply
+                        ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
+                        : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
+                      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                        {connected.auto_reply
+                          ? 'Tu empleado responde automáticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobación.'
+                          : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibirás un correo para aprobar o descartar la respuesta de tu empleado.'}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2 rounded-lg px-3 py-2"
+                      style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}>
+                      <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
+                      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                        Los correos se sincronizan automáticamente cada 15 minutos. Solo se procesan mensajes nuevos no leídos en tu bandeja de entrada.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-start gap-2 rounded-lg px-3 py-2"
+                    style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+                    {connected.auto_reply
+                      ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
+                      : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
+                    <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                      {connected.auto_reply
+                        ? 'Tu empleado responde automáticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobación.'
+                        : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibirás un correo para aprobar o descartar la respuesta de tu empleado.'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-lg px-3 py-2"
+                    style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}>
+                    <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                      Los correos se sincronizan automáticamente cada 15 minutos. Solo se procesan mensajes nuevos no leídos en tu bandeja de entrada.
+                    </p>
+                  </div>
+                </div>
+              )
             )}
           </div>
         );
       })}
+
+      {workspacePanel && !connectedProvider && (
+        <div>{workspacePanel}</div>
+      )}
 
       {!only && connectedProvider && !showAll && (
         <button
@@ -237,13 +276,6 @@ export default function EmailOAuthSection({ token, only }: { token: string; only
         </p>
       )}
 
-      <div className="flex gap-2 rounded-lg px-3 py-2.5"
-        style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}>
-        <Mail size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Los correos se sincronizan automáticamente cada 15 minutos. Solo se procesan mensajes nuevos no leídos en tu bandeja de entrada.
-        </p>
-      </div>
     </div>
   );
 }

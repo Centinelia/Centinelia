@@ -77,9 +77,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'negocio', moduleId: 'negocio', label: 'Organización', icon: <Building2 size={14} />,
       items: [
-        { label: 'Organización',              id: 'organizacion' },
-        { label: 'Branding',                  id: 'branding' },
-        { label: 'Manual de la organización', id: 'conocimiento' },
+        { label: 'Organización',                    id: 'organizacion' },
+        { label: 'Branding',                        id: 'branding' },
+        { label: 'Notificaciones al cliente',        id: 'dominio-correo' },
+        { label: 'Manual de la organización',        id: 'conocimiento' },
         { label: 'Perfil del responsable',    id: 'perfil-dueno' },
         { label: 'Sitio web y reseñas',       id: 'sitio' },
         { label: 'Horarios',                  id: 'horarios' },

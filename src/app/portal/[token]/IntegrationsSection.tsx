@@ -13,7 +13,7 @@ function canUse(clientPlan: Plan, required: Plan): boolean {
 }
 
 interface IntegrationDef {
-  id:           'cal_com' | 'google' | 'calendly';
+  id:           'cal_com' | 'google' | 'outlook_cal' | 'calendly';
   label:        string;
   description:  string;
   requiredPlan: Plan;
@@ -61,6 +61,19 @@ const INTEGRATIONS: IntegrationDef[] = [
       </div>
     ),
   },
+  {
+    id:           'outlook_cal',
+    label:        'Outlook Calendar',
+    description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva de Outlook',
+    requiredPlan: 'comercial',
+    accentColor:  '#0078D4',
+    icon: (
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: '#0078D4' }}>
+        <Calendar size={16} style={{ color: '#fff' }} />
+      </div>
+    ),
+  },
 ];
 
 interface State {
@@ -73,7 +86,11 @@ interface State {
 
 const SUPPORT_WA = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
 
-export default function IntegrationsSection({ token, plan }: { token: string; plan: Plan }) {
+export default function IntegrationsSection({ token, plan, emailConn }: {
+  token:     string;
+  plan:      Plan;
+  emailConn?: { provider: 'gmail' | 'outlook'; email: string } | null;
+}) {
   const [state, setState]       = useState<State>({
     calendar_type: null, calendar_event_type_id: '', calendar_link: '',
     cal_api_configured: false, cal_api_key: '',
@@ -146,8 +163,45 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
     </div>
   );
 
+  const calLabel = emailConn?.provider === 'gmail' ? 'Google Calendar' : 'Outlook Calendar';
+  const calColor = emailConn?.provider === 'gmail' ? '#4285F4' : '#0078D4';
+
   return (
     <div className="flex flex-col gap-3">
+
+      {/* ── OAuth direct connection banner ─────────────────────────────── */}
+      {emailConn && (
+        <div className="rounded-xl overflow-hidden"
+          style={{ border: `1px solid ${calColor}33`, background: `${calColor}08` }}>
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: '#fff', border: `1px solid ${calColor}33` }}>
+              <CalendarCheck size={16} style={{ color: calColor }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{calLabel}</p>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>Activo</span>
+              </div>
+              <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>{emailConn.email}</p>
+            </div>
+          </div>
+          <div className="px-4 pb-3 pt-0">
+            <p className="text-xs p-3 rounded-lg" style={{ background: `${calColor}08`, color: 'var(--c-text-3)', border: `1px solid ${calColor}20` }}>
+              Tu empleado puede consultar disponibilidad y crear eventos directamente en {calLabel}, sin necesidad de compartir links de reserva.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Link-sharing options ────────────────────────────────────────── */}
+      {emailConn && (
+        <p className="text-xs px-1" style={{ color: 'var(--c-text-4)' }}>
+          O activa un link de reserva externo como alternativa o fallback:
+        </p>
+      )}
+
       {INTEGRATIONS.map(intg => {
         const allowed    = canUse(plan, intg.requiredPlan);
         const isActive   = state.calendar_type === intg.id;
@@ -227,8 +281,8 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
                     </>
                   )}
 
-                  {intg.id === 'google' && (
-                    <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(66,133,244,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(66,133,244,0.15)' }}>
+                  {(intg.id === 'google' || intg.id === 'outlook_cal') && (
+                    <p className="text-xs p-3 rounded-lg" style={{ background: `${intg.accentColor}10`, color: 'var(--c-text-3)', border: `1px solid ${intg.accentColor}25` }}>
                       Tu empleado captura nombre, servicio y horario durante la llamada. Al terminar, comparte tu link de reserva por correo para que el cliente confirme.
                     </p>
                   )}
@@ -256,6 +310,8 @@ export default function IntegrationsSection({ token, plan }: { token: string; pl
                           ? 'https://cal.com/tu-usuario/servicio'
                           : intg.id === 'calendly'
                           ? 'https://calendly.com/tu-usuario/30min'
+                          : intg.id === 'outlook_cal'
+                          ? 'https://outlook.office365.com/book/...'
                           : 'https://calendar.google.com/calendar/appointments/...'
                       }
                       className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
