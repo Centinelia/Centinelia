@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token, id } = await params;
   const access = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as Record<string, unknown>;
   const allowed = ['status', 'prioridad', 'asignado_a', 'asignado_tel', 'resolucion', 'descripcion'];
@@ -75,9 +81,14 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token, id } = await params;
   const access = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { error } = await createAdminClient()
     .from('helpdesk_tickets')

@@ -21,9 +21,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  // Resolve all agent_ids for this account to scope the draft lookup
+  const { data: accountAgents } = agent.portal_email
+    ? await supabase.from('voice_agents').select('id').eq('portal_email', agent.portal_email)
+    : { data: [{ id: agent.id }] };
+  const accountIds = (accountAgents ?? []).map(a => a.id as string);
 
   const { data: draft } = await supabase
-    .from('contract_drafts').select('*').eq('id', id).single();
+    .from('contract_drafts').select('*').eq('id', id).in('agent_id', accountIds).single();
   if (!draft) return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
   if (!draft.client_email) return NextResponse.json({ error: 'El borrador no tiene email del cliente' }, { status: 400 });
 

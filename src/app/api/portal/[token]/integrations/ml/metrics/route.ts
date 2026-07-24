@@ -24,6 +24,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent?.portal_email) return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: account } = await supabase
     .from('integration_accounts')

@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const result = await getMlConnectorByToken(token, supabase);
   if (!result) return NextResponse.json({ error: 'Mercado Libre no conectado' }, { status: 404 });
+  if (auth.portalEmail && result.portalEmail !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const items = await result.connector.items.list(50);
   return NextResponse.json({ items });

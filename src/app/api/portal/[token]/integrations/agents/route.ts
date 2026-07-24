@@ -21,6 +21,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!anchor?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && anchor.portal_email !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: agents } = await supabase
     .from('voice_agents')

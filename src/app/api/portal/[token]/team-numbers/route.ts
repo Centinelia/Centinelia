@@ -14,10 +14,12 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, team_numbers')
+    .select('id, team_numbers, portal_email')
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   return NextResponse.json({ team_numbers: (agent as any).team_numbers ?? [] });
 }
@@ -30,6 +32,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
   const body      = await req.json() as { team_numbers?: { number: string; name?: string; is_owner?: boolean }[] };
+
+  const { data: agentCheck } = await supabase
+    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  if (!agentCheck) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agentCheck.portal_email && auth.portalEmail !== agentCheck.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const teamNumbers = (body.team_numbers ?? [])
     .filter(t => typeof t.number === 'string' && t.number.trim())

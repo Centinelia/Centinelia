@@ -15,8 +15,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: acct } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { ext } = await req.json();
   const safExt  = (ext ?? 'mp4').replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'mp4';

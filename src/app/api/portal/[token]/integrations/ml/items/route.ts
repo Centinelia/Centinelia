@@ -18,6 +18,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const result = await getMlConnectorByToken(token, supabase);
   if (!result) return NextResponse.json({ error: 'Mercado Libre no conectado' }, { status: 404 });
+  if (auth.portalEmail && result.portalEmail !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as MLCreateItemInput;
   if (!body.title || !body.category_id || !body.price || !body.available_quantity) {

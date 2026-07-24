@@ -22,6 +22,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent) return new NextResponse('Not found', { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return new NextResponse('Unauthorized', { status: 403 });
 
   const { data: org } = agent.portal_email
     ? await supabase

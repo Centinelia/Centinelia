@@ -10,18 +10,19 @@ export async function GET(
 ) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, auto_refill_ops_enabled, auto_refill_ops_threshold, auto_refill_ops_amount, stripe_customer_id')
+    .select('auto_refill_enabled, auto_refill_threshold, auto_refill_minutes, auto_refill_ops_enabled, auto_refill_ops_threshold, auto_refill_ops_amount, stripe_customer_id, portal_email')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   let hasCard = false;
   if (agent.stripe_customer_id) {
@@ -46,9 +47,8 @@ export async function PATCH(
 ) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as {
     enabled: boolean; threshold: number; minutes: number;
@@ -67,6 +67,14 @@ export async function PATCH(
   }
 
   const supabase = createAdminClient();
+
+  // IDOR guard: verify the token belongs to the session's account
+  const { data: agentCheck } = await supabase
+    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  if (!agentCheck) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agentCheck.portal_email && session.portalEmail !== agentCheck.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
   const { error } = await supabase
     .from('voice_agents')
     .update({
