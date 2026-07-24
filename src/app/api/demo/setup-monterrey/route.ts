@@ -98,7 +98,7 @@ const DEMO_CONFIG = {
 
   // First message — no "Esta llamada puede ser grabada" for government demo.
   // Vapi plays this verbatim so we use a time-neutral opening.
-  first_message: 'Atención a Contribuyentes, Municipio de Monterrey. ¿En qué le puedo ayudar?',
+  first_message: 'Atención a Contribuyentes del Municipio de Monterrey. ¿En qué le puedo ayudar?',
 
   // ── Phone & transfer ───────────────────────────────────────────────────────
   // phone_number: the Twilio number assigned to this demo line — fill once bought.

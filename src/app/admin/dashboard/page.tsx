@@ -9,6 +9,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+const DEMO_EMAILS = [
+  'demo@centinelia.mx',
+  'centinelia.dev@gmail.com',
+];
+
 export default async function DashboardPage() {
   const supabase   = createAdminClient();
   const now        = Date.now();
@@ -28,6 +33,7 @@ export default async function DashboardPage() {
     supabase.from('voice_agents')
       .select('id, business_name, client_name, plan, minutes_plan, minutes_used, minutes_included, active, billing_status, created_at, portal_email')
       .neq('id', process.env.DEMO_AGENT_ID ?? '')
+      .not('portal_email', 'in', `(${DEMO_EMAILS.join(',')})`)
       .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
       .select('id, agent_id, created_at')
@@ -39,7 +45,8 @@ export default async function DashboardPage() {
     supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included'),
     supabase.from('voice_agents')
       .select('ai_ops_used, ai_ops_limit')
-      .neq('id', process.env.DEMO_AGENT_ID ?? ''),
+      .neq('id', process.env.DEMO_AGENT_ID ?? '')
+      .not('portal_email', 'in', `(${DEMO_EMAILS.join(',')})`),
     fetch('https://api.vapi.ai/account', {
       headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
       next:    { revalidate: 0 },
