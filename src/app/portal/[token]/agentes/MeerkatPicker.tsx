@@ -486,7 +486,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                             {allocStr}/mes
                           </span>
                           <span className="text-[11px] font-semibold mt-0.5" style={{ color: active ? '#9B6DFF' : 'var(--c-text-2)' }}>
-                            {fmt(j.mxn)}/mes
+                            {fmt(j.mxn)} + IVA/mes
                           </span>
                         </button>
                       );

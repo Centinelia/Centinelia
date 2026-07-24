@@ -71,12 +71,26 @@ export default function UpgradePlanSection({
               {isCurrent && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium mr-1"
                 style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>Actual</span>}
               <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
-                {t.minutes} min{cfg.aiOps > 0 ? ` · ${cfg.aiOps} ops` : ''} · ${cfg.mxn.toLocaleString('es-MX')}/mes
+                {t.minutes} min{cfg.aiOps > 0 ? ` · ${cfg.aiOps} ops` : ''} · ${cfg.mxn.toLocaleString('es-MX')} + IVA/mes
               </span>
               <ChevronDown size={14} style={{ color: 'var(--c-text-3)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginLeft: 4 }} />
             </button>
             {isExpanded && !isCurrent && (
               <div className="px-4 pb-4" style={{ borderTop: '1px solid rgba(108,59,255,0.15)' }}>
+                <div className="flex flex-col gap-0.5 mt-3 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${cfg.mxn.toLocaleString('es-MX')} MXN/mes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>IVA (16%)</span>
+                    <span>${Math.round(cfg.mxn * 0.16).toLocaleString('es-MX')} MXN</span>
+                  </div>
+                  <div className="flex justify-between font-semibold pt-0.5" style={{ borderTop: '1px solid var(--c-border)', marginTop: 2, color: 'var(--c-text-1)' }}>
+                    <span>Total mensual</span>
+                    <span>${Math.round(cfg.mxn * 1.16).toLocaleString('es-MX')} MXN</span>
+                  </div>
+                </div>
                 <button onClick={() => handleChangeTier(t.key)} disabled={!!loadingTier} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold mt-3"
                   style={{ background: isUpgrade ? 'rgba(108,59,255,0.1)' : 'var(--c-surface)', border: `1px solid ${isUpgrade ? 'rgba(108,59,255,0.35)' : 'var(--c-border)'}`, color: isUpgrade ? '#6C3BFF' : 'var(--c-text-2)' }}>
                   {loadingTier === t.key ? 'Procesando…' : isUpgrade ? <><ArrowUpCircle size={12} /> Cambiar a {t.label}</> : <><ArrowDownCircle size={12} /> Cambiar a {t.label}</>}
@@ -87,7 +101,7 @@ export default function UpgradePlanSection({
         );
       })}
       <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
-        Cambios de tier aplican en el próximo ciclo de facturación. Minutos extra fuera del plan cuestan $12.99/min.
+        Cambios de tier aplican en el próximo ciclo de facturación. Minutos extra fuera del plan cuestan $12.99/min + IVA.
       </p>
     </div>
   );
