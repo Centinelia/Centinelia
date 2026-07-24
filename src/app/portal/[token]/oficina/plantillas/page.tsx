@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText, ShoppingCart, Upload, Trash2, Save, CheckCircle,
-  FileCheck, ChevronDown, ChevronRight, MessageSquare,
+  FileCheck, ChevronDown, ChevronRight, MessageSquare, Wand2,
   Plus, Check, Edit2, GripVertical, ToggleLeft, ToggleRight, X,
 } from 'lucide-react';
 
@@ -97,9 +97,11 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
 
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
-function UploadZone({ token, docType, templateName, onUploaded, onDeleted, color }: {
+function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExtracted, color }: {
   token: string; docType: 'factura' | 'orden' | 'contrato'; templateName?: string;
-  onUploaded: (name: string) => void; onDeleted: () => void; color: string;
+  onUploaded: (name: string) => void; onDeleted: () => void;
+  onExtracted?: (data: Record<string, unknown>) => void;
+  color: string;
 }) {
   const inputRef                  = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -118,6 +120,9 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, color
       const data = await res.json();
       if (data.ok) {
         onUploaded(data.name);
+        if (data.extracted && Object.keys(data.extracted as object).length > 0) {
+          onExtracted?.(data.extracted as Record<string, unknown>);
+        }
       } else {
         setUploadError(data.error ?? 'No se pudo subir el archivo');
       }
@@ -260,6 +265,7 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
     fetch(`/api/portal/${token}/factura-config`).then(r => r.json()).then(d => {
@@ -290,7 +296,14 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
         token={token} docType="factura" templateName={cfg.template_name} color="#f59e0b"
         onUploaded={name => setCfg(prev => ({ ...prev, template_name: name }))}
         onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, ...r } = prev; return r; })}
+        onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
       />
+      {autoFilled && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
+          <Wand2 size={11} /> Campos detectados automaticamente del documento
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="RFC del emisor" hint="Aparece en cada factura que genera el empleado."
           value={cfg.rfc ?? ''} onChange={upd('rfc') as (v: string) => void} placeholder="XAXX010101000" />
@@ -315,6 +328,7 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
     fetch(`/api/portal/${token}/orden-config`).then(r => r.json()).then(d => {
@@ -345,7 +359,14 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
         token={token} docType="orden" templateName={cfg.template_name} color="#3b82f6"
         onUploaded={name => setCfg(prev => ({ ...prev, template_name: name }))}
         onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, ...r } = prev; return r; })}
+        onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
       />
+      {autoFilled && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' }}>
+          <Wand2 size={11} /> Campos detectados automaticamente del documento
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Prefijo de folio" hint="OC genera folios OC-20260721-3841."
           value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="OC" />
