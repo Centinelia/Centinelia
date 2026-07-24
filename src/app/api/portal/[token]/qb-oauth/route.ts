@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token } = await params;
   const supabase  = createAdminClient();
 
@@ -14,6 +18,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     .single();
 
   if (!agent?.portal_email) return NextResponse.json({ connected: false });
+  if (session.portalEmail && agent.portal_email !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: qb } = await supabase
     .from('qb_integrations')
@@ -31,7 +37,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token } = await params;
   const supabase  = createAdminClient();
 
@@ -42,6 +51,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .single();
 
   if (!agent?.portal_email) return NextResponse.json({ ok: true });
+  if (session.portalEmail && agent.portal_email !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: qb } = await supabase
     .from('qb_integrations')

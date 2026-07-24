@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Include drafts from all agents in the same account
   const { data: allAgents } = await supabase
@@ -41,8 +43,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as {
     client_name?:  string;
@@ -84,6 +88,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: allAgents } = await supabase
     .from('voice_agents').select('id').eq('portal_email', agent.portal_email);
@@ -127,6 +133,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: allAgents } = await supabase
     .from('voice_agents').select('id').eq('portal_email', agent.portal_email);

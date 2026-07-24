@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
@@ -23,6 +24,9 @@ function periodStart(periodo: string): Date {
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token }  = await params;
   const periodo    = req.nextUrl.searchParams.get('periodo') ?? 'mes';
   const since      = periodStart(periodo).toISOString();
@@ -35,6 +39,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     .eq('portal_token', token)
     .single();
   if (!base?.portal_email) return NextResponse.json({ agents: [] });
+  if (session.portalEmail && base.portal_email !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // All agents in the account
   const { data: agents } = await supabase

@@ -21,11 +21,13 @@ async function resolvePortalEmail(token: string) {
 export async function GET(_req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { supabase, portalEmail } = await resolvePortalEmail(token);
   if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: org } = await supabase
     .from('organizations')
@@ -40,8 +42,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { name?: string; logo_url?: string };
   const patch: Record<string, unknown> = {};
@@ -52,6 +54,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { supabase, portalEmail } = await resolvePortalEmail(token);
   if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   await supabase
     .from('organizations')

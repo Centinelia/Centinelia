@@ -25,6 +25,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const agent = await getAgent(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const connected = !!agent.notion_access_token;
   if (!connected) return NextResponse.json({ connected: false });
@@ -50,7 +52,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const agent = await getAgent(token);
-  if (!agent?.notion_access_token) return NextResponse.json({ error: 'Not connected' }, { status: 400 });
+  if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (!agent.notion_access_token) return NextResponse.json({ error: 'Not connected' }, { status: 400 });
 
   const { page_id } = await req.json() as { page_id: string };
   if (!page_id) return NextResponse.json({ error: 'Missing page_id' }, { status: 400 });
@@ -78,6 +83,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const agent = await getAgent(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const supabase = createAdminClient();
   await supabase.from('voice_agents').update({

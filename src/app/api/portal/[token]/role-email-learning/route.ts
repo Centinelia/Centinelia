@@ -33,6 +33,8 @@ export async function POST(
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Get email integration for this agent
   const { data: integration } = await supabase

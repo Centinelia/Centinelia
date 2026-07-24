@@ -15,6 +15,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!agent?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as {
     email_brand_color?:    string;

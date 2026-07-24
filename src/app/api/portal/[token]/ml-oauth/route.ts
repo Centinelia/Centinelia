@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!agent?.portal_email) return NextResponse.json({ connected: false });
+  if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data } = await supabase
     .from('integration_accounts')
@@ -43,6 +45,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!agent?.portal_email) return NextResponse.json({ ok: false }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email !== auth.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   await supabase.from('integration_accounts')
     .delete()

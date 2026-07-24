@@ -38,6 +38,8 @@ export async function POST(
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Consume 6 ops for batch analysis
   const opsResult = await consumeAiOp(agent.id, 6);

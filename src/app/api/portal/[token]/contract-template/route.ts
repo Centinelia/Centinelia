@@ -62,8 +62,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id, features').eq('portal_token', token).single();
+    .from('voice_agents').select('id, features, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: tpl } = await supabase
     .from('contract_templates').select('*').eq('agent_id', agent.id).single();
@@ -85,8 +87,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { clauses } = await req.json();
 

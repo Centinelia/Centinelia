@@ -23,8 +23,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('features').eq('portal_token', token).single();
+    .from('voice_agents').select('features, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const config = ((agent.features as Record<string, unknown>)?.orden_config ?? {}) as OrdenConfig;
   return NextResponse.json({ config });
@@ -40,8 +42,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
-    .from('voice_agents').select('id, features').eq('portal_token', token).single();
+    .from('voice_agents').select('id, features, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const existing = (agent.features as Record<string, unknown>) ?? {};
   const merged   = { ...existing, orden_config: { ...(existing.orden_config as object ?? {}), ...body } };

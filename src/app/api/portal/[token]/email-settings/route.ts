@@ -24,6 +24,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Brand fields come from organizations
   const { data: org } = agent.portal_email
@@ -88,6 +90,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const agentUpdate = Object.fromEntries(
     Object.entries(body).filter(([k]) => (AGENT_ALLOWED as readonly string[]).includes(k)),
