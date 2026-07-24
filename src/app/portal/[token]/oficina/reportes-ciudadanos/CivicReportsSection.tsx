@@ -46,12 +46,13 @@ function StatusSelect({ folio, current, token, onChange }: {
     setOpen(false);
     if (s === current) return;
     setSaving(true);
-    await fetch(`/api/portal/${token}/civic-reports/${folio}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: s }),
-    });
-    setSaving(false);
-    onChange(s);
+    try {
+      await fetch(`/api/portal/${token}/civic-reports/${folio}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: s }),
+      });
+      onChange(s);
+    } finally { setSaving(false); }
   }
 
   return (
@@ -166,14 +167,15 @@ function ReportCard({ report: initialReport, token, tramiteDocs, onUpdate }: {
 
   async function saveNotes() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/civic-reports/${report.folio}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes }),
-    });
-    setSaving(false);
-    setSaved(true);
-    applyPatch({ notes });
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await fetch(`/api/portal/${token}/civic-reports/${report.folio}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      setSaved(true);
+      applyPatch({ notes });
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
   }
 
   const hasDocs = report.tramite_tipo && tramiteDocs[report.tramite_tipo]?.length;
@@ -293,14 +295,15 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
 
   const load = useCallback(async () => {
     setLoading(true);
-    const sp = new URLSearchParams();
-    if (statusF)   sp.set('status', statusF);
-    if (categoryF) sp.set('category', categoryF);
-    if (search)    sp.set('q', search);
-    const res = await fetch(`/api/portal/${token}/civic-reports?${sp}`);
-    const data = await res.json();
-    setReports(data.reports ?? []);
-    setLoading(false);
+    try {
+      const sp = new URLSearchParams();
+      if (statusF)   sp.set('status', statusF);
+      if (categoryF) sp.set('category', categoryF);
+      if (search)    sp.set('q', search);
+      const res = await fetch(`/api/portal/${token}/civic-reports?${sp}`);
+      const data = await res.json();
+      setReports(data.reports ?? []);
+    } finally { setLoading(false); }
   }, [token, statusF, categoryF, search]);
 
   useEffect(() => { load(); }, [load]);

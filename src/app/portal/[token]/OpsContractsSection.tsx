@@ -51,9 +51,10 @@ export default function OpsContractsSection({ token }: { token: string }) {
 
   async function sendDraft(id: string) {
     setSending(id);
-    const res = await fetch(`/api/portal/${token}/contract-drafts/${id}/send`, { method: 'POST' });
-    if (res.ok) { setSendDone(id); setTimeout(() => { setSendDone(null); load(); }, 2000); }
-    setSending(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/contract-drafts/${id}/send`, { method: 'POST' });
+      if (res.ok) { setSendDone(id); setTimeout(() => { setSendDone(null); load(); }, 2000); }
+    } finally { setSending(null); }
   }
 
   async function updateDraftField(id: string, patch: Record<string, unknown>) {
@@ -285,11 +286,13 @@ function NewDraftForm({ token, templateClauses, onCreated }: { token: string; te
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true);
-    await fetch(`/api/portal/${token}/contract-drafts`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, clauses, source_type: 'manual' }),
-    });
-    setSaving(false); onCreated();
+    try {
+      await fetch(`/api/portal/${token}/contract-drafts`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, clauses, source_type: 'manual' }),
+      });
+      onCreated();
+    } finally { setSaving(false); }
   }
 
   return (

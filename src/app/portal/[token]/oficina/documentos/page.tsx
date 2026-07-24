@@ -14,6 +14,7 @@ interface Doc {
   title:            string;
   filename:         string;
   template_type:    string;
+  agent_id:         string;
   created_at:       string;
   last_accessed_at: string | null;
   expires_at:       string;
@@ -81,14 +82,15 @@ function Metric({ value, label, color }: { value: number | string; label: string
 
 export default function DocumentosPage() {
   const { token } = useParams<{ token: string }>();
-  const [docs,      setDocs]      = useState<Doc[]>([]);
-  const [drafts,    setDrafts]    = useState<Draft[]>([]);
-  const [agentName, setAgentName] = useState<string | null>(null);
+  const [docs,       setDocs]       = useState<Doc[]>([]);
+  const [drafts,     setDrafts]     = useState<Draft[]>([]);
+  const [agentNames, setAgentNames] = useState<Record<string, string | null>>({});
   const [loading,   setLoading]   = useState(true);
   const [pill,      setPill]      = useState<Pill>('todos');
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [conserving,  setConserving]  = useState<string | null>(null);
-  const [deleting,    setDeleting]    = useState<string | null>(null);
+  const [downloading,    setDownloading]    = useState<string | null>(null);
+  const [conserving,     setConserving]     = useState<string | null>(null);
+  const [deleting,       setDeleting]       = useState<string | null>(null);
+  const [downloadError,  setDownloadError]  = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,7 +102,7 @@ export default function DocumentosPage() {
       const docsData   = await docsRes.json();
       const draftsData = await draftsRes.json();
       setDocs(docsData.documents ?? []);
-      setAgentName(docsData.agentName ?? null);
+      setAgentNames(docsData.agentNames ?? {});
       setDrafts(draftsData.drafts ?? []);
     } finally { setLoading(false); }
   }, [token]);
@@ -109,6 +111,7 @@ export default function DocumentosPage() {
 
   async function handleDownload(doc: Doc) {
     setDownloading(doc.id);
+    setDownloadError(null);
     try {
       const res  = await fetch(`/api/portal/${token}/ops-documents/${doc.id}`);
       const data = await res.json();
@@ -117,37 +120,46 @@ export default function DocumentosPage() {
         a.href = data.url; a.download = data.filename ?? doc.filename; a.target = '_blank'; a.click();
         const newExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, expires_at: newExp, last_accessed_at: new Date().toISOString() } : d));
+      } else {
+        setDownloadError(data.error ?? 'No se pudo generar el enlace de descarga.');
+        setTimeout(() => setDownloadError(null), 4000);
       }
+    } catch {
+      setDownloadError('Error de conexion. Intenta de nuevo.');
+      setTimeout(() => setDownloadError(null), 4000);
     } finally { setDownloading(null); }
   }
 
   async function handleConservar(doc: Doc) {
     setConserving(doc.id);
-    const res  = await fetch(`/api/portal/${token}/ops-documents`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: doc.id }),
-    });
-    const data = await res.json();
-    if (data.ok) setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, expires_at: data.expires_at } : d));
-    setConserving(null);
+    try {
+      const res  = await fetch(`/api/portal/${token}/ops-documents`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: doc.id }),
+      });
+      const data = await res.json();
+      if (data.ok) setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, expires_at: data.expires_at } : d));
+    } finally { setConserving(null); }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Eliminar este documento? Esta accion no se puede deshacer.')) return;
     setDeleting(id);
-    await fetch(`/api/portal/${token}/ops-documents`, {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    setDocs(prev => prev.filter(d => d.id !== id));
-    setDeleting(null);
+    try {
+      await fetch(`/api/portal/${token}/ops-documents`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setDocs(prev => prev.filter(d => d.id !== id));
+    } finally { setDeleting(null); }
   }
 
   // Metrics
   const startMonth  = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
   const porVencer   = docs.filter(d => daysLeft(d.expires_at) <= 7);
   const esteMe      = docs.filter(d => new Date(d.created_at).getTime() >= startMonth).length;
-  const employeeName = agentName ?? 'tu empleado';
+  const firstAgentName = Object.values(agentNames).find(Boolean) ?? null;
+  const employeeName   = firstAgentName ?? 'tu empleado';
 
   // Pill filtering
   const docsForPill: Doc[] = pill === 'todos'     ? docs
@@ -233,6 +245,14 @@ export default function DocumentosPage() {
         </div>
       )}
 
+      {/* Download error */}
+      {downloadError && (
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+          <AlertTriangle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />
+          <p className="text-xs" style={{ color: '#fca5a5' }}>{downloadError}</p>
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <p className="text-xs py-10 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando documentos...</p>
@@ -265,7 +285,7 @@ export default function DocumentosPage() {
                     <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{doc.title}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: typeCfg.bg, color: typeCfg.color }}>{typeCfg.label}</span>
-                      {agentName && <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Creado por {agentName}</span>}
+                      {agentNames[doc.agent_id] && <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Creado por {agentNames[doc.agent_id]}</span>}
                       <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{timeAgo(doc.created_at)}</span>
                     </div>
                   </div>

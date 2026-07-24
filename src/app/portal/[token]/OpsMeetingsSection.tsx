@@ -59,9 +59,12 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
   const [editData, setEditData] = useState<MeetingData | null>(null);
   const [editSaving, setEditSaving] = useState(false);
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Task creation tracking: "meetingId:index"
-  const [taskDone, setTaskDone] = useState<Set<string>>(new Set());
-  const [taskSaving, setTaskSaving] = useState<string | null>(null);
+  const [taskDone,    setTaskDone]    = useState<Set<string>>(new Set());
+  const [taskSaving,  setTaskSaving]  = useState<string | null>(null);
+  const [taskError,   setTaskError]   = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,7 +101,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-    if (isOpening) markRead(id);
+    if (isOpening) { markRead(id); setTab('data'); }
   }
 
   async function handleUpload(e: React.FormEvent) {
@@ -138,7 +141,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
     } catch (err) {
       console.error(err);
       if (fileRef.current) fileRef.current.value = '';
-      alert('Error al subir el audio. Intenta de nuevo.');
+      setUploadError('Error al subir el audio. Intenta de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -162,26 +165,38 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
   async function saveEdit(id: string) {
     if (!editData) return;
     setEditSaving(true);
-    await fetch(`/api/portal/${token}/ops-meetings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, meeting_data: editData }),
-    });
-    setMeetings(prev => prev.map(m => m.id === id ? { ...m, meeting_data: editData } : m));
-    setEditId(null);
-    setEditData(null);
-    setEditSaving(false);
+    try {
+      await fetch(`/api/portal/${token}/ops-meetings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, meeting_data: editData }),
+      });
+      setMeetings(prev => prev.map(m => m.id === id ? { ...m, meeting_data: editData } : m));
+      setEditId(null);
+      setEditData(null);
+    } finally { setEditSaving(false); }
   }
 
   async function createTask(meetingId: string, actionItem: ActionItem, key: string) {
     setTaskSaving(key);
-    await fetch(`/api/portal/${token}/ops-meetings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id: meetingId, action: 'create_task', task: actionItem }),
-    });
-    setTaskDone(prev => new Set(prev).add(key));
-    setTaskSaving(null);
+    setTaskError(p => { const n = { ...p }; delete n[key]; return n; });
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-meetings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: meetingId, action: 'create_task', task: actionItem }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setTaskError(p => ({ ...p, [key]: data.error ?? 'Error al crear la tarea.' }));
+      } else {
+        setTaskDone(prev => new Set(prev).add(key));
+      }
+    } catch {
+      setTaskError(p => ({ ...p, [key]: 'Error de conexion.' }));
+    } finally {
+      setTaskSaving(null);
+    }
   }
 
   // G3 — search also covers summary, decisions, transcript
@@ -249,13 +264,16 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
               style={{ color: 'var(--c-text-2)', fontSize: 13 }} />
             <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>MP3, MP4, M4A, WAV, OGG — sin límite de tamaño</p>
           </div>
+          {uploadError && (
+            <p className="text-xs" style={{ color: '#f87171' }}>{uploadError}</p>
+          )}
           <div className="flex gap-2">
             <button type="submit" disabled={uploading}
               className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
               style={{ background: '#6C3BFF', color: '#fff' }}>
               {uploading ? 'Subiendo y procesando...' : 'Procesar junta'}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
+            <button type="button" onClick={() => { setShowForm(false); setUploadError(null); }}
               className="px-4 py-2 rounded-lg text-xs font-semibold"
               style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
               Cancelar
@@ -305,6 +323,11 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
               <Upload size={12} /> Subir primer audio
             </button>
           </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl px-4 py-8 text-center" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>Prueba con otro título, participante o decisión</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -541,18 +564,23 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                             {[a.assignee, a.due].filter(Boolean).join(' · ') || 'Sin asignar'}
                                           </p>
                                         </div>
-                                        <button
-                                          onClick={() => !isDone && !isSaving && createTask(m.id, a, key)}
-                                          disabled={isDone || isSaving}
-                                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold shrink-0 transition-opacity hover:opacity-80"
-                                          style={{
-                                            background: isDone ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
-                                            border:     isDone ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(108,59,255,0.25)',
-                                            color:      isDone ? '#22c55e' : '#9B6DFF',
-                                            cursor:     isDone ? 'default' : 'pointer',
-                                          }}>
-                                          {isDone ? <><Check size={9} /> Creada</> : isSaving ? '...' : <><Zap size={9} /> Crear tarea</>}
-                                        </button>
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                          <button
+                                            onClick={() => !isDone && !isSaving && createTask(m.id, a, key)}
+                                            disabled={isDone || isSaving}
+                                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-opacity hover:opacity-80"
+                                            style={{
+                                              background: isDone ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
+                                              border:     isDone ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(108,59,255,0.25)',
+                                              color:      isDone ? '#22c55e' : '#9B6DFF',
+                                              cursor:     isDone ? 'default' : 'pointer',
+                                            }}>
+                                            {isDone ? <><Check size={9} /> Creada</> : isSaving ? '...' : <><Zap size={9} /> Crear tarea</>}
+                                          </button>
+                                          {taskError[key] && (
+                                            <span className="text-[10px]" style={{ color: '#f87171' }}>{taskError[key]}</span>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   })}

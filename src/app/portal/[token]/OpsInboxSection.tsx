@@ -58,12 +58,13 @@ export default function OpsInboxSection({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/portal/${token}/ops-inbox`);
-    if (res.ok) {
-      const data = await res.json();
-      setItems(data.items ?? []);
-    }
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items ?? []);
+      }
+    } finally { setLoading(false); }
   }, [token]);
 
   const markRead = useCallback((id: string) => {
@@ -78,16 +79,17 @@ export default function OpsInboxSection({ token }: { token: string }) {
 
   const act = async (id: string, status: 'approved' | 'rejected') => {
     setActing(id);
-    const res = await fetch(`/api/portal/${token}/ops-inbox`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, status }),
-    });
-    if (res.ok) {
-      setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
-      setExpanded(null);
-    }
-    setActing(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, status }),
+      });
+      if (res.ok) {
+        setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+        setExpanded(null);
+      }
+    } finally { setActing(null); }
   };
 
   const filtered = items.filter(i => {

@@ -28,14 +28,15 @@ export default function FolioConfigEditor({ token, initial }: Props) {
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ folio_config: cfg }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ folio_config: cfg }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
   }
 
   const preview = previewFolio(cfg, 42);

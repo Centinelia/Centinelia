@@ -55,20 +55,6 @@ const VARIABLES_HINT = [
   '{nombre_prestador}',
 ];
 
-const DEFAULT_CLAUSES: Clause[] = [
-  { id: 'partes',          title: 'PARTES',                       required: true,  enabled: true, body: 'Por una parte, {nombre_prestador} (en adelante "el Prestador"), y por la otra, {nombre_cliente}, con RFC {rfc_cliente} (en adelante "el Cliente").' },
-  { id: 'objeto',          title: 'OBJETO',                       required: true,  enabled: true, body: 'El Prestador se compromete a proporcionar al Cliente los siguientes servicios: {descripcion_servicios}.' },
-  { id: 'vigencia',        title: 'VIGENCIA',                     required: true,  enabled: true, body: 'El presente contrato tendrá una vigencia de {vigencia}, a partir de la fecha de firma, con renovación automática salvo aviso contrario con 30 días de anticipación.' },
-  { id: 'contraprestacion',title: 'CONTRAPRESTACIÓN',             required: true,  enabled: true, body: 'El Cliente pagará al Prestador la cantidad de {monto} por los servicios descritos en la cláusula de Objeto.' },
-  { id: 'pago',            title: 'FORMA DE PAGO',                required: false, enabled: true, body: 'El pago se realizará de la siguiente manera: {forma_de_pago}. En caso de retraso, se aplicará un cargo por mora del 2% mensual sobre el saldo vencido.' },
-  { id: 'confidencialidad',title: 'CONFIDENCIALIDAD',             required: false, enabled: true, body: 'Ambas partes se comprometen a mantener la confidencialidad de toda información intercambiada durante la vigencia del contrato y por un período de 2 años posterior a su terminación.' },
-  { id: 'propiedad',       title: 'PROPIEDAD INTELECTUAL',        required: false, enabled: true, body: 'Los entregables producidos por el Prestador en el marco de este contrato serán propiedad del Cliente una vez liquidado el pago total correspondiente.' },
-  { id: 'responsabilidad', title: 'LIMITACIÓN DE RESPONSABILIDAD',required: false, enabled: true, body: 'La responsabilidad máxima del Prestador por cualquier causa se limitará al monto total pagado por el Cliente en los tres meses previos al evento que origina la reclamación.' },
-  { id: 'terminacion',     title: 'TERMINACIÓN',                  required: false, enabled: true, body: 'Cualquiera de las partes podrá dar por terminado el presente contrato con un aviso previo de 30 días naturales por escrito. En caso de incumplimiento grave, la parte afectada podrá terminar el contrato de forma inmediata.' },
-  { id: 'jurisdiccion',    title: 'JURISDICCIÓN',                 required: true,  enabled: true, body: 'Para la interpretación y cumplimiento del presente contrato, las partes se someten a las leyes de los Estados Unidos Mexicanos y a los tribunales de {ciudad}, renunciando a cualquier otro fuero.' },
-  { id: 'aceptacion',      title: 'ACEPTACIÓN',                   required: true,  enabled: true, body: 'En señal de conformidad, las partes firman el presente contrato en la ciudad de {ciudad}, el día {fecha}.' },
-];
-
 function isConfigured(cfg: FacturaConfig | OrdenConfig): boolean {
   return !!((cfg as FacturaConfig).rfc || (cfg as FacturaConfig).direccion || cfg.condiciones_pago || cfg.folio_prefix);
 }
@@ -119,27 +105,39 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, color
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting]   = useState(false);
   const [drag, setDrag]           = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   async function upload(file: File) {
     if (uploading) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file); fd.append('doc_type', docType);
-    const res  = await fetch(`/api/portal/${token}/template-upload`, { method: 'POST', body: fd });
-    const data = await res.json();
-    setUploading(false);
-    if (data.ok) onUploaded(data.name);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file); fd.append('doc_type', docType);
+      const res  = await fetch(`/api/portal/${token}/template-upload`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.ok) {
+        onUploaded(data.name);
+      } else {
+        setUploadError(data.error ?? 'No se pudo subir el archivo');
+      }
+    } catch {
+      setUploadError('Error de conexion. Intenta de nuevo.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleDelete() {
     if (!confirm('Eliminar la plantilla de referencia?')) return;
     setDeleting(true);
-    await fetch(`/api/portal/${token}/template-upload`, {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doc_type: docType }),
-    });
-    setDeleting(false);
-    onDeleted();
+    try {
+      await fetch(`/api/portal/${token}/template-upload`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_type: docType }),
+      });
+      onDeleted();
+    } finally { setDeleting(false); }
   }
 
   if (templateName) {
@@ -160,22 +158,27 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, color
   }
 
   return (
-    <div
-      onClick={() => inputRef.current?.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
-      className="flex flex-col items-center justify-center gap-2 rounded-xl py-7 cursor-pointer transition-all"
-      style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : 'transparent' }}
-    >
-      <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
-      <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
-      <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
-        {uploading ? 'Subiendo...' : 'Arrastra tu formato aqui o haz clic para seleccionarlo'}
-      </p>
-      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>PDF o Word · Max 10 MB</p>
-    </div>
+    <>
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
+        className="flex flex-col items-center justify-center gap-2 rounded-xl py-7 cursor-pointer transition-all"
+        style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : 'transparent' }}
+      >
+        <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
+        <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
+        <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
+          {uploading ? 'Subiendo...' : 'Arrastra tu formato aqui o haz clic para seleccionarlo'}
+        </p>
+        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>PDF o Word · Max 10 MB</p>
+      </div>
+      {uploadError && (
+        <p className="text-xs px-1 mt-1" style={{ color: '#f87171' }}>{uploadError}</p>
+      )}
+    </>
   );
 }
 
@@ -263,7 +266,7 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
       setCfg(d.config ?? {});
       onStatsLoad?.(d.config ?? {});
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [token, onStatsLoad]);
 
   const upd = (key: keyof FacturaConfig) => (v: string | boolean) =>
@@ -271,10 +274,12 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/factura-config`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
-    });
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/factura-config`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
   }
 
   if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
@@ -316,7 +321,7 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
       setCfg(d.config ?? {});
       onStatsLoad?.(d.config ?? {});
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [token, onStatsLoad]);
 
   const upd = (key: keyof OrdenConfig) => (v: string | boolean) =>
@@ -324,10 +329,12 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/orden-config`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
-    });
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/orden-config`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
   }
 
   if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
@@ -376,6 +383,7 @@ function SaveRow({ saving, saved, onClick }: { saving: boolean; saved: boolean; 
 
 function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfiguredLoad?: (configured: boolean) => void }) {
   const [clauses, setClauses]           = useState<Clause[]>([]);
+  const [defaults, setDefaults]         = useState<Clause[]>([]);
   const [templateName, setTemplateName] = useState<string | undefined>();
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
@@ -388,8 +396,9 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
       .then(d => {
         const loaded: Clause[] = d.template?.clauses ?? [];
         setClauses(loaded);
+        setDefaults(d.defaults ?? []);
         setTemplateName(d.templateName ?? undefined);
-        onConfiguredLoad?.(loaded.length > 0);
+        onConfiguredLoad?.(d.isConfigured === true);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -397,13 +406,15 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/contract-template`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clauses }),
-    });
-    setSaving(false); setSaved(true);
-    onConfiguredLoad?.(clauses.length > 0);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/contract-template`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clauses }),
+      });
+      setSaved(true);
+      onConfiguredLoad?.(clauses.length > 0);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
   }
 
   function updateClause(id: string, patch: Partial<Clause>) {
@@ -440,7 +451,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
             </p>
           </div>
           <button
-            onClick={() => setClauses(DEFAULT_CLAUSES)}
+            onClick={() => setClauses(defaults)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ background: '#8b5cf6', color: '#fff' }}
           >
@@ -570,7 +581,10 @@ export default function PlantillasPage() {
     Promise.all([
       fetch(`/api/portal/${token}/ops-documents`).then(r => r.json()),
       fetch(`/api/portal/${token}/contract-drafts`).then(r => r.json()),
-    ]).then(([{ documents = [] }, { drafts = [] }]) => {
+      fetch(`/api/portal/${token}/factura-config`).then(r => r.json()),
+      fetch(`/api/portal/${token}/orden-config`).then(r => r.json()),
+      fetch(`/api/portal/${token}/contract-template`).then(r => r.json()),
+    ]).then(([{ documents = [] }, { drafts = [] }, { config: fCfg }, { config: oCfg }, { isConfigured: contrIsConfigured }]) => {
       const byType = (type: string) => (documents as Array<{ template_type: string; created_at: string }>)
         .filter(d => d.template_type === type)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -583,7 +597,11 @@ export default function PlantillasPage() {
       const sorted = (drafts as Array<{ created_at: string }>)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
       setContratoStats({ count: sorted.length, lastUsed: sorted[0]?.created_at ?? null });
-    });
+
+      if (fCfg) setFacturaCfg(fCfg);
+      if (oCfg) setOrdenCfg(oCfg);
+      setContratoConfigured(contrIsConfigured === true);
+    }).catch(() => {});
   }, [token]);
 
   return (

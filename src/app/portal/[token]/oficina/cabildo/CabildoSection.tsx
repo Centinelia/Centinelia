@@ -39,12 +39,13 @@ function DocCard({ doc, token, onDelete }: {
 
   async function saveContent() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/cabildo/${doc.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contenido: content }),
-    });
-    setSaving(false);
-    setEditing(false);
+    try {
+      await fetch(`/api/portal/${token}/cabildo/${doc.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contenido: content }),
+      });
+      setEditing(false);
+    } finally { setSaving(false); }
   }
 
   async function deleteDoc() {
@@ -140,12 +141,13 @@ export default function CabildoSection({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const sp = new URLSearchParams();
-    if (tipoF) sp.set('tipo', tipoF);
-    const res  = await fetch(`/api/portal/${token}/cabildo?${sp}`);
-    const data = await res.json();
-    setDocs(data.docs ?? []);
-    setLoading(false);
+    try {
+      const sp = new URLSearchParams();
+      if (tipoF) sp.set('tipo', tipoF);
+      const res  = await fetch(`/api/portal/${token}/cabildo?${sp}`);
+      const data = await res.json();
+      setDocs(data.docs ?? []);
+    } finally { setLoading(false); }
   }, [token, tipoF]);
 
   useEffect(() => { load(); }, [load]);
