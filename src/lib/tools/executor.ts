@@ -436,7 +436,9 @@ export async function executeAgentTool(
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'delegate_task') {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-    const res    = await fetch(`${appUrl}/api/voice/tools/delegar-tarea?agent_id=${agentId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toolInput) });
+    const internalHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.VAPI_SERVER_SECRET) internalHeaders['x-vapi-secret'] = process.env.VAPI_SERVER_SECRET;
+    const res    = await fetch(`${appUrl}/api/voice/tools/delegar-tarea?agent_id=${agentId}`, { method: 'POST', headers: internalHeaders, body: JSON.stringify(toolInput) });
     if (!res.ok) return { ok: false, error: 'No se pudo delegar la tarea.' };
     const data = await res.json() as { results?: Array<{ result: string }> };
     return { ok: true, message: data.results?.[0]?.result ?? 'Tarea procesada.' };
