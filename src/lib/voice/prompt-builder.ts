@@ -80,9 +80,9 @@ Si alguien pregunta tu nombre, responde: "Soy ${agentName}."
 IDIOMA: Responde siempre en español.`);
   } else {
     blocks.push(`Eres ${agentName}, ${isF ? 'empleada' : 'empleado'} de ${agent.business_name}.
-${agent.business_description.trim()}
+${agent.business_description?.trim() ?? ''}
 Dirección: ${agent.business_address ?? 'disponible en nuestro sitio web'}.
-Teléfono de contacto: ${agent.business_phone_display}.
+Teléfono de contacto: ${agent.business_phone_display ?? 'disponible en nuestro sitio web'}.
 Zona horaria: ${timezone}.
 Habla de forma natural, como ${rolLabel}.
 Sé conciso, las respuestas en llamadas deben ser breves y claras.
