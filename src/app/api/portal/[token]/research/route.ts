@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
+import { rateLimit, limiters } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const rl = await rateLimit(req, limiters.scrape);
+  if (rl) return rl;
+
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });

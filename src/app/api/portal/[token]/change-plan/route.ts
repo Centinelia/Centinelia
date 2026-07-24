@@ -8,10 +8,14 @@ import { setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
+import { rateLimit, limiters } from '@/lib/ratelimit';
 
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const rl = await rateLimit(req, limiters.payment);
+  if (rl) return rl;
+
   const { token } = await params;
 
   const cookieStore = await cookies();

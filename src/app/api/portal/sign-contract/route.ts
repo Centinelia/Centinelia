@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit, limiters } from '@/lib/ratelimit';
 
 export async function POST(req: NextRequest) {
+  const rl = await rateLimit(req, limiters.auth);
+  if (rl) return rl;
+
   const { token } = await req.json();
   if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 });
 
