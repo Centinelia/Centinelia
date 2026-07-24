@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -19,7 +19,7 @@ interface NavItem {
   icon:        React.ElementType;
   badgeKey:    string;
   opsHint:     string;
-  pulseId:     string;
+  pulseId?:    string;
   vertical?:   string;
 }
 
@@ -89,8 +89,6 @@ export default function OficinaSidebar({
 }: Props) {
   const pathname  = usePathname();
   const base      = `/portal/${token}/oficina`;
-  const [pendingId, setPendingId] = useState<string | null>(null);
-
   // Open the group that contains the currently active item by default
   const activeGroup = NAV_SECTIONS.find(s =>
     s.items
@@ -111,29 +109,6 @@ export default function OficinaSidebar({
       next.has(group) ? next.delete(group) : next.add(group);
       return next;
     });
-
-  useEffect(() => {
-    if (!pendingId) return;
-    let attempts = 0;
-    const timer = setInterval(() => {
-      attempts++;
-      if (attempts > 100) { clearInterval(timer); setPendingId(null); return; }
-      const el = document.getElementById(pendingId);
-      if (!el) return;
-      clearInterval(timer);
-      setPendingId(null);
-      const rect = el.getBoundingClientRect();
-      window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
-      el.style.transition = 'box-shadow 0.15s';
-      el.style.boxShadow  = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
-      setTimeout(() => {
-        el.style.transition = 'box-shadow 1.5s ease-out';
-        el.style.boxShadow  = '';
-        setTimeout(() => { el.style.transition = ''; }, 1500);
-      }, 600);
-    }, 50);
-    return () => clearInterval(timer);
-  }, [pendingId]);
 
   return (
     <aside
@@ -200,7 +175,6 @@ export default function OficinaSidebar({
                   <Link
                     key={item.href}
                     href={href}
-                    onClick={() => { if (item.pulseId) setPendingId(item.pulseId); }}
                     className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5"
                     style={{
                       background: isActive ? 'rgba(108,59,255,0.12)' : 'transparent',
