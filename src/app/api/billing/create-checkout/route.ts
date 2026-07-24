@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
+async function isAdmin() {
+  const store = await cookies();
+  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
+}
+
 export async function POST(req: NextRequest) {
+  if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { agentId, featurePlan, minutesPlan } = await req.json() as {
     agentId: string;
     featurePlan: Plan;
