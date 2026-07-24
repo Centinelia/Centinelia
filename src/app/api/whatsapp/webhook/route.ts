@@ -148,7 +148,10 @@ async function callVoiceRoute(
   try {
     const res = await fetch(`${appUrl}/api/voice/tools/${routeName}?agent_id=${agentId}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.VAPI_SERVER_SECRET ? { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET } : {}),
+      },
       body:    JSON.stringify(input),
     });
     if (!res.ok) return 'No pude completar la acción en este momento.';
