@@ -475,6 +475,13 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',
   is_coordinator:          'Coordinador',
+  meerkat_role_id:         '',
+  lite_prompt:             '',
+  skip_aup:                '',
+  skip_recording_notice:   '',
+  of_encuestas:            '',
+  civic_reports:           '',
+  contract_drafts:         '',
 };
 
 function TimezoneSelect() {

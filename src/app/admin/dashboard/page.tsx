@@ -80,7 +80,7 @@ export default async function DashboardPage() {
 
   // Resolve effective minutes for an agent (account pool or per-agent)
   const effMins = (a: AgentStat) => a.portal_email && acctMins.has(a.portal_email)
-    ? acctMins.get(a.portal_email)
+    ? acctMins.get(a.portal_email)!
     : { minutes_used: a.minutes_used, minutes_included: a.minutes_included };
 
   // MRR — only agents with billing_status = 'activo' and a known minutes plan
