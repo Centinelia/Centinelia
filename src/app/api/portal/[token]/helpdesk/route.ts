@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
 import { getNextTicketFolio } from '@/lib/helpdesk/folio';
+import { sendEmail } from '@/lib/email/send';
+import { ticketEmailHtml } from '@/lib/ops/approval-email';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { cookies } from 'next/headers';
 
 export async function GET(
   req: NextRequest,
@@ -65,5 +69,38 @@ export async function POST(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Email notification to owner
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('client_email, portal_token')
+    .eq('id', access.primaryId)
+    .single();
+
+  const ownerEmail = agent?.client_email as string | null;
+  const pToken     = agent?.portal_token  as string | null;
+  if (ownerEmail && pToken) {
+    const cookieStore = await cookies();
+    const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+    const submittedBy = session?.isSubUser ? (session.portalEmail ?? null) : null;
+    const portalUrl   = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx'}/portal/${pToken}/oficina/helpdesk`;
+
+    sendEmail({
+      to:      ownerEmail,
+      subject: `[Ticket ${data!.folio}] ${data!.titulo} — ${(data!.prioridad as string).toUpperCase()}`,
+      html:    ticketEmailHtml({
+        folio:       data!.folio       as string,
+        titulo:      data!.titulo      as string,
+        categoria:   data!.categoria   as string,
+        prioridad:   data!.prioridad   as string,
+        descripcion: data!.descripcion as string | null,
+        asignadoA:   data!.asignado_a  as string | null,
+        source:      'portal',
+        submittedBy,
+        portalUrl,
+      }),
+    }).catch(console.error);
+  }
+
   return NextResponse.json({ ticket: data }, { status: 201 });
 }

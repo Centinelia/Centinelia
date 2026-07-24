@@ -1,6 +1,71 @@
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 const LOGO_URL = `${BASE_URL}/logo-tagline.png`;
 
+const PRI_COLOR: Record<string, string> = {
+  critica: '#ef4444',
+  alta:    '#f59e0b',
+  normal:  '#6C3BFF',
+  baja:    '#6b7280',
+};
+
+export function ticketEmailHtml(opts: {
+  folio:        string;
+  titulo:       string;
+  categoria:    string;
+  prioridad:    string;
+  descripcion:  string | null;
+  asignadoA:    string | null;
+  source:       'voz' | 'portal';
+  submittedBy?: string | null;
+  portalUrl:    string;
+}): string {
+  const { folio, titulo, categoria, prioridad, descripcion, asignadoA, source, submittedBy, portalUrl } = opts;
+  const BG = '#120726'; const CARD = 'rgba(255,255,255,0.055)'; const BORDER = 'rgba(255,255,255,0.10)';
+  const TEXT = '#e2e8f0'; const SUB = 'rgba(255,255,255,0.58)'; const MUTE = 'rgba(255,255,255,0.35)';
+  const priColor = PRI_COLOR[prioridad] ?? '#6C3BFF';
+  const sourceLabel = source === 'voz' ? 'Registrado por voz' : submittedBy ? `Enviado por ${submittedBy}` : 'Registrado desde el portal';
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:${BG};font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:560px;margin:0 auto;padding:32px 16px 48px">
+    <div style="background:#EDE8FF;border-radius:16px 16px 0 0;padding:20px 32px;text-align:center;border-bottom:1px solid rgba(108,59,255,0.15)">
+      <img src="${LOGO_URL}" alt="Centinelia" width="200" style="width:200px;height:auto;display:inline-block">
+    </div>
+    <div style="background:${CARD};border:1px solid ${BORDER};border-top:none;border-radius:0 0 16px 16px;padding:32px">
+      <div style="text-align:center;margin-bottom:20px">
+        <span style="display:inline-block;background:${priColor}22;border:1px solid ${priColor}44;border-radius:20px;padding:6px 16px;color:${priColor};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">${prioridad.toUpperCase()}</span>
+      </div>
+      <h1 style="color:${TEXT};font-size:20px;font-weight:700;margin:0 0 6px;text-align:center">Nuevo ticket de soporte</h1>
+      <p style="color:${SUB};font-size:13px;margin:0 0 24px;text-align:center">${sourceLabel}</p>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid ${BORDER};border-radius:10px;padding:16px;margin-bottom:16px">
+        <p style="color:${MUTE};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 4px">Folio</p>
+        <p style="color:${TEXT};font-size:15px;font-weight:700;margin:0 0 14px;font-family:monospace">${folio}</p>
+        <p style="color:${MUTE};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 4px">Asunto</p>
+        <p style="color:${TEXT};font-size:14px;font-weight:600;margin:0 0 14px">${titulo}</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div><p style="color:${MUTE};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 3px">Área</p><p style="color:${TEXT};font-size:13px;margin:0">${categoria}</p></div>
+          <div><p style="color:${MUTE};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 3px">Prioridad</p><p style="color:${priColor};font-size:13px;font-weight:600;margin:0">${prioridad}</p></div>
+          ${asignadoA ? `<div><p style="color:${MUTE};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 3px">Asignado a</p><p style="color:${TEXT};font-size:13px;margin:0">${asignadoA}</p></div>` : ''}
+        </div>
+      </div>
+
+      ${descripcion ? `<div style="background:rgba(108,59,255,0.08);border:1px solid rgba(108,59,255,0.2);border-radius:10px;padding:14px;margin-bottom:20px">
+        <p style="color:rgba(155,109,255,0.7);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 6px">Descripción</p>
+        <p style="color:${TEXT};font-size:13px;line-height:1.65;margin:0;white-space:pre-wrap">${descripcion}</p>
+      </div>` : '<div style="margin-bottom:20px"></div>'}
+
+      <div style="text-align:center">
+        <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px">Ver en el portal</a>
+      </div>
+    </div>
+    <div style="text-align:center;padding:24px 0 0">
+      <p style="color:${MUTE};font-size:12px;margin:0"><a href="https://www.centinelia.mx" style="color:${MUTE};text-decoration:none">centinelia.mx</a>&nbsp;·&nbsp;<a href="mailto:hola@centinelia.mx" style="color:#9B6DFF;text-decoration:none">hola@centinelia.mx</a></p>
+    </div>
+  </div>
+</body></html>`;
+}
+
 export function escalationEmailHtml(opts: {
   agentName:    string;
   businessName: string;

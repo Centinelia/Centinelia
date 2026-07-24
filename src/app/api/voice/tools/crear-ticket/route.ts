@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getNextTicketFolio, getCurrentOnCall } from '@/lib/helpdesk/folio';
 import type { GuardiaSchedule, DirectorioContacto } from '@/lib/helpdesk/folio';
+import { sendEmail } from '@/lib/email/send';
+import { ticketEmailHtml } from '@/lib/ops/approval-email';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('transfer_whatsapp, wa_phone_number, timezone, guardia_schedule, directorio_interno')
+    .select('transfer_whatsapp, wa_phone_number, timezone, guardia_schedule, directorio_interno, client_email, portal_token, agent_name')
     .eq('id', agentId)
     .single();
 
@@ -86,6 +88,18 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ From: `whatsapp:${waFrom}`, To: `whatsapp:${waTo}`, Body: lines }),
+    }).catch(console.error);
+  }
+
+  // Email notification to owner
+  const ownerEmail  = agent?.client_email as string | null;
+  const portalToken = agent?.portal_token  as string | null;
+  if (ownerEmail && portalToken) {
+    const portalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx'}/portal/${portalToken}/oficina/helpdesk`;
+    sendEmail({
+      to:      ownerEmail,
+      subject: `[Ticket ${folio}] ${titulo} — ${prioridad.toUpperCase()}`,
+      html:    ticketEmailHtml({ folio, titulo, categoria, prioridad, descripcion: descripcion ?? null, asignadoA, source: 'voz', portalUrl }),
     }).catch(console.error);
   }
 
