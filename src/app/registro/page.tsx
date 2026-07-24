@@ -166,9 +166,9 @@ const TIERS: TierDef[] = [
 // Ops-only tiers for Nox (no minutes cost)
 type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean; desc: string };
 const NOX_TIERS: NoxTierDef[] = [
-  { id: 'starter', label: '500 tareas',   aiOps:  500, price: 2997,  desc: 'Ideal para equipos pequeños.' },
-  { id: 'growth',  label: '1,200 tareas', aiOps: 1200, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
-  { id: 'scale',   label: '3,000 tareas', aiOps: 3000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
+  { id: 'starter', label: 'Media Jornada',    aiOps:  500, price: 2997,  desc: 'Ideal para equipos pequeños.' },
+  { id: 'growth',  label: 'Jornada Completa', aiOps: 1200, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
+  { id: 'scale',   label: 'Alta Demanda',     aiOps: 3000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
 ];
 
 // Roles for the 3×3 grid — excludes coordinator (Nox gets its own card above)
@@ -1483,10 +1483,12 @@ function RegistroInner() {
                       </div>
                       {/* Label + desc */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white text-base leading-tight flex items-center gap-1">
-                          {t.label} <Zap size={11} style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                        <p className="font-bold text-white text-base leading-tight">
+                          {t.label}
                         </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Por mes</p>
+                        <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.4)' }}>
+                          <Zap size={10} style={{ flexShrink: 0 }} />{t.aiOps.toLocaleString('es-MX')} tareas inteligentes
+                        </p>
                         <p className="text-xs mt-1.5" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.38)' }}>{t.desc}</p>
                       </div>
                       {/* Price + badge */}
