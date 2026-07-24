@@ -3,7 +3,12 @@ export const dynamic = 'force-static';
 import type { Metadata } from 'next';
 import Image      from 'next/image';
 import Link       from 'next/link';
-import { Check, ArrowRight } from 'lucide-react';
+import {
+  Check, ArrowRight,
+  Phone, UserPlus, CalendarCheck, Users,
+  PhoneForwarded, ShoppingBag, PhoneCall,
+  Wrench, Network, X,
+} from 'lucide-react';
 import LandingNav       from '@/app/LandingNav';
 import AnimatedSection  from '@/app/AnimatedSection';
 import IndustryFooter   from '@/app/industrias/IndustryFooter';
@@ -20,6 +25,22 @@ export const metadata: Metadata = {
   },
 };
 
+// ── Capability chips ──────────────────────────────────────────────────────────
+// Shown for all employee types (voice). Coordinators get a separate chip set.
+const VOICE_CAPS = [
+  { key: 'lead_qualification',      icon: UserPlus,         label: 'Captura leads'              },
+  { key: 'appointment_booking',     icon: CalendarCheck,    label: 'Agenda citas'               },
+  { key: 'existing_client_support', icon: Users,            label: 'Atiende clientes actuales'  },
+  { key: 'order_taking',            icon: ShoppingBag,      label: 'Toma pedidos'               },
+  { key: 'outbound_calls',          icon: PhoneCall,        label: 'Llamadas salientes'         },
+  { key: 'smart_transfer',          icon: PhoneForwarded,   label: 'Transferencia inteligente'  },
+  { key: 'helpdesk',                icon: Wrench,           label: 'Mesa de ayuda IT'           },
+] as const;
+
+const COORD_CAPS = [
+  { key: 'is_coordinator', icon: Network,   label: 'Coordina al equipo'       },
+] as const;
+
 // ── Copy per employee ──────────────────────────────────────────────────────────
 const CONTENT: Record<string, {
   rolLabel: string;
@@ -31,71 +52,126 @@ const CONTENT: Record<string, {
     rolLabel: 'Director General',
     tagline:  'El equipo siempre trabajando, sin que tengas que pedirlo.',
     subtitle: 'Coordinación total desde el centro',
-    bullets:  ['Enruta cada tarea al agente indicado', 'Monitorea avances y escala lo vencido', 'Genera reportes de operación automáticos', 'Sin llamadas: puro ops, máxima eficiencia'],
+    bullets:  [
+      'Distribuye tareas al agente indicado según el caso',
+      'Monitorea avances y escala lo que lleva tiempo sin resolverse',
+      'Genera reportes de operación automáticos',
+      'Trabaja con puro ops — sin voz, máxima eficiencia',
+    ],
   },
   niva: {
     rolLabel: 'Directora General',
     tagline:  'Ve lo que otros no notan. Actúa antes de que sea urgente.',
     subtitle: 'Estrategia que se anticipa al problema',
-    bullets:  ['Analiza el contexto antes de asignar', 'Detecta cuellos de botella de raíz', 'Construye rutinas que evitan los problemas', 'Sin llamadas: estrategia y criterio puro'],
+    bullets:  [
+      'Analiza el contexto antes de asignar cualquier tarea',
+      'Detecta cuellos de botella y sus causas de raíz',
+      'Construye rutinas que eliminan problemas recurrentes',
+      'Trabaja con puro ops — sin voz, máxima eficiencia',
+    ],
   },
   nia: {
     rolLabel: 'Recepción',
-    tagline:  'Cada reporte encuentra seguimiento',
-    subtitle: 'Cada reporte avanza hasta resolverse',
-    bullets:  ['Recibe reportes', 'Actualiza estatus', 'Seguimiento a folios'],
+    tagline:  'Nunca se le escapa un dato',
+    subtitle: 'Primera impresión impecable, todos los días',
+    bullets:  [
+      'Responde preguntas sobre tu negocio las 24 horas',
+      'Captura los datos de cada prospecto que llama',
+      'Agenda citas directamente en el calendario de tu equipo',
+      'Transfiere al área correcta en el momento indicado',
+    ],
   },
   noah: {
     rolLabel: 'Ventas',
-    tagline:  'Hace el trabajo repetitivo por ti',
-    subtitle: 'Hace que los procesos sucedan solos',
-    bullets:  ['Actualiza información', 'Consulta bases de datos', 'Automatiza flujos'],
+    tagline:  'Siempre al teléfono, siempre cerrando',
+    subtitle: 'Prospección y cierre sin descanso',
+    bullets:  [
+      'Califica prospectos con preguntas clave en la llamada',
+      'Registra pedidos completos con todos los detalles',
+      'Sale a buscar clientes con llamadas salientes',
+      'Transfiere al equipo cuando el cliente está listo para cerrar',
+    ],
   },
   nico: {
-    rolLabel: 'Recuperación',
-    tagline:  'Nunca deja un cobro pendiente',
-    subtitle: 'Cobra, recuerda y reporta',
-    bullets:  ['Recuerda pagos', 'Genera cotizaciones', 'Conciliaciones básicas', 'Seguimiento de facturas'],
+    rolLabel: 'Recuperación de Cartera',
+    tagline:  'Ya tiene tu dinero contado',
+    subtitle: 'Cobra sin dañar la relación',
+    bullets:  [
+      'Recuerda pagos pendientes con amabilidad y firmeza',
+      'Negocia plazos y condiciones de forma autónoma',
+      'Llama proactivamente a clientes con saldo vencido',
+      'Registra cada acuerdo de pago para seguimiento',
+    ],
   },
   nelia: {
     rolLabel: 'Atención al Cliente',
     tagline:  'Nunca deja esperando a un cliente',
     subtitle: 'Cada cliente sabe qué sigue',
-    bullets:  ['Resuelve preguntas frecuentes', 'Seguimiento de casos abiertos', 'Encuestas de satisfacción por llamada', 'Confirmaciones automáticas'],
+    bullets:  [
+      'Resuelve dudas frecuentes al instante sin escalar',
+      'Da seguimiento a casos abiertos hasta su cierre',
+      'Llama a clientes para confirmar, informar o encuestar',
+      'Registra la retroalimentación de cada interacción',
+    ],
   },
   neo: {
-    rolLabel: 'Tecnología',
-    tagline:  'Nunca deja un ticket sin resolver',
+    rolLabel: 'Soporte IT',
+    tagline:  'Laptop abierta, problema resuelto',
     subtitle: 'Tu helpdesk siempre disponible',
-    bullets:  ['Abre tickets en segundos', 'Diagnostica el problema', 'Conecta con el técnico correcto', 'Registra cada incidente'],
+    bullets:  [
+      'Abre tickets de soporte en segundos por teléfono',
+      'Diagnostica el problema con preguntas clave',
+      'Escala al técnico o área correcta de inmediato',
+      'Registra cada incidente con estatus y folio',
+    ],
   },
   nara: {
     rolLabel: 'Coordinación',
-    tagline:  'Nunca olvida un pendiente',
-    subtitle: 'Todo tiene un lugar',
-    bullets:  ['Resume reuniones', 'Redacta correos', 'Seguimiento interno'],
+    tagline:  'Carpeta en mano, todo bajo control',
+    subtitle: 'Seguimiento a cada expediente o trámite',
+    bullets:  [
+      'Consulta el estatus de casos, expedientes o trámites',
+      'Gestiona solicitudes internas o ciudadanas',
+      'Da seguimiento puntual hasta que se resuelva',
+      'Transfiere a la dependencia o área responsable',
+    ],
   },
   naia: {
     rolLabel: 'Recursos Humanos',
     tagline:  'Nunca pierde una falta o un permiso',
     subtitle: 'Tu equipo siempre en orden',
-    bullets:  ['Registra faltas y permisos', 'Informa saldos de vacaciones', 'Aclara dudas de nómina', 'Agenda entrevistas'],
+    bullets:  [
+      'Registra faltas, permisos y vacaciones por teléfono',
+      'Agenda entrevistas y procesos de ingreso',
+      'Aclara dudas de nómina y prestaciones al instante',
+      'Da seguimiento a solicitudes de personal pendientes',
+    ],
   },
   nova: {
     rolLabel: 'Despacho',
     tagline:  'El cerebro operativo de tu equipo en campo.',
     subtitle: 'Cada unidad en el lugar correcto',
-    bullets:  ['Despacha equipos en segundos', 'Coordina repartidores, técnicos o brigadas', 'Actualiza el estatus de cada unidad en tiempo real', 'Registra y archiva cada operación'],
+    bullets:  [
+      'Recibe solicitudes de despacho en tiempo real',
+      'Asigna la unidad más cercana o disponible',
+      'Actualiza el estatus de cada unidad o brigada',
+      'Registra y archiva cada operación automáticamente',
+    ],
   },
   custom: {
     rolLabel: 'A tu medida',
     tagline:  'Cuando ningún rol estándar encaja, diseña el tuyo.',
     subtitle: 'Tú defines todo',
-    bullets:  ['Nombre y personalidad únicos para tu negocio', 'Tú defines el rol, las funciones y el tono de voz', 'Configura cada parámetro manualmente', 'Ideal para operaciones muy específicas'],
+    bullets:  [
+      'Nombre y personalidad únicos para tu negocio',
+      'Tú defines el rol, las funciones y el tono de voz',
+      'Configura cada capacidad manualmente en el portal',
+      'Ideal para operaciones muy específicas o mixtas',
+    ],
   },
 };
 
-// ── Per-image scale overrides (compensates for figure size differences) ───────
+// ── Per-image scale overrides ──────────────────────────────────────────────────
 const IMAGE_SCALE: Partial<Record<string, number>> = {
   nova: 1.25,
 };
@@ -108,6 +184,100 @@ const C = {
   bg:      '#FAFBFF',
   bgAlt:   '#F4F0FF',
 };
+
+// ── Capability chips component ─────────────────────────────────────────────────
+function CapabilityChips({ features, color, isCoordinator }: {
+  features: Record<string, unknown>;
+  color: string;
+  isCoordinator: boolean;
+}) {
+  if (isCoordinator) {
+    return (
+      <div style={{ marginBottom: 40 }}>
+        <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.textSub, marginBottom: 12 }}>
+          Capacidades
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {COORD_CAPS.map(({ key, icon: Icon, label }) => {
+            const active = !!features[key];
+            return (
+              <span
+                key={key}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 999,
+                  fontSize: '0.78rem', fontWeight: 500,
+                  background: active ? `${color}14` : 'rgba(26,10,59,0.04)',
+                  color:      active ? color         : 'rgba(26,10,59,0.28)',
+                  border:     `1px solid ${active ? `${color}30` : 'rgba(26,10,59,0.08)'}`,
+                }}
+              >
+                <Icon size={12} strokeWidth={2} />
+                {label}
+              </span>
+            );
+          })}
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '5px 12px', borderRadius: 999,
+              fontSize: '0.78rem', fontWeight: 500,
+              background: `${color}14`, color, border: `1px solid ${color}30`,
+            }}
+          >
+            <Phone size={12} strokeWidth={2} />
+            Sin llamadas entrantes
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.textSub, marginBottom: 12 }}>
+        Capacidades
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {/* Always-on: phone reception */}
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '5px 12px', borderRadius: 999,
+          fontSize: '0.78rem', fontWeight: 500,
+          background: `${color}14`, color, border: `1px solid ${color}30`,
+        }}>
+          <Phone size={12} strokeWidth={2} />
+          Atención 24/7
+        </span>
+
+        {VOICE_CAPS.map(({ key, icon: Icon, label }) => {
+          const active = !!features[key];
+          return (
+            <span
+              key={key}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 999,
+                fontSize: '0.78rem', fontWeight: 500,
+                background: active ? `${color}14` : 'rgba(26,10,59,0.04)',
+                color:      active ? color         : 'rgba(26,10,59,0.22)',
+                border:     `1px solid ${active ? `${color}30` : 'rgba(26,10,59,0.07)'}`,
+                textDecoration: active ? 'none' : 'none',
+              }}
+            >
+              {active
+                ? <Icon size={12} strokeWidth={2} />
+                : <X    size={12} strokeWidth={2} style={{ opacity: 0.5 }} />
+              }
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function EmpleadosPage() {
@@ -129,9 +299,7 @@ export default function EmpleadosPage() {
           overflow: 'hidden',
         }}
       >
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-        }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <div style={{
             position: 'absolute', width: 700, height: 600,
             top: -100, left: '50%', transform: 'translateX(-50%)',
@@ -175,11 +343,13 @@ export default function EmpleadosPage() {
 
       {/* ── EMPLOYEE SECTIONS ────────────────────────────────────────────── */}
       {meerkats.map((m, i) => {
-        const content = CONTENT[m.id];
+        const content        = CONTENT[m.id];
         if (!content || !m.imagen) return null;
 
-        const reversed   = i % 2 === 1;
-        const sectionBg  = i % 2 === 0 ? C.bg : C.bgAlt;
+        const reversed       = i % 2 === 1;
+        const sectionBg      = i % 2 === 0 ? C.bg : C.bgAlt;
+        const feats          = m.features as Record<string, unknown>;
+        const isCoordinator  = !!feats.is_coordinator;
 
         return (
           <section
@@ -187,18 +357,12 @@ export default function EmpleadosPage() {
             id={m.id}
             style={{ background: sectionBg, borderTop: `1px solid ${C.border}` }}
           >
-            {/*
-              Mobile  → flex-col-reverse: image renders 2nd in DOM → appears on TOP via reversal
-              Desktop → flex-row (odd) or flex-row-reverse (even) → alternating text/image sides
-            */}
             <div className={`max-w-6xl mx-auto flex flex-col-reverse ${reversed ? 'sm:flex-row-reverse' : 'sm:flex-row'}`}>
 
               {/* Text */}
               <AnimatedSection
                 className="flex-1 flex flex-col justify-center"
-                style={{
-                  padding: 'clamp(36px, 5vw, 80px) clamp(20px, 5vw, 72px)',
-                }}
+                style={{ padding: 'clamp(36px, 5vw, 80px) clamp(20px, 5vw, 72px)' }}
                 delay={0.06}
               >
                 {/* Role label */}
@@ -225,10 +389,17 @@ export default function EmpleadosPage() {
                   fontStyle: 'italic',
                   fontSize: 'clamp(0.95rem, 2vw, 1.15rem)',
                   color: C.textSub, lineHeight: 1.55,
-                  marginBottom: 40,
+                  marginBottom: 32,
                 }}>
                   {content.tagline}
                 </p>
+
+                {/* Capability chips */}
+                <CapabilityChips
+                  features={feats}
+                  color={m.color}
+                  isCoordinator={isCoordinator}
+                />
 
                 {/* Feature subtitle */}
                 <p style={{
@@ -307,7 +478,6 @@ export default function EmpleadosPage() {
           borderTop: '1px solid rgba(108,59,255,0.2)',
         }}
       >
-        {/* Glow */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <div style={{
             position: 'absolute', width: 900, height: 700,
