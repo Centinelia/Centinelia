@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { createCrmDatabase, createProductDatabase, getAccessiblePages } from '@/lib/notion/client';
+import { notionClient, createCrmDatabase, createProductDatabase, getAccessiblePages } from '@/lib/notion/client';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -92,21 +92,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!agent.notion_db_id) return NextResponse.json({ error: 'Primero crea el CRM de Notion' }, { status: 400 });
 
   const supabase = createAdminClient();
-  const notion   = (await import('@/lib/notion/client')).notionClient(agent.notion_access_token as string);
 
-  // Get parent page of the existing CRM database
-  const dbInfo = await (notion.databases.retrieve as any)({ database_id: agent.notion_db_id });
-  const parentPageId = (dbInfo as any)?.parent?.page_id as string | undefined;
-  if (!parentPageId) return NextResponse.json({ error: 'No se pudo obtener la página padre del CRM' }, { status: 500 });
+  try {
+    const notion = notionClient(agent.notion_access_token as string);
 
-  const productsDbId = await createProductDatabase(agent.notion_access_token as string, parentPageId);
+    // Get parent page of the existing CRM database
+    const dbInfo       = await notion.databases.retrieve({ database_id: agent.notion_db_id as string });
+    const parentPageId = (dbInfo as any)?.parent?.page_id as string | undefined;
+    if (!parentPageId) return NextResponse.json({ error: 'No se pudo obtener la página padre del CRM' }, { status: 500 });
 
-  const existing = (agent.features as Record<string, unknown>) ?? {};
-  await supabase.from('voice_agents')
-    .update({ features: { ...existing, notion_products_db_id: productsDbId } })
-    .eq('portal_email', agent.portal_email);
+    const productsDbId = await createProductDatabase(agent.notion_access_token as string, parentPageId);
 
-  return NextResponse.json({ ok: true, products_db_id: productsDbId });
+    // Update each agent's features individually to avoid overwriting sibling agents' config
+    const { data: allAgents } = await supabase
+      .from('voice_agents').select('id, features').eq('portal_email', agent.portal_email);
+    for (const a of allAgents ?? []) {
+      const feat = (a.features as Record<string, unknown>) ?? {};
+      await supabase.from('voice_agents')
+        .update({ features: { ...feat, notion_products_db_id: productsDbId } })
+        .eq('id', a.id);
+    }
+
+    return NextResponse.json({ ok: true, products_db_id: productsDbId });
+  } catch (err) {
+    console.error('[notion/products] PATCH error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 // DELETE — disconnect Notion
