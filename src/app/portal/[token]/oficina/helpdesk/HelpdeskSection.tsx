@@ -73,41 +73,53 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
 
   const load = useCallback(async () => {
     setLoading(true);
-    const qs = new URLSearchParams();
-    if (filter)      qs.set('status',     filter);
-    if (subUserName) qs.set('asignado_a', subUserName);
-    const url = `/api/portal/${token}/helpdesk${qs.toString() ? `?${qs}` : ''}`;
-    const res = await fetch(url);
-    const d   = await res.json();
-    setTickets(d.tickets ?? []);
-    setLoading(false);
+    try {
+      const qs = new URLSearchParams();
+      if (filter)      qs.set('status',     filter);
+      if (subUserName) qs.set('asignado_a', subUserName);
+      const url = `/api/portal/${token}/helpdesk${qs.toString() ? `?${qs}` : ''}`;
+      const res = await fetch(url);
+      const d   = await res.json();
+      setTickets(d.tickets ?? []);
+    } catch {
+      // tickets stay empty; loading clears
+    } finally {
+      setLoading(false);
+    }
   }, [token, filter, subUserName]);
 
   useEffect(() => { load(); }, [load]);
 
   const updateTicket = async (id: string, patch: Record<string, unknown>) => {
-    const res = await fetch(`/api/portal/${token}/helpdesk/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
-    });
-    if (res.ok) { const d = await res.json(); setTickets(t => t.map(x => x.id === id ? d.ticket : x)); }
+    try {
+      const res = await fetch(`/api/portal/${token}/helpdesk/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+      });
+      if (res.ok) { const d = await res.json(); setTickets(t => t.map(x => x.id === id ? d.ticket : x)); }
+    } catch {
+      // silent — ticket stays unchanged
+    }
   };
 
   const handleAdd = async () => {
     if (!newTitulo.trim()) return;
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/helpdesk`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc,
-        asignado_a: newAsig || subUserName || undefined,
-      }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setTickets(t => [d.ticket, ...t]);
-      setShowAdd(false); setNewTitulo(''); setNewDesc(''); setNewAsig('');
+    try {
+      const res = await fetch(`/api/portal/${token}/helpdesk`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc,
+          asignado_a: newAsig || subUserName || undefined,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setTickets(t => [d.ticket, ...t]);
+        setShowAdd(false); setNewTitulo(''); setNewDesc(''); setNewAsig('');
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const pendientes = tickets.filter(t => ['abierto', 'en_proceso', 'pendiente'].includes(t.status)).length;

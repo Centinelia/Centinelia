@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { runReport } from '@/lib/ops/report-generator';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -129,20 +130,49 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true });
 }
 
-function computeNextRun(frequency: string, schedule: Record<string, number>): Date {
-  const now = new Date();
+export async function PUT(req: NextRequest, { params }: Params) {
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const auth   = await verifySession(cookie);
+  if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const { token } = await params;
+  const supabase  = createAdminClient();
+  const { id }    = await req.json() as { id: string };
+
+  const { data: acct } = await supabase
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+  if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+  const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
+  const { data: report } = await supabase
+    .from('ops_reports').select('id').eq('id', id).in('agent_id', agentIds).single();
+  if (!report) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const result = await runReport(id);
+  if (!(result as { ok: boolean }).ok) {
+    return NextResponse.json({ ok: false, message: 'Error al generar el reporte.' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, message: 'Reporte enviado correctamente.' });
+}
+
+function computeNextRun(frequency: string, schedule: Record<string, number>, timezone = 'America/Monterrey'): Date {
+  const now    = new Date();
+  const tzNow  = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const offset = now.getTime() - tzNow.getTime();
+  const hour   = schedule.hour ?? 8;
+
   if (frequency === 'weekly') {
     const target = schedule.day_of_week ?? 1;
-    const diff   = (target - now.getDay() + 7) % 7 || 7;
-    const d      = new Date(now);
+    const diff   = (target - tzNow.getDay() + 7) % 7 || 7;
+    const d      = new Date(tzNow);
     d.setDate(d.getDate() + diff);
-    d.setHours(schedule.hour ?? 8, 0, 0, 0);
-    return d;
+    d.setHours(hour, 0, 0, 0);
+    return new Date(d.getTime() + offset);
   }
-  const d = new Date(now);
+  const d = new Date(tzNow);
   d.setMonth(d.getMonth() + 1, schedule.day_of_month ?? 1);
-  d.setHours(schedule.hour ?? 8, 0, 0, 0);
-  return d;
+  d.setHours(hour, 0, 0, 0);
+  return new Date(d.getTime() + offset);
 }
 
 async function getCurrentFrequency(supabase: ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>, id: string): Promise<string> {

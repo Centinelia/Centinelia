@@ -69,7 +69,7 @@ export default function LlamadasTabs({
           <PhoneCall size={14} />
           Entrantes
           {calls.length > 0 && (
-            <span className="text-xs tabular-nums" style={{ opacity: 0.8 }}>{calls.length}</span>
+            <span className="text-xs tabular-nums" style={{ opacity: 0.8 }}>{calls.length >= 200 ? '200+' : calls.length}</span>
           )}
         </button>
 

@@ -418,7 +418,7 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
               {/* Action buttons */}
               <div className="flex gap-2 flex-wrap">
                 <a
-                  href={`/portal/${token}/llamadas/salientes`}
+                  href={`/portal/${token}/oficina/llamadas`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 no-underline"
                   style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
                 >

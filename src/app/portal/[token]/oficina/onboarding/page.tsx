@@ -20,11 +20,6 @@ export default async function OnboardingPage({ params }: Props) {
     ? await supabase.from('voice_agents').select('id, business_name, features').eq('portal_email', ag.portal_email as string)
     : { data: [] };
 
-  const agents = (all ?? []).map((a: any) => ({
-    id:            a.id,
-    business_name: a.business_name,
-  }));
-
   const hasNaia = (all ?? []).some(
     (a: any) => (a.features as Record<string, unknown>)?.meerkat_role_id === 'naia',
   );
@@ -85,7 +80,7 @@ export default async function OnboardingPage({ params }: Props) {
         </div>
       )}
 
-      <OnboardingSection token={token} agents={agents} />
+      <OnboardingSection token={token} />
     </div>
   );
 }

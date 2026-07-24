@@ -73,7 +73,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const templateName   = (contratoCfg.template_name as string | undefined) ?? null;
   const templatePath   = (contratoCfg.template_path as string | undefined) ?? null;
 
-  return NextResponse.json({ template: tpl ?? { clauses: DEFAULT_CLAUSES }, defaults: DEFAULT_CLAUSES, templateName, templatePath });
+  return NextResponse.json({ template: tpl ?? { clauses: DEFAULT_CLAUSES }, defaults: DEFAULT_CLAUSES, templateName, templatePath, isConfigured: tpl !== null });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {

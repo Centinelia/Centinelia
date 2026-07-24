@@ -43,9 +43,8 @@ const TYPE_LABELS: Record<string, string> = {
   otro:      'Otro',
 };
 
-export default function OnboardingSection({ token, agents }: {
-  token:  string;
-  agents: { id: string; business_name: string }[];
+export default function OnboardingSection({ token }: {
+  token: string;
 }) {
   const [templates, setTemplates]   = useState<OTemplate[]>([]);
   const [instances, setInstances]   = useState<OInstance[]>([]);
@@ -57,6 +56,9 @@ export default function OnboardingSection({ token, agents }: {
   const [showTplForm, setShowTplForm] = useState(false);
   const [showSendForm, setShowSendForm] = useState<string | null>(null); // template id
   const [saving, setSaving]         = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [sendError, setSendError]     = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [tplForm, setTplForm] = useState({
     name:    '',
@@ -99,8 +101,9 @@ export default function OnboardingSection({ token, agents }: {
   async function handleCreateTemplate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setCreateError(null);
     try {
-      await fetch(`/api/portal/${token}/onboarding`, {
+      const res = await fetch(`/api/portal/${token}/onboarding`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -112,9 +115,12 @@ export default function OnboardingSection({ token, agents }: {
           notes:             tplForm.notes || null,
         }),
       });
+      if (!res.ok) throw new Error('No se pudo crear la plantilla');
       setTplForm({ name: '', type: 'empleado', steps: [''], docs: [''], notes: '' });
       setShowTplForm(false);
       await load();
+    } catch (err: any) {
+      setCreateError(err.message ?? 'Error al crear la plantilla');
     } finally {
       setSaving(false);
     }
@@ -124,8 +130,9 @@ export default function OnboardingSection({ token, agents }: {
     e.preventDefault();
     if (!showSendForm) return;
     setSaving(true);
+    setSendError(null);
     try {
-      await fetch(`/api/portal/${token}/onboarding`, {
+      const res = await fetch(`/api/portal/${token}/onboarding`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -135,45 +142,71 @@ export default function OnboardingSection({ token, agents }: {
           contact_email: sendForm.contact_email,
         }),
       });
+      if (!res.ok) throw new Error('No se pudo enviar el onboarding');
       setSendForm({ contact_name: '', contact_email: '', template_id: '' });
       setShowSendForm(null);
       setView('instances');
       await load();
+    } catch (err: any) {
+      setSendError(err.message ?? 'Error al enviar el onboarding');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleStatusChange(instanceId: string, status: string) {
-    await fetch(`/api/portal/${token}/onboarding`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ type: 'instance', id: instanceId, status }),
-    });
-    await load();
+    const prev = instances.find(i => i.id === instanceId)?.status;
+    setInstances(is => is.map(i => i.id === instanceId ? { ...i, status } : i));
+    try {
+      const res = await fetch(`/api/portal/${token}/onboarding`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'instance', id: instanceId, status }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      if (prev) setInstances(is => is.map(i => i.id === instanceId ? { ...i, status: prev } : i));
+    }
   }
 
   async function handleDeleteTemplate(id: string) {
     if (!confirm('¿Eliminar esta plantilla?')) return;
-    await fetch(`/api/portal/${token}/onboarding`, {
-      method:  'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ type: 'template', id }),
-    });
-    await load();
+    try {
+      const res = await fetch(`/api/portal/${token}/onboarding`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'template', id }),
+      });
+      if (!res.ok) throw new Error('No se pudo eliminar la plantilla');
+      await load();
+    } catch (err: any) {
+      setActionError(err.message ?? 'Error al eliminar');
+    }
   }
 
   async function handleDeleteInstance(id: string) {
     if (!confirm('¿Eliminar este onboarding?')) return;
-    await fetch(`/api/portal/${token}/onboarding`, {
-      method:  'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ type: 'instance', id }),
-    });
-    await load();
+    try {
+      const res = await fetch(`/api/portal/${token}/onboarding`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'instance', id }),
+      });
+      if (!res.ok) throw new Error('No se pudo eliminar el proceso');
+      await load();
+    } catch (err: any) {
+      setActionError(err.message ?? 'Error al eliminar');
+    }
   }
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL ?? '');
+
+  const filteredTemplates = templates.filter(t => !search.trim() || t.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredInstances = instances.filter(inst => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return inst.contact_name.toLowerCase().includes(q) || inst.contact_email.toLowerCase().includes(q);
+  });
 
   return (
     <div className="flex flex-col gap-6 p-5 sm:p-7 w-full">
@@ -305,19 +338,29 @@ export default function OnboardingSection({ token, agents }: {
               style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit' }} />
           </div>
 
+          {createError && (
+            <p className="text-xs" style={{ color: '#f87171' }}>{createError}</p>
+          )}
           <div className="flex gap-2">
             <button type="submit" disabled={saving}
               className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
               style={{ background: '#6C3BFF', color: '#fff' }}>
               {saving ? 'Guardando...' : 'Crear plantilla'}
             </button>
-            <button type="button" onClick={() => setShowTplForm(false)}
+            <button type="button" onClick={() => { setShowTplForm(false); setCreateError(null); }}
               className="px-4 py-2 rounded-lg text-xs font-semibold"
               style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
               Cancelar
             </button>
           </div>
         </form>
+      )}
+
+      {/* Action error */}
+      {actionError && (
+        <p className="text-xs px-1" style={{ color: '#f87171' }}>{actionError}
+          <button onClick={() => setActionError(null)} className="ml-2 underline">Cerrar</button>
+        </p>
       )}
 
       {/* View toggle */}
@@ -381,9 +424,11 @@ export default function OnboardingSection({ token, agents }: {
               </button>
             </div>
           </div>
+        ) : filteredTemplates.length === 0 ? (
+          <p className="text-xs text-center py-4" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {templates.filter(t => !search.trim() || t.name.toLowerCase().includes(search.toLowerCase())).map(t => (
+            {filteredTemplates.map(t => (
               <div key={t.id} className="rounded-xl overflow-hidden"
                 style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
                 <button onClick={() => toggleT(t.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80">
@@ -460,16 +505,11 @@ export default function OnboardingSection({ token, agents }: {
               </div>
             )}
           </div>
+        ) : filteredInstances.length === 0 ? (
+          <p className="text-xs text-center py-4" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {instances.filter(inst => {
-              if (!search.trim()) return true;
-              const q = search.toLowerCase();
-              return (
-                inst.contact_name.toLowerCase().includes(q) ||
-                inst.contact_email.toLowerCase().includes(q)
-              );
-            }).map(inst => {
+            {filteredInstances.map(inst => {
               const stCfg   = STATUS_CFG[inst.status] ?? STATUS_CFG.pendiente;
               const tplName = (inst as any).onboarding_templates?.name ?? 'Onboarding';
               const isOpen  = expandedI.has(inst.id);
@@ -587,13 +627,16 @@ export default function OnboardingSection({ token, agents }: {
                   className="w-full px-3 py-2 rounded-lg text-sm"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0' }} />
               </div>
+              {sendError && (
+                <p className="text-xs" style={{ color: '#f87171' }}>{sendError}</p>
+              )}
               <div className="flex gap-2 mt-2">
                 <button type="submit" disabled={saving}
                   className="flex-1 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
                   style={{ background: '#6C3BFF', color: '#fff' }}>
                   {saving ? 'Enviando...' : 'Enviar correo'}
                 </button>
-                <button type="button" onClick={() => setShowSendForm(null)}
+                <button type="button" onClick={() => { setShowSendForm(null); setSendError(null); }}
                   className="px-4 py-2 rounded-lg text-sm font-semibold"
                   style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)' }}>
                   Cancelar

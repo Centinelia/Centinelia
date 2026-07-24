@@ -88,6 +88,64 @@ export async function POST(req: NextRequest, { params }: Params) {
   return NextResponse.json({ ok: true, id: meeting.id });
 }
 
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const auth   = await verifySession(cookie);
+  if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const { token } = await params;
+  const supabase  = createAdminClient();
+  const acct      = await getAgentForToken(supabase, token);
+  if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+  const agentIds = await getAgentIds(supabase, acct.portal_email);
+  const body     = await req.json();
+  const { id, action, meeting_data, task } = body;
+
+  if (!id) return NextResponse.json({ error: 'Falta id' }, { status: 400 });
+
+  // Verify the meeting belongs to this account
+  const { data: meeting } = await supabase
+    .from('ops_meetings')
+    .select('id, agent_id')
+    .eq('id', id)
+    .in('agent_id', agentIds)
+    .single();
+
+  if (!meeting) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+
+  if (action === 'create_task') {
+    if (!task?.task) return NextResponse.json({ error: 'Falta task' }, { status: 400 });
+
+    const parts = [task.assignee, task.due].filter(Boolean).join(' · ');
+    const { error } = await supabase.from('agent_tasks').insert({
+      portal_email:   acct.portal_email,
+      created_by:     acct.id,
+      assigned_to:    acct.id,
+      title:          (task.task as string).slice(0, 200),
+      description:    parts ? `Responsable: ${parts}` : 'Creada desde resumen de junta.',
+      status:         'pending',
+      trigger_type:   'meeting_action_item',
+      source_context: `Reunión: ${id}`,
+    });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (meeting_data) {
+    const { error } = await supabase
+      .from('ops_meetings')
+      .update({ meeting_data })
+      .eq('id', id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 });
+}
+
 export async function DELETE(req: NextRequest, { params }: Params) {
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);

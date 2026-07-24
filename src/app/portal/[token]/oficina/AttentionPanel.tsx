@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess }   from '@/lib/portal/agent-access';
 import Link                  from 'next/link';
-import { Inbox, AlertTriangle, FileText, Mic } from 'lucide-react';
+import { AlertTriangle, FileText, Mic } from 'lucide-react';
 
 interface Item {
   label: string;
@@ -17,23 +17,18 @@ export default async function AttentionPanel({ token }: { token: string }) {
   if (!access) return null;
   const { ids } = access;
 
-  const cutoff = new Date(Date.now() - 30 * 86400_000).toISOString();
-
-  const [inboxR, ticketR, contractR, meetingR] = await Promise.all([
-    supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
-      .in('agent_id', ids).eq('status', 'pending').gte('created_at', cutoff),
+  const [ticketR, contractR, meetingR] = await Promise.all([
     supabase.from('helpdesk_tickets').select('id', { count: 'exact', head: true })
       .in('agent_id', ids).eq('prioridad', 'critica').not('status', 'in', '(resuelto,cerrado)'),
-    supabase.from('ops_contracts').select('id', { count: 'exact', head: true })
-      .in('agent_id', ids).gte('created_at', cutoff),
+    supabase.from('contract_drafts').select('id', { count: 'exact', head: true })
+      .in('agent_id', ids).eq('status', 'borrador'),
     supabase.from('ops_meetings').select('id', { count: 'exact', head: true })
-      .in('agent_id', ids).eq('status', 'done').gte('created_at', cutoff),
+      .in('agent_id', ids).in('status', ['pending', 'error']),
   ]);
 
   const all: Item[] = [
-    { label: 'Bandeja',   count: inboxR.count    ?? 0, href: `/portal/${token}/oficina/bandeja`,   icon: Inbox,         color: '#6C3BFF' },
     { label: 'Críticos',  count: ticketR.count   ?? 0, href: `/portal/${token}/oficina/helpdesk`,  icon: AlertTriangle, color: '#ef4444' },
-    { label: 'Contratos', count: contractR.count ?? 0, href: `/portal/${token}/oficina/contratos`, icon: FileText,      color: '#f59e0b' },
+    { label: 'Contratos', count: contractR.count ?? 0, href: `/portal/${token}/oficina/documentos`, icon: FileText,      color: '#f59e0b' },
     { label: 'Juntas',    count: meetingR.count  ?? 0, href: `/portal/${token}/oficina/juntas`,    icon: Mic,           color: '#3b82f6' },
   ];
 

@@ -30,16 +30,25 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const supabase = createAdminClient();
+
+  // Collect all agent IDs for the same account so stats are account-wide
+  const { data: siblings } = agent.portal_email
+    ? await supabase.from('voice_agents').select('id, agent_name').eq('portal_email', agent.portal_email)
+    : { data: [{ id: agent.id, agent_name: agent.agent_name }] };
+  const siblingList = siblings ?? [{ id: agent.id, agent_name: agent.agent_name }];
+  const agentIds    = siblingList.map(a => a.id as string);
+  const agentNames  = Object.fromEntries(siblingList.map(a => [a.id, (a.agent_name as string | null) ?? null]));
+
   const { data: docs } = await supabase
     .from('ops_documents')
-    .select('id, title, filename, template_type, created_at, last_accessed_at, expires_at')
-    .eq('agent_id', agent.id)
+    .select('id, title, filename, template_type, agent_id, created_at, last_accessed_at, expires_at')
+    .in('agent_id', agentIds)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 
   return NextResponse.json({
     documents: docs ?? [],
-    agentName: (agent.agent_name as string | null) ?? null,
+    agentNames,
   });
 }
 
@@ -59,14 +68,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await req.json() as { id: string };
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-  const supabase  = createAdminClient();
+  const supabase = createAdminClient();
+
+  const { data: siblings } = agent.portal_email
+    ? await supabase.from('voice_agents').select('id').eq('portal_email', agent.portal_email)
+    : { data: [{ id: agent.id }] };
+  const agentIds = (siblings ?? [{ id: agent.id }]).map(a => a.id as string);
+
   const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { error } = await supabase
     .from('ops_documents')
     .update({ expires_at: newExpiry })
     .eq('id', id)
-    .eq('agent_id', agent.id);
+    .in('agent_id', agentIds);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, expires_at: newExpiry });
@@ -89,11 +104,17 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const supabase = createAdminClient();
+
+  const { data: siblings } = agent.portal_email
+    ? await supabase.from('voice_agents').select('id').eq('portal_email', agent.portal_email)
+    : { data: [{ id: agent.id }] };
+  const agentIds = (siblings ?? [{ id: agent.id }]).map(a => a.id as string);
+
   const { data: doc } = await supabase
     .from('ops_documents')
     .select('storage_path')
     .eq('id', id)
-    .eq('agent_id', agent.id)
+    .in('agent_id', agentIds)
     .single();
 
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });

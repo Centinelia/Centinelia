@@ -358,29 +358,35 @@ function ConditionEditor({
   async function save() {
     if (!script.trim()) return;
     setSaving(true);
-    const conditions: QuestionCondition = isRating
-      ? { if_rating_lte: threshold, then_say: script.trim() }
-      : { if_answer: ifAnswer,      then_say: script.trim() };
-    const res = await fetch(
-      `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
-      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions }) },
-    );
-    if (res.ok) onUpdate(question.id, conditions);
-    setSaving(false);
+    try {
+      const conditions: QuestionCondition = isRating
+        ? { if_rating_lte: threshold, then_say: script.trim() }
+        : { if_answer: ifAnswer,      then_say: script.trim() };
+      const res = await fetch(
+        `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions }) },
+      );
+      if (res.ok) onUpdate(question.id, conditions);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function remove() {
     setSaving(true);
-    const res = await fetch(
-      `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
-      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions: null }) },
-    );
-    if (res.ok) {
-      onUpdate(question.id, null);
-      setScript('');
-      setOpen(false);
+    try {
+      const res = await fetch(
+        `/api/portal/${token}/surveys/${surveyId}/questions?question_id=${question.id}`,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions: null }) },
+      );
+      if (res.ok) {
+        onUpdate(question.id, null);
+        setScript('');
+        setOpen(false);
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   if (!open) {
@@ -505,14 +511,17 @@ function ActionsTab({
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/surveys/${survey.id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ actions }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/surveys/${survey.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ actions }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -658,26 +667,29 @@ function WizardModal({
     const nombre   = categoryId === 'personalizada' ? customNombre.trim() : category.nombre;
     const objetivo = categoryId === 'personalizada' ? (customObjetivo.trim() || null) : (category.objetivo || null);
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/surveys`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        nombre,
-        objetivo,
-        triggers:   selTriggers,
-        agent_ids:  allTeam ? [] : selAgents,
-        canal:      'llamada',
-        activa:     true,
-        auto_apply: selTriggers.some(t => t !== 'manual'),
-        questions:  [...category.preguntas],
-      }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      onCreate(d.survey);
-      onClose();
+    try {
+      const res = await fetch(`/api/portal/${token}/surveys`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          nombre,
+          objetivo,
+          triggers:   selTriggers,
+          agent_ids:  allTeam ? [] : selAgents,
+          canal:      'llamada',
+          activa:     true,
+          auto_apply: selTriggers.some(t => t !== 'manual'),
+          questions:  [...category.preguntas],
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        onCreate(d.survey);
+        onClose();
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   const btnBase: React.CSSProperties = {
@@ -982,15 +994,18 @@ function SurveyCard({
   async function dispatchManual() {
     if (!manualPhone.trim()) return;
     setManualSaving(true);
-    await fetch(`/api/portal/${token}/surveys/${survey.id}/dispatch`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ phone: manualPhone.trim() }),
-    });
-    setManualSaving(false);
-    setManualSent(true);
-    setManualPhone('');
-    setTimeout(() => { setManualSent(false); setManualOpen(false); }, 2000);
+    try {
+      await fetch(`/api/portal/${token}/surveys/${survey.id}/dispatch`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ phone: manualPhone.trim() }),
+      });
+      setManualSent(true);
+      setManualPhone('');
+      setTimeout(() => { setManualSent(false); setManualOpen(false); }, 2000);
+    } finally {
+      setManualSaving(false);
+    }
   }
 
   function exportCSV() {
@@ -1023,23 +1038,30 @@ function SurveyCard({
   const addQuestion = async () => {
     if (!qTexto.trim()) return;
     setSaving(true);
-    const nextOrden = (questions[questions.length - 1]?.orden ?? 0) + 1;
-    const body: Record<string, unknown> = { orden: nextOrden, texto: qTexto.trim(), tipo: qTipo };
-    if (qTipo === 'multiple') body.opciones = qOpciones.split(',').map(s => s.trim()).filter(Boolean);
-    const res = await fetch(`/api/portal/${token}/surveys/${survey.id}/questions`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    if (res.ok) {
-      const d = await res.json() as { question: Question };
-      setQuestions(prev => [...prev, d.question]);
-      setAddOpen(false); setQTexto(''); setQTipo('rating_5'); setQOpciones('');
+    try {
+      const nextOrden = (questions[questions.length - 1]?.orden ?? 0) + 1;
+      const body: Record<string, unknown> = { orden: nextOrden, texto: qTexto.trim(), tipo: qTipo };
+      if (qTipo === 'multiple') body.opciones = qOpciones.split(',').map(s => s.trim()).filter(Boolean);
+      const res = await fetch(`/api/portal/${token}/surveys/${survey.id}/questions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        const d = await res.json() as { question: Question };
+        setQuestions(prev => [...prev, d.question]);
+        setAddOpen(false); setQTexto(''); setQTipo('rating_5'); setQOpciones('');
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const deleteQuestion = async (qid: string) => {
-    const res = await fetch(`/api/portal/${token}/surveys/${survey.id}/questions?question_id=${qid}`, { method: 'DELETE' });
-    if (res.ok) setQuestions(prev => prev.filter(q => q.id !== qid));
+    try {
+      const res = await fetch(`/api/portal/${token}/surveys/${survey.id}/questions?question_id=${qid}`, { method: 'DELETE' });
+      if (res.ok) setQuestions(prev => prev.filter(q => q.id !== qid));
+    } catch {
+      // silent — question stays in list
+    }
   };
 
   return (
@@ -1442,6 +1464,7 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
 }) {
   const [surveys,      setSurveys]      = useState<Survey[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [loadError,    setLoadError]    = useState(false);
   const [showWizard,   setShowWizard]   = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [agents,       setAgents]       = useState<AgentMini[]>([]);
@@ -1454,6 +1477,7 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
     fetch(`/api/portal/${token}/surveys`)
       .then(r => r.json())
       .then((d: { surveys: Survey[] }) => setSurveys(d.surveys ?? []))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -1465,16 +1489,25 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
 
   const handleToggle = async (id: string, field: 'activa' | 'auto_apply', val: boolean) => {
     setSurveys(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
-    await fetch(`/api/portal/${token}/surveys/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: val }),
-    });
+    try {
+      const res = await fetch(`/api/portal/${token}/surveys/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: val }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setSurveys(prev => prev.map(s => s.id === id ? { ...s, [field]: !val } : s));
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta encuesta y todos sus datos?')) return;
-    const res = await fetch(`/api/portal/${token}/surveys/${id}`, { method: 'DELETE' });
-    if (res.ok) setSurveys(prev => prev.filter(s => s.id !== id));
+    try {
+      const res = await fetch(`/api/portal/${token}/surveys/${id}`, { method: 'DELETE' });
+      if (res.ok) setSurveys(prev => prev.filter(s => s.id !== id));
+    } catch {
+      // silent — survey stays in list
+    }
   };
 
   return (
@@ -1564,7 +1597,8 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
           </button>
         </div>
 
-        {loading && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
+        {loading    && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
+        {loadError  && <p className="text-xs" style={{ color: '#f87171' }}>No se pudieron cargar las encuestas.</p>}
 
         {/* Empty state */}
         {!loading && surveys.length === 0 && (

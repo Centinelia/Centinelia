@@ -21,21 +21,25 @@ export default async function OficinaLlamadasPage({ params }: Props) {
     : { data: [] };
   const allPeers = peers ?? [];
 
-  const features         = ((agent as any).features ?? {}) as Record<string, unknown>;
-  const showLeads        = !!features.lead_qualification;
-  const showOrders       = !!features.order_taking;
-  const showAppts        = !!features.appointment_booking;
-  const showOutbound     = !!(features.outbound_calls) || agent.plan === 'pro';
-  const initOutbound     = !!(features.outbound_calls);
-  const initMissedCall   = !!((agent as any).missed_call_recovery);
+  const agentIds = allPeers.length > 0 ? allPeers.map(a => a.id as string) : [agent.id as string];
+
+  const anyHas = (key: string) => allPeers.some(a => !!((a.features as any)?.[key]));
+
+  const features       = ((agent as any).features ?? {}) as Record<string, unknown>;
+  const showLeads      = !!features.lead_qualification  || anyHas('lead_qualification');
+  const showOrders     = !!features.order_taking        || anyHas('order_taking');
+  const showAppts      = !!features.appointment_booking || anyHas('appointment_booking');
+  const showOutbound   = !!(features.outbound_calls)    || anyHas('outbound_calls') || agent.plan === 'pro';
+  const initOutbound   = !!(features.outbound_calls);
+  const initMissedCall = !!((agent as any).missed_call_recovery);
 
   const [callsRes, leadsRes, ordersRes, apptsRes, contactsRes, campaignsRes] = await Promise.all([
-    supabase.from('voice_calls').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(200),
-    showLeads    ? supabase.from('leads_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false })        : Promise.resolve({ data: [] }),
-    showOrders   ? supabase.from('orders_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false })       : Promise.resolve({ data: [] }),
-    showAppts    ? supabase.from('appointments_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-    showOutbound ? supabase.from('outbound_contacts').select('id,nombre,telefono,motivo,source,status,fail_count,created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [] }),
-    showOutbound ? supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+    supabase.from('voice_calls').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(200),
+    showLeads    ? supabase.from('leads_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })        : Promise.resolve({ data: [] }),
+    showOrders   ? supabase.from('orders_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })       : Promise.resolve({ data: [] }),
+    showAppts    ? supabase.from('appointments_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+    showOutbound ? supabase.from('outbound_contacts').select('id,nombre,telefono,motivo,source,status,fail_count,created_at').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [] }),
+    showOutbound ? supabase.from('outbound_campaigns').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
 
   const calls    = (callsRes.data  ?? []) as VoiceCall[];

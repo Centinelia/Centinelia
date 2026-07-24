@@ -25,11 +25,16 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const { data: siblings } = agent.portal_email
+    ? await supabase.from('voice_agents').select('id').eq('portal_email', agent.portal_email)
+    : { data: [{ id: agent.id }] };
+  const agentIds = (siblings ?? [{ id: agent.id }]).map(a => a.id as string);
+
   const { data: doc } = await supabase
     .from('ops_documents')
     .select('*')
     .eq('id', id)
-    .eq('agent_id', agent.id)
+    .in('agent_id', agentIds)
     .single();
   if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
 

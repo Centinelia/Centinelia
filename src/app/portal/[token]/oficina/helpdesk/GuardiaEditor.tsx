@@ -69,11 +69,15 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ guardia_schedule: schedule }),
-    });
-    setSaving(false); setDirty(false);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guardia_schedule: schedule }),
+      });
+      setDirty(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalTurnos = schedule.areas.reduce((n, a) => n + a.turnos.length, 0);

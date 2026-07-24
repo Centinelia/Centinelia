@@ -50,9 +50,8 @@ export default async function EquipoHoySection({ token }: { token: string }) {
   if (!agents?.length) return null;
 
   const agentIds = agents.map(a => a.id);
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const since = todayStart.toISOString();
+  // Use a 24-hour rolling window so the cutoff is consistent regardless of server timezone
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const [{ data: callRows }, { data: opsRows }] = await Promise.all([
     supabase.from('voice_calls').select('agent_id').in('agent_id', agentIds).gte('created_at', since),

@@ -81,6 +81,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
   const [learnings,  setLearnings]  = useState<Learning[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [acting,     setActing]     = useState<Record<string, boolean>>({});
+  const [actError,   setActError]   = useState<Record<string, string>>({});
   const [edited,     setEdited]     = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Record<string, 'role_kb' | 'guardrails'>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -103,29 +104,48 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
 
   async function act(id: string, action: 'approve' | 'reject') {
     setActing(p => ({ ...p, [id]: true }));
+    setActError(p => ({ ...p, [id]: '' }));
     const content  = edited[id];
     const category = categories[id];
-    await fetch(`/api/portal/${token}/learnings/${id}`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        action,
-        ...(content !== undefined ? { content } : {}),
-        ...(action === 'approve'  ? { category } : {}),
-      }),
-    });
-    setLearnings(prev =>
-      prev.map(l => l.id === id
-        ? { ...l, status: action === 'approve' ? 'approved' : 'rejected', content: content ?? l.content }
-        : l,
-      ),
-    );
-    setExpandedId(null);
-    setActing(p => ({ ...p, [id]: false }));
+    try {
+      const res  = await fetch(`/api/portal/${token}/learnings/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          action,
+          ...(content !== undefined ? { content } : {}),
+          ...(action === 'approve'  ? { category } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setActError(p => ({ ...p, [id]: data.error ?? 'Error al procesar. Intenta de nuevo.' }));
+        return;
+      }
+      setLearnings(prev =>
+        prev.map(l => l.id === id
+          ? {
+              ...l,
+              status:   action === 'approve' ? 'approved' : 'rejected',
+              content:  content ?? l.content,
+              category: action === 'approve' ? (category ?? l.category) : l.category,
+            }
+          : l,
+        ),
+      );
+      setExpandedId(null);
+    } catch {
+      setActError(p => ({ ...p, [id]: 'Error de conexion. Intenta de nuevo.' }));
+    } finally {
+      setActing(p => ({ ...p, [id]: false }));
+    }
   }
+
+  const [showAllApproved, setShowAllApproved] = useState(false);
 
   const pending  = learnings.filter(l => l.status === 'pending');
   const approved = learnings.filter(l => l.status === 'approved');
+  const rejected = learnings.filter(l => l.status === 'rejected');
   const groups   = groupByAgent(pending);
 
   return (
@@ -290,7 +310,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                                 })}
                               </div>
 
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <button
                                   onClick={() => act(l.id, 'approve')}
                                   disabled={acting[l.id]}
@@ -307,6 +327,9 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                                 >
                                   <X size={13} /> Descartar
                                 </button>
+                                {actError[l.id] && (
+                                  <span className="text-xs" style={{ color: '#f87171' }}>{actError[l.id]}</span>
+                                )}
                               </div>
                             </>
                           ) : (
@@ -332,7 +355,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
             Ya incorporado
           </p>
           <div className="space-y-2">
-            {approved.slice(0, 12).map(l => (
+            {(showAllApproved ? approved : approved.slice(0, 12)).map(l => (
               <div
                 key={l.id}
                 className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
@@ -367,6 +390,38 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                     )}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+          {approved.length > 12 && (
+            <button
+              onClick={() => setShowAllApproved(v => !v)}
+              className="mt-2 w-full text-xs py-2 rounded-lg transition-opacity hover:opacity-70"
+              style={{ color: 'var(--c-text-3)', background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+            >
+              {showAllApproved ? 'Ver menos' : `Ver ${approved.length - 12} más`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Rejected — compact, collapsible */}
+      {rejected.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--c-text-4)' }}>
+            Descartados ({rejected.length})
+          </p>
+          <div className="space-y-1.5">
+            {rejected.map(l => (
+              <div
+                key={l.id}
+                className="flex items-start gap-2.5 rounded-lg px-3 py-2"
+                style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)' }}
+              >
+                <X size={12} style={{ color: '#f87171', flexShrink: 0, marginTop: 2 }} />
+                <p className="text-xs leading-relaxed line-through" style={{ color: 'var(--c-text-4)' }}>
+                  {l.content}
+                </p>
               </div>
             ))}
           </div>

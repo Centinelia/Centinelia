@@ -108,18 +108,24 @@ export default function ActividadFeed({ token }: { token: string }) {
 
   const load = useCallback(async (d: number, t: string, l: number) => {
     setLoading(true);
-    const res  = await fetch(`/api/portal/${token}/actividad?days=${d}&type=${t}&limit=${l}`);
-    const data = await res.json() as { events: ActivityEvent[]; total: number };
-    setEvents(data.events ?? []);
-    setTotal(data.total ?? 0);
-    setLoading(false);
+    try {
+      const res  = await fetch(`/api/portal/${token}/actividad?days=${d}&type=${t}&limit=${l}`);
+      const data = await res.json() as { events: ActivityEvent[]; total: number };
+      setEvents(data.events ?? []);
+      setTotal(data.total ?? 0);
+    } catch {
+      // leave existing events visible, just stop the spinner
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => { load(days, type, limit); }, [load, days, type, limit]);
 
-  // Counts by type from current result set
+  // 'all' total comes from the server; per-type counts are only reliable
+  // when that type is the active filter (where total = that type's count).
   const counts: Partial<Record<EventType | 'all', number>> = { all: total };
-  for (const ev of events) counts[ev.type] = (counts[ev.type] ?? 0) + 1;
+  if (type !== 'all') counts[type as EventType] = total;
 
   return (
     <div className="flex flex-col gap-4">

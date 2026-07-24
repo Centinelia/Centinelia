@@ -22,27 +22,34 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
   const active = incidents.filter(i => i.activo);
 
   const resolve = async (id: string) => {
-    const res = await fetch(`/api/portal/${token}/incidents/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ activo: false }),
-    });
-    if (res.ok) setIncidents(i => i.map(x => x.id === id ? { ...x, activo: false } : x));
+    try {
+      const res = await fetch(`/api/portal/${token}/incidents/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activo: false }),
+      });
+      if (res.ok) setIncidents(i => i.map(x => x.id === id ? { ...x, activo: false } : x));
+    } catch {
+      // silent — incident stays active
+    }
   };
 
   const handleAdd = async () => {
     if (!titulo.trim() || !mensajeVoz.trim()) return;
     setSaving(true);
-    const keywords = kwInput.split(',').map(k => k.trim()).filter(Boolean);
-    const res = await fetch(`/api/portal/${token}/incidents`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo, descripcion, mensaje_voz: mensajeVoz, keywords }),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setIncidents(prev => [d.incident, ...prev]);
-      setShowAdd(false); setTitulo(''); setDescripcion(''); setMensajeVoz(''); setKwInput('');
+    try {
+      const keywords = kwInput.split(',').map(k => k.trim()).filter(Boolean);
+      const res = await fetch(`/api/portal/${token}/incidents`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo, descripcion, mensaje_voz: mensajeVoz, keywords }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setIncidents(prev => [d.incident, ...prev]);
+        setShowAdd(false); setTitulo(''); setDescripcion(''); setMensajeVoz(''); setKwInput('');
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (

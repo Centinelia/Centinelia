@@ -85,6 +85,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
+  const { data: allAgents } = await supabase
+    .from('voice_agents').select('id').eq('portal_email', agent.portal_email);
+  const agentIds = (allAgents ?? []).map(a => a.id as string);
+
   const body = await req.json() as {
     id:            string;
     client_name?:  string;
@@ -106,7 +110,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (body.status       !== undefined) updates.status       = body.status;
 
   const { error } = await supabase
-    .from('contract_drafts').update(updates).eq('id', body.id);
+    .from('contract_drafts').update(updates).eq('id', body.id).in('agent_id', agentIds);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
@@ -120,10 +124,18 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase  = createAdminClient();
 
+  const { data: agent } = await supabase
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
+  if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+  const { data: allAgents } = await supabase
+    .from('voice_agents').select('id').eq('portal_email', agent.portal_email);
+  const agentIds = (allAgents ?? []).map(a => a.id as string);
+
   const { id } = await req.json() as { id: string };
 
   const { error } = await supabase
-    .from('contract_drafts').update({ status: 'cancelado' }).eq('id', id);
+    .from('contract_drafts').update({ status: 'cancelado' }).eq('id', id).in('agent_id', agentIds);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

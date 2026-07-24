@@ -25,11 +25,15 @@ export default function DirectorioEditor({ token, initial }: { token: string; in
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ directorio_interno: contacts }),
-    });
-    setSaving(false); setDirty(false);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directorio_interno: contacts }),
+      });
+      setDirty(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
