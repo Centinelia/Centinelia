@@ -1486,7 +1486,7 @@ function RegistroInner() {
                         <p className="font-bold text-white text-base leading-tight flex items-center gap-1">
                           {t.label} <Zap size={11} style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                         </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>+ IVA/mes</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Por mes</p>
                         <p className="text-xs mt-1.5" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.38)' }}>{t.desc}</p>
                       </div>
                       {/* Price + badge */}
