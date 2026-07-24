@@ -31,11 +31,13 @@ function currentWeekStart(): string {
 export async function GET(_req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { supabase, portalEmail } = await resolveOrg(token);
   if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && portalEmail && session.portalEmail !== portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const weekStart = currentWeekStart();
 
@@ -72,8 +74,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { mode?: string };
   if (!body.mode || !['llm', 'rules'].includes(body.mode))
@@ -81,6 +83,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { supabase, portalEmail } = await resolveOrg(token);
   if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && portalEmail && session.portalEmail !== portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   await supabase
     .from('organizations')
@@ -93,11 +97,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function POST(_req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { supabase, portalEmail } = await resolveOrg(token);
   if (!portalEmail) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && portalEmail && session.portalEmail !== portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const weekStart   = currentWeekStart();
   const now         = new Date();

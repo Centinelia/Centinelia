@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+
+async function authAndAccess(req: NextRequest, token: string) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return { session: null, access: null, error: NextResponse.json({ error: 'No autenticado' }, { status: 401 }) };
+  const access = await getAgentAccess(token, req);
+  if (!access) return { session, access: null, error: NextResponse.json({ error: 'Not found' }, { status: 404 }) };
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return { session, access: null, error: NextResponse.json({ error: 'Unauthorized' }, { status: 403 }) };
+  return { session, access, error: null };
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
   const { token, id } = await params;
-  const access        = await getAgentAccess(token, req);
-  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { access, error } = await authAndAccess(req, token);
+  if (error) return error;
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -27,8 +39,8 @@ export async function PATCH(
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
   const { token, id } = await params;
-  const access        = await getAgentAccess(token, req);
-  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { access, error } = await authAndAccess(req, token);
+  if (error) return error;
 
   const body    = await req.json() as Record<string, unknown>;
   const allowed = ['nombre', 'descripcion', 'objetivo', 'activa', 'auto_apply', 'triggers', 'agent_ids', 'canal', 'actions'];
@@ -52,8 +64,8 @@ export async function DELETE(
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
   const { token, id } = await params;
-  const access        = await getAgentAccess(token, req);
-  if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  const { access, error } = await authAndAccess(req, token);
+  if (error) return error;
 
   const supabase = createAdminClient();
   const { error } = await supabase

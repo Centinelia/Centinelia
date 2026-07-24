@@ -19,9 +19,15 @@ async function getAgent(token: string, portalEmail: string) {
 }
 
 export async function GET(req: NextRequest, { params }: Params) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token } = await params;
   const access = await getAgentAccess(token, req);
-  if (!access) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  if (!access) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data, error } = await createAdminClient()
     .from('outbound_campaigns')

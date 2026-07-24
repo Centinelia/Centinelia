@@ -11,8 +11,8 @@ interface Params { params: Promise<{ token: string; id: string }> }
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token, id } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { status?: string };
   if (!body.status || !['aplicada', 'descartada', 'nueva'].includes(body.status))
@@ -25,6 +25,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent?.portal_email) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { error } = await supabase
     .from('agent_recommendations')

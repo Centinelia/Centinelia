@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 type Question = {
   id: string;
@@ -74,9 +75,15 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string; id: string }> },
 ) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token, id } = await params;
   const access        = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const supabase = createAdminClient();
 

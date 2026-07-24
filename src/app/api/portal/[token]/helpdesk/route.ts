@@ -11,9 +11,15 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token } = await params;
   const access    = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const sp         = req.nextUrl.searchParams;
   const status     = sp.get('status');
@@ -41,9 +47,15 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token } = await params;
   const access    = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const supabase = createAdminClient();
   const body = await req.json() as {

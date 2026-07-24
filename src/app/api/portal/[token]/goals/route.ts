@@ -6,26 +6,26 @@ import { getGoalsWithProgress } from '@/lib/goals/progress';
 interface Params { params: Promise<{ token: string }> }
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  if (!await verifySession(cookie)) {
-    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  }
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
   const supabase = createAdminClient();
   const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const goals = await getGoalsWithProgress(agent.id);
   return NextResponse.json({ goals });
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  if (!await verifySession(cookie)) {
-    return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  }
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
   const body = await req.json();
@@ -42,8 +42,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
-    .from('voice_agents').select('id').eq('portal_token', token).single();
+    .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { data, error } = await supabase
     .from('agent_goals')

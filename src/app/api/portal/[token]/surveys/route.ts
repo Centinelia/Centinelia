@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token } = await params;
   const access    = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -25,9 +32,15 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
+  const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
   const { token } = await params;
   const access    = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && access.portalEmail && session.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json() as {
     nombre:      string;

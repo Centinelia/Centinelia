@@ -11,7 +11,7 @@ async function resolve(token: string) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id')
+    .select('id, portal_email')
     .eq('portal_token', token)
     .single();
   return { supabase, agent };
@@ -24,11 +24,13 @@ type Capability = typeof VALID_CAPABILITIES[number];
 export async function GET(_req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { supabase, agent } = await resolve(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: rows } = await supabase
     .from('agent_policies')
@@ -59,8 +61,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
-  if (!await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? ''))
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as {
     capability: string;
@@ -73,6 +75,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { supabase, agent } = await resolve(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const row: Record<string, unknown> = { agent_id: agent.id, capability: body.capability };
   if (body.enabled !== undefined)           row.enabled           = body.enabled;

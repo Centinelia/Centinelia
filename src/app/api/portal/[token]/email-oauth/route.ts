@@ -7,10 +7,6 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 interface Params { params: Promise<{ token: string }> }
 
-async function auth(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  return verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
-}
-
 // Resolve agent and portal_email from portal token
 async function resolvePortal(token: string) {
   const supabase = createAdminClient();
@@ -26,10 +22,13 @@ async function resolvePortal(token: string) {
 export async function GET(_req: NextRequest, { params }: Params) {
   const { token }   = await params;
   const cookieStore = await cookies();
-  if (!await auth(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { supabase, agent } = await resolvePortal(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Primary: org-level integration_accounts
   if (agent.portal_email) {
@@ -68,12 +67,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token }   = await params;
   const cookieStore = await cookies();
-  if (!await auth(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { provider, auto_reply } = await req.json() as { provider: string; auto_reply: boolean };
 
   const { supabase, agent } = await resolvePortal(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   if (agent.portal_email) {
     // Fetch current metadata to merge (preserve last_sync_at etc.)
@@ -112,12 +114,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   const { token }   = await params;
   const cookieStore = await cookies();
-  if (!await auth(cookieStore)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { provider } = await req.json() as { provider: string };
 
   const { supabase, agent } = await resolvePortal(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Remove from both tables
   await Promise.all([
