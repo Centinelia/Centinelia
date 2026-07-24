@@ -166,9 +166,9 @@ const TIERS: TierDef[] = [
 // Ops-only tiers for Nox (no minutes cost)
 type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean; desc: string };
 const NOX_TIERS: NoxTierDef[] = [
-  { id: 'starter', label: '500 tareas',  aiOps:  500, price: 1997, desc: 'Ideal para equipos pequeños.' },
-  { id: 'growth',  label: '1,200 tareas', aiOps: 1200, price: 3994, popular: true, desc: 'Para organizaciones con operación constante.' },
-  { id: 'scale',   label: '3,000 tareas', aiOps: 3000, price: 7994, desc: 'Diseñado para operaciones de alto volumen.' },
+  { id: 'starter', label: '500 tareas',   aiOps:  500, price: 2997,  desc: 'Ideal para equipos pequeños.' },
+  { id: 'growth',  label: '1,200 tareas', aiOps: 1200, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
+  { id: 'scale',   label: '3,000 tareas', aiOps: 3000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
 ];
 
 // Roles for the 3×3 grid — excludes coordinator (Nox gets its own card above)
@@ -1127,7 +1127,7 @@ function RegistroInner() {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
                           <span>Mensualidad</span>
-                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $1,997 + IVA/mes</span>
+                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 + IVA/mes</span>
                         </div>
                       </div>
                       <button

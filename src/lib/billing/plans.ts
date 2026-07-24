@@ -94,12 +94,12 @@ export const JORNADA_CONFIG: Record<JornadaType, Record<MinutesTier, JornadaAllo
 };
 
 // ─── Nox coordinator tiers (ops-only, no Vapi/minutes cost) ─────────────────
-// 500 ops/$1,997 · 1,200 ops/$3,994 · 3,000 ops/$7,994 (+ IVA)
+// 500 ops/$2,997 · 1,200 ops/$5,994 · 3,000 ops/$11,988 (+ IVA)
 // Requires STRIPE_NOX_STARTER, STRIPE_NOX_GROWTH, STRIPE_NOX_SCALE price IDs
 export const NOX_MONTHLY_CONFIG: Record<MinutesTier, MonthlyPlanConfig> = {
-  starter:    { label: 'Coordinador', minutes: 0, aiOps:  500, mxn: 1997,  priceId: () => process.env.STRIPE_NOX_STARTER! },
-  growth:     { label: 'Director',    minutes: 0, aiOps: 1200, mxn: 3994,  priceId: () => process.env.STRIPE_NOX_GROWTH! },
-  scale:      { label: 'Ejecutivo',   minutes: 0, aiOps: 3000, mxn: 7994,  priceId: () => process.env.STRIPE_NOX_SCALE! },
+  starter:    { label: 'Coordinador', minutes: 0, aiOps:  500, mxn: 2997,  priceId: () => process.env.STRIPE_NOX_STARTER! },
+  growth:     { label: 'Director',    minutes: 0, aiOps: 1200, mxn: 5994,  priceId: () => process.env.STRIPE_NOX_GROWTH! },
+  scale:      { label: 'Ejecutivo',   minutes: 0, aiOps: 3000, mxn: 11988, priceId: () => process.env.STRIPE_NOX_SCALE! },
   enterprise: { label: 'Empresarial', minutes: 0, aiOps:    0, mxn: 0,     priceId: () => '' },
 };
 
