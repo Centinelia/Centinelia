@@ -563,7 +563,7 @@ export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceA
 
 // Pushes updated prompts (with current global conversational learnings) to ALL active agents.
 // Called by the cron after new learnings are activated — do NOT call on every request.
-export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: number; errors: number }> {
+export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: number; errors: number; details: Array<{ id: string; name: string; ok: boolean; error?: string }> }> {
   const supabase    = createAdminClient();
   const learnings   = await fetchConversationalLearnings();
 
@@ -573,10 +573,11 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
     .eq('active', true)
     .not('vapi_agent_id', 'is', null);
 
-  if (!agents?.length) return { synced: 0, errors: 0 };
+  if (!agents?.length) return { synced: 0, errors: 0, details: [] };
 
   let synced = 0;
   let errors = 0;
+  const details: Array<{ id: string; name: string; ok: boolean; error?: string }> = [];
 
   // Process in batches of 5 to avoid hammering Vapi API
   for (let i = 0; i < agents.length; i += 5) {
@@ -584,13 +585,21 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
     const results = await Promise.allSettled(
       batch.map(a => syncAgentToVapi(a.vapi_agent_id, a as VoiceAgent, learnings)),
     );
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) synced++;
-      else errors++;
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      const a = batch[j];
+      if (r.status === 'fulfilled' && r.value) {
+        synced++;
+        details.push({ id: a.id, name: `${a.agent_name} (${a.business_name})`, ok: true });
+      } else {
+        errors++;
+        const errMsg = r.status === 'rejected' ? String(r.reason) : 'unknown';
+        details.push({ id: a.id, name: `${a.agent_name} (${a.business_name})`, ok: false, error: errMsg });
+      }
     }
   }
 
-  return { synced, errors };
+  return { synced, errors, details };
 }
 
 export async function assignAssistantToPhone(

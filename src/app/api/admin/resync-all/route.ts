@@ -19,9 +19,10 @@ export async function POST() {
   const ms     = Date.now() - start;
 
   return NextResponse.json({
-    ok:     true,
-    synced: result.synced,
-    errors: result.errors,
+    ok:      true,
+    synced:  result.synced,
+    errors:  result.errors,
+    details: result.details,
     ms,
     message: `${result.synced} agentes sincronizados${result.errors ? `, ${result.errors} errores` : ''} en ${(ms / 1000).toFixed(1)}s`,
   });
