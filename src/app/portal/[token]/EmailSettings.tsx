@@ -75,7 +75,7 @@ export default function EmailSettings({ token }: { token: string }) {
         <div className="flex items-center gap-2 mb-4">
           <Globe size={16} style={{ color: '#9B6DFF' }} />
           <h3 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Dominio de envío</h3>
-          <InfoTooltip text={'Agrega registros DNS en tu proveedor (GoDaddy, Namecheap, Cloudflare, etc.) para verificar la propiedad del dominio. Una vez verificado, los correos automáticos llegarán desde tuempresa.com en lugar de centinelia.mx.'} />
+          <InfoTooltip text={'Haz que los correos automáticos a tus clientes lleguen desde tu propio correo en lugar de centinelia.mx.'} />
           {isVerified && (
             <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
               style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
@@ -98,10 +98,6 @@ export default function EmailSettings({ token }: { token: string }) {
           </div>
         ) : (
           <>
-            <p className="text-sm mb-3" style={{ color: 'var(--c-text-sub)', lineHeight: 1.6 }}>
-              Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde <strong>centinelia.mx</strong>. Registra tu dominio para que lleguen desde <strong>tuempresa.com</strong>.
-            </p>
-
             {!isPending && (
               <div className="flex gap-2">
                 <input

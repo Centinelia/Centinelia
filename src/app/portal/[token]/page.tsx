@@ -479,7 +479,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         )}
 
         {/* Tab content */}
-        <div className={`flex-1 px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'inicio' || tab === 'negocio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+        <div className={`flex-1 px-4 sm:px-6 py-6 w-full md:mx-0 ${tab === 'negocio' ? '' : tab === 'inicio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
 
           {/* ── INICIO (dashboard) ───────────────────────────────────────── */}
           {tab === 'inicio' && (
@@ -871,14 +871,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   />
                 </div>
 
-                <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
-                    <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
-                  </div>
-                  <EmailSettings token={token} />
-                </div>
-
                 <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
@@ -909,16 +901,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               </div>
 
-              {/* Right column — Horario, Sitio web, Reseñas */}
+              {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
               <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
-                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
-                  </div>
-                  <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-                </div>
-
                 <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
@@ -931,6 +915,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
                   </div>
                   <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
+                </div>
+
+                <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
+                    <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
+                  </div>
+                  <EmailSettings token={token} />
+                </div>
+              </div>
+
+              {/* Col 3 — Horario de atención */}
+              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
+                <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                    <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
+                  </div>
+                  <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
                 </div>
               </div>
 
