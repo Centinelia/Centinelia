@@ -15,11 +15,14 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, portal_email')
     .eq('portal_token', token)
     .single();
 
-  if (!agent?.stripe_customer_id) {
+  if (!agent) return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  if (!agent.stripe_customer_id) {
     return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 404 });
   }
 
