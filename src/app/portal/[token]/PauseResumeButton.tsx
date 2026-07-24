@@ -19,17 +19,20 @@ export default function PauseResumeButton({ agentId, clientPaused }: {
     if (!confirm(confirm_msg)) return;
 
     setLoading(true);
-    const res = await fetch(`/api/portal/agents/${agentId}/pause`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
-    });
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: 'Error' }));
-      alert(error);
+    try {
+      const res = await fetch(`/api/portal/agents/${agentId}/pause`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error' }));
+        alert(error);
+      }
+      router.refresh();
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    router.refresh();
   };
 
   return (

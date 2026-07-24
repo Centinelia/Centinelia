@@ -14,26 +14,25 @@ export default function LogoUploader({ token, currentUrl, compact }: { token: st
 
   const handleFile = async (file: File) => {
     setError('');
-    // Local preview
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
-
     setLoading(true);
     const fd = new FormData();
     fd.append('logo', file);
-
-    const res  = await fetch(`/api/portal/${token}/upload-logo`, { method: 'POST', body: fd });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? 'Error al subir');
-      setPreview(currentUrl);
-    } else {
-      setPreview(data.url);
-      router.refresh();
+    try {
+      const res  = await fetch(`/api/portal/${token}/upload-logo`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Error al subir');
+        setPreview(currentUrl);
+      } else {
+        setPreview(data.url);
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
+      URL.revokeObjectURL(objectUrl);
     }
-    setLoading(false);
-    URL.revokeObjectURL(objectUrl);
   };
 
   const handleRemove = async () => {

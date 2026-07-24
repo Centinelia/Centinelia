@@ -28,15 +28,17 @@ export default function BuyMinutesSection({ token }: { token: string }) {
   const handleBuy = async () => {
     if (!ready || loading) return;
     setLoading(true);
-    const res = await fetch('/api/portal/buy-minutes', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ token, minutes: activeMinutes }),
-    });
-    if (res.ok) {
-      const { url } = await res.json();
-      window.location.href = url;
-    } else {
+    try {
+      const res = await fetch('/api/portal/buy-minutes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token, minutes: activeMinutes }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        window.location.href = url;
+      }
+    } finally {
       setLoading(false);
     }
   };

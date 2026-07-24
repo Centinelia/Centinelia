@@ -42,14 +42,15 @@ export default function TrustStageSelector({ token, initStage }: Props) {
     setStage(v);
     setSaved(false);
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ trust_stage: v }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ trust_stage: v }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
   }
 
   return (

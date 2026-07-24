@@ -25,14 +25,15 @@ export default function ApprovalEmailEditor({ token, initialEmail }: { token: st
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ approval_email: email.trim() || null }),
-    });
-    setSaved(true);
-    setSaving(false);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ approval_email: email.trim() || null }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
   }
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>;

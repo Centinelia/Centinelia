@@ -90,13 +90,14 @@ export default function BusinessHoursEditor({
   const save = async (business_hours: BusinessHours | null) => {
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/portal/${token}/settings`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ business_hours }),
-    });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    try {
+      const res = await fetch(`/api/portal/${token}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_hours }),
+      });
+      if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    } finally { setSaving(false); }
   };
 
   const handleMasterToggle = () => {

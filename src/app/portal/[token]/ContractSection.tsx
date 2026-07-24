@@ -22,17 +22,20 @@ export default function ContractSection({ token, businessName, signedAt, contrac
   const handleSign = async () => {
     if (!checked || loading) return;
     setLoading(true);
-    const res = await fetch('/api/portal/sign-contract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-    });
-    if (res.ok) {
-      const now = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-      setDone(true);
-      setSignedDate(now);
+    try {
+      const res = await fetch('/api/portal/sign-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (res.ok) {
+        const now = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+        setDone(true);
+        setSignedDate(now);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

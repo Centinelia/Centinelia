@@ -20,22 +20,24 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
     setState('loading');
     setResult(null);
     setErrMsg(null);
-
-    const res  = await fetch(`/api/portal/${token}/role-email-learning`, { method: 'POST' });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setErrMsg(data.error ?? 'Error al analizar los correos.');
+    try {
+      const res  = await fetch(`/api/portal/${token}/role-email-learning`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrMsg(data.error ?? 'Error al analizar los correos.');
+        setState('error');
+        return;
+      }
+      if (data.saved === 0) {
+        setState('no-relevant');
+        setResult(data);
+      } else {
+        setState('done');
+        setResult(data);
+      }
+    } catch {
+      setErrMsg('Error de conexión. Intenta de nuevo.');
       setState('error');
-      return;
-    }
-
-    if (data.saved === 0) {
-      setState('no-relevant');
-      setResult(data);
-    } else {
-      setState('done');
-      setResult(data);
     }
   }
 

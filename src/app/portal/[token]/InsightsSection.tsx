@@ -80,11 +80,14 @@ export default function InsightsSection({ token }: { token: string }) {
   const updateStatus = async (id: string, status: 'aplicada' | 'descartada') => {
     setPending(p => ({ ...p, [id]: true }));
     setData(prev => prev ? { ...prev, recs: prev.recs.filter(r => r.id !== id) } : prev);
-    await fetch(`/api/portal/${token}/insights/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    setPending(p => { const n = { ...p }; delete n[id]; return n; });
+    try {
+      await fetch(`/api/portal/${token}/insights/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } finally {
+      setPending(p => { const n = { ...p }; delete n[id]; return n; });
+    }
   };
 
   const setMode = async (mode: 'llm' | 'rules') => {

@@ -25,10 +25,13 @@ export default function QuickBooksSection({ token }: { token: string }) {
   const [disconnecting, setDisconnecting] = useState(false);
 
   const load = useCallback(async () => {
-    const res  = await fetch(`/api/portal/${token}/qb-oauth`);
-    const data = await res.json();
-    setStatus(data);
-    setLoading(false);
+    try {
+      const res  = await fetch(`/api/portal/${token}/qb-oauth`);
+      const data = await res.json();
+      setStatus(data);
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
@@ -36,9 +39,12 @@ export default function QuickBooksSection({ token }: { token: string }) {
   async function disconnect() {
     if (!confirm('¿Desconectar QuickBooks Online?')) return;
     setDisconnecting(true);
-    await fetch(`/api/portal/${token}/qb-oauth`, { method: 'DELETE' });
-    setStatus({ connected: false });
-    setDisconnecting(false);
+    try {
+      await fetch(`/api/portal/${token}/qb-oauth`, { method: 'DELETE' });
+      setStatus({ connected: false });
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   if (loading) {

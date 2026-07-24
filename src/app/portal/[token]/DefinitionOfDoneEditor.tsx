@@ -16,14 +16,17 @@ export default function DefinitionOfDoneEditor({ token, initDod }: Props) {
   async function handleBlur() {
     if (value === initDod) return;
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ definition_of_done: value }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ definition_of_done: value }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

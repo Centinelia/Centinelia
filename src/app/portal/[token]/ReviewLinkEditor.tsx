@@ -15,15 +15,18 @@ export default function ReviewLinkEditor({ token, initialValue }: { token: strin
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
-    await fetch(`/api/portal/${token}/integrations`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ google_review_url: value || null }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setDirty(false);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/integrations`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ google_review_url: value || null }),
+      });
+      setSaved(true);
+      setDirty(false);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

@@ -58,14 +58,17 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
   async function save() {
     if (!draft.trim()) return cancel();
     setSaving(true);
-    await fetch(`/api/portal/${token}/org`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: draft.trim() }),
-    });
-    setOrg(prev => prev ? { ...prev, name: draft.trim() } : prev);
-    setEditing(false);
-    setSaving(false);
+    try {
+      await fetch(`/api/portal/${token}/org`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: draft.trim() }),
+      });
+      setOrg(prev => prev ? { ...prev, name: draft.trim() } : prev);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function cancel() { setEditing(false); setDraft(''); }

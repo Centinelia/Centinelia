@@ -91,18 +91,17 @@ export default function HistoricalSynthesisSection({ token }: Props) {
     setLoading(true);
     setError(null);
     setResult(null);
-
-    const res = await fetch(`/api/portal/${token}/historical-synthesis`, {
-      method: 'POST',
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? 'Ocurrió un error al analizar el historial.');
-    } else {
-      setResult(data as Synthesis);
+    try {
+      const res  = await fetch(`/api/portal/${token}/historical-synthesis`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Ocurrió un error al analizar el historial.');
+      } else {
+        setResult(data as Synthesis);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (

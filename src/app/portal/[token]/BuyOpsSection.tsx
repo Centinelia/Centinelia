@@ -28,15 +28,17 @@ export default function BuyOpsSection({ token }: { token: string }) {
   const handleBuy = async () => {
     if (!ready || loading) return;
     setLoading(true);
-    const res = await fetch('/api/portal/buy-ops', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ token, ops: activeOps }),
-    });
-    if (res.ok) {
-      const { url } = await res.json();
-      window.location.href = url;
-    } else {
+    try {
+      const res = await fetch('/api/portal/buy-ops', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token, ops: activeOps }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        window.location.href = url;
+      }
+    } finally {
       setLoading(false);
     }
   };

@@ -132,9 +132,10 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
           calendar_event_type_id: d.calendar_event_type_id ?? '',
           calendar_link:          d.calendar_link ?? '',
         };
-        setLoading(false);
         if (d.calendar_type) setExpanded(d.calendar_type);
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [token]);
 
   const isDirty = cleanState.current === null ? false : (
@@ -155,21 +156,23 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
       calendar_link:          state.calendar_link || null,
     };
     if (state.cal_api_key) body.calendar_api_key = state.cal_api_key;
-
-    await fetch(`/api/portal/${token}/integrations`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-    });
-    setSaving(false);
-    setSaved(true);
-    cleanState.current = {
-      calendar_type:          state.calendar_type,
-      calendar_event_type_id: state.calendar_event_type_id,
-      calendar_link:          state.calendar_link,
-    };
-    if (state.cal_api_key) setState(prev => ({ ...prev, cal_api_configured: true, cal_api_key: '' }));
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/integrations`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      setSaved(true);
+      cleanState.current = {
+        calendar_type:          state.calendar_type,
+        calendar_event_type_id: state.calendar_event_type_id,
+        calendar_link:          state.calendar_link,
+      };
+      if (state.cal_api_key) setState(prev => ({ ...prev, cal_api_configured: true, cal_api_key: '' }));
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectType = (type: string | null) => {

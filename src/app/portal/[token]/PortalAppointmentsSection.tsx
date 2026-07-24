@@ -79,26 +79,32 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
   const updateStatus = async (id: string, status: ApptStatus) => {
     setUpdating(id);
     setAppts(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    await fetch(`/api/portal/${token}/appointments/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    setUpdating(null);
+    try {
+      await fetch(`/api/portal/${token}/appointments/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const saveEdit = async () => {
     if (!editing) return;
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/appointments/${editing.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setAppts(prev => prev.map(a => a.id === editing.id ? updated : a));
-      setEditing(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/appointments/${editing.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAppts(prev => prev.map(a => a.id === editing.id ? updated : a));
+        setEditing(null);
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (appts.length === 0) {

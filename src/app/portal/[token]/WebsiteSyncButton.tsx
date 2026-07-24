@@ -15,21 +15,24 @@ export default function WebsiteSyncButton({ token, currentUrl }: { token: string
     if (!trimmed) return;
     setStatus('loading');
     setMsg('');
-
-    const res  = await fetch(`/api/portal/${token}/resync-website`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: trimmed }),
-    });
-    const data = await res.json();
-
-    if (res.ok) {
-      setStatus('ok');
-      setMsg(`Sincronizado · ${data.chars.toLocaleString()} caracteres extraídos`);
-      setTimeout(() => setStatus('idle'), 4000);
-    } else {
+    try {
+      const res  = await fetch(`/api/portal/${token}/resync-website`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus('ok');
+        setMsg(`Sincronizado · ${data.chars.toLocaleString()} caracteres extraídos`);
+        setTimeout(() => setStatus('idle'), 4000);
+      } else {
+        setStatus('error');
+        setMsg(data.error ?? 'Error al sincronizar');
+      }
+    } catch {
       setStatus('error');
-      setMsg(data.error ?? 'Error al sincronizar');
+      setMsg('Error de conexión. Intenta de nuevo.');
     }
   };
 

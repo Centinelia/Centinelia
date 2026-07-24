@@ -19,13 +19,16 @@ export default function PortalVoiceSelector({
     if (!selected) return;
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/portal/${token}/voice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice_id: selected }),
-    });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    try {
+      const res = await fetch(`/api/portal/${token}/voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_id: selected }),
+      });
+      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isDirty = selected !== currentVoiceId;

@@ -40,26 +40,32 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
   async function handleBlur() {
     if (value === initialValue) return;
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ agent_guardrails: value }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ agent_guardrails: value }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveLearnings() {
     setSavingLearnings(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ guardrails_learnings: learnings }),
-    });
-    setSavingLearnings(false);
-    setSavedLearnings(true);
-    setTimeout(() => setSavedLearnings(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ guardrails_learnings: learnings }),
+      });
+      setSavedLearnings(true);
+      setTimeout(() => setSavedLearnings(false), 2500);
+    } finally {
+      setSavingLearnings(false);
+    }
   }
 
   return (

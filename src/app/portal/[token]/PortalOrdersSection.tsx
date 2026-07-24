@@ -81,26 +81,32 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
   const updateStatus = async (id: string, status: OrderStatus) => {
     setUpdating(id);
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    await fetch(`/api/portal/${token}/orders/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    setUpdating(null);
+    try {
+      await fetch(`/api/portal/${token}/orders/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const saveEdit = async () => {
     if (!editingOrder) return;
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/orders/${editingOrder.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setOrders(prev => prev.map(o => o.id === editingOrder.id ? updated : o));
-      setEditingOrder(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/orders/${editingOrder.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOrders(prev => prev.map(o => o.id === editingOrder.id ? updated : o));
+        setEditingOrder(null);
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   if (orders.length === 0) {

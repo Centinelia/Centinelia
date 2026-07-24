@@ -60,21 +60,22 @@ export default function AutoRefillSection({ token }: { token: string }) {
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/portal/${token}/auto-refill`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        enabled:      minEnabled,
-        threshold:    minThreshold,
-        minutes:      minMinutes,
-        opsEnabled,
-        opsThreshold,
-        opsAmount,
-      }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await fetch(`/api/portal/${token}/auto-refill`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          enabled:      minEnabled,
+          threshold:    minThreshold,
+          minutes:      minMinutes,
+          opsEnabled,
+          opsThreshold,
+          opsAmount,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
   };
 
   const canSave = (!minEnabled && !opsEnabled) || hasCard;

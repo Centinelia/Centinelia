@@ -33,13 +33,16 @@ export default function RoleKnowledgeBaseEditor({
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/portal/${token}/settings`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role_knowledge_base: value }),
-    });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    try {
+      const res = await fetch(`/api/portal/${token}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_knowledge_base: value }),
+      });
+      if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

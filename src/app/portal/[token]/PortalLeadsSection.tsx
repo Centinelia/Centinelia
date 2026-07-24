@@ -110,28 +110,34 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
   const saveEdit = async () => {
     if (!editingLead) return;
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/leads/${editingLead.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setLeads(prev => prev.map(l => l.id === editingLead.id ? updated : l));
-      closeEdit();
+    try {
+      const res = await fetch(`/api/portal/${token}/leads/${editingLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLeads(prev => prev.map(l => l.id === editingLead.id ? updated : l));
+        closeEdit();
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const updateStatus = async (id: string, status: LeadStatus) => {
     setUpdatingStatus(id);
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
-    await fetch(`/api/portal/${token}/leads/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    setUpdatingStatus(null);
+    try {
+      await fetch(`/api/portal/${token}/leads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } finally {
+      setUpdatingStatus(null);
+    }
   };
 
   return (

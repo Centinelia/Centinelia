@@ -82,40 +82,43 @@ export default function AgentEmailSection({ token }: { token: string }) {
   }, []);
 
   const load = useCallback(async () => {
-    const res  = await fetch(`/api/portal/${token}/agent-email`);
-    const data = await res.json();
-    const conns: AgentEmail[] = data.connections ?? [];
-    setConnections(conns);
-    setSendAsDraft(Object.fromEntries(conns.map(c => [c.provider, c.send_as_email ?? ''])));
-    setLoading(false);
+    try {
+      const res  = await fetch(`/api/portal/${token}/agent-email`);
+      const data = await res.json();
+      const conns: AgentEmail[] = data.connections ?? [];
+      setConnections(conns);
+      setSendAsDraft(Object.fromEntries(conns.map(c => [c.provider, c.send_as_email ?? ''])));
+    } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
 
   async function saveSendAs(provider: 'gmail' | 'outlook') {
     setSavingSendAs(provider);
-    await fetch(`/api/portal/${token}/agent-email`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ provider, send_as_email: sendAsDraft[provider] || null }),
-    });
-    setConnections(prev => prev.map(c =>
-      c.provider === provider ? { ...c, send_as_email: sendAsDraft[provider] || null } : c,
-    ));
-    setSavingSendAs(null);
+    try {
+      await fetch(`/api/portal/${token}/agent-email`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ provider, send_as_email: sendAsDraft[provider] || null }),
+      });
+      setConnections(prev => prev.map(c =>
+        c.provider === provider ? { ...c, send_as_email: sendAsDraft[provider] || null } : c,
+      ));
+    } finally { setSavingSendAs(null); }
   }
 
   async function disconnect(provider: 'gmail' | 'outlook') {
     const label = provider === 'gmail' ? 'Gmail' : 'Outlook';
     if (!confirm(`¿Desconectar ${label} de este empleado?`)) return;
     setDisconnecting(provider);
-    await fetch(`/api/portal/${token}/agent-email`, {
-      method:  'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ provider }),
-    });
-    setConnections(prev => prev.filter(c => c.provider !== provider));
-    setDisconnecting(null);
+    try {
+      await fetch(`/api/portal/${token}/agent-email`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ provider }),
+      });
+      setConnections(prev => prev.filter(c => c.provider !== provider));
+    } finally { setDisconnecting(null); }
   }
 
   if (loading) {

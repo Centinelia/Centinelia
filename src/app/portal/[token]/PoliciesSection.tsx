@@ -94,8 +94,9 @@ export default function PoliciesSection({ token }: { token: string }) {
       .then(d => {
         setPolicies(d.policies ?? []);
         setAudit(d.audit ?? []);
-        setLoading(false);
-      });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [token]);
 
   const getPolicy = (cap: string): Policy =>
@@ -110,12 +111,15 @@ export default function PoliciesSection({ token }: { token: string }) {
       if (exists) return prev.map(p => p.capability === capability ? { ...p, enabled: value } : p);
       return [...prev, { capability, enabled: value, requires_approval: false, preferred_provider: null }];
     });
-    await fetch(`/api/portal/${token}/policies`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ capability, enabled: value }),
-    });
-    setSaving(null);
+    try {
+      await fetch(`/api/portal/${token}/policies`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ capability, enabled: value }),
+      });
+    } finally {
+      setSaving(null);
+    }
   };
 
   return (

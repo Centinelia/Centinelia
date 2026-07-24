@@ -168,10 +168,11 @@ export default function AgentIntegrationsPanel({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res  = await fetch(`/api/portal/${token}/integrations/agents`);
-    const data = await res.json();
-    setAgents(data.agents ?? []);
-    setLoading(false);
+    try {
+      const res  = await fetch(`/api/portal/${token}/integrations/agents`);
+      const data = await res.json();
+      setAgents(data.agents ?? []);
+    } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);

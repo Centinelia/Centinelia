@@ -94,25 +94,27 @@ export default function AgentKnowledgeBaseEditor({
   const save = async (field: 'role_knowledge_base' | 'role_learnings', val: string, setSaving: (b: boolean) => void, setSaved: (b: boolean) => void, setDirty: (b: boolean) => void) => {
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ [field]: val }),
-    });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    try {
+      const res = await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ [field]: val }),
+      });
+      if (res.ok) { setSaved(true); setDirty(false); setTimeout(() => setSaved(false), 2500); }
+    } finally { setSaving(false); }
   };
 
   const saveRoleName = async () => {
     setSavingRoleName(true);
     setSavedRoleName(false);
-    const res = await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ role, role_color: roleColor }),
-    });
-    setSavingRoleName(false);
-    if (res.ok) { setSavedRoleName(true); setDirtyRoleName(false); setTimeout(() => setSavedRoleName(false), 2500); }
+    try {
+      const res = await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ role, role_color: roleColor }),
+      });
+      if (res.ok) { setSavedRoleName(true); setDirtyRoleName(false); setTimeout(() => setSavedRoleName(false), 2500); }
+    } finally { setSavingRoleName(false); }
   };
 
   const handleGenerateRole = async () => {

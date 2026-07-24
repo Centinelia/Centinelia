@@ -49,12 +49,15 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/portal/${token}/notion-schemas`);
-    if (res.ok) {
-      const data = await res.json();
-      setSchemas(data.schemas ?? []);
+    try {
+      const res = await fetch(`/api/portal/${token}/notion-schemas`);
+      if (res.ok) {
+        const data = await res.json();
+        setSchemas(data.schemas ?? []);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
@@ -62,20 +65,23 @@ export default function NotionSchemasSection({ token }: { token: string }) {
   const handleCreate = async () => {
     if (!form.db_name.trim() || !form.notion_db_id.trim()) return;
     setSaving(true);
-    const res = await fetch(`/api/portal/${token}/notion-schemas`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        db_name:        form.db_name,
-        notion_db_id:   form.notion_db_id,
-        db_type:        form.db_type,
-        description:    form.description || null,
-        required_props: form.required_props,
-        allowed_values: form.allowed_values,
-      }),
-    });
-    setSaving(false);
-    if (res.ok) { setCreating(false); setForm(empty()); load(); }
+    try {
+      const res = await fetch(`/api/portal/${token}/notion-schemas`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          db_name:        form.db_name,
+          notion_db_id:   form.notion_db_id,
+          db_type:        form.db_type,
+          description:    form.description || null,
+          required_props: form.required_props,
+          allowed_values: form.allowed_values,
+        }),
+      });
+      if (res.ok) { setCreating(false); setForm(empty()); load(); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -89,13 +95,16 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
   const handleValidate = async (id: string, agentId: string) => {
     setValidating(id);
-    await fetch(`/api/portal/${token}/notion-schemas`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, action: 'validate' }),
-    });
-    setValidating(null);
-    load();
+    try {
+      await fetch(`/api/portal/${token}/notion-schemas`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, action: 'validate' }),
+      });
+      load();
+    } finally {
+      setValidating(null);
+    }
   };
 
   const addProp = () => {

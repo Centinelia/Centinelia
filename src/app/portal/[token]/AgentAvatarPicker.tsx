@@ -30,15 +30,18 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
   async function pick(src: string) {
     const next = src;
     setSaving(true);
-    await fetch(`/api/portal/${token}/settings`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ avatar: next }),
-    });
-    setCurrent(next || null);
-    setSaving(false);
-    setOpen(false);
-    router.refresh();
+    try {
+      await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ avatar: next }),
+      });
+      setCurrent(next || null);
+      router.refresh();
+    } finally {
+      setSaving(false);
+      setOpen(false);
+    }
   }
 
   if (locked) {
