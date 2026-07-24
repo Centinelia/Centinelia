@@ -5,7 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import {
   Check, ChevronRight, ChevronLeft, ChevronDown, Loader, X,
   Phone, Building2, User, Utensils, Stethoscope,
-  Smartphone, ShoppingBag, Landmark, GraduationCap, Clock, Zap, type LucideProps,
+  Smartphone, ShoppingBag, Landmark, GraduationCap, Clock, Zap,
+  UserPlus, CalendarCheck, Users, PhoneCall, PhoneForwarded, Wrench, Network,
+  type LucideProps,
 } from 'lucide-react';
 import Image from 'next/image';
 import { MEERKAT_ROLES, MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
@@ -237,6 +239,61 @@ const CUSTOM_PORTAL_FEATURES: { label: string; desc: string }[] = [
   { label: 'Llamadas salientes',             desc: 'Activa marcación automática para confirmaciones o seguimiento.' },
 ];
 
+
+// ── Capability chips (dark-themed, for registration flow) ─────────────────────
+const REG_VOICE_CAPS = [
+  { key: 'lead_qualification',      icon: UserPlus,       label: 'Captura leads'        },
+  { key: 'appointment_booking',     icon: CalendarCheck,  label: 'Agenda citas'         },
+  { key: 'existing_client_support', icon: Users,          label: 'Atiende clientes'     },
+  { key: 'order_taking',            icon: ShoppingBag,    label: 'Toma pedidos'         },
+  { key: 'outbound_calls',          icon: PhoneCall,      label: 'Llam. salientes'      },
+  { key: 'smart_transfer',          icon: PhoneForwarded, label: 'Transferencia'        },
+  { key: 'helpdesk',                icon: Wrench,         label: 'Mesa de ayuda IT'     },
+] as const;
+
+function CapabilityChipsRegistro({ features, color, isCoordinator }: {
+  features: Record<string, unknown>;
+  color: string;
+  isCoordinator: boolean;
+}) {
+  const lightC = lightenColor(color, 0.45);
+  const chip = (active: boolean) => ({
+    display: 'inline-flex' as const, alignItems: 'center' as const, gap: 4,
+    padding: '3px 9px', borderRadius: 999,
+    fontSize: '0.67rem', fontWeight: 600,
+    background: active ? `${color}22` : 'rgba(255,255,255,0.04)',
+    color:      active ? lightC       : 'rgba(255,255,255,0.22)',
+    border:     `1px solid ${active ? `${color}35` : 'rgba(255,255,255,0.07)'}`,
+  });
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)', marginBottom: 8 }}>
+        Capacidades
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {isCoordinator ? (
+          <>
+            <span style={chip(true)}><Network size={9} strokeWidth={2} />Coordina al equipo</span>
+            <span style={chip(true)}><Phone   size={9} strokeWidth={2} />Sin llamadas entrantes</span>
+          </>
+        ) : (
+          <>
+            <span style={chip(true)}><Phone size={9} strokeWidth={2} />Atención 24/7</span>
+            {REG_VOICE_CAPS.map(({ key, icon: Icon, label }) => {
+              const active = !!features[key];
+              return (
+                <span key={key} style={chip(active)}>
+                  {active ? <Icon size={9} strokeWidth={2} /> : <X size={9} strokeWidth={2} style={{ opacity: 0.4 }} />}
+                  {label}
+                </span>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const priceFmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n);
@@ -1056,6 +1113,11 @@ function RegistroInner() {
                           </div>
                         ))}
                       </div>
+                      <CapabilityChipsRegistro
+                        features={selectedMeerkat.features as Record<string, unknown>}
+                        color={selectedMeerkat.color}
+                        isCoordinator={true}
+                      />
                       {/* Price summary — visible on mobile */}
                       <div className="sm:hidden mb-5 rounded-xl px-3 py-2.5"
                         style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
@@ -1156,6 +1218,11 @@ function RegistroInner() {
                                         </div>
                                       ))}
                                     </div>
+                                    <CapabilityChipsRegistro
+                                      features={selectedMeerkat.features as Record<string, unknown>}
+                                      color={selectedMeerkat.color}
+                                      isCoordinator={false}
+                                    />
                                   </>
                                 );
                               })()}
