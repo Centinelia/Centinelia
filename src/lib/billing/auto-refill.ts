@@ -149,10 +149,17 @@ export async function executeAutoRefillOps(
 
   // Credit ops to every agent in the account
   const currentLimit = (agent.ai_ops_limit as number) ?? 0;
-  await supabase
-    .from('voice_agents')
-    .update({ ai_ops_limit: currentLimit + ops })
-    .eq('portal_email', agent.portal_email);
+  if (agent.portal_email) {
+    await supabase
+      .from('voice_agents')
+      .update({ ai_ops_limit: currentLimit + ops })
+      .eq('portal_email', agent.portal_email);
+  } else {
+    await supabase
+      .from('voice_agents')
+      .update({ ai_ops_limit: currentLimit + ops })
+      .eq('id', agentId);
+  }
 
   return { ok: true, opsAdded: ops };
 }
