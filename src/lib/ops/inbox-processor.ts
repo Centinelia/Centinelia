@@ -95,7 +95,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
         total_price: { type: 'string' }, validity_days: { type: 'number' },
         recipient_name: { type: 'string' }, recipient_email: { type: 'string' },
         vendor_name: { type: 'string' }, vendor_rfc: { type: 'string' }, vendor_email: { type: 'string' },
-        delivery_terms: { type: 'string' }, payment_terms: { type: 'string' }, folio_num: { type: 'string' }, include_iva: { type: 'boolean' },
+        delivery_terms: { type: 'string' }, payment_terms: { type: 'string' }, folio_num: { type: 'string' }, include_iva: { type: 'boolean' }, folio_prefix: { type: 'string' },
         items: { type: 'array', items: { type: 'object', properties: { descripcion: { type: 'string' }, cantidad: { type: 'number' }, precio_unitario: { type: 'number' }, unidad: { type: 'string' } }, required: ['descripcion', 'cantidad', 'precio_unitario'] } },
       },
       required: ['title', 'content'],
@@ -123,6 +123,11 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     name:        'save_to_drive',
     description: 'Guarda un documento generado en Google Drive o OneDrive.',
     input_schema: { type: 'object' as const, properties: { file_id: { type: 'string' }, filename: { type: 'string' }, folder_name: { type: 'string' } }, required: ['file_id', 'filename'] },
+  },
+  {
+    name:        'buscar_producto',
+    description: 'Busca un producto o servicio en el catálogo de Notion por SKU o nombre. Úsala antes de generar una factura cuando el email mencione un SKU o nombre de producto.',
+    input_schema: { type: 'object' as const, properties: { query: { type: 'string' } }, required: ['query'] },
   },
   {
     name:        'create_contract_draft',

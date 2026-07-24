@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Database, ExternalLink, Loader2, RefreshCw, Unlink, CheckCircle2 } from 'lucide-react';
+import { Database, ExternalLink, Loader2, RefreshCw, Unlink, CheckCircle2, ShoppingBag } from 'lucide-react';
 
 interface NotionStatus {
-  connected:      boolean;
-  workspace_name: string | null;
-  db_id:          string | null;
-  pages:          { id: string; title: string }[];
+  connected:       boolean;
+  workspace_name:  string | null;
+  db_id:           string | null;
+  products_db_id:  string | null;
+  pages:           { id: string; title: string }[];
 }
 
 export default function NotionSection({ token }: { token: string }) {
@@ -18,9 +19,10 @@ export default function NotionSection({ token }: { token: string }) {
   const [status, setStatus]       = useState<NotionStatus | null>(null);
   const [loading, setLoading]     = useState(true);
   const [selectedPage, setSelected] = useState('');
-  const [saving, setSaving]       = useState(false);
-  const [disconnecting, setDisco] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [saving, setSaving]             = useState(false);
+  const [disconnecting, setDisco]       = useState(false);
+  const [creatingProducts, setCreatingP] = useState(false);
+  const [error, setError]               = useState<string | null>(null);
   const [, startTransition]       = useTransition();
 
   async function fetchStatus() {
@@ -54,13 +56,27 @@ export default function NotionSection({ token }: { token: string }) {
     }
   }
 
+  async function handleCreateProducts() {
+    setCreatingP(true);
+    setError(null);
+    try {
+      const r = await fetch(`/api/portal/${token}/notion`, { method: 'PATCH' });
+      if (!r.ok) throw new Error((await r.json()).error ?? 'Error al crear el catálogo');
+      await fetchStatus();
+    } catch (e: any) {
+      setError(e.message ?? 'Error desconocido');
+    } finally {
+      setCreatingP(false);
+    }
+  }
+
   async function handleDisconnect() {
     if (!confirm('¿Desconectar Notion? Se eliminará el acceso y la configuración de base de datos.')) return;
     setDisco(true);
     setError(null);
     try {
       await fetch(`/api/portal/${token}/notion`, { method: 'DELETE' });
-      setStatus({ connected: false, workspace_name: null, db_id: null, pages: [] });
+      setStatus({ connected: false, workspace_name: null, db_id: null, products_db_id: null, pages: [] });
     } catch {
       setError('Error al desconectar');
     } finally {
@@ -170,6 +186,23 @@ export default function NotionSection({ token }: { token: string }) {
               <Database size={13} style={{ color: '#6C3BFF', flexShrink: 0 }} />
               <span className="font-mono text-xs truncate">{status.db_id}</span>
             </div>
+            {status?.products_db_id ? (
+              <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#16a34a' }}>
+                <ShoppingBag size={12} />
+                Catálogo de productos activo (15 productos de prueba)
+              </div>
+            ) : (
+              <button
+                onClick={handleCreateProducts}
+                disabled={creatingProducts}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-40"
+                style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.25)' }}>
+                {creatingProducts ? <Loader2 size={12} className="animate-spin" /> : <ShoppingBag size={12} />}
+                {creatingProducts ? 'Creando catálogo...' : 'Crear catálogo de productos de prueba'}
+              </button>
+            )}
+
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => { startTransition(() => {}); fetchStatus(); }}

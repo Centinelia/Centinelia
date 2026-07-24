@@ -89,6 +89,108 @@ export async function addCallEntry(opts: {
   });
 }
 
+// ── Product catalog ───────────────────────────────────────────────────────────
+
+const DEMO_PRODUCTS = [
+  { sku: 'PRD-001', nombre: 'Consultoría Empresarial',    descripcion: 'Sesión de asesoría y diagnóstico de negocio',    precio: 3500,  unidad: 'hr',       categoria: 'Servicio' },
+  { sku: 'PRD-002', nombre: 'Diseño de Identidad Visual', descripcion: 'Logo, paleta de colores y tipografía',           precio: 8000,  unidad: 'servicio', categoria: 'Servicio' },
+  { sku: 'PRD-003', nombre: 'Desarrollo Web',             descripcion: 'Sitio corporativo de hasta 5 páginas',           precio: 18000, unidad: 'servicio', categoria: 'Servicio' },
+  { sku: 'PRD-004', nombre: 'Mantenimiento Web Mensual',  descripcion: 'Soporte, actualizaciones y hosting incluido',    precio: 2500,  unidad: 'mes',      categoria: 'Soporte'  },
+  { sku: 'PRD-005', nombre: 'Campaña de Email Marketing', descripcion: 'Diseño, redacción y envío de campaña',           precio: 4500,  unidad: 'campaña',  categoria: 'Servicio' },
+  { sku: 'PRD-006', nombre: 'Capacitación Empresarial',   descripcion: 'Taller grupal para hasta 10 personas',           precio: 6000,  unidad: 'sesión',   categoria: 'Servicio' },
+  { sku: 'PRD-007', nombre: 'Auditoría SEO',              descripcion: 'Análisis y reporte de posicionamiento web',      precio: 5500,  unidad: 'servicio', categoria: 'Servicio' },
+  { sku: 'PRD-008', nombre: 'Gestión de Redes Sociales',  descripcion: '2 redes, 12 publicaciones mensuales',            precio: 3200,  unidad: 'mes',      categoria: 'Servicio' },
+  { sku: 'PRD-009', nombre: 'Laptop Dell Vostro 15',      descripcion: 'Core i7, 16 GB RAM, 512 GB SSD',                precio: 22500, unidad: 'pza',      categoria: 'Producto' },
+  { sku: 'PRD-010', nombre: 'Monitor LG 27" 4K',          descripcion: 'IPS, USB-C, para trabajo profesional',           precio: 6800,  unidad: 'pza',      categoria: 'Producto' },
+  { sku: 'PRD-011', nombre: 'Licencia Microsoft 365',     descripcion: 'Suite ofimática, 1 usuario, anual',              precio: 3500,  unidad: 'año',      categoria: 'Software' },
+  { sku: 'PRD-012', nombre: 'Silla Ergonómica',           descripcion: 'Con soporte lumbar y reposabrazos ajustables',   precio: 8900,  unidad: 'pza',      categoria: 'Producto' },
+  { sku: 'PRD-013', nombre: 'Headset USB Jabra',          descripcion: 'Con micrófono cancelador de ruido',              precio: 4200,  unidad: 'pza',      categoria: 'Producto' },
+  { sku: 'PRD-014', nombre: 'Servidor NAS 4TB',           descripcion: 'Almacenamiento en red empresarial, 4 bahías',    precio: 14500, unidad: 'pza',      categoria: 'Producto' },
+  { sku: 'PRD-015', nombre: 'Soporte Técnico Presencial', descripcion: 'Visita técnica con diagnóstico y solución',      precio: 800,   unidad: 'hr',       categoria: 'Soporte'  },
+] as const;
+
+export async function createProductDatabase(
+  accessToken: string,
+  parentPageId: string,
+): Promise<string> {
+  const notion = notionClient(accessToken);
+  const db = await (notion.databases.create as any)({
+    parent: { type: 'page_id', page_id: parentPageId },
+    title:  [{ type: 'text', text: { content: 'Catálogo de Productos' } }],
+    properties: {
+      'SKU':         { title: {} },
+      'Nombre':      { rich_text: {} },
+      'Descripción': { rich_text: {} },
+      'Precio':      { number: { format: 'peso' } },
+      'Unidad':      { select: { options: [
+        { name: 'pza',      color: 'blue'   },
+        { name: 'hr',       color: 'green'  },
+        { name: 'mes',      color: 'orange' },
+        { name: 'año',      color: 'purple' },
+        { name: 'servicio', color: 'gray'   },
+        { name: 'campaña',  color: 'yellow' },
+        { name: 'sesión',   color: 'pink'   },
+      ]}},
+      'IVA':         { checkbox: {} },
+      'Categoría':   { select: { options: [
+        { name: 'Servicio',  color: 'blue'   },
+        { name: 'Producto',  color: 'green'  },
+        { name: 'Software',  color: 'purple' },
+        { name: 'Soporte',   color: 'orange' },
+      ]}},
+    },
+  });
+
+  const rt = (s: string) => [{ type: 'text' as const, text: { content: s } }];
+  for (const p of DEMO_PRODUCTS) {
+    await notion.pages.create({
+      parent: { database_id: db.id },
+      properties: {
+        'SKU':         { title:     rt(p.sku)         },
+        'Nombre':      { rich_text: rt(p.nombre)      },
+        'Descripción': { rich_text: rt(p.descripcion) },
+        'Precio':      { number:    p.precio          },
+        'Unidad':      { select:    { name: p.unidad }},
+        'IVA':         { checkbox:  true              },
+        'Categoría':   { select:    { name: p.categoria }},
+      },
+    });
+  }
+
+  return db.id as string;
+}
+
+export async function searchProduct(
+  accessToken: string,
+  dbId: string,
+  query: string,
+): Promise<{ sku: string; nombre: string; descripcion: string; precio: number; unidad: string; iva: boolean } | null> {
+  const notion = notionClient(accessToken);
+
+  // Try exact SKU first, then name contains
+  const filters = [
+    { property: 'SKU',    title:     { equals:   query.toUpperCase() } },
+    { property: 'Nombre', rich_text: { contains: query               } },
+  ];
+
+  for (const filter of filters) {
+    const res = await (notion.databases as any).query({ database_id: dbId, filter, page_size: 1 });
+    const page = res.results?.[0];
+    if (page) {
+      const p = page.properties;
+      return {
+        sku:         p['SKU']?.title?.[0]?.plain_text             ?? '',
+        nombre:      p['Nombre']?.rich_text?.[0]?.plain_text      ?? '',
+        descripcion: p['Descripción']?.rich_text?.[0]?.plain_text ?? '',
+        precio:      p['Precio']?.number                          ?? 0,
+        unidad:      p['Unidad']?.select?.name                    ?? 'pza',
+        iva:         p['IVA']?.checkbox                           ?? true,
+      };
+    }
+  }
+  return null;
+}
+
 export async function getAccessiblePages(accessToken: string): Promise<{ id: string; title: string }[]> {
   const notion = notionClient(accessToken);
   const { results } = await notion.search({

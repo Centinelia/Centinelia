@@ -738,6 +738,18 @@ const INICIAR_ONBOARDING_TOOL: Anthropic.Tool = {
   },
 };
 
+const BUSCAR_PRODUCTO_TOOL: Anthropic.Tool = {
+  name: 'buscar_producto',
+  description: 'Busca un producto o servicio en el catálogo de Notion por SKU o nombre. Úsala ANTES de crear_documento con template factura cuando el usuario mencione un SKU o nombre de producto, para obtener el precio, descripción e IVA exactos del catálogo.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'SKU exacto (ej. PRD-001) o nombre parcial del producto o servicio' },
+    },
+    required: ['query'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGATE_TASK_TOOL,
   CONSULT_AGENT_TOOL,
@@ -858,15 +870,21 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   actualizar_publicacion_ml: ML_ACTUALIZAR_PUBLICACION_TOOL,
   ver_metricas_ml:           ML_VER_METRICAS_TOOL,
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
+  buscar_producto: BUSCAR_PRODUCTO_TOOL,
 };
 
-function getToolsForRole(meerkatId: string | null, qbConnected: boolean): Anthropic.Tool[] {
+function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionProductsConnected: boolean): Anthropic.Tool[] {
   const voiceNames = meerkatId && meerkatId !== 'custom'
     ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? null
     : null;
 
+  const extras = [
+    ...(qbConnected              ? QB_TOOLS              : []),
+    ...(notionProductsConnected  ? [BUSCAR_PRODUCTO_TOOL] : []),
+  ];
+
   // Custom agents or unknown role → previous behavior (all tools)
-  if (!voiceNames) return qbConnected ? [...ALL_TOOLS, ...QB_TOOLS] : ALL_TOOLS;
+  if (!voiceNames) return [...ALL_TOOLS, ...extras];
 
   const tools: Anthropic.Tool[] = [];
   const seen = new Set<string>();
@@ -874,6 +892,7 @@ function getToolsForRole(meerkatId: string | null, qbConnected: boolean): Anthro
     const chatName = VOICE_TO_CHAT[voiceName];
     if (!chatName || seen.has(chatName)) continue;
     if (!qbConnected && chatName.startsWith('qb_')) continue;
+    if (!notionProductsConnected && chatName === 'buscar_producto') continue;
     const tool = CHAT_TOOL_BY_NAME[chatName];
     if (tool) { tools.push(tool); seen.add(chatName); }
   }
@@ -944,9 +963,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   ]);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
 
-  const qbConnected  = !!qbRow?.realm_id;
-  const meerkatId    = ((agent.features as Record<string, unknown>)?.meerkat_role_id as string | null) ?? null;
-  const sessionTools = getToolsForRole(meerkatId, qbConnected);
+  const qbConnected             = !!qbRow?.realm_id;
+  const agentFeatures           = (agent.features as Record<string, unknown>) ?? {};
+  const meerkatId               = (agentFeatures.meerkat_role_id  as string | null) ?? null;
+  const notionProductsConnected = !!(agent.notion_access_token && agentFeatures.notion_products_db_id);
+  const sessionTools            = getToolsForRole(meerkatId, qbConnected, notionProductsConnected);
   const toolsListText = sessionTools.length
     ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
     : '';

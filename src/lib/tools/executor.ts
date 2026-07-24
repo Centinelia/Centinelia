@@ -7,7 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createElement } from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { notionClient } from '@/lib/notion/client';
+import { notionClient, searchProduct } from '@/lib/notion/client';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF, ProposalPDF, LetterPDF } from '@/lib/pdf/doc';
 import { FacturaPdf } from '@/lib/pdf/factura';
@@ -527,6 +527,24 @@ export async function executeAgentTool(
       }
     } catch { answer = 'El agente no está disponible.'; }
     return { ok: true, message: answer };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // buscar_producto
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_producto') {
+    const notionToken  = (agent.notion_access_token as string | null) ?? null;
+    const productsDbId = ((agent.features as Record<string, unknown>)?.notion_products_db_id as string | null) ?? null;
+    if (!notionToken || !productsDbId)
+      return { ok: false, error: 'Catálogo de productos no configurado. Actívalo en Integraciones → Notion.' };
+    const { query } = toolInput as { query: string };
+    if (!query?.trim()) return { ok: false, error: 'Proporciona un SKU o nombre del producto.' };
+    try {
+      const product = await searchProduct(notionToken, productsDbId, query.trim());
+      if (!product) return { ok: false, error: `Producto "${query}" no encontrado en el catálogo.` };
+      const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      return { ok: true, ...product, precio_formateado: fmt(product.precio) };
+    } catch (err) { return { ok: false, error: String(err) }; }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
