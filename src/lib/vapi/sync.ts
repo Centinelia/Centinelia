@@ -256,7 +256,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     headers: { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '' },
   });
 
-  const meerkatId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as string | undefined;
+  const meerkatId = agent.features.meerkat_role_id;
   const roleTools = meerkatId && meerkatId !== 'custom' ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] : null;
 
   if (roleTools) {
@@ -285,7 +285,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
       tools.push(buildToolDef('consultar_agente', agent, server)!);
       tools.push(buildToolDef('delegar_tarea',    agent, server)!);
     }
-    if ((agent.features as unknown as Record<string, unknown>).of_encuestas) tools.push(buildToolDef('registrar_encuesta', agent, server)!);
+    if (agent.features.of_encuestas) tools.push(buildToolDef('registrar_encuesta', agent, server)!);
     tools.push(buildToolDef('reportar_falla', agent, server)!);
   }
 
@@ -391,7 +391,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     messages.push({ role: 'system', content: lines.join('\n') });
   }
 
-  const meerkatId = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as string | undefined;
+  const meerkatId = agent.features.meerkat_role_id;
   const cfg: MeerkatModelConfig = (meerkatId ? MEERKAT_MODEL_CONFIG[meerkatId] : undefined) ?? DEFAULT_MODEL_CONFIG;
 
   return {
@@ -422,7 +422,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     },
     firstMessage: (() => {
       const notice  = 'Esta llamada puede ser grabada.';
-      const noNotice = !!(agent.features as unknown as Record<string, unknown>).skip_recording_notice;
+      const noNotice = !!agent.features.skip_recording_notice;
       const custom  = agent.first_message?.trim();
       if (custom) {
         if (noNotice || custom.toLowerCase().includes('grabada')) return custom;
@@ -434,7 +434,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     endCallPhrases: ['hasta luego', 'hasta pronto', 'que tenga un excelente día', 'que tenga buen día', 'adiós', 'fue un placer atenderle'],
     transcriber: (() => {
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
-      const explicitLite = !!(agent.features as unknown as Record<string, unknown>).lite_prompt;
+      const explicitLite = !!agent.features.lite_prompt;
       const isLite      = explicitLite || tier === 'lite';
       return {
         provider:    'deepgram',

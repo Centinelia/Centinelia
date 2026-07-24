@@ -41,6 +41,8 @@ export interface AgentFeatures {
   meerkat_role_id?: string;
   lite_prompt?: boolean;
   skip_aup?: boolean;
+  skip_recording_notice?: boolean;
+  of_encuestas?: boolean;
 }
 
 // ─── Business hours ───────────────────────────────────────────────────────────
@@ -242,4 +244,9 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',
   is_coordinator:          'Coordinador de equipo',
+  meerkat_role_id:         '',
+  lite_prompt:             '',
+  skip_aup:                '',
+  skip_recording_notice:   '',
+  of_encuestas:            '',
 };
