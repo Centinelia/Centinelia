@@ -334,7 +334,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             <div className="p-3 rounded-lg leading-relaxed"
               style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
               <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                En <strong style={{ color: 'var(--c-text)' }}>Agente Comercial</strong> el agente
+                En <strong style={{ color: 'var(--c-text)' }}>Empleado Centinelia</strong> el agente
                 siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
                 Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Empleado Centinelia</span> puedes
                 asignarle un nombre personalizado.

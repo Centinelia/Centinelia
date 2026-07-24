@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
       // Onboarding flow: auto-create Vapi assistant + provision phone + send welcome email
       if (session.metadata?.source === 'onboarding' && agent) {
         const fullAgent = agent as VoiceAgent;
-        const planLabels: Record<string, string> = { comercial: 'Agente Comercial', pro: 'Empleado Centinelia' };
+        const planLabels: Record<string, string> = { comercial: 'Empleado Centinelia', pro: 'Empleado Centinelia' };
         const appUrl    = process.env.NEXT_PUBLIC_APP_URL!;
         const adminWa   = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? process.env.SUPPORT_WHATSAPP ?? '';
 

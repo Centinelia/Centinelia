@@ -5,7 +5,7 @@ import { Calendar, CalendarCheck, Check, ChevronDown, ChevronUp, ExternalLink, L
 import type { Plan } from '@/types/agent';
 
 const PLAN_ORDER: Plan[] = ['comercial', 'pro'];
-const PLAN_LABELS: Record<Plan, string> = { comercial: 'Agente Comercial', pro: 'Empleado Centinelia' };
+const PLAN_LABELS: Record<Plan, string> = { comercial: 'Empleado Centinelia', pro: 'Empleado Centinelia' };
 const PLAN_COLORS: Record<Plan, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 function canUse(clientPlan: Plan, required: Plan): boolean {

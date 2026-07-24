@@ -17,7 +17,7 @@ export interface AgentRow {
 }
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  comercial: { label: 'Agente Comercial',  color: '#3b82f6' },
+  comercial: { label: 'Empleado Centinelia',  color: '#3b82f6' },
   pro:       { label: 'Empleado Centinelia', color: '#a855f7' },
 };
 
@@ -96,7 +96,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               <div className="flex gap-1 flex-wrap p-1 rounded-lg" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
                 {([
                   { key: 'todos',    label: `Todos (${rows.length})`,          color: undefined },
-                  { key: 'comercial', label: `Agente Comercial (${counts.comercial})`,   color: '#3b82f6' },
+                  { key: 'comercial', label: `Empleado Centinelia (${counts.comercial})`,   color: '#3b82f6' },
                   { key: 'pro',      label: `Empleado Centinelia (${counts.pro})`,  color: '#a855f7' },
                 ] as { key: TierFilter; label: string; color?: string }[]).map(({ key, label, color }) => (
                   <button

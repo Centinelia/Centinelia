@@ -46,7 +46,7 @@ const STATUS_OPTS = [
 
 const PLAN_OPTS = [
   { value: '',          label: 'Todos',     color: undefined    },
-  { value: 'comercial', label: 'Agente Comercial',  color: '#3b82f6' },
+  { value: 'comercial', label: 'Empleado Centinelia',  color: '#3b82f6' },
   { value: 'pro',       label: 'Empleado Centinelia', color: '#a855f7' },
 ];
 

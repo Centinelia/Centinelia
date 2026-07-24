@@ -14,7 +14,7 @@ export interface FeaturePlanConfig {
 }
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  comercial: { label: 'Agente Comercial',  setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
+  comercial: { label: 'Empleado Centinelia',  setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
   pro:       { label: 'Empleado Centinelia', setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
