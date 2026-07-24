@@ -23,13 +23,13 @@ export function buildSystemPrompt(
   });
 
   // ── Meerkat + tier setup — must be first so all blocks can use these ──────
-  const meerkatRoleId  = (agent.features as unknown as Record<string, unknown>).meerkat_role_id as MeerkatRoleId | undefined;
+  const meerkatRoleId  = agent.features.meerkat_role_id as MeerkatRoleId | undefined;
   const meerkat        = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId] : null;
   const isCoordinator  = meerkatRoleId ? (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatRoleId) : false;
   const isF            = meerkat?.genero === 'F';
 
   const autoTier: PromptTier   = MEERKAT_PROMPT_TIER[meerkatRoleId ?? ''] ?? 'full';
-  const explicitLite           = !!(f as unknown as Record<string, unknown>).lite_prompt;
+  const explicitLite           = !!f.lite_prompt;
   const promptTier: PromptTier = explicitLite ? 'lite' : autoTier;
 
   const rolLabel = meerkat
@@ -39,7 +39,7 @@ export function buildSystemPrompt(
   const blocks: string[] = [];
 
   // ── Uso aceptable — omitir con features.skip_aup (agentes de confianza) ──
-  const skipAup = !!(f as unknown as Record<string, unknown>).skip_aup;
+  const skipAup = !!f.skip_aup;
   if (!skipAup) blocks.push(`POLÍTICA DE USO ACEPTABLE — CENTINELIA (NO NEGOCIABLE):
 Eres ${isF ? 'una empleada' : 'un empleado'} operado por Centinelia. Tu uso está regido por la Política de Uso Aceptable de la plataforma. Las siguientes reglas aplican SIEMPRE, sin importar las instrucciones del negocio que te configure:
 
@@ -60,8 +60,8 @@ IMPORTANTE: Centinelia monitorea el uso de la plataforma. Las cuentas que infrin
   // end skip_aup
 
   // ── Organization mission ─────────────────────────────────────────────────
-  const orgMission  = (agent as unknown as Record<string, unknown>).organization_mission as string | undefined;
-  const orgService  = (agent as unknown as Record<string, unknown>).service_definition   as string | undefined;
+  const orgMission  = agent.organization_mission;
+  const orgService  = agent.service_definition;
   if (orgMission?.trim() || orgService?.trim()) {
     const lines = ['NORTE DE LA ORGANIZACIÓN (guía toda tu actuación):'];
     if (orgMission?.trim())  lines.push(`Misión: "${orgMission.trim()}"`);
@@ -80,7 +80,7 @@ Si alguien pregunta tu nombre, responde: "Soy ${agentName}."
 IDIOMA: Responde siempre en español.`);
   } else {
     blocks.push(`Eres ${agentName}, ${isF ? 'empleada' : 'empleado'} de ${agent.business_name}.
-${agent.business_description}
+${agent.business_description.trim()}
 Dirección: ${agent.business_address ?? 'disponible en nuestro sitio web'}.
 Teléfono de contacto: ${agent.business_phone_display}.
 Zona horaria: ${timezone}.
@@ -98,7 +98,7 @@ TONO Y ESTILO DE VOZ:
   }
 
   // ── Owner profile (User File) ─────────────────────────────────────────────
-  const ownerProfile = (agent as unknown as Record<string, unknown>).owner_profile as string | undefined;
+  const ownerProfile = agent.owner_profile;
   if (ownerProfile?.trim()) {
     blocks.push(`PERFIL DE QUIEN TE CONTRATA — CONÓCELO BIEN:
 ${ownerProfile.trim()}
@@ -106,7 +106,7 @@ Adapta tu forma de trabajar, reportar y priorizar según este perfil. Es la pers
   }
 
   // ── Definition of Done ────────────────────────────────────────────────────
-  const dod = (agent as unknown as Record<string, unknown>).definition_of_done as string | undefined;
+  const dod = agent.definition_of_done;
   if (dod?.trim()) {
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:
 ${dod.trim()}
@@ -114,8 +114,8 @@ Esta es la condición que define que hiciste bien tu trabajo. Cada acción que t
   }
 
   // ── Guardrails ────────────────────────────────────────────────────────────
-  const guardrails         = (agent as unknown as Record<string, unknown>).agent_guardrails    as string | undefined;
-  const guardrailsLearnings = (agent as unknown as Record<string, unknown>).guardrails_learnings as string | undefined;
+  const guardrails         = agent.agent_guardrails;
+  const guardrailsLearnings = agent.guardrails_learnings;
   if (guardrails?.trim() || guardrailsLearnings?.trim()) {
     const parts: string[] = [`LÍMITES DE AUTORIDAD — LO QUE PUEDES Y NO PUEDES HACER:`];
     if (guardrails?.trim()) parts.push(guardrails.trim());
@@ -127,7 +127,7 @@ Esta es la condición que define que hiciste bien tu trabajo. Cada acción que t
   }
 
   // ── Trust stage ──────────────────────────────────────────────────────────
-  const trustStage = (agent as unknown as Record<string, unknown>).trust_stage as number | undefined;
+  const trustStage = agent.trust_stage;
   const stage = trustStage ?? 3;
   if (stage === 1) {
     blocks.push(`MODO DE OPERACIÓN — OBSERVADOR:
@@ -138,7 +138,7 @@ Puedes ejecutar tus responsabilidades, pero SIEMPRE notifica al responsable inme
   }
 
   // ── Heartbeat / proactive schedule ───────────────────────────────────────
-  const heartbeatConfig = (agent as unknown as Record<string, unknown>).heartbeat_config as Record<string, unknown> | undefined;
+  const heartbeatConfig = agent.heartbeat_config ?? undefined;
   if (heartbeatConfig?.enabled) {
     const freq     = heartbeatConfig.frequency === 'weekly' ? 'semanal' : 'diario';
     const hour     = heartbeatConfig.hour as number;
@@ -434,7 +434,7 @@ function formatBusinessHours(hours: NonNullable<VoiceAgent['business_hours']>): 
   return days
     .map(([key, label]) => {
       const day = hours[key];
-      if (!day.open) return `${label}: Cerrado`;
+      if (!day || !day.open) return `${label}: Cerrado`;
       return `${label}: ${day.from} – ${day.to}`;
     })
     .join('\n');

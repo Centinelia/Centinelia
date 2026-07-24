@@ -36,6 +36,11 @@ export interface AgentFeatures {
 
   // Nox — agente coordinador puro (sin voz, solo ops)
   is_coordinator?: boolean;
+
+  // Meerkat personality + prompt flags
+  meerkat_role_id?: string;
+  lite_prompt?: boolean;
+  skip_aup?: boolean;
 }
 
 // ─── Business hours ───────────────────────────────────────────────────────────
@@ -116,6 +121,16 @@ export interface VoiceAgent {
   email_footer_text?: string | null;
   brand_website?: string | null;
   brand_address?: string | null;
+  // AGENT Framework fields (sessions 18-23)
+  organization_mission?: string | null;
+  service_definition?: string | null;
+  owner_profile?: string | null;
+  definition_of_done?: string | null;
+  agent_guardrails?: string | null;
+  guardrails_learnings?: string | null;
+  trust_stage?: number | null;
+  heartbeat_config?: Record<string, unknown> | null;
+
   // Billing
   stripe_customer_id?: string | null;
   auto_refill_enabled?: boolean | null;
