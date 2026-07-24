@@ -4,10 +4,12 @@ import { getNextTicketFolio, getCurrentOnCall } from '@/lib/helpdesk/folio';
 import type { GuardiaSchedule, DirectorioContacto } from '@/lib/helpdesk/folio';
 import { sendEmail } from '@/lib/email/send';
 import { ticketEmailHtml } from '@/lib/ops/approval-email';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json();
   const args    = body.toolCallList?.[0]?.function?.arguments ?? body;

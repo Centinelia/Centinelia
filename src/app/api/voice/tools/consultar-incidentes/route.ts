@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json();
   const args    = body.toolCallList?.[0]?.function?.arguments ?? body;

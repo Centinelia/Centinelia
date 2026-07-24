@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { getNextTicketFolio } from '@/lib/helpdesk/folio';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ interface SurveyActions {
 }
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json() as Record<string, unknown>;
 

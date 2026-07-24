@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +217,7 @@ NO_CUMPLIDO - [qué faltó o falló específicamente]`,
 // ── Main handler ───────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json() as Record<string, unknown>;
 
