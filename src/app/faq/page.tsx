@@ -55,19 +55,19 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Puede agendar citas?',
-        a: 'Si, en Agente Comercial y Ejecutivo Senior. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y le envia el link de confirmacion por correo). El cliente sale de la llamada con su cita confirmada.',
+        a: 'Si. El agente se integra con Cal.com (consulta disponibilidad en tiempo real y crea la cita directamente) o con Google Calendar y Calendly (captura los datos del cliente y le envia el link de confirmacion por correo). El cliente sale de la llamada con su cita confirmada.',
       },
       {
         q: '¿Puede hacer llamadas salientes?',
-        a: 'Si, en el Ejecutivo Senior. El agente puede llamar a prospectos para hacer seguimiento, confirmar citas antes del dia, reactivar clientes que no han comprado en tiempo, o gestionar cobros. El dueno define la lista de numeros y el agente llama automaticamente.',
+        a: 'Si. El agente puede llamar a prospectos para hacer seguimiento, confirmar citas antes del dia, reactivar clientes que no han comprado en tiempo, o gestionar cobros. El dueno define la lista de numeros y el agente llama automaticamente.',
       },
       {
         q: '¿Puede tomar pedidos por telefono?',
-        a: 'Si, en el Ejecutivo Senior. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y comercios similares.',
+        a: 'Si. El agente puede tomar pedidos (productos, cantidades, direccion de entrega o instrucciones) y registrarlos en el sistema. Ideal para restaurantes con servicio a domicilio, farmacias y comercios similares.',
       },
       {
         q: '¿Habla ingles?',
-        a: 'Si, en el Ejecutivo Senior. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para organizaciones en zonas turisticas o con clientela internacional.',
+        a: 'Si. El agente detecta automaticamente el idioma del cliente al inicio de la llamada y cambia entre espanol e ingles dentro de la misma conversacion si es necesario. Util para organizaciones en zonas turisticas o con clientela internacional.',
       },
       {
         q: '¿Puede transferir la llamada a una persona real?',
@@ -79,7 +79,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Cuantas llamadas puede atender al mismo tiempo?',
-        a: 'Agente Comercial: 1 llamada simultanea. Ejecutivo Senior: hasta 3 llamadas en paralelo. Plan Empresarial: segun volumen, sin limite practico. Si tu organización recibe muchas llamadas al mismo tiempo, el plan adecuado es Ejecutivo Senior o Empresarial.',
+        a: 'Hasta 3 llamadas en paralelo en el Empleado Centinelia. Plan Empresarial: segun volumen contratado, sin limite practico. Si tu organización recibe muchas llamadas al mismo tiempo, el Plan Empresarial es la opcion adecuada.',
       },
       {
         q: '¿Que pasa si el agente no sabe responder algo?',
@@ -97,7 +97,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Cuanto cuesta Centinelia?',
-        a: 'Hay dos planes con tres tiers de minutos cada uno. Agente Comercial (agendamiento, transferencias): Starter $2,997/mes (300 min), Growth $5,994/mes (600 min), Scale $11,988/mes (1,200 min). Ejecutivo Senior (todo el Agente Comercial mas llamadas salientes, pedidos, multiidioma): mismos tiers de precio. Cada plan tiene una cuota de instalacion unica: $8,990 MXN para Agente Comercial y $14,990 MXN para Ejecutivo Senior. Plan Empresarial bajo cotizacion.',
+        a: 'Hay un plan: Empleado Centinelia (instalacion unica $14,990 MXN) con tres tiers de minutos: Media Jornada $2,997/mes (300 min), Jornada Completa $5,994/mes (600 min), Alta Demanda $11,988/mes (1,200 min). Plan Empresarial bajo cotizacion para multiples sucursales.',
       },
       {
         q: '¿Que incluye la cuota de instalacion?',
@@ -105,11 +105,11 @@ const CATEGORIES = [
       },
       {
         q: '¿Que son los minutos incluidos?',
-        a: 'Cada tier incluye minutos de llamada al mes: Starter 300 min, Growth 600 min, Scale 1,200 min. Cada minuto de llamada (entrante o saliente) consume del saldo mensual. La tasa es $9.99 MXN/min dentro del plan; los minutos extra fuera del plan se cobran a $12.99 MXN/min.',
+        a: 'Cada tier incluye minutos de llamada al mes: Media Jornada 300 min, Jornada Completa 600 min, Alta Demanda 1,200 min. Cada minuto de llamada (entrante o saliente) consume del saldo mensual. Los minutos adicionales fuera del tier se compran en paquetes desde el portal.',
       },
       {
         q: '¿Que pasa con los minutos no usados?',
-        a: 'Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de tu plan. Si tienes 300 min en Starter y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden.',
+        a: 'Los minutos no usados acumulan al mes siguiente hasta un maximo del doble de tu tier. Si tienes 300 min en Media Jornada y solo usas 100, el siguiente mes empiezas con 500 min (300 incluidos + 200 acumulados). Al llegar al tope, los excedentes se pierden.',
       },
       {
         q: '¿Hay contrato de permanencia?',
@@ -157,11 +157,11 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Funciona para restaurantes?',
-        a: 'Si. El agente informa sobre el menu, horarios, ubicacion y estacionamiento. Puede tomar reservaciones (Agente Comercial) y pedidos para llevar o entrega (Ejecutivo Senior). Despues de la llamada, manda automaticamente el link de resena de Google al cliente.',
+        a: 'Si. El agente informa sobre el menu, horarios, ubicacion y estacionamiento. Puede tomar reservaciones y pedidos para llevar o entrega. Despues de la llamada, manda automaticamente el link de resena de Google al cliente.',
       },
       {
         q: '¿Funciona para clinicas y consultorios?',
-        a: 'Si. El agente agenda consultas con el medico o especialista correcto segun el tipo de padecimiento, confirma citas el dia anterior para reducir no-shows, da indicaciones de ubicacion y puede recordar a pacientes frecuentes sus datos previos (Ejecutivo Senior).',
+        a: 'Si. El agente agenda consultas con el medico o especialista correcto segun el tipo de padecimiento, confirma citas el dia anterior para reducir no-shows, da indicaciones de ubicacion y puede recordar a pacientes frecuentes sus datos previos.',
       },
       {
         q: '¿Funciona para despachos legales o contables?',
@@ -173,11 +173,11 @@ const CATEGORIES = [
       },
       {
         q: '¿Funciona para tiendas o comercios de retail?',
-        a: 'Si. El agente puede informar sobre productos, precios, disponibilidad, horarios y sucursales. En el Ejecutivo Senior puede tomar pedidos telefonicos y registrar los datos de entrega.',
+        a: 'Si. El agente puede informar sobre productos, precios, disponibilidad, horarios y sucursales. Tambien puede tomar pedidos telefonicos y registrar los datos de entrega.',
       },
       {
         q: '¿Funciona para academias o escuelas?',
-        a: 'Si. El agente puede informar sobre cursos, horarios, precios e inscripciones, y transferir a un asesor cuando el prospecto esta listo para inscribirse. Tambien puede confirmar horarios de clases y recordar fechas de pago a alumnos activos (Ejecutivo Senior).',
+        a: 'Si. El agente puede informar sobre cursos, horarios, precios e inscripciones, y transferir a un asesor cuando el prospecto esta listo para inscribirse. Tambien puede confirmar horarios de clases y recordar fechas de pago a alumnos activos.',
       },
     ],
   },
@@ -191,7 +191,7 @@ const CATEGORIES = [
       },
       {
         q: '¿Las llamadas se graban?',
-        a: 'Si, en el Ejecutivo Senior. Las grabaciones son accesibles solo desde tu portal. Si un cliente pregunta durante la llamada si esta siendo grabada, el agente responde con honestidad que si. En planes sin grabacion, igual se generan transcripciones de texto.',
+        a: 'Si. Las grabaciones son accesibles solo desde tu portal. Si un cliente pregunta durante la llamada si esta siendo grabada, el agente responde con honestidad que si. Tambien se generan transcripciones de texto de todas las llamadas.',
       },
       {
         q: '¿Centinelia cumple con la LFPDPPP?',

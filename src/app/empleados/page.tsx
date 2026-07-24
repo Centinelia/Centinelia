@@ -1,5 +1,6 @@
 export const dynamic = 'force-static';
 
+import type { Metadata } from 'next';
 import Image      from 'next/image';
 import Link       from 'next/link';
 import { Check, ArrowRight } from 'lucide-react';
@@ -7,6 +8,17 @@ import LandingNav       from '@/app/LandingNav';
 import AnimatedSection  from '@/app/AnimatedSection';
 import IndustryFooter   from '@/app/industrias/IndustryFooter';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+
+export const metadata: Metadata = {
+  title: 'Empleados digitales | Centinelia',
+  description: 'Conoce al equipo de empleados digitales de Centinelia: Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova, Nox y más. Cada uno especializado en un área, trabajando 24/7 para tu organización.',
+  alternates: { canonical: 'https://www.centinelia.mx/empleados' },
+  openGraph: {
+    title: 'Empleados digitales | Centinelia',
+    description: 'Un equipo completo de empleados de IA especializados por rol. Recepción, ventas, cobranza, coordinación y más — activos 24/7 sin IMSS ni ausencias.',
+    url: 'https://www.centinelia.mx/empleados',
+  },
+};
 
 // ── Copy per employee ──────────────────────────────────────────────────────────
 const CONTENT: Record<string, {
