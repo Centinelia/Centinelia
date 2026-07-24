@@ -1491,14 +1491,21 @@ function RegistroInner() {
                         </p>
                         <p className="text-xs mt-1.5" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.38)' }}>{t.desc}</p>
                       </div>
-                      {/* Price + badge */}
+                      {t.popular && (
+                        <div style={{
+                          position: 'absolute', top: -1, right: 14,
+                          background: roleColor,
+                          borderRadius: '0 0 5px 5px',
+                          padding: '2px 8px 3px',
+                          fontSize: 8, fontWeight: 700,
+                          color: '#fff', letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                        }}>
+                          Más usado
+                        </div>
+                      )}
+                      {/* Price */}
                       <div className="text-right flex-shrink-0">
-                        {t.popular && (
-                          <div className="inline-block mb-1 rounded-full px-2 py-0.5"
-                            style={{ background: roleColor, fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                            Más usado
-                          </div>
-                        )}
                         <p className="font-bold tabular-nums" style={{ fontSize: 17, color: sel ? lightenColor(roleColor, 0.45) : '#fff', display: 'block' }}>
                           {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}> + IVA/mes</span>
                         </p>
