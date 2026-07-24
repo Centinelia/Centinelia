@@ -1456,10 +1456,9 @@ function RegistroInner() {
                       </div>
                       {/* Price */}
                       <div className="text-right flex-shrink-0">
-                        <p className="font-bold tabular-nums" style={{ fontSize: 18, color: sel ? '#9B6DFF' : '#fff' }}>
-                          {priceFmt(t.price)}
+                        <p className="font-bold tabular-nums" style={{ fontSize: 17, color: sel ? '#9B6DFF' : '#fff' }}>
+                          {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}> + IVA/mes</span>
                         </p>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>+ IVA/mes</p>
                       </div>
                     </div>
                   );
