@@ -48,11 +48,13 @@ export default async function ClientesPage({ searchParams }: Props) {
     );
   }
 
-  const { data: agents } = await query;
+  type FetchedAgent = AgentRow & { client_name: string; client_email: string | null };
+  const { data: agentsRaw } = await query;
+  const agents = (agentsRaw ?? []) as FetchedAgent[];
 
   // Agrupar por client_email (fallback: client_name) — server-side
   const map = new Map<string, ClientGroup>();
-  for (const agent of agents ?? []) {
+  for (const agent of agents) {
     const key = agent.client_email?.toLowerCase().trim() || agent.client_name;
     if (!map.has(key)) {
       map.set(key, {
@@ -72,7 +74,7 @@ export default async function ClientesPage({ searchParams }: Props) {
       active:         agent.active,
       billing_status: agent.billing_status ?? null,
       portal_email:   agent.portal_email ?? null,
-      portal_token:   (agent as any).portal_token ?? null,
+      portal_token:   agent.portal_token ?? null,
     });
   }
 
@@ -94,8 +96,8 @@ export default async function ClientesPage({ searchParams }: Props) {
     acct_minutes_included: g.portal_email ? (acctMinsMap.get(g.portal_email)?.minutes_included ?? null) : null,
   }));
 
-  const totalAgents = (agents ?? []).length;
-  const totalActive = (agents ?? []).filter(a => a.active).length;
+  const totalAgents = agents.length;
+  const totalActive = agents.filter(a => a.active).length;
 
   return (
     <ClientesClient

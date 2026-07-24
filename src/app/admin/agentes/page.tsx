@@ -50,7 +50,8 @@ export default async function AgentesPage({ searchParams }: Props) {
     }
   }
 
-  const { data, count } = await query
+  type AgentRow = { id: string; business_name: string; client_name: string; plan: string; active: boolean; billing_status: string | null; phone_number: string | null; created_at: string };
+  const { data: dataRaw, count } = await query
     .order(sort === 'name' ? 'business_name' : 'created_at', { ascending: sort === 'name' })
     .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
 
@@ -88,7 +89,7 @@ export default async function AgentesPage({ searchParams }: Props) {
       </div>
 
       <AgentesClient
-        agents={(data ?? []) as any[]}
+        agents={(dataRaw ?? []) as AgentRow[]}
         totalCount={totalCount}
         page={pageNum}
         totalPages={totalPages}

@@ -53,8 +53,9 @@ export default async function DashboardPage() {
   ]);
 
   // Infra stats
-  const totalOpsUsed  = (opsData ?? []).reduce((s: number, a: any) => s + (a.ai_ops_used  ?? 0), 0);
-  const totalOpsLimit = (opsData ?? []).reduce((s: number, a: any) => s + (a.ai_ops_limit ?? 0), 0);
+  type OpsStat = { ai_ops_used: number | null; ai_ops_limit: number | null };
+  const totalOpsUsed  = (opsData ?? []).reduce((s: number, a: OpsStat) => s + (a.ai_ops_used  ?? 0), 0);
+  const totalOpsLimit = (opsData ?? []).reduce((s: number, a: OpsStat) => s + (a.ai_ops_limit ?? 0), 0);
   // Estimated Claude cost: Haiku ~$0.0024 per op (1,500 input + 300 output tokens avg)
   const estimatedClaudeCost = totalOpsUsed * 0.0024;
   const claudeBudget        = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
@@ -68,20 +69,24 @@ export default async function DashboardPage() {
   const VAPI_LOW_THRESHOLD   = 20;  // USD
   const TWILIO_LOW_THRESHOLD = 10;  // USD
 
-  const agents    = (agentsData ?? []) as any[];
-  const calls     = (calls14d   ?? []) as any[];
-  const acctMins  = new Map((acctMinsData ?? []).map((m: any) => [m.portal_email, m]));
+  type AgentStat = { id: string; business_name: string; client_name: string; plan: string; minutes_plan: string | null; minutes_used: number; minutes_included: number; active: boolean; billing_status: string | null; created_at: string; portal_email: string | null };
+  type CallStat  = { id: string; agent_id: string; created_at: string };
+  type AcctMin   = { portal_email: string; minutes_used: number; minutes_included: number };
+
+  const agents    = (agentsData ?? []) as AgentStat[];
+  const calls     = (calls14d   ?? []) as CallStat[];
+  const acctMins  = new Map((acctMinsData ?? []).map((m: AcctMin) => [m.portal_email, m]));
   const seenAcct  = new Set<string>(); // deduplicate account pools in aggregate stats
 
   // Resolve effective minutes for an agent (account pool or per-agent)
-  const effMins = (a: any) => a.portal_email && acctMins.has(a.portal_email)
+  const effMins = (a: AgentStat) => a.portal_email && acctMins.has(a.portal_email)
     ? acctMins.get(a.portal_email)
     : { minutes_used: a.minutes_used, minutes_included: a.minutes_included };
 
   // MRR — only agents with billing_status = 'activo' and a known minutes plan
   const mrr = agents
     .filter(a => a.billing_status === 'activo' && a.plan && a.minutes_plan && a.minutes_plan !== 'enterprise')
-    .reduce((sum: number, a: any) => {
+    .reduce((sum: number, a: AgentStat) => {
       const cfg = MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier];
       return sum + (cfg?.mxn ?? 0);
     }, 0);
