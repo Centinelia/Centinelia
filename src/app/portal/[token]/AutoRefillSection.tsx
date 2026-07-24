@@ -8,6 +8,9 @@ const MIN_REFILL_OPTIONS    = [{ minutes: 100, price: 1200 }, { minutes: 200, pr
 const OPS_THRESHOLD_OPTIONS = [50, 100, 150, 200];
 const OPS_REFILL_OPTIONS    = [{ ops: 100, price: 800 }, { ops: 300, price: 2100 }];
 
+const IVA = 0.16;
+const withIva = (n: number) => Math.round(n * (1 + IVA));
+
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
     <button
@@ -135,10 +138,19 @@ export default function AutoRefillSection({ token }: { token: string }) {
                     }}
                   >
                     <span className="text-sm font-bold">{o.minutes} min</span>
-                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} MXN</span>
+                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} + IVA</span>
                   </button>
                 ))}
               </div>
+              {(() => {
+                const base = MIN_REFILL_OPTIONS.find(o => o.minutes === minMinutes)?.price ?? 0;
+                const total = withIva(base);
+                return (
+                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                    Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
+                  </p>
+                );
+              })()}
             </div>
           </>
         )}
@@ -194,10 +206,19 @@ export default function AutoRefillSection({ token }: { token: string }) {
                     }}
                   >
                     <span className="text-sm font-bold">{o.ops} tareas</span>
-                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} MXN</span>
+                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} + IVA</span>
                   </button>
                 ))}
               </div>
+              {(() => {
+                const base = OPS_REFILL_OPTIONS.find(o => o.ops === opsAmount)?.price ?? 0;
+                const total = withIva(base);
+                return (
+                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                    Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
+                  </p>
+                );
+              })()}
             </div>
           </>
         )}

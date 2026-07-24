@@ -4,9 +4,11 @@ import { resumeVapiAgent } from '@/lib/vapi/control';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 1200, 200: 2400 };
 const PRICE_PER_MIN = 12;
+const IVA = 0.16;
 
 function calcPrice(minutes: number): number {
-  return FIXED_PACKAGES[minutes] ?? minutes * PRICE_PER_MIN;
+  const base = FIXED_PACKAGES[minutes] ?? minutes * PRICE_PER_MIN;
+  return Math.round(base * (1 + IVA));
 }
 
 export async function executeAutoRefill(
@@ -98,7 +100,8 @@ const OPS_PACKAGES: Record<number, number> = { 100: 800, 300: 2100 };
 const PRICE_PER_OP = 8.5;
 
 function calcOpsPrice(ops: number): number {
-  return OPS_PACKAGES[ops] ?? Math.round(ops * PRICE_PER_OP);
+  const base = OPS_PACKAGES[ops] ?? Math.round(ops * PRICE_PER_OP);
+  return Math.round(base * (1 + IVA));
 }
 
 export async function executeAutoRefillOps(
