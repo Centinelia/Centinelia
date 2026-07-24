@@ -26,6 +26,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { supabase, agent } = await resolveAgent(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data } = await supabase
     .from('email_integrations')
@@ -45,6 +47,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { provider, send_as_email } = (await req.json()) as { provider: string; send_as_email: string | null };
   const { supabase, agent } = await resolveAgent(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const value = send_as_email?.trim() || null;
 
@@ -67,6 +71,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { provider } = (await req.json()) as { provider: string };
   const { supabase, agent } = await resolveAgent(token);
   if (!agent) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   await supabase
     .from('email_integrations')

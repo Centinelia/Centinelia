@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { stripe } from '@/lib/stripe';
 
 const VALID_PACKS = [100, 250, 500];
@@ -8,6 +9,9 @@ const PRICE_PER_MIN = 1200; // $12 MXN = 1200 centavos
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const session = await verifySession(req.cookies.get(PORTAL_COOKIE)?.value ?? '');
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { token } = await params;
   const { minutes } = await req.json();
 
@@ -18,11 +22,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, stripe_customer_id')
+    .select('id, business_name, stripe_customer_id, portal_email')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 

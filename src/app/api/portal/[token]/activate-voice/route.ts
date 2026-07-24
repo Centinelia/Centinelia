@@ -26,6 +26,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const jornadaType = ((agent as any).jornada_type ?? 'combinada') as string;
   if (jornadaType !== 'tareas') {

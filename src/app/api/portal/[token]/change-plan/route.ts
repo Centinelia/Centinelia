@@ -33,6 +33,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
+
+  // We need portal_email for IDOR check — fetch it separately since current select omits it
+  const { data: agentMeta } = await supabase
+    .from('voice_agents').select('portal_email').eq('id', agent.id).single();
+  if (auth.portalEmail && agentMeta?.portal_email && auth.portalEmail !== agentMeta.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
   if (!agent.stripe_subscription_id) return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 400 });
 
   const currentPlan  = agent.plan as Plan;

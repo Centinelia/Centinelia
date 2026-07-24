@@ -22,6 +22,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const domain = email.split('@')[1].toLowerCase();
 

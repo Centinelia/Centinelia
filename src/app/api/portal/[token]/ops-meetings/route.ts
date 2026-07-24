@@ -29,6 +29,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const acct      = await getAgentForToken(supabase, token);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
 
@@ -51,6 +53,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const acct      = await getAgentForToken(supabase, token);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body         = await req.json();
   const { title, participants, audio_url, instructions } = body;
@@ -97,6 +101,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const acct      = await getAgentForToken(supabase, token);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
   const body     = await req.json();
@@ -155,6 +161,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const supabase  = createAdminClient();
   const acct      = await getAgentForToken(supabase, token);
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
   const { id }   = await req.json();
