@@ -205,7 +205,7 @@ export const PLAN_MINUTES: Record<Plan, number> = {
 };
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  comercial: 'Empleado Esencial',
+  comercial: 'Agente Comercial',
   pro:       'Empleado Centinelia',
 };
 
