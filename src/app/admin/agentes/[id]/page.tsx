@@ -33,6 +33,13 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',
   is_coordinator:          'Coordinador de equipo',
+  meerkat_role_id:         '',
+  lite_prompt:             '',
+  skip_aup:                '',
+  skip_recording_notice:   '',
+  of_encuestas:            '',
+  civic_reports:           '',
+  contract_drafts:         '',
 };
 
 export default async function AgentDetailPage({ params }: Props) {

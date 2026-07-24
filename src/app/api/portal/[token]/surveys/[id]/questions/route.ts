@@ -36,13 +36,13 @@ export async function GET(
   if (!await surveyBelongsToAccess(id, access.ids, supabase))
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data, error } = await supabase
+  const { data, error: dbError } = await supabase
     .from('survey_questions')
     .select('*')
     .eq('survey_id', id)
     .order('orden');
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   return NextResponse.json({ questions: data ?? [] });
 }
 
@@ -63,7 +63,7 @@ export async function POST(
   };
   if (!body.texto?.trim()) return NextResponse.json({ error: 'Texto requerido' }, { status: 400 });
 
-  const { data, error } = await supabase
+  const { data, error: dbError } = await supabase
     .from('survey_questions')
     .insert({
       survey_id: id,
@@ -75,7 +75,7 @@ export async function POST(
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   return NextResponse.json({ question: data }, { status: 201 });
 }
 
@@ -97,7 +97,7 @@ export async function PATCH(
 
   const body = await req.json() as { conditions?: Record<string, unknown> | null };
 
-  const { data, error } = await supabase
+  const { data, error: dbError } = await supabase
     .from('survey_questions')
     .update({ conditions: body.conditions ?? null })
     .eq('id', questionId)
@@ -105,7 +105,7 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   return NextResponse.json({ question: data });
 }
 
@@ -125,12 +125,12 @@ export async function DELETE(
   if (!await surveyBelongsToAccess(id, access.ids, supabase))
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { error } = await supabase
+  const { error: dbError } = await supabase
     .from('survey_questions')
     .delete()
     .eq('id', questionId)
     .eq('survey_id', id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

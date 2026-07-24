@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
-  const session = await stripe.checkout.sessions.create({
+  const checkout = await stripe.checkout.sessions.create({
     customer: agent.stripe_customer_id ?? undefined,
     customer_creation: agent.stripe_customer_id ? undefined : 'always',
     line_items: [{
@@ -56,5 +56,5 @@ export async function POST(req: NextRequest, { params }: Params) {
     },
   });
 
-  return NextResponse.json({ url: session.url });
+  return NextResponse.json({ url: checkout.url });
 }

@@ -23,14 +23,14 @@ export async function GET(
   if (error) return error;
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data, error: dbError } = await supabase
     .from('surveys')
     .select('*, survey_questions(*)')
     .eq('id', id)
     .in('agent_id', access.ids)
     .single();
 
-  if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (dbError || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ survey: data });
 }
 
@@ -47,7 +47,7 @@ export async function PATCH(
   const patch   = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data, error: dbError } = await supabase
     .from('surveys')
     .update(patch)
     .eq('id', id)
@@ -55,7 +55,7 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (dbError || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ survey: data });
 }
 
@@ -68,12 +68,12 @@ export async function DELETE(
   if (error) return error;
 
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { error: dbError } = await supabase
     .from('surveys')
     .delete()
     .eq('id', id)
     .in('agent_id', access.ids);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
