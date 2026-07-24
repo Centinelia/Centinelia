@@ -933,7 +933,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const targetQuery = agentId
-    ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
+    ? accountAgent.portal_email
+      ? supabase.from('voice_agents').select('*').eq('id', agentId).eq('portal_email', accountAgent.portal_email).single()
+      : supabase.from('voice_agents').select('*').eq('id', agentId).eq('id', accountAgent.id).single()
     : supabase.from('voice_agents').select('*').eq('portal_token', token).single();
   const [{ data: agent }, { data: qbRow }] = await Promise.all([
     targetQuery,

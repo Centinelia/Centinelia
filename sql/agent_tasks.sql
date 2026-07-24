@@ -9,11 +9,16 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
   title           text        NOT NULL,
   description     text,
   status          text        NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending','in_progress','completed','failed','cancelled')),
+    CHECK (status IN ('pending','in_progress','completed','partial','failed','cancelled')),
   trigger_type    text        NOT NULL DEFAULT 'delegation'
     CHECK (trigger_type IN ('delegation','email','cron','manual')),
   source_context  text,
   result          text,
+  success_criteria  text,
+  max_iterations    integer     DEFAULT 1,
+  current_iteration integer     DEFAULT 0,
+  goal_met          boolean,
+  eval_notes        text,
   due_at          timestamptz,
   started_at      timestamptz,
   completed_at    timestamptz,

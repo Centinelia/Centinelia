@@ -216,7 +216,10 @@ export async function PUT(req: NextRequest) {
   try {
     const res = await fetch(`${APP_URL}/api/voice/tools/delegar-tarea?agent_id=${target.id}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '',
+      },
       body: JSON.stringify({
         agente:           (target.agent_name as string | null) ?? 'agente',
         tarea:            task.description as string,

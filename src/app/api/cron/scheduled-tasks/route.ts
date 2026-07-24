@@ -89,7 +89,10 @@ async function runScheduledTask(
   try {
     const res = await fetch(`${APP_URL}/api/voice/tools/delegar-tarea?agent_id=${target.id}`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '',
+      },
       body: JSON.stringify({
         agente:           agentId !== target.id
           ? (agents.find(a => a.id === agentId)?.agent_name ?? 'agente')
