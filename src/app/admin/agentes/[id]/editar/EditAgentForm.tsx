@@ -37,6 +37,13 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   vertical:                '',
   helpdesk:                'Mesa de ayuda IT',
   is_coordinator:          'Coordinador de equipo',
+  meerkat_role_id:         '',
+  lite_prompt:             '',
+  skip_aup:                '',
+  skip_recording_notice:   '',
+  of_encuestas:            '',
+  civic_reports:           '',
+  contract_drafts:         '',
 };
 
 const DAYS: { key: keyof BusinessHours; label: string }[] = [
@@ -79,12 +86,12 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const [saving, setSaving]               = useState(false);
   const [resyncing, setResyncing]         = useState(false);
   const [resyncOk, setResyncOk]           = useState(false);
-  const [voiceId, setVoiceId]             = useState<string | null>((agent as any).elevenlabs_voice_id ?? null);
+  const [voiceId, setVoiceId]             = useState<string | null>(agent.elevenlabs_voice_id ?? null);
   const [tab, setTab]                     = useState<Tab>(initialTab);
-  const [role, setRole]                   = useState<string>((agent as any).role ?? '');
+  const [role, setRole]                   = useState<string>(agent.role ?? '');
   const [plan, setPlan]                   = useState<Plan>(agent.plan);
   const [features, setFeatures]           = useState<AgentFeatures>(agent.features);
-  const [vertical, setVertical]           = useState<'negocio' | 'gobierno'>((agent.features as any).vertical ?? 'negocio');
+  const [vertical, setVertical]           = useState<'negocio' | 'gobierno'>(agent.features.vertical ?? 'negocio');
   const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
   const [hoursEnabled, setHoursEnabled]   = useState<boolean>(!!agent.business_hours);
   const [waActive, setWaActive]           = useState<boolean>(!!agent.wa_phone_number);
@@ -264,7 +271,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           <Section title="Datos del cliente">
             <Field label="Nombre del cliente" name="client_name" required defaultValue={agent.client_name} />
             <Field label="Email del cliente" name="client_email" placeholder="cliente@email.com"
-              defaultValue={(agent as any).client_email ?? ''} />
+              defaultValue={agent.client_email ?? ''} />
           </Section>
 
           <Section title="Negocio">
@@ -276,7 +283,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-2)' }}>Sitio web</label>
               <div className="flex gap-2">
                 <input name="business_website" placeholder="https://negocio.com"
-                  defaultValue={(agent as any).business_website ?? ''}
+                  defaultValue={agent.business_website ?? ''}
                   className="flex-1"
                   style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', borderRadius: 8, padding: '10px 12px', color: 'var(--c-text)', fontSize: 14, outline: 'none' }} />
                 <button type="button" onClick={handleResyncWebsite} disabled={resyncing}
@@ -363,13 +370,13 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               placeholder={`SERVICIOS:\n- Ejemplo: $150\n\nFAQs:\n¿Aceptan tarjeta? Sí.`} />
           </Section>
 
-          {(agent as any).role && (
-            <Section title={`Base de conocimiento: ${(agent as any).role}`}>
+          {agent.role && (
+            <Section title={`Base de conocimiento: ${agent.role}`}>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-                Procedimientos, reglas y contexto específico para que el agente actúe como <strong>{(agent as any).role}</strong>.
+                Procedimientos, reglas y contexto específico para que el agente actúe como <strong>{agent.role}</strong>.
               </p>
               <Field label="Instrucciones del rol" name="role_knowledge_base" textarea rows={12}
-                defaultValue={(agent as any).role_knowledge_base ?? ''}
+                defaultValue={agent.role_knowledge_base ?? ''}
                 placeholder={`PROCEDIMIENTO:\n1. Revisar el documento.\n2. Comparar contra criterios.\n3. Escalar si hay discrepancia.\n\nLÍMITES:\n- Hasta $10,000: aprobación automática.`} />
             </Section>
           )}

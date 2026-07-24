@@ -257,7 +257,7 @@ export default async function AgentDetailPage({ params }: Props) {
                     monday:'Lun', tuesday:'Mar', wednesday:'Mié',
                     thursday:'Jue', friday:'Vie', saturday:'Sáb', sunday:'Dom',
                   };
-                  const s = (agent.business_hours as any)[day];
+                  const s = agent.business_hours?.[day];
                   return (
                     <div key={day} className="flex items-center justify-between">
                       <span className="text-xs w-8" style={{ color: 'var(--c-text-3)' }}>{DAY_LABEL[day]}</span>
