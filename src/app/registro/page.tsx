@@ -166,7 +166,7 @@ const TIERS: TierDef[] = [
 // Ops-only tiers for Nox (no minutes cost)
 type NoxTierDef = { id: FormTier; label: string; aiOps: number; price: number; popular?: boolean; desc: string };
 const NOX_TIERS: NoxTierDef[] = [
-  { id: 'starter', label: 'Media Jornada',    aiOps:  500, price: 2997,  desc: 'Ideal para equipos pequeños.' },
+  { id: 'starter', label: 'Media Jornada',    aiOps:  500, price: 2997,  desc: 'Ideal para organizaciones en crecimiento.' },
   { id: 'growth',  label: 'Jornada Completa', aiOps: 1200, price: 5994,  popular: true, desc: 'Para organizaciones con operación constante.' },
   { id: 'scale',   label: 'Alta Demanda',     aiOps: 3000, price: 11988, desc: 'Diseñado para operaciones de alto volumen.' },
 ];
