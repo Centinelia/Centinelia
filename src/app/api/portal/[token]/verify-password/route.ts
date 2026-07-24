@@ -20,9 +20,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('portal_password_hash')
+    .select('portal_password_hash, portal_email')
     .eq('portal_token', token)
     .single();
+  if (agent && auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   if (!agent?.portal_password_hash)
     return NextResponse.json({ error: 'Sin contraseña configurada' }, { status: 404 });

@@ -20,6 +20,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .select('portal_email, calendar_type, calendar_event_type_id, calendar_link, calendar_api_key')
     .eq('portal_token', token)
     .single();
+  if (session.portalEmail && agent?.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // google_review_url is org-level — read from organizations
   const { data: org } = agent?.portal_email
@@ -43,6 +45,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json();
   const allowed = ['calendar_type', 'calendar_api_key', 'calendar_event_type_id', 'calendar_link', 'google_review_url'];
+  // IDOR: verify session owns this portal token before writing
+  {
+    const supabase = createAdminClient();
+    const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
+    if (session.portalEmail && ag?.portal_email && session.portalEmail !== ag.portal_email)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
 
   const calendarUpdate: Record<string, string | null> = {};
   let reviewUrl: string | null | undefined;

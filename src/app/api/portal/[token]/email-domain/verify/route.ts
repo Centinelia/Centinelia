@@ -18,6 +18,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('portal_token', token)
     .single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   if (!agent.resend_domain_id) {
     return NextResponse.json({ error: 'No hay dominio registrado' }, { status: 400 });
   }

@@ -24,6 +24,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: tokenAgent } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!tokenAgent?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && tokenAgent.portal_email && auth.portalEmail !== tokenAgent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { data: learning } = await supabase
     .from('agent_learnings')

@@ -16,6 +16,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const access = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (auth.portalEmail && access.portalEmail && auth.portalEmail !== access.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { data: calls } = await createAdminClient()
     .from('voice_calls')

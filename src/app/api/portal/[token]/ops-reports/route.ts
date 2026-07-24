@@ -16,6 +16,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
 
@@ -47,6 +49,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { name, frequency, schedule, data_sources, recipients, report_instructions, agent_id } = body;
   if (!name || !frequency || !schedule) return NextResponse.json({ error: 'Faltan campos' }, { status: 400 });
@@ -90,6 +94,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
   const allowed  = ['name', 'frequency', 'schedule', 'data_sources', 'recipients', 'report_instructions', 'active'];
@@ -123,6 +129,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
   await supabase.from('ops_reports').delete().eq('id', id).in('agent_id', agentIds);
@@ -142,6 +150,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
   const { data: report } = await supabase

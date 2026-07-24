@@ -17,6 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!agent?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { data } = await supabase
     .from('agent_learnings')

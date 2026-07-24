@@ -21,6 +21,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: agent } = await supabase
     .from('voice_agents').select('id, vapi_agent_id, portal_email, features').eq('portal_token', token).single();
   if (!agent) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Keys stored inside the features JSONB column — merge instead of flat update
   const featureJsonKeys = ['outbound_calls', 'role_color', 'avatar'];

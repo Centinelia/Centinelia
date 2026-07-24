@@ -25,6 +25,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
 
@@ -59,6 +61,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email, business_name, client_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
   const targetId = body.agent_id ?? acct.id;
@@ -148,6 +152,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email, business_name').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
 
@@ -217,6 +223,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('id, portal_email').eq('portal_token', token).single();
   if (!acct) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && acct.portal_email && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const agentIds = await getAgentIds(supabase, acct.portal_email);
 

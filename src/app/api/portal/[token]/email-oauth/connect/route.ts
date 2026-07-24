@@ -15,6 +15,15 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // IDOR check
+  {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const supabase = createAdminClient();
+    const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
+    if (session.portalEmail && ag?.portal_email && session.portalEmail !== ag.portal_email)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
   const provider = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
   if (provider !== 'gmail' && provider !== 'outlook') {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });

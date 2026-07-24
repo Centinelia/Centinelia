@@ -27,11 +27,13 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, client_name, business_name, stripe_customer_id')
+    .select('id, client_name, business_name, stripe_customer_id, portal_email')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   let customerId: string = agent.stripe_customer_id ?? '';
   if (!customerId) {

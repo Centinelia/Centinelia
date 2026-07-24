@@ -40,6 +40,7 @@ export async function getAgentForPdf(token: string): Promise<{
     .single();
 
   if (!agent) return null;
+  if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) return null;
 
   const rawLogoUrl = (agent.logo_url as string | null) ?? (agent.email_logo_url as string | null) ?? null;
   const logoDataUri = await logoToDataUri(rawLogoUrl);
