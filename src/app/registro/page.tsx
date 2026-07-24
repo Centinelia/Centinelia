@@ -1424,9 +1424,9 @@ function RegistroInner() {
                         <div style={{
                           position: 'absolute', top: -1, right: 16,
                           background: '#6C3BFF',
-                          borderRadius: '0 0 6px 6px',
-                          padding: '2px 10px 4px',
-                          fontSize: 9, fontWeight: 700,
+                          borderRadius: '0 0 5px 5px',
+                          padding: '2px 8px 3px',
+                          fontSize: 8, fontWeight: 700,
                           color: '#fff', letterSpacing: '0.06em',
                           textTransform: 'uppercase',
                         }}>
