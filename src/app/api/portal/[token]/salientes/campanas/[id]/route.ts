@@ -4,6 +4,7 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
+import { checkAccount } from '@/lib/compliance/account-guard';
 import type { VoiceAgent } from '@/types/agent';
 
 interface Params { params: Promise<{ token: string; id: string }> }
@@ -99,6 +100,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!agent.vapi_agent_id) return NextResponse.json({ error: 'El agente no está sincronizado con Vapi' }, { status: 400 });
 
   const supabase = createAdminClient();
+
+  // Account guard — same check as salientes/llamar
+  const guard = await checkAccount(session.portalEmail, supabase);
+  if (!guard.canOperate) {
+    return NextResponse.json({ error: `Cuenta ${guard.status}. No se pueden ejecutar campañas.` }, { status: 403 });
+  }
 
   let contactsQuery = supabase
     .from('outbound_contacts')

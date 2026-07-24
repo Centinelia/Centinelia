@@ -723,6 +723,20 @@ const BUSCAR_DIRECTORIO_TOOL: Anthropic.Tool = {
   },
 };
 
+const INICIAR_ONBOARDING_TOOL: Anthropic.Tool = {
+  name: 'iniciar_onboarding',
+  description: 'Inicia el proceso de onboarding para un nuevo empleado, cliente o proveedor. Envía automáticamente el correo de bienvenida con los pasos a seguir.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      contact_name:  { type: 'string', description: 'Nombre completo del contacto' },
+      contact_email: { type: 'string', description: 'Correo electrónico del contacto' },
+      template_name: { type: 'string', description: 'Nombre de la plantilla a usar (opcional)' },
+    },
+    required: ['contact_name', 'contact_email'],
+  },
+};
+
 const ALL_TOOLS = [
   DELEGATE_TASK_TOOL,
   CONSULT_AGENT_TOOL,
@@ -756,6 +770,7 @@ const ALL_TOOLS = [
   CREAR_TICKET_TOOL,
   CONSULTAR_INCIDENTES_TOOL,
   BUSCAR_DIRECTORIO_TOOL,
+  INICIAR_ONBOARDING_TOOL,
 ];
 
 // Maps voice tool names → chat tool names (null = no chat implementation yet)
@@ -779,6 +794,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   crear_ticket:              'crear_ticket',
   consultar_incidentes:      'consultar_incidentes',
   buscar_directorio:         'buscar_directorio',
+  iniciar_onboarding:        'iniciar_onboarding',
   // Same name in both channels
   create_contract_draft:     'create_contract_draft',
   create_file:               'create_file',
@@ -835,6 +851,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   crear_ticket:              CREAR_TICKET_TOOL,
   consultar_incidentes:      CONSULTAR_INCIDENTES_TOOL,
   buscar_directorio:         BUSCAR_DIRECTORIO_TOOL,
+  iniciar_onboarding:        INICIAR_ONBOARDING_TOOL,
   analizar_publicaciones_ml: ML_ANALIZAR_PUBLICACIONES_TOOL,
   crear_publicacion_ml:      ML_CREAR_PUBLICACION_TOOL,
   actualizar_publicacion_ml: ML_ACTUALIZAR_PUBLICACION_TOOL,

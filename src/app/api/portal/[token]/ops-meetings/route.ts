@@ -73,15 +73,16 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Trigger async processing
   processMeetingAudio({
-    meetingId:    meeting.id as string,
-    agentId:      acct.id as string,
-    audioUrl:     audio_url,
+    meetingId:        meeting.id as string,
+    agentId:          acct.id as string,
+    audioUrl:         audio_url,
     title,
-    participants: participants ?? [],
-    ownerEmail:   acct.client_email as string,
-    businessName: acct.business_name as string,
-    knowledgeBase: acct.knowledge_base as string | null,
-    instructions: instructions as string | undefined,
+    participants:     participants ?? [],
+    ownerEmail:       acct.client_email as string,
+    businessName:     acct.business_name as string,
+    knowledgeBase:    acct.knowledge_base as string | null,
+    roleKnowledgeBase: acct.role_knowledge_base as string | null,
+    instructions:     instructions as string | undefined,
   }).catch(err => console.error('[ops-meetings] Processing error:', err));
 
   return NextResponse.json({ ok: true, id: meeting.id });

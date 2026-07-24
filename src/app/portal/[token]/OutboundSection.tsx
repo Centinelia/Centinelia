@@ -179,13 +179,20 @@ function StatPill({ label, value, color }: { label: string; value: number; color
   );
 }
 
+function resultDisplayStatus(r: CampaignResult): Contact['status'] {
+  if (r.outcome === 'unanswered') return 'failed';
+  if (r.status === 'failed') return 'failed';
+  if (r.outcome != null || (r.duration_seconds != null && r.duration_seconds > 0)) return 'completed';
+  return 'calling';
+}
+
 function CampaignResultsPanel({ results }: { results: CampaignResult[] }) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  const total     = results.length;
-  const answered  = results.filter(r => ['completed', 'answered'].includes(r.status)).length;
-  const noAnswer  = results.filter(r => r.status === 'no_answer').length;
-  const failed    = results.filter(r => r.status === 'failed').length;
+  const total    = results.length;
+  const answered = results.filter(r => resultDisplayStatus(r) === 'completed').length;
+  const noAnswer = results.filter(r => r.outcome === 'unanswered').length;
+  const failed   = results.filter(r => resultDisplayStatus(r) === 'failed' && r.outcome !== 'unanswered').length;
 
   return (
     <div className="flex flex-col gap-3 pt-1">
@@ -211,7 +218,7 @@ function CampaignResultsPanel({ results }: { results: CampaignResult[] }) {
                   <span className="text-xs ml-2 font-mono" style={{ color: 'var(--c-text-3)' }}>{r.telefono}</span>
                 )}
               </div>
-              <StatusPill status={r.status as Contact['status']} />
+              <StatusPill status={resultDisplayStatus(r)} />
               {r.duration_seconds != null && r.duration_seconds > 0 && (
                 <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
                   {Math.ceil(r.duration_seconds / 60)} min

@@ -190,6 +190,7 @@ export async function POST(req: NextRequest) {
       .eq('agent_id', typedAgent.id)
       .eq('activa', true)
       .eq('auto_apply', true)
+      .contains('triggers', ['end_of_inbound_call'])
       .limit(3);
 
     if (activeSurveys?.length) {

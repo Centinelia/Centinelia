@@ -15,7 +15,9 @@ export async function PATCH(
   const update  = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
   update.updated_at = new Date().toISOString();
 
-  const { data, error } = await createAdminClient()
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
     .from('helpdesk_tickets')
     .update(update)
     .eq('id', id)
@@ -24,7 +26,49 @@ export async function PATCH(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (update.status === 'resuelto' && data?.caller_number && data?.agent_id) {
+    schedulePostTicketSurvey(
+      data.agent_id as string,
+      { caller_number: data.caller_number as string, titulo: data.titulo as string | null, folio: data.folio as string | null },
+    ).catch(console.error);
+  }
+
   return NextResponse.json({ ticket: data });
+}
+
+async function schedulePostTicketSurvey(
+  agentId:  string,
+  ticket:   { caller_number: string; titulo?: string | null; folio?: string | null },
+) {
+  const supabase = createAdminClient();
+
+  const [agentRes, surveyRes] = await Promise.all([
+    supabase.from('voice_agents').select('portal_email').eq('id', agentId).single(),
+    supabase
+      .from('surveys')
+      .select('id, nombre')
+      .eq('agent_id', agentId)
+      .eq('activa', true)
+      .eq('auto_apply', true)
+      .contains('triggers', ['after_ticket'])
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const survey = surveyRes.data;
+  if (!survey) return;
+
+  const folioLabel = ticket.folio ? ` #${ticket.folio}` : '';
+  await supabase.from('agent_tasks').insert({
+    portal_email: agentRes.data?.portal_email ?? null,
+    created_by:   agentId,
+    assigned_to:  agentId,
+    title:        `Encuesta post-ticket${folioLabel}: llamar a ${ticket.caller_number}`,
+    description:  `Ticket resuelto${folioLabel}${ticket.titulo ? `: "${ticket.titulo}"` : ''}. Llama al cliente y aplica la encuesta "${survey.nombre}" (survey_id: ${survey.id}).`,
+    status:       'pending',
+    trigger_type: 'survey_action',
+  });
 }
 
 export async function DELETE(

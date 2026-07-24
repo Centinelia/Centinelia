@@ -2,6 +2,67 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { buildOutboundSystemPrompt } from '@/lib/voice/outbound-prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
 
+type SurveyQ = {
+  id:         string;
+  orden:      number;
+  texto:      string;
+  tipo:       string;
+  opciones:   string[] | null;
+  conditions: { if_rating_lte?: number; if_answer?: string; then_say?: string } | null;
+};
+
+async function buildOutboundSurveyBlock(agentId: string): Promise<string> {
+  const supabase = createAdminClient();
+  const { data: surveys } = await supabase
+    .from('surveys')
+    .select('id, nombre, survey_questions(id, orden, texto, tipo, opciones, conditions)')
+    .eq('agent_id', agentId)
+    .eq('activa', true)
+    .eq('auto_apply', true)
+    .contains('triggers', ['end_of_outbound_call'])
+    .limit(2);
+
+  if (!surveys?.length) return '';
+
+  const blocks: string[] = [];
+  for (const s of surveys) {
+    const questions = (s.survey_questions as SurveyQ[] | null) ?? [];
+    if (!questions.length) continue;
+
+    const lines = [
+      `ENCUESTA AL CERRAR — "${s.nombre}"`,
+      `ID de encuesta: ${s.id}`,
+      'Preguntas:',
+      ...questions.map(q => {
+        let hint = '';
+        if (q.tipo === 'rating_5')  hint = ' [escala 1–5]';
+        if (q.tipo === 'rating_10') hint = ' [escala 1–10]';
+        if (q.tipo === 'si_no')     hint = ' [sí / no]';
+        if (q.tipo === 'multiple' && q.opciones?.length) hint = ` [opciones: ${q.opciones.join(', ')}]`;
+        const cond = q.conditions;
+        let condLine = '';
+        if (cond?.then_say?.trim()) {
+          if (cond.if_rating_lte != null)
+            condLine = `\n     → Si responde ${cond.if_rating_lte} o menos, di exactamente: "${cond.then_say.trim()}"`;
+          else if (cond.if_answer)
+            condLine = `\n     → Si responde "${cond.if_answer}", di exactamente: "${cond.then_say.trim()}"`;
+        }
+        return `  ${q.orden}. ${q.texto}${hint}${condLine}`;
+      }),
+      '',
+      'INSTRUCCIONES DE ENCUESTA:',
+      '- Aplica esta encuesta de forma natural ANTES de despedirte, cuando el objetivo principal de la llamada ya esté cumplido.',
+      '- Pide permiso brevemente: "Antes de cerrar, ¿le importaría responder una pregunta rápida?"',
+      '- Haz UNA pregunta a la vez y espera la respuesta.',
+      '- Si el cliente no quiere participar, respeta su decisión y cierra con normalidad.',
+      '- En cuanto termines (o si el cliente se niega), llama a registrar_encuesta con el survey_id y las respuestas.',
+    ];
+    blocks.push(lines.join('\n'));
+  }
+
+  return blocks.length ? '\n\n' + blocks.join('\n\n') : '';
+}
+
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
 
@@ -108,7 +169,16 @@ export async function triggerOutboundCall({
     ? `Hola${firstName}, ${isFormal ? 'le' : 'te'} hablamos de ${agent.business_name}. ${notice} Nos llamaste hace un momento y no pudimos contestar, ${isFormal ? 'le ofrecemos una disculpa' : 'te pedimos una disculpa'}, pero ${isFormal ? 'díganos' : 'dinos'}, ¿en qué ${isFormal ? 'le' : 'te'} podemos servir?`
     : `${greeting}, le habla ${agent.business_name}. ${notice}${motivo ? ` Le llamo porque ${motivo.toLowerCase()}.` : ''} ¿Tiene un momento?`;
 
-  const systemPrompt = buildOutboundSystemPrompt(agent, resolvedName, motivo, customerContext, campaignInstructions);
+  // Inject end_of_outbound_call surveys unless this call already has an embedded survey
+  let finalCampaignInstructions = campaignInstructions;
+  if (!campaignInstructions?.includes('survey_id:')) {
+    const surveyBlock = await buildOutboundSurveyBlock(agent.id);
+    if (surveyBlock) {
+      finalCampaignInstructions = (campaignInstructions ?? '') + surveyBlock;
+    }
+  }
+
+  const systemPrompt = buildOutboundSystemPrompt(agent, resolvedName, motivo, customerContext, finalCampaignInstructions);
 
   const res = await fetch(`${VAPI_URL}/call`, {
     method: 'POST',

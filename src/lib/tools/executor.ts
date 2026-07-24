@@ -31,6 +31,8 @@ import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
 import { generateWord } from '@/lib/documents/word';
 import { generateSlides, type Slide } from '@/lib/documents/slides';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
+import { sendOnboardingWelcome } from '@/lib/ops/onboarding-mailer';
+import { randomUUID } from 'crypto';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import {
   enhanceTextContent, enhanceSlidesContent,
@@ -818,6 +820,71 @@ export async function executeAgentTool(
     }
 
     return { ok: true, message: lines.length ? lines.join(' ') : 'No hay directorio configurado para esta área.' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // iniciar_onboarding
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'iniciar_onboarding') {
+    const contactName  = (toolInput.contact_name  as string | undefined)?.trim() ?? '';
+    const contactEmail = (toolInput.contact_email as string | undefined)?.trim() ?? '';
+    const templateName = (toolInput.template_name as string | undefined)?.trim() ?? null;
+
+    if (!contactName || !contactEmail) {
+      return { ok: false, error: 'Nombre y correo del contacto son requeridos.' };
+    }
+
+    // Get all agent IDs in this account
+    const { data: peers } = await supabase
+      .from('voice_agents').select('id').eq('portal_email', portalEmail);
+    const agentIds = (peers ?? []).map((a: any) => a.id as string);
+
+    // Find active templates
+    const { data: templates } = await supabase
+      .from('onboarding_templates')
+      .select('id, name, steps, notes')
+      .in('agent_id', agentIds)
+      .eq('active', true);
+
+    if (!templates?.length) {
+      return { ok: false, error: 'No hay plantillas de onboarding activas. Crea una desde el portal primero.' };
+    }
+
+    // Pick best-matching template
+    const tpl = templateName
+      ? (templates.find((t: any) => (t.name as string).toLowerCase().includes(templateName.toLowerCase())) ?? templates[0])
+      : templates[0];
+
+    const baseUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+    const submitToken = randomUUID();
+    const submitUrl  = `${baseUrl}/onboarding/${submitToken}`;
+
+    const { error } = await supabase.from('onboarding_instances').insert({
+      agent_id:       agentId,
+      template_id:    (tpl as any).id,
+      contact_name:   contactName,
+      contact_email:  contactEmail,
+      submit_token:   submitToken,
+      status:         'pendiente',
+      submitted_docs: [],
+    });
+
+    if (error) return { ok: false, error: error.message };
+
+    await sendOnboardingWelcome({
+      to:           contactEmail,
+      clientName:   contactName,
+      businessName,
+      templateName: (tpl as any).name as string,
+      submitUrl,
+      steps:        (tpl as any).steps as string[],
+      notes:        (tpl as any).notes as string | null,
+    });
+
+    return {
+      ok:      true,
+      message: `Onboarding iniciado para ${contactName}. Le envié el correo de bienvenida a ${contactEmail} con el proceso "${(tpl as any).name}".`,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

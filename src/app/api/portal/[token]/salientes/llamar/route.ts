@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     } else {
       await supabase
         .from('outbound_contacts')
-        .update({ status: 'failed' })
+        .update({ status: 'failed', fail_count: (contact.fail_count ?? 0) + 1 })
         .eq('id', contact.id);
     }
   }

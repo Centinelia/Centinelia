@@ -13,21 +13,23 @@ class MicrosoftEmail implements EmailConnector {
 
   async fetchUnread(since: Date): Promise<EmailMessage[]> {
     const filter = `isRead eq false and receivedDateTime gt ${since.toISOString()}`;
-    const select = 'id,subject,from,body,receivedDateTime';
+    const select = 'id,conversationId,subject,from,body,receivedDateTime';
     const url    = `${GRAPH}/me/mailFolders/inbox/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
     const res = await fetch(url, { headers: this.h() });
     if (!res.ok) return [];
     const data = await res.json();
     return (data.value ?? []).map((m: {
       id: string;
+      conversationId?: string;
       from: { emailAddress: { address: string; name: string } };
       subject: string;
       body: { content: string };
     }) => ({
-      id:      m.id,
-      from:    `${m.from?.emailAddress?.name ?? ''} <${m.from?.emailAddress?.address ?? ''}>`,
-      subject: m.subject ?? '',
-      body:    stripHtml(m.body?.content ?? ''),
+      id:       m.id,
+      threadId: m.conversationId,
+      from:     `${m.from?.emailAddress?.name ?? ''} <${m.from?.emailAddress?.address ?? ''}>`,
+      subject:  m.subject ?? '',
+      body:     stripHtml(m.body?.content ?? ''),
     }));
   }
 

@@ -207,38 +207,46 @@ const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
 ];
 
 export async function processInboxEmail(params: {
-  agentId:        string;
-  source:         string;
-  rawMessageId?:  string;
-  emailFrom:      string;
-  emailSubject:   string;
-  emailBody:      string;
-  attachments:    Array<{ name: string; url: string; type: string; size: number }>;
-  agentName:      string;
-  businessName:   string;
-  knowledgeBase?: string | null;
-  roleKB?:        string | null;
-  agentRole?:     string | null;
-  ownerEmail:     string;
-  portalToken:    string;
-  portalEmail?:   string;
-  autoReply?:     boolean;
-  approvalEmail?: string | null;
-  sendReplyFn?:   (body: string) => Promise<void>;
+  agentId:           string;
+  source:            string;
+  rawMessageId?:     string;
+  threadId?:         string;
+  emailFrom:         string;
+  emailSubject:      string;
+  emailBody:         string;
+  attachments:       Array<{ name: string; url: string; type: string; size: number }>;
+  agentName:         string;
+  businessName:      string;
+  knowledgeBase?:    string | null;
+  roleKB?:           string | null;
+  agentRole?:        string | null;
+  ownerEmail:        string;
+  portalToken:       string;
+  portalEmail?:      string;
+  autoReply?:        boolean;
+  approvalEmail?:    string | null;
+  existingInboxId?:  string;         // set when this is a reply to an info_requested thread
+  originalEmailBody?: string;        // original email body from the info_requested record
+  sendReplyFn?:      (body: string) => Promise<void>;
 }): Promise<void> {
   const {
-    agentId, source, rawMessageId, emailFrom, emailSubject,
+    agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
     emailBody, attachments, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
-    autoReply, approvalEmail, sendReplyFn,
+    autoReply, approvalEmail, existingInboxId, originalEmailBody, sendReplyFn,
   } = params;
+
+  // If this is a reply to an info_requested thread, prepend the original context
+  const effectiveBody = originalEmailBody
+    ? `${originalEmailBody}\n\n--- Respuesta del remitente ---\n${emailBody}`
+    : emailBody;
 
   const hasInvoiceAttachment = attachments.some(a =>
     a.type === 'application/pdf' || a.name.toLowerCase().includes('factura') || a.name.toLowerCase().includes('invoice')
   );
   const looksLikeInvoice = hasInvoiceAttachment ||
     /factura|invoice|bill|cobro|pago/i.test(emailSubject) ||
-    /factura|invoice|bill|cobro/i.test(emailBody.slice(0, 300));
+    /factura|invoice|bill|cobro/i.test(effectiveBody.slice(0, 300));
 
   const contextBlocks: string[] = [];
   if (knowledgeBase?.trim()) contextBlocks.push(`NEGOCIO:\n${knowledgeBase.trim()}`);
@@ -280,9 +288,10 @@ Si hay discrepancia o dato sospechoso, descríbela en "invoice_discrepancy" (o n
 De: ${emailFrom}
 Asunto: ${emailSubject}
 ${attachments.length ? `Adjuntos: ${attachments.map(a => a.name).join(', ')}` : ''}
+${originalEmailBody ? '(Este email es una respuesta a una solicitud de información previa — el hilo completo está en el cuerpo)' : ''}
 
 CUERPO:
-${emailBody.slice(0, 3000)}
+${effectiveBody.slice(0, 3000)}
 ${invoiceInstructions}
 
 Produce JSON con:
@@ -336,7 +345,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       portalToken,
       agent:        (agentRow ?? { id: agentId, agent_name: agentName, business_name: businessName }) as Record<string, unknown>,
       supabase,
-      userContext:  emailBody.slice(0, 500),
+      userContext:  effectiveBody.slice(0, 500),
       readUrlCount: { value: 0 } as ReadUrlCounter,
     };
 
@@ -450,32 +459,56 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     finalDraft  = result.draft;
   }
 
-  const { data: item } = await supabase
-    .from('ops_inbox')
-    .insert({
-      agent_id:            agentId,
-      source,
-      raw_message_id:      rawMessageId ?? null,
-      email_from:          emailFrom,
-      email_subject:       emailSubject,
-      email_body:          emailBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
-      attachments,
-      category:            result.category,
-      ai_summary:          result.summary,
-      ai_draft:            finalDraft,
-      item_type:           looksLikeInvoice ? 'invoice' : 'email',
-      invoice_data:        result.invoiceData,
-      invoice_valid:       result.invoiceValid,
-      invoice_discrepancy: result.invoiceDiscrepancy,
-      status:              finalStatus,
-    })
-    .select('id, approval_token')
-    .single();
+  type InboxItem = { id: string; approval_token: string };
+  let item: InboxItem | null = null;
+
+  if (existingInboxId) {
+    // Thread reply: update the existing info_requested record
+    const { data } = await supabase
+      .from('ops_inbox')
+      .update({
+        email_body:          effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+        ai_summary:          result.summary,
+        ai_draft:            finalDraft,
+        status:              finalStatus === 'info_requested' ? 'pending' : finalStatus,
+        invoice_data:        result.invoiceData,
+        invoice_valid:       result.invoiceValid,
+        invoice_discrepancy: result.invoiceDiscrepancy,
+      })
+      .eq('id', existingInboxId)
+      .select('id, approval_token')
+      .single();
+    item = data as unknown as InboxItem | null;
+  } else {
+    const { data } = await supabase
+      .from('ops_inbox')
+      .insert({
+        agent_id:            agentId,
+        source,
+        raw_message_id:      rawMessageId ?? null,
+        thread_id:           threadId ?? null,
+        email_from:          emailFrom,
+        email_subject:       emailSubject,
+        email_body:          effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+        attachments,
+        category:            result.category,
+        ai_summary:          result.summary,
+        ai_draft:            finalDraft,
+        item_type:           looksLikeInvoice ? 'invoice' : 'email',
+        invoice_data:        result.invoiceData,
+        invoice_valid:       result.invoiceValid,
+        invoice_discrepancy: result.invoiceDiscrepancy,
+        status:              finalStatus,
+      })
+      .select('id, approval_token')
+      .single();
+    item = data as unknown as InboxItem | null;
+  }
 
   if (!item || finalStatus === 'skipped') return;
 
   const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const portalUrl = `${baseUrl}/portal/${portalToken}?tab=oficina`;
+  const portalUrl = `${baseUrl}/portal/${portalToken}/oficina/bandeja`;
   const notifyTo  = approvalEmail || ownerEmail;
 
   if (finalStatus === 'escalated') {

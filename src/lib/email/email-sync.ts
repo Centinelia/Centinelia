@@ -92,29 +92,51 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       continue;
     }
 
+    // Detect thread reply: check if this is a response to an info_requested email
+    let existingInboxId: string | undefined;
+    let originalEmailBody: string | undefined;
+    if (msg.threadId) {
+      const { data: infoThread } = await supabase
+        .from('ops_inbox')
+        .select('id, email_body')
+        .eq('agent_id', agent.id)
+        .eq('thread_id', msg.threadId)
+        .eq('status', 'info_requested')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (infoThread) {
+        existingInboxId   = infoThread.id as string;
+        originalEmailBody = infoThread.email_body as string;
+      }
+    }
+
     await conn.email.markRead(msg.id).catch((err) =>
       console.error(`[email-sync] markRead failed for ${msg.id}:`, err)
     );
 
     await processInboxEmail({
-      agentId:       agent.id,
-      source:        integration.provider,
-      rawMessageId:  msg.id,
-      emailFrom:     msg.from,
-      emailSubject:  msg.subject,
-      emailBody:     msg.body,
-      attachments:   [],
-      agentName:     (agent.agent_name as string | null) ?? 'Centinelia',
-      businessName:  agent.business_name as string,
-      knowledgeBase: knowledge_base,
-      roleKB:        agent.role_knowledge_base as string | null,
-      agentRole:     agent.role as string | null,
-      ownerEmail:    agent.client_email as string,
-      portalToken:   agent.portal_token as string,
-      portalEmail:   agent.portal_email as string | undefined,
-      autoReply:     integration.auto_reply,
-      approvalEmail: (agent as Record<string, unknown>).approval_email as string | null | undefined,
-      sendReplyFn:   (body: string) => conn.email.sendReply({
+      agentId:           agent.id,
+      source:            integration.provider,
+      rawMessageId:      msg.id,
+      threadId:          msg.threadId,
+      emailFrom:         msg.from,
+      emailSubject:      msg.subject,
+      emailBody:         msg.body,
+      attachments:       [],
+      agentName:         (agent.agent_name as string | null) ?? 'Centinelia',
+      businessName:      agent.business_name as string,
+      knowledgeBase:     knowledge_base,
+      roleKB:            agent.role_knowledge_base as string | null,
+      agentRole:         agent.role as string | null,
+      ownerEmail:        agent.client_email as string,
+      portalToken:       agent.portal_token as string,
+      portalEmail:       agent.portal_email as string | undefined,
+      autoReply:         integration.auto_reply,
+      approvalEmail:     (agent as Record<string, unknown>).approval_email as string | null | undefined,
+      existingInboxId,
+      originalEmailBody,
+      sendReplyFn:       (body: string) => conn.email.sendReply({
         messageId: msg.id,
         threadId:  msg.threadId,
         to:        msg.from,

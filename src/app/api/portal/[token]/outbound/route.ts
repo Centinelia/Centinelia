@@ -8,21 +8,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const supabase = createAdminClient();
 
-  // Auth: session cookie OR direct token access (portal is token-gated)
   const cookie  = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
-  const session = cookie ? await verifySession(cookie) : null;
+  const session = await verifySession(cookie);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-  let agentQuery = supabase
+  const { data: agent } = await supabase
     .from('voice_agents')
     .select('id, features')
-    .eq('portal_token', token);
-
-  // If session exists, scope to that email for security
-  if (session?.portalEmail) {
-    agentQuery = agentQuery.eq('portal_email', session.portalEmail);
-  }
-
-  const { data: agent } = await agentQuery.single();
+    .eq('portal_token', token)
+    .eq('portal_email', session.portalEmail)
+    .single();
   if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const features = (agent.features ?? {}) as Record<string, boolean>;

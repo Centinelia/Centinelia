@@ -16,17 +16,18 @@ export interface MeetingData {
 }
 
 export async function processMeetingAudio(opts: {
-  meetingId:    string;
-  agentId:      string;
-  audioUrl:     string;
-  title:        string;
-  participants: string[];
-  ownerEmail:   string;
-  businessName: string;
-  knowledgeBase?: string | null;
-  instructions?: string;
+  meetingId:         string;
+  agentId:           string;
+  audioUrl:          string;
+  title:             string;
+  participants:      string[];
+  ownerEmail:        string;
+  businessName:      string;
+  knowledgeBase?:    string | null;
+  roleKnowledgeBase?: string | null;
+  instructions?:     string;
 }): Promise<void> {
-  const { meetingId, agentId, audioUrl, title, participants, ownerEmail, businessName, knowledgeBase, instructions } = opts;
+  const { meetingId, agentId, audioUrl, title, participants, ownerEmail, businessName, knowledgeBase, roleKnowledgeBase, instructions } = opts;
   const supabase = createAdminClient();
 
   await supabase.from('ops_meetings').update({ status: 'processing' }).eq('id', meetingId);
@@ -62,7 +63,7 @@ export async function processMeetingAudio(opts: {
       await supabase.from('ops_meetings').update({
         status:       'done',
         transcript,
-        meeting_data: { title, date: new Date().toISOString().slice(0, 10), participants, summary: '(Ops agotadas — sin análisis IA)', decisions: [], action_items: [], next_steps: '' },
+        meeting_data: { title, date: new Date().toISOString().slice(0, 10), participants, summary: '', decisions: [], action_items: [], next_steps: '', degraded: true },
         processed_at: new Date().toISOString(),
       }).eq('id', meetingId);
       return;
@@ -72,7 +73,11 @@ export async function processMeetingAudio(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1500,
-      system:     `Eres asistente de oficina de ${businessName}.${knowledgeBase ? `\n\n${knowledgeBase}` : ''}`,
+      system:     [
+        `Eres asistente de oficina de ${businessName}.`,
+        knowledgeBase     ? `\n# Conocimiento del negocio\n${knowledgeBase}`       : '',
+        roleKnowledgeBase ? `\n# Instrucciones del rol\n${roleKnowledgeBase}`      : '',
+      ].join(''),
       messages:   [{
         role:    'user',
         content: `Analiza la siguiente transcripción de una reunión y extrae la información clave.
@@ -98,11 +103,15 @@ Responde ÚNICAMENTE con JSON válido con esta estructura exacta:
 
     let extracted: Omit<MeetingData, 'title' | 'date' | 'participants'>;
     try {
-      const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '{}';
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      const block = msg.content[0];
+      const raw   = block?.type === 'text' ? block.text.trim() : '';
+      // Strip markdown code fences if present
+      const cleaned   = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
       extracted = JSON.parse(jsonMatch?.[0] ?? '{}');
+      if (!extracted.summary) throw new Error('empty');
     } catch {
-      extracted = { summary: transcript.slice(0, 500), decisions: [], action_items: [], next_steps: '' };
+      extracted = { summary: transcript.slice(0, 600), decisions: [], action_items: [], next_steps: '', parse_failed: true } as any;
     }
 
     const meetingData: MeetingData = {

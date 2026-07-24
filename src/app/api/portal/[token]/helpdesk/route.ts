@@ -15,9 +15,10 @@ export async function GET(
   const access    = await getAgentAccess(token, req);
   if (!access) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const sp        = req.nextUrl.searchParams;
-  const status    = sp.get('status');
-  const categoria = sp.get('categoria');
+  const sp         = req.nextUrl.searchParams;
+  const status     = sp.get('status');
+  const categoria  = sp.get('categoria');
+  const asignadoA  = sp.get('asignado_a');
 
   const supabase = createAdminClient();
   let q = supabase
@@ -29,6 +30,7 @@ export async function GET(
 
   if (status)    q = q.eq('status', status);
   if (categoria) q = q.eq('categoria', categoria);
+  if (asignadoA) q = q.eq('asignado_a', asignadoA);
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

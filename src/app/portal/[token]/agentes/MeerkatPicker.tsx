@@ -80,11 +80,13 @@ function MeerkatCardImage({ role }: { role: MeerkatRole }) {
   );
 }
 
-export default function MeerkatPicker({ token, plan = 'comercial', defaultTier = 'starter', recommendations }: {
+export default function MeerkatPicker({ token, plan = 'comercial', defaultTier = 'starter', recommendations, preselect, triggerLabel }: {
   token:            string;
   plan?:            Plan;
   defaultTier?:     MinutesTier;
   recommendations?: MeerkatRec[];
+  preselect?:       MeerkatRoleId;
+  triggerLabel?:    React.ReactNode;
 }) {
   const [open,         setOpen]         = useState(false);
   const [selected,     setSelected]     = useState<MeerkatRole | null>(null);
@@ -110,7 +112,19 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
 
   const reset = () => { setSelected(null); setExpandedRole(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
 
-  const openPicker  = () => { setOpen(true);  reset(); };
+  const openPicker = () => {
+    setOpen(true);
+    reset();
+    if (preselect) {
+      const role = MEERKAT_ROLES.find(r => r.id === preselect);
+      if (role) {
+        setSelected(role);
+        setAgentName(role.id === 'custom' ? '' : role.nombre);
+        const isCoord = !!(role.features as any)?.is_coordinator;
+        setJornada(isCoord ? 'tareas' : 'combinada');
+      }
+    }
+  };
   const closePicker = () => { setOpen(false); reset(); };
 
   const handleSelect = (role: MeerkatRole) => {
@@ -151,7 +165,10 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
   // Navigation state
   const step         = selected ? 'confirm' : expandedRole ? 'detail' : 'grid';
   const showBack     = step !== 'grid';
-  const handleBack   = () => { if (step === 'confirm') setSelected(null); else setExpandedRole(null); };
+  const handleBack   = () => {
+    if (step === 'confirm') { if (preselect) closePicker(); else setSelected(null); }
+    else setExpandedRole(null);
+  };
 
   const headerTitle = step === 'confirm'
     ? 'Confirmar contratación'
@@ -173,11 +190,13 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
     <>
       <button
         onClick={openPicker}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-        style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}
+        className="flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 shrink-0"
+        style={preselect
+          ? { background: '#6C3BFF', color: '#fff', border: 'none', padding: '7px 16px' }
+          : { background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)', padding: '6px 12px' }
+        }
       >
-        <Plus size={13} />
-        Agregar empleado
+        {triggerLabel ?? <><Plus size={13} /> Agregar empleado</>}
       </button>
 
       {open && (
@@ -526,18 +545,20 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                 )}
 
                 <div className="flex items-center gap-2 justify-end pt-1">
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="px-4 py-2 rounded-lg text-sm"
-                    style={{
-                      color:      'var(--c-text-3)',
-                      background: 'var(--c-surface-2)',
-                      border:     '1px solid var(--c-border)',
-                      cursor:     'pointer',
-                    }}
-                  >
-                    Cambiar
-                  </button>
+                  {!preselect && (
+                    <button
+                      onClick={() => setSelected(null)}
+                      className="px-4 py-2 rounded-lg text-sm"
+                      style={{
+                        color:      'var(--c-text-3)',
+                        background: 'var(--c-surface-2)',
+                        border:     '1px solid var(--c-border)',
+                        cursor:     'pointer',
+                      }}
+                    >
+                      Cambiar
+                    </button>
+                  )}
                   <button
                     onClick={handleCreate}
                     disabled={loading || !agentName.trim()}

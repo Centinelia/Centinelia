@@ -86,10 +86,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const existingMeta = (existing?.metadata as Record<string, unknown>) ?? {};
 
-    await supabase.from('integration_accounts')
-      .update({ metadata: { ...existingMeta, auto_reply } })
-      .eq('portal_email', agent.portal_email)
-      .eq('provider', provider);
+    await Promise.all([
+      supabase.from('integration_accounts')
+        .update({ metadata: { ...existingMeta, auto_reply } })
+        .eq('portal_email', agent.portal_email)
+        .eq('provider', provider),
+      // email-sync reads auto_reply from email_integrations — keep in sync
+      supabase.from('email_integrations')
+        .update({ auto_reply })
+        .eq('agent_id', agent.id)
+        .eq('provider', provider),
+    ]);
   } else {
     // Fallback
     await supabase.from('email_integrations')

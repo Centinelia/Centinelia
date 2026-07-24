@@ -57,7 +57,7 @@ const FILTER_LABELS: Record<string, string> = {
   resuelto:   'Resueltos',
 };
 
-export default function HelpdeskSection({ token }: { token: string }) {
+export default function HelpdeskSection({ token, subUserName }: { token: string; subUserName?: string | null }) {
   const [tickets, setTickets]   = useState<Ticket[]>([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState('');
@@ -73,12 +73,15 @@ export default function HelpdeskSection({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const url = `/api/portal/${token}/helpdesk${filter ? `?status=${filter}` : ''}`;
+    const qs = new URLSearchParams();
+    if (filter)      qs.set('status',     filter);
+    if (subUserName) qs.set('asignado_a', subUserName);
+    const url = `/api/portal/${token}/helpdesk${qs.toString() ? `?${qs}` : ''}`;
     const res = await fetch(url);
     const d   = await res.json();
     setTickets(d.tickets ?? []);
     setLoading(false);
-  }, [token, filter]);
+  }, [token, filter, subUserName]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -94,7 +97,10 @@ export default function HelpdeskSection({ token }: { token: string }) {
     setSaving(true);
     const res = await fetch(`/api/portal/${token}/helpdesk`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc, asignado_a: newAsig || undefined }),
+      body: JSON.stringify({
+        titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc,
+        asignado_a: newAsig || subUserName || undefined,
+      }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -127,21 +133,23 @@ export default function HelpdeskSection({ token }: { token: string }) {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {[
-          { label: 'Pendientes',  value: pendientes, color: '#3b82f6' },
-          { label: 'En atención', value: enAtencion, color: '#6C3BFF' },
-          { label: 'Críticos',    value: criticos,   color: '#ef4444' },
-          { label: 'Resueltos',   value: resueltos,  color: '#22c55e' },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl p-3 text-center"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
-            <div className="text-xl font-bold tabular-nums" style={{ color: s.value > 0 ? s.color : 'var(--c-text-3)' }}>{s.value}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* Stats — owner only */}
+      {!subUserName && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            { label: 'Pendientes',  value: pendientes, color: '#3b82f6' },
+            { label: 'En atención', value: enAtencion, color: '#6C3BFF' },
+            { label: 'Críticos',    value: criticos,   color: '#ef4444' },
+            { label: 'Resueltos',   value: resueltos,  color: '#22c55e' },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl p-3 text-center"
+              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
+              <div className="text-xl font-bold tabular-nums" style={{ color: s.value > 0 ? s.color : 'var(--c-text-3)' }}>{s.value}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters + action */}
       <div className="flex flex-wrap items-center gap-2 justify-between">

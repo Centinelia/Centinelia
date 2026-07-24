@@ -1,12 +1,14 @@
 'use client';
-
+// v2
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus, Trash2, BarChart2, ChevronDown, ChevronUp,
   ToggleLeft, ToggleRight, X, MessageSquare, Loader2,
   Star, Phone, Wrench, Building2, Package, Headphones,
   Pencil, ArrowLeft, Zap, Bell, PhoneCall, AlertTriangle, ClipboardList,
+  Download, List, PlayCircle,
 } from 'lucide-react';
+import MeerkatPicker from '../../agentes/MeerkatPicker';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,11 +73,21 @@ interface Trend {
   prev_count:    number;
 }
 
+interface IndividualResponse {
+  id:            string;
+  caller_number: string | null;
+  vapi_call_id:  string | null;
+  created_at:    string;
+  respuestas:    Record<string, string>;
+  churn_risk?:   boolean;
+}
+
 interface Results {
   total:      number;
   aggregates: Aggregate[];
   questions:  Question[];
   trends?:    Record<string, Trend>;
+  responses?: IndividualResponse[];
 }
 
 interface AgentMini {
@@ -902,7 +914,7 @@ function SurveyCard({
   onDelete: (id: string) => void;
 }) {
   const [open,       setOpen]       = useState(false);
-  const [view,       setView]       = useState<'hallazgos' | 'preguntas' | 'acciones'>('hallazgos');
+  const [view,       setView]       = useState<'hallazgos' | 'preguntas' | 'acciones' | 'respuestas'>('hallazgos');
   const [questions,  setQuestions]  = useState<Question[]>(survey.survey_questions ?? []);
   const [results,    setResults]    = useState<Results | null>(null);
   const [loadingRes, setLoadingRes] = useState(false);
@@ -959,6 +971,44 @@ function SurveyCard({
     if (!primaryAvg || !results?.trends) return null;
     return results.trends[primaryAvg.question_id] ?? null;
   }, [primaryAvg, results]);
+
+  const [manualOpen,    setManualOpen]    = useState(false);
+  const [manualPhone,   setManualPhone]   = useState('');
+  const [manualSaving,  setManualSaving]  = useState(false);
+  const [manualSent,    setManualSent]    = useState(false);
+
+  const hasManualTrigger = (survey.triggers ?? []).includes('manual');
+
+  async function dispatchManual() {
+    if (!manualPhone.trim()) return;
+    setManualSaving(true);
+    await fetch(`/api/portal/${token}/surveys/${survey.id}/dispatch`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ phone: manualPhone.trim() }),
+    });
+    setManualSaving(false);
+    setManualSent(true);
+    setManualPhone('');
+    setTimeout(() => { setManualSent(false); setManualOpen(false); }, 2000);
+  }
+
+  function exportCSV() {
+    const responses = results?.responses ?? [];
+    const questions = results?.questions ?? [];
+    if (!responses.length) return;
+    const headers = ['Fecha', 'Número', ...questions.map(q => q.texto)];
+    const rows = responses.map(r => [
+      new Date(r.created_at).toLocaleString('es-MX'),
+      r.caller_number ?? '',
+      ...questions.map(q => r.respuestas[q.id] ?? ''),
+    ]);
+    const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href = url; a.download = `${survey.nombre}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // Derived trigger + agent labels for display
   const triggerLabels = (survey.triggers ?? []).map(t => TRIGGER_SHORT[t] ?? t);
@@ -1106,11 +1156,55 @@ function SurveyCard({
               {survey.auto_apply ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
               Aplicar automáticamente
             </button>
+            {hasManualTrigger && (
+              <button
+                onClick={() => setManualOpen(v => !v)}
+                className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b', padding: 0 }}
+              >
+                <PlayCircle size={13} />
+                Aplicar ahora
+              </button>
+            )}
           </div>
 
+          {/* Manual dispatch panel */}
+          {hasManualTrigger && manualOpen && (
+            <div className="mx-4 mb-3 p-3 rounded-xl flex flex-col gap-2"
+              style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Aplicar manualmente</p>
+              <div className="flex gap-2">
+                <input
+                  value={manualPhone}
+                  onChange={e => setManualPhone(e.target.value)}
+                  placeholder="Número del cliente (ej. +528112345678)"
+                  className="flex-1 px-3 py-1.5 rounded-lg text-xs"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                />
+                <button
+                  onClick={dispatchManual}
+                  disabled={manualSaving || !manualPhone.trim()}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1"
+                  style={{
+                    background: manualSent ? 'rgba(34,197,94,0.15)' : '#f59e0b',
+                    color:      manualSent ? '#22c55e'               : '#000',
+                    border:     'none', cursor: manualSaving || !manualPhone.trim() ? 'not-allowed' : 'pointer',
+                    opacity:    manualSaving || !manualPhone.trim() ? 0.6 : 1,
+                  }}
+                >
+                  {manualSaving && <Loader2 size={10} className="animate-spin" />}
+                  {manualSent ? 'Tarea creada' : 'Crear tarea'}
+                </button>
+              </div>
+              <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                Se crea una tarea para que el empleado llame a este número y aplique la encuesta.
+              </p>
+            </div>
+          )}
+
           {/* Tabs */}
-          <div className="flex gap-1 px-4 pb-2">
-            {(['hallazgos', 'preguntas', 'acciones'] as const).map(v => (
+          <div className="flex gap-1 px-4 pb-2 flex-wrap">
+            {(['hallazgos', 'preguntas', 'acciones', 'respuestas'] as const).map(v => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -1125,7 +1219,9 @@ function SurveyCard({
                   ? <span className="flex items-center gap-1"><BarChart2 size={11} /> Hallazgos</span>
                   : v === 'preguntas'
                   ? 'Preguntas'
-                  : <span className="flex items-center gap-1"><Zap size={11} /> Acciones</span>
+                  : v === 'acciones'
+                  ? <span className="flex items-center gap-1"><Zap size={11} /> Acciones</span>
+                  : <span className="flex items-center gap-1"><List size={11} /> Respuestas{results && results.total > 0 ? ` · ${results.total}` : ''}</span>
                 }
               </button>
             ))}
@@ -1190,6 +1286,63 @@ function SurveyCard({
           {/* Acciones */}
           {view === 'acciones' && (
             <ActionsTab survey={survey} token={token} questions={questions} />
+          )}
+
+          {/* Respuestas individuales */}
+          {view === 'respuestas' && (
+            <div className="px-4 pb-4 flex flex-col gap-3">
+              {loadingRes && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
+              {!loadingRes && (!results || results.total === 0) && (
+                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas registradas aún.</p>
+              )}
+              {results && results.total > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{results.total} respuesta{results.total !== 1 ? 's' : ''}</p>
+                    <button
+                      onClick={exportCSV}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)', color: '#9B6DFF', cursor: 'pointer' }}
+                    >
+                      <Download size={11} /> Exportar CSV
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+                    {(results.responses ?? []).map((r, i) => (
+                      <div key={r.id ?? i} className="rounded-xl p-3 flex flex-col gap-1.5"
+                        style={{ background: 'var(--c-surface-2)', border: `1px solid ${r.churn_risk ? 'rgba(239,68,68,0.3)' : 'var(--c-border)'}` }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-medium" style={{ color: 'var(--c-text-3)' }}>
+                            {r.caller_number ?? 'Número desconocido'}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {r.churn_risk && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                Churn risk
+                              </span>
+                            )}
+                            <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                              {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                        {results.questions.map(q => {
+                          const val = r.respuestas[q.id];
+                          if (!val) return null;
+                          return (
+                            <div key={q.id} className="flex gap-2">
+                              <span className="text-[10px] leading-snug shrink-0" style={{ color: 'var(--c-text-4)', minWidth: 0, maxWidth: '50%' }}>{q.texto}</span>
+                              <span className="text-[10px] font-semibold leading-snug" style={{ color: 'var(--c-text-2)' }}>{val}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* Preguntas */}
@@ -1280,7 +1433,13 @@ function SurveyCard({
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
-export default function EncuestasSection({ token, agentName }: { token: string; agentName?: string }) {
+export default function EncuestasSection({ token, agentName, hasSurveyAgent = true, plan = 'comercial', defaultTier = 'starter' }: {
+  token:           string;
+  agentName?:      string;
+  hasSurveyAgent?: boolean;
+  plan?:           string;
+  defaultTier?:    string;
+}) {
   const [surveys,      setSurveys]      = useState<Survey[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [showWizard,   setShowWizard]   = useState(false);
@@ -1341,6 +1500,37 @@ export default function EncuestasSection({ token, agentName }: { token: string; 
           Define una vez las preguntas y tus empleados las aplicarán automáticamente cuando corresponda. Mide satisfacción, calidad, entregas o cualquier proceso sin depender de que alguien recuerde preguntar.
         </p>
       </div>
+
+      {/* No survey agent banner */}
+      {!hasSurveyAgent && (
+        <div className="flex rounded-xl overflow-hidden"
+          style={{ background: 'linear-gradient(to right, rgba(108,59,255,0.07), rgba(245,158,11,0.07))', border: '1px solid rgba(108,59,255,0.25)' }}>
+          <img src="/meerkats/nia.png" alt="Nia"
+            className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
+          <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center gap-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(108,59,255,0.7)' }}>
+              Calidad
+            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold leading-snug" style={{ color: '#6C3BFF' }}>
+                Nia no está en tu equipo.
+              </p>
+              <div style={{ marginRight: 30 }}>
+                <MeerkatPicker
+                  token={token}
+                  plan={plan as 'comercial' | 'pro'}
+                  defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
+                  preselect="nia"
+                  triggerLabel="Contratar"
+                />
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+              Sin Nia, Nelia o Naia las encuestas se aplican solo de forma manual. Estos empleados las realizan automáticamente al terminar cada llamada y registran las respuestas sin intervención.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Activity block */}
       {activeSurveys.length > 0 && (
