@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { rateLimit, limiters } from '@/lib/ratelimit';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 800, 300: 2100 };
 const PRICE_PER_OP = 8.5;
@@ -12,6 +13,9 @@ function calcPrice(ops: number): number {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = await rateLimit(req, limiters.payment);
+  if (rl) return rl;
+
   const cookieStore = await cookies();
   const auth = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

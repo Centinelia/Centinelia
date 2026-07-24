@@ -30,6 +30,12 @@ export const limiters = {
 
   // Agent chat (Sonnet, billed per op): 10 messages per minute per portal token
   agentChat: makeRatelimit(Ratelimit.slidingWindow(10, '1 m'), 'rl:agent-chat'),
+
+  // Stripe checkout creation: 10 attempts per hour per IP
+  payment: makeRatelimit(Ratelimit.slidingWindow(10, '1 h'), 'rl:payment'),
+
+  // Bug reports: 5 per hour per IP
+  bugReport: makeRatelimit(Ratelimit.slidingWindow(5, '1 h'), 'rl:bug-report'),
 };
 
 function getIp(req: NextRequest): string {

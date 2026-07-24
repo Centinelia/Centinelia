@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
+import { rateLimit, limiters } from '@/lib/ratelimit';
 
 interface Params { params: Promise<{ token: string }> }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const rl = await rateLimit(req, limiters.bugReport);
+  if (rl) return rl;
+
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
