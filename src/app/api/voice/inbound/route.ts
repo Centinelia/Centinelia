@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
   // Team member identification
   const normCaller   = phoneNumber.replace(/\D/g, '').slice(-10);
-  const teamNumbers  = ((typedAgent as any).team_numbers ?? []) as { number: string; name?: string; is_owner?: boolean }[];
+  const teamNumbers  = typedAgent.team_numbers ?? [];
   const callerTeamEntry = normCaller.length >= 7
     ? teamNumbers.find(t => t.number.replace(/\D/g, '').slice(-10) === normCaller) ?? null
     : null;
@@ -174,8 +174,8 @@ export async function POST(req: NextRequest) {
     const { data: acctMins } = typedAgent.portal_email
       ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', typedAgent.portal_email).single()
       : { data: null };
-    minutesIncluded = acctMins?.minutes_included ?? (typedAgent as any).minutes_included ?? 0;
-    const minutesUsed = acctMins?.minutes_used ?? (typedAgent as any).minutes_used ?? 0;
+    minutesIncluded = acctMins?.minutes_included ?? typedAgent.minutes_included ?? 0;
+    const minutesUsed = acctMins?.minutes_used ?? typedAgent.minutes_used ?? 0;
     minutesRemain = Math.max(0, minutesIncluded - minutesUsed);
   }
   const LOW_MINS_THRESHOLD = Math.max(30, minutesIncluded * 0.20);
@@ -306,7 +306,7 @@ export async function POST(req: NextRequest) {
       endCallPhrases: ['hasta luego', 'hasta pronto', 'que tenga un excelente día', 'que tenga buen día', 'adiós', 'fue un placer atenderle'],
       transcriber: {
         provider: 'deepgram',
-        model: 'nova-2',
+        model: 'nova-3',
         language: typedAgent.features.multilingual ? 'multi' : 'es',
         smartFormat: true,
         endpointing: 100,
@@ -392,8 +392,8 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   if (f.appointment_booking) {
-    const hasCalendar     = !!(agent as any).calendar_type;
-    const hasCalComApi    = (agent as any).calendar_type === 'cal_com' && !!(agent as any).calendar_api_key;
+    const hasCalendar     = !!agent.calendar_type;
+    const hasCalComApi    = agent.calendar_type === 'cal_com' && !!agent.calendar_api_key;
     if (hasCalendar) {
       if (hasCalComApi) {
         tools.push({
@@ -520,7 +520,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
       },
     });
 
-    if ((agent as any).transfer_number) {
+    if (agent.transfer_number) {
       tools.push({
         type: 'transferCall',
         function: {
@@ -530,7 +530,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
         },
         destinations: [{
           type: 'number',
-          number: (agent as any).transfer_number,
+          number: agent.transfer_number,
           message: 'Un momento por favor, te estoy comunicando con el equipo.',
         }],
         messages: [{
@@ -710,7 +710,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   });
 
   // Outbound call — only for agents with outbound_calls feature
-  if ((agent as any).features?.outbound_calls) {
+  if (agent.features.outbound_calls) {
     tools.push({
       type: 'function',
       function: {
@@ -731,7 +731,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   // Surveys — only for agents with of_encuestas feature
-  if ((agent as any).features?.of_encuestas) {
+  if (agent.features.of_encuestas) {
     tools.push({
       type: 'function',
       function: {
@@ -753,8 +753,8 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   // Civic reports — for NARA (government/civic agents)
-  const meerkatRole = (agent as any).features?.meerkat_role_id as string | undefined;
-  if (meerkatRole === 'nara' || (agent as any).features?.civic_reports) {
+  const meerkatRole = agent.features.meerkat_role_id;
+  if (meerkatRole === 'nara' || agent.features.civic_reports) {
     const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
     tools.push(
       {
@@ -813,7 +813,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   // Calendar tools — for agents with a connected calendar
-  if ((agent as any).calendar_type) {
+  if (agent.calendar_type) {
     const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
     tools.push(
       {
@@ -871,7 +871,7 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
   }
 
   // create_contract_draft — for NOX and coordinator-type agents
-  if (meerkatRole === 'nox' || (agent as any).features?.contract_drafts) {
+  if (meerkatRole === 'nox' || agent.features.contract_drafts) {
     tools.push({
       type: 'function',
       function: {

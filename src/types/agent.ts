@@ -43,6 +43,8 @@ export interface AgentFeatures {
   skip_aup?: boolean;
   skip_recording_notice?: boolean;
   of_encuestas?: boolean;
+  civic_reports?: boolean;
+  contract_drafts?: boolean;
 }
 
 // ─── Business hours ───────────────────────────────────────────────────────────
@@ -123,6 +125,12 @@ export interface VoiceAgent {
   email_footer_text?: string | null;
   brand_website?: string | null;
   brand_address?: string | null;
+  // Calendar integration
+  calendar_type?: string | null;
+  calendar_api_key?: string | null;
+  // Team numbers (owner bypass + team member identification)
+  team_numbers?: Array<{ number: string; name?: string; is_owner?: boolean }> | null;
+
   // AGENT Framework fields (sessions 18-23)
   organization_mission?: string | null;
   service_definition?: string | null;
@@ -249,4 +257,6 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   skip_aup:                '',
   skip_recording_notice:   '',
   of_encuestas:            '',
+  civic_reports:           '',
+  contract_drafts:         '',
 };
