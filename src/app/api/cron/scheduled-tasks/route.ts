@@ -5,28 +5,31 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
-function getNextRun(frequency: string, schedule: Record<string, number>): Date {
-  const now = new Date();
+function getNextRun(frequency: string, schedule: Record<string, number>, timezone = 'America/Monterrey'): Date {
+  const now    = new Date();
+  const tzNow  = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const offset = now.getTime() - tzNow.getTime();
+  const hour   = schedule.hour ?? 8;
+
   if (frequency === 'daily') {
-    const d = new Date(now);
-    d.setDate(d.getDate() + 1);
-    d.setHours(schedule.hour ?? 8, 0, 0, 0);
-    return d;
+    const c = new Date(tzNow);
+    c.setDate(c.getDate() + 1);
+    c.setHours(hour, 0, 0, 0);
+    return new Date(c.getTime() + offset);
   }
   if (frequency === 'weekly') {
-    const d        = new Date(now);
-    const target   = schedule.day_of_week ?? 1;
-    const diff     = (target - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + diff);
-    d.setHours(schedule.hour ?? 8, 0, 0, 0);
-    return d;
+    const c      = new Date(tzNow);
+    const target = schedule.day_of_week ?? 1;
+    const diff   = (target - tzNow.getDay() + 7) % 7 || 7;
+    c.setDate(c.getDate() + diff);
+    c.setHours(hour, 0, 0, 0);
+    return new Date(c.getTime() + offset);
   }
-  // monthly
-  const d = new Date(now);
-  d.setMonth(d.getMonth() + 1);
-  d.setDate(schedule.day_of_month ?? 1);
-  d.setHours(schedule.hour ?? 8, 0, 0, 0);
-  return d;
+  const c = new Date(tzNow);
+  c.setMonth(c.getMonth() + 1);
+  c.setDate(schedule.day_of_month ?? 1);
+  c.setHours(hour, 0, 0, 0);
+  return new Date(c.getTime() + offset);
 }
 
 export async function GET(req: NextRequest) {
@@ -68,18 +71,19 @@ async function runScheduledTask(
   // Find the orchestrating agent (Nox/coordinator if available)
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, features')
+    .select('id, agent_name, role, features, timezone')
     .eq('portal_email', portalEmail)
     .eq('active', true);
 
   if (!agents?.length) {
-    await markResult(supabase, taskId, 'failed', 'No hay agentes activos en el portal.', false, task);
+    await markResult(supabase, taskId, 'failed', 'No hay agentes activos en el portal.', false, task, 'America/Monterrey');
     return;
   }
 
   // Prefer coordinator (Nox/Niva), fallback to the specific agent_id, then any agent
   const coordinator = agents.find(a => (a.features as Record<string, unknown>)?.is_coordinator === true);
   const target      = agents.find(a => a.id === agentId) ?? coordinator ?? agents[0];
+  const tz          = (target.timezone as string | null) ?? 'America/Monterrey';
 
   // Call delegar-tarea on the target agent's behalf
   try {
@@ -104,9 +108,9 @@ async function runScheduledTask(
     const met    = criteria ? result.includes('[Criterio cumplido]') : true;
     const status = met ? 'success' : 'partial';
 
-    await markResult(supabase, taskId, status, result, met, task);
+    await markResult(supabase, taskId, status, result, met, task, tz);
   } catch (err) {
-    await markResult(supabase, taskId, 'failed', String(err), false, task);
+    await markResult(supabase, taskId, 'failed', String(err), false, task, tz);
   }
 }
 
@@ -117,10 +121,12 @@ async function markResult(
   result:   string,
   goalMet:  boolean,
   task:     Record<string, unknown>,
+  timezone  = 'America/Monterrey',
 ): Promise<void> {
   const nextRun = getNextRun(
     task.frequency as string,
     (task.schedule as Record<string, number>) ?? {},
+    timezone,
   );
 
   await supabase.from('scheduled_agent_tasks').update({

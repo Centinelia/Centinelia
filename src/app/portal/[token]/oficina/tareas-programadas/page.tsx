@@ -24,10 +24,11 @@ export default async function TareasProgramadasPage({ params }: Props) {
     : { data: [] };
 
   const agents = (agentsRaw ?? []).map((a: Record<string, unknown>) => ({
-    id:         a.id as string,
-    agent_name: (a.agent_name as string | null) ?? null,
-    role:       (a.role as string | null) ?? null,
-    is_coordinator: !!(a.features as Record<string, unknown>)?.is_coordinator,
+    id:              a.id as string,
+    agent_name:      (a.agent_name as string | null) ?? null,
+    role:            (a.role as string | null) ?? null,
+    is_coordinator:  !!((a.features as Record<string, unknown>)?.is_coordinator),
+    meerkat_role_id: ((a.features as Record<string, unknown>)?.meerkat_role_id as string | null) ?? null,
   }));
 
   return (
