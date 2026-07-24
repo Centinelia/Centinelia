@@ -1123,11 +1123,11 @@ function RegistroInner() {
                         style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
                           <span>Instalación</span>
-                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 MXN</span>
+                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 + IVA</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
                           <span>Mensualidad</span>
-                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $1,997 MXN</span>
+                          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $1,997 + IVA/mes</span>
                         </div>
                       </div>
                       <button
@@ -1231,11 +1231,11 @@ function RegistroInner() {
                                 style={{ background: `${selectedMeerkat.color}14`, border: `1px solid ${selectedMeerkat.color}28` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 3 }}>
                                   <span>Instalación</span>
-                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 MXN</span>
+                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>$14,990 + IVA</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
                                   <span>Mensualidad</span>
-                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 MXN</span>
+                                  <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>desde $2,997 + IVA/mes</span>
                                 </div>
                               </div>
                               <button
@@ -1459,7 +1459,7 @@ function RegistroInner() {
                         <p className="font-bold tabular-nums" style={{ fontSize: 18, color: sel ? '#9B6DFF' : '#fff' }}>
                           {priceFmt(t.price)}
                         </p>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>/mes</p>
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>+ IVA/mes</p>
                       </div>
                     </div>
                   );
@@ -1486,7 +1486,7 @@ function RegistroInner() {
                         <p className="font-bold text-white text-base leading-tight flex items-center gap-1">
                           {t.label} <Zap size={11} style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                         </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Por mes</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>+ IVA/mes</p>
                         <p className="text-xs mt-1.5" style={{ color: sel ? lightenColor(roleColor, 0.45) : 'rgba(255,255,255,0.38)' }}>{t.desc}</p>
                       </div>
                       {/* Price + badge */}
@@ -1498,7 +1498,7 @@ function RegistroInner() {
                           </div>
                         )}
                         <p className="font-bold tabular-nums" style={{ fontSize: 17, color: sel ? lightenColor(roleColor, 0.45) : '#fff', display: 'block' }}>
-                          {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}>/mes</span>
+                          {priceFmt(t.price)}<span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.35)' }}> + IVA/mes</span>
                         </p>
                       </div>
                     </div>
@@ -1510,7 +1510,7 @@ function RegistroInner() {
             <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
               {isCoordinator
                 ? <>{selectedMeerkat?.nombre ?? 'El director'} coordina sin llamadas.<br />Las tareas inteligentes extra tienen costo adicional.</>
-                : <>Si {selectedMeerkat?.nombre ?? 'tu empleado'} necesita más tiempo,<br />Solo pagarás $12.99 por minuto adicional.</>
+                : <>Si {selectedMeerkat?.nombre ?? 'tu empleado'} necesita más tiempo,<br />Solo pagarás $12.99 + IVA por minuto adicional.</>
               }
             </p>
 
