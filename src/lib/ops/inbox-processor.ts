@@ -95,7 +95,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
         total_price: { type: 'string' }, validity_days: { type: 'number' },
         recipient_name: { type: 'string' }, recipient_email: { type: 'string' },
         vendor_name: { type: 'string' }, vendor_rfc: { type: 'string' }, vendor_email: { type: 'string' },
-        delivery_terms: { type: 'string' }, payment_terms: { type: 'string' }, include_iva: { type: 'boolean' },
+        delivery_terms: { type: 'string' }, payment_terms: { type: 'string' }, folio_num: { type: 'string' }, include_iva: { type: 'boolean' },
         items: { type: 'array', items: { type: 'object', properties: { descripcion: { type: 'string' }, cantidad: { type: 'number' }, precio_unitario: { type: 'number' }, unidad: { type: 'string' } }, required: ['descripcion', 'cantidad', 'precio_unitario'] } },
       },
       required: ['title', 'content'],

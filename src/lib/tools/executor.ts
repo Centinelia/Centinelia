@@ -194,6 +194,28 @@ export async function executeAgentTool(
 
       const featCfg  = ((agent.features as Record<string, unknown>)?.factura_config ?? {}) as Record<string, unknown>;
       const ordenCfg = ((agent.features as Record<string, unknown>)?.orden_config   ?? {}) as Record<string, unknown>;
+
+      // Resolve folio for factura: explicit input → QB last+1 → configured-prefix random
+      let facturaFolioNum: string | undefined = toolInput.folio_num as string | undefined;
+      if (!facturaFolioNum && templateType === 'factura') {
+        const prefix = (featCfg.folio_prefix as string | undefined) ?? 'FAC';
+        try {
+          const qb = await getQBClient(portalEmail, supabase);
+          if (qb) {
+            const qd  = await qb.query('SELECT DocNumber FROM Invoice ORDER BY MetaData.CreateTime DESC MAXRESULTS 1');
+            const dn  = qd?.QueryResponse?.Invoice?.[0]?.DocNumber as string | undefined;
+            if (dn) {
+              const n = dn.replace(/\D/g, '');
+              if (n) facturaFolioNum = `${prefix}-${String(parseInt(n, 10) + 1).padStart(Math.max(n.length, 4), '0')}`;
+            }
+          }
+        } catch { /* fall through */ }
+        if (!facturaFolioNum) {
+          const d = new Date(); const pad = (n: number) => String(n).padStart(2, '0');
+          facturaFolioNum = `${prefix}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(Math.random()*9000)+1000}`;
+        }
+      }
+
       let pdfEl: React.ReactElement;
 
       if (templateType === 'proposal') {
@@ -202,7 +224,7 @@ export async function executeAgentTool(
         pdfEl = createElement(LetterPDF, { brand, content, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
       } else if (templateType === 'factura') {
         const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number }> | undefined) ?? [];
-        pdfEl = createElement(FacturaPdf, { brand, data: { clienteNombre: (toolInput.client_name as string | null) ?? 'Cliente', clienteRFC: toolInput.client_rfc as string | undefined, clienteEmail: toolInput.client_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? true, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (featCfg.condiciones_pago as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, notas: content || null } });
+        pdfEl = createElement(FacturaPdf, { brand, data: { clienteNombre: (toolInput.client_name as string | null) ?? 'Cliente', clienteRFC: toolInput.client_rfc as string | undefined, clienteEmail: toolInput.client_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? true, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (featCfg.condiciones_pago as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, folioNum: facturaFolioNum, notas: content || null } });
       } else if (templateType === 'orden_compra') {
         const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number; unidad?: string }> | undefined) ?? [];
         pdfEl = createElement(OrdenCompraPdf, { brand, data: { proveedorNombre: (toolInput.vendor_name as string | null) ?? 'Proveedor', proveedorRFC: toolInput.vendor_rfc as string | undefined, proveedorEmail: toolInput.vendor_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario, unidad: i.unidad })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? (ordenCfg.incluir_iva as boolean | undefined) ?? false, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (ordenCfg.condiciones_pago as string | undefined) ?? null, terminosEntrega: (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, notas: content || null } });

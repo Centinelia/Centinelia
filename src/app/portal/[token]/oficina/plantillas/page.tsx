@@ -78,6 +78,54 @@ function Field({ label, hint, value, onChange, as: As = 'input', placeholder }: 
   );
 }
 
+const CONDICIONES_PRESET = [
+  'Pago en una sola exhibición',
+  'Crédito 15 días',
+  'Crédito 30 días',
+  'Crédito 60 días',
+  'Pago en parcialidades',
+];
+
+function CondicionesPagoField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const isPreset = CONDICIONES_PRESET.includes(value);
+  const [showOtro, setShowOtro] = useState(!isPreset && value !== '');
+
+  function selectPreset(opt: string) { onChange(opt); setShowOtro(false); }
+  function activateOtro() { if (!showOtro) { if (isPreset) onChange(''); setShowOtro(true); } }
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--c-text-2)' }}>Condiciones de pago</label>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {CONDICIONES_PRESET.map(opt => (
+          <button key={opt} type="button" onClick={() => selectPreset(opt)}
+            className="text-xs px-2.5 py-1 rounded-full transition-all"
+            style={value === opt && !showOtro
+              ? { background: 'rgba(108,59,255,0.12)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)', fontWeight: 600 }
+              : { background: 'transparent', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }
+            }
+          >{opt}</button>
+        ))}
+        <button type="button" onClick={activateOtro}
+          className="text-xs px-2.5 py-1 rounded-full transition-all"
+          style={showOtro
+            ? { background: 'rgba(108,59,255,0.12)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)', fontWeight: 600 }
+            : { background: 'transparent', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }
+          }
+        >Otro</button>
+      </div>
+      {showOtro && (
+        <input type="text" value={value} onChange={e => onChange(e.target.value)}
+          placeholder="Ej. Anticipo 50%, saldo a 30 días"
+          autoFocus
+          className="w-full rounded-lg px-3 py-2 text-sm"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+        />
+      )}
+    </div>
+  );
+}
+
 function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -311,9 +359,8 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
           value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="FAC" />
         <Field label="Direccion fiscal" value={cfg.direccion ?? ''} as="textarea"
           onChange={upd('direccion') as (v: string) => void} placeholder="Av. Ejemplo 123, Col. Centro, Monterrey, NL" />
-        <Field label="Condiciones de pago" value={cfg.condiciones_pago ?? ''}
-          onChange={upd('condiciones_pago') as (v: string) => void} placeholder="30 dias netos" />
       </div>
+      <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
       <Toggle checked={cfg.incluir_iva !== false} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
         label="Incluir IVA 16%" hint="Se calcula automaticamente sobre el subtotal" />
       <SaveRow saving={saving} saved={saved} onClick={save} />
@@ -370,11 +417,10 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Prefijo de folio" hint="OC genera folios OC-20260721-3841."
           value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="OC" />
-        <Field label="Condiciones de pago" value={cfg.condiciones_pago ?? ''}
-          onChange={upd('condiciones_pago') as (v: string) => void} placeholder="Pago a 30 dias" />
         <Field label="Terminos de entrega" value={cfg.terminos_entrega ?? ''}
           onChange={upd('terminos_entrega') as (v: string) => void} placeholder="Entrega en 5 dias habiles" />
       </div>
+      <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
       <Toggle checked={cfg.incluir_iva === true} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
         label="Incluir IVA 16%" hint="Activa solo si tus ordenes deben mostrar IVA" />
       <SaveRow saving={saving} saved={saved} onClick={save} />
