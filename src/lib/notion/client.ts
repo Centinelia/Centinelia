@@ -96,13 +96,13 @@ const DEMO_PRODUCTS = [
   { sku: 'PRD-002', nombre: 'Diseño de Identidad Visual', descripcion: 'Logo, paleta de colores y tipografía',           precio: 8000,  unidad: 'servicio', categoria: 'Servicio' },
   { sku: 'PRD-003', nombre: 'Desarrollo Web',             descripcion: 'Sitio corporativo de hasta 5 páginas',           precio: 18000, unidad: 'servicio', categoria: 'Servicio' },
   { sku: 'PRD-004', nombre: 'Mantenimiento Web Mensual',  descripcion: 'Soporte, actualizaciones y hosting incluido',    precio: 2500,  unidad: 'mes',      categoria: 'Soporte'  },
-  { sku: 'PRD-005', nombre: 'Campaña de Email Marketing', descripcion: 'Diseño, redacción y envío de campaña',           precio: 4500,  unidad: 'campaña',  categoria: 'Servicio' },
-  { sku: 'PRD-006', nombre: 'Capacitación Empresarial',   descripcion: 'Taller grupal para hasta 10 personas',           precio: 6000,  unidad: 'sesión',   categoria: 'Servicio' },
+  { sku: 'PRD-005', nombre: 'Campaña de Email Marketing', descripcion: 'Diseño, redacción y envío de campaña',           precio: 4500,  unidad: 'campana',  categoria: 'Servicio' },
+  { sku: 'PRD-006', nombre: 'Capacitación Empresarial',   descripcion: 'Taller grupal para hasta 10 personas',           precio: 6000,  unidad: 'sesion',   categoria: 'Servicio' },
   { sku: 'PRD-007', nombre: 'Auditoría SEO',              descripcion: 'Análisis y reporte de posicionamiento web',      precio: 5500,  unidad: 'servicio', categoria: 'Servicio' },
   { sku: 'PRD-008', nombre: 'Gestión de Redes Sociales',  descripcion: '2 redes, 12 publicaciones mensuales',            precio: 3200,  unidad: 'mes',      categoria: 'Servicio' },
   { sku: 'PRD-009', nombre: 'Laptop Dell Vostro 15',      descripcion: 'Core i7, 16 GB RAM, 512 GB SSD',                precio: 22500, unidad: 'pza',      categoria: 'Producto' },
   { sku: 'PRD-010', nombre: 'Monitor LG 27" 4K',          descripcion: 'IPS, USB-C, para trabajo profesional',           precio: 6800,  unidad: 'pza',      categoria: 'Producto' },
-  { sku: 'PRD-011', nombre: 'Licencia Microsoft 365',     descripcion: 'Suite ofimática, 1 usuario, anual',              precio: 3500,  unidad: 'año',      categoria: 'Software' },
+  { sku: 'PRD-011', nombre: 'Licencia Microsoft 365',     descripcion: 'Suite ofimática, 1 usuario, anual',              precio: 3500,  unidad: 'ano',      categoria: 'Software' },
   { sku: 'PRD-012', nombre: 'Silla Ergonómica',           descripcion: 'Con soporte lumbar y reposabrazos ajustables',   precio: 8900,  unidad: 'pza',      categoria: 'Producto' },
   { sku: 'PRD-013', nombre: 'Headset USB Jabra',          descripcion: 'Con micrófono cancelador de ruido',              precio: 4200,  unidad: 'pza',      categoria: 'Producto' },
   { sku: 'PRD-014', nombre: 'Servidor NAS 4TB',           descripcion: 'Almacenamiento en red empresarial, 4 bahías',    precio: 14500, unidad: 'pza',      categoria: 'Producto' },
@@ -114,32 +114,48 @@ export async function createProductDatabase(
   parentPageId: string,
 ): Promise<string> {
   const notion = notionClient(accessToken);
-  const db = await (notion.databases.create as any)({
-    parent: { type: 'page_id', page_id: parentPageId },
-    title:  [{ type: 'text', text: { content: 'Catálogo de Productos' } }],
-    properties: {
-      'SKU':         { title: {} },
-      'Nombre':      { rich_text: {} },
-      'Descripción': { rich_text: {} },
-      'Precio':      { number: { format: 'peso' } },
-      'Unidad':      { select: { options: [
-        { name: 'pza',      color: 'blue'   },
-        { name: 'hr',       color: 'green'  },
-        { name: 'mes',      color: 'orange' },
-        { name: 'año',      color: 'purple' },
-        { name: 'servicio', color: 'gray'   },
-        { name: 'campaña',  color: 'yellow' },
-        { name: 'sesión',   color: 'pink'   },
-      ]}},
-      'IVA':         { checkbox: {} },
-      'Categoría':   { select: { options: [
-        { name: 'Servicio',  color: 'blue'   },
-        { name: 'Producto',  color: 'green'  },
-        { name: 'Software',  color: 'purple' },
-        { name: 'Soporte',   color: 'orange' },
-      ]}},
+
+  // The SDK's databases.create strips the `properties` key (not in bodyParams).
+  // Call the REST endpoint directly so Notion receives the full schema.
+  const res = await fetch('https://api.notion.com/v1/databases', {
+    method:  'POST',
+    headers: {
+      'Authorization':  `Bearer ${accessToken}`,
+      'Content-Type':   'application/json',
+      'Notion-Version': '2022-06-28',
     },
+    body: JSON.stringify({
+      parent: { type: 'page_id', page_id: parentPageId },
+      title:  [{ type: 'text', text: { content: 'Catálogo de Productos' } }],
+      properties: {
+        'SKU':         { title: {} },
+        'Nombre':      { rich_text: {} },
+        'Descripcion': { rich_text: {} },
+        'Precio':      { number: { format: 'peso' } },
+        'Unidad':      { select: { options: [
+          { name: 'pza',      color: 'blue'   },
+          { name: 'hr',       color: 'green'  },
+          { name: 'mes',      color: 'orange' },
+          { name: 'ano',      color: 'purple' },
+          { name: 'servicio', color: 'gray'   },
+          { name: 'campana',  color: 'yellow' },
+          { name: 'sesion',   color: 'pink'   },
+        ]}},
+        'IVA':         { checkbox: {} },
+        'Categoria':   { select: { options: [
+          { name: 'Servicio',  color: 'blue'   },
+          { name: 'Producto',  color: 'green'  },
+          { name: 'Software',  color: 'purple' },
+          { name: 'Soporte',   color: 'orange' },
+        ]}},
+      },
+    }),
   });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Notion databases.create failed ${res.status}: ${body}`);
+  }
+  const db = await res.json() as { id: string };
 
   const rt = (s: string) => [{ type: 'text' as const, text: { content: s } }];
   for (const p of DEMO_PRODUCTS) {
@@ -148,11 +164,11 @@ export async function createProductDatabase(
       properties: {
         'SKU':         { title:     rt(p.sku)         },
         'Nombre':      { rich_text: rt(p.nombre)      },
-        'Descripción': { rich_text: rt(p.descripcion) },
+        'Descripcion': { rich_text: rt(p.descripcion) },
         'Precio':      { number:    p.precio          },
         'Unidad':      { select:    { name: p.unidad }},
         'IVA':         { checkbox:  true              },
-        'Categoría':   { select:    { name: p.categoria }},
+        'Categoria':   { select:    { name: p.categoria }},
       },
     });
   }
@@ -181,7 +197,7 @@ export async function searchProduct(
       return {
         sku:         p['SKU']?.title?.[0]?.plain_text             ?? '',
         nombre:      p['Nombre']?.rich_text?.[0]?.plain_text      ?? '',
-        descripcion: p['Descripción']?.rich_text?.[0]?.plain_text ?? '',
+        descripcion: p['Descripcion']?.rich_text?.[0]?.plain_text ?? '',
         precio:      p['Precio']?.number                          ?? 0,
         unidad:      p['Unidad']?.select?.name                    ?? 'pza',
         iva:         p['IVA']?.checkbox                           ?? true,
