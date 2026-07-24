@@ -31,6 +31,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
 
+  // IDOR guard: session must belong to the same account as the token
+  if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
   const ops = await consumeAiOp(agent.id, OPS_COST);
   if (!ops.ok)
     return NextResponse.json(
