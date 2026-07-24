@@ -59,6 +59,7 @@ export function buildQueries(
   keywords: string[],
   business?: BusinessContext,
 ): string[] {
+  const year = new Date().getFullYear();
   const kw   = keywords.length ? ` ${keywords.join(' ')}` : '';
   const loc  = location ? ` ${location}` : '';
   const base = `${topic}${loc}${kw}`;
@@ -91,8 +92,8 @@ export function buildQueries(
       ];
     case 'mercado':
       return [
-        `${base} mercado tendencias 2025`,
-        industry ? `"${industry}" México análisis sector 2025` : `"${topic}" México análisis sector`,
+        `${base} mercado tendencias ${year}`,
+        industry ? `"${industry}" México análisis sector ${year}` : `"${topic}" México análisis sector`,
         `${base} oportunidades crecimiento`,
         `"${topic}" estadísticas datos México`,
       ];
@@ -105,8 +106,8 @@ export function buildQueries(
       ];
     case 'noticias':
       return [
-        `${base} 2025`,
-        industry ? `"${industry}" noticias México 2025` : `"${topic}" México noticias reciente`,
+        `${base} ${year}`,
+        industry ? `"${industry}" noticias México ${year}` : `"${topic}" México noticias reciente`,
         `${base} novedades`,
       ];
     case 'general':

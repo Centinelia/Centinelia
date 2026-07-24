@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { searchMultiple, buildQueries, type ResearchType } from '@/lib/search/web';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+interface Params { params: Promise<{ token: string }> }
+
+export async function POST(req: NextRequest, { params }: Params) {
   const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
   const auth   = await verifySession(cookie);
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const { token } = await params;
+  const supabase  = createAdminClient();
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id')
+    .eq('portal_token', token)
+    .eq('portal_email', auth.portalEmail)
+    .single();
+  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   const { topic, location = '', type = 'leads', keywords = [] } = await req.json() as {
     topic:     string;

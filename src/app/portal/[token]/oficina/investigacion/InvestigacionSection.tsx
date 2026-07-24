@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Loader2, ExternalLink, Zap, Users, TrendingUp, BookOpen, Newspaper, RefreshCw, Globe, CheckCircle, Phone, FileText } from 'lucide-react';
+import { Search, Loader2, ExternalLink, Zap, Users, TrendingUp, BookOpen, Newspaper, RefreshCw, Globe, CheckCircle, Phone } from 'lucide-react';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 type ResearchType = 'leads' | 'competidores' | 'mercado' | 'regulaciones' | 'noticias' | 'general';
 
@@ -65,7 +66,7 @@ const LOADING_MESSAGES = [
   'Preparando los hallazgos...',
 ];
 
-export default function InvestigacionSection({ token, agentName }: { token: string; agentName?: string }) {
+export default function InvestigacionSection({ token, agentName, meerkatRoleId }: { token: string; agentName?: string; meerkatRoleId?: string | null }) {
   const [topic,       setTopic]       = useState('');
   const [location,    setLocation]    = useState('');
   const [keywords,    setKeywords]    = useState('');
@@ -75,9 +76,12 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
   const [error,       setError]       = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
   const [lastTopic,   setLastTopic]   = useState('');
+  const [history,     setHistory]     = useState<Array<{ topic: string; type: ResearchType; results: Result[] }>>([]);
 
   const selectedType = TYPES.find(t => t.key === type)!;
   const employeeName = agentName ?? 'Tu empleado';
+  const meerkat      = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId as keyof typeof MEERKAT_MAP] : null;
+  const acColor      = meerkat?.color ?? '#6C3BFF';
 
   useEffect(() => {
     if (!loading) { setLoadingStep(0); return; }
@@ -107,7 +111,14 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Error al investigar'); return; }
-      setResults(data.results ?? []);
+      const newResults = data.results ?? [];
+      setResults(newResults);
+      if (newResults.length > 0) {
+        setHistory(prev => [
+          { topic: topic.trim(), type, results: newResults },
+          ...prev.filter(h => h.topic !== topic.trim()),
+        ].slice(0, 3));
+      }
     } catch {
       setError('No se pudo conectar. Verifica tu conexión.');
     } finally {
@@ -118,13 +129,32 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
   return (
     <div className="flex flex-col gap-6">
 
-      {/* Page header */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Investigación</p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>Investigación</h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Pide a tu empleado que investigue antes de tomar una decisión. Puede analizar competidores, encontrar prospectos, revisar regulaciones, estudiar el mercado o investigar cualquier tema en internet.
-        </p>
+      {/* Hero banner */}
+      <div style={{ background: 'var(--c-surface)', border: `1px solid ${acColor}28`, borderRadius: 14, overflow: 'hidden', display: 'flex' }}>
+        {meerkat?.imagen ? (
+          <img
+            src={meerkat.imagen}
+            alt={meerkat.nombre}
+            style={{ width: 90, height: 90, objectFit: 'contain', objectPosition: 'bottom center', flexShrink: 0, alignSelf: 'flex-end' }}
+          />
+        ) : (
+          <div style={{ width: 90, height: 90, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexShrink: 0, paddingBottom: 8 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: `${acColor}18`, border: `1px solid ${acColor}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Globe size={22} style={{ color: acColor }} />
+            </div>
+          </div>
+        )}
+        <div style={{ flex: 1, padding: '16px 16px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--c-text-4)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
+            Investigación
+          </p>
+          <p style={{ color: 'var(--c-text)', fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
+            {employeeName} investiga en internet antes de que tomes una decisión.
+          </p>
+          <p style={{ color: 'var(--c-text-3)', fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+            Competidores, prospectos, regulaciones, mercado o cualquier tema.
+          </p>
+        </div>
       </div>
 
       {/* Step 1 — Type */}
@@ -258,6 +288,34 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
         </span>
       </div>
 
+      {/* Search history */}
+      {history.length > 0 && !loading && results === null && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ color: 'var(--c-text-4)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Búsquedas recientes
+          </p>
+          {history.map((h, i) => {
+            const hType = TYPES.find(t => t.key === h.type);
+            const HIcon = hType?.icon ?? Globe;
+            return (
+              <button
+                key={i}
+                onClick={() => { setType(h.type); setTopic(h.topic); setResults(h.results); setLastTopic(h.topic); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 12, padding: '10px 14px', textAlign: 'left', cursor: 'pointer', width: '100%' }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--c-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <HIcon size={13} style={{ color: 'var(--c-text-3)' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: 'var(--c-text)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.topic}</p>
+                  <p style={{ color: 'var(--c-text-4)', fontSize: 11, marginTop: 1 }}>{hType?.label} · {h.results.length} fuentes</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Loading animation panel */}
       {loading && (
         <div className="flex flex-col gap-3 p-5 rounded-2xl"
@@ -315,27 +373,57 @@ export default function InvestigacionSection({ token, agentName }: { token: stri
                   </p>
                 </div>
                 <p className="text-xs mt-1 ml-6" style={{ color: 'var(--c-text-3)' }}>
-                  {results.length} fuente{results.length !== 1 ? 's' : ''} encontrada{results.length !== 1 ? 's' : ''} · {selectedType.label}
+                  {results.length} fuente{results.length !== 1 ? 's' : ''} · {selectedType.label}
                   {lastTopic && <span style={{ color: 'var(--c-text-4)' }}> · "{lastTopic}"</span>}
                 </p>
+              </div>
+
+              {/* Summary card */}
+              <div style={{ background: `${acColor}08`, border: `1px solid ${acColor}20`, borderRadius: 14, padding: '14px 16px' }}>
+                <p style={{ color: 'var(--c-text-4)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                  Hallazgos principales
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Top domains */}
+                  <div>
+                    <p style={{ color: 'var(--c-text-3)', fontSize: 12, marginBottom: 6 }}>
+                      Fuentes más frecuentes:
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {[...new Map(results.map(r => [r.domain, r])).values()].slice(0, 6).map(r => (
+                        <span key={r.domain} style={{ fontSize: 11, background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 20, padding: '3px 10px', color: 'var(--c-text-2)' }}>
+                          {r.domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Top titles preview */}
+                  <div>
+                    <p style={{ color: 'var(--c-text-3)', fontSize: 12, marginBottom: 6 }}>
+                      Resultados destacados:
+                    </p>
+                    <ul style={{ margin: 0, padding: '0 0 0 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {results.slice(0, 4).map((r, i) => (
+                        <li key={i} style={{ color: 'var(--c-text-2)', fontSize: 12, lineHeight: 1.45 }}>
+                          <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: acColor, textDecoration: 'none' }}>
+                            {r.title.length > 80 ? r.title.slice(0, 80) + '…' : r.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               {/* Action buttons */}
               <div className="flex gap-2 flex-wrap">
                 <a
-                  href={`/portal/${token}/oficina/llamadas`}
+                  href={`/portal/${token}/llamadas/salientes`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 no-underline"
                   style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
                 >
                   <Phone size={12} /> Crear llamadas salientes
                 </a>
-                <button
-                  disabled
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-4)', cursor: 'not-allowed', opacity: 0.5 }}
-                >
-                  <FileText size={12} /> Guardar como documento
-                </button>
               </div>
 
               {/* Sources */}
