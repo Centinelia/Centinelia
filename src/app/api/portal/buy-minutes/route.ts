@@ -7,9 +7,11 @@ import { rateLimit, limiters } from '@/lib/ratelimit';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 1200, 200: 2400 };
 const PRICE_PER_MIN = 12;
+const IVA = 0.16;
 
 function calcPrice(minutes: number): number {
-  return FIXED_PACKAGES[minutes] ?? minutes * PRICE_PER_MIN;
+  const base = FIXED_PACKAGES[minutes] ?? minutes * PRICE_PER_MIN;
+  return Math.round(base * (1 + IVA));
 }
 
 export async function POST(req: NextRequest) {

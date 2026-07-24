@@ -4,26 +4,31 @@ import { useState } from 'react';
 import { Zap } from 'lucide-react';
 
 const PRICE_PER_OP = 8.5;
+const IVA = 0.16;
 
 const PACKAGES = [
   { ops: 100, label: '100 tareas', price: 800 },
   { ops: 300, label: '300 tareas', price: 2100 },
 ];
 
-function calcPrice(ops: number): number {
+function calcBase(ops: number): number {
   const pkg = PACKAGES.find(p => p.ops === ops);
   return pkg ? pkg.price : Math.round(ops * PRICE_PER_OP);
 }
+
+function withIva(n: number): number { return Math.round(n * (1 + IVA)); }
 
 export default function BuyOpsSection({ token }: { token: string }) {
   const [selected, setSelected] = useState<number | 'custom' | null>(null);
   const [custom, setCustom]     = useState('');
   const [loading, setLoading]   = useState(false);
 
-  const customOps   = parseInt(custom) || 0;
-  const activeOps   = selected === 'custom' ? (customOps > 0 ? customOps : null) : selected;
-  const price       = activeOps ? calcPrice(activeOps) : null;
-  const ready       = activeOps !== null && activeOps >= 10;
+  const customOps = parseInt(custom) || 0;
+  const activeOps = selected === 'custom' ? (customOps > 0 ? customOps : null) : selected;
+  const base      = activeOps ? calcBase(activeOps) : null;
+  const total     = base ? withIva(base) : null;
+  const iva       = base ? total! - base : null;
+  const ready     = activeOps !== null && activeOps >= 10;
 
   const handleBuy = async () => {
     if (!ready || loading) return;
@@ -43,6 +48,8 @@ export default function BuyOpsSection({ token }: { token: string }) {
     }
   };
 
+  const fmt = (n: number) => `$${n.toLocaleString('es-MX')}`;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-3 gap-1.5">
@@ -60,7 +67,7 @@ export default function BuyOpsSection({ token }: { token: string }) {
               }}
             >
               <span className="text-sm font-bold">{pkg.label}</span>
-              <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${pkg.price.toLocaleString('es-MX')} MXN</span>
+              <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>{fmt(pkg.price)} + IVA</span>
             </button>
           );
         })}
@@ -75,7 +82,7 @@ export default function BuyOpsSection({ token }: { token: string }) {
           }}
         >
           <span className="text-sm font-bold">Personalizado</span>
-          <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_OP}/tarea</span>
+          <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_OP}/tarea + IVA</span>
         </button>
       </div>
 
@@ -97,11 +104,30 @@ export default function BuyOpsSection({ token }: { token: string }) {
             }}
           />
           <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-text-3)' }}>tareas</span>
-          {price !== null && (
+          {base !== null && (
             <span className="text-xs font-semibold flex-shrink-0" style={{ color: '#6C3BFF' }}>
-              ${price.toLocaleString('es-MX')}
+              {fmt(base)} + IVA
             </span>
           )}
+        </div>
+      )}
+
+      {/* IVA breakdown */}
+      {base !== null && total !== null && (
+        <div className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-xs"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{fmt(base)} MXN</span>
+          </div>
+          <div className="flex justify-between">
+            <span>IVA (16%)</span>
+            <span>{fmt(iva!)} MXN</span>
+          </div>
+          <div className="flex justify-between font-semibold pt-0.5" style={{ borderTop: '1px solid var(--c-border)', marginTop: '2px', color: 'var(--c-text-1)' }}>
+            <span>Total</span>
+            <span>{fmt(total)} MXN</span>
+          </div>
         </div>
       )}
 
@@ -119,8 +145,8 @@ export default function BuyOpsSection({ token }: { token: string }) {
         <Zap size={14} />
         {loading
           ? 'Redirigiendo…'
-          : price
-            ? `Comprar, $${price.toLocaleString('es-MX')} MXN`
+          : total
+            ? `Comprar, ${fmt(total)} MXN`
             : 'Comprar tareas'}
       </button>
     </div>

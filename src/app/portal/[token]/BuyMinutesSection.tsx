@@ -4,16 +4,19 @@ import { useState } from 'react';
 import { Zap } from 'lucide-react';
 
 const PRICE_PER_MIN = 12;
+const IVA = 0.16;
 
 const PACKAGES = [
   { minutes: 100, label: '100 min', price: 1200 },
   { minutes: 200, label: '200 min', price: 2400 },
 ];
 
-function calcPrice(minutes: number): number {
+function calcBase(minutes: number): number {
   const pkg = PACKAGES.find(p => p.minutes === minutes);
   return pkg ? pkg.price : minutes * PRICE_PER_MIN;
 }
+
+function withIva(n: number): number { return Math.round(n * (1 + IVA)); }
 
 export default function BuyMinutesSection({ token }: { token: string }) {
   const [selected, setSelected]   = useState<number | 'custom' | null>(null);
@@ -22,7 +25,9 @@ export default function BuyMinutesSection({ token }: { token: string }) {
 
   const customMinutes = parseInt(custom) || 0;
   const activeMinutes = selected === 'custom' ? (customMinutes > 0 ? customMinutes : null) : selected;
-  const price         = activeMinutes ? calcPrice(activeMinutes) : null;
+  const base          = activeMinutes ? calcBase(activeMinutes) : null;
+  const total         = base ? withIva(base) : null;
+  const iva           = base ? total! - base : null;
   const ready         = activeMinutes !== null && activeMinutes >= 10;
 
   const handleBuy = async () => {
@@ -43,6 +48,8 @@ export default function BuyMinutesSection({ token }: { token: string }) {
     }
   };
 
+  const fmt = (n: number) => `$${n.toLocaleString('es-MX')}`;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-3 gap-1.5">
@@ -60,7 +67,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
               }}
             >
               <span className="text-sm font-bold">{pkg.label}</span>
-              <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${pkg.price.toLocaleString('es-MX')} MXN</span>
+              <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>{fmt(pkg.price)} + IVA</span>
             </button>
           );
         })}
@@ -76,7 +83,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
           }}
         >
           <span className="text-sm font-bold">Personalizado</span>
-          <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_MIN}/min</span>
+          <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${PRICE_PER_MIN}/min + IVA</span>
         </button>
       </div>
 
@@ -98,11 +105,30 @@ export default function BuyMinutesSection({ token }: { token: string }) {
             }}
           />
           <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-text-3)' }}>min</span>
-          {price !== null && (
+          {base !== null && (
             <span className="text-xs font-semibold flex-shrink-0" style={{ color: '#6C3BFF' }}>
-              ${price.toLocaleString('es-MX')}
+              {fmt(base)} + IVA
             </span>
           )}
+        </div>
+      )}
+
+      {/* IVA breakdown */}
+      {base !== null && total !== null && (
+        <div className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-xs"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{fmt(base)} MXN</span>
+          </div>
+          <div className="flex justify-between">
+            <span>IVA (16%)</span>
+            <span>{fmt(iva!)} MXN</span>
+          </div>
+          <div className="flex justify-between font-semibold pt-0.5" style={{ borderTop: '1px solid var(--c-border)', marginTop: '2px', color: 'var(--c-text-1)' }}>
+            <span>Total</span>
+            <span>{fmt(total)} MXN</span>
+          </div>
         </div>
       )}
 
@@ -120,8 +146,8 @@ export default function BuyMinutesSection({ token }: { token: string }) {
         <Zap size={14} />
         {loading
           ? 'Redirigiendo…'
-          : price
-            ? `Comprar, $${price.toLocaleString('es-MX')} MXN`
+          : total
+            ? `Comprar, ${fmt(total)} MXN`
             : 'Comprar minutos'}
       </button>
     </div>
