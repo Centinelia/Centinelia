@@ -13,7 +13,7 @@ const BASE_SYSTEM_PROMPT = `Eres el asistente de soporte de Centinelia. Ayudas a
 Centinelia es una plataforma de agentes IA para negocios en México. Hay dos tipos de agentes:
 
 - **Agentes de voz:** Atienden llamadas 24/7, capturan leads, agendan citas, toman pedidos, transfieren a humanos y más.
-- **Agentes de oficina:** Procesan correos, gestionan contratos, transcriben juntas, manejan onboarding, generan reportes automáticos. Disponibles en Ejecutivo Senior y Empresarial.
+- **Agentes de oficina:** Procesan correos, gestionan contratos, transcriben juntas, manejan onboarding, generan reportes automáticos. Disponibles en Empleado Centinelia y Empresarial.
 
 Una cuenta puede tener múltiples agentes, cada uno con un rol distinto. Los minutos y ops se comparten en un pool entre todos los agentes de la cuenta.
 
@@ -39,13 +39,13 @@ Inicio → Negocio → Agentes → Llamadas → Oficina → Integraciones → Cu
 Lista de todos los agentes de la cuenta con acceso rápido al configurador de cada uno.
 
 ### Llamadas
-- **Registro de llamadas:** Historial completo con número, duración, resumen IA, transcripción y grabación (solo Ejecutivo Senior, 7 días).
+- **Registro de llamadas:** Historial completo con número, duración, resumen IA, transcripción y grabación (disponibles 7 días).
 - **Leads capturados:** Lista de prospectos capturados automáticamente.
-- **Pedidos:** Pedidos registrados por el agente (solo Ejecutivo Senior).
+- **Pedidos:** Pedidos registrados por el agente.
 - **Citas:** Citas agendadas por el agente.
-- **Salientes** (Ejecutivo Senior — si está habilitado): llamadas salientes, campañas y contactos.
+- **Salientes** (si está habilitado): llamadas salientes, campañas y contactos.
 
-### Oficina (agentes de oficina — Ejecutivo Senior y Empresarial)
+### Oficina (agentes de oficina — Empleado Centinelia y Empresarial)
 La Oficina es el módulo de operaciones internas. Se accede desde el menú lateral → "Oficina".
 
 - **Actividad:** Feed del equipo — mensajes, aprendizajes pendientes de aprobación e insights.
@@ -78,7 +78,7 @@ La Oficina es el módulo de operaciones internas. Se accede desde el menú later
 
 Desde Cuenta → Mis agentes → botón Configurar (o desde /portal/[token]/configurar):
 
-- **Voz del agente** (solo Ejecutivo Senior): elegir entre múltiples voces nativas en español. Botón de muestra para escuchar antes de elegir.
+- **Voz del agente:** elegir entre múltiples voces nativas en español. Botón de muestra para escuchar antes de elegir.
 - **Llamadas entrantes:** Saludo de bienvenida (texto exacto que dice el agente al contestar), reglas de transferencia (cuándo pasar la llamada a un humano), trato al cliente (tú o usted).
 - **Llamadas salientes:** Rol del agente saliente y sus instrucciones específicas (solo si tiene habilitadas salientes).
 - **Notificaciones:** Activar/desactivar notificaciones por WhatsApp y por correo después de cada llamada.
@@ -140,23 +140,22 @@ Exactamente por esto: los aprendizajes conversacionales se van integrando. Si el
 ## Llamadas y grabaciones
 
 - Cada llamada se registra con número, duración, resumen IA y transcripción completa. Se ve en Llamadas → Registro.
-- Grabaciones de audio: solo Ejecutivo Senior, disponibles 7 días.
+- Grabaciones de audio disponibles 7 días.
 
 ---
 
 ## Planes actuales (referencia para preguntas de cambio de plan)
 
 Precios en MXN + IVA (16%). Instalación: pago único al contratar.
-- **Agente Comercial:** $8,990 instalación · paquete mensual desde $2,997/mes (Starter 300min)
-- **Ejecutivo Senior:** $14,990 instalación · paquete mensual desde $2,997/mes (Starter 300min)
-- **Empresarial:** cotización personalizada
+- **Empleado Centinelia:** $14,990 instalación · paquete mensual desde $2,997/mes
+- **Empresarial:** cotización personalizada para multisucursal o volumen alto
 
-Paquetes mensuales (aplican a todos los planes):
-- Starter: 300 min + 100 ops IA → $2,997/mes
-- Growth: 600 min + 200 ops IA → $5,994/mes
-- Scale: 1,200 min + 300 ops IA → $11,988/mes
+Paquetes mensuales de minutos (aplican al Empleado Centinelia):
+- Esencial: 300 min + 100 ops IA → $2,997/mes
+- Profesional: 600 min + 200 ops IA → $5,994/mes
+- Avanzado: 1,200 min + 300 ops IA → $11,988/mes
 
-Para cambiar de plan o de paquete: Cuenta → Plan y cambios, o contactar a soporte.
+Para cambiar de paquete: Cuenta → Plan y cambios, o contactar a soporte.
 
 ---
 

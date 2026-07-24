@@ -272,9 +272,9 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               </p>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { tier: 'Starter', minutes: 300 },
-                  { tier: 'Growth',  minutes: 600 },
-                  { tier: 'Scale',   minutes: 1200 },
+                  { tier: 'Esencial',    minutes: 300 },
+                  { tier: 'Profesional', minutes: 600 },
+                  { tier: 'Avanzado',    minutes: 1200 },
                 ].map(({ tier, minutes }) => {
                   const convs = Math.floor((minutes * 60) / avgDuration);
                   return (

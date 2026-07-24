@@ -7,9 +7,9 @@ import type { MinutesTier } from '@/lib/billing/plans';
 import { MONTHLY_CONFIG } from '@/lib/billing/plans';
 
 const TIERS: { key: MinutesTier; label: string; minutes: number }[] = [
-  { key: 'starter', label: 'Starter', minutes: 300 },
-  { key: 'growth',  label: 'Growth',  minutes: 600 },
-  { key: 'scale',   label: 'Scale',   minutes: 1200 },
+  { key: 'starter', label: 'Esencial',    minutes: 300 },
+  { key: 'growth',  label: 'Profesional', minutes: 600 },
+  { key: 'scale',   label: 'Avanzado',    minutes: 1200 },
 ];
 
 const TIER_ORDER: MinutesTier[] = ['starter', 'growth', 'scale'];
