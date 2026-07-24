@@ -146,7 +146,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 const base = MIN_REFILL_OPTIONS.find(o => o.minutes === minMinutes)?.price ?? 0;
                 const total = withIva(base);
                 return (
-                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-3)' }}>
                     Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
                   </p>
                 );
@@ -214,7 +214,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 const base = OPS_REFILL_OPTIONS.find(o => o.ops === opsAmount)?.price ?? 0;
                 const total = withIva(base);
                 return (
-                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-3)' }}>
                     Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
                   </p>
                 );
