@@ -131,6 +131,9 @@ export interface VoiceAgent {
   // Team numbers (owner bypass + team member identification)
   team_numbers?: Array<{ number: string; name?: string; is_owner?: boolean }> | null;
 
+  // Heartbeat cron tracking
+  heartbeat_last_run_at?: string | null;
+
   // AGENT Framework fields (sessions 18-23)
   organization_mission?: string | null;
   service_definition?: string | null;
@@ -191,6 +194,7 @@ export interface VoiceCall {
   agent_id: string;
   vapi_call_id?: string;
   caller_number: string;
+  caller_name?: string | null;
   duration_seconds: number;
   transcript?: string;
   summary?: string;

@@ -164,10 +164,14 @@ export async function POST(req: NextRequest) {
 
         if (!agent) break;
 
-        await supabase
-          .from('voice_agents')
-          .update({ ai_ops_limit: ((agent.ai_ops_limit as number) ?? 0) + ops })
-          .eq('portal_email', agent.portal_email);
+        const newOpsLimit = ((agent.ai_ops_limit as number) ?? 0) + ops;
+        if (agent.portal_email) {
+          await supabase.from('voice_agents')
+            .update({ ai_ops_limit: newOpsLimit }).eq('portal_email', agent.portal_email);
+        } else {
+          await supabase.from('voice_agents')
+            .update({ ai_ops_limit: newOpsLimit }).eq('id', agentId);
+        }
 
         break;
       }
@@ -194,7 +198,7 @@ export async function POST(req: NextRequest) {
           minutes_plan:           session.metadata?.minutes_plan ?? null,
         }).eq('id', agentId);
 
-        const vapiId = await createVapiAssistant(pendingAgent as any).catch(() => null);
+        const vapiId = await createVapiAssistant(pendingAgent as VoiceAgent).catch(() => null);
         if (vapiId) {
           await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', agentId);
           resyncPeerAgents(pendingAgent.portal_email, agentId).catch(console.error);
@@ -318,7 +322,7 @@ export async function POST(req: NextRequest) {
             : `⚠️ Pendiente: asignar número de teléfono manualmente`;
           await sendWhatsApp(
             adminWa,
-            `🎉 *Nuevo cliente, Centinelia*\n\nNegocio: *${agent.business_name}*\nPlan: ${planLabels[featurePlan ?? ''] ?? featurePlan}\nEmail: ${agent.client_email}\nWA: ${(agent as any).transfer_whatsapp ?? ','}\n${phoneInfo}`
+            `🎉 *Nuevo cliente, Centinelia*\n\nNegocio: *${agent.business_name}*\nPlan: ${planLabels[featurePlan ?? ''] ?? featurePlan}\nEmail: ${agent.client_email}\nWA: ${(agent as any).transfer_whatsapp ?? ''}\n${phoneInfo}`
           ).catch(console.error);
         }
       }
