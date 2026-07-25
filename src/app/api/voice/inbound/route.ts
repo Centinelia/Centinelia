@@ -1116,5 +1116,12 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     });
   }
 
-  return tools;
+  // Vapi requires serverUrl at tool top level, not inside the function object
+  return tools.map(tool => {
+    const t = tool as Record<string, unknown>;
+    const fn = t.function as Record<string, unknown>;
+    if (!fn || !fn.serverUrl) return tool;
+    const { serverUrl, ...cleanFn } = fn;
+    return { ...t, function: cleanFn, server: { url: serverUrl, headers: { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '' } } };
+  });
 }
