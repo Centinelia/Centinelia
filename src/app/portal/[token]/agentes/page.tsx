@@ -706,29 +706,29 @@ export default async function AgentesPage({ params }: Props) {
                 </summary>
                 <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                   {cat.tools.map(t => (
-                    <div key={t.key} className="group/cap relative flex items-center gap-1 py-0.5">
+                    <div key={t.key} className="flex items-center gap-1 py-0.5">
                       <span className="text-[10px] w-3 text-center flex-shrink-0"
                         style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
                         {t.covered ? '✓' : '○'}
                       </span>
-                      <span className="text-[10px] leading-tight"
+                      <span className="group/cap relative text-[10px] leading-tight cursor-default"
                         style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
                         {t.label}
+                        {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
+                            <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                              style={{
+                                background: 'var(--c-surface-2, #1e1a2e)',
+                                border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                                color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                              }}>
+                              {t.covered
+                                ? t.agents.join(' · ')
+                                : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                            </span>
+                          </span>
+                        )}
                       </span>
-                      {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
-                        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/cap:block">
-                          <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                            style={{
-                              background: 'var(--c-surface-2, #1e1a2e)',
-                              border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                              color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
-                            }}>
-                            {t.covered
-                              ? t.agents.join(' · ')
-                              : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -758,29 +758,29 @@ export default async function AgentesPage({ params }: Props) {
                   </summary>
                   <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                     {cat.tools.map(t => (
-                      <div key={t.key} className="group/cap relative flex items-center gap-1 py-0.5">
+                      <div key={t.key} className="flex items-center gap-1 py-0.5">
                         <span className="text-[10px] w-3 text-center flex-shrink-0"
                           style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
                           {t.covered ? '✓' : '○'}
                         </span>
-                        <span className="text-[10px] leading-tight"
+                        <span className="group/cap relative text-[10px] leading-tight cursor-default"
                           style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
                           {t.label}
+                          {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
+                              <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                                style={{
+                                  background: 'var(--c-surface-2, #1e1a2e)',
+                                  border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                                  color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                                }}>
+                                {t.covered
+                                  ? t.agents.join(' · ')
+                                  : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                              </span>
+                            </span>
+                          )}
                         </span>
-                        {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
-                          <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/cap:block">
-                            <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                              style={{
-                                background: 'var(--c-surface-2, #1e1a2e)',
-                                border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                                color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
-                              }}>
-                              {t.covered
-                                ? t.agents.join(' · ')
-                                : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
