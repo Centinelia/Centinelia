@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
         endpointing: 150,
       },
       stopSpeakingPlan: {
-        numWords: 2,
+        numWords: 3,
         voiceSeconds: 0.2,
       },
       backgroundSound: 'office',
