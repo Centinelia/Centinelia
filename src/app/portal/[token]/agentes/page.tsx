@@ -380,16 +380,20 @@ export default async function AgentesPage({ params }: Props) {
 
   // Tool coverage by business category
   const coveredToolKeys = new Set<string>();
+  const toolAgentMap: Record<string, string[]> = {};
   for (const a of agents) {
+    const agentName = (a.agent_name as string | null) ?? 'Empleado';
     for (const t of getAgentTools((a.features as Record<string, unknown>) ?? {})) {
       coveredToolKeys.add(t.label);
+      if (!toolAgentMap[t.label]) toolAgentMap[t.label] = [];
+      if (!toolAgentMap[t.label].includes(agentName)) toolAgentMap[t.label].push(agentName);
     }
   }
   const categoryStats = BUSINESS_CATEGORIES.map(cat => ({
     label:       cat.label,
     color:       cat.color,
     specialized: !!cat.specialized,
-    tools:       cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key) })),
+    tools:       cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key), agents: toolAgentMap[t.key] ?? [] })),
     covered:     cat.tools.filter(t => coveredToolKeys.has(t.key)).length,
     total:       cat.tools.length,
   }));
@@ -686,7 +690,7 @@ export default async function AgentesPage({ params }: Props) {
                 </summary>
                 <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                   {cat.tools.map(t => (
-                    <div key={t.key} className="flex items-center gap-1 py-0.5">
+                    <div key={t.key} className="group/cap relative flex items-center gap-1 py-0.5">
                       <span className="text-[10px] w-3 text-center flex-shrink-0"
                         style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
                         {t.covered ? '✓' : '○'}
@@ -695,6 +699,14 @@ export default async function AgentesPage({ params }: Props) {
                         style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
                         {t.label}
                       </span>
+                      {t.covered && t.agents.length > 0 && (
+                        <div className="pointer-events-none absolute left-0 bottom-full mb-1 z-50 hidden group-hover/cap:block">
+                          <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                            style={{ background: 'var(--c-surface-2, #1e1a2e)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }}>
+                            {t.agents.join(' · ')}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -724,7 +736,7 @@ export default async function AgentesPage({ params }: Props) {
                   </summary>
                   <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                     {cat.tools.map(t => (
-                      <div key={t.key} className="flex items-center gap-1 py-0.5">
+                      <div key={t.key} className="group/cap relative flex items-center gap-1 py-0.5">
                         <span className="text-[10px] w-3 text-center flex-shrink-0"
                           style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
                           {t.covered ? '✓' : '○'}
@@ -733,6 +745,14 @@ export default async function AgentesPage({ params }: Props) {
                           style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
                           {t.label}
                         </span>
+                        {t.covered && t.agents.length > 0 && (
+                          <div className="pointer-events-none absolute left-0 bottom-full mb-1 z-50 hidden group-hover/cap:block">
+                            <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                              style={{ background: 'var(--c-surface-2, #1e1a2e)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }}>
+                              {t.agents.join(' · ')}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
