@@ -77,27 +77,33 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (isFullUpdate) {
     if (agent.vapi_agent_id) {
-      // Update existing Vapi assistant
-      await updateVapiAssistant(agent.vapi_agent_id, agent);
-
-      // Re-assign if phone number changed
-      if (agent.phone_number) {
-        await assignAssistantToPhone(agent.phone_number, agent.vapi_agent_id, PLAN_CONCURRENT_CALLS[agent.plan]);
+      try {
+        await updateVapiAssistant(agent.vapi_agent_id, agent);
+        if (agent.phone_number) {
+          await assignAssistantToPhone(agent.phone_number, agent.vapi_agent_id, PLAN_CONCURRENT_CALLS[agent.plan]);
+        }
+      } catch (err) {
+        console.error('Vapi sync failed (DB saved):', err);
+        return NextResponse.json({ ...data, vapi_sync_error: String(err) });
       }
     } else {
-      // First time syncing, create assistant and assign
-      const vapiAssistantId = await createVapiAssistant(agent);
-      if (vapiAssistantId) {
-        await supabase
-          .from('voice_agents')
-          .update({ vapi_agent_id: vapiAssistantId })
-          .eq('id', id);
+      try {
+        const vapiAssistantId = await createVapiAssistant(agent);
+        if (vapiAssistantId) {
+          await supabase
+            .from('voice_agents')
+            .update({ vapi_agent_id: vapiAssistantId })
+            .eq('id', id);
 
-        if (agent.phone_number) {
-          await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
+          if (agent.phone_number) {
+            await assignAssistantToPhone(agent.phone_number, vapiAssistantId, PLAN_CONCURRENT_CALLS[agent.plan]);
+          }
+
+          resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
         }
-
-        resyncPeerAgents(agent.portal_email, agent.id).catch(console.error);
+      } catch (err) {
+        console.error('Vapi create failed (DB saved):', err);
+        return NextResponse.json({ ...data, vapi_sync_error: String(err) });
       }
     }
   }
