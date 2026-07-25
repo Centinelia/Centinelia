@@ -349,20 +349,20 @@ interface MeerkatModelConfig {
 }
 
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.93, minChars: 25, voiceModel: 'eleven_turbo_v2_5', punctuationBoundaries: ['.', '!', '?', ','] },
-  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 0.98, minChars: 40 },
-  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
-  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 110, speed: 0.98, minChars: 40 },
-  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 150, speed: 0.93, minChars: 50 },
-  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 40 },
-  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.15, maxTokens: 110, speed: 1.05, minChars: 30 },
-  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 28 },
-  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.10, maxTokens:  80, speed: 1.05, minChars: 30 },
-  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.20, maxTokens: 150, speed: 0.98, minChars: 40 },
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 25 },
+  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28 },
+  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 150, speed: 0.98, minChars: 28 },
+  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28 },
+  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 150, speed: 0.98, minChars: 28 },
+  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28 },
+  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 110, speed: 1.05, minChars: 25 },
+  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 25 },
+  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.15, maxTokens:  80, speed: 1.05, minChars: 25 },
+  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28 },
 };
 
 const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
-  provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150, speed: 0.98, minChars: 40,
+  provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150, speed: 0.98, minChars: 28,
 };
 
 // ─── Assistant config builder ─────────────────────────────────────────────────
@@ -407,17 +407,17 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     voice: {
       provider: '11labs',
       voiceId: agent.elevenlabs_voice_id || 'jUxkp8eMgszgJX3XU2pV',
-      model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
-      stability: 0.50,
+      model: cfg.voiceModel ?? 'eleven_flash_v2_5',
+      stability: 0.35,
       similarityBoost: 0.75,
-      style: 0.20,
+      style: 0.40,
       speed: cfg.speed,
       useSpeakerBoost: true,
-      optimizeStreamingLatency: 1,
+      optimizeStreamingLatency: 3,
       chunkPlan: {
         enabled: true,
         minCharacters: cfg.minChars,
-        punctuationBoundaries: cfg.punctuationBoundaries ?? ['.', '!', '?'],
+        punctuationBoundaries: cfg.punctuationBoundaries ?? ['.', '!', '?', ','],
       },
     },
     firstMessage: (() => {
@@ -441,7 +441,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
         model:       'nova-3',
         language:    agent.features.multilingual ? 'multi' : 'es',
         smartFormat: false,
-        endpointing: isLite ? 150 : 200,
+        endpointing: isLite ? 100 : 150,
       };
     })(),
     backgroundSound: 'office',
