@@ -1517,8 +1517,8 @@ function RegistroInner() {
 
             <p className="text-xs mb-6 text-center" style={{ color: 'rgba(255,255,255,0.28)' }}>
               {isCoordinator
-                ? <>{selectedMeerkat?.nombre ?? 'El director'} coordina sin llamadas.<br />Las tareas inteligentes extra tienen costo adicional.</>
-                : <>Si {selectedMeerkat?.nombre ?? 'tu empleado'} necesita más tiempo,<br />Solo pagarás $12.99 + IVA por minuto adicional.</>
+                ? <>Si {selectedMeerkat?.nombre ?? 'el director'} necesita trabajar más,<br />puedes comprar más tareas desde tu portal de cliente.</>
+                : <>Si {selectedMeerkat?.nombre ?? 'tu empleado'} necesita trabajar más,<br />puedes comprar saldo desde tu portal de cliente.</>
               }
             </p>
 

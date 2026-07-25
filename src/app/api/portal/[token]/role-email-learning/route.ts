@@ -157,7 +157,7 @@ Máximo 8 aprendizajes. Las reglas deben ser aplicables, no observaciones vagas.
       agentId:     agent.id as string,
       portalEmail: agent.portal_email as string | null,
       content:     e.content.trim().slice(0, 500),
-      confidence:  Math.min(1, Math.max(0, e.confidence)),
+      confidence:  1,  // email learnings are user-triggered — auto-approve all
       source:      'email' as const,
     })),
   );

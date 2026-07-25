@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Check, AlertCircle, ArrowRight } from 'lucide-react';
+import { Mail, Check, AlertCircle, ArrowRight, BookOpen } from 'lucide-react';
 
 interface Props {
   token:            string;
@@ -122,22 +122,30 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                 <Check size={14} style={{ color: '#22c55e', flexShrink: 0, marginTop: 1 }} />
                 <div>
                   <p className="text-xs font-semibold" style={{ color: '#22c55e' }}>
-                    {result.saved} aprendizaje{result.saved !== 1 ? 's' : ''} propuesto{result.saved !== 1 ? 's'  : ''}
+                    {result.saved} aprendizaje{result.saved !== 1 ? 's' : ''} guardado{result.saved !== 1 ? 's' : ''} automáticamente
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
                     De {result.total_emails} correos analizados, {result.relevant_count} eran relevantes para {agentRole || 'el rol'}.
-                    Revísalos y apruébalos en la sección de Aprendizajes.
                   </p>
                 </div>
               </div>
 
-              <a
-                href="#aprendizajes"
-                className="self-start flex items-center gap-1.5 text-xs font-medium"
-                style={{ color: '#6C3BFF' }}
-              >
-                Ver aprendizajes pendientes <ArrowRight size={12} />
-              </a>
+              <div className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+                style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                <BookOpen size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
+                <div className="flex flex-col gap-1">
+                  <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                    Se guardaron en <strong style={{ color: 'var(--c-text-2)' }}>Responsabilidades → Aprendizajes del rol</strong>. Edítalos ahí si es necesario.
+                  </p>
+                  <a
+                    href="#rol"
+                    className="self-start flex items-center gap-1 text-[11px] font-medium"
+                    style={{ color: '#6C3BFF' }}
+                  >
+                    Ir a Responsabilidades <ArrowRight size={11} />
+                  </a>
+                </div>
+              </div>
             </div>
           )}
 

@@ -485,8 +485,8 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                           <span className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>
                             {allocStr}/mes
                           </span>
-                          <span className="text-[11px] font-semibold mt-0.5" style={{ color: active ? '#9B6DFF' : 'var(--c-text-2)' }}>
-                            {fmt(j.mxn)} + IVA/mes
+                          <span className="text-[11px] font-semibold mt-0.5 whitespace-nowrap" style={{ color: active ? '#9B6DFF' : 'var(--c-text-2)' }}>
+                            {fmt(j.mxn)}<span style={{ fontWeight: 400, fontSize: 9, opacity: 0.65 }}> + IVA/mes</span>
                           </span>
                         </button>
                       );
@@ -518,7 +518,7 @@ export default function MeerkatPicker({ token, plan = 'comercial', defaultTier =
                       </div>
                       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
                         <span>{j.label} · {allocStr}/mes</span>
-                        <span className="font-semibold">{fmt(j.mxn)}/mes</span>
+                        <span className="font-semibold whitespace-nowrap">{fmt(j.mxn)}<span style={{ fontWeight: 400, opacity: 0.6 }}> + IVA/mes</span></span>
                       </div>
                       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-3)', borderTop: '1px solid rgba(108,59,255,0.12)', paddingTop: 6, marginTop: 2 }}>
                         <span>Subtotal</span>

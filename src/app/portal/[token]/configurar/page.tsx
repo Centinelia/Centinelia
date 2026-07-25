@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Settings } from 'lucide-react';
+import { ChevronLeft, Settings, Mail, CheckCircle, AlertTriangle } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -31,9 +31,10 @@ import TrustStageSelector           from '../TrustStageSelector';
 import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ContractSection              from '../ContractSection';
-import AgentEmailSection            from '../AgentEmailSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
+import CallForwardingSection from '../CallForwardingSection';
+import SendAsEmailEditor     from '../SendAsEmailEditor';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -76,7 +77,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
   const { data: emailIntegration } = await supabase
     .from('email_integrations')
-    .select('email, needs_reauth')
+    .select('email, needs_reauth, provider, send_as_email')
     .eq('agent_id', agent.id)
     .maybeSingle();
   const connectedEmail = emailIntegration && !emailIntegration.needs_reauth
@@ -96,15 +97,17 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     { id: 'dod',             label: 'Definición de listo',    group: 'Entrenamiento' },
     { id: 'metas',           label: 'Metas',                  group: 'Entrenamiento' },
     { id: 'limites',         label: 'Límites de autoridad',   group: 'Entrenamiento' },
+    { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Entrenamiento' },
     ...(!isCoordinator
       ? [{ id: 'llamadas',   label: 'Llamadas entrantes',     group: 'Operación'     }] : []),
+    ...(!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number
+      ? [{ id: 'desvio',    label: 'Desvío de llamadas',     group: 'Operación'     }] : []),
     { id: 'autonomia',       label: 'Nivel de autonomía',     group: 'Operación'     },
     { id: 'checkin',         label: 'Check-in automático',    group: 'Operación'     },
     ...(!isCoordinator
       ? [{ id: 'notificaciones', label: 'Notificaciones',     group: 'Operación'     }] : []),
     ...(!isCoordinator
       ? [{ id: 'equipo',     label: 'Números del equipo',     group: 'Operación'     }] : []),
-    { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Operación'     },
     { id: 'correo',          label: 'Correo',                 group: 'Herramientas'  },
     ...(isOwner && hasVoiceJornada
       ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
@@ -237,6 +240,20 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               </div>
             </div>
 
+            <div id="aprendizaje" style={SCROLL_STYLE}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprendizaje de plataformas</h2>
+                  <InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />
+                </div>
+                <RoleEmailLearningSection
+                  token={token}
+                  connectedEmail={connectedEmail}
+                  agentRole={agentRole || agentName}
+                />
+              </div>
+            </div>
+
             {!isCoordinator && (
               <div id="llamadas" style={SCROLL_STYLE}>
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
@@ -248,6 +265,21 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     token={token}
                     initGreeting={(agent as any).first_message ?? ''}
                     initTransferRules={(agent as any).transfer_rules ?? ''}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
+              <div id="desvio" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Desvío de llamadas</h2>
+                    <InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />
+                  </div>
+                  <CallForwardingSection
+                    phoneNumber={(agent as any).phone_number as string}
+                    agentName={agentName}
                   />
                 </div>
               </div>
@@ -305,27 +337,66 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               </div>
             )}
 
-            <div id="aprendizaje" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprendizaje de plataformas</h2>
-                  <InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />
-                </div>
-                <RoleEmailLearningSection
-                  token={token}
-                  connectedEmail={connectedEmail}
-                  agentRole={agentRole || agentName}
-                />
-              </div>
-            </div>
-
             <div id="correo" style={SCROLL_STYLE}>
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
                 <div className="flex items-center gap-1.5 mb-4">
                   <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
                   <InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />
                 </div>
-                <AgentEmailSection token={token} />
+                {connectedEmail ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                      style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                      {emailIntegration!.provider === 'gmail' ? (
+                        <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                          <rect x="4" y="8" width="40" height="32" rx="2" fill="#fff" stroke="#ddd" strokeWidth="1.5" />
+                          <path d="M4 8l20 14L44 8" stroke="#EA4335" strokeWidth="2.5" fill="none" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                          <rect width="48" height="48" rx="6" fill="#0078D4" />
+                          <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
+                          <circle cx="17" cy="24" r="6" fill="#0078D4" />
+                          <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
+                        </svg>
+                      )}
+                      <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+                      <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-text)' }}>
+                        {connectedEmail}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+                        style={{ color: 'var(--c-text-4)' }}>
+                        Correo para envíos propios
+                      </p>
+                      <p className="text-xs mb-2.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                        Para seguimientos y correos personales, el empleado envía desde esta dirección en lugar del correo del área.
+                      </p>
+                      <SendAsEmailEditor
+                        token={token}
+                        provider={emailIntegration!.provider as string}
+                        initialValue={(emailIntegration as any).send_as_email ?? ''}
+                      />
+                    </div>
+                  </div>
+                ) : emailIntegration?.needs_reauth ? (
+                  <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                    style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                    <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                    <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                      La conexión de correo requiere reconexión. Ve a la sección de Integraciones en la Oficina.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                    <Mail size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                      Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
+                    </span>
+                  </div>
+                )}
 
                 <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
                   <div className="flex items-center gap-1.5 mb-3">
