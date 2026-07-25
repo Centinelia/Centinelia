@@ -78,6 +78,14 @@ export default async function AgentesPage({ searchParams }: Props) {
             <span>Demo</span>
           </Link>
           <Link
+            href="/admin/demo-monterrey"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.40)', color: '#9B6DFF' }}
+          >
+            <Bot size={14} />
+            <span>Demo Monterrey</span>
+          </Link>
+          <Link
             href="/admin/agentes/nuevo"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
             style={{ background: '#6C3BFF', color: '#FAFBFF' }}
