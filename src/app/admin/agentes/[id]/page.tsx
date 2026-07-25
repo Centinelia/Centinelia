@@ -4,9 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getOrCreateSerial }  from '@/lib/portal/serial';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Phone, Globe, Calendar, CheckCircle, XCircle, Pencil, ExternalLink, Check, Lock } from 'lucide-react';
+import {
+  ArrowLeft, Phone, Globe, Calendar, CheckCircle, XCircle,
+  Pencil, ExternalLink, Check, Circle,
+} from 'lucide-react';
 import type { VoiceAgent, VoiceCall } from '@/types/agent';
-import { PLAN_LABELS, FEATURE_LABELS, PLAN_FEATURES } from '@/types/agent';
+import { FEATURE_LABELS } from '@/types/agent';
 import type { AgentFeatures } from '@/types/agent';
 import AgentActions from './AgentActions';
 import CallsSection from './CallsSection';
@@ -16,30 +19,35 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const PLAN_COLORS: Record<string, string> = {
-  comercial: '#6C3BFF', pro: '#a855f7',
-};
+// Features shown in the detail view (skip internal/meta flags)
+const DISPLAY_FEATURES: (keyof AgentFeatures)[] = [
+  'lead_qualification',
+  'appointment_booking',
+  'existing_client_support',
+  'smart_transfer',
+  'order_taking',
+  'outbound_calls',
+  'multilingual',
+  'client_memory',
+  'helpdesk',
+  'of_encuestas',
+  'civic_reports',
+  'contract_drafts',
+];
 
-const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
-  receptionist:            'Contesta llamadas, da información del negocio y horarios',
-  lead_qualification:      'Pregunta por nombre, contacto e interés del llamante',
-  appointment_booking:     'Agenda citas o reservaciones y las registra',
-  existing_client_support: 'Atiende a clientes que ya conocen el negocio',
-  smart_transfer:          'Transfiere la llamada a un humano cuando es necesario',
-  order_taking:            'Toma pedidos de productos o platillos',
-  multilingual:            'Responde en inglés además de español',
-  client_memory:           'Recuerda información de llamadas anteriores del mismo número',
-  outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
-  vertical:                '',
-  helpdesk:                'Mesa de ayuda IT',
-  is_coordinator:          'Coordinador de equipo',
-  meerkat_role_id:         '',
-  lite_prompt:             '',
-  skip_aup:                '',
-  skip_recording_notice:   '',
-  of_encuestas:            '',
-  civic_reports:           '',
-  contract_drafts:         '',
+const FEATURE_DESCRIPTIONS: Partial<Record<keyof AgentFeatures, string>> = {
+  lead_qualification:      'Captura nombre, contacto e interés del llamante',
+  appointment_booking:     'Agenda, modifica y cancela citas',
+  existing_client_support: 'Atiende dudas de clientes actuales',
+  smart_transfer:          'Transfiere a humano y notifica por WhatsApp',
+  order_taking:            'Toma y registra pedidos',
+  outbound_calls:          'Campañas de llamadas salientes desde el portal',
+  multilingual:            'Cambia a inglés automáticamente',
+  client_memory:           'Recuerda historial por número',
+  helpdesk:                'Mesa de ayuda IT activa',
+  of_encuestas:            'Módulo de encuestas telefónicas',
+  civic_reports:           'Módulo de reportes ciudadanos',
+  contract_drafts:         'Redacción de borradores de contrato',
 };
 
 export default async function AgentDetailPage({ params }: Props) {
@@ -60,18 +68,19 @@ export default async function AgentDetailPage({ params }: Props) {
     ? await getOrCreateSerial(agent.portal_email).catch(() => null)
     : null;
 
-  const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
 
-  const featureKeys = Object.keys(agent.features) as (keyof AgentFeatures)[];
-  const baseKeys    = featureKeys.filter(k => PLAN_FEATURES.comercial[k]);
-  const proKeys     = featureKeys.filter(k => !PLAN_FEATURES.comercial[k]);
+  const meerkatId  = (agent.features as any)?.meerkat_role_id as string | null;
+  const jornadaType = (agent as any).jornada_type as string | null;
+
+  const activeFeatures   = DISPLAY_FEATURES.filter(k => !!(agent.features as any)[k]);
+  const inactiveFeatures = DISPLAY_FEATURES.filter(k => !(agent.features as any)[k]);
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
+
       {/* Header */}
       <div className="mb-6">
-        {/* Row 1: back + title + badges */}
         <div className="flex items-start gap-3">
           <Link href="/admin/agentes"
             className="p-2 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0 mt-0.5"
@@ -83,10 +92,24 @@ export default async function AgentDetailPage({ params }: Props) {
               <h1 className="text-lg sm:text-2xl font-bold truncate" style={{ color: 'var(--c-text)' }}>
                 {agent.business_name}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
-                style={{ background: `${planColor}22`, color: planColor, border: `1px solid ${planColor}44` }}>
-                {PLAN_LABELS[agent.plan]}
-              </span>
+              {agent.agent_name && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
+                  style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                  {agent.agent_name}
+                </span>
+              )}
+              {meerkatId && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
+                  style={{ background: 'rgba(108,59,255,0.08)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                  {meerkatId}
+                </span>
+              )}
+              {jornadaType && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
+                  style={{ background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}>
+                  {jornadaType}
+                </span>
+              )}
               {agent.active
                 ? <CheckCircle size={15} color="#22c55e" className="flex-shrink-0" />
                 : <XCircle size={15} color="#ef4444" className="flex-shrink-0" />}
@@ -94,21 +117,23 @@ export default async function AgentDetailPage({ params }: Props) {
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
                   style={{
                     background: isOpen ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)',
-                    color: isOpen ? '#22c55e' : '#9ca3af',
-                    border: `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)'}`,
+                    color:      isOpen ? '#22c55e' : '#9ca3af',
+                    border:     `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)'}`,
                   }}>
                   {isOpen ? 'Abierto' : 'Cerrado'}
                 </span>
               )}
             </div>
             <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.client_name}</p>
+            {agent.portal_email && (
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{(agent as any).portal_email}</p>
+            )}
             {accountSerial && (
               <p className="text-xs mt-1 font-mono font-semibold tracking-widest"
                 style={{ color: '#6C3BFF', letterSpacing: '0.08em' }}>
                 {accountSerial}
               </p>
             )}
-            {/* Actions — mobile: below pills, right-aligned to sit under "Cerrado" */}
             <div className="sm:hidden flex items-center justify-end gap-2 mt-2 pr-4">
               <Link href={`/admin/agentes/${agent.id}/editar`}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
@@ -118,7 +143,6 @@ export default async function AgentDetailPage({ params }: Props) {
               <AgentActions agentId={agent.id} active={agent.active} />
             </div>
           </div>
-          {/* Actions — desktop: right side */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             <Link href={`/admin/agentes/${agent.id}/editar`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
@@ -131,11 +155,12 @@ export default async function AgentDetailPage({ params }: Props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         {/* Left column */}
         <div className="lg:col-span-2 flex flex-col gap-6">
 
           {/* Business info */}
-          <Card title="Información del negocio">
+          <Card title="Negocio">
             {agent.business_description && (
               <InfoRow label="Descripción" value={agent.business_description} />
             )}
@@ -150,67 +175,55 @@ export default async function AgentDetailPage({ params }: Props) {
                 <InfoRowCompact label="Teléfono del negocio" value={agent.business_phone_display} icon={<Phone size={12} />} copyable />
               )}
               {agent.phone_number && (
-                <InfoRowCompact label="Número del agente" value={agent.phone_number} icon={<Phone size={12} />} copyable />
+                <InfoRowCompact label="Número Centinelia" value={agent.phone_number} icon={<Phone size={12} />} copyable />
               )}
               <InfoRowCompact label="Zona horaria" value={agent.timezone} icon={<Calendar size={12} />} />
             </div>
           </Card>
 
           {/* Features */}
-          <Card title="Funcionalidades">
-            <div className="flex flex-col gap-4">
-              {/* Base */}
-              <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
-                  Siempre incluidas
-                </p>
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(108,59,255,0.2)' }}>
-                  {baseKeys.map((key, i) => (
-                    <div key={key} className="flex items-center gap-3 px-3 py-2.5"
-                      style={{
-                        background: 'var(--c-surface)',
-                        borderBottom: i < baseKeys.length - 1 ? '1px solid rgba(108,59,255,0.08)' : undefined,
-                      }}>
-                      <Check size={13} className="flex-shrink-0" style={{ color: '#6C3BFF' }} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{FEATURE_LABELS[key]}</p>
+          <Card title="Funciones activas">
+            {activeFeatures.length > 0 ? (
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(108,59,255,0.2)' }}>
+                {activeFeatures.map((key, i) => (
+                  <div key={key} className="flex items-center gap-3 px-3 py-2.5"
+                    style={{
+                      background:   'var(--c-surface)',
+                      borderBottom: i < activeFeatures.length - 1 ? '1px solid rgba(108,59,255,0.08)' : undefined,
+                    }}>
+                    <Check size={13} className="flex-shrink-0" style={{ color: '#6C3BFF' }} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{FEATURE_LABELS[key]}</p>
+                      {FEATURE_DESCRIPTIONS[key] && (
                         <p className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
-                      </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin funciones activas</p>
+            )}
+            {inactiveFeatures.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
+                  Desactivadas
+                </p>
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+                  {inactiveFeatures.map((key, i) => (
+                    <div key={key} className="flex items-center gap-3 px-3 py-2"
+                      style={{
+                        background:   'var(--c-surface)',
+                        borderBottom: i < inactiveFeatures.length - 1 ? '1px solid var(--c-border)' : undefined,
+                        opacity: 0.45,
+                      }}>
+                      <Circle size={13} className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }} />
+                      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{FEATURE_LABELS[key]}</p>
                     </div>
                   ))}
                 </div>
               </div>
-              {/* Pro */}
-              <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
-                  Funciones Pro
-                </p>
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
-                  {proKeys.map((key, i) => {
-                    const active = agent.features[key];
-                    return (
-                      <div key={key} className="flex items-center gap-3 px-3 py-2.5"
-                        style={{
-                          background: 'var(--c-surface)',
-                          borderBottom: i < proKeys.length - 1 ? '1px solid var(--c-border)' : undefined,
-                          opacity: active ? 1 : 0.45,
-                        }}>
-                        {active
-                          ? <Check size={13} className="flex-shrink-0" style={{ color: '#a855f7' }} />
-                          : <Lock size={13} className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }} />
-                        }
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium" style={{ color: active ? 'var(--c-text)' : 'var(--c-text-3)' }}>
-                            {FEATURE_LABELS[key]}
-                          </p>
-                          <p className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            )}
           </Card>
 
           {/* Recent calls */}
@@ -220,7 +233,7 @@ export default async function AgentDetailPage({ params }: Props) {
         {/* Right column */}
         <div className="flex flex-col gap-4">
 
-          {/* Portal + Vapi config */}
+          {/* Portal + Vapi */}
           {(agent.portal_token || agent.vapi_agent_id) && (
             <div className="p-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
               {agent.portal_token && (
@@ -276,7 +289,7 @@ export default async function AgentDetailPage({ params }: Props) {
                 })}
               </div>
             ) : (
-              <div className="text-xs" style={{ color: '#22c55e' }}>24/7, sin restricción de horario</div>
+              <div className="text-xs" style={{ color: '#22c55e' }}>24/7, sin restricción</div>
             )}
           </div>
 
@@ -300,10 +313,12 @@ export default async function AgentDetailPage({ params }: Props) {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function getIsOpenNow(hours: any, timezone: string): boolean | null {
   if (!hours) return null;
   try {
-    const now = new Date();
+    const now   = new Date();
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone: timezone, weekday: 'long', hour: 'numeric', minute: 'numeric', hour12: false,
     }).formatToParts(now);
