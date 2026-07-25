@@ -83,7 +83,7 @@ export default async function AgentesPage({ searchParams }: Props) {
             style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.40)', color: '#9B6DFF' }}
           >
             <Bot size={14} />
-            <span>Demo Monterrey</span>
+            <span>Demo personalizado</span>
           </Link>
           <Link
             href="/admin/agentes/nuevo"

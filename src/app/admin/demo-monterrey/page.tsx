@@ -10,7 +10,7 @@ export default async function DemoMonterreyPage() {
   if (!agentId) {
     return (
       <div className="p-8 max-w-lg">
-        <h1 className="text-xl font-bold mb-3" style={{ color: 'var(--c-text)' }}>Demo Monterrey</h1>
+        <h1 className="text-xl font-bold mb-3" style={{ color: 'var(--c-text)' }}>Demo personalizado</h1>
         <div className="rounded-xl p-5" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <p className="text-sm font-medium mb-2" style={{ color: '#f59e0b' }}>Falta configurar el ID del agente demo</p>
           <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>
