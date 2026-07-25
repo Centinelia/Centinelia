@@ -406,7 +406,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
     },
     voice: {
       provider: '11labs',
-      voiceId: agent.elevenlabs_voice_id || 'jUxkp8eMgszgJX3XU2pV',
+      voiceId: agent.elevenlabs_voice_id || 'nTkjq09AuYgsNR8E4sDe',
       model: cfg.voiceModel ?? 'eleven_turbo_v2_5',
       stability: 0.35,
       similarityBoost: 0.75,

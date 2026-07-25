@@ -32,7 +32,7 @@ export const MEERKAT_ROLES: MeerkatRole[] = [
     color:       '#6C3BFF',
     genero:      'F',
     tagline:     'Nunca se le escapa un dato',
-    voiceId:     'jUxkp8eMgszgJX3XU2pV',
+    voiceId:     'nTkjq09AuYgsNR8E4sDe',
     personalidad:
       'Pañoleta al cuello y libreta siempre en mano, Nia apunta cada detalle antes de que termines de decirlo. Cálida desde el primer saludo, hace que cada persona que llama sienta que era la llamada más importante del día.',
     promptPersonalidad:

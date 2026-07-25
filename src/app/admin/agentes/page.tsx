@@ -21,7 +21,8 @@ interface Props {
 export default async function AgentesPage({ searchParams }: Props) {
   const { page = '1', status = '', plan = '', search = '', sort = 'recent' } = await searchParams;
   const pageNum = Math.max(1, parseInt(page) || 1);
-  const demoId  = process.env.DEMO_AGENT_ID;
+  const demoId             = process.env.DEMO_AGENT_ID;
+  const demoPersonalizadoId = process.env.DEMO_PERSONALIZADO_AGENT_ID;
   const supabase = createAdminClient();
 
   let query = supabase
@@ -30,7 +31,8 @@ export default async function AgentesPage({ searchParams }: Props) {
       'id, business_name, client_name, plan, active, billing_status, phone_number, created_at',
       { count: 'exact' }
     )
-    .neq('id', demoId ?? '');
+    .neq('id', demoId ?? '')
+    .neq('id', demoPersonalizadoId ?? '');
 
   if (status === 'activos')  query = query.eq('active', true);
   if (status === 'pausados') query = query.eq('active', false);

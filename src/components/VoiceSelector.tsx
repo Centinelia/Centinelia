@@ -54,10 +54,10 @@ const VOICE_DESC_OVERRIDE: Record<string, string> = {
 const VOICE_NAME_OVERRIDE: Record<string, string> = {
   // Female
   'j7e3J6ksqsziQcIGyAWI': 'Valentina',   // Valentina
-  'jUxkp8eMgszgJX3XU2pV': 'Centinelia', // Annie KPasa, voz oficial
+  'jUxkp8eMgszgJX3XU2pV': 'Annie',
   'hrlCBOGwBPZYViXHeZjS': 'Sofía',      // "Sofía Juliette - ..."
   'cAvMBIZ0VNTU8XdsUpEq': 'Susana',     // "Susana Elizabeth - ..."
-  'nTkjq09AuYgsNR8E4sDe': 'Cristina',   // "Cristina Campos - ..."
+  'nTkjq09AuYgsNR8E4sDe': 'Centinelia',   // Cristina Campos — voz oficial de Nia
   'pBabaO9WxfrjXjKADHma': 'Cindy',      // "Cindy Calderon" (sin guion)
   // Male
   'YKUjKbMlejgvkOZlnnvt': 'Alejandro',  // "Alejandro Ballesteros-Warm..." (guion sin espacios)
@@ -165,7 +165,7 @@ function VoiceCard({
   );
 }
 
-const OFFICIAL_VOICE_ID = 'jUxkp8eMgszgJX3XU2pV';
+const OFFICIAL_VOICE_ID = 'nTkjq09AuYgsNR8E4sDe';
 
 export default function VoiceSelector({
   selected,

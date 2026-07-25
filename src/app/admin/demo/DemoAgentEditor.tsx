@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Phone, ExternalLink, RefreshCw, MessageCircle } from 'lucide-react';
+import { Check, Loader2, Phone, ExternalLink, RefreshCw } from 'lucide-react';
 import type { VoiceAgent } from '@/types/agent';
 import { DEMO_INSTRUCTIONS } from '@/lib/demo/instructions';
+import VoiceSelector from '@/components/VoiceSelector';
 
 function Field({ label, name, value, onChange, textarea, rows = 4, placeholder, hint }: {
   label: string; name: string; value: string; onChange: (v: string) => void;
@@ -43,6 +44,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
   const [description,   setDescription]   = useState(agent.business_description ?? '');
   const [knowledgeBase, setKnowledgeBase] = useState(agent.knowledge_base ?? '');
   const [waActive,      setWaActive]      = useState(!!agent.wa_phone_number);
+  const [voiceId,       setVoiceId]       = useState<string | null>(agent.elevenlabs_voice_id ?? null);
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
   const [applying,  setApplying]  = useState(false);
@@ -62,6 +64,7 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
         business_description: description,
         knowledge_base:       knowledgeBase,
         wa_phone_number:      waActive ? (agent.phone_number ?? null) : null,
+        elevenlabs_voice_id:  voiceId,
         // Included so the PATCH route knows to sync Vapi
         business_name:        agent.business_name,
       }),
@@ -137,6 +140,12 @@ export default function DemoAgentEditor({ agent }: { agent: VoiceAgent }) {
           rows={3}
           placeholder="Agente demo de Centinelia: adopta cualquier papel que se le indique."
         />
+      </div>
+
+      {/* Voice */}
+      <div className="flex flex-col gap-4 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Voz del agente</h2>
+        <VoiceSelector selected={voiceId} onChange={setVoiceId} />
       </div>
 
       {/* Knowledge base */}
