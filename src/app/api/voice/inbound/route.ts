@@ -298,7 +298,7 @@ export async function POST(req: NextRequest) {
         chunkPlan: {
           enabled: true,
           minCharacters: 25,
-          punctuationBoundaries: ['.', '!', '?', ','],
+          punctuationBoundaries: ['.', '!', '?'],
         },
       },
       firstMessage,
@@ -310,6 +310,10 @@ export async function POST(req: NextRequest) {
         language: typedAgent.features.multilingual ? 'multi' : 'es',
         smartFormat: false,
         endpointing: 150,
+      },
+      stopSpeakingPlan: {
+        numWords: 2,
+        voiceSeconds: 0.2,
       },
       backgroundSound: 'office',
       backchannelingEnabled: true,
