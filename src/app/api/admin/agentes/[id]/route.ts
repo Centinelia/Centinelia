@@ -48,19 +48,41 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
+// Fields that live in `organizations`, not `voice_agents`
+const ORG_FIELDS = new Set([
+  'knowledge_base', 'business_description', 'business_hours',
+  'business_website', 'website_knowledge', 'google_review_url',
+]);
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
   const supabase = createAdminClient();
 
+  // Split body into agent-level fields and org-level fields
+  const agentPatch: Record<string, unknown> = {};
+  const orgPatch:   Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (ORG_FIELDS.has(k)) orgPatch[k] = v;
+    else                   agentPatch[k] = v;
+  }
+
   const { data, error } = await supabase
     .from('voice_agents')
-    .update(body)
+    .update(agentPatch)
     .eq('id', id)
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Persist org-level fields to organizations table (if portal_email is known)
+  const portalEmail = (data as any).portal_email ?? body.portal_email;
+  if (portalEmail && Object.keys(orgPatch).length > 0) {
+    await supabase
+      .from('organizations')
+      .upsert({ portal_email: portalEmail, ...orgPatch }, { onConflict: 'portal_email' });
+  }
 
   const agent = data as VoiceAgent;
   const isFullUpdate = body.business_name !== undefined;

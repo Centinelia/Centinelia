@@ -159,7 +159,8 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
       router.push(`/admin/agentes/${agent.id}`);
       router.refresh();
     } else {
-      alert('Error al guardar los cambios');
+      const { error: errMsg } = await res.json().catch(() => ({ error: null }));
+      alert(errMsg ?? 'Error al guardar los cambios');
       setSaving(false);
     }
   };
