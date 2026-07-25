@@ -389,11 +389,27 @@ export default async function AgentesPage({ params }: Props) {
       if (!toolAgentMap[t.label].includes(agentName)) toolAgentMap[t.label].push(agentName);
     }
   }
+  // Which meerkat roles can provide each tool (for uncovered suggestions)
+  const toolRoleMap: Record<string, string[]> = {};
+  for (const [roleId, tools] of Object.entries(MEERKAT_TOOL_DISTRIBUTION)) {
+    const role = MEERKAT_MAP[roleId as MeerkatRoleId];
+    if (!role) continue;
+    for (const t of tools) {
+      if (!toolRoleMap[t.label]) toolRoleMap[t.label] = [];
+      if (!toolRoleMap[t.label].includes(role.nombre)) toolRoleMap[t.label].push(role.nombre);
+    }
+  }
   const categoryStats = BUSINESS_CATEGORIES.map(cat => ({
     label:       cat.label,
     color:       cat.color,
     specialized: !!cat.specialized,
-    tools:       cat.tools.map(t => ({ key: t.key, label: t.label, covered: coveredToolKeys.has(t.key), agents: toolAgentMap[t.key] ?? [] })),
+    tools:       cat.tools.map(t => ({
+      key:            t.key,
+      label:          t.label,
+      covered:        coveredToolKeys.has(t.key),
+      agents:         toolAgentMap[t.key] ?? [],
+      suggestedRoles: toolRoleMap[t.key] ?? [],
+    })),
     covered:     cat.tools.filter(t => coveredToolKeys.has(t.key)).length,
     total:       cat.tools.length,
   }));
@@ -699,11 +715,17 @@ export default async function AgentesPage({ params }: Props) {
                         style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
                         {t.label}
                       </span>
-                      {t.covered && t.agents.length > 0 && (
-                        <div className="pointer-events-none absolute left-0 bottom-full mb-1 z-50 hidden group-hover/cap:block">
+                      {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/cap:block">
                           <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                            style={{ background: 'var(--c-surface-2, #1e1a2e)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }}>
-                            {t.agents.join(' · ')}
+                            style={{
+                              background: 'var(--c-surface-2, #1e1a2e)',
+                              border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                              color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                            }}>
+                            {t.covered
+                              ? t.agents.join(' · ')
+                              : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
                           </div>
                         </div>
                       )}
@@ -745,11 +767,17 @@ export default async function AgentesPage({ params }: Props) {
                           style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
                           {t.label}
                         </span>
-                        {t.covered && t.agents.length > 0 && (
-                          <div className="pointer-events-none absolute left-0 bottom-full mb-1 z-50 hidden group-hover/cap:block">
+                        {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                          <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 hidden group-hover/cap:block">
                             <div className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                              style={{ background: 'var(--c-surface-2, #1e1a2e)', border: '1px solid var(--c-border)', color: 'var(--c-text-1)' }}>
-                              {t.agents.join(' · ')}
+                              style={{
+                                background: 'var(--c-surface-2, #1e1a2e)',
+                                border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                                color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                              }}>
+                              {t.covered
+                                ? t.agents.join(' · ')
+                                : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
                             </div>
                           </div>
                         )}
