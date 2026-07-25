@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { UtensilsCrossed, Stethoscope, Sparkles, Briefcase, ShoppingBag, Building2, Check, Lock } from 'lucide-react';
+import { UtensilsCrossed, Stethoscope, Sparkles, Briefcase, ShoppingBag, Building2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { PLAN_FEATURES, PLAN_LABELS, PLAN_MINUTES, FEATURE_LABELS } from '@/types/agent';
-import type { Plan, AgentFeatures } from '@/types/agent';
+import { FEATURE_LABELS } from '@/types/agent';
+import type { AgentFeatures } from '@/types/agent';
 import { AGENT_TEMPLATES } from '@/lib/voice/templates';
 import type { GiroTemplate } from '@/lib/voice/templates';
 
@@ -16,11 +16,6 @@ const TEMPLATE_ICONS: Record<GiroTemplate, LucideIcon> = {
   agencia:     Briefcase,
   retail:      ShoppingBag,
   general:     Building2,
-};
-
-const PLANS: Plan[] = ['comercial', 'pro'];
-const PLAN_COLORS: Record<Plan, string> = {
-  comercial: '#6C3BFF', pro: '#a855f7',
 };
 
 const MEXICO_TIMEZONES = [
@@ -34,7 +29,7 @@ const MEXICO_TIMEZONES = [
   { value: 'America/Cancun',      label: 'Cancún / Quintana Roo' },
 ];
 
-const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
+const FEATURE_DESCRIPTIONS: Partial<Record<keyof AgentFeatures, string>> = {
   receptionist:            'Contesta llamadas, da información del negocio y horarios',
   lead_qualification:      'Pregunta por nombre, contacto e interés del llamante',
   appointment_booking:     'Agenda citas o reservaciones y las registra',
@@ -44,17 +39,13 @@ const FEATURE_DESCRIPTIONS: Record<keyof AgentFeatures, string> = {
   multilingual:            'Responde en inglés además de español',
   client_memory:           'Recuerda información de llamadas anteriores del mismo número',
   outbound_calls:          'Permite disparar llamadas salientes desde el portal del cliente',
-  vertical:                '',
-  helpdesk:                'Mesa de ayuda IT',
-  is_coordinator:          'Coordinador de equipo',
-  meerkat_role_id:         '',
-  lite_prompt:             '',
-  skip_aup:                '',
-  skip_recording_notice:   '',
-  of_encuestas:            '',
-  civic_reports:           '',
-  contract_drafts:         '',
 };
+
+const VOICE_FEATURE_KEYS: (keyof AgentFeatures)[] = [
+  'receptionist', 'lead_qualification', 'appointment_booking',
+  'existing_client_support', 'smart_transfer', 'order_taking',
+  'multilingual', 'client_memory',
+];
 
 const KB_LABELS: Record<GiroTemplate, string> = {
   restaurante: 'Menú, horarios y preguntas frecuentes',
@@ -65,7 +56,38 @@ const KB_LABELS: Record<GiroTemplate, string> = {
   general:     'Información del negocio',
 };
 
-export default function NuevoAgentePage() {
+const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
+  receptionist:            'Recepción',
+  lead_qualification:      'Leads',
+  appointment_booking:     'Citas',
+  existing_client_support: 'Clientes',
+  smart_transfer:          'Transferencia',
+  order_taking:            'Pedidos',
+  multilingual:            'Multiidioma',
+  client_memory:           'Memoria',
+  outbound_calls:          'Salientes',
+  vertical:                '',
+  helpdesk:                'Helpdesk',
+  is_coordinator:          'Coordinador',
+  meerkat_role_id:         '',
+  lite_prompt:             '',
+  skip_aup:                '',
+  skip_recording_notice:   '',
+  of_encuestas:            '',
+  civic_reports:           '',
+  contract_drafts:         '',
+};
+
+const DEFAULT_FEATURES: AgentFeatures = {
+  receptionist: true, lead_qualification: false, appointment_booking: false,
+  existing_client_support: false, smart_transfer: false, order_taking: false,
+  multilingual: false, client_memory: false, outbound_calls: false,
+  vertical: undefined, helpdesk: false, is_coordinator: false, meerkat_role_id: '',
+  lite_prompt: false, skip_aup: false, skip_recording_notice: false,
+  of_encuestas: false, civic_reports: false, contract_drafts: false,
+};
+
+export default function NuevoEmpleadoPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
 
@@ -76,9 +98,8 @@ export default function NuevoAgentePage() {
 
   const [saving, setSaving]     = useState(false);
   const [template, setTemplate] = useState<GiroTemplate | null>(null);
-  const [plan, setPlan]         = useState<Plan>('comercial');
-  const [features, setFeatures] = useState<AgentFeatures>(PLAN_FEATURES.comercial);
-  const [formTab, setFormTab]   = useState<'info' | 'agente' | 'funciones'>('info');
+  const [features, setFeatures] = useState<AgentFeatures>(DEFAULT_FEATURES);
+  const [formTab, setFormTab]   = useState<'negocio' | 'empleado' | 'funciones'>('negocio');
   const [errors, setErrors]     = useState<string[]>([]);
 
   const selectedTpl = AGENT_TEMPLATES.find(t => t.id === template);
@@ -86,36 +107,10 @@ export default function NuevoAgentePage() {
   const handleTemplateSelect = (id: GiroTemplate) => {
     const tpl = AGENT_TEMPLATES.find(t => t.id === id)!;
     setTemplate(id);
-    const planFeatures = PLAN_FEATURES[plan];
-    const merged = Object.fromEntries(
-      Object.keys(tpl.features).map(k => [
-        k,
-        tpl.features[k as keyof AgentFeatures] && planFeatures[k as keyof AgentFeatures],
-      ])
-    ) as unknown as AgentFeatures;
-    setFeatures(merged);
-  };
-
-  const handlePlanChange = (p: Plan) => {
-    setPlan(p);
-    if (selectedTpl) {
-      const planFeatures = PLAN_FEATURES[p];
-      const merged = Object.fromEntries(
-        Object.keys(selectedTpl.features).map(k => [
-          k,
-          selectedTpl.features[k as keyof AgentFeatures] && planFeatures[k as keyof AgentFeatures],
-        ])
-      ) as unknown as AgentFeatures;
-      setFeatures(merged);
-    } else {
-      setFeatures(PLAN_FEATURES[p]);
-    }
+    setFeatures(prev => ({ ...prev, ...tpl.features }));
   };
 
   const toggleFeature = (key: keyof AgentFeatures) => {
-    const isBase  = PLAN_FEATURES.comercial[key];
-    const isProOnly = !PLAN_FEATURES.comercial[key];
-    if (isBase || (isProOnly && plan === 'comercial')) return;
     setFeatures(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -128,7 +123,7 @@ export default function NuevoAgentePage() {
     if (!fd.get('business_name')) missing.push('Nombre del negocio');
     if (missing.length > 0) {
       setErrors(missing);
-      setFormTab('info');
+      setFormTab('negocio');
       return;
     }
     setErrors([]);
@@ -149,11 +144,9 @@ export default function NuevoAgentePage() {
       timezone:               fd.get('timezone') || 'America/Monterrey',
       phone_number:           fd.get('phone_number'),
       knowledge_base:         fd.get('knowledge_base'),
-      agent_name:             plan === 'pro' ? fd.get('agent_name') : null,
+      agent_name:             fd.get('agent_name') || null,
       giro_template:          template,
-      plan,
       features,
-      minutes_included:       PLAN_MINUTES[plan],
     };
 
     const res = await fetch('/api/admin/agentes', {
@@ -167,7 +160,7 @@ export default function NuevoAgentePage() {
       router.push(`/admin/agentes/${data.id}`);
     } else {
       const { error } = await res.json().catch(() => ({ error: null }));
-      alert(error ?? 'Error al crear el agente');
+      alert(error ?? 'Error al crear el empleado');
       setSaving(false);
     }
   };
@@ -176,7 +169,7 @@ export default function NuevoAgentePage() {
   if (!template) {
     return (
       <div className="p-4 md:p-8 max-w-3xl">
-        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--c-text)' }}>Nuevo agente</h1>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--c-text)' }}>Nuevo empleado</h1>
         {isExistingClient ? (
           <div className="mb-6 px-4 py-3 rounded-xl text-sm flex flex-wrap items-center gap-2"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)', color: '#9B6DFF' }}>
@@ -223,10 +216,10 @@ export default function NuevoAgentePage() {
   }
 
   // ── Step 2: full form (tabbed) ────────────────────────────────────────────────
-  type Tab = 'info' | 'agente' | 'funciones';
+  type Tab = 'negocio' | 'empleado' | 'funciones';
   const FORM_TABS: { id: Tab; label: string }[] = [
-    { id: 'info',      label: 'Información' },
-    { id: 'agente',    label: 'Agente' },
+    { id: 'negocio',   label: 'Negocio' },
+    { id: 'empleado',  label: 'Empleado' },
     { id: 'funciones', label: 'Funciones' },
   ];
 
@@ -282,30 +275,10 @@ export default function NuevoAgentePage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
-        {/* ── Tab: Información ───────────────────────────────────────────────── */}
-        <div className={formTab !== 'info' ? 'hidden' : 'flex flex-col gap-6'}>
+        {/* ── Tab: Negocio ───────────────────────────────────────────────────── */}
+        <div className={formTab !== 'negocio' ? 'hidden' : 'flex flex-col gap-6'}>
 
-          <Section title="Plan">
-            <div className="grid grid-cols-2 gap-3">
-              {PLANS.map(p => (
-                <button key={p} type="button" onClick={() => handlePlanChange(p)}
-                  className="p-3 sm:p-4 rounded-xl border text-left transition-all"
-                  style={{
-                    borderColor: plan === p ? PLAN_COLORS[p] : 'var(--c-border)',
-                    background:  plan === p ? `${PLAN_COLORS[p]}15` : 'var(--c-surface)',
-                  }}>
-                  <div className="font-semibold text-sm" style={{ color: plan === p ? PLAN_COLORS[p] : 'var(--c-text)' }}>
-                    {PLAN_LABELS[p]}
-                  </div>
-                  <div className="text-xs mt-1 leading-snug" style={{ color: 'var(--c-text-3)' }}>
-                    {p === 'comercial' ? 'Funciones base · agente Centinelia' : 'Todas las funciones · nombre propio'}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Datos del cliente">
+          <Section title="Cliente">
             {isExistingClient && (
               <div className="px-3 py-2 rounded-lg text-xs"
                 style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
@@ -318,57 +291,48 @@ export default function NuevoAgentePage() {
               defaultValue={prefillClientEmail} readOnly={isExistingClient} />
           </Section>
 
-          <Section title="Información del negocio">
+          <Section title="Negocio">
             <Field label="Nombre del negocio" name="business_name" required
               placeholder="Ej: Restaurante El Rincón" />
-            <Field label="Descripción del negocio" name="business_description" textarea
+            <Field label="Descripción" name="business_description" textarea
               placeholder={selectedTpl?.description ? `Ej: ${selectedTpl.description} en Monterrey NL` : undefined} />
             <Field label="Dirección" name="business_address" />
-            <Field label="Teléfono que menciona el agente" name="business_phone_display"
+            <Field label="Teléfono que menciona el empleado" name="business_phone_display"
               placeholder="+52 81 1234 5678" />
             <Field label="Número de transferencia a humano" name="transfer_number"
               placeholder="+52 81 1234 5678"
-              helper="Si el caller pide hablar con una persona, el agente transfiere a este número." />
+              helper="Si el caller pide hablar con una persona, el empleado transfiere a este número." />
             <Field label="WhatsApp del dueño (notificaciones de leads)" name="transfer_whatsapp"
               placeholder="+52 81 1234 5678" />
             {selectedTpl?.features.appointment_booking && (
               <Field label={`Link de calendario para ${selectedTpl.appointmentLabel}s`}
                 name="calendar_url" placeholder="https://calendly.com/..." />
             )}
-            <Field label="Sitio web del negocio" name="business_website" placeholder="https://negocio.com" />
+            <Field label="Sitio web" name="business_website" placeholder="https://negocio.com" />
             <TimezoneSelect />
-            <Field label="Número de teléfono del agente" name="phone_number"
+            <Field label="Número de teléfono (Centinelia)" name="phone_number"
               placeholder="+19284158163"
               helper="Número asignado en Vapi que recibirá las llamadas entrantes." />
           </Section>
         </div>
 
-        {/* ── Tab: Agente ────────────────────────────────────────────────────── */}
-        <div className={formTab !== 'agente' ? 'hidden' : 'flex flex-col gap-6'}>
+        {/* ── Tab: Empleado ──────────────────────────────────────────────────── */}
+        <div className={formTab !== 'empleado' ? 'hidden' : 'flex flex-col gap-6'}>
 
-          <Section title="Identidad del agente">
-            <div className="p-3 rounded-lg leading-relaxed"
-              style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)' }}>
-              <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                En <strong style={{ color: 'var(--c-text)' }}>Empleado Centinelia</strong> el agente
-                siempre se llama <strong style={{ color: 'var(--c-text)' }}>Centinelia</strong>.
-                Con <span style={{ color: '#a855f7', fontWeight: 600 }}>Empleado Centinelia</span> puedes
-                asignarle un nombre personalizado.
-              </p>
-            </div>
-            <Field label="Nombre del agente" name="agent_name"
-              placeholder={plan === 'pro' ? 'Ej: Sofía, Carlos, Luna…' : 'Disponible en Empleado Centinelia'}
-              disabled={plan !== 'pro'} />
+          <Section title="Identidad">
+            <Field label="Nombre del empleado" name="agent_name"
+              placeholder="Ej: Sofía, Carlos, Luna…"
+              helper="Nombre con el que se presentará en llamadas y en el portal." />
           </Section>
 
-          <Section title="Base de conocimiento">
+          <Section title="Base de conocimiento del negocio">
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
               {selectedTpl?.id === 'restaurante' && 'Pega aquí el menú completo con precios, horarios y preguntas frecuentes.'}
               {selectedTpl?.id === 'consultorio' && 'Pega aquí los servicios, médicos disponibles, precios y preguntas frecuentes.'}
               {selectedTpl?.id === 'estetica'    && 'Pega aquí el catálogo de servicios con precios y preguntas frecuentes.'}
               {selectedTpl?.id === 'agencia'     && 'Pega aquí los servicios, proceso de trabajo y preguntas frecuentes.'}
               {selectedTpl?.id === 'retail'      && 'Pega aquí el catálogo de productos con precios y preguntas frecuentes.'}
-              {selectedTpl?.id === 'general'     && 'Pega aquí toda la información que el agente necesita para responder preguntas.'}
+              {selectedTpl?.id === 'general'     && 'Pega aquí toda la información que el empleado necesita para responder preguntas.'}
             </p>
             <Field
               label={selectedTpl ? KB_LABELS[selectedTpl.id] : 'Base de conocimiento'}
@@ -381,59 +345,58 @@ export default function NuevoAgentePage() {
         {/* ── Tab: Funciones ─────────────────────────────────────────────────── */}
         <div className={formTab !== 'funciones' ? 'hidden' : 'flex flex-col gap-5'}>
 
-          {/* Base features — always on, no toggle */}
-          <Section title="Siempre incluidas">
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(108,59,255,0.2)' }}>
-              {BASE_FEATURE_KEYS.map((key, i) => (
-                <div key={key}
-                  className="flex items-start gap-3 px-4 py-3"
-                  style={{
-                    background: 'var(--c-surface)',
-                    borderBottom: i < BASE_FEATURE_KEYS.length - 1 ? '1px solid rgba(108,59,255,0.1)' : undefined,
-                  }}>
-                  <Check size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#6C3BFF' }} />
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{FEATURE_LABELS[key]}</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+          <Section title="Llamadas entrantes">
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+              {VOICE_FEATURE_KEYS.map((key, i) => {
+                const on = features[key] as boolean;
+                return (
+                  <div key={key}
+                    className="flex items-start gap-3 px-4 py-3 cursor-pointer"
+                    onClick={() => toggleFeature(key)}
+                    style={{
+                      background: 'var(--c-surface)',
+                      borderBottom: i < VOICE_FEATURE_KEYS.length - 1 ? '1px solid var(--c-border)' : undefined,
+                    }}>
+                    <div className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 mt-0.5"
+                      style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
+                      <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                        style={{ left: on ? '1.125rem' : '0.125rem' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                        {FEATURE_LABELS[key]}
+                      </p>
+                      {FEATURE_DESCRIPTIONS[key] && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Section>
 
-          {/* Pro-only features */}
-          <Section title={plan === 'pro' ? 'Funciones adicionales' : 'Funciones Pro'}>
-            {plan === 'comercial' && (
-              <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                Disponibles al cambiar a <span style={{ color: '#a855f7', fontWeight: 600 }}>Empleado Centinelia</span>.
-              </p>
-            )}
-            <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${plan === 'pro' ? 'var(--c-border)' : 'rgba(168,85,247,0.15)'}` }}>
-              {PRO_FEATURE_KEYS.map((key, i) => {
-                const on = features[key];
+          <Section title="Llamadas salientes">
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+              {(['outbound_calls'] as (keyof AgentFeatures)[]).map((key) => {
+                const on = features[key] as boolean;
                 return (
                   <div key={key}
-                    className={`flex items-start gap-3 px-4 py-3 ${plan === 'pro' ? 'cursor-pointer' : ''}`}
-                    onClick={() => plan === 'pro' && toggleFeature(key)}
-                    style={{
-                      background: 'var(--c-surface)',
-                      borderBottom: i < PRO_FEATURE_KEYS.length - 1 ? '1px solid var(--c-border)' : undefined,
-                      opacity: plan === 'comercial' ? 0.45 : 1,
-                    }}>
-                    {plan === 'comercial' ? (
-                      <Lock size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#a855f7' }} />
-                    ) : (
-                      <div className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 mt-0.5"
-                        style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
-                        <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
-                          style={{ left: on ? '1.125rem' : '0.125rem' }} />
-                      </div>
-                    )}
+                    className="flex items-start gap-3 px-4 py-3 cursor-pointer"
+                    onClick={() => toggleFeature(key)}
+                    style={{ background: 'var(--c-surface)' }}>
+                    <div className="w-9 h-5 rounded-full transition-colors relative flex-shrink-0 mt-0.5"
+                      style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
+                      <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all"
+                        style={{ left: on ? '1.125rem' : '0.125rem' }} />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: plan === 'pro' && on ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                      <p className="text-sm font-medium" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-3)' }}>
                         {FEATURE_LABELS[key]}
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                      {FEATURE_DESCRIPTIONS[key] && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                      )}
                     </div>
                   </div>
                 );
@@ -445,44 +408,14 @@ export default function NuevoAgentePage() {
         <button type="submit" disabled={saving}
           className="w-full py-3 rounded-xl font-semibold text-sm transition-opacity"
           style={{ background: '#6C3BFF', color: '#FAFBFF', opacity: saving ? 0.6 : 1 }}>
-          {saving ? 'Creando agente…' : 'Crear agente'}
+          {saving ? 'Creando empleado…' : 'Crear empleado'}
         </button>
       </form>
     </div>
   );
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const BASE_FEATURE_KEYS = (Object.keys(PLAN_FEATURES.comercial) as (keyof AgentFeatures)[])
-  .filter(k => PLAN_FEATURES.comercial[k]);
-
-const PRO_FEATURE_KEYS = (Object.keys(PLAN_FEATURES.comercial) as (keyof AgentFeatures)[])
-  .filter(k => !PLAN_FEATURES.comercial[k]);
-
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
-  receptionist:            'Recepción',
-  lead_qualification:      'Leads',
-  appointment_booking:     'Citas',
-  existing_client_support: 'Clientes',
-  smart_transfer:          'Transferencia',
-  order_taking:            'Pedidos',
-  multilingual:            'Multiidioma',
-  client_memory:           'Memoria',
-  outbound_calls:          'Salientes',
-  vertical:                '',
-  helpdesk:                'Mesa de ayuda IT',
-  is_coordinator:          'Coordinador',
-  meerkat_role_id:         '',
-  lite_prompt:             '',
-  skip_aup:                '',
-  skip_recording_notice:   '',
-  of_encuestas:            '',
-  civic_reports:           '',
-  contract_drafts:         '',
-};
 
 function TimezoneSelect() {
   return (

@@ -62,9 +62,9 @@ export default async function AgentesPage({ searchParams }: Props) {
     <div className="p-4 md:p-8 max-w-5xl">
       <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Agentes</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Empleados</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-            {totalCount.toLocaleString('es-MX')} agente{totalCount !== 1 ? 's' : ''} en total
+            {totalCount.toLocaleString('es-MX')} empleado{totalCount !== 1 ? 's' : ''} en total
           </p>
         </div>
 

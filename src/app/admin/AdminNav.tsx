@@ -7,7 +7,7 @@ import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Set
 const links = [
   { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/clientes',     icon: Users,           label: 'Clientes' },
-  { href: '/admin/agentes',      icon: Bot,             label: 'Agentes' },
+  { href: '/admin/agentes',      icon: Bot,             label: 'Empleados' },
   { href: '/admin/llamadas',     icon: Phone,           label: 'Llamadas' },
   { href: '/admin/analytics',    icon: BarChart3,       label: 'Analytics' },
   { href: '/admin/billing',      icon: CreditCard,      label: 'Facturación' },
@@ -26,7 +26,7 @@ export default function AdminNav() {
         style={{ background: '#6C3BFF', color: '#FAFBFF' }}
       >
         <Plus size={14} />
-        Nuevo agente
+        Nuevo empleado
       </Link>
 
       {links.map(({ href, icon: Icon, label }) => {

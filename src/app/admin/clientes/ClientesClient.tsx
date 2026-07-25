@@ -7,8 +7,6 @@ import {
   Search, ChevronDown, ExternalLink, Settings, KeyRound,
   Eye, EyeOff, Check, X, Plus, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { PLAN_LABELS } from '@/types/agent';
-import type { Plan } from '@/types/agent';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,8 +49,6 @@ interface Props {
   totalPages:    number;
   currentSearch: string;
 }
-
-const PLAN_COLORS: Record<string, string> = { comercial: '#3b82f6', pro: '#a855f7' };
 
 // ── URL helper ────────────────────────────────────────────────────────────────
 
@@ -142,7 +138,7 @@ export default function ClientesClient({
       <div className="mb-6">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Clientes</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-          {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} agentes · {totalActive} activos
+          {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} empleado{totalAgents !== 1 ? 's' : ''} · {totalActive} activo{totalActive !== 1 ? 's' : ''}
         </p>
       </div>
 
@@ -221,7 +217,7 @@ export default function ClientesClient({
                     <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{client.client_name}</span>
                     <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
                       style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>
-                      <Users size={10} /> {client.agents.length} {client.agents.length === 1 ? 'agente' : 'agentes'}
+                      <Users size={10} /> {client.agents.length} {client.agents.length === 1 ? 'empleado' : 'empleados'}
                     </span>
                     {activeCount > 0 && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -264,7 +260,6 @@ export default function ClientesClient({
               {open && (
                 <div style={{ borderTop: '1px solid var(--c-divider)' }}>
                   {client.agents.map((agent, i) => {
-                    const planColor  = PLAN_COLORS[agent.plan] ?? '#6b7280';
                     const credIsOpen = credOpen.has(agent.id);
                     const form       = credForms[agent.id];
 
@@ -280,10 +275,6 @@ export default function ClientesClient({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{agent.business_name}</span>
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}>
-                                {PLAN_LABELS[agent.plan as Plan] ?? agent.plan}
-                              </span>
                               {agent.billing_status === 'pago_fallido' && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full"
                                   style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>

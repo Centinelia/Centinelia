@@ -7,8 +7,6 @@ import {
   CheckCircle2, XCircle, AlertTriangle, ArrowRight, ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
-import { PLAN_LABELS } from '@/types/agent';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Filters = { status: string; plan: string; search: string; sort: string };
@@ -33,21 +31,10 @@ interface Props {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const PLAN_COLORS: Record<string, string> = {
-  comercial: '#3b82f6',
-  pro:       '#a855f7',
-};
-
 const STATUS_OPTS = [
   { value: '',         label: 'Todos'   },
   { value: 'activos',  label: 'Activos' },
   { value: 'pausados', label: 'Pausados'},
-];
-
-const PLAN_OPTS = [
-  { value: '',          label: 'Todos',     color: undefined    },
-  { value: 'comercial', label: 'Empleado Centinelia',  color: '#3b82f6' },
-  { value: 'pro',       label: 'Empleado Centinelia', color: '#a855f7' },
 ];
 
 const SORT_OPTS = [
@@ -71,8 +58,6 @@ function buildUrl(filters: Filters, page: number) {
 // ── Agent row ─────────────────────────────────────────────────────────────────
 
 function AgentRowItem({ agent }: { agent: AgentRow }) {
-  const planColor = PLAN_COLORS[agent.plan] ?? '#6b7280';
-
   return (
     <Link
       href={`/admin/agentes/${agent.id}`}
@@ -103,16 +88,7 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
         </div>
       </div>
 
-      {/* Plan badge + arrow */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <span
-          className="px-2 py-0.5 rounded-full text-xs font-semibold"
-          style={{ background: `${planColor}18`, color: planColor, border: `1px solid ${planColor}30` }}
-        >
-          {PLAN_LABELS[agent.plan as keyof typeof PLAN_LABELS] ?? agent.plan}
-        </span>
-        <ArrowRight size={12} style={{ color: 'var(--c-text-4)' }} />
-      </div>
+      <ArrowRight size={12} className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }} />
     </Link>
   );
 }
@@ -125,7 +101,7 @@ export default function AgentesClient({
   const router  = useRouter();
   const [pending, startTransition] = useTransition();
   const [searchInput, setSearchInput] = useState(currentFilters.search);
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'plan' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'status' | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -193,7 +169,7 @@ export default function AgentesClient({
           </select>
         </div>
 
-        {/* Row 2: status + plan pills — desktop */}
+        {/* Row 2: status pills — desktop */}
         <div className="hidden sm:flex items-center gap-2 flex-wrap">
           <div className="flex gap-1 p-1 rounded-xl"
             style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
@@ -208,20 +184,6 @@ export default function AgentesClient({
               );
             })}
           </div>
-          <div className="flex gap-1 p-1 rounded-xl"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            {PLAN_OPTS.map(({ value, label, color }) => {
-              const active = currentFilters.plan === value;
-              const c = color ?? '#6C3BFF';
-              return (
-                <button key={value} onClick={() => navigate({ plan: value })} disabled={pending}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{ background: active ? c : 'transparent', color: active ? '#fff' : (color ?? 'var(--c-text-3)') }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
           {hasFilters && (
             <button onClick={clearAll}
               className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
@@ -231,9 +193,8 @@ export default function AgentesClient({
           )}
         </div>
 
-        {/* Row 2: dropdowns — mobile */}
+        {/* Row 2: status dropdown — mobile */}
         <div className="sm:hidden flex items-center gap-2" ref={dropdownRef}>
-          {/* Status dropdown */}
           <div className="relative">
             <button
               onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
@@ -264,37 +225,6 @@ export default function AgentesClient({
             )}
           </div>
 
-          {/* Plan dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setOpenDropdown(openDropdown === 'plan' ? null : 'plan')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
-              style={{
-                background: 'var(--c-surface)',
-                border: `1px solid ${currentFilters.plan ? '#6C3BFF' : 'var(--c-border)'}`,
-                color: currentFilters.plan ? '#9B6DFF' : 'var(--c-text-2)',
-              }}>
-              Tipo: {PLAN_OPTS.find(o => o.value === currentFilters.plan)?.label ?? 'Todos'}
-              <ChevronDown size={11} />
-            </button>
-            {openDropdown === 'plan' && (
-              <div className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-50 min-w-[130px]"
-                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                {PLAN_OPTS.map(o => (
-                  <button key={o.value}
-                    onClick={() => { navigate({ plan: o.value }); setOpenDropdown(null); }}
-                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
-                    style={{
-                      color: currentFilters.plan === o.value ? '#9B6DFF' : 'rgba(255,255,255,0.7)',
-                      background: currentFilters.plan === o.value ? 'rgba(108,59,255,0.15)' : 'transparent',
-                    }}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {hasFilters && (
             <button onClick={clearAll}
               className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg"
@@ -308,7 +238,7 @@ export default function AgentesClient({
         <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
           {hasFilters
             ? `${totalCount.toLocaleString('es-MX')} resultado${totalCount !== 1 ? 's' : ''}`
-            : `${totalCount.toLocaleString('es-MX')} agente${totalCount !== 1 ? 's' : ''} en total`}
+            : `${totalCount.toLocaleString('es-MX')} empleado${totalCount !== 1 ? 's' : ''} en total`}
           {totalPages > 1 && ` · página ${page} de ${totalPages}`}
         </p>
       </div>
@@ -318,7 +248,7 @@ export default function AgentesClient({
         <div className="p-12 rounded-xl text-center"
           style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
           <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-            {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin agentes configurados'}
+            {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin empleados configurados'}
           </p>
         </div>
       ) : (
