@@ -102,6 +102,7 @@ export interface VoiceAgent {
   minutes_included: number;
   minutes_used: number;
   minutes_reset_date: string;     // ISO date del próximo reset
+  daily_minutes_cap?: number | null;         // cap opcional por cuenta contra spike de 1 día
   notify_whatsapp?: boolean;       // enviar resumen de llamada por WhatsApp al dueño (default false, opt-in)
   notify_email?: boolean;          // enviar notificación de lead/cita/pedido por email (default true)
   speech_style?: 'tu' | 'usted';        // trato al cliente: 'tu' (informal) | 'usted' (formal, default)

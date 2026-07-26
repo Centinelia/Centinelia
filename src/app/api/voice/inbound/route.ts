@@ -167,17 +167,79 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Check remaining minutes (for owner low-balance alert)
-  let minutesRemain = Infinity;
-  let minutesIncluded = 0;
-  if (isOwner) {
-    const { data: acctMins } = typedAgent.portal_email
-      ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', typedAgent.portal_email).single()
-      : { data: null };
-    minutesIncluded = acctMins?.minutes_included ?? typedAgent.minutes_included ?? 0;
-    const minutesUsed = acctMins?.minutes_used ?? typedAgent.minutes_used ?? 0;
-    minutesRemain = Math.max(0, minutesIncluded - minutesUsed);
+  // Load minutes for both monthly enforcement and owner low-balance alert
+  const { data: acctMins } = typedAgent.portal_email
+    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', typedAgent.portal_email).single()
+    : { data: null };
+  const minutesIncluded = acctMins?.minutes_included ?? typedAgent.minutes_included ?? 0;
+  const minutesUsedThisMonth = acctMins?.minutes_used ?? typedAgent.minutes_used ?? 0;
+  const minutesRemain = minutesIncluded > 0
+    ? Math.max(0, minutesIncluded - minutesUsedThisMonth)
+    : Infinity;
+
+  // Enforce monthly cap — block non-owner callers when plan minutes are exhausted
+  if (!isOwner && minutesIncluded > 0 && minutesUsedThisMonth >= minutesIncluded) {
+    const pausedMsg = `Gracias por llamar a ${typedAgent.business_name}. En este momento el servicio automatizado se encuentra temporalmente pausado. Por favor contacte al negocio directamente. Gracias.`;
+    return NextResponse.json({
+      assistant: {
+        name: 'PausedByLimit',
+        model: {
+          provider: 'anthropic',
+          model: 'claude-haiku-4-5-20251001',
+          messages: [{ role: 'system', content: 'Solo di el mensaje que se te indica y despídete. No respondas ninguna pregunta.' }],
+        },
+        voice: {
+          provider: '11labs',
+          voiceId: typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
+          model: 'eleven_turbo_v2_5',
+          stability: 0.45,
+          similarityBoost: 0.75,
+          style: 0.30,
+          speed: 1.05,
+          useSpeakerBoost: true,
+          optimizeStreamingLatency: 4,
+        },
+        firstMessage: pausedMsg,
+        endCallAfterSilenceSeconds: 5,
+      },
+    });
   }
+
+  // Enforce optional daily cap — per-account minute cap set by admin
+  const dailyCap = typedAgent.daily_minutes_cap ?? null;
+  if (!isOwner && dailyCap && dailyCap > 0 && typedAgent.portal_email) {
+    const { data: todayRow } = await supabase
+      .rpc('account_minutes_today', { p_portal_email: typedAgent.portal_email })
+      .single();
+    const minutesToday = Number(todayRow ?? 0);
+    if (minutesToday >= dailyCap) {
+      const dailyMsg = `Gracias por llamar a ${typedAgent.business_name}. En este momento el servicio ha alcanzado su capacidad diaria. Por favor intente mañana o contacte al negocio directamente. Gracias.`;
+      return NextResponse.json({
+        assistant: {
+          name: 'DailyCapReached',
+          model: {
+            provider: 'anthropic',
+            model: 'claude-haiku-4-5-20251001',
+            messages: [{ role: 'system', content: 'Solo di el mensaje que se te indica y despídete. No respondas ninguna pregunta.' }],
+          },
+          voice: {
+            provider: '11labs',
+            voiceId: typedAgent.elevenlabs_voice_id ?? process.env.ELEVENLABS_DEFAULT_VOICE_ID,
+            model: 'eleven_turbo_v2_5',
+            stability: 0.45,
+            similarityBoost: 0.75,
+            style: 0.30,
+            speed: 1.05,
+            useSpeakerBoost: true,
+            optimizeStreamingLatency: 4,
+          },
+          firstMessage: dailyMsg,
+          endCallAfterSilenceSeconds: 5,
+        },
+      });
+    }
+  }
+
   const LOW_MINS_THRESHOLD = Math.max(30, minutesIncluded * 0.20);
   const minsLow = isOwner && minutesIncluded > 0 && minutesRemain <= LOW_MINS_THRESHOLD;
 

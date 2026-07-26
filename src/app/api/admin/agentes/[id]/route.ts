@@ -84,6 +84,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .upsert({ portal_email: portalEmail, ...orgPatch }, { onConflict: 'portal_email' });
   }
 
+  // Propagate account-scoped settings to all sibling agents on the same portal_email
+  if (portalEmail && 'daily_minutes_cap' in agentPatch) {
+    await supabase
+      .from('voice_agents')
+      .update({ daily_minutes_cap: agentPatch.daily_minutes_cap })
+      .eq('portal_email', portalEmail);
+  }
+
   const agent = data as VoiceAgent;
   const isFullUpdate = body.business_name !== undefined;
 

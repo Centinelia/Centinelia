@@ -17,6 +17,7 @@ type AgentRow = {
   billing_status: string | null;
   portal_email: string | null;
   portal_token: string | null;
+  daily_minutes_cap: number | null;
 };
 
 type ClientGroup = {
@@ -38,7 +39,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, business_name, plan, active, billing_status, portal_email, portal_token')
+    .select('id, client_name, client_email, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -68,13 +69,14 @@ export default async function ClientesPage({ searchParams }: Props) {
       });
     }
     map.get(key)!.agents.push({
-      id:             agent.id,
-      business_name:  agent.business_name,
-      plan:           agent.plan,
-      active:         agent.active,
-      billing_status: agent.billing_status ?? null,
-      portal_email:   agent.portal_email ?? null,
-      portal_token:   agent.portal_token ?? null,
+      id:                agent.id,
+      business_name:     agent.business_name,
+      plan:              agent.plan,
+      active:            agent.active,
+      billing_status:    agent.billing_status ?? null,
+      portal_email:      agent.portal_email ?? null,
+      portal_token:      agent.portal_token ?? null,
+      daily_minutes_cap: agent.daily_minutes_cap ?? null,
     });
   }
 

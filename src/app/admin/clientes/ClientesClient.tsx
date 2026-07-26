@@ -8,6 +8,7 @@ import {
   Eye, EyeOff, Check, X, Plus, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
+import DailyCapEditor from '../agentes/[id]/DailyCapEditor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ type AgentRow = {
   billing_status: string | null;
   portal_email: string | null;
   portal_token: string | null;
+  daily_minutes_cap: number | null;
 };
 
 type ClientGroup = {
@@ -381,10 +383,10 @@ export default function ClientesClient({
                     );
                   })}
 
-                  {/* Account minutes adjuster */}
+                  {/* Account minutes adjuster + daily cap */}
                   {client.agents[0] && (
-                    <div className="px-5 py-5" style={{ borderTop: '1px solid var(--c-divider)' }}>
-                      <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--c-text-4)' }}>
+                    <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                      <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
                         Pool de minutos de la cuenta
                       </p>
                       <MinutesAdjuster
@@ -392,6 +394,11 @@ export default function ClientesClient({
                         minutesUsed={client.acct_minutes_used ?? 0}
                         minutesIncluded={client.acct_minutes_included ?? 0}
                         isAccountPool={client.acct_minutes_included != null}
+                      />
+                      <DailyCapEditor
+                        agentId={client.agents[0].id}
+                        initialCap={client.agents[0].daily_minutes_cap}
+                        monthlyIncluded={client.acct_minutes_included ?? 0}
                       />
                     </div>
                   )}
