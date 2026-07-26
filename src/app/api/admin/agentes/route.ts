@@ -5,6 +5,21 @@ import { createVapiAssistant, assignAssistantToPhone, resyncPeerAgents } from '@
 import { scrapeWebsite } from '@/lib/scrape/website';
 import type { Plan, VoiceAgent } from '@/types/agent';
 
+// Sensitive columns that must never leak to a client, even under admin auth.
+// Add here anything that's a credential, OAuth token, or hash.
+const AGENT_SENSITIVE_FIELDS = [
+  'notion_access_token',
+  'calendar_api_key',
+  'owner_passphrase',
+  'portal_password_hash',
+] as const;
+
+function stripSensitive<T extends Record<string, unknown>>(row: T): Omit<T, typeof AGENT_SENSITIVE_FIELDS[number]> {
+  const cleaned = { ...row } as Record<string, unknown>;
+  for (const k of AGENT_SENSITIVE_FIELDS) delete cleaned[k];
+  return cleaned as Omit<T, typeof AGENT_SENSITIVE_FIELDS[number]>;
+}
+
 export async function GET() {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -13,7 +28,8 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  const sanitized = (data ?? []).map(row => stripSensitive(row as Record<string, unknown>));
+  return NextResponse.json(sanitized);
 }
 
 export async function POST(req: NextRequest) {

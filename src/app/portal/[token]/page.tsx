@@ -134,7 +134,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
