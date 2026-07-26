@@ -36,7 +36,7 @@ function Item({ children }: { children: React.ReactNode }) {
 }
 
 export default function PrivacidadDatos() {
-  const updatedAt = '11 de julio de 2026';
+  const updatedAt = '25 de julio de 2026';
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
@@ -114,10 +114,14 @@ export default function PrivacidadDatos() {
             soporte. No vendemos ni compartimos tu información con terceros para fines comerciales.
           </Item>
           <Item>
-            <strong>Proveedores de infraestructura.</strong> Para operar el servicio trabajamos con proveedores
-            externos de confianza que procesan datos en nuestro nombre: almacenamiento de base de datos,
-            síntesis y procesamiento de voz, y pagos. Cada proveedor cuenta con sus propias políticas
-            de seguridad y privacidad.
+            <strong>Proveedores de infraestructura</strong>, Para operar el servicio trabajamos con proveedores
+            externos en Estados Unidos y Europa: Supabase y AWS para almacenamiento, Vercel para el sitio,
+            Stripe para pagos, Vapi y Twilio para telefonía, ElevenLabs para la voz, y Anthropic y OpenAI
+            para los modelos de IA. Todos están obligados por contrato a proteger tus datos con estándares
+            equivalentes a los de la ley mexicana. El detalle completo está en el{' '}
+            <Link href="/legal#privacidad" style={{ color: C.accent, textDecoration: 'none' }}>
+              Aviso de Privacidad Integral
+            </Link>.
           </Item>
         </Section>
 
@@ -132,21 +136,28 @@ export default function PrivacidadDatos() {
           </Item>
         </Section>
 
-        <Section title="5. Tus derechos">
+        <Section title="5. Tus derechos (ARCO)">
           <Item>
-            <strong>Solicitar eliminación</strong>, Puedes pedir que eliminemos todos tus datos escribiéndonos a{' '}
-            <a href="mailto:hola@centinelia.mx" style={{ color: C.accent, textDecoration: 'none' }} className="hover:opacity-80 transition-opacity">
-              hola@centinelia.mx
+            <strong>Acceder</strong>, Ver qué datos tuyos tenemos guardados.
+          </Item>
+          <Item>
+            <strong>Rectificar</strong>, Corregir información que esté equivocada. Muchos datos los puedes
+            actualizar directo desde tu portal.
+          </Item>
+          <Item>
+            <strong>Cancelar</strong>, Pedir que eliminemos tus datos por completo.
+          </Item>
+          <Item>
+            <strong>Oponerte</strong>, Rechazar que sigamos usando tus datos para alguna finalidad específica.
+          </Item>
+          <Item>
+            <strong>Cómo pedirlo</strong>, Escríbenos a{' '}
+            <a href="mailto:privacidad@centinelia.mx" style={{ color: C.accent, textDecoration: 'none' }} className="hover:opacity-80 transition-opacity">
+              privacidad@centinelia.mx
             </a>
-            . Lo procesamos en un plazo máximo de 10 días hábiles.
-          </Item>
-          <Item>
-            <strong>Exportar tu historial</strong>, Puedes descargar el historial de llamadas directamente desde
-            tu portal de cliente.
-          </Item>
-          <Item>
-            <strong>Corregir información</strong>, Si algún dato de tu cuenta o negocio es incorrecto,
-            puedes actualizarlo desde tu portal o contactarnos.
+            {' '}con el asunto &ldquo;Solicitud ARCO&rdquo; y una copia de tu identificación oficial. Te respondemos
+            en máximo 20 días hábiles y, si procede, lo aplicamos en los siguientes 15 días hábiles.
+            El trámite es gratuito.
           </Item>
         </Section>
 

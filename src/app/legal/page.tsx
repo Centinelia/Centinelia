@@ -58,7 +58,7 @@ function Item({ children }: { children: React.ReactNode }) {
 }
 
 export default function LegalPage() {
-  const updatedAt = '11 de julio de 2026';
+  const updatedAt = '25 de julio de 2026';
 
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
@@ -206,47 +206,201 @@ export default function LegalPage() {
             </Section>
 
             {/* ── 2. Aviso de Privacidad ─────────────────────────────────────────── */}
-            <Section id="privacidad" title="2. Aviso de Privacidad">
+            <Section id="privacidad" title="2. Aviso de Privacidad Integral">
               <P>
-                Centinelia (Pneuma Studio) es responsable del tratamiento de tus datos personales conforme a
-                la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).
+                En cumplimiento con lo dispuesto por los artículos 15, 16 y 17 de la Ley Federal de
+                Protección de Datos Personales en Posesión de los Particulares (LFPDPPP) y su Reglamento,
+                Centinelia pone a disposición del titular el presente Aviso de Privacidad Integral.
               </P>
 
-              <Clause title="Datos que recopilamos">
+              <Clause title="2.1 Identidad y domicilio del responsable">
+                <P>
+                  <strong>Pneuma Studio</strong>, desarrolladora y operadora de la plataforma Centinelia
+                  (en adelante &ldquo;Centinelia&rdquo; o el &ldquo;Responsable&rdquo;), con domicilio
+                  convencional para oír y recibir notificaciones en materia de datos personales en:
+                  Monterrey, Nuevo León, México, y correo electrónico de contacto{' '}
+                  <a href="mailto:privacidad@centinelia.mx" style={{ color: C.accent }}>privacidad@centinelia.mx</a>,
+                  es el responsable del tratamiento de tus datos personales.
+                </P>
+              </Clause>
+
+              <Clause title="2.2 Departamento de Datos Personales">
+                <P>
+                  Para atender cualquier asunto relacionado con el tratamiento de tus datos, incluida
+                  la solicitud de derechos ARCO o la revocación del consentimiento, dirígete al
+                  Departamento de Datos Personales de Centinelia:
+                </P>
+                <Item>Correo: <a href="mailto:privacidad@centinelia.mx" style={{ color: C.accent }}>privacidad@centinelia.mx</a></Item>
+                <Item>Horario de atención: lunes a viernes de 9:00 a 18:00 hrs (tiempo del centro de México).</Item>
+              </Clause>
+
+              <Clause title="2.3 Datos personales que recabamos">
+                <P>El Responsable recaba las siguientes categorías de datos personales:</P>
                 <Item>
-                  <strong>Del Cliente:</strong> nombre, correo electrónico, teléfono y datos de facturación
+                  <strong>Del Cliente titular de la cuenta:</strong> nombre completo, correo electrónico,
+                  teléfono, nombre y giro del negocio, RFC (cuando aplique KYC), y datos de facturación
                   procesados por Stripe (Centinelia no almacena datos de tarjeta).
                 </Item>
                 <Item>
-                  <strong>Del negocio:</strong> nombre, descripción, horarios, base de conocimiento y
-                  configuración del agente.
+                  <strong>Del negocio:</strong> descripción, horarios, base de conocimiento y configuración
+                  del agente definida por el Cliente.
                 </Item>
                 <Item>
-                  <strong>De los llamantes:</strong> número de teléfono, grabación y transcripción de la
-                  llamada cuando el agente esté configurado para ello.
+                  <strong>De los llamantes (usuarios finales que llaman al negocio del Cliente):</strong>
+                  {' '}número de teléfono, grabación de audio y transcripción de la llamada cuando el agente
+                  esté configurado para ello, y datos que el propio llamante proporcione voluntariamente
+                  durante la conversación (nombre, correo, dirección, motivo del contacto, etc.).
+                </Item>
+                <Item>
+                  <strong>De navegación:</strong> dirección IP y datos técnicos mínimos de sesión
+                  (ver sección 2.7 &ldquo;Cookies y tecnologías&rdquo;).
                 </Item>
               </Clause>
 
-              <Clause title="Finalidades">
-                <Item>Prestar el servicio de agente de voz y generar los reportes del portal del cliente.</Item>
-                <Item>Enviar resúmenes de llamadas y notificaciones operativas por correo.</Item>
-                <Item>Mejorar la precisión del servicio con datos anonimizados.</Item>
-                <Item>Cumplir con obligaciones legales y fiscales.</Item>
+              <Clause title="2.4 Datos personales sensibles y menores de edad">
+                <P>
+                  Centinelia <strong>no recaba de manera intencional</strong> datos personales sensibles
+                  (origen racial o étnico, estado de salud, información genética, creencias religiosas o
+                  filosóficas, afiliación sindical, opiniones políticas, preferencia sexual). Si un
+                  llamante los proporciona espontáneamente durante una llamada, se tratarán con las
+                  medidas reforzadas descritas en la sección 3 de este documento y podrán ser eliminados
+                  a petición expresa del titular.
+                </P>
+                <P>
+                  El servicio no está dirigido a menores de edad. Si detectamos que se han recabado
+                  datos de un menor sin consentimiento verificable del padre, madre o tutor, los
+                  eliminaremos inmediatamente al ser notificados.
+                </P>
               </Clause>
 
-              <Clause title="Derechos ARCO">
+              <Clause title="2.5 Finalidades del tratamiento">
                 <P>
-                  El Cliente y cualquier llamante pueden ejercer sus derechos de Acceso, Rectificación,
-                  Cancelación u Oposición enviando una solicitud a <strong>hola@centinelia.mx</strong>.
+                  Todas las finalidades para las que Centinelia trata tus datos son <strong>primarias
+                  y necesarias</strong> para prestar el servicio contratado. No existen finalidades
+                  secundarias (mercadotecnia, publicidad ni prospección comercial ajenas al servicio).
+                </P>
+                <P>Finalidades primarias:</P>
+                <Item>Prestar el servicio de agente de voz IA y de operaciones para el Cliente.</Item>
+                <Item>Generar los reportes, métricas y grabaciones que se muestran en el portal del Cliente.</Item>
+                <Item>Enviar resúmenes de llamadas, notificaciones operativas y avisos del servicio por correo.</Item>
+                <Item>Procesar el cobro de la mensualidad y emitir comprobantes fiscales.</Item>
+                <Item>Cumplir con obligaciones legales, fiscales y regulatorias aplicables.</Item>
+                <Item>Atender solicitudes de soporte, incidencias y consultas del Cliente.</Item>
+              </Clause>
+
+              <Clause title="2.6 Transferencias de datos">
+                <P>
+                  Para operar el servicio, Centinelia transfiere datos personales a los siguientes
+                  encargados y subencargados, incluidas transferencias internacionales a Estados Unidos
+                  de América y la Unión Europea. Estas transferencias son <strong>necesarias para el
+                  cumplimiento de la relación jurídica</strong> entre el Cliente y el Responsable, por
+                  lo que, conforme al artículo 37 de la LFPDPPP, <strong>no requieren consentimiento
+                  adicional</strong> del titular:
+                </P>
+                <Item><strong>Supabase Inc. / AWS (EE.UU.):</strong> base de datos y almacenamiento.</Item>
+                <Item><strong>Vercel Inc. (EE.UU.):</strong> alojamiento y entrega de la aplicación web.</Item>
+                <Item><strong>Stripe, Inc. (EE.UU.):</strong> procesamiento de pagos, PCI DSS Nivel 1.</Item>
+                <Item><strong>Vapi Inc. (EE.UU.):</strong> orquestación de llamadas.</Item>
+                <Item><strong>Twilio Inc. (EE.UU.):</strong> telefonía y números virtuales.</Item>
+                <Item><strong>ElevenLabs Inc. (EE.UU.):</strong> síntesis de voz.</Item>
+                <Item><strong>Anthropic PBC (EE.UU.):</strong> modelos de lenguaje.</Item>
+                <Item><strong>OpenAI L.L.C. (EE.UU.):</strong> modelos de lenguaje complementarios.</Item>
+                <Item><strong>Deepgram Inc. (EE.UU.):</strong> transcripción de voz.</Item>
+                <Item><strong>Upstash Inc. (EE.UU./UE):</strong> control de tasas de peticiones.</Item>
+                <P>
+                  Todos los proveedores anteriores están obligados contractualmente a proteger los
+                  datos con estándares equivalentes o superiores a los establecidos en la LFPDPPP.
+                  Centinelia <strong>no vende, alquila ni comparte datos personales con terceros
+                  para fines comerciales</strong> ajenos al servicio.
+                </P>
+              </Clause>
+
+              <Clause title="2.7 Cookies y tecnologías de rastreo">
+                <P>
+                  Centinelia utiliza únicamente cookies y almacenamiento local <strong>estrictamente
+                  necesarios</strong> para el funcionamiento del sitio y del portal (mantener la sesión
+                  iniciada, recordar preferencias mínimas de interfaz). No usamos cookies de publicidad,
+                  perfilamiento ni rastreo entre sitios. No integramos redes sociales ni pixeles de
+                  terceros con fines de marketing.
+                </P>
+              </Clause>
+
+              <Clause title="2.8 Derechos ARCO">
+                <P>
+                  El titular tiene derecho a solicitar el <strong>Acceso</strong>, <strong>Rectificación</strong>,
+                  <strong> Cancelación</strong> u <strong>Oposición</strong> (derechos ARCO) al tratamiento
+                  de sus datos personales, así como a <strong>revocar el consentimiento</strong> otorgado
+                  para dicho tratamiento.
+                </P>
+                <P><strong>Procedimiento:</strong></P>
+                <Item>
+                  <strong>1. Envío de solicitud.</strong> Enviar correo a{' '}
+                  <a href="mailto:privacidad@centinelia.mx" style={{ color: C.accent }}>privacidad@centinelia.mx</a>{' '}
+                  con el asunto &ldquo;Solicitud ARCO&rdquo;, indicando derecho que ejerce, datos que
+                  desea acceder / rectificar / cancelar / oponerse, y motivo (si aplica).
+                </Item>
+                <Item>
+                  <strong>2. Acreditación de identidad.</strong> Adjuntar copia de identificación oficial
+                  vigente (INE, pasaporte o cédula) del titular o, en su caso, del representante legal
+                  junto con el poder correspondiente.
+                </Item>
+                <Item>
+                  <strong>3. Respuesta.</strong> Centinelia responderá en un plazo máximo de{' '}
+                  <strong>20 días hábiles</strong> contados a partir de la recepción de la solicitud
+                  completa, informando si la solicitud es procedente.
+                </Item>
+                <Item>
+                  <strong>4. Ejecución.</strong> Si la solicitud es procedente, se hará efectiva
+                  dentro de los <strong>15 días hábiles</strong> siguientes a la fecha en que se
+                  comunique la respuesta.
+                </Item>
+                <P>
+                  Los plazos anteriores podrán ampliarse por una sola vez y por un período igual
+                  cuando las circunstancias del caso lo justifiquen. El ejercicio de los derechos
+                  ARCO es gratuito; únicamente deberán cubrirse, en su caso, los gastos justificados
+                  de envío o el costo de reproducción en copias u otros formatos.
+                </P>
+              </Clause>
+
+              <Clause title="2.9 Limitación de uso o divulgación">
+                <P>
+                  Además de los derechos ARCO, el titular puede limitar el uso o divulgación de sus
+                  datos mediante los mismos canales previstos en la sección 2.8. Asimismo, puede
+                  inscribirse en el <strong>Registro Público de Consumidores (REPEP)</strong> de la
+                  PROFECO o en el <strong>Registro Público para Evitar Publicidad (REP)</strong> del
+                  propio consumidor para no recibir publicidad no deseada.
+                </P>
+              </Clause>
+
+              <Clause title="2.10 Cambios al aviso de privacidad">
+                <P>
+                  Centinelia se reserva el derecho de modificar el presente aviso conforme evolucionen
+                  el servicio y la legislación aplicable. Cualquier cambio sustancial será notificado
+                  a los Clientes por correo electrónico con al menos 15 días naturales de anticipación
+                  y publicado en esta misma página. La versión vigente siempre podrá consultarse en{' '}
+                  <Link href="/legal#privacidad" style={{ color: C.accent }}>centinelia.mx/legal#privacidad</Link>.
+                  La fecha de última actualización aparece al inicio de esta página.
+                </P>
+              </Clause>
+
+              <Clause title="2.11 Autoridad reguladora">
+                <P>
+                  Si consideras que tu derecho a la protección de datos personales ha sido vulnerado
+                  por Centinelia, puedes acudir al <strong>Instituto Nacional de Transparencia,
+                  Acceso a la Información y Protección de Datos Personales (INAI)</strong> a través
+                  de su portal:{' '}
+                  <a href="https://home.inai.org.mx" target="_blank" rel="noopener noreferrer" style={{ color: C.accent }}>
+                    home.inai.org.mx
+                  </a>.
                 </P>
               </Clause>
 
               <P>
-                Puedes consultar la{' '}
+                Si prefieres una explicación sin términos jurídicos, consulta la{' '}
                 <Link href="/privacidad-datos" style={{ color: C.accent }}>
                   versión en lenguaje sencillo
                 </Link>{' '}
-                de este aviso si prefieres una explicación sin términos jurídicos.
+                de este aviso.
               </P>
             </Section>
 
