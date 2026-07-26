@@ -3,6 +3,30 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 
 const ADMIN_COOKIE = 'Centinelia_admin';
 
+// CSRF protection: mutating requests to authenticated routes must originate
+// from one of our own hosts. Third-party JS calling us from another origin
+// will send its own Origin header and be rejected here. Webhooks, tools
+// called by external systems (Vapi, Stripe, Twilio, OAuth providers) either
+// live outside these paths or don't send an Origin header, so they pass.
+const ALLOWED_ORIGINS = new Set([
+  'https://centinelia.mx',
+  'https://www.centinelia.mx',
+  'https://app.centinelia.mx',
+  'https://api.centinelia.mx',
+]);
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function isCsrfViolation(req: NextRequest): boolean {
+  if (!MUTATING_METHODS.has(req.method)) return false;
+  const path = req.nextUrl.pathname;
+  // Only enforce for cookie-authenticated APIs
+  if (!path.startsWith('/api/portal') && !path.startsWith('/api/admin')) return false;
+  const origin = req.headers.get('origin');
+  // No Origin header → not a browser request (curl / server-to-server). Skip.
+  if (!origin) return false;
+  return !ALLOWED_ORIGINS.has(origin);
+}
+
 // Constant-time comparison for Edge runtime (no Node.js crypto available)
 function adminTokenValid(token: string | undefined): boolean {
   const secret = process.env.ADMIN_SECRET ?? '';
@@ -20,6 +44,11 @@ export async function proxy(req: NextRequest) {
 
   // Dev bypass: skip auth checks in local development
   if (process.env.NODE_ENV === 'development') return NextResponse.next();
+
+  // CSRF: reject mutating requests coming from other origins.
+  if (isCsrfViolation(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
   const host = req.headers.get('host') ?? '';
 
