@@ -109,7 +109,7 @@ export default function InsightsSection({ token }: { token: string }) {
       if (!res.ok) {
         setGenError(
           json.error === 'sin_tareas'
-            ? 'No tienes suficientes tareas disponibles. Compra más para generar con IA.'
+            ? 'No tienes suficientes tareas disponibles. Compra más para generarlas.'
             : 'Error al generar. Intenta de nuevo.'
         );
         return;

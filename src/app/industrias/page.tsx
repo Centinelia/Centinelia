@@ -86,7 +86,7 @@ export default function IndustriasPage() {
             </span>
           </h1>
           <p style={{ fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7 }}>
-            Tu empleado telefónico IA se adapta a tu industria. Elige tu giro para ver cómo trabaja en la práctica.
+            Tu empleado digital se adapta a tu industria. Elige tu giro para ver cómo trabaja en la práctica.
           </p>
         </div>
       </section>
@@ -179,7 +179,7 @@ export default function IndustriasPage() {
               >
                 <p className="font-bold text-white" style={{ fontSize: '1rem' }}>¿No encuentras tu giro?</p>
                 <p className="text-sm leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.78)' }}>
-                  Tu empleado telefónico IA funciona para cualquier organización que reciba o necesite hacer llamadas. Platica con nosotros y lo configuramos a tu medida.
+                  Tu empleado digital funciona para cualquier organización que reciba o necesite hacer llamadas. Platica con nosotros y lo configuramos a tu medida.
                 </p>
                 <Link
                   href="/registro"

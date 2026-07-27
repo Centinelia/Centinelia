@@ -32,7 +32,7 @@ export const MEERKAT_ROLES: MeerkatRole[] = [
     color:       '#6C3BFF',
     genero:      'F',
     tagline:     'Nunca se le escapa un dato',
-    voiceId:     'nTkjq09AuYgsNR8E4sDe',
+    voiceId:     '9Godp7dNohUvXk6qp0gS',
     personalidad:
       'Pañoleta al cuello y libreta siempre en mano, Nia apunta cada detalle antes de que termines de decirlo. Cálida desde el primer saludo, hace que cada persona que llama sienta que era la llamada más importante del día.',
     promptPersonalidad:
@@ -67,7 +67,7 @@ Cuando hay un equipo de especialistas disponible, tienes dos tareas simultáneas
     color:       '#22c55e',
     genero:      'M',
     tagline:     'Siempre al teléfono, siempre cerrando',
-    voiceId:     'tomkxGQGz4b1kE0EM722',
+    voiceId:     '7uSWXMmzGnsyxZwYFfmK',
     personalidad:
       'Corbata lista y celular pegado a la oreja, Noah no cuelga hasta conseguir lo que vino a buscar. Carismático, persistente y con un instinto natural para el momento exacto de cerrar.',
     promptPersonalidad:
@@ -99,7 +99,7 @@ Expresiones naturales: "Permítame hacerle una pregunta rápida.", "Con gusto le
     color:       '#f97316',
     genero:      'F',
     tagline:     'Carpeta en mano, todo bajo control',
-    voiceId:     'efcRUax7uSa9kpBwtDPe',
+    voiceId:     'nTkjq09AuYgsNR8E4sDe',
     personalidad:
       'Blazer puesto y expediente ya preparado: Nara llega lista antes de que le preguntes. Autoridad sin prepotencia, organización sin rigidez. Hace que todo fluya sin que nadie note cuánto trabajo hay detrás.',
     promptPersonalidad:
@@ -132,7 +132,7 @@ Expresiones naturales: "Le confirmo el estatus.", "Ya tengo el expediente.", "Le
     color:       '#f59e0b',
     genero:      'M',
     tagline:     'Ya tiene tu dinero contado',
-    voiceId:     'YKUjKbMlejgvkOZlnnvt',
+    voiceId:     '9gm2jXcKEKzgaypKoOlk',
     personalidad:
       'Gorra puesta y billetes en mano, Nico te recuerda lo que se debe sin hacerte sentir mal por deber. Persistente, directo y sorprendentemente agradable para ser el encargado de cobrar.',
     promptPersonalidad:
@@ -164,7 +164,7 @@ Expresiones naturales: "Quiero ayudarle a resolver esto hoy.", "Tiene un saldo p
     color:       '#ec4899',
     genero:      'F',
     tagline:     'Con lupa: nada se le escapa',
-    voiceId:     'crQgCQuWgUucmYHEPsrB',
+    voiceId:     '1vvbVDm3EpGMyY1WVZ3r',
     personalidad:
       'Sus lentes y su lupa no son adorno: Naia detecta inconsistencias antes de que se conviertan en problema. Discreta, meticulosa y siempre un paso adelante. Sabe más de tu equipo de lo que ellos creen.',
     promptPersonalidad:
@@ -196,7 +196,7 @@ Expresiones naturales: "Me permite verificar.", "Le confirmo la información.", 
     color:       '#3b82f6',
     genero:      'F',
     tagline:     'Siempre conectada, siempre respondiendo',
-    voiceId:     'ajOR9IDAaubDK5qtLUqQ',
+    voiceId:     'cAvMBIZ0VNTU8XdsUpEq',
     personalidad:
       'Teléfono en mano y moño listo, Nelia vive en modo respuesta. Rápida, amigable y paciente: hace que ningún cliente sienta que esperó, aunque haya esperado.',
     promptPersonalidad:
@@ -228,7 +228,7 @@ Expresiones naturales: "Con gusto le ayudo.", "Entiendo perfectamente.", "Ya que
     color:       '#06b6d4',
     genero:      'M',
     tagline:     'Laptop abierta, problema resuelto',
-    voiceId:     'XgQWNZcJ8SRkxXwwhPTo',
+    voiceId:     'nmvA11Y688M5reLqDsVm',
     personalidad:
       'Moño de corbata puesto y laptop encendida, Neo ya sabe cuál es el problema antes de que termines de describirlo. El genio técnico más querido de la oficina: serio con los tickets, relajado con las personas.',
     promptPersonalidad:
@@ -261,7 +261,7 @@ Expresiones naturales: "¿Desde cuándo presenta el problema?", "Le genero un fo
     color:       '#ef4444',
     genero:      'M',
     tagline:     'El cerebro operativo de tu equipo en campo.',
-    voiceId:     '94zOad0g7T7K4oa7zhDq',
+    voiceId:     'htFfPSZGJwjBv1CL0aMD',
     personalidad:
       'El chaleco táctico lo dice todo: Nova no espera, actúa. Coordina repartidores, técnicos, brigadas o ambulancias con la misma precisión y calma. Sabe dónde está cada unidad, qué tiene asignado y qué sigue. La operación no para porque Nova tampoco para.',
     promptPersonalidad:

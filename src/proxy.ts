@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { requiredModuleForPath } from '@/lib/portal/modules';
 
 const ADMIN_COOKIE = 'Centinelia_admin';
 
@@ -112,6 +113,26 @@ export async function proxy(req: NextRequest) {
       url.pathname = '/portal/login';
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
+    }
+
+    // Sub-user module gating: block direct URL navigation to routes they don't have access to.
+    // Owners (isSubUser=false) bypass; owner-only routes (e.g. /usuarios) redirect sub-users out.
+    if (session.isSubUser) {
+      const required = requiredModuleForPath(pathname);
+      if (required === '__owner_only__') {
+        const token   = pathname.split('/')[2];
+        const url     = req.nextUrl.clone();
+        url.pathname  = `/portal/${token}`;
+        url.search    = '?tab=inicio';
+        return NextResponse.redirect(url);
+      }
+      if (required && !(session.modules ?? []).includes(required)) {
+        const token   = pathname.split('/')[2];
+        const url     = req.nextUrl.clone();
+        url.pathname  = `/portal/${token}`;
+        url.search    = '?tab=inicio';
+        return NextResponse.redirect(url);
+      }
     }
 
     return NextResponse.next();

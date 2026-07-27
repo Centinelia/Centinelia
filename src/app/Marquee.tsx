@@ -10,7 +10,7 @@ const ITEMS: { icon: LucideIcon; label: string }[] = [
   { icon: Phone,          label: 'Atención 24/7' },
   { icon: ArrowLeftRight, label: 'Transferencia inteligente' },
   { icon: Globe,          label: 'Multiidioma ES + EN' },
-  { icon: Cpu,            label: 'Inteligencia Artificial' },
+  { icon: Cpu,            label: 'Empleados automatizados' },
   { icon: Zap,            label: 'Activo en 24 horas' },
   { icon: Mic,            label: 'Voz natural y fluida' },
   { icon: ShieldCheck,    label: 'Sin contratos' },

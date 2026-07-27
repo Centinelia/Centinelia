@@ -207,7 +207,7 @@ export default function ClinicasPage() {
                 Tu Asistente de clínica: nunca falta, nunca se cansa y siempre contesta
               </h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>
-                Centinelia configura un empleado telefónico IA entrenado con la información de tu consultorio. Sabe tus precios, tus horarios, tus servicios, y habla como parte de tu equipo.
+                Centinelia configura un empleado digital entrenado con la información de tu consultorio. Sabe tus precios, tus horarios, tus servicios, y habla como parte de tu equipo.
               </p>
               <ul className="space-y-3">
                 {FEATURES.map((f, i) => (

@@ -633,7 +633,7 @@ export default function TareasProgramadasSection({ token, agents }: Props) {
             Tareas programadas
           </p>
           <p style={{ color: 'var(--c-text)', fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
-            Tu equipo trabaja en automático. Define qué hacer, cuándo y con qué criterio.
+            Nox, tu director, coordina a todo el equipo en automático. Define qué hacer, cuándo y con qué criterio.
           </p>
         </div>
         {agents.length > 0 && (

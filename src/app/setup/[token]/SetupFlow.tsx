@@ -142,7 +142,7 @@ function ImproveWidget({
               }}
             >
               <Sparkles size={12} />
-              {state.loading ? 'Mejorando...' : 'Mejorar con IA'}
+              {state.loading ? 'Mejorando...' : 'Mejorar automáticamente'}
               <span className="flex gap-0.5 ml-1">
                 {[0, 1, 2].map(i => (
                   <span
@@ -770,7 +770,7 @@ function Step6PrepareAgent({
 
             <div className="flex items-center justify-between flex-wrap gap-3">
               <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                Consume {opsCost} operaciones de IA
+                Consume {opsCost} operaciones
               </span>
               <PrimaryBtn onClick={generate} disabled={!desc.trim()}>
                 Generar bases de conocimiento <ChevronRight size={14} />

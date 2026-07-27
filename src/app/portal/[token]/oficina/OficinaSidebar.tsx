@@ -8,6 +8,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
   ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
+  Inbox, FileSignature,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
@@ -33,6 +34,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'ACTIVIDAD',
     items: [
       { href: '',          moduleId: 'of_actividad',  label: 'Hoy en la oficina', icon: Activity,  badgeKey: '',        opsHint: '',               pulseId: 'of-actividad'  },
+      { href: '/bandeja',  moduleId: 'of_bandeja',    label: 'Bandeja',           icon: Inbox,     badgeKey: 'bandeja', opsHint: '',               pulseId: 'of-bandeja'    },
       { href: '/reportes', moduleId: 'of_reportes',   label: 'Reportes',          icon: BarChart2, badgeKey: '',        opsHint: '1 tarea/reporte',pulseId: 'of-reportes'   },
     ],
   },
@@ -47,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'OPERACIÓN',
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'           },
+      { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '',               opsHint: '',                 pulseId: 'of-contratos'            },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'           },
       { href: '/tareas-programadas',   moduleId: 'of_tareas_programadas',   label: 'Tareas programadas',  icon: CalendarClock,  badgeKey: '',               opsHint: '',                 pulseId: 'of-tareas-programadas'   },
       { href: '/juntas',              moduleId: 'of_juntas',              label: 'Juntas',              icon: Mic,            badgeKey: 'juntas',         opsHint: '1–6 tareas/junta', pulseId: 'of-juntas'              },
@@ -57,7 +60,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     group: 'PERSONAS',
     items: [
-      { href: '/llamadas',   moduleId: 'of_llamadas',   label: 'Llamadas',   icon: Phone,     badgeKey: '', opsHint: '', pulseId: ''               },
+      { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '', opsHint: '', pulseId: ''               },
       { href: '/onboarding', moduleId: 'of_onboarding', label: 'Onboarding', icon: UserCheck, badgeKey: '', opsHint: '', pulseId: 'of-onboarding'  },
       { href: '/encuestas',  moduleId: 'of_encuestas',  label: 'Calidad',    icon: PieChart,  badgeKey: '', opsHint: '', pulseId: 'of-encuestas'   },
     ],
@@ -66,7 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'SISTEMA',
     items: [
       { href: '/helpdesk',      moduleId: 'of_helpdesk',      label: 'Mesa de ayuda', icon: Headphones, badgeKey: '', opsHint: '', pulseId: 'of-helpdesk'      },
-      { href: '/integraciones', moduleId: 'of_integraciones', label: 'Integraciones', icon: Plug,       badgeKey: '', opsHint: '', pulseId: 'of-integraciones' },
+      { href: '/integraciones', moduleId: 'integraciones',    label: 'Integraciones', icon: Plug,       badgeKey: '', opsHint: '', pulseId: 'of-integraciones' },
     ],
   },
 ];

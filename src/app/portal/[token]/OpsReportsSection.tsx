@@ -116,7 +116,14 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
   const meerkat          = meerkatRoleId ? MEERKAT_MAP[meerkatRoleId as keyof typeof MEERKAT_MAP] : null;
   const acColor          = meerkat?.color ?? '#6C3BFF';
-  const agentDisplayName = meerkat?.nombre ?? agents[0]?.business_name ?? 'Tu empleado';
+  const isCoordinator    = meerkatRoleId === 'nox' || meerkatRoleId === 'niva';
+  const bannerMeerkats   = (isCoordinator
+    ? [MEERKAT_MAP['nox' as keyof typeof MEERKAT_MAP], MEERKAT_MAP['niva' as keyof typeof MEERKAT_MAP]]
+    : (meerkat ? [meerkat] : [])
+  ).filter((m): m is NonNullable<typeof m> & { imagen: string } => !!m && !!m.imagen);
+  const agentDisplayName = isCoordinator
+    ? 'Nox y Niva, tus directores,'
+    : (meerkat?.nombre ?? agents[0]?.business_name ?? 'Tu empleado');
   const effectiveAgentId = reportAgentId ?? agents.find(a => a.role)?.id ?? agents[0]?.id ?? '';
 
   const load = useCallback(async () => {
@@ -260,15 +267,26 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
               Reportes automáticos
             </p>
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text)' }}>
-              {agentDisplayName} redacta y envía reportes de forma autónoma.
+              {agentDisplayName} {isCoordinator ? 'redactan y envían' : 'redacta y envía'} reportes de forma autónoma.
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
               Elige qué datos incluir, con qué frecuencia y a quién enviarlos.
             </p>
           </div>
-          {meerkat?.imagen && (
-            <img src={meerkat.imagen} alt={meerkat.nombre}
-              style={{ width: 80, height: 80, objectFit: 'cover', objectPosition: '50% 10%', borderRadius: '50%', flexShrink: 0, border: `2px solid ${acColor}30` }} />
+          {bannerMeerkats.length > 0 && (
+            <div className="flex items-center" style={{ gap: bannerMeerkats.length > 1 ? -16 : 0 }}>
+              {bannerMeerkats.map((m, i) => (
+                <img key={m.id} src={m.imagen} alt={m.nombre}
+                  style={{
+                    width: 80, height: 80, objectFit: 'cover', objectPosition: '50% 10%',
+                    borderRadius: '50%', flexShrink: 0,
+                    border: `2px solid ${(m.color ?? acColor)}30`,
+                    background: 'var(--c-surface)',
+                    marginLeft: i > 0 ? -20 : 0,
+                    zIndex: bannerMeerkats.length - i,
+                  }} />
+              ))}
+            </div>
           )}
         </div>
 
@@ -277,7 +295,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
           <div className="flex items-center gap-2">
             <BarChart2 size={16} style={{ color: acColor }} />
             <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Reportes automáticos</span>
-            <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte con IA y lo despacha sin que tengas que pedírselo."} />
+            <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."} />
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: 'var(--c-text-4)' }}>

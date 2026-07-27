@@ -59,6 +59,12 @@ function expiryColor(days: number): string {
   return 'var(--c-text-4)';
 }
 
+function contextualizeEmployeeName(name: string): string {
+  if (name === 'Nox')  return 'Nox, tu director,';
+  if (name === 'Niva') return 'Niva, tu directora,';
+  return name;
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
@@ -159,7 +165,7 @@ export default function DocumentosPage() {
   const porVencer   = docs.filter(d => daysLeft(d.expires_at) <= 7);
   const esteMe      = docs.filter(d => new Date(d.created_at).getTime() >= startMonth).length;
   const firstAgentName = Object.values(agentNames).find(Boolean) ?? null;
-  const employeeName   = firstAgentName ?? 'tu empleado';
+  const employeeName   = firstAgentName ? contextualizeEmployeeName(firstAgentName) : 'tu empleado';
 
   // Pill filtering
   const docsForPill: Doc[] = pill === 'todos'     ? docs
@@ -346,7 +352,7 @@ function EmptyState({ token, employeeName }: { token: string; employeeName: stri
           <MessageSquare size={18} style={{ color: '#9B6DFF' }} />
         </div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle a {employeeName}</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Pedirle a {employeeName.replace(/,\s*$/, '')}</p>
           <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
             Escribe en Consultar agente: "genera una factura para..." y el documento aparecera aqui en segundos.
           </p>

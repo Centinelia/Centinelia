@@ -1077,7 +1077,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
                     <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
                     <div className="relative">
-                      <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                      <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
                         <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
                       </div>
                       <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"

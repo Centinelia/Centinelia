@@ -33,36 +33,37 @@ const DESC_LABEL: Record<string, string> = {
   upbeat:         'Dinámica',
   gentle:         'Gentil',
   classy:         'Elegante',
+  cute:           'Tierna',
+  pleasant:       'Agradable',
 };
 
 // Description overrides, checked first, before the ElevenLabs `descriptive` label
 const VOICE_DESC_OVERRIDE: Record<string, string> = {
   // Female
-  'jUxkp8eMgszgJX3XU2pV': 'Bilingüe',  // Annie, EL label 'casual', pero es bilingüe
-  'nTkjq09AuYgsNR8E4sDe': 'Regia',      // Cristina, EL label 'excited'
-  'crQgCQuWgUucmYHEPsrB': 'Enérgica',   // Fran, EL label 'excited', pero es más energética
-  'cAvMBIZ0VNTU8XdsUpEq': 'Cálida',     // Susana, EL label 'casual', pero es "Warm, Soft"
+  'nTkjq09AuYgsNR8E4sDe': 'Regia',      // Cristina Campos, EL label 'excited'
+  'JddqVF50ZSIR7SRbJE6u': 'Rápida',     // Valeria, EL label 'crisp', pero suena rápida
   // Male
   'htFfPSZGJwjBv1CL0aMD': 'Neutral',    // Antonio, EL label 'confident'
-  'id7LQ3n0ft94moeTT1ER': 'Intenso',    // David, EL label 'professional', pero es "Intense, Rapid"
   'dlGxemPxFMTY7iXagmOj': 'Persuasivo', // Fernando, EL label 'casual', pero es "Rapid, Persuasive"
   'sDh3eviBhiuHKi0MjTNq': 'Elegante',   // Francis, EL label 'professional', pero es "Corporate, Elegant"
-  '3mmJ2Z5SLZ9OkeZZcv5p': 'Fluido',     // Oscar, EL label 'confident', pero es "Fluid pitch"
 };
 
 // Name overrides, removes last names and fixes non-standard dash patterns
 const VOICE_NAME_OVERRIDE: Record<string, string> = {
-  // Female
-  'j7e3J6ksqsziQcIGyAWI': 'Valentina',   // Valentina
-  'jUxkp8eMgszgJX3XU2pV': 'Annie',
-  'hrlCBOGwBPZYViXHeZjS': 'Sofía',      // "Sofía Juliette - ..."
-  'cAvMBIZ0VNTU8XdsUpEq': 'Susana',     // "Susana Elizabeth - ..."
-  'nTkjq09AuYgsNR8E4sDe': 'Centinelia',   // Cristina Campos — voz oficial de Nia
-  'pBabaO9WxfrjXjKADHma': 'Cindy',      // "Cindy Calderon" (sin guion)
-  // Male
-  'YKUjKbMlejgvkOZlnnvt': 'Alejandro',  // "Alejandro Ballesteros-Warm..." (guion sin espacios)
-  'XgQWNZcJ8SRkxXwwhPTo': 'Brian',      // "Brian Cortez - ..."
-  'dlGxemPxFMTY7iXagmOj': 'Fernando',   // "Fernando Martínez - ..."
+  // Voces asignadas a empleados: se muestran con el nombre del empleado
+  '9Godp7dNohUvXk6qp0gS': 'Nia',           // Regina
+  '7uSWXMmzGnsyxZwYFfmK': 'Noah',          // Alexander (male override)
+  'nTkjq09AuYgsNR8E4sDe': 'Nara',          // Cristina Campos
+  '9gm2jXcKEKzgaypKoOlk': 'Nico',          // Alejandro Garcia
+  '1vvbVDm3EpGMyY1WVZ3r': 'Naia',          // Yessenia Mazón
+  'cAvMBIZ0VNTU8XdsUpEq': 'Nelia',         // Susana Elizabeth
+  'nmvA11Y688M5reLqDsVm': 'Neo',           // Samuel Rosales
+  'htFfPSZGJwjBv1CL0aMD': 'Nova',          // Antonio
+  // Voces libres: limpian apellidos y guiones raros
+  'j7e3J6ksqsziQcIGyAWI': 'Valentina',
+  'XgQWNZcJ8SRkxXwwhPTo': 'Brian',         // "Brian Cortez - ..."
+  'ewn5JTa3lNPY8QVuZJi6': 'Ana Sofía',     // "Ana Sofía-Conversational" (guion sin espacios)
+  'dlGxemPxFMTY7iXagmOj': 'Fernando',      // "Fernando Martínez - ..."
 };
 
 const MASCULINE_MAP: Record<string, string> = {
@@ -77,7 +78,17 @@ const MASCULINE_MAP: Record<string, string> = {
   'Narrativa':   'Narrativo',
   'Animada':     'Animado',
   'Dinámica':    'Dinámico',
+  'Tierna':      'Tierno',
 };
+
+// Overrides para voces mal etiquetadas por ElevenLabs
+const VOICE_GENDER_OVERRIDE: Record<string, 'male' | 'female'> = {
+  '7uSWXMmzGnsyxZwYFfmK': 'male',   // Alexander, EL lo etiqueta como female
+};
+
+function getGender(voice: ElevenVoice): string | undefined {
+  return VOICE_GENDER_OVERRIDE[voice.voice_id] ?? voice.labels.gender?.toLowerCase();
+}
 
 function getBaseName(voice: ElevenVoice): string {
   if (VOICE_NAME_OVERRIDE[voice.voice_id]) return VOICE_NAME_OVERRIDE[voice.voice_id];
@@ -90,7 +101,7 @@ function getDescription(voice: ElevenVoice): string | null {
   const key      = voice.labels.descriptive?.toLowerCase();
   const base     = override ?? (key ? (DESC_LABEL[key] ?? key) : null);
   if (!base) return null;
-  if (voice.labels.gender?.toLowerCase() === 'male') return MASCULINE_MAP[base] ?? base;
+  if (getGender(voice) === 'male') return MASCULINE_MAP[base] ?? base;
   return base;
 }
 
@@ -165,7 +176,7 @@ function VoiceCard({
   );
 }
 
-const OFFICIAL_VOICE_ID = 'nTkjq09AuYgsNR8E4sDe';
+const OFFICIAL_VOICE_ID = '9Godp7dNohUvXk6qp0gS';
 
 export default function VoiceSelector({
   selected,
@@ -240,20 +251,20 @@ export default function VoiceSelector({
       emoji:  '👩',
       voices: [
         ...voices.filter(v => v.voice_id === OFFICIAL_VOICE_ID),
-        ...voices.filter(v => v.labels.gender?.toLowerCase() === 'female' && v.voice_id !== OFFICIAL_VOICE_ID),
+        ...voices.filter(v => getGender(v) === 'female' && v.voice_id !== OFFICIAL_VOICE_ID),
       ],
     },
     {
       key:    'male',
       label:  'Voces masculinas',
       emoji:  '👨',
-      voices: voices.filter(v => v.labels.gender?.toLowerCase() === 'male'),
+      voices: voices.filter(v => getGender(v) === 'male'),
     },
     {
       key:    'other',
       label:  'Otras voces',
       emoji:  '🎙️',
-      voices: voices.filter(v => !v.labels.gender || !['female', 'male'].includes(v.labels.gender.toLowerCase())),
+      voices: voices.filter(v => { const g = getGender(v); return !g || !['female', 'male'].includes(g); }),
     },
   ].filter(g => g.voices.length > 0);
 

@@ -219,7 +219,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
           <Mic size={13} /> Juntas e inteligencia
-          <InfoTooltip text={"Sube el audio de una junta y tu empleado lo analiza con IA: extrae decisiones tomadas, tareas asignadas y próximos pasos, y genera el acta lista para compartir.\n\nSoporta audios de hasta 90 minutos."} />
+          <InfoTooltip text={"Sube el audio de una junta y tu empleado lo analiza automáticamente: extrae decisiones tomadas, tareas asignadas y próximos pasos, y genera el acta lista para compartir.\n\nSoporta audios de hasta 90 minutos."} />
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.18)', color: 'var(--c-text-4)' }}>
             1–6 tareas / junta
@@ -353,7 +353,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                       {data?.degraded && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                           style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
-                          Sin análisis IA
+                          Sin análisis
                         </span>
                       )}
                     </div>
@@ -395,7 +395,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                           <div className="flex items-center gap-2 px-3 py-2 rounded-lg mt-2"
                             style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
                             <p className="text-xs" style={{ color: '#f59e0b' }}>
-                              No había ops disponibles al momento del procesamiento. La transcripción está disponible pero no se generó análisis IA.
+                              No había ops disponibles al momento del procesamiento. La transcripción está disponible pero no se generó el análisis.
                             </p>
                           </div>
                         )}

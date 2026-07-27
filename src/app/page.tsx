@@ -397,7 +397,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── EMPLEADO TELEFÓNICO CON IA ──────────────────────────────────── */}
+      {/* ── EMPLEADO DIGITAL ─────────────────────────────────────────────── */}
       <section style={{
         background: `radial-gradient(ellipse at 90% 10%, rgba(108,59,255,0.07) 0%, transparent 55%), ${C.bgAlt}`,
         borderTop: `1px solid ${C.border}`,

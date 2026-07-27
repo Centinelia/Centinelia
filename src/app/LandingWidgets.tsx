@@ -19,7 +19,7 @@ type Message = { role: 'user' | 'assistant'; content: string };
 
 const WELCOME: Message = {
   role:    'assistant',
-  content: '¡Hola! Soy el asistente de Centinelia 👋\n\n¿Tienes dudas sobre los planes, el precio o cómo funciona tu empleado telefónico IA? Pregúntame lo que sea.',
+  content: '¡Hola! Soy el asistente de Centinelia 👋\n\n¿Tienes dudas sobre los planes, el precio o cómo funciona tu empleado digital? Pregúntame lo que sea.',
 };
 
 const QUICK_QUESTIONS = [
@@ -188,7 +188,7 @@ export default function LandingWidgets() {
                     Asistente Centinelia
                   </p>
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', margin: 0 }}>
-                    Respuesta inmediata · IA
+                    Respuesta inmediata
                   </p>
                 </div>
               </div>

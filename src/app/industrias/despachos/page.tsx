@@ -191,7 +191,7 @@ export default function DespachosPage() {
                 Tu Asistente jurídico: califica prospectos y agenda mientras tú trabajas
               </h2>
               <p className="mb-8 leading-relaxed" style={{ color: C.textSub }}>
-                Centinelia configura un empleado telefónico IA entrenado con la información de tu despacho. Sabe qué casos manejas, tus honorarios generales y cómo calificar a un prospecto antes de pasártelo.
+                Centinelia configura un empleado digital entrenado con la información de tu despacho. Sabe qué casos manejas, tus honorarios generales y cómo calificar a un prospecto antes de pasártelo.
               </p>
               <ul className="space-y-3">
                 {FEATURES.map((f, i) => (
