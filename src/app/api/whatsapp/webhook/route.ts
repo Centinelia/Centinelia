@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: systemPrompt,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: claudeMessages,
       tools: tools.length > 0 ? tools : undefined,
       tool_choice: tools.length > 0 ? { type: 'auto' } : undefined,
@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
           const followUp = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
-            system: systemPrompt,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages: [
               ...claudeMessages,
               { role: 'assistant', content: response.content },
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
           const followUp = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
-            system: systemPrompt,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages: [
               ...claudeMessages,
               { role: 'assistant', content: response.content },
@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
           const followUp = await anthropic.messages.create({
             model:   'claude-haiku-4-5-20251001',
             max_tokens: 512,
-            system:  systemPrompt,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages: [
               ...claudeMessages,
               { role: 'assistant', content: response.content },
@@ -387,7 +387,7 @@ export async function POST(req: NextRequest) {
           const followUp = await anthropic.messages.create({
             model:      'claude-haiku-4-5-20251001',
             max_tokens: 512,
-            system:     systemPrompt,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
             messages: [
               ...claudeMessages,
               { role: 'assistant', content: response.content },

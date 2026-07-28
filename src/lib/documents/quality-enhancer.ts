@@ -19,7 +19,11 @@ export async function enhanceTextContent(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 2500,
-      system: `Eres un editor experto en documentos de negocios mexicanos. Recibes un borrador y lo elevas a nivel profesional sin cambiar hechos, cifras ni datos específicos. Mejora estructura, claridad, persuasión y completitud. Responde ÚNICAMENTE con el contenido mejorado en el mismo formato markdown (# ## - **). Sin explicaciones adicionales.`,
+      system: [{
+        type: 'text',
+        text: `Eres un editor experto en documentos de negocios mexicanos. Recibes un borrador y lo elevas a nivel profesional sin cambiar hechos, cifras ni datos específicos. Mejora estructura, claridad, persuasión y completitud. Responde ÚNICAMENTE con el contenido mejorado en el mismo formato markdown (# ## - **). Sin explicaciones adicionales.`,
+        cache_control: { type: 'ephemeral' },
+      }],
       messages: [{
         role:    'user',
         content: `Negocio: ${opts.businessName}
@@ -61,7 +65,11 @@ export async function enhanceSlidesContent(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 3000,
-      system: `Eres un editor experto en presentaciones de negocios para empresas mexicanas. Mejora el contenido de cada diapositiva para que sea de nivel profesional. No cambies hechos, cifras ni datos. Devuelve ÚNICAMENTE las diapositivas mejoradas en el mismo formato exacto (SLIDE N / title: / content: / notes:), sin texto adicional.`,
+      system: [{
+        type: 'text',
+        text: `Eres un editor experto en presentaciones de negocios para empresas mexicanas. Mejora el contenido de cada diapositiva para que sea de nivel profesional. No cambies hechos, cifras ni datos. Devuelve ÚNICAMENTE las diapositivas mejoradas en el mismo formato exacto (SLIDE N / title: / content: / notes:), sin texto adicional.`,
+        cache_control: { type: 'ephemeral' },
+      }],
       messages: [{
         role:    'user',
         content: `Negocio: ${opts.businessName}
@@ -119,7 +127,11 @@ export async function peerReviewText(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 2500,
-      system: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Tu compañero preparó un documento y te pide revisarlo antes de entregarlo. Con base en lo que sabes del negocio, verifica que la información sea precisa, completa y profesional. Corrige inexactitudes o mejora lo que puedas. Responde ÚNICAMENTE con el contenido final del documento en el mismo formato markdown, sin explicaciones.`,
+      system: [{
+        type: 'text',
+        text: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Tu compañero preparó un documento y te pide revisarlo antes de entregarlo. Con base en lo que sabes del negocio, verifica que la información sea precisa, completa y profesional. Corrige inexactitudes o mejora lo que puedas. Responde ÚNICAMENTE con el contenido final del documento en el mismo formato markdown, sin explicaciones.`,
+        cache_control: { type: 'ephemeral' },
+      }],
       messages: [{
         role:    'user',
         content: `Lo que sabes del negocio:
@@ -155,7 +167,11 @@ export async function peerReviewSlides(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 3000,
-      system: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Revisa estas diapositivas verificando que la información sea correcta y el nivel sea profesional. Devuelve ÚNICAMENTE las diapositivas en el mismo formato (SLIDE N / title: / content: / notes:), sin texto adicional.`,
+      system: [{
+        type: 'text',
+        text: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Revisa estas diapositivas verificando que la información sea correcta y el nivel sea profesional. Devuelve ÚNICAMENTE las diapositivas en el mismo formato (SLIDE N / title: / content: / notes:), sin texto adicional.`,
+        cache_control: { type: 'ephemeral' },
+      }],
       messages: [{
         role:    'user',
         content: `Lo que sabes del negocio:\n${opts.peerKb.slice(0, 800)}\n\nSOLICITUD ORIGINAL:\n${opts.userInstruction.slice(0, 400)}\n\nDIAPOSITIVAS:\n${slidesTxt}\n\nDevuelve las diapositivas revisadas:`,

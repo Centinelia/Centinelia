@@ -113,7 +113,11 @@ async function generateRenewalDraft(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 500,
-      system:     `Eres asistente de oficina de ${businessName}.${knowledgeBase ? `\n\n${knowledgeBase}` : ''}`,
+      system: [{
+        type: 'text',
+        text: `Eres asistente de oficina de ${businessName}.${knowledgeBase ? `\n\n${knowledgeBase}` : ''}`,
+        cache_control: { type: 'ephemeral' },
+      }],
       messages:   [{
         role:    'user',
         content: `Redacta un borrador breve de solicitud de renovación para este documento:

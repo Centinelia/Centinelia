@@ -150,7 +150,7 @@ Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 600,
-      system:     systemPrompt,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages:   [{ role: 'user', content: userPrompt }],
     });
 
