@@ -148,6 +148,21 @@ export async function executeAgentTool(
   // send_email
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'send_email') {
+    // F4.1 — verifier adversarial: envío directo (sin approval humano).
+    // El agente principal declaró en `subject` y `body` — el verifier
+    // decide si el destinatario + contenido son legítimos.
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdict = await verifyDestructiveAction({
+      action:          'envío de correo directo (sin aprobación humana)',
+      target:          toolInput.to as string,
+      reason:          `Asunto: ${toolInput.subject as string} — Cuerpo: ${(toolInput.body as string).slice(0, 400)}`,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) {
+      return { ok: false, error: `Verificador bloqueó el envío: ${verdict.concern ?? 'preocupación no especificada'}. Revisa destinatario o contenido, o pide aprobación.` };
+    }
+
     return executeSendEmail({
       agentId, businessName,
       to:           toolInput.to           as string,
@@ -303,6 +318,20 @@ export async function executeAgentTool(
     const motivo = toolInput.message as string;
     if (!(agent.features as any)?.outbound_calls) return { ok: false, error: 'Llamadas salientes no habilitadas.' };
     if (!agent.vapi_agent_id) return { ok: false, error: 'El agente no está sincronizado con Vapi.' };
+
+    // F4.1 — verifier adversarial antes de disparar la llamada
+    const { verifyDestructiveAction } = await import('@/lib/tools/verifier');
+    const verdict = await verifyDestructiveAction({
+      action:          'llamada saliente automatizada',
+      target:          `${phone}${name ? ` (${name})` : ''}`,
+      reason:          motivo,
+      businessContext: (agent.knowledge_base as string | null) ?? null,
+      currentIsoDate:  new Date().toISOString(),
+    });
+    if (!verdict.safe) {
+      return { ok: false, error: `Verificador bloqueó la llamada: ${verdict.concern ?? 'preocupación no especificada'}. Revisa el motivo o pide aprobación.` };
+    }
+
     const r = await triggerOutboundCall({ agent: agent as any, customerNumber: phone, customerName: name, motivo });
     return r.ok ? { ok: true, callId: r.callId, message: `Llamada iniciada a ${phone}${name ? ` (${name})` : ''}.` } : { ok: false, error: r.error };
   }
