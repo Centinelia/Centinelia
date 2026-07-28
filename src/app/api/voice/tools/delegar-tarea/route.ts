@@ -193,8 +193,12 @@ async function evaluateGoal(
   successCriteria: string,
   result: string,
 ): Promise<{ met: boolean; notes: string }> {
+  // F5.1 — model tiering: Sonnet para la evaluación de goal-completion.
+  // Es 1 llamada por intento de goal-loop (máx 3 por tarea). El juicio es
+  // matiz — "¿realmente cumplió, o solo dijo que sí?" — y Haiku falla en
+  // casos borderline. Cost delta absoluto muy pequeño, calidad muy notable.
   const evalMsg = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+    model:      'claude-sonnet-4-6',
     max_tokens: 200,
     messages: [{
       role:    'user',
@@ -203,6 +207,8 @@ async function evaluateGoal(
 Criterio: ${successCriteria}
 
 Resultado obtenido: ${result}
+
+Sé estricto: si el resultado dice que hizo algo pero no hay evidencia clara, marca NO_CUMPLIDO.
 
 Responde ÚNICAMENTE con una de estas dos formas:
 CUMPLIDO - [razón breve de por qué sí cumplió]
