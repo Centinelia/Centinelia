@@ -509,7 +509,7 @@ export async function executeAgentTool(
 
     try {
       for (let ct = 0; ct < 5; ct++) {
-        const resp = await anth.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system: sysParts.filter(Boolean).join('\n'), tools: INNER, messages: msgs });
+        const resp = await anth.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system: [{ type: 'text', text: sysParts.filter(Boolean).join('\n'), cache_control: { type: 'ephemeral' } }], tools: INNER, messages: msgs });
         if (resp.stop_reason === 'end_turn') { const txt = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('').trim(); answer = `[${target.agent_name || cRol}]: ${txt}`; break; }
         if (resp.stop_reason !== 'tool_use') break;
         msgs.push({ role: 'assistant', content: resp.content });

@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 600,
-      system:     systemParts,
+      system: [{ type: 'text', text: systemParts, cache_control: { type: 'ephemeral' } }],
       messages:   [{ role: 'user', content: userContent }],
     });
     reply = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';

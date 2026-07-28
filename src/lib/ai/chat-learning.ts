@@ -48,15 +48,15 @@ export async function extractChatLearnings(opts: {
     .map((t, i) => `${i + 1}. ${t.slice(0, 200)}`)
     .join('\n');
 
-  const prompt = `Eres un extractor de preferencias y reglas implícitas del dueño de un negocio.
-
-EMPLEADO: ${agentName} (${agentRole || 'Asistente de oficina'})
-
-ÚLTIMAS INSTRUCCIONES DEL DUEÑO EN ESTA SESIÓN:
-${conversationSummary}
+  const response = await anthropic.messages.create({
+    model:      'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    system: [{
+      type: 'text',
+      text: `Eres un extractor de preferencias y reglas implícitas del dueño de un negocio.
 
 TAREA:
-Identifica si en estas instrucciones hay REGLAS IMPLÍCITAS que el empleado debería recordar para futuras sesiones — preferencias estables del dueño, no instrucciones de una sola vez.
+Identifica si en las instrucciones dadas hay REGLAS IMPLÍCITAS que el empleado debería recordar para futuras sesiones — preferencias estables del dueño, no instrucciones de una sola vez.
 
 Ejemplos de reglas que SÍ vale la pena extraer:
 - "El dueño siempre quiere que las propuestas incluyan término de pago a 30 días"
@@ -79,12 +79,16 @@ Responde ÚNICAMENTE con JSON:
   ]
 }
 
-Máximo 2 aprendizajes. Si no hay reglas generalizables, responde con learnings vacío. Las reglas deben ser frases que el empleado pueda aplicar en sesiones futuras.`;
+Máximo 2 aprendizajes. Si no hay reglas generalizables, responde con learnings vacío. Las reglas deben ser frases que el empleado pueda aplicar en sesiones futuras.`,
+      cache_control: { type: 'ephemeral' },
+    }],
+    messages: [{
+      role: 'user',
+      content: `EMPLEADO: ${agentName} (${agentRole || 'Asistente de oficina'})
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 400,
-    messages: [{ role: 'user', content: prompt }],
+ÚLTIMAS INSTRUCCIONES DEL DUEÑO EN ESTA SESIÓN:
+${conversationSummary}`,
+    }],
   });
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';

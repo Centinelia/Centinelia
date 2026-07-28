@@ -73,11 +73,15 @@ export async function processMeetingAudio(opts: {
     const msg = await anthropic.messages.create({
       model:      'claude-haiku-4-5-20251001',
       max_tokens: 1500,
-      system:     [
-        `Eres asistente de oficina de ${businessName}.`,
-        knowledgeBase     ? `\n# Conocimiento del negocio\n${knowledgeBase}`       : '',
-        roleKnowledgeBase ? `\n# Instrucciones del rol\n${roleKnowledgeBase}`      : '',
-      ].join(''),
+      system: [{
+        type: 'text',
+        text: [
+          `Eres asistente de oficina de ${businessName}.`,
+          knowledgeBase     ? `\n# Conocimiento del negocio\n${knowledgeBase}`  : '',
+          roleKnowledgeBase ? `\n# Instrucciones del rol\n${roleKnowledgeBase}` : '',
+        ].join(''),
+        cache_control: { type: 'ephemeral' },
+      }],
       messages:   [{
         role:    'user',
         content: `Analiza la siguiente transcripción de una reunión y extrae la información clave.

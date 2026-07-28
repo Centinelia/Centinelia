@@ -28,15 +28,9 @@ export async function extractAndSaveLearnings(opts: {
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 600,
-    messages: [{
-      role: 'user',
-      content: `Analiza esta conversación telefónica de negocios.
-
-BASE DE CONOCIMIENTO ACTUAL DEL AGENTE:
-${knowledgeBase?.slice(0, 2000) || '(vacía)'}
-
-TRANSCRIPT DE LA LLAMADA:
-${transcript.slice(0, 4000)}
+    system: [{
+      type: 'text',
+      text: `Analiza conversaciones telefónicas de negocios y extrae aprendizajes.
 
 Tu tarea: identifica máximo 3 aprendizajes nuevos, concretos y verificables que el agente debería recordar y que NO estén ya en su base de conocimiento. Para cada uno, clasifícalo:
 - "role_kb": nueva información, procedimiento o hecho relevante para el puesto.
@@ -50,7 +44,16 @@ Ejemplos:
 NO incluyas: opiniones generales, cosas ya documentadas, ni suposiciones.
 Si no hay nada nuevo, responde: []
 
-Responde SOLO con un JSON array en español mexicano:`,
+Responde SOLO con un JSON array en español mexicano.`,
+      cache_control: { type: 'ephemeral' },
+    }],
+    messages: [{
+      role: 'user',
+      content: `BASE DE CONOCIMIENTO ACTUAL DEL AGENTE:
+${knowledgeBase?.slice(0, 2000) || '(vacía)'}
+
+TRANSCRIPT DE LA LLAMADA:
+${transcript.slice(0, 4000)}`,
     }],
   });
 

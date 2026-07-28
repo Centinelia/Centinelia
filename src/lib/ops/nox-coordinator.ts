@@ -121,7 +121,7 @@ ${emailBody.slice(0, 1500)}`;
   const response = await client.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 512,
-    system:     systemPrompt,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     tools:      [delegationTool, noActionTool],
     messages:   [{ role: 'user', content: userMsg }],
   });
