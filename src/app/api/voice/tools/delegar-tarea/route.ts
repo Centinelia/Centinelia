@@ -74,7 +74,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'enviar_correo',
-    description: 'Envía un correo electrónico a la persona indicada.',
+    description: 'Envía un correo electrónico directamente. Úsala solo cuando ya sepas qué escribir y a quién. Si el correo es delicado o el destinatario no está claro, prefiere pedir información primero.',
     input_schema: {
       type: 'object',
       properties: {
@@ -87,7 +87,7 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'llamar_a',
-    description: 'Inicia una llamada saliente al número del cliente para entregarle información o hacer un seguimiento.',
+    description: 'Inicia una llamada saliente al cliente para entregar información o hacer seguimiento. Úsala solo si el cliente lo pidió explícitamente o si tienes autorización para llamar. Nunca para prospección fría.',
     input_schema: {
       type: 'object',
       properties: {

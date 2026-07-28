@@ -70,7 +70,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'read_file',
-    description: 'Lee el contenido de un archivo encontrado con search_files.',
+    description: 'Lee el contenido de un archivo (PDF, doc, Excel). Úsala DESPUÉS de search_files cuando el archivo encontrado sea relevante para redactar la respuesta.',
     input_schema: { type: 'object' as const, properties: { file_id: { type: 'string' }, file_name: { type: 'string' }, mime_type: { type: 'string' } }, required: ['file_id', 'file_name'] },
   },
   {
@@ -151,7 +151,7 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'save_to_drive',
-    description: 'Guarda un documento generado en Google Drive o OneDrive.',
+    description: 'Guarda un documento en Drive. Úsala DESPUÉS de create_document o create_file, solo si el correo pide entregar el archivo o si el negocio archiva sus PDFs. No la uses en respuestas informativas.',
     input_schema: { type: 'object' as const, properties: { file_id: { type: 'string' }, filename: { type: 'string' }, folder_name: { type: 'string' } }, required: ['file_id', 'filename'] },
   },
   {
@@ -180,12 +180,12 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'trigger_outbound_call',
-    description: 'Programa una llamada saliente de seguimiento a partir de una solicitud en el email.',
+    description: 'Programa una llamada saliente automatizada. Úsala SOLO si el remitente pide explícitamente que le llames, o si tienes autorización previa para hacer seguimiento telefónico. NUNCA para prospección fría — es más seguro responder por correo primero.',
     input_schema: { type: 'object' as const, properties: { phone_number: { type: 'string' }, contact_name: { type: 'string' }, message: { type: 'string' } }, required: ['phone_number', 'message'] },
   },
   {
     name:        'search_leads',
-    description: 'Investiga en internet información sobre el remitente o tema del email.',
+    description: 'Investigación profunda multi-query (competidores, mercado, regulaciones, noticias). Diferente de buscar_en_web (una sola query rápida). Úsala solo si la respuesta requiere cruzar múltiples fuentes.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -198,12 +198,12 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'consult_agent',
-    description: 'Consulta a otro empleado del equipo si la información está fuera de tu especialidad.',
+    description: 'Pide INFORMACIÓN a un compañero especialista (contador, RH, almacén). Úsala cuando no sabes la respuesta y crees que otro empleado sí. Diferente de delegate_task, que le pide EJECUTAR una acción.',
     input_schema: { type: 'object' as const, properties: { rol: { type: 'string' }, tarea: { type: 'string' }, contexto: { type: 'string' } }, required: ['rol', 'tarea'] },
   },
   {
     name:        'delegate_task',
-    description: 'Delega una tarea a un compañero del equipo para que la ejecute.',
+    description: 'Pide a un compañero que EJECUTE una tarea concreta (crear factura, agendar cita, hacer llamada, subir archivo). Úsala cuando la acción está fuera de tu alcance. Diferente de consult_agent, que solo pide información sin ejecutar.',
     input_schema: { type: 'object' as const, properties: { agente: { type: 'string' }, tarea: { type: 'string' }, contexto: { type: 'string' } }, required: ['agente', 'tarea'] },
   },
   {
