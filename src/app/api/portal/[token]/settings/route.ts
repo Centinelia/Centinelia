@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
+import { KB_LIMITS, FIELD_TO_LIMIT } from '@/lib/portal/kb-limits';
 import type { VoiceAgent } from '@/types/agent';
 
 interface Params { params: Promise<{ token: string }> }
@@ -36,6 +37,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   if (Object.keys(update).length === 0) return NextResponse.json({ ok: true });
+
+  // Hard cap en KBs — rechaza guardados que excedan el límite. Los editores
+  // en frontend ya bloquean visualmente, pero validamos aquí para requests
+  // directos a la API (curl, integraciones, etc.).
+  for (const [field, key] of Object.entries(FIELD_TO_LIMIT)) {
+    const v = update[field];
+    if (typeof v === 'string' && v.length > KB_LIMITS[key].hard) {
+      return NextResponse.json({
+        error: `El campo "${KB_LIMITS[key].label}" excede el límite de ${KB_LIMITS[key].hard.toLocaleString('es-MX')} caracteres. Recibido: ${v.length.toLocaleString('es-MX')}. Resume el contenido o usa el botón "Generar con IA".`,
+      }, { status: 400 });
+    }
+  }
 
   const agentUpdate = Object.fromEntries(Object.entries(update).filter(([k]) => !ORG_FIELDS.has(k)));
   const orgUpdate   = Object.fromEntries(Object.entries(update).filter(([k]) => ORG_FIELDS.has(k)));

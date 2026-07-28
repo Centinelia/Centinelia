@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
+import { KB_LIMITS } from '@/lib/portal/kb-limits';
 
 export default function OutboundInstructionsEditor({
   token,
@@ -18,15 +19,16 @@ export default function OutboundInstructionsEditor({
 
   useDirtyWarning('outbound-instructions', dirty);
 
-  const SOFT_LIMIT = 5_000;
-  const HARD_LIMIT = 10_000;
+  const SOFT_LIMIT = KB_LIMITS.outbound.soft;
+  const HARD_LIMIT = KB_LIMITS.outbound.hard;
   const chars = value.length;
   const pct   = Math.min((chars / HARD_LIMIT) * 100, 100);
+  const overHard = chars > HARD_LIMIT;
   const barColor = chars <= SOFT_LIMIT ? '#22c55e' : chars <= HARD_LIMIT ? '#f59e0b' : '#ef4444';
   const hint =
     chars <= SOFT_LIMIT ? 'Ideal' :
-    chars <= HARD_LIMIT ? 'Largo pero aceptable, considera resumir' :
-    'Muy extenso, el agente puede perder el hilo';
+    chars <= HARD_LIMIT ? 'Cerca del límite, considera resumir' :
+    'Excede el límite. No se puede guardar así.';
 
   const handleSave = async () => {
     setSaving(true);
@@ -87,7 +89,7 @@ export default function OutboundInstructionsEditor({
       <div className="flex items-center justify-between">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || overHard}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-50"
           style={{ background: saved ? '#22c55e' : '#6C3BFF', color: '#fff' }}
         >
