@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2, Sparkles } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
+import { KB_LIMITS } from '@/lib/portal/kb-limits';
 
 export default function KnowledgeBaseEditor({
   token,
@@ -25,15 +26,16 @@ export default function KnowledgeBaseEditor({
 
   useDirtyWarning('kb-business', dirty);
 
-  const SOFT_LIMIT = 5_000;
-  const HARD_LIMIT = 10_000;
+  const SOFT_LIMIT = KB_LIMITS.business.soft;
+  const HARD_LIMIT = KB_LIMITS.business.hard;
   const chars = value.length;
   const pct   = Math.min((chars / HARD_LIMIT) * 100, 100);
+  const overHard = chars > HARD_LIMIT;
   const barColor = chars <= SOFT_LIMIT ? '#22c55e' : chars <= HARD_LIMIT ? '#f59e0b' : '#ef4444';
   const hint =
     chars <= SOFT_LIMIT ? 'Ideal' :
-    chars <= HARD_LIMIT ? 'Largo pero aceptable, considera resumir' :
-    'Muy extenso, considera resumir para que tu empleado lo consulte con facilidad';
+    chars <= HARD_LIMIT ? 'Cerca del límite, considera resumir' :
+    'Excede el límite. No se puede guardar así.';
 
   const handleGenerate = async () => {
     if (generating) return;
@@ -142,7 +144,7 @@ export default function KnowledgeBaseEditor({
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => handleSave()}
-          disabled={saving || generating}
+          disabled={saving || generating || overHard}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-50"
           style={{ background: saved ? '#22c55e' : '#6C3BFF', color: '#fff' }}
         >

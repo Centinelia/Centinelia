@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { KB_LIMITS } from '@/lib/portal/kb-limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   let prompt: string;
 
   if (type === 'business') {
-    prompt = `Eres un especialista en bases de conocimiento para negocios en México. Genera una base de conocimiento completa y lista para usar para un agente IA telefónico que atenderá clientes 24/7.
+    prompt = `Eres un especialista en bases de conocimiento para negocios en México. Genera una base de conocimiento COMPACTA y accionable para un agente IA telefónico.
 
 DATOS DEL NEGOCIO:
 - Nombre: ${businessName}
@@ -93,7 +94,13 @@ ${websiteContent ? `\nCONTENIDO EXTRAÍDO DEL SITIO WEB (fuente principal — us
 ---
 ${websiteContent.slice(0, 6000)}
 ---` : ''}
-${existingKb     ? `\nBase de conocimiento actual (mejora, organiza y expande esto):\n${existingKb}` : ''}
+${existingKb     ? `\nBase de conocimiento actual (mejora, organiza y compacta esto):\n${existingKb}` : ''}
+
+REGLA DE ORO — LONGITUD:
+- Objetivo estricto: menos de ${KB_LIMITS.business.soft.toLocaleString('es-MX')} caracteres. Ideal ${Math.round(KB_LIMITS.business.soft * 0.8).toLocaleString('es-MX')}.
+- Límite máximo absoluto: ${KB_LIMITS.business.hard.toLocaleString('es-MX')} caracteres. NUNCA lo excedas.
+- Prefiere frases telegráficas: "Corte: $150" en vez de "El servicio de corte de cabello tiene un costo de $150 pesos mexicanos".
+- Bullets cortos, no párrafos. Menos es más — el agente lo consulta mientras habla con el cliente.
 
 INSTRUCCIONES DE FORMATO:
 - Texto plano sin markdown, sin asteriscos, sin guiones largos
@@ -102,39 +109,34 @@ INSTRUCCIONES DE FORMATO:
 - Español mexicano natural
 - Usa datos reales del sitio web cuando estén disponibles
 - Solo usa [COMPLETAR: descripción] para datos que genuinamente no puedas inferir
+- Si un dato no se puede resumir en 1 línea, omítelo — irá en Drive donde el agente puede buscarlo
 
-GENERA ESTAS SECCIONES:
+GENERA ESTAS SECCIONES (todas cortas):
 
-INFORMACIÓN GENERAL
-- Qué hace el negocio y qué problema resuelve
-- Propuesta de valor principal
+QUÉ HACEMOS
+1-2 líneas.
 
 SERVICIOS Y PRECIOS
-- Cada servicio/producto con precio y descripción breve
+Lista telegráfica, un renglón por servicio.
 
 HORARIOS Y UBICACIÓN
-- Días y horas exactas de atención
-- Dirección o zona de cobertura / modo de servicio (presencial, a domicilio, en línea)
+Días, horas, dirección o zona.
 
-PROCESO DE ATENCIÓN
-- Cómo solicita el cliente una cita, cotización o pedido
-- Tiempo de respuesta o entrega
-- Formas de pago aceptadas
+PROCESO Y PAGO
+Cómo agendan / cotizan / piden. Formas de pago.
 
 PREGUNTAS FRECUENTES
-(Mínimo 8 preguntas reales con respuestas completas)
+5-6 preguntas reales, respuestas de 1-2 líneas máximo.
 
-POLÍTICAS
-- Cancelaciones y cambios
-- Garantías o devoluciones
+POLÍTICAS CLAVE
+Cancelaciones, garantías. Solo lo esencial.
 
 INSTRUCCIONES PARA EL AGENTE
-- Cómo manejar quejas o clientes difíciles
-- Cuándo y a quién transferir la llamada
-- Qué información nunca debe compartir`;
+- Qué transferir y a quién
+- Qué NUNCA compartir`;
 
   } else {
-    prompt = `Eres un especialista en procesos operativos para negocios en México. Genera instrucciones detalladas y listas para usar para un empleado IA con un rol específico.
+    prompt = `Eres un especialista en procesos operativos para negocios en México. Genera instrucciones COMPACTAS para un empleado IA con un rol específico.
 
 DATOS:
 - Negocio: ${businessName}
@@ -144,8 +146,13 @@ ${websiteContent ? `\nCONTENIDO DEL SITIO WEB (úsalo para entender los procesos
 ---
 ${websiteContent.slice(0, 4000)}
 ---` : ''}
-${existingRole   ? `\nInstrucciones actuales del rol (mejora y expande esto):\n${existingRole}` : ''}
+${existingRole   ? `\nInstrucciones actuales del rol (mejora y compacta esto):\n${existingRole}` : ''}
 ${roleLearnings  ? `\nAprendizajes del empleado en campo (considera estos patrones reales):\n${roleLearnings}` : ''}
+
+REGLA DE ORO — LONGITUD:
+- Objetivo estricto: menos de ${KB_LIMITS.role.soft.toLocaleString('es-MX')} caracteres. Ideal ${Math.round(KB_LIMITS.role.soft * 0.8).toLocaleString('es-MX')}.
+- Límite máximo absoluto: ${KB_LIMITS.role.hard.toLocaleString('es-MX')} caracteres. NUNCA lo excedas.
+- Bullets cortos, no párrafos. El empleado lo consulta rapidísimo mientras trabaja.
 
 INSTRUCCIONES DE FORMATO:
 - Texto plano sin markdown ni asteriscos
@@ -153,34 +160,32 @@ INSTRUCCIONES DE FORMATO:
 - Español mexicano natural
 - Solo usa [COMPLETAR: descripción] para datos que genuinamente no puedas inferir
 
-GENERA ESTAS SECCIONES:
+GENERA ESTAS SECCIONES (cortas):
 
-RESPONSABILIDADES PRINCIPALES
-- Qué hace este empleado día a día
+RESPONSABILIDADES
+1-2 líneas de qué hace día a día.
 
-PROCEDIMIENTOS PASO A PASO
-(Mínimo 2 procesos clave numerados paso a paso)
-Proceso: [nombre del proceso]
-1. ...
-2. ...
+PROCEDIMIENTOS CLAVE
+Máximo 2 procesos, cada uno con 3-5 pasos numerados.
 
-CRITERIOS DE DECISIÓN
-- Qué puede resolver de forma autónoma
-- Qué requiere aprobación humana
+DECISIÓN Y ESCALACIÓN
+- Qué resuelve solo / qué escala. Muy breve.
 
-ESCALACIONES
-- Qué situaciones escalar de inmediato y a quién
-
-CONTACTOS Y RECURSOS CLAVE
+CONTACTOS
 - [COMPLETAR: nombre/puesto] para [tipo de asunto]
 
-LÍMITES Y RESTRICCIONES
-- Qué no puede hacer sin autorización expresa`;
+LÍMITES
+- Qué NO hacer sin autorización.`;
   }
+
+  // max_tokens ajustado a los nuevos hard limits: business ~4k chars = ~1k tokens,
+  // role ~3.5k chars = ~875 tokens. Le damos margen pero no tanto que el modelo
+  // se sienta con licencia para expandirse.
+  const maxTokens = type === 'business' ? 1_100 : 950;
 
   const stream = client.messages.stream({
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1800,
+    max_tokens: maxTokens,
     messages:   [{ role: 'user', content: prompt }],
   });
 
