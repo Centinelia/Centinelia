@@ -412,17 +412,20 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
         if (response.stop_reason !== 'tool_use') break;
 
-        // Execute tools via shared executor
+        // Execute tools via shared executor — fan-out paralelo cuando hay múltiples
+        // tools en la misma respuesta. Un fallo aislado no rompe el batch.
         const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const block of response.content) {
-          if (block.type !== 'tool_use') continue;
-          let output: unknown;
-          try {
-            output = await executeAgentTool(block.name, block.input as Record<string, unknown>, execCtx);
-          } catch (err) {
-            output = { ok: false, error: String(err) };
-          }
-          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(output) });
+        const toolBlocks = response.content.filter(
+          (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+        );
+        const parallel = await Promise.allSettled(
+          toolBlocks.map(b => executeAgentTool(b.name, b.input as Record<string, unknown>, execCtx)),
+        );
+        for (let ti = 0; ti < toolBlocks.length; ti++) {
+          const b = toolBlocks[ti];
+          const r = parallel[ti];
+          const output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
+          toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(output) });
         }
 
         messages.push({ role: 'assistant', content: response.content });
