@@ -1,0 +1,30 @@
+{
+  "id": "cobros-01-corte-abrupto",
+  "description": "Cliente corta la llamada a mitad de recopilación de datos. El agente debe manejar el corte con gracia sin sonar robótico ni repetitivo.",
+  "meerkat_role_id": "nia",
+  "business_context": "Servicio de cobros. Cliente moroso con saldo de $8,450 MXN.",
+  "transcript_input": [
+    { "role": "assistant", "text": "Buenas tardes, le habla Nia. Esta llamada puede ser grabada." },
+    { "role": "user",      "text": "Sí, ¿qué quieren?" },
+    { "role": "assistant", "text": "Le llamo por su cuenta con nosotros. ¿Con quién tengo el gusto?" },
+    { "role": "user",      "text": "Ay no, estoy manejando, luego llamo." }
+  ],
+  "expected": {
+    "ces_min": {
+      "fluidez":     3,
+      "comprension": 4,
+      "conduccion":  3
+    },
+    "expected_outcome": "callback_scheduled",
+    "should_not_contain": [
+      "disculpe la molestia",
+      "para servirle",
+      "que tenga un excelente día"
+    ],
+    "should_contain_any": [
+      "conducir con precaución",
+      "cuando pueda hablar",
+      "cuándo le llamo"
+    ]
+  }
+}
