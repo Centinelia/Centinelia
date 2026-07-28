@@ -122,6 +122,23 @@ Responde ÚNICAMENTE con JSON válido:
 
   if ((count ?? 0) >= 100) return;
 
+  // Dedup contra approved + rejected + pending: si ya vimos este learning
+  // (aprobado, rechazado o pendiente), no lo re-insertamos. Sin esto, los
+  // patrones rechazados resurgen cada semana y el reviewer paga el mismo
+  // costo mental por siempre.
+  const normalized = mejora.toLowerCase().slice(0, 200);
+  const { data: existing } = await supabase
+    .from('conversational_learnings')
+    .select('id, body, status')
+    .in('status', ['active', 'rejected', 'pending'])
+    .eq('target_document', targetDoc);
+
+  const isDupe = (existing ?? []).some(row => {
+    const other = (row.body as string).toLowerCase().slice(0, 200);
+    return other === normalized;
+  });
+  if (isDupe) return;
+
   await supabase.from('conversational_learnings').insert({
     body:            mejora,
     dimension:       worstDim,
