@@ -31,6 +31,36 @@ interface ProcessedEmail {
   requestToSender:    string | null;
 }
 
+const VALID_CATEGORIES = ['proveedor', 'cliente', 'urgente', 'factura', 'spam', 'otro'] as const;
+
+function isStr(v: unknown): v is string { return typeof v === 'string'; }
+function isBool(v: unknown): v is boolean { return typeof v === 'boolean'; }
+function strOrNull(v: unknown, max = 5000): string | null {
+  return isStr(v) && v.trim() !== '' ? v.trim().slice(0, max) : null;
+}
+
+// Valida el JSON que devuelve el modelo antes de escribir a DB o disparar
+// acciones (envío de correo, escalación). Evita: category basura entrando a la
+// tabla, needsInfo=string truthy triggereando escalation por error.
+function validateProcessedEmail(raw: unknown): ProcessedEmail {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const rawCat = isStr(r.category) ? r.category.toLowerCase().trim() : '';
+  const category = (VALID_CATEGORIES as readonly string[]).includes(rawCat) ? rawCat : 'otro';
+  return {
+    category,
+    summary:            strOrNull(r.summary, 500) ?? 'Email recibido.',
+    draft:              strOrNull(r.draft, 8000),
+    invoiceData:        (r.invoice_data && typeof r.invoice_data === 'object')
+                          ? r.invoice_data as Record<string, string | number | null> : null,
+    invoiceValid:       isBool(r.invoice_valid) ? r.invoice_valid : null,
+    invoiceDiscrepancy: strOrNull(r.invoice_discrepancy, 500),
+    needsInfo:          isBool(r.needs_info) ? r.needs_info : false,
+    escalateToApprover: isBool(r.escalate_to_approver) ? r.escalate_to_approver : false,
+    infoNeeded:         strOrNull(r.info_needed, 2000),
+    requestToSender:    strOrNull(r.request_to_sender, 4000),
+  };
+}
+
 // All tools available in email context (ML tools excluded — require portal cookie)
 const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
   {
@@ -400,18 +430,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       }
 
       const parsed = JSON.parse(lastText);
-      result = {
-        category:           parsed.category             ?? 'otro',
-        summary:            parsed.summary               ?? 'Email recibido.',
-        draft:              parsed.draft                 ?? null,
-        invoiceData:        parsed.invoice_data          ?? null,
-        invoiceValid:       parsed.invoice_valid         ?? null,
-        invoiceDiscrepancy: parsed.invoice_discrepancy   ?? null,
-        needsInfo:          parsed.needs_info            ?? false,
-        escalateToApprover: parsed.escalate_to_approver ?? false,
-        infoNeeded:         parsed.info_needed           ?? null,
-        requestToSender:    parsed.request_to_sender     ?? null,
-      };
+      result = validateProcessedEmail(parsed);
     } catch (err) {
       console.error('[ops/inbox-processor] AI error:', err);
     }
@@ -426,18 +445,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       });
       const textBlock = response.content.find(b => b.type === 'text');
       const parsed    = textBlock?.type === 'text' ? JSON.parse(textBlock.text.trim()) : {};
-      result = {
-        category:           parsed.category             ?? 'otro',
-        summary:            parsed.summary               ?? 'Email recibido.',
-        draft:              parsed.draft                 ?? null,
-        invoiceData:        parsed.invoice_data          ?? null,
-        invoiceValid:       parsed.invoice_valid         ?? null,
-        invoiceDiscrepancy: parsed.invoice_discrepancy   ?? null,
-        needsInfo:          parsed.needs_info            ?? false,
-        escalateToApprover: parsed.escalate_to_approver ?? false,
-        infoNeeded:         parsed.info_needed           ?? null,
-        requestToSender:    parsed.request_to_sender     ?? null,
-      };
+      result = validateProcessedEmail(parsed);
     } catch (err) {
       console.error('[ops/inbox-processor] AI error (no portalEmail):', err);
     }
