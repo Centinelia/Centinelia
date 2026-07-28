@@ -372,7 +372,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         const response = await anthropic.messages.create({
           model:      'claude-haiku-4-5-20251001',
           max_tokens: 2048,
-          system:     systemPrompt,
+          system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
           messages,
           ...(tools.length && !isLastIter ? { tools } : {}),
         });
@@ -421,7 +421,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       const response = await anthropic.messages.create({
         model:      'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system:     systemPrompt,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages:   [{ role: 'user', content: userPrompt }],
       });
       const textBlock = response.content.find(b => b.type === 'text');
