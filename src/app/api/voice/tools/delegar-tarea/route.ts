@@ -364,27 +364,36 @@ export async function POST(req: NextRequest) {
       if (response.stop_reason !== 'tool_use') break;
 
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      const toolBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+      );
 
-      for (const block of response.content) {
-        if (block.type !== 'tool_use') continue;
-
-        if (block.name === 'tarea_completada') {
-          finalResult  = (block.input as { resultado: string }).resultado;
-          attemptDone  = true;
-          toolResults.push({
-            type: 'tool_result', tool_use_id: block.id,
-            content: 'Tarea marcada como completada.',
-          });
-          break;
+      // Short-circuit: tarea_completada es un marcador sin trabajo async
+      const completadaBlock = toolBlocks.find(b => b.name === 'tarea_completada');
+      if (completadaBlock) {
+        finalResult = (completadaBlock.input as { resultado: string }).resultado;
+        attemptDone = true;
+        toolResults.push({
+          type: 'tool_result', tool_use_id: completadaBlock.id,
+          content: 'Tarea marcada como completada.',
+        });
+        for (const b of toolBlocks) {
+          if (b.id === completadaBlock.id) continue;
+          toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: 'Omitido: tarea completada.' });
         }
-
-        const toolResult = await executeToolOnAgent(
-          block.name,
-          block.input as Record<string, unknown>,
-          target.id,
+      } else {
+        // Fan-out paralelo: ejecuta tools independientes en paralelo con Promise.allSettled.
+        // Un fallo aislado no rompe el batch.
+        const parallel = await Promise.allSettled(
+          toolBlocks.map(b => executeToolOnAgent(b.name, b.input as Record<string, unknown>, target.id)),
         );
-        finalResult = `${block.name}: ${toolResult}`;
-        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: toolResult });
+        for (let ti = 0; ti < toolBlocks.length; ti++) {
+          const b = toolBlocks[ti];
+          const r = parallel[ti];
+          const toolResult = r.status === 'fulfilled' ? r.value : `Error: ${String(r.reason)}`;
+          finalResult = `${b.name}: ${toolResult}`;
+          toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: toolResult });
+        }
       }
 
       if (attemptDone) break;
