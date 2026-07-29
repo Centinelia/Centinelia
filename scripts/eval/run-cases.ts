@@ -6,18 +6,13 @@
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --model=claude-haiku-4-5-20251001
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --only=cobros-01
  *
- * A/B testing de F6.1 (CCE → CCP):
- *   PROMPT_VARIANT=old npx tsx scripts/eval/run-cases.ts > baseline.log
- *   PROMPT_VARIANT=new npx tsx scripts/eval/run-cases.ts > new.log
- *   (después comparar counts de passed y ces_estimate promedios por dimensión)
- *
  * Requiere ANTHROPIC_API_KEY en env (auto-carga .env.local).
  */
 import '../_bootstrap';
 import Anthropic from '@anthropic-ai/sdk';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { CONVERSATIONAL_DNA, CCP, CCE_LEGACY_BASELINE, HCP, VOICE_RULES } from '../../src/lib/voice/rules';
+import { CONVERSATIONAL_DNA, CCP, HCP, VOICE_RULES } from '../../src/lib/voice/rules';
 
 const args = new Map<string, string>();
 for (const a of process.argv.slice(2)) {
@@ -102,17 +97,14 @@ Responde SOLO con JSON:
 }
 
 async function runCase(c: Case): Promise<{ id: string; verdict: JudgeVerdict; generated: string }> {
-  // A/B: PROMPT_VARIANT=old usa CCE legacy, PROMPT_VARIANT=new (default) usa CCP.
-  // Ambas variantes usan las mismas piezas fijas (DNA, HCP full, VOICE_RULES) para
-  // aislar el efecto de la conversión rules → principles.
-  const variant = process.env.PROMPT_VARIANT === 'old' ? 'old' : 'new';
-  const conversationalRules = variant === 'old' ? CCE_LEGACY_BASELINE : CCP;
-
+  // Arma el mismo prompt real que va a Vapi (DNA + CCP + HCP full + VOICE_RULES).
+  // Aislamos el business_context del case para reproducir el ambiente conversacional
+  // sin necesidad de un VoiceAgent completo.
   const systemPrompt = [
     `Eres un empleado digital del negocio. Responde el siguiente turno en 1-3 oraciones.`,
     c.business_context ? `\nCONTEXTO DEL NEGOCIO:\n${c.business_context}` : '',
     `\n${CONVERSATIONAL_DNA}`,
-    `\n${conversationalRules}`,
+    `\n${CCP}`,
     `\n${HCP}`,
     `\n${VOICE_RULES}`,
   ].filter(Boolean).join('\n');
@@ -157,8 +149,7 @@ async function main() {
     process.exit(0);
   }
 
-  const variant = process.env.PROMPT_VARIANT === 'old' ? 'old (CCE legacy)' : 'new (CCP)';
-  console.log(`Corriendo ${cases.length} casos con ${model} · variant: ${variant}\n`);
+  console.log(`Corriendo ${cases.length} casos con ${model}\n`);
 
   let passed = 0;
   const results: Array<{ id: string; verdict: JudgeVerdict; generated: string }> = [];
@@ -192,7 +183,7 @@ async function main() {
 
   console.log(`\n─── RESUMEN ───`);
   console.log(`${passed}/${cases.length} pasaron (${Math.round(passed / cases.length * 100)}%)`);
-  console.log(`\nCES promedio por dimensión (variant ${variant}):`);
+  console.log(`\nCES promedio por dimensión:`);
   for (const d of dims) {
     const c = cesAvg[d];
     const avg = c.count > 0 ? (c.sum / c.count).toFixed(2) : '—';
