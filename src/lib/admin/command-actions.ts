@@ -326,6 +326,35 @@ async function approveCmd(id: string): Promise<ActionResult> {
   };
 }
 
+// ── customLLM toggle ────────────────────────────────────────────────────────
+
+async function toggleCustomLlm(portalEmail: string, enabled: boolean): Promise<ActionResult> {
+  const supabase = createAdminClient();
+  const { data: before } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, features')
+    .eq('portal_email', portalEmail);
+
+  if (!before?.length) return { ok: false, message: `Sin agentes para ${portalEmail}.` };
+
+  const updates = before.map(a => {
+    const features = { ...(a.features as Record<string, unknown> ?? {}), use_custom_llm: enabled };
+    return supabase.from('voice_agents').update({ features }).eq('id', a.id);
+  });
+  const results = await Promise.allSettled(updates);
+  const failed  = results.filter(r => r.status === 'rejected').length;
+
+  const summary = before.map(a => `- ${a.business_name}: use_custom_llm = ${enabled}`).join('\n');
+  const nextStep = enabled
+    ? '\n\nSiguiente paso: `resync all` para propagar el cambio a Vapi, después haz una llamada de prueba y verifica en logs de Anthropic que `cache_read_input_tokens` aparece a partir del 2do turno.'
+    : '';
+  return {
+    ok: failed === 0,
+    message: `**customLLM ${enabled ? 'habilitado' : 'deshabilitado'} para ${portalEmail}** (${before.length - failed}/${before.length} agentes)\n\n${summary}${nextStep}`,
+    data: { affected: before.length - failed, enabled },
+  };
+}
+
 // ── resync all ──────────────────────────────────────────────────────────────
 
 async function resyncAllCmd(): Promise<ActionResult> {
@@ -406,5 +435,7 @@ export async function executeCommand(cmd: Command): Promise<ActionResult> {
     case 'approve':       return approveCmd(cmd.id);
     case 'reject':        return rejectCmd(cmd.id, cmd.note);
     case 'resync_all':    return resyncAllCmd();
+    case 'enable_customllm':  return toggleCustomLlm(cmd.portalEmail, true);
+    case 'disable_customllm': return toggleCustomLlm(cmd.portalEmail, false);
   }
 }

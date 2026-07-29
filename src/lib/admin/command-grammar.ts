@@ -22,7 +22,9 @@ export type Command =
   | { kind: 'list_approvals'; filter: 'pending' | 'all' }
   | { kind: 'approve';        id: string }
   | { kind: 'reject';         id: string; note?: string }
-  | { kind: 'resync_all' };
+  | { kind: 'resync_all' }
+  | { kind: 'enable_customllm';  portalEmail: string }
+  | { kind: 'disable_customllm'; portalEmail: string };
 
 export type ParseResult =
   | { ok: true;  command: Command; trace: string }
@@ -136,6 +138,20 @@ const SPECS: CmdSpec[] = [
     build: () => ({ kind: 'resync_all' }),
     trace: () => 'resync all — pushea config a todos los assistants Vapi activos',
     help:  '`resync all` — repushea prompts/config a Vapi para todos los agentes activos (60-90s)',
+  },
+  {
+    name:  'enable customllm',
+    regex: new RegExp(`^\\s*enable\\s+customllm\\s+(${EMAIL_RE.source})\\s*$`, 'i'),
+    build: (m) => ({ kind: 'enable_customllm', portalEmail: m[1].toLowerCase() }),
+    trace: (m) => `enable customllm ${m[1].toLowerCase()}`,
+    help:  '`enable customllm <email>` — F1.1 opt-in por portal (activa prompt caching en voz). Requiere resync después.',
+  },
+  {
+    name:  'disable customllm',
+    regex: new RegExp(`^\\s*disable\\s+customllm\\s+(${EMAIL_RE.source})\\s*$`, 'i'),
+    build: (m) => ({ kind: 'disable_customllm', portalEmail: m[1].toLowerCase() }),
+    trace: (m) => `disable customllm ${m[1].toLowerCase()}`,
+    help:  '`disable customllm <email>` — revierte al provider anthropic nativo',
   },
 ];
 
