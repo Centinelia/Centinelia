@@ -33,6 +33,9 @@ yarn-error.log*
 /baseline.log
 /new.log
 /eval-*.log
+
+# audit screenshots (locales, no committear)
+/audit/
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
