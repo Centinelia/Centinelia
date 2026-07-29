@@ -361,12 +361,24 @@ async function showVapi(query: string): Promise<ActionResult> {
       const config = await res.json() as {
         serverUrl?: string;
         serverUrlSecret?: string;
-        model?: { provider?: string; url?: string };
+        model?: { provider?: string; model?: string; url?: string; maxTokens?: number; temperature?: number };
+        voice?: { provider?: string; voiceId?: string; model?: string; speed?: number };
+        transcriber?: { provider?: string; model?: string; language?: string };
+        firstMessage?: string;
       };
       const serverUrl       = config.serverUrl ?? '(none)';
       const serverUrlSecret = config.serverUrlSecret ? `${config.serverUrlSecret.slice(0, 4)}…${config.serverUrlSecret.slice(-4)} (len ${config.serverUrlSecret.length})` : '(none)';
       const modelProvider   = config.model?.provider ?? '(none)';
       const modelUrl        = config.model?.url ?? '(n/a)';
+      const modelName       = config.model?.model ?? '(none)';
+      const voiceProvider   = config.voice?.provider ?? '(none)';
+      const voiceId         = config.voice?.voiceId ?? '(none)';
+      const voiceModel      = config.voice?.model ?? '(none)';
+      const voiceSpeed      = config.voice?.speed ?? '(none)';
+      const sttProvider     = config.transcriber?.provider ?? '(none)';
+      const sttModel        = config.transcriber?.model ?? '(none)';
+      const sttLang         = config.transcriber?.language ?? '(none)';
+      const firstMsg        = (config.firstMessage ?? '').slice(0, 80);
 
       // Extraer secret del serverUrl si viene como ?secret=
       let serverUrlSecretInUrl = '(none)';
@@ -376,12 +388,28 @@ async function showVapi(query: string): Promise<ActionResult> {
         if (s) serverUrlSecretInUrl = `${s.slice(0, 4)}…${s.slice(-4)} (len ${s.length})`;
       } catch { /* not a valid URL */ }
 
+      // Fetch phone numbers asociados al assistant
+      let phoneInfo = '(no phones fetched)';
+      try {
+        const phoneRes = await fetch(`https://api.vapi.ai/phone-number?assistantId=${a.vapi_agent_id}`, {
+          headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
+        });
+        if (phoneRes.ok) {
+          const phones = await phoneRes.json() as Array<{ id: string; number?: string; provider?: string; assistantId?: string }>;
+          phoneInfo = phones.length > 0
+            ? phones.map(p => `${p.number ?? '?'} (${p.provider ?? '?'})`).join(', ')
+            : '(no phones asignados)';
+        }
+      } catch { /* ignore */ }
+
       results.push([
         `${a.active ? '🟢' : '⚫'} **${a.business_name}** (${a.agent_name ?? '—'}) · ${a.vapi_agent_id}`,
         `   portal: ${a.portal_email ?? '—'}`,
-        `   model.provider: \`${modelProvider}\``,
-        `   model.url: \`${modelUrl.slice(0, 80)}${modelUrl.length > 80 ? '…' : ''}\``,
-        `   serverUrl: \`${serverUrl.slice(0, 80)}${serverUrl.length > 80 ? '…' : ''}\``,
+        `   phone(s): \`${phoneInfo}\``,
+        `   model: \`${modelProvider} · ${modelName}\``,
+        `   voice: \`${voiceProvider} · voiceId=${voiceId} · model=${voiceModel} · speed=${voiceSpeed}\``,
+        `   transcriber: \`${sttProvider} · ${sttModel} · ${sttLang}\``,
+        `   firstMessage: \`"${firstMsg}${(config.firstMessage ?? '').length > 80 ? '…' : ''}"\``,
         `   serverUrl \`?secret=\`: \`${serverUrlSecretInUrl}\``,
         `   serverUrlSecret header: \`${serverUrlSecret}\``,
       ].join('\n'));
