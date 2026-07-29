@@ -1,6 +1,6 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
-import { VOICE_RULES, CONVERSATIONAL_DNA, CCE, HCP, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
+import { VOICE_RULES, CONVERSATIONAL_DNA, CCP, HCP, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
 import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildSystemPrompt(
@@ -383,20 +383,20 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
   } // end !isCoordinator (closing rules)
 
   if (promptTier === 'lite') {
-    // Lite: DNA para conversación natural — sin CCE ni HCP
+    // Lite: DNA para conversación natural — sin CCP ni HCP
     blocks.push(CONVERSATIONAL_DNA);
   } else {
     // ── ADN Conversacional Centinelia — los 10 principios permanentes ────────
     blocks.push(CONVERSATIONAL_DNA);
 
-    // ── CCE — Centinelia Conversation Engine ──────────────────────────────────
-    blocks.push(CCE);
+    // ── CCP — Centinelia Conversation Principles ─────────────────────────────
+    blocks.push(CCP);
 
     if (promptTier === 'full') {
       // ── HCP — Human Conversation Patterns (caller-facing only) ───────────
       blocks.push(HCP);
     }
-    // Ops tier (Naia, Nox, Niva): DNA + CCE only — internal agents, HCP is noise
+    // Ops tier (Naia, Nox, Niva): DNA + CCP only — internal agents, HCP is noise
 
     // ── Global learnings (ops + full tiers only) ──────────────────────────
     if (learnings?.general?.trim()) {

@@ -6,12 +6,18 @@
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --model=claude-haiku-4-5-20251001
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --only=cobros-01
  *
+ * A/B testing de F6.1 (CCE → CCP):
+ *   PROMPT_VARIANT=old npx tsx scripts/eval/run-cases.ts > baseline.log
+ *   PROMPT_VARIANT=new npx tsx scripts/eval/run-cases.ts > new.log
+ *   (después comparar counts de passed y ces_estimate promedios por dimensión)
+ *
  * Requiere ANTHROPIC_API_KEY en env (auto-carga .env.local).
  */
 import '../_bootstrap';
 import Anthropic from '@anthropic-ai/sdk';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { CONVERSATIONAL_DNA, CCP, CCE_LEGACY_BASELINE, HCP, VOICE_RULES } from '../../src/lib/voice/rules';
 
 const args = new Map<string, string>();
 for (const a of process.argv.slice(2)) {
@@ -96,13 +102,20 @@ Responde SOLO con JSON:
 }
 
 async function runCase(c: Case): Promise<{ id: string; verdict: JudgeVerdict; generated: string }> {
-  // TODO(Nazre): reemplazar este placeholder con una llamada real al prompt-builder
-  // Idealmente: importar buildSystemPrompt de src/lib/voice/prompt-builder.ts y armar
-  // el mismo prompt que iría a Vapi, luego correr localmente con el modelo del meerkat.
-  // Por ahora: usa un system prompt básico para que el harness sea auditable end-to-end.
+  // A/B: PROMPT_VARIANT=old usa CCE legacy, PROMPT_VARIANT=new (default) usa CCP.
+  // Ambas variantes usan las mismas piezas fijas (DNA, HCP full, VOICE_RULES) para
+  // aislar el efecto de la conversión rules → principles.
+  const variant = process.env.PROMPT_VARIANT === 'old' ? 'old' : 'new';
+  const conversationalRules = variant === 'old' ? CCE_LEGACY_BASELINE : CCP;
 
-  const systemPrompt = `Eres un agente de voz para el negocio. Responde el siguiente turno de forma natural, breve y sin frases robóticas.
-${c.business_context ? `Contexto: ${c.business_context}` : ''}`;
+  const systemPrompt = [
+    `Eres un empleado digital del negocio. Responde el siguiente turno en 1-3 oraciones.`,
+    c.business_context ? `\nCONTEXTO DEL NEGOCIO:\n${c.business_context}` : '',
+    `\n${CONVERSATIONAL_DNA}`,
+    `\n${conversationalRules}`,
+    `\n${HCP}`,
+    `\n${VOICE_RULES}`,
+  ].filter(Boolean).join('\n');
 
   // Si el transcript termina en assistant, cortamos ese último turno para que
   // el modelo regenere la respuesta y podamos comparar contra el "reference"
@@ -144,7 +157,8 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`Corriendo ${cases.length} casos con ${model}...\n`);
+  const variant = process.env.PROMPT_VARIANT === 'old' ? 'old (CCE legacy)' : 'new (CCP)';
+  console.log(`Corriendo ${cases.length} casos con ${model} · variant: ${variant}\n`);
 
   let passed = 0;
   const results: Array<{ id: string; verdict: JudgeVerdict; generated: string }> = [];
@@ -159,7 +173,38 @@ async function main() {
     }
   }
 
-  console.log(`\n${passed}/${cases.length} pasaron.`);
+  // ── Resumen CES promedio por dimensión ────────────────────────────────────
+  const dims = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'] as const;
+  const cesAvg: Record<string, { sum: number; count: number }> = {};
+  for (const d of dims) cesAvg[d] = { sum: 0, count: 0 };
+
+  for (const r of results) {
+    const est = r.verdict.ces_estimate;
+    if (!est) continue;
+    for (const d of dims) {
+      const v = est[d];
+      if (typeof v === 'number') {
+        cesAvg[d].sum   += v;
+        cesAvg[d].count += 1;
+      }
+    }
+  }
+
+  console.log(`\n─── RESUMEN ───`);
+  console.log(`${passed}/${cases.length} pasaron (${Math.round(passed / cases.length * 100)}%)`);
+  console.log(`\nCES promedio por dimensión (variant ${variant}):`);
+  for (const d of dims) {
+    const c = cesAvg[d];
+    const avg = c.count > 0 ? (c.sum / c.count).toFixed(2) : '—';
+    console.log(`  ${d.padEnd(12)} ${avg}  (n=${c.count})`);
+  }
+
+  console.log(`\nGenerated responses (para inspección manual):`);
+  for (const r of results) {
+    console.log(`\n[${r.id}]`);
+    console.log(`  ${r.generated.slice(0, 200)}${r.generated.length > 200 ? '…' : ''}`);
+  }
+
   if (passed < cases.length) process.exit(1);
 }
 
