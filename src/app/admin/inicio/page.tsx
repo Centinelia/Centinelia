@@ -330,8 +330,9 @@ export default async function InicioPage() {
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--c-text-3)' }}>
           ¿Qué hago?
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <QuickAction href="/admin/comando"    icon={<Terminal size={15} />}  label="Comando" hint="terminal de operación" primary />
+          <QuickAction href="/admin/ledger"     icon={<DollarSign size={15} />} label="Ledger" hint="revenue vs costo por agente" />
           <QuickAction href="/admin/agentes"    icon={<Users size={15} />}     label="Agentes" hint={`${agentList.filter(a => a.active).length} activos`} />
           <QuickAction href="/admin/llamadas"   icon={<PhoneCall size={15} />} label="Llamadas" hint="historial completo" />
           <QuickAction href="/admin/billing"    icon={<DollarSign size={15} />} label="Billing" hint="pagos y planes" />
