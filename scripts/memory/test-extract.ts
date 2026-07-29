@@ -14,7 +14,10 @@
  *
  * Sin --persist solo imprime lo que EXTRAERÍA (dry-run).
  * Con --persist además llama a ingestCall() y persiste al memory graph.
+ *
+ * Carga .env.local automáticamente vía @next/env.
  */
+import '../_bootstrap';
 import { createClient } from '@supabase/supabase-js';
 import { extractFromTranscript } from '../../src/lib/memory/extract';
 import { ingestCall } from '../../src/lib/memory';

@@ -7,6 +7,7 @@
  *   npx tsx scripts/eval/collect-baseline.ts --days=7 --out=baseline.json
  *   npx tsx scripts/eval/collect-baseline.ts --agent=<agent_id> --days=30
  */
+import '../_bootstrap';
 import { createClient } from '@supabase/supabase-js';
 import { writeFileSync } from 'fs';
 
