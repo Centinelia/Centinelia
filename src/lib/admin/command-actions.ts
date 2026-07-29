@@ -326,6 +326,34 @@ async function approveCmd(id: string): Promise<ActionResult> {
   };
 }
 
+// ── activate / deactivate ────────────────────────────────────────────────────
+
+async function toggleActive(portalEmail: string, active: boolean): Promise<ActionResult> {
+  const supabase = createAdminClient();
+  const { data: before } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, agent_name, active')
+    .eq('portal_email', portalEmail);
+
+  if (!before?.length) return { ok: false, message: `Sin agentes para ${portalEmail}.` };
+
+  const { error } = await supabase
+    .from('voice_agents')
+    .update({ active })
+    .eq('portal_email', portalEmail);
+  if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  const summary = before.map(a => `- ${a.business_name} (${a.agent_name ?? '—'}): ${a.active} → ${active}`).join('\n');
+  const nextStep = active
+    ? '\n\nSiguiente paso: `resync all` para propagar la config a Vapi.'
+    : '';
+  return {
+    ok: true,
+    message: `**${before.length} agente${before.length > 1 ? 's' : ''} ${active ? 'activados' : 'desactivados'}** para ${portalEmail}\n\n${summary}${nextStep}`,
+    data: { affected: before.length, active },
+  };
+}
+
 // ── customLLM toggle ────────────────────────────────────────────────────────
 
 async function toggleCustomLlm(portalEmail: string, enabled: boolean): Promise<ActionResult> {
@@ -437,5 +465,7 @@ export async function executeCommand(cmd: Command): Promise<ActionResult> {
     case 'resync_all':    return resyncAllCmd();
     case 'enable_customllm':  return toggleCustomLlm(cmd.portalEmail, true);
     case 'disable_customllm': return toggleCustomLlm(cmd.portalEmail, false);
+    case 'activate':          return toggleActive(cmd.portalEmail, true);
+    case 'deactivate':        return toggleActive(cmd.portalEmail, false);
   }
 }
