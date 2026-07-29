@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const { type, role } = await req.json() as { type: 'business' | 'role'; role?: string };
+  const { type, role, filter } = await req.json() as { type: 'business' | 'role'; role?: string; filter?: boolean };
 
   if (type !== 'business' && type !== 'role')
     return NextResponse.json({ error: 'Tipo inválido' }, { status: 400 });
@@ -228,6 +228,66 @@ LÍMITES
   const anyOk = variants.some(v => v.text.trim().length > 100);
   if (!anyOk)
     return NextResponse.json({ error: 'No se pudo generar ninguna variante' }, { status: 500 });
+
+  // F10.2 Generate-and-filter: si el cliente pidió filter, Claude Sonnet juzga
+  // las 3 candidatas contra criterios y devolvemos solo la ganadora + su razón.
+  // Costo: 1 llamada adicional Sonnet (juez) además de las 3 Haiku (gen).
+  if (filter) {
+    const ok = variants.filter(v => v.text.trim().length > 100);
+    if (ok.length === 1) {
+      return NextResponse.json({ winner: ok[0], reason: 'Solo una variante generada correctamente.', variants });
+    }
+
+    const judgePrompt = `Eres un evaluador experto de bases de conocimiento para agentes IA telefónicos en México. Se te presentan ${ok.length} variantes de la MISMA base de conocimiento redactadas en estilos distintos.
+
+CRITERIOS DE JUICIO (en orden de importancia):
+1. ACCIONABLE — el agente puede consultarla y actuar sin ambigüedad
+2. COBERTURA — menciona los servicios/datos/procesos importantes sin dejar huecos críticos
+3. CONCISIÓN — respeta la regla de brevedad (< ${type === 'business' ? KB_LIMITS.business.soft : KB_LIMITS.role.soft} chars ideal)
+4. FIDELIDAD — no inventa datos que no estén en la fuente
+5. FORMATO — bullets cortos, mayúsculas en títulos, sin markdown ni asteriscos
+
+VARIANTES:
+
+${ok.map((v, i) => `━━━ VARIANTE ${i + 1} (estilo ${v.label}, ${v.text.length} chars) ━━━\n${v.text}\n`).join('\n')}
+
+Responde SOLO en JSON con esta forma exacta, sin markdown ni texto adicional:
+{"winner":<índice 1-basado de la variante ganadora>,"reason":"<explicación breve, máximo 200 chars>"}`;
+
+    let winnerIdx = 1;
+    let winnerReason = 'Evaluación automática de calidad.';
+    try {
+      const judgeRes = await client.messages.create({
+        model:      'claude-sonnet-4-6',
+        max_tokens: 200,
+        messages:   [{ role: 'user', content: judgePrompt }],
+      });
+      const judgeText = judgeRes.content
+        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+        .map(b => b.text)
+        .join('')
+        .trim();
+      const parsed = JSON.parse(judgeText) as { winner?: number; reason?: string };
+      if (typeof parsed.winner === 'number' && parsed.winner >= 1 && parsed.winner <= ok.length) {
+        winnerIdx = parsed.winner;
+      }
+      if (typeof parsed.reason === 'string' && parsed.reason.trim()) {
+        winnerReason = parsed.reason.trim().slice(0, 200);
+      }
+    } catch {
+      // Judge falló; fallback: la variante más cercana al soft limit sin excederlo
+      const softLimit = type === 'business' ? KB_LIMITS.business.soft : KB_LIMITS.role.soft;
+      let bestScore = -Infinity;
+      ok.forEach((v, i) => {
+        const overSoft = Math.max(0, v.text.length - softLimit);
+        const score = -overSoft - Math.abs(softLimit - v.text.length) * 0.1;
+        if (score > bestScore) { bestScore = score; winnerIdx = i + 1; }
+      });
+      winnerReason = 'Elegida por longitud óptima (juez no disponible).';
+    }
+
+    return NextResponse.json({ winner: ok[winnerIdx - 1], reason: winnerReason, variants });
+  }
 
   return NextResponse.json({ variants });
 }
