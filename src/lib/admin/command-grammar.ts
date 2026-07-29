@@ -21,7 +21,8 @@ export type Command =
   | { kind: 'reset_minutes';  portalEmail: string }
   | { kind: 'list_approvals'; filter: 'pending' | 'all' }
   | { kind: 'approve';        id: string }
-  | { kind: 'reject';         id: string; note?: string };
+  | { kind: 'reject';         id: string; note?: string }
+  | { kind: 'resync_all' };
 
 export type ParseResult =
   | { ok: true;  command: Command; trace: string }
@@ -128,6 +129,13 @@ const SPECS: CmdSpec[] = [
     build: (m) => ({ kind: 'reject', id: m[1], note: m[3]?.trim() }),
     trace: (m) => `reject ${m[1]}${m[3] ? ` — ${m[3].trim()}` : ''}`,
     help:  '`reject <id> [nota]` — rechaza un pending del gate',
+  },
+  {
+    name:  'resync all',
+    regex: /^\s*resync\s+(all|todos)\s*$/i,
+    build: () => ({ kind: 'resync_all' }),
+    trace: () => 'resync all — pushea config a todos los assistants Vapi activos',
+    help:  '`resync all` — repushea prompts/config a Vapi para todos los agentes activos (60-90s)',
   },
 ];
 

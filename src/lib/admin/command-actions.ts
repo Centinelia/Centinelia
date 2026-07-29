@@ -5,6 +5,7 @@ import {
   createApproval, grantOpsChecks, listApprovals,
   decideApproval, executeApproval, getApproval,
 } from './approvals';
+import { pushConversationalPromptsToAllAgents } from '@/lib/vapi/sync';
 
 export interface ActionResult {
   ok:      boolean;
@@ -325,6 +326,28 @@ async function approveCmd(id: string): Promise<ActionResult> {
   };
 }
 
+// ── resync all ──────────────────────────────────────────────────────────────
+
+async function resyncAllCmd(): Promise<ActionResult> {
+  const started = Date.now();
+  const result  = await pushConversationalPromptsToAllAgents();
+  const ms      = Date.now() - started;
+
+  const failed  = result.details.filter(d => !d.ok);
+  const summary = [
+    `**${result.synced} agentes sincronizados${result.errors ? `, ${result.errors} errores` : ''}** en ${(ms / 1000).toFixed(1)}s`,
+    '',
+    ...failed.slice(0, 10).map(d => `- ❌ ${d.name} (${d.id}): ${d.error ?? '—'}`),
+    failed.length > 10 ? `\n_+${failed.length - 10} más con error_` : '',
+  ].filter(Boolean).join('\n');
+
+  return {
+    ok:      result.errors === 0,
+    message: summary,
+    data:    { synced: result.synced, errors: result.errors, ms },
+  };
+}
+
 // ── reject ──────────────────────────────────────────────────────────────────
 
 async function rejectCmd(id: string, note?: string): Promise<ActionResult> {
@@ -382,5 +405,6 @@ export async function executeCommand(cmd: Command): Promise<ActionResult> {
     case 'list_approvals': return listApprovalsCmd(cmd.filter);
     case 'approve':       return approveCmd(cmd.id);
     case 'reject':        return rejectCmd(cmd.id, cmd.note);
+    case 'resync_all':    return resyncAllCmd();
   }
 }
