@@ -11,6 +11,7 @@ import { extractAndSaveLearnings } from '@/lib/ai/extract-learnings';
 import { generateTeamMessage } from '@/lib/ai/generate-team-message';
 import { selfEvalCall } from '@/lib/ai/self-eval';
 import { cesEvalCall } from '@/lib/ai/ces-eval';
+import { ingestCall as ingestMemory } from '@/lib/memory';
 import { getGoalsContext } from '@/lib/goals/progress';
 import { checkVoiceInitiative } from '@/lib/initiative/detector';
 import { addCallEntry } from '@/lib/notion/client';
@@ -501,6 +502,18 @@ export async function POST(req: NextRequest) {
             callId:    callDbId,
             transcript,
           }).catch(err => console.error('[webhook] ces-eval failed:', err));
+        }
+
+        // K. Memory graph ingestion — extract entities+facts al grafo por customer.
+        //     Fire-and-forget: no bloquea response al webhook Vapi. Si falla,
+        //     solo se pierde memoria de esa llamada; próxima llamada reintenta.
+        if (transcript && durationSeconds >= 30 && callDbId && outcome !== 'unanswered') {
+          ingestMemory({
+            agentId:      resolvedAgentId,
+            callId:       callDbId,
+            transcript,
+            callerNumber: callerNumber ?? undefined,
+          }).catch(err => console.error('[webhook] memory-ingest failed:', err));
         }
 
         // K. Team feed message (AI)
