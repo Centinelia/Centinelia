@@ -1,0 +1,77 @@
+{
+  "id": "real-20260729-1620-03",
+  "description": "Llamada real e4e501fb-8c55-4f98-afd3-2759159f9850 — outcome: transferred · 2.7min · Negocio Demo (Centinelia)",
+  "meerkat_role_id": null,
+  "business_context": "Negocio: Negocio Demo · Rol: recepcionista · Agente: Centinelia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Hola, mucho gusto, soy Nía. Esta llamada puede ser grabada. Cuéntame ¿qué tipo de negocio quieres que simulemos hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, buenos días. Estoy queriendo simular el día de hoy un negocio diferente. Porque siempre simulamos el mismo, quiero simular ahora un restaurante. Un restaurante de mariscos,"
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, un restaurante de mariscos. Con gusto hacemos esa simulación. Entonces, hoy voy a atender como si fuera el equipo de un restaurante de mariscos. ¿Hay algo específico que quieras que pase en esta llamada o prefieres que reciba como si fuera un cliente llegando con una solicitud?"
+    },
+    {
+      "role": "user",
+      "text": "Sí, recibí normal como si fuera un cliente llegando con una solicitud. Común."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, entonces espero a que el cliente llame."
+    },
+    {
+      "role": "user",
+      "text": "Pues sí, no te apunté que ya te marqué."
+    },
+    {
+      "role": "assistant",
+      "text": "Tienes razón. Buenos días, bienvenido al restaurante. ¿En qué le puedo ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Un poco molesto porque hace unos hace unas horas fui ahí a su restaurante y y me atendieron muy mal, un un una persona muy mala y un un es es un, pues se pudiera decir que es mesero de ustedes o no sé si sea gerente, no sé qué sea, pero nos atendieron muy mal, nos gritaron, nos dijeron que que nosotros estábamos mal por haber pedido lo que pedimos, pedimos un un pescado a la plancha y luego nos trajeron mal cocidos y y pues hicimos saber y nos dijeron que nosotros no sabíamos nada, y estuvo muy estuvo muy mal, no no es un desastre esto que que que hicieron quisiera saber si pudiera hablar con con otro gerente, porque pues al parecer ese gerente pues, fue el que nos trató mal."
+    },
+    {
+      "role": "assistant",
+      "text": "Entiendo perfectamente, esa fue una experiencia muy desagradable. Nos gritan, les traen el pedido mal cocido, y cuando lo señalan les dicen que ustedes están equivocados, eso no debería de haber pasado, Con gusto lo comunico con el gerente para que atienda esto directamente, Antes de transferir, déjeme tomar sus datos. ¿Cuál es su nombre?"
+    },
+    {
+      "role": "user",
+      "text": "Mi nombre es Juan. Pan. Bueno, Juan Carlos."
+    },
+    {
+      "role": "assistant",
+      "text": "Listo, Juan Carlos. Un teléfono de contacto para que el gerente pueda comunicarse con usted si lo necesita?"
+    },
+    {
+      "role": "user",
+      "text": "Mi teléfono es el ochenta y uno cuarenta y dos treinta y tres, treinta y cuatro, veinte."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, voy a notificar al gerente para que se haga cargo de esto. Un momento."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, con mucho gusto te comunico con el equipo ahora mismo."
+    }
+  ],
+  "ground_truth": {
+    "outcome": "transferred",
+    "duration_seconds": 163,
+    "summary": "El cliente Juan Carlos llamó para quejarse de una mala experiencia en el restaurante de mariscos donde fue atendido hace unas horas, reportando que un empleado (posiblemente mesero o gerente) los trató muy mal, les gritó, les sirvió pescado mal cocido y cuando reclamaron les dijeron que ellos no sabían nada. La llamada terminó con la asistente tomando los datos del cliente (nombre y teléfono) y transfiriendo la llamada al gerente para que atendiera directamente la queja.",
+    "ces_data": null,
+    "self_eval_score": 4,
+    "self_eval_notes": "El empleado manejó bien la situación al validar la frustración del cliente, mantener una actitud empática y proceder a transferir al gerente. Sin embargo, podría haber ofrecido una disculpa más explícita en nombre del restaurante y haber indagado brevemente sobre cuándo ocurrió el incidente para contextualizar mejor la situación al gerente."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}

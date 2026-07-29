@@ -1,0 +1,33 @@
+{
+  "id": "real-20260729-1620-07",
+  "description": "Llamada real 75bc3d47-95b4-4455-8972-603eee573826 — outcome: info_provided · 0.4min · Ayuntamiento de Monterrey (Nia)",
+  "meerkat_role_id": "nia",
+  "business_context": "Negocio: Ayuntamiento de Monterrey · Rol: Recepcionista de Atención a Contribuyentes · Agente: Nia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Atención a contribuyentes del municipio de Monterrey. ¿En qué le puedo ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, buenas noches. Quisiera ver si empiezo ya con el pago unas placas, por favor."
+    },
+    {
+      "role": "assistant",
+      "text": "Buenas noches. Con gusto le ayudo con eso. Para poder consultar el monto exacto de la multa, necesito que me proporcione el número de infracción que viene"
+    }
+  ],
+  "ground_truth": {
+    "outcome": "info_provided",
+    "duration_seconds": 24,
+    "summary": "El cliente llamó para consultar sobre el inicio de pagos de unas placas vehiculares. La llamada fue interrumpida por el cliente antes de que el agente pudiera completar la solicitud de información necesaria, específicamente el número de infracción requerido para consultar el monto a pagar.",
+    "ces_data": null,
+    "self_eval_score": null,
+    "self_eval_notes": null
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}

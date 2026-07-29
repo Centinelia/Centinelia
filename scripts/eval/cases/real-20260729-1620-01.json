@@ -1,0 +1,97 @@
+{
+  "id": "real-20260729-1620-01",
+  "description": "Llamada real d077d516-0088-4173-b330-ebf9ecbd2fa4 — outcome: order_taken · 2.6min · Negocio Demo (Centinelia)",
+  "meerkat_role_id": null,
+  "business_context": "Negocio: Negocio Demo · Rol: recepcionista · Agente: Centinelia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Hola, mucho gusto, soy Nía. Esta llamada puede ser grabada. Cuéntame tipo de negocio quieres que simulemos hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, buenas tardes. Estoy intentando negociar, perdón, simular un negocio de de tacto camiones."
+    },
+    {
+      "role": "assistant",
+      "text": "Buenas tardes, perfecto. Un negocio de taller de camiones, ¿qué necesitas en este momento?"
+    },
+    {
+      "role": "user",
+      "text": "No, no, no, es negocio de talleres, negocio de de de viajes, de de logística."
+    },
+    {
+      "role": "assistant",
+      "text": "Ah, entendido. Un negocio de logística y viajes, ¿qué te trae a llamar hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Quisiera simularlo sabes cómo se manejan esos negocios,"
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, te entiendo. Entonces, ¿quieres que simula una llamada como si fueras cliente de un negocio de logística y viajes, ¿es así?"
+    },
+    {
+      "role": "user",
+      "text": "That's correct too."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Entonces, voy a simular que eres cliente de un negocio de logística y vía Cuéntame, ¿qué necesitas hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Lo quisieron un viaje necesito un viaje de de Nuevo Laredo a a Monterrey, una caja seca,"
+    },
+    {
+      "role": "assistant",
+      "text": "Listo, necesitas un viaje en caja seca de Nuevo Laredo a Monterrey, para cuándo lo necesitas?"
+    },
+    {
+      "role": "user",
+      "text": "Lo que necesito para hoy mismo más más tardar a las cinco de la tarde recoger la mercancía,"
+    },
+    {
+      "role": "assistant",
+      "text": "Entendido. ¿Necesitas recoger la mercancía hoy antes de las cinco de la tarde para llevarla de Nuevo Laredo a Monterrey, en Caja seca. ¿Cuál es el peso aproximado de la mercancía?"
+    },
+    {
+      "role": "user",
+      "text": "son como unas son como unas se me olvidó creo que son unas sesenta toneladas"
+    },
+    {
+      "role": "assistant",
+      "text": "Sesenta toneladas, perfecto. ¿Y cuál es la dirección exacta en Nuevo Laredo? Donde necesitas que recojamos la mercancía?"
+    },
+    {
+      "role": "user",
+      "text": "del roblet dos mil once. Treinta y dos."
+    },
+    {
+      "role": "assistant",
+      "text": "Repito para confirmar. Del Roblet dos mil once treinta y dos en Nuevo Laredo. ¿Es correcto?"
+    },
+    {
+      "role": "user",
+      "text": "She didn't she didn't have to go to jail."
+    },
+    {
+      "role": "assistant",
+      "text": "Perdón, no te entendí bien. ¿Me lo podrías repetir?"
+    }
+  ],
+  "ground_truth": {
+    "outcome": "order_taken",
+    "duration_seconds": 156,
+    "summary": "El cliente quería simular una negociación de un negocio de logística y transporte de camiones. Solicitó cotizar un viaje en caja seca de Nuevo Laredo a Monterrey para recoger sesenta toneladas de mercancía antes de las cinco de la tarde del mismo día. La llamada terminó abruptamente por tiempo de silencio agotado cuando el cliente respondió algo ininteligible en inglés y la conversación no pudo continuar.",
+    "ces_data": null,
+    "self_eval_score": 4,
+    "self_eval_notes": "El empleado logró captar correctamente los detalles del pedido (ruta Nuevo Laredo-Monterrey, caja seca, peso, horario y dirección) y confirmó la información de manera clara. Podría mejorar en mantener mejor control cuando el usuario proporciona respuestas confusas o fuera de contexto, y verificar datos críticos como peso con mayor precisión antes de confirmar."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}

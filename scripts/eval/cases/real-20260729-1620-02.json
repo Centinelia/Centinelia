@@ -1,0 +1,121 @@
+{
+  "id": "real-20260729-1620-02",
+  "description": "Llamada real 182795fa-15d4-45ed-af9b-109946c66998 — outcome: lead_created · 3.4min · Ayuntamiento de Monterrey (Nia)",
+  "meerkat_role_id": "nia",
+  "business_context": "Negocio: Ayuntamiento de Monterrey · Rol: Recepcionista de Atención a Contribuyentes · Agente: Nia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Atención a contribuyentes del municipio de Monterrey. ¿En qué le puedo ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, sí, buenas tardes. Quisiera saber si me pueden ayudar con una un pago de una anuencia, por favor."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, con mucho gusto. ¿Cuál es su nombre?"
+    },
+    {
+      "role": "user",
+      "text": "Mi nombre es Pedro de la Garza."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, Pedro. ¿Es para dar de alta una anuencia nueva o se trata de una renovación?"
+    },
+    {
+      "role": "user",
+      "text": "Sería una nuez nueva, así es, justamente."
+    },
+    {
+      "role": "assistant",
+      "text": "Bien. ¿Qué tipo de negocio es o qué tipo de anuencia necesita?"
+    },
+    {
+      "role": "user",
+      "text": "El negocio que tengo ahorita actualmente es un bar. Es un bar, se llama bar Pedro y ese bar es un excelente bar, es un excelente bar y y necesito el permiso para poder vender alcohol."
+    },
+    {
+      "role": "assistant",
+      "text": "Entiendo, un bar. Para vender alcohol en un bar, necesitamos saber si es categoría a o categoría b. La categoría a es para destilados, cantinas y restaurantes bar. La categoría b es para cerveza y bebidas de baja graduación. ¿Cuál sería para usted"
+    },
+    {
+      "role": "user",
+      "text": "De las 2, por las 2. No puedo vender nada más una cosa y no la otra. No no me preguntes eso, por favor."
+    },
+    {
+      "role": "assistant",
+      "text": "Entendido, Pedro. En ese caso, necesitaría la destilados, y también las bebidas de baja graduación. El costo de alta para categoría a es de 6200 pesos. Parece bien así?"
+    },
+    {
+      "role": "user",
+      "text": "Sí, sí, lo que tenga que pagar, no importa."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Para tramitar el alta de la anuencia, necesito algunos datos. Es la dirección exacta donde está ubicado el VAR?"
+    },
+    {
+      "role": "user",
+      "text": "La dirección del bar es Pablo A de la Garza, 2011 norte colonia Argentina, está ubicado en Monterrey, Nuevo León."
+    },
+    {
+      "role": "assistant",
+      "text": "Bien, lo anoto. ¿Tiene su RFC a mano?"
+    },
+    {
+      "role": "user",
+      "text": "No lo tengo, pero te lo debo. ¿Lo tengo que darte a ti o te lo doy a la persona con la que hagamos el trámite?"
+    },
+    {
+      "role": "assistant",
+      "text": "Lo puede dar directamente cuando se presente en ventanilla con la documentación. Lo que sí necesito ahorita es su identificación oficial vigente y un comprobante de domicilio del negocio que no sea mayor a 3 meses. ¿Los tiene disponibles?"
+    },
+    {
+      "role": "user",
+      "text": "Pues sí, pero ¿cómo te lo envío? ¿Por correo o o de o cómo? Pues por el teléfono no te lo puedo mostrar."
+    },
+    {
+      "role": "assistant",
+      "text": "No, no necesita enviarme nada ahorita. Lo que tiene que hacer es presentarse en la ventanilla central con esa documentación, el RFC, y también un plano de distribución del local y la licencia de uso de suelo. ¿Cuándo podría venir?"
+    },
+    {
+      "role": "user",
+      "text": "Pues lo antes posible, se puede hoy mismo, hoy mismo me presento."
+    },
+    {
+      "role": "assistant",
+      "text": "Excelente. La ventanilla central está en Washington, 2000 poniente, Centro, Monterrey, Atienden de lunes a viernes de las 8 de la mañana a las 5 de la tarde. Como hoy es lunes, puede ir en cualquier momento dentro de ese horario. ¿Algo más necesites saber?"
+    },
+    {
+      "role": "user",
+      "text": "Sería todo, muchísimas gracias. O bueno, una cosa más. Bueno, bueno, mejor marco después, estoy voy manejando y estoy muy ocupado aquí parece que voy a pasar un tránsito y necesito colgar de de momento."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, Pedro, sin problema, que le vaya bien. Cualquier duda, nos llama."
+    },
+    {
+      "role": "user",
+      "text": "Hasta luego."
+    },
+    {
+      "role": "assistant",
+      "text": "Hasta"
+    }
+  ],
+  "ground_truth": {
+    "outcome": "lead_created",
+    "duration_seconds": 205,
+    "summary": "El cliente Pedro de la Garza llamó para obtener información sobre cómo tramitar una anuencia nueva para su bar, específicamente el permiso para vender alcohol. El agente le proporcionó los requisitos necesarios y la dirección de la ventanilla donde debe presentarse. La llamada terminó porque el cliente estaba manejando y necesitó colgar, indicando que posiblemente llamaría después si tenía más dudas.",
+    "ces_data": null,
+    "self_eval_score": 4,
+    "self_eval_notes": "El agente logró capturar exitosamente el lead y recopiló información clave del cliente (nombre, tipo de negocio, dirección, requisitos). La comunicación fue clara y profesional. Podría mejorar en: confirmar explícitamente el costo total de ambas categorías antes de proceder, y ofrecer opciones de seguimiento más claras (número de referencia, correo de confirmación) antes de que el cliente colgara."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "id": "real-20260729-1620-06",
+  "description": "Llamada real 4f668b70-c27a-456b-8cea-cdad058a7c82 — outcome: appointment_booked · 2.5min · Ayuntamiento de Monterrey (Nia)",
+  "meerkat_role_id": "nia",
+  "business_context": "Negocio: Ayuntamiento de Monterrey · Rol: Recepcionista de Atención a Contribuyentes · Agente: Nia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Atención a contribuyentes del municipio de Monterrey. ¿En qué le puedo ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, buenos días. Quisiera ver si me pudieras ayudar a agendar una cita para ir a hacer unos pagos ¿o no se requiere cita?"
+    },
+    {
+      "role": "assistant",
+      "text": "Buenos días. Con mucho gusto le ayudo Para pagos de multas o trámites municipales, no se requiere cita. Puede venir directamente a nuestras ventanillas. Pero si prefiere agendar una cita para asegurar atención, con gusto se la programo. ¿Qué tipo de pago o trámite necesita hacer?"
+    },
+    {
+      "role": "user",
+      "text": "Estoy intentando, bueno, quiero ir a pagar una multa de tránsito. Nada más que no sé exactamente dónde tengo que ir Quiero una cita para el martes,"
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, le ayudo con eso. Para pagar su multa de tránsito, puede venir a la dirección de ingresos donde estamos nosotros, en Washington 2000 poniente, Centro, Monterrey. Abierto de lunes a viernes, de las 8 de la mañana a las 5 de la tarde. También tiene otras opciones. Delegaciones municipales en varios puntos de la ciudad con el mismo horario, o puede pagar en línea las 24 horas en pago punto Monterrey, punto gob punto m x si tiene el número de su infracción. Ahora, para agendar la cita para el martes, ¿a qué hora le vendría bien?"
+    },
+    {
+      "role": "user",
+      "text": "Pues, si se puede, por ahí de la 3 de la tarde estaría muy bien, después de hora de comida."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. El martes a las 3 de la tarde, ¿cuál es su nombre completo?"
+    },
+    {
+      "role": "user",
+      "text": "Mi nombre completo es Miguel Morales."
+    },
+    {
+      "role": "assistant",
+      "text": "Gracias, Miguel. ¿Cuál es su teléfono de confirmación?"
+    },
+    {
+      "role": "user",
+      "text": "Mi teléfono confirmación es el 8 11 28 0 3 36 0."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Déjeme confirmar los datos de su cita. Su nombre es Miguel Morales, la cita es para el martes a las 3 de la tarde, y su teléfono es 81, 11 28 0 3 36, 0, ¿es correcto?"
+    },
+    {
+      "role": "user",
+      "text": "Es correctísimo."
+    },
+    {
+      "role": "assistant",
+      "text": "Excelente. Su cita quedó agendada para el martes a las 3 de la tarde. Recuerde que si necesita cancelar, debe hacerlo con al menos 24 horas de anticipación. ¿Hay algo más en lo que le pueda ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Eso sería todo, muchísimas gracias."
+    },
+    {
+      "role": "assistant",
+      "text": "Un momento."
+    },
+    {
+      "role": "assistant",
+      "text": "A usted, Miguel, que tenga un excelente día."
+    }
+  ],
+  "ground_truth": {
+    "outcome": "appointment_booked",
+    "duration_seconds": 152,
+    "summary": "El cliente Miguel Morales llamó para preguntar si necesitaba cita para pagar una multa de tránsito y solicitó agendar una para el martes. Se le proporcionó la información de las ubicaciones donde puede realizar el pago y se le agendó exitosamente una cita para el martes a las 3 de la tarde en la dirección de ingresos, confirmando sus datos de contacto. La llamada terminó satisfactoriamente después de que el cliente confirmó que no necesitaba nada más y agradeció la atención.",
+    "ces_data": {
+      "fluidez": {
+        "obs": "La conversación fluye naturalmente con pausas apropiadas. El único punto débil es el cierre abrupto ('Un momento.') seguido de un despedida, que crea una microdiscontinuidad, pero no interrumpe el flu",
+        "score": 4
+      },
+      "overall": 4.3,
+      "confianza": {
+        "obs": "Responde con seguridad en todos los aspectos: proporciona direcciones exactas, horarios claros, alternativas de pago (línea 24/7), e instrucciones sobre cancelación de citas. No hay vacilación ni expr",
+        "score": 5
+      },
+      "conduccion": {
+        "obs": "El IA conduce la conversación con propósito claro: identifica la necesidad, ofrece opciones (presencial, delegaciones, línea), luego cierra con preguntas dirigidas para obtener datos necesarios. Las p",
+        "score": 4
+      },
+      "resolucion": {
+        "obs": "El cliente termina con cita agendada, hora confirmada, dirección clara y número de contacto capturado. El problema está completamente resuelto con un siguiente paso definido (presentarse el martes a l",
+        "score": 5
+      },
+      "comprension": {
+        "obs": "El IA captó inmediatamente que el usuario necesitaba agendar cita para pagar multa de tránsito, recordó que pidió martes a las 3 de la tarde, y confirmó todos los datos sin hacer preguntas redundantes",
+        "score": 5
+      },
+      "naturalidad": {
+        "obs": "El lenguaje es profesional pero algo repetitivo. Usa la frase 'Perfecto' tres veces (líneas 2, 5 y 7 del IA) y 'con gusto' dos veces. Hay variación en otras secciones, pero la pauta de confirmación su",
+        "score": 3
+      },
+      "mejora_principal": null
+    },
+    "self_eval_score": 5,
+    "self_eval_notes": "El empleado logró exitosamente agendar la cita con comunicación clara y profesional. Proporcionó información completa sobre alternativas de pago, confirmó correctamente todos los datos del cliente y estableció expectativas claras sobre políticas de cancelación. La interacción fue eficiente, cordial y orientada al servicio."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}

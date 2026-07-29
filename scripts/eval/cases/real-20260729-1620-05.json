@@ -1,0 +1,97 @@
+{
+  "id": "real-20260729-1620-05",
+  "description": "Llamada real 4530ab0f-eff0-454d-91e5-d6ccb858fb33 — outcome: lead_created · 3.4min · Negocio Demo (Centinelia)",
+  "meerkat_role_id": null,
+  "business_context": "Negocio: Negocio Demo · Rol: recepcionista · Agente: Centinelia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Hola, mucho gusto, soy Nía. Esta llamada puede ser grabada Cuéntame, ¿qué tipo de negocio quieres que simulemos hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, Neal, ¿cómo estás? Buenos días. Simular un negocio de autopartes. Quisiera que tú fueras la relacionista de este negocio, y que yo esté buscando una auto parte de algún carro, y tú me respondas que la tienes o no la tienes, o hay que irla a buscar o la tienes pero está dañada y y ocupa reparación, que me vas a mandar fotos, no sé, o sea, atenderme en general porque tú vendes autopartes usadas, a veces pueden venir chocajas."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, entendido. Soy el equipo de ventas de un negocio de auto partes usadas, Voy a atenderte como cliente que busca una parte específica. Adelante, ¿qué pieza necesitas?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, ¿qué tal? Buenos días, estoy buscando una fascia delantera para un Dodge Neon dos mil diecinueve. No sé si tengas una por ahí."
+    },
+    {
+      "role": "assistant",
+      "text": "Buenos días, déjame revisar qué tenemos en inventario para ese modelo. Mire, tengo una fascia delantera de neón dos mil diecinueve, pero viene con un pequeño golpe en la esquina izquierda, La parte principal está bien, podría servir si usted la quiere reparar o pintar. También tengo otra opción que está más limpia, pero esa viene de un modelo dos mil dieciocho, muy similar, pero habría que verificar que los acoples sean compatibles. ¿Cuál de las dos le interesa revisar o prefiere que le mande"
+    },
+    {
+      "role": "user",
+      "text": "Me mandas que se te cortó ahí."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, disculpa. ¿Prefiere que le mande fotos de las dos opciones para que vea cómo están."
+    },
+    {
+      "role": "user",
+      "text": "See, it's mándame foto, por favor, al al WhatsApp. Mi número es el ocho once veintiocho cero tres. Treinta y seis cero. La la la dieciocho y la diecinueve es la misma línea, entonces quedan igual nada más. Falta ver la versión que no vaya a cambiar la versión."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, anotado. Me manda al ocho uno uno dos ocho cero tres tres seis cero dieciocho. Voy a tomar a las dos fascias, ahora mismo, la del diecinueve con el golpecito y la del dieciocho, se las envío por WhatsApp en los próximos minutos para que vea cómo se ven y verificamos juntos que encajen bien en su vehículo."
+    },
+    {
+      "role": "user",
+      "text": "Ok, nada más creo que que nada más está mal mal mi número."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro, cuéntame, ¿cuál es el número correcto?"
+    },
+    {
+      "role": "user",
+      "text": "El el ocho once veintiocho cero tres treinta y seis cero."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Entonces, ocho uno uno dos ocho cero tres tres seis cero. ¿Es correcto?"
+    },
+    {
+      "role": "user",
+      "text": "Ándale, ahora sí."
+    },
+    {
+      "role": "assistant",
+      "text": "Listo. En los próximos minutos te envío las fotos de las dos fascias por WhatsApp a ese número, viste las imágenes y me dices cuál te llama más la atención, ¿dale?"
+    },
+    {
+      "role": "user",
+      "text": "Perfecto, me parece."
+    },
+    {
+      "role": "assistant",
+      "text": "Excelente. Si tienes dudas cuando veas las fotos o necesitas más información sobre alguna de las dos, me llamas sin problema. ¿Hay algo más en lo que te pueda ayudar hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Sería todo. Muchísimas gracias, Mia. Muchísimas gracias."
+    },
+    {
+      "role": "assistant",
+      "text": "De nada, con mucho gusto. Que te vaya bien, hasta luego."
+    }
+  ],
+  "ground_truth": {
+    "outcome": "lead_created",
+    "duration_seconds": 204,
+    "summary": "El cliente buscaba una fascia delantera para un Dodge Neon 2019. La relacionista le ofreció dos opciones: una del 2019 con un golpe en la esquina izquierda y otra del 2018 en mejor estado pero que requiere verificar compatibilidad. La llamada terminó exitosamente con el acuerdo de enviar fotos de ambas piezas al WhatsApp del cliente para que pueda decidir cuál le conviene.",
+    "ces_data": null,
+    "self_eval_score": 4,
+    "self_eval_notes": "La IA cumplió exitosamente el objetivo de capturar el lead, mantuvo una comunicación amable y profesional, y gestionó bien las opciones de productos disponibles. Puede mejorar en la precisión al capturar datos (requirió corrección del número telefónico) y en ser más proactivo al ofrecer alternativas adicionales o preguntar sobre presupuesto antes de enviar fotos."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}
