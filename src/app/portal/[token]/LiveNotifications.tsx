@@ -17,13 +17,13 @@ interface Toast {
 }
 
 const OUTCOME_LABELS: Record<string, string> = {
-  lead_created:       '🎯 Nuevo lead',
-  appointment_booked: '📅 Cita agendada',
-  order_taken:        '🛒 Pedido tomado',
-  transferred:        '📞 Llamada transferida',
-  info_provided:      'ℹ️ Llamada atendida',
-  missed:             '📵 Llamada perdida',
-  other:              '📱 Llamada completada',
+  lead_created:       'Nuevo lead',
+  appointment_booked: 'Cita agendada',
+  order_taken:        'Pedido tomado',
+  transferred:        'Llamada transferida',
+  info_provided:      'Llamada atendida',
+  missed:             'Llamada perdida',
+  other:              'Llamada completada',
 };
 
 const OUTCOME_COLORS: Record<string, string> = {
@@ -46,7 +46,7 @@ export default function LiveNotifications({ token }: { token: string }) {
   function addToast(call: Call) {
     const toast: Toast = {
       id:      call.id,
-      message: `${OUTCOME_LABELS[call.outcome] ?? '📱 Llamada'} · ${call.caller_number || 'Número desconocido'}`,
+      message: `${OUTCOME_LABELS[call.outcome] ?? 'Llamada'} · ${call.caller_number || 'Número desconocido'}`,
       color:   OUTCOME_COLORS[call.outcome] ?? '#6b7280',
     };
     setToasts(prev => [toast, ...prev].slice(0, 3));

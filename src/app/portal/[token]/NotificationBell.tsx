@@ -19,13 +19,13 @@ interface Notif {
 }
 
 const OUTCOME_LABELS: Record<string, string> = {
-  lead_created:       '🎯 Nuevo lead',
-  appointment_booked: '📅 Cita agendada',
-  order_taken:        '🛒 Pedido tomado',
-  transferred:        '📞 Llamada transferida',
-  info_provided:      'ℹ️ Llamada atendida',
-  missed:             '📵 Llamada perdida',
-  other:              '📱 Llamada completada',
+  lead_created:       'Nuevo lead',
+  appointment_booked: 'Cita agendada',
+  order_taken:        'Pedido tomado',
+  transferred:        'Llamada transferida',
+  info_provided:      'Llamada atendida',
+  missed:             'Llamada perdida',
+  other:              'Llamada completada',
 };
 
 const OUTCOME_COLORS: Record<string, string> = {

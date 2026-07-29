@@ -49,8 +49,8 @@ function daysLeft(expiresAt: string): number {
 
 function expiryLabel(days: number): string {
   if (days === 0) return 'Se elimina hoy';
-  if (days === 1) return 'Se elimina manana';
-  return `Se elimina en ${days} dias`;
+  if (days === 1) return 'Se elimina mañana';
+  return `Se elimina en ${days} días`;
 }
 
 function expiryColor(days: number): string {
@@ -73,7 +73,7 @@ function timeAgo(iso: string): string {
   if (m < 1)  return 'Hace un momento';
   if (m < 60) return `Hace ${m} min`;
   if (h < 24) return `Hace ${h}h`;
-  if (d < 7)  return `Hace ${d} dia${d !== 1 ? 's' : ''}`;
+  if (d < 7)  return `Hace ${d} día${d !== 1 ? 's' : ''}`;
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
@@ -194,7 +194,7 @@ export default function DocumentosPage() {
           Centro de documentos
         </h1>
         <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Archivos generados por tus empleados. Disponibles 30 dias para descargar, conservar o reenviar.
+          Archivos generados por tus empleados. Disponibles 30 días para descargar, conservar o reenviar.
         </p>
       </div>
 
@@ -301,7 +301,7 @@ export default function DocumentosPage() {
                       {expiryLabel(days)}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => handleConservar(doc)} disabled={isCons} title="Conservar 30 dias mas"
+                      <button onClick={() => handleConservar(doc)} disabled={isCons} title="Conservar 30 días más"
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
                         style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
                         <BookmarkPlus size={11} />

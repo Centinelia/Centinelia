@@ -113,7 +113,7 @@ function DocsChecklist({ report, token, tramiteDocs, onUpdate }: {
     <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-          <FileCheck2 size={12} /> Documentos — {tipo}
+          <FileCheck2 size={12} /> Documentos: {tipo}
         </p>
         <span className="text-[11px]" style={{ color: doneCount === required.length ? '#22c55e' : 'var(--c-text-4)' }}>
           {doneCount}/{required.length}
