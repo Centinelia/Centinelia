@@ -403,16 +403,44 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
   const meerkatId = agent.features.meerkat_role_id;
   const cfg: MeerkatModelConfig = (meerkatId ? MEERKAT_MODEL_CONFIG[meerkatId] : undefined) ?? DEFAULT_MODEL_CONFIG;
 
+  // F1.1 — customLLM opt-in per agent. Cuando features.use_custom_llm = true
+  // apuntamos Vapi a nuestro endpoint /api/voice/llm que reformatea a Anthropic
+  // con cache_control. El prompt de voz de ~900 líneas queda cacheado por 5min
+  // y cada turno subsecuente paga 10% del input. Ahorro esperado 60-70% en
+  // input tokens de voz vs anthropic native.
+  //
+  // Empezar activándolo en un agente demo, verificar en logs de Anthropic que
+  // aparecen cache_creation_input_tokens y cache_read_input_tokens > 0, y
+  // recién entonces propagar a producción.
+  const useCustomLlm = !!(agent.features as unknown as Record<string, unknown>)?.use_custom_llm;
+  const appUrl       = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const vapiSecret   = process.env.VAPI_SERVER_SECRET  ?? '';
+
+  const modelBlock = useCustomLlm
+    ? {
+        provider: 'custom-llm',
+        // Vapi appende '/chat/completions' automáticamente a la URL base.
+        // Secret en query string como fallback si Vapi no puede inyectar headers.
+        url: vapiSecret ? `${appUrl}/api/voice/llm?secret=${encodeURIComponent(vapiSecret)}` : `${appUrl}/api/voice/llm`,
+        model:    cfg.model,      // pasa como identifier, nuestro endpoint lo respeta
+        messages,
+        temperature: cfg.temperature,
+        maxTokens:   cfg.maxTokens,
+        metadataSendMode: 'off',  // no mandar objeto `call` — ahorra tokens/latencia
+        ...(toolIds.length > 0 ? { toolIds } : {}),
+      }
+    : {
+        provider: cfg.provider,
+        model:    cfg.model,
+        messages,
+        temperature: cfg.temperature,
+        maxTokens:   cfg.maxTokens,
+        ...(toolIds.length > 0 ? { toolIds } : {}),
+      };
+
   return {
     name: `${agentName}, ${agent.business_name}`,
-    model: {
-      provider: cfg.provider,
-      model:    cfg.model,
-      messages,
-      temperature: cfg.temperature,
-      maxTokens:   cfg.maxTokens,
-      ...(toolIds.length > 0 ? { toolIds } : {}),
-    },
+    model: modelBlock,
     voice: {
       provider: '11labs',
       voiceId: agent.elevenlabs_voice_id || '9Godp7dNohUvXk6qp0gS',
