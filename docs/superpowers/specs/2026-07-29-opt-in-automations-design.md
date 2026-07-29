@@ -35,6 +35,10 @@ Que el cliente decida qué automatizaciones activar y pague por ellas transparen
 | D5 | Visibilidad de costo | Transparencia total — mostrar tareas/mes junto al toggle |
 | D6 | Alcance de los crons | Expandir a todas las fuentes de actividad (calls + emails + docs + tasks + appointments) |
 | D7 | Ajuste de costo por expansión | Proporcional al aumento de data procesada |
+| D8 | Frecuencia de `learn` | Quincenal fijo (no selector). Reduce de ~1,400 a ~700 tareas/mes; accesible desde Jornada Completa |
+| D9 | `heartbeat_config` migration | NO migrar; mantener dual con sync automático en el endpoint PATCH |
+| D10 | Estimados de costo iniciales | Validar en agente demo ANTES del UI. Publicar como rango con "aprox." |
+| D11 | Rollout | 3 deploys separadas: Fase 1+2 (backend + UI narrow), Fase 3 (expansión heartbeat+insights), Fase 4 (expansión learn) |
 
 ## Data model
 
@@ -63,7 +67,7 @@ features: {
 }
 ```
 
-**Nota de compatibilidad:** `heartbeat` mantiene su config detallada en `heartbeat_config` (frecuencia, hora, día). El campo `features.automations.heartbeat.enabled` se mantiene sincronizado con `heartbeat_config.enabled` para permitir un lugar único de consulta en el UI.
+**Nota de compatibilidad (D9):** `heartbeat` mantiene su config detallada en `heartbeat_config` (frecuencia, hora, día). El campo `features.automations.heartbeat.enabled` se mantiene sincronizado con `heartbeat_config.enabled` vía el endpoint PATCH `/automations` (2 líneas de código de sync). El UI toggle lee de `features.automations.heartbeat.enabled` para consistencia con los otros 2 features. El cron sigue leyendo de `heartbeat_config` sin cambios — cero riesgo para prod.
 
 **No requiere migración SQL** — el campo `features` es JSONB, agregar sub-claves no necesita ALTER TABLE.
 
@@ -82,7 +86,7 @@ Layout de cada card (una por feature):
 │ correos gestionados, documentos creados, tareas        │
 │ completadas y citas agendadas.                          │
 │                                                         │
-│ Costo estimado: ~250 tareas/mes                        │
+│ Costo estimado: aprox. tareas/mes (medir en validación)│
 │ [Configurar hora →]                                    │
 └────────────────────────────────────────────────────────┘
 
@@ -93,24 +97,25 @@ Layout de cada card (una por feature):
 │ basadas en el análisis de toda la actividad de tu     │
 │ empleado la semana pasada.                             │
 │                                                         │
-│ Costo estimado: ~80 tareas/mes                         │
+│ Costo estimado: aprox. tareas/mes (medir en validación)│
 └────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────┐
-│ 🧠 Aprendizaje automático        [toggle: OFF]         │
+│ 🧠 Aprendizaje automático (quincenal) [toggle: OFF]    │
 │                                                         │
-│ Tu empleado aprende reglas de tu negocio observando   │
-│ correos, llamadas y documentos. Aplica lo aprendido   │
-│ automáticamente si tiene alta confianza.               │
+│ Cada 2 semanas tu empleado aprende reglas de tu       │
+│ negocio observando correos, llamadas y documentos.    │
+│ Aplica lo aprendido automáticamente si tiene alta     │
+│ confianza.                                              │
 │                                                         │
-│ Costo estimado: ~1,400 tareas/mes                      │
-│ ⚠️ Este feature consume mucho — considera solo si      │
-│    tienes un pool grande de tareas.                    │
+│ Costo estimado: aprox. tareas/mes (medir en validación)│
 │ Requiere: correo conectado                             │
 └────────────────────────────────────────────────────────┘
 ```
 
-**Nota sobre `learn`:** con 1,400 tareas/mes esperado, solo agentes con plan Alta Demanda ($11,988/mes, 3,000 tareas) pueden costearlo sin pool extra. Los otros tiers necesitan comprar packs adicionales. Considerar en review si vale la pena reducir frecuencia a quincenal para bajar a ~700 tareas/mes.
+**Nota sobre valores de costo (D10):** Los estimados finales se validan en el agente demo ANTES del launch del UI, corriendo cada cron 3-4 veces y midiendo tokens reales. Los números publicados en el UI serán rangos con "aprox." (ej: "aprox. 200-300 tareas/mes") para dar margen realista.
+
+**Nota sobre `learn` (D8):** Fijado en frecuencia quincenal — schedule del cron `0 9 8,22 * *` (día 8 y 22 del mes a las 9am). Reduce el consumo estimado ~50% vs semanal, haciendo el feature accesible desde el plan Jornada Completa. Si algún cliente requiere semanal, se activa manualmente desde admin.
 
 > **Nota sobre los costos en tareas:** los valores mostrados (250, 80, 1400) son estimados iniciales basados en el consumo teórico. Después del rollout, medir consumo real durante 2 semanas y ajustar copy del UI + tabla de estimados.
 
@@ -263,11 +268,31 @@ Retorna el estado actual de todas las automations + info de costo estimado (por 
 | Múltiples features consumen simultáneamente y no está claro cuál causó el agotamiento | Endpoint GET incluye historial últimos 30 días con desglose por feature |
 | Test manual E2E requiere esperar cron real | Endpoint admin `/api/admin/cron/trigger` para disparar cualquier cron on-demand (para QA) |
 
-## Plan de rollout
+## Plan de rollout (D11 — 3 deploys separadas)
 
-1. **Fase 1 — Backend (2-3 días)**: gating en los 2 crons + APIs + email template + tests
-2. **Fase 2 — UI (1-2 días)**: sección Automatizaciones con toggles + costo visible
-3. **Fase 3 — Expansión de fuentes (3-4 días)**: heartbeat y weekly-insights leen de todas las tablas; ajustar prompts LLM
-4. **Fase 4 — Expansión de learn (2-3 días)**: agregar calls + docs + tasks a las fuentes que analiza
+### Pre-work: Validación de costos (D10)
+Antes de escribir el UI, correr los 3 crons manualmente en el agente demo (`DEMO_AGENT_ID = 10a70b8b-dad7-432d-bdfb-28f2876071f3`) 3-4 veces cada uno. Medir tokens consumidos vía Anthropic dashboard. Convertir a tareas. Publicar rangos "aprox." en el UI.
 
-Fase 1+2 pueden desplegar antes de Fase 3+4. En el intermedio los crons corren con alcance actual (calls-only, emails-only) pero ya con opt-in.
+### Deploy 1 — Fase 1 + Fase 2 (backend + UI narrow, 3-4 días)
+- Backend: gating en los 2 crons (`weekly-insights`, `learn`) por `features.automations.<name>.enabled`
+- APIs: `GET/PATCH /api/portal/[token]/agentes/[id]/automations`
+- Email template quota-exhausted + rate limit 7 días
+- Cambio del schedule de `learn` a quincenal (`0 9 8,22 * *`)
+- UI: nueva sección Automatizaciones con toggles + rangos "aprox." validados
+- Copy con alcance narrow honesto ("Reporte diario de llamadas", "Recomendaciones basadas en llamadas", "Aprendizaje desde correos")
+- Tests unitarios + integración + manual E2E
+
+### Deploy 2 — Fase 3 (expansión heartbeat + weekly-insights, 3-4 días)
+- Cada cron consulta múltiples tablas y sintetiza en un prompt LLM extendido
+- Ajustar prompts para el nuevo scope
+- Actualizar copy del UI: "Reporte diario de actividad (llamadas + correos + documentos + tareas + citas)"
+- Re-medir consumo de tareas y actualizar rangos si cambian significativamente
+- Tests actualizados para nueva query
+
+### Deploy 3 — Fase 4 (expansión de learn, 2-3 días)
+- `learn` procesa correos + calls + docs + tasks
+- Ajustar prompt de extracción para múltiples fuentes
+- Actualizar copy del UI para reflejar el scope expandido
+- Re-medir consumo
+
+Total: ~8-11 días de desarrollo dividido en 3 despliegues. Cada uno con rollback trivial (revert de commit).
