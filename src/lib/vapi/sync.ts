@@ -354,7 +354,9 @@ interface MeerkatModelConfig {
 // Flash v2.5 + Nova-2: meerkats internos, coordinación o interlocutor no-cliente-directo. ~50% off TTS, ~35% off STT.
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
   // ── CARA-AL-CLIENTE: TTS premium ──────────────────────────────────────
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // Nia post-primera-llamada-real: maxTokens 200 → 400 (se detuvo hablando en
+  // explicaciones largas), speed 0.98 → 0.94 (feedback: "habla rápido").
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 400, speed: 0.94, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
@@ -467,18 +469,33 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       }
       return `${agent.business_name}, buenos días. Le habla ${agentName}. ${notice} ¿En qué le puedo ayudar?`;
     })(),
-    endCallMessage: 'Hasta luego, que tenga un excelente día.',
-    endCallPhrases: ['hasta luego', 'hasta pronto', 'que tenga un excelente día', 'que tenga buen día', 'adiós', 'fue un placer atenderle'],
+    endCallMessage: 'Hasta luego.',
+    // Ampliadas post-primera-llamada-real: la lista original era muy formal y
+    // el modelo con CCP nuevo cierra corto ("Hasta luego." o "Que le vaya bien.").
+    // Vapi necesita matchear alguna de estas para colgar.
+    endCallPhrases: [
+      'hasta luego', 'hasta pronto', 'hasta la próxima',
+      'que le vaya bien', 'que le vaya muy bien', 'que tenga buen día',
+      'que tenga un excelente día', 'que tenga buena tarde', 'que tenga buena noche',
+      'nos vemos', 'nos hablamos', 'estamos en contacto',
+      'gracias por llamar', 'gracias por comunicarse',
+      'adiós', 'buenos días', 'buenas tardes', 'buenas noches',
+      'fue un placer atenderle', 'fue un placer',
+    ],
     transcriber: (() => {
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
       const explicitLite = !!agent.features.lite_prompt;
       const isLite      = explicitLite || tier === 'lite';
+      // Endpointing post-primera-llamada-real: 100→180 en lite, 150→220 en full.
+      // Feedback fue "me interrumpió mientras hablaba" — el modelo entraba muy rápido
+      // por endpointing agresivo. Trade-off: +80ms de silencio antes de responder,
+      // pero evita interrumpir al usuario.
       return {
         provider:    'deepgram',
         model:       cfg.sttModel ?? 'nova-3',
         language:    agent.features.multilingual ? 'multi' : 'es',
         smartFormat: false,
-        endpointing: isLite ? 100 : 150,
+        endpointing: isLite ? 180 : 220,
       };
     })(),
     backgroundSound: 'office',
