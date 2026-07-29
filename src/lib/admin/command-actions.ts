@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Command } from './command-grammar';
 import { helpText } from './command-grammar';
+import {
+  createApproval, grantOpsChecks, listApprovals,
+  decideApproval, executeApproval, getApproval,
+} from './approvals';
 
 export interface ActionResult {
   ok:      boolean;
@@ -233,10 +237,30 @@ async function resetOps(portalEmail: string): Promise<ActionResult> {
 
 async function grantOps(portalEmail: string, count: number): Promise<ActionResult> {
   if (count <= 0) return { ok: false, message: 'La cantidad de ops debe ser positiva.' };
+
+  // C3 gate: grants > GRANT_OPS_GATE_THRESHOLD requieren aprobación explícita.
+  // Se crea un approval pending y se le devuelve al operador el id para
+  // que apruebe/rechace desde /admin/aprobaciones o desde el comando
+  // `approve <id>`.
   if (count > GRANT_OPS_GATE_THRESHOLD) {
+    const checks = await grantOpsChecks(portalEmail, count);
+    const approval = await createApproval({
+      type:        'grant_ops',
+      title:       `+${count} ops para ${portalEmail}`,
+      rationale:   `Comando manual solicitó grant de ${count} ops (arriba del cap de ${GRANT_OPS_GATE_THRESHOLD} sin gate).`,
+      amount:      count,
+      targetEmail: portalEmail,
+      metadata:    { portalEmail, count },
+      checks,
+    });
+    const anyFailed = checks.some(c => !c.passed);
     return {
-      ok: false,
-      message: `Grants > ${GRANT_OPS_GATE_THRESHOLD} ops requieren aprobación explícita en el gate. C3 aún no está implementado — por ahora aplica el cambio manualmente en el admin de agentes.`,
+      ok:      true,
+      message: `**Grant de ${count} ops encolado en el gate** (id ${approval.id})\n\n` +
+               `Está en \`pending\` — necesita aprobación explícita.\n` +
+               (anyFailed ? '⚠️ Algún policy check falló; aprobar será un override explícito.\n' : '') +
+               `Aprobar con \`approve ${approval.id}\` o desde /admin/aprobaciones.`,
+      data:    { approvalId: approval.id },
     };
   }
 
@@ -263,6 +287,56 @@ async function grantOps(portalEmail: string, count: number): Promise<ActionResul
     ok: failed === 0,
     message: `**+${count} ops otorgadas a ${portalEmail}** (${before.length - failed}/${before.length} agentes)\n\n${summary}`,
     data: { granted: count, affected: before.length - failed },
+  };
+}
+
+// ── list approvals ──────────────────────────────────────────────────────────
+
+async function listApprovalsCmd(filter: 'pending' | 'all'): Promise<ActionResult> {
+  const items = filter === 'pending' ? await listApprovals('pending') : await listApprovals();
+  if (items.length === 0) {
+    return { ok: true, message: filter === 'pending' ? 'Sin aprobaciones pendientes.' : 'Sin aprobaciones registradas.' };
+  }
+  const rows = items.map(a => {
+    const statusIcon = a.status === 'pending' ? '⏳' : a.status === 'approved' ? '✅' : '❌';
+    const amt = a.amount != null ? ` · ${fmtN(a.amount)}` : '';
+    return `${statusIcon} \`${a.id}\` · **${a.type}** · ${a.title}${amt}`;
+  });
+  return {
+    ok:      true,
+    message: [`**${items.length} aprobación${items.length === 1 ? '' : 'es'} (${filter})**`, '', ...rows].join('\n'),
+    data:    items,
+  };
+}
+
+// ── approve ─────────────────────────────────────────────────────────────────
+
+async function approveCmd(id: string): Promise<ActionResult> {
+  const before = await getApproval(id);
+  if (!before) return { ok: false, message: `Approval ${id} no existe.` };
+  if (before.status !== 'pending') return { ok: false, message: `Approval ${id} ya está ${before.status}.` };
+
+  const decided = await decideApproval({ id, approve: true, decidedBy: 'admin (command line)' });
+  const executed = await executeApproval(decided);
+  return {
+    ok:      executed.ok,
+    message: `**${executed.ok ? '✅ Aprobado y ejecutado' : '⚠️ Aprobado pero la ejecución falló'}**\n\n${executed.message}`,
+    data:    { decided, executed },
+  };
+}
+
+// ── reject ──────────────────────────────────────────────────────────────────
+
+async function rejectCmd(id: string, note?: string): Promise<ActionResult> {
+  const before = await getApproval(id);
+  if (!before) return { ok: false, message: `Approval ${id} no existe.` };
+  if (before.status !== 'pending') return { ok: false, message: `Approval ${id} ya está ${before.status}.` };
+
+  const decided = await decideApproval({ id, approve: false, decidedBy: 'admin (command line)', note });
+  return {
+    ok:      true,
+    message: `**❌ Rechazado**${note ? `\n\nNota: ${note}` : ''}`,
+    data:    decided,
   };
 }
 
@@ -305,5 +379,8 @@ export async function executeCommand(cmd: Command): Promise<ActionResult> {
     case 'reset_ops':     return resetOps(cmd.portalEmail);
     case 'grant_ops':     return grantOps(cmd.portalEmail, cmd.count);
     case 'reset_minutes': return resetMinutes(cmd.portalEmail);
+    case 'list_approvals': return listApprovalsCmd(cmd.filter);
+    case 'approve':       return approveCmd(cmd.id);
+    case 'reject':        return rejectCmd(cmd.id, cmd.note);
   }
 }

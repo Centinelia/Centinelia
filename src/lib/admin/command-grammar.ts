@@ -18,7 +18,10 @@ export type Command =
   | { kind: 'health';         portalEmail: string }
   | { kind: 'reset_ops';      portalEmail: string }
   | { kind: 'grant_ops';      portalEmail: string; count: number }
-  | { kind: 'reset_minutes';  portalEmail: string };
+  | { kind: 'reset_minutes';  portalEmail: string }
+  | { kind: 'list_approvals'; filter: 'pending' | 'all' }
+  | { kind: 'approve';        id: string }
+  | { kind: 'reject';         id: string; note?: string };
 
 export type ParseResult =
   | { ok: true;  command: Command; trace: string }
@@ -104,6 +107,27 @@ const SPECS: CmdSpec[] = [
     build: (m) => ({ kind: 'reset_minutes', portalEmail: m[2].toLowerCase() }),
     trace: (m) => `reset minutes ${m[2].toLowerCase()}`,
     help:  '`reset minutes <email>` — pone minutes_used = 0 (voz)',
+  },
+  {
+    name:  'list approvals',
+    regex: /^\s*(list|listar)\s+approvals?(\s+(pending|all|todas))?\s*$/i,
+    build: (m) => ({ kind: 'list_approvals', filter: (m[3] ?? '').toLowerCase() === 'all' || (m[3] ?? '').toLowerCase() === 'todas' ? 'all' : 'pending' }),
+    trace: (m) => `list approvals ${(m[3] ?? 'pending').toLowerCase()}`,
+    help:  '`list approvals [pending|all]` — cola del gate',
+  },
+  {
+    name:  'approve',
+    regex: /^\s*approve\s+([0-9a-f-]{36})\s*$/i,
+    build: (m) => ({ kind: 'approve', id: m[1] }),
+    trace: (m) => `approve ${m[1]}`,
+    help:  '`approve <id>` — aprueba un pending del gate y ejecuta la acción',
+  },
+  {
+    name:  'reject',
+    regex: /^\s*reject\s+([0-9a-f-]{36})(\s+(.+))?\s*$/i,
+    build: (m) => ({ kind: 'reject', id: m[1], note: m[3]?.trim() }),
+    trace: (m) => `reject ${m[1]}${m[3] ? ` — ${m[3].trim()}` : ''}`,
+    help:  '`reject <id> [nota]` — rechaza un pending del gate',
   },
 ];
 

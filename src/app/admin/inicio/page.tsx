@@ -4,9 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 import {
   AlertTriangle, ArrowRight, Terminal, PhoneCall, Mail, Inbox,
-  Users, DollarSign, Zap, CheckCircle2, Server,
+  Users, DollarSign, Zap, CheckCircle2, Server, ShieldCheck,
 } from 'lucide-react';
 import LiveFeed from './LiveFeed';
+import { pendingCount as pendingApprovalsCount } from '@/lib/admin/approvals';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,7 @@ export default async function InicioPage() {
     { data: recentCalls },
     { data: recentInbox },
     { data: lastCallsPerAgent },
+    approvalsPending,
   ] = await Promise.all([
     supabase.from('voice_agents')
       .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email')
@@ -101,6 +103,7 @@ export default async function InicioPage() {
       .select('agent_id, created_at')
       .order('created_at', { ascending: false })
       .limit(500),
+    pendingApprovalsCount(),
   ]);
 
   const agentList = (agents ?? []) as AgentRow[];
@@ -137,8 +140,18 @@ export default async function InicioPage() {
       severity: 'high',
       label:    'Correos esperando tu aprobación',
       sub:      'Bandeja de operaciones',
-      href:     '/admin/dashboard',   // TODO: dashboard de aprobaciones cuando lo tengamos
+      href:     '/admin/dashboard',
       count:    inboxPendingN,
+    });
+  }
+
+  if (approvalsPending > 0) {
+    riskItems.push({
+      severity: 'high',
+      label:    'Acciones en el gate esperando aprobación',
+      sub:      'Grants, refunds y cambios destructivos',
+      href:     '/admin/aprobaciones',
+      count:    approvalsPending,
     });
   }
 
@@ -331,15 +344,15 @@ export default async function InicioPage() {
           ¿Qué hago?
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <QuickAction href="/admin/comando"    icon={<Terminal size={15} />}  label="Comando" hint="terminal de operación" primary />
-          <QuickAction href="/admin/ledger"     icon={<DollarSign size={15} />} label="Ledger" hint="revenue vs costo por agente" />
-          <QuickAction href="/admin/agentes"    icon={<Users size={15} />}     label="Agentes" hint={`${agentList.filter(a => a.active).length} activos`} />
-          <QuickAction href="/admin/llamadas"   icon={<PhoneCall size={15} />} label="Llamadas" hint="historial completo" />
-          <QuickAction href="/admin/billing"    icon={<DollarSign size={15} />} label="Billing" hint="pagos y planes" />
-          <QuickAction href="/admin/analytics"  icon={<Zap size={15} />}       label="Analytics" hint="métricas del mes" />
-          <QuickAction href="/admin/dashboard"  icon={<Server size={15} />}    label="Infra" hint="Vapi · Twilio · Claude" />
-          <QuickAction href="/admin/conversacional" icon={<Inbox size={15} />} label="Aprendizaje" hint="learnings por revisar" />
-          <QuickAction href="/admin/clientes"   icon={<Users size={15} />}     label="Clientes" hint="portales activos" />
+          <QuickAction href="/admin/comando"      icon={<Terminal size={15} />}    label="Comando"    hint="terminal de operación" primary />
+          <QuickAction href="/admin/ledger"       icon={<DollarSign size={15} />}  label="Ledger"     hint="revenue vs costo por agente" />
+          <QuickAction href="/admin/aprobaciones" icon={<ShieldCheck size={15} />} label="Aprobaciones" hint={approvalsPending > 0 ? `${approvalsPending} pendiente${approvalsPending > 1 ? 's' : ''}` : 'gate limpio'} />
+          <QuickAction href="/admin/agentes"      icon={<Users size={15} />}       label="Agentes"    hint={`${agentList.filter(a => a.active).length} activos`} />
+          <QuickAction href="/admin/llamadas"     icon={<PhoneCall size={15} />}   label="Llamadas"   hint="historial completo" />
+          <QuickAction href="/admin/billing"      icon={<DollarSign size={15} />}  label="Billing"    hint="pagos y planes" />
+          <QuickAction href="/admin/analytics"    icon={<Zap size={15} />}         label="Analytics"  hint="métricas del mes" />
+          <QuickAction href="/admin/dashboard"    icon={<Server size={15} />}      label="Infra"      hint="Vapi · Twilio · Claude" />
+          <QuickAction href="/admin/conversacional" icon={<Inbox size={15} />}     label="Aprendizaje" hint="learnings por revisar" />
         </div>
       </section>
     </div>
