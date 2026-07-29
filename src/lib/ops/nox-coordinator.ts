@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail } from '@/lib/email/send';
+import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,12 @@ export async function processEmailWithNox(params: {
   const { noxAgent, siblings, emailFrom, emailSubject, emailBody, portalEmail } = params;
 
   if (!siblings.length) return;
+
+  // C5 — clasificación determinística: spam / notificación automática no
+  // ameritan delegación, pero tampoco ameritan pagar Claude para decidirlo.
+  // Salimos temprano y ahorramos la llamada al modelo.
+  const quick = quickClassifyEmail({ from: emailFrom, subject: emailSubject, body: emailBody });
+  if (quick.category) return;
 
   const supabase = createAdminClient();
 

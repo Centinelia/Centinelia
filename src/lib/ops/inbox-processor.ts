@@ -6,6 +6,7 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
 import { getQBClient } from '@/lib/qb/client';
+import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 
 const anthropic = new Anthropic();
 
@@ -282,6 +283,42 @@ export async function processInboxEmail(params: {
   const looksLikeInvoice = hasInvoiceAttachment ||
     /factura|invoice|bill|cobro|pago/i.test(emailSubject) ||
     /factura|invoice|bill|cobro/i.test(effectiveBody.slice(0, 300));
+
+  // C5 — clasificación determinística. Correos obviamente automáticos o
+  // marketing no van a Claude: se marcan `skipped` sin consumir ops.
+  // Excepciones: si es una respuesta a un info_requested (existingInboxId)
+  // o si el correo huele a factura, sigue el pipeline normal para no
+  // arriesgar perder algo importante.
+  if (!existingInboxId && !looksLikeInvoice) {
+    const quick = quickClassifyEmail({
+      from:    emailFrom,
+      subject: emailSubject,
+      body:    effectiveBody,
+    });
+    if (quick.category) {
+      const supabase = createAdminClient();
+      const category = quick.category === 'spam' ? 'spam' : 'otro';
+      const summary  = quick.category === 'spam'
+        ? `Correo de marketing (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`
+        : `Notificación automática (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`;
+      await supabase.from('ops_inbox').insert({
+        agent_id:       agentId,
+        source,
+        raw_message_id: rawMessageId ?? null,
+        thread_id:      threadId ?? null,
+        email_from:     emailFrom,
+        email_subject:  emailSubject,
+        email_body:     effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+        attachments,
+        category,
+        ai_summary:     summary,
+        ai_draft:       null,
+        item_type:      'email',
+        status:         'skipped',
+      });
+      return;
+    }
+  }
 
   const contextBlocks: string[] = [];
   if (knowledgeBase?.trim()) contextBlocks.push(`NEGOCIO:\n${knowledgeBase.trim()}`);
