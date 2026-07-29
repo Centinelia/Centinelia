@@ -18,9 +18,26 @@ import { addCallEntry } from '@/lib/notion/client';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
+  const headerSecret = req.headers.get('x-vapi-secret');
+  const querySecret  = req.nextUrl.searchParams.get('secret');
+
+  // Debug logging temporal — pre-piloto Monterrey. Quitar después.
+  console.log('[voice/webhook] AUTH DEBUG', {
+    hasEnvSecret: !!vapiSecret,
+    envSecretLen: vapiSecret?.length ?? 0,
+    envSecretFirst4: vapiSecret?.slice(0, 4) ?? null,
+    hasHeaderSecret: !!headerSecret,
+    headerSecretLen: headerSecret?.length ?? 0,
+    headerSecretFirst4: headerSecret?.slice(0, 4) ?? null,
+    hasQuerySecret: !!querySecret,
+    querySecretLen: querySecret?.length ?? 0,
+    querySecretFirst4: querySecret?.slice(0, 4) ?? null,
+    headerMatch: headerSecret === vapiSecret,
+    queryMatch: querySecret === vapiSecret,
+    url: req.nextUrl.pathname + req.nextUrl.search.slice(0, 60),
+  });
+
   if (vapiSecret) {
-    const headerSecret = req.headers.get('x-vapi-secret');
-    const querySecret  = req.nextUrl.searchParams.get('secret');
     if (headerSecret !== vapiSecret && querySecret !== vapiSecret) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
