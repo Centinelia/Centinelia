@@ -109,7 +109,7 @@ async function runCase(c: Case): Promise<{ id: string; verdict: JudgeVerdict; ge
   const conversationalRules = variant === 'old' ? CCE_LEGACY_BASELINE : CCP;
 
   const systemPrompt = [
-    `Eres un empleado telefónico del negocio. Responde el siguiente turno en 1-3 oraciones.`,
+    `Eres un empleado digital del negocio. Responde el siguiente turno en 1-3 oraciones.`,
     c.business_context ? `\nCONTEXTO DEL NEGOCIO:\n${c.business_context}` : '',
     `\n${CONVERSATIONAL_DNA}`,
     `\n${conversationalRules}`,
