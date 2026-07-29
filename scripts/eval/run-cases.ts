@@ -6,8 +6,9 @@
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --model=claude-haiku-4-5-20251001
  *   npx tsx scripts/eval/run-cases.ts --cases=scripts/eval/cases --only=cobros-01
  *
- * Requiere ANTHROPIC_API_KEY en env.
+ * Requiere ANTHROPIC_API_KEY en env (auto-carga .env.local).
  */
+import '../_bootstrap';
 import Anthropic from '@anthropic-ai/sdk';
 import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';

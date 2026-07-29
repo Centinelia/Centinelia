@@ -17,7 +17,10 @@
  *
  * Los cases se guardan como scripts/eval/cases/real-<yyyymmdd-hhmm>-<n>.json
  * con el schema del harness. NO sobreescribe cases existentes.
+ *
+ * Carga .env.local automáticamente vía @next/env.
  */
+import '../_bootstrap';
 import { createClient } from '@supabase/supabase-js';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
