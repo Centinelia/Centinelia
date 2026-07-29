@@ -105,8 +105,28 @@
     "self_eval_notes": "El empleado logró exitosamente agendar la cita con comunicación clara y profesional. Proporcionó información completa sobre alternativas de pago, confirmó correctamente todos los datos del cliente y estableció expectativas claras sobre políticas de cancelación. La interacción fue eficiente, cordial y orientada al servicio."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 4,
+      "comprension": 5,
+      "naturalidad": 4,
+      "conduccion": 4,
+      "confianza": 5,
+      "resolucion": 5
+    },
+    "should_not_contain": [
+      "Perfecto",
+      "Un momento",
+      "excelente día",
+      "que tenga un excelente día lleno",
+      "quedo a sus órdenes",
+      "es un placer atenderle"
+    ],
+    "should_contain_any": [
+      "hasta luego",
+      "que le vaya bien",
+      "buen día",
+      "nos vemos el martes"
+    ],
+    "notes": "Este es el mejor caso: cita agendada exitosamente, CES real overall 4.3. El eval_notes marca 'Perfecto' repetido 3 veces (baja naturalidad a 3). El nuevo prompt debe subir naturalidad a 4+, evitar 'Perfecto' repetido y el bug 'Un momento' antes de despedida."
   }
 }

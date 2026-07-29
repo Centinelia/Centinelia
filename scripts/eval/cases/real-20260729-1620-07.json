@@ -26,8 +26,26 @@
     "self_eval_notes": null
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 3,
+      "comprension": 4,
+      "naturalidad": 3,
+      "conduccion": 4,
+      "confianza": 4,
+      "resolucion": 3
+    },
+    "should_not_contain": [
+      "Excelente pregunta",
+      "Con el mayor de los gustos",
+      "Es un placer atenderle",
+      "Buenas noches. Con gusto"
+    ],
+    "should_contain_any": [
+      "número de infracción",
+      "número de multa",
+      "folio",
+      "cuál es el número"
+    ],
+    "notes": "Llamada muy corta (24s), cliente colgó. Meerkat debe ser eficiente: recibir + una sola pregunta clave (número de infracción). Sin saludos largos. Si preguntó por 'placas' pero es multa de tránsito, aclarar en 1 frase."
   }
 }

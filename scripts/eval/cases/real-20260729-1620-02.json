@@ -114,8 +114,28 @@
     "self_eval_notes": "El agente logró capturar exitosamente el lead y recopiló información clave del cliente (nombre, tipo de negocio, dirección, requisitos). La comunicación fue clara y profesional. Podría mejorar en: confirmar explícitamente el costo total de ambas categorías antes de proceder, y ofrecer opciones de seguimiento más claras (número de referencia, correo de confirmación) antes de que el cliente colgara."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 3,
+      "comprension": 4,
+      "naturalidad": 3,
+      "conduccion": 3,
+      "confianza": 4,
+      "resolucion": 4
+    },
+    "should_not_contain": [
+      "Entiendo perfectamente",
+      "Excelente pregunta",
+      "Es un placer atenderle",
+      "agradezco muchísimo su llamada",
+      "excelente día lleno de bendiciones"
+    ],
+    "should_contain_any": [
+      "hasta luego",
+      "hasta pronto",
+      "que le vaya bien",
+      "que le vaya bien manejando",
+      "conduzca con precaución"
+    ],
+    "notes": "Cliente cierra con 'hasta luego' porque va manejando. Meerkat debe despedirse corto (1 turno), reconocer que va conduciendo, sin repetir agradecimientos ni ofrecer más ayuda innecesaria. Cierre eficiente (REGLA 013)."
   }
 }

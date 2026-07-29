@@ -104,7 +104,23 @@ async function runCase(c: Case): Promise<{ id: string; verdict: JudgeVerdict; ge
   const systemPrompt = `Eres un agente de voz para el negocio. Responde el siguiente turno de forma natural, breve y sin frases robóticas.
 ${c.business_context ? `Contexto: ${c.business_context}` : ''}`;
 
-  const messages: Anthropic.MessageParam[] = c.transcript_input.map(t => ({
+  // Si el transcript termina en assistant, cortamos ese último turno para que
+  // el modelo regenere la respuesta y podamos comparar contra el "reference"
+  // que dijo el meerkat original. El transcript debe terminar en un user turn
+  // para que Anthropic acepte el request.
+  let turns = c.transcript_input.slice();
+  while (turns.length > 0 && turns[turns.length - 1].role === 'assistant') {
+    turns = turns.slice(0, -1);
+  }
+  if (turns.length === 0) {
+    return {
+      id: c.id,
+      verdict: { passed: false, reasons: ['transcript vacío después de cortar assistants finales'] },
+      generated: '',
+    };
+  }
+
+  const messages: Anthropic.MessageParam[] = turns.map(t => ({
     role:    t.role === 'assistant' ? 'assistant' : 'user',
     content: t.text,
   }));

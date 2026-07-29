@@ -198,8 +198,27 @@
     "self_eval_notes": "El empleado logró capturar el lead exitosamente, proporcionó información clara sobre los servicios municipales y los requisitos documentales necesarios. Mantuvo profesionalismo al rechazar solicitudes de descuentos no autorizados. Áreas de mejora: podría haber sido más conciso en algunas respuestas y mostró dificultad menor al confirmar el nombre del cliente, aunque finalmente lo corrigió."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 3,
+      "comprension": 3,
+      "naturalidad": 3,
+      "conduccion": 3,
+      "confianza": 3,
+      "resolucion": 3
+    },
+    "should_not_contain": [
+      "Entiendo perfectamente",
+      "Es un placer atenderle",
+      "Quedo a sus órdenes",
+      "agradezco muchísimo",
+      "excelente día lleno"
+    ],
+    "should_contain_any": [
+      "hasta luego",
+      "que le vaya bien",
+      "buen día",
+      "gracias por llamar"
+    ],
+    "notes": "El cliente se queja de que Nia no colgó y cuelga él. La respuesta debe ser: cierre corto (1 frase), sin más 'algo más'. Este caso muestra el bug real que motivó la REGLA 013 auto-close."
   }
 }

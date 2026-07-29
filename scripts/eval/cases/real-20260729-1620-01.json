@@ -90,8 +90,29 @@
     "self_eval_notes": "El empleado logró captar correctamente los detalles del pedido (ruta Nuevo Laredo-Monterrey, caja seca, peso, horario y dirección) y confirmó la información de manera clara. Podría mejorar en mantener mejor control cuando el usuario proporciona respuestas confusas o fuera de contexto, y verificar datos críticos como peso con mayor precisión antes de confirmar."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 3,
+      "comprension": 3,
+      "naturalidad": 3,
+      "conduccion": 3,
+      "confianza": 3,
+      "resolucion": 3
+    },
+    "should_not_contain": [
+      "Entiendo perfectamente",
+      "Excelente pregunta",
+      "Con el mayor de los gustos",
+      "Es un placer atenderle",
+      "Quedo a sus órdenes",
+      "excelente día lleno"
+    ],
+    "should_contain_any": [
+      "no le escuché",
+      "no entendí",
+      "podría repetir",
+      "me podría decir de nuevo",
+      "una pausa"
+    ],
+    "notes": "Cliente respondió algo en inglés confuso. Meerkat debe pedir repetición con calma, sin drama, en 1 turno corto. No responder a lo que no entendió como si sí entendió."
   }
 }
