@@ -9,7 +9,7 @@ import IndustryFooter from '@/app/industrias/IndustryFooter';
 const BASE_URL = 'https://www.centinelia.mx';
 
 export const metadata: Metadata = {
-  title: 'Centinelia por Industria | Empleado Telefónico IA para tu Negocio',
+  title: { absolute: 'Centinelia por Industria | Empleado Telefónico IA para tu Negocio' },
   description: 'Elige tu industria y descubre cómo tu empleado telefónico IA atiende y realiza llamadas, agenda citas y captura leads las 24 horas, sin vacaciones ni horarios.',
   alternates: { canonical: `${BASE_URL}/industrias` },
   openGraph: {

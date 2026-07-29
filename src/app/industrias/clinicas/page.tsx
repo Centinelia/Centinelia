@@ -87,7 +87,7 @@ const TESTIMONIALS = [
     author: 'Dentista, clínica dental, CDMX',
   },
   {
-    quote: 'Pensé que mis pacientes iban a notar que era una IA, pero la mayoría pregunta por citas y listo. El que sí pregunta, tu empleado le dice la verdad y no ha pasado nada.',
+    quote: 'Pensé que mis pacientes iban a notar que era un empleado digital, pero la mayoría pregunta por citas y listo. El que sí pregunta, tu empleado le dice la verdad y no ha pasado nada.',
     author: 'Psicóloga, consultorio, Guadalajara',
   },
 ];

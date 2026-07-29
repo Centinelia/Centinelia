@@ -15,12 +15,12 @@ import IndustryFooter   from '@/app/industrias/IndustryFooter';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 export const metadata: Metadata = {
-  title: 'Empleados digitales | Centinelia',
+  title: { absolute: 'Empleados digitales | Centinelia' },
   description: 'Conoce al equipo de empleados digitales de Centinelia: Nia, Noah, Nara, Nelia, Nico, Neo, Naia, Nova, Nox y más. Cada uno especializado en un área, trabajando 24/7 para tu organización.',
   alternates: { canonical: 'https://www.centinelia.mx/empleados' },
   openGraph: {
     title: 'Empleados digitales | Centinelia',
-    description: 'Un equipo completo de empleados de IA especializados por rol. Recepción, ventas, cobranza, coordinación y más — activos 24/7 sin IMSS ni ausencias.',
+    description: 'Un equipo completo de empleados digitales especializados por rol. Recepción, ventas, cobranza, coordinación y más, activos 24/7 sin IMSS ni ausencias.',
     url: 'https://www.centinelia.mx/empleados',
   },
 };
@@ -56,7 +56,7 @@ const CONTENT: Record<string, {
       'Distribuye tareas al agente indicado según el caso',
       'Monitorea avances y escala lo que lleva tiempo sin resolverse',
       'Genera reportes de operación automáticos',
-      'Trabaja con puro ops — sin voz, máxima eficiencia',
+      'Trabaja con puras tareas, sin voz, máxima eficiencia',
     ],
   },
   niva: {
@@ -67,7 +67,7 @@ const CONTENT: Record<string, {
       'Analiza el contexto antes de asignar cualquier tarea',
       'Detecta cuellos de botella y sus causas de raíz',
       'Construye rutinas que eliminan problemas recurrentes',
-      'Trabaja con puro ops — sin voz, máxima eficiencia',
+      'Trabaja con puras tareas, sin voz, máxima eficiencia',
     ],
   },
   nia: {
