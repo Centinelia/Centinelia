@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Sparkles } from 'lucide-react';
+import { Check, Loader2, Sparkles, Columns3 } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import { KB_LIMITS } from '@/lib/portal/kb-limits';
+import KBTournamentModal from './KBTournamentModal';
 
 export default function KnowledgeBaseEditor({
   token,
@@ -23,6 +24,7 @@ export default function KnowledgeBaseEditor({
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError]     = useState<string | null>(null);
   const [isValidationErr, setIsValidationErr] = useState(false);
+  const [tournamentOpen, setTournamentOpen] = useState(false);
 
   useDirtyWarning('kb-business', dirty);
 
@@ -164,7 +166,41 @@ export default function KnowledgeBaseEditor({
             ? <><Loader2 size={12} className="animate-spin" />Generando…</>
             : <><Sparkles size={12} />Redactar automáticamente <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
         </button>
+        <button
+          onClick={() => {
+            if (!hasDescription) {
+              setIsValidationErr(true);
+              setGenError('Necesitas completar esto antes de generar:\n\n· Descripción de la organización → ve a Organización y completa el campo Descripción.');
+              return;
+            }
+            const hasExisting = value.trim().length > 50;
+            const confirmMsg = hasExisting
+              ? 'Esto usará 3 tareas y, al elegir una variante, reemplazará el contenido actual. ¿Deseas continuar?'
+              : 'Esto usará 3 tareas para generar 3 estilos. ¿Deseas continuar?';
+            if (!window.confirm(confirmMsg)) return;
+            setIsValidationErr(false);
+            setGenError(null);
+            setTournamentOpen(true);
+          }}
+          disabled={generating || saving}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+          style={{ background: 'transparent', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}
+        >
+          <Columns3 size={12} />Comparar 3 estilos <span style={{ opacity: 0.6 }}>· 3 tareas</span>
+        </button>
       </div>
+      <KBTournamentModal
+        token={token}
+        type="business"
+        open={tournamentOpen}
+        onClose={() => setTournamentOpen(false)}
+        onSelect={async (chosen) => {
+          setValue(chosen);
+          setDirty(true);
+          setSaved(false);
+          await handleSave(chosen);
+        }}
+      />
       {genError && (
         <p
           className="text-xs rounded-lg px-3 py-2"

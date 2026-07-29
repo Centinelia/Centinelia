@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles } from 'lucide-react';
+import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles, Columns3 } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import KBTournamentModal from './KBTournamentModal';
 
 const SOFT = 5_000;
 const HARD = 10_000;
@@ -88,6 +89,7 @@ export default function AgentKnowledgeBaseEditor({
   const [dirtyRoleName,     setDirtyRoleName]     = useState(false);
   const [dirtyRoleKb,       setDirtyRoleKb]       = useState(false);
   const [dirtyLearnings,    setDirtyLearnings]    = useState(false);
+  const [tournamentOpen,    setTournamentOpen]    = useState(false);
 
   useDirtyWarning('agent-kb', dirtyRoleName || dirtyRoleKb || dirtyLearnings);
 
@@ -302,7 +304,45 @@ export default function AgentKnowledgeBaseEditor({
               ? <><Loader2 size={12} className="animate-spin" />Generando…</>
               : <><Sparkles size={12} />Redactar automáticamente <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
           </button>
+          <button
+            onClick={() => {
+              const missing: string[] = [];
+              if (!role.trim())   missing.push('· Nombre del puesto → escríbelo en el campo "Puesto del empleado" arriba.');
+              if (!hasBusinessKb) missing.push('· Manual de la organización → ve a Organización → Manual de la organización y complétalo primero.');
+              if (missing.length) {
+                setIsRoleValidation(true);
+                setGenRoleError('Necesitas completar esto antes de generar:\n\n' + missing.join('\n'));
+                return;
+              }
+              const hasExisting = roleKb.trim().length > 50;
+              const confirmMsg = hasExisting
+                ? 'Esto usará 3 tareas y, al elegir una variante, reemplazará las instrucciones actuales. ¿Deseas continuar?'
+                : 'Esto usará 3 tareas para generar 3 estilos. ¿Deseas continuar?';
+              if (!window.confirm(confirmMsg)) return;
+              setIsRoleValidation(false);
+              setGenRoleError(null);
+              setTournamentOpen(true);
+            }}
+            disabled={generatingRole || savingRole}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+            style={{ background: 'transparent', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}
+          >
+            <Columns3 size={12} />Comparar 3 estilos <span style={{ opacity: 0.6 }}>· 3 tareas</span>
+          </button>
         </div>
+        <KBTournamentModal
+          token={token}
+          type="role"
+          role={role}
+          open={tournamentOpen}
+          onClose={() => setTournamentOpen(false)}
+          onSelect={async (chosen) => {
+            setRoleKb(chosen);
+            setDirtyRoleKb(true);
+            setSavedRole(false);
+            await save('role_knowledge_base', chosen, setSavingRole, setSavedRole, setDirtyRoleKb);
+          }}
+        />
         {genRoleError && (
           <p
             className="text-xs rounded-lg px-3 py-2"
