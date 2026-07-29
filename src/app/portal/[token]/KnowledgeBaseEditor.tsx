@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Sparkles, Columns3 } from 'lucide-react';
+import { Check, Loader2, Sparkles, Columns3, Award } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import { KB_LIMITS } from '@/lib/portal/kb-limits';
 import KBTournamentModal from './KBTournamentModal';
@@ -25,6 +25,8 @@ export default function KnowledgeBaseEditor({
   const [genError, setGenError]     = useState<string | null>(null);
   const [isValidationErr, setIsValidationErr] = useState(false);
   const [tournamentOpen, setTournamentOpen] = useState(false);
+  const [filtering, setFiltering] = useState(false);
+  const [filterReason, setFilterReason] = useState<string | null>(null);
 
   useDirtyWarning('kb-business', dirty);
 
@@ -99,6 +101,48 @@ export default function KnowledgeBaseEditor({
       setGenError('No se pudo conectar. Verifica tu conexión.');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleGenerateFiltered = async () => {
+    if (filtering || generating) return;
+    if (!hasDescription) {
+      setIsValidationErr(true);
+      setGenError('Necesitas completar esto antes de generar:\n\n· Descripción de la organización → ve a Organización y completa el campo Descripción.');
+      return;
+    }
+    const hasExisting = value.trim().length > 50;
+    const confirmMsg = hasExisting
+      ? 'Esto usará 3 tareas, generará 3 variantes y elegirá la mejor automáticamente. Reemplazará el contenido actual. ¿Deseas continuar?'
+      : 'Esto usará 3 tareas, generará 3 variantes y elegirá la mejor automáticamente. ¿Deseas continuar?';
+    if (!window.confirm(confirmMsg)) return;
+
+    setFiltering(true);
+    setIsValidationErr(false);
+    setGenError(null);
+    setFilterReason(null);
+    setSaved(false);
+    try {
+      const res = await fetch(`/api/portal/${token}/generate-kb-tournament`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'business', filter: true }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }));
+        setGenError(error ?? 'Error al generar');
+        return;
+      }
+      const { winner, reason } = await res.json() as { winner: { text: string; label: string }; reason: string };
+      if (!winner?.text) { setGenError('No se pudo elegir una variante'); return; }
+      setValue(winner.text);
+      setDirty(true);
+      setFilterReason(`Elegida: ${winner.label}. ${reason}`);
+      await handleSave(winner.text);
+    } catch {
+      setGenError('No se pudo conectar. Verifica tu conexión.');
+    } finally {
+      setFiltering(false);
     }
   };
 
@@ -188,7 +232,23 @@ export default function KnowledgeBaseEditor({
         >
           <Columns3 size={12} />Comparar 3 estilos <span style={{ opacity: 0.6 }}>· 3 tareas</span>
         </button>
+        <button
+          onClick={handleGenerateFiltered}
+          disabled={generating || saving || filtering}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+          style={{ background: 'transparent', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}
+        >
+          {filtering
+            ? <><Loader2 size={12} className="animate-spin" />Evaluando 3 versiones…</>
+            : <><Award size={12} />Con evaluación de calidad <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
+        </button>
       </div>
+      {filterReason && !filtering && (
+        <p className="text-xs rounded-lg px-3 py-2"
+           style={{ color: '#9B6DFF', background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+          {filterReason}
+        </p>
+      )}
       <KBTournamentModal
         token={token}
         type="business"

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles, Columns3 } from 'lucide-react';
+import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles, Columns3, Award } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 import KBTournamentModal from './KBTournamentModal';
@@ -90,6 +90,8 @@ export default function AgentKnowledgeBaseEditor({
   const [dirtyRoleKb,       setDirtyRoleKb]       = useState(false);
   const [dirtyLearnings,    setDirtyLearnings]    = useState(false);
   const [tournamentOpen,    setTournamentOpen]    = useState(false);
+  const [filteringRole,     setFilteringRole]     = useState(false);
+  const [filterReasonRole,  setFilterReasonRole]  = useState<string | null>(null);
 
   useDirtyWarning('agent-kb', dirtyRoleName || dirtyRoleKb || dirtyLearnings);
 
@@ -117,6 +119,50 @@ export default function AgentKnowledgeBaseEditor({
       });
       if (res.ok) { setSavedRoleName(true); setDirtyRoleName(false); setTimeout(() => setSavedRoleName(false), 2500); }
     } finally { setSavingRoleName(false); }
+  };
+
+  const handleGenerateRoleFiltered = async () => {
+    if (filteringRole || generatingRole) return;
+    const missing: string[] = [];
+    if (!role.trim())   missing.push('· Nombre del puesto → escríbelo en el campo "Puesto del empleado" arriba.');
+    if (!hasBusinessKb) missing.push('· Manual de la organización → ve a Organización → Manual de la organización y complétalo primero.');
+    if (missing.length) {
+      setIsRoleValidation(true);
+      setGenRoleError('Necesitas completar esto antes de generar:\n\n' + missing.join('\n'));
+      return;
+    }
+    const hasExisting = roleKb.trim().length > 50;
+    const confirmMsg = hasExisting
+      ? 'Esto usará 3 tareas, generará 3 variantes y elegirá la mejor automáticamente. Reemplazará las instrucciones actuales. ¿Deseas continuar?'
+      : 'Esto usará 3 tareas, generará 3 variantes y elegirá la mejor automáticamente. ¿Deseas continuar?';
+    if (!window.confirm(confirmMsg)) return;
+
+    setFilteringRole(true);
+    setIsRoleValidation(false);
+    setGenRoleError(null);
+    setFilterReasonRole(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/generate-kb-tournament`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ type: 'role', role, filter: true }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Error desconocido' }));
+        setGenRoleError(error ?? 'Error al generar');
+        return;
+      }
+      const { winner, reason } = await res.json() as { winner: { text: string; label: string }; reason: string };
+      if (!winner?.text) { setGenRoleError('No se pudo elegir una variante'); return; }
+      setRoleKb(winner.text);
+      setDirtyRoleKb(true);
+      setFilterReasonRole(`Elegida: ${winner.label}. ${reason}`);
+      await save('role_knowledge_base', winner.text, setSavingRole, setSavedRole, setDirtyRoleKb);
+    } catch {
+      setGenRoleError('No se pudo conectar. Verifica tu conexión.');
+    } finally {
+      setFilteringRole(false);
+    }
   };
 
   const handleGenerateRole = async () => {
@@ -329,7 +375,23 @@ export default function AgentKnowledgeBaseEditor({
           >
             <Columns3 size={12} />Comparar 3 estilos <span style={{ opacity: 0.6 }}>· 3 tareas</span>
           </button>
+          <button
+            onClick={handleGenerateRoleFiltered}
+            disabled={generatingRole || savingRole || filteringRole}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+            style={{ background: 'transparent', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}
+          >
+            {filteringRole
+              ? <><Loader2 size={12} className="animate-spin" />Evaluando 3 versiones…</>
+              : <><Award size={12} />Con evaluación de calidad <span style={{ opacity: 0.6 }}>· 3 tareas</span></>}
+          </button>
         </div>
+        {filterReasonRole && !filteringRole && (
+          <p className="text-xs rounded-lg px-3 py-2"
+             style={{ color: '#9B6DFF', background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+            {filterReasonRole}
+          </p>
+        )}
         <KBTournamentModal
           token={token}
           type="role"
