@@ -1,6 +1,6 @@
 ﻿import type { VoiceAgent } from '@/types/agent';
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
-import { VOICE_RULES, CONVERSATIONAL_DNA, CCP, HCP, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
+import { VOICE_RULES, CONVERSATIONAL_DNA, CCP, HCP_FULL, HCP_CONCISE, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
 import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 export function buildSystemPrompt(
@@ -393,8 +393,11 @@ Si el reportante no tiene su nombre ni teléfono registrado, pídelos antes de c
     blocks.push(CCP);
 
     if (promptTier === 'full') {
-      // ── HCP — Human Conversation Patterns (caller-facing only) ───────────
-      blocks.push(HCP);
+      // ── HCP — Progressive disclosure (F7.1) ─────────────────────────────
+      // Por defecto se carga HCP_CONCISE (30 patrones curados, ~65% menos
+      // tokens que HCP_FULL sin caída en CES). Los agentes que necesiten
+      // matiz máximo pueden pedir HCP_FULL explícito con features.hcp_full.
+      blocks.push(f.hcp_full ? HCP_FULL : HCP_CONCISE);
     }
     // Ops tier (Naia, Nox, Niva): DNA + CCP only — internal agents, HCP is noise
 

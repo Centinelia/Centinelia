@@ -40,6 +40,7 @@ export interface AgentFeatures {
   // Meerkat personality + prompt flags
   meerkat_role_id?: string;
   lite_prompt?: boolean;
+  hcp_full?: boolean;
   skip_aup?: boolean;
   skip_recording_notice?: boolean;
   of_encuestas?: boolean;
@@ -269,6 +270,7 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   is_coordinator:          'Coordinador de equipo',
   meerkat_role_id:         '',
   lite_prompt:             '',
+  hcp_full:                '',
   skip_aup:                '',
   skip_recording_notice:   '',
   of_encuestas:            '',
