@@ -326,6 +326,86 @@ async function approveCmd(id: string): Promise<ActionResult> {
   };
 }
 
+// ── show vapi (diagnóstico de config actual del assistant) ────────────────
+
+async function showVapi(query: string): Promise<ActionResult> {
+  const supabase = createAdminClient();
+  const q = query.trim();
+
+  // Buscar agente por email o business_name (parcial)
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, agent_name, vapi_agent_id, portal_email, active')
+    .or(`portal_email.ilike.%${q}%,business_name.ilike.%${q}%`)
+    .limit(5);
+
+  if (!agents?.length) return { ok: false, message: `Sin agentes para "${q}".` };
+  if (!process.env.VAPI_API_KEY) return { ok: false, message: 'VAPI_API_KEY no configurado en env.' };
+
+  const results: string[] = [];
+
+  for (const a of agents) {
+    if (!a.vapi_agent_id) {
+      results.push(`⚠️ **${a.business_name}** — sin vapi_agent_id (nunca creado en Vapi).`);
+      continue;
+    }
+
+    try {
+      const res = await fetch(`https://api.vapi.ai/assistant/${a.vapi_agent_id}`, {
+        headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
+      });
+      if (!res.ok) {
+        results.push(`❌ **${a.business_name}** (${a.vapi_agent_id}): ${res.status} ${await res.text().catch(() => '')}`);
+        continue;
+      }
+      const config = await res.json() as {
+        serverUrl?: string;
+        serverUrlSecret?: string;
+        model?: { provider?: string; url?: string };
+      };
+      const serverUrl       = config.serverUrl ?? '(none)';
+      const serverUrlSecret = config.serverUrlSecret ? `${config.serverUrlSecret.slice(0, 4)}…${config.serverUrlSecret.slice(-4)} (len ${config.serverUrlSecret.length})` : '(none)';
+      const modelProvider   = config.model?.provider ?? '(none)';
+      const modelUrl        = config.model?.url ?? '(n/a)';
+
+      // Extraer secret del serverUrl si viene como ?secret=
+      let serverUrlSecretInUrl = '(none)';
+      try {
+        const url = new URL(serverUrl);
+        const s = url.searchParams.get('secret');
+        if (s) serverUrlSecretInUrl = `${s.slice(0, 4)}…${s.slice(-4)} (len ${s.length})`;
+      } catch { /* not a valid URL */ }
+
+      results.push([
+        `${a.active ? '🟢' : '⚫'} **${a.business_name}** (${a.agent_name ?? '—'}) · ${a.vapi_agent_id}`,
+        `   portal: ${a.portal_email ?? '—'}`,
+        `   model.provider: \`${modelProvider}\``,
+        `   model.url: \`${modelUrl.slice(0, 80)}${modelUrl.length > 80 ? '…' : ''}\``,
+        `   serverUrl: \`${serverUrl.slice(0, 80)}${serverUrl.length > 80 ? '…' : ''}\``,
+        `   serverUrl \`?secret=\`: \`${serverUrlSecretInUrl}\``,
+        `   serverUrlSecret header: \`${serverUrlSecret}\``,
+      ].join('\n'));
+    } catch (err) {
+      results.push(`❌ **${a.business_name}**: error fetch — ${String(err)}`);
+    }
+  }
+
+  const envSecret = process.env.VAPI_SERVER_SECRET
+    ? `${process.env.VAPI_SERVER_SECRET.slice(0, 4)}…${process.env.VAPI_SERVER_SECRET.slice(-4)} (len ${process.env.VAPI_SERVER_SECRET.length})`
+    : '(no configurado en env de este runtime)';
+
+  return {
+    ok: true,
+    message: [
+      `**Env actual (este runtime):**`,
+      `- VAPI_SERVER_SECRET: \`${envSecret}\``,
+      `- NEXT_PUBLIC_APP_URL: \`${process.env.NEXT_PUBLIC_APP_URL ?? '(no configurado)'}\``,
+      '',
+      ...results,
+    ].join('\n'),
+  };
+}
+
 // ── activate / deactivate ────────────────────────────────────────────────────
 
 async function toggleActive(portalEmail: string, active: boolean): Promise<ActionResult> {
@@ -486,5 +566,6 @@ export async function executeCommand(cmd: Command): Promise<ActionResult> {
     case 'disable_customllm': return toggleCustomLlm(cmd.portalEmail, false);
     case 'activate':          return toggleActive(cmd.portalEmail, true);
     case 'deactivate':        return toggleActive(cmd.portalEmail, false);
+    case 'show_vapi':         return showVapi(cmd.query);
   }
 }
