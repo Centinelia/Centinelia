@@ -344,25 +344,34 @@ interface MeerkatModelConfig {
   maxTokens:             number;
   speed:                 number;
   minChars:              number;
-  voiceModel?:           string;
+  voiceModel?:           string;   // ElevenLabs model: eleven_turbo_v2_5 (default) o eleven_flash_v2_5 (~50% barato)
+  sttModel?:             string;   // Deepgram: nova-3 (default premium) o nova-2 (~30-40% barato, calidad muy buena)
   punctuationBoundaries?: string[];
 }
 
+// Tiering de voz por meerkat.
+// Turbo v2.5 + Nova-3: meerkats CARA-AL-CLIENTE críticos (primera impresión, ventas, cobranza, soporte).
+// Flash v2.5 + Nova-2: meerkats internos, coordinación o interlocutor no-cliente-directo. ~50% off TTS, ~35% off STT.
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 25 },
-  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28 },
-  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 150, speed: 0.98, minChars: 28 },
-  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28 },
-  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 150, speed: 0.98, minChars: 28 },
-  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28 },
-  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 110, speed: 1.05, minChars: 25 },
-  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 25 },
-  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.15, maxTokens:  80, speed: 1.05, minChars: 25 },
-  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28 },
+  // ── CARA-AL-CLIENTE: TTS premium ──────────────────────────────────────
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 200, speed: 0.98, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+
+  // ── INTERNOS / OPS: TTS económico ─────────────────────────────────────
+  // Speed sutilmente bumped 0.98 → 1.02 en Nara y Naia (interlocutor tolera mejor una lectura ágil).
+  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 110, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.15, maxTokens:  80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
+  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
 };
 
 const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
   provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150, speed: 0.98, minChars: 28,
+  voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3',
 };
 
 // ─── Assistant config builder ─────────────────────────────────────────────────
@@ -438,7 +447,7 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       const isLite      = explicitLite || tier === 'lite';
       return {
         provider:    'deepgram',
-        model:       'nova-3',
+        model:       cfg.sttModel ?? 'nova-3',
         language:    agent.features.multilingual ? 'multi' : 'es',
         smartFormat: false,
         endpointing: isLite ? 100 : 150,
