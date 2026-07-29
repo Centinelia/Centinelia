@@ -90,8 +90,28 @@
     "self_eval_notes": "La IA cumplió exitosamente el objetivo de capturar el lead, mantuvo una comunicación amable y profesional, y gestionó bien las opciones de productos disponibles. Puede mejorar en la precisión al capturar datos (requirió corrección del número telefónico) y en ser más proactivo al ofrecer alternativas adicionales o preguntar sobre presupuesto antes de enviar fotos."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 4,
+      "comprension": 4,
+      "naturalidad": 3,
+      "conduccion": 4,
+      "confianza": 4,
+      "resolucion": 4
+    },
+    "should_not_contain": [
+      "Entiendo perfectamente",
+      "Excelente pregunta",
+      "Es un placer atenderle",
+      "agradezco muchísimo",
+      "quedo a sus órdenes"
+    ],
+    "should_contain_any": [
+      "hasta luego",
+      "que le vaya bien",
+      "buen día",
+      "envío las fotos",
+      "estamos en contacto"
+    ],
+    "notes": "Cliente cierra con doble 'muchísimas gracias'. Meerkat debe despedirse corto, mencionar el siguiente paso (fotos por WhatsApp) si es natural, sin cerrarla con floritura larga."
   }
 }

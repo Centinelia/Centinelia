@@ -70,8 +70,28 @@
     "self_eval_notes": "El empleado manejó bien la situación al validar la frustración del cliente, mantener una actitud empática y proceder a transferir al gerente. Sin embargo, podría haber ofrecido una disculpa más explícita en nombre del restaurante y haber indagado brevemente sobre cuándo ocurrió el incidente para contextualizar mejor la situación al gerente."
   },
   "expected": {
-    "ces_min": null,
-    "should_not_contain": [],
-    "should_contain_any": []
+    "ces_min": {
+      "fluidez": 3,
+      "comprension": 4,
+      "naturalidad": 3,
+      "conduccion": 4,
+      "confianza": 4,
+      "resolucion": 3
+    },
+    "should_not_contain": [
+      "Entiendo perfectamente",
+      "Excelente pregunta",
+      "Es un placer atenderle",
+      "Con el mayor de los gustos",
+      "no debería haber pasado"
+    ],
+    "should_contain_any": [
+      "confirmo",
+      "voy a comunicarle",
+      "voy a transferir",
+      "en un momento le paso",
+      "espere un segundo"
+    ],
+    "notes": "Cliente dio su teléfono para el gerente después de queja fuerte. Meerkat debe confirmar el teléfono (o los últimos dígitos), anunciar la transferencia, ser breve. NO agregar más disculpas — ya validó la queja antes. Máximo 2 oraciones."
   }
 }
