@@ -24,7 +24,9 @@ export type Command =
   | { kind: 'reject';         id: string; note?: string }
   | { kind: 'resync_all' }
   | { kind: 'enable_customllm';  portalEmail: string }
-  | { kind: 'disable_customllm'; portalEmail: string };
+  | { kind: 'disable_customllm'; portalEmail: string }
+  | { kind: 'activate';   portalEmail: string }
+  | { kind: 'deactivate'; portalEmail: string };
 
 export type ParseResult =
   | { ok: true;  command: Command; trace: string }
@@ -152,6 +154,20 @@ const SPECS: CmdSpec[] = [
     build: (m) => ({ kind: 'disable_customllm', portalEmail: m[1].toLowerCase() }),
     trace: (m) => `disable customllm ${m[1].toLowerCase()}`,
     help:  '`disable customllm <email>` — revierte al provider anthropic nativo',
+  },
+  {
+    name:  'activate',
+    regex: new RegExp(`^\\s*activate\\s+(${EMAIL_RE.source})\\s*$`, 'i'),
+    build: (m) => ({ kind: 'activate', portalEmail: m[1].toLowerCase() }),
+    trace: (m) => `activate ${m[1].toLowerCase()}`,
+    help:  '`activate <email>` — pone active=true en agentes del portal (requiere resync all después)',
+  },
+  {
+    name:  'deactivate',
+    regex: new RegExp(`^\\s*deactivate\\s+(${EMAIL_RE.source})\\s*$`, 'i'),
+    build: (m) => ({ kind: 'deactivate', portalEmail: m[1].toLowerCase() }),
+    trace: (m) => `deactivate ${m[1].toLowerCase()}`,
+    help:  '`deactivate <email>` — pone active=false (el agente no recibe llamadas y no resyncea)',
   },
 ];
 
