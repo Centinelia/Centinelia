@@ -1,10 +1,28 @@
 {
   "crons": [
-    { "path": "/api/cron/ops-reports",          "schedule": "0 8 * * *"  },
-    { "path": "/api/cron/notion-validate",       "schedule": "0 9 * * 1"  },
-    { "path": "/api/cron/contracts-check",       "schedule": "0 8 * * *"  },
-    { "path": "/api/cron/cleanup-team-history",  "schedule": "0 3 * * 0"  },
-    { "path": "/api/cron/nox-monitor",           "schedule": "0 9 * * *"  },
-    { "path": "/api/cron/email-sync",            "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/ops-reports",                 "schedule": "0 8 * * *"    },
+    { "path": "/api/cron/notion-validate",             "schedule": "0 9 * * 1"    },
+    { "path": "/api/cron/contracts-check",             "schedule": "0 8 * * *"    },
+    { "path": "/api/cron/cleanup-team-history",        "schedule": "0 3 * * 0"    },
+    { "path": "/api/cron/nox-monitor",                 "schedule": "0 9 * * *"    },
+    { "path": "/api/cron/email-sync",                  "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/appointment-reminders",       "schedule": "0 15 * * *"   },
+    { "path": "/api/cron/weekly-summary",              "schedule": "0 14 * * 1"   },
+    { "path": "/api/cron/heartbeat",                   "schedule": "0 * * * *"    },
+    { "path": "/api/cron/infra-alerts",                "schedule": "0 15 * * *"   },
+    { "path": "/api/cron/cleanup-recordings",          "schedule": "0 2 * * *"    },
+    { "path": "/api/cron/cleanup-pending",             "schedule": "0 4 * * *"    },
+    { "path": "/api/cron/cleanup-cancelled",           "schedule": "0 3 * * 0"    },
+    { "path": "/api/cron/learn",                       "schedule": "0 9 * * 1"    },
+    { "path": "/api/cron/push-conversational-prompts", "schedule": "0 3 * * 1"    },
+    { "path": "/api/cron/process-tasks",               "schedule": "0 * * * *"    },
+    { "path": "/api/cron/outbound",                    "schedule": "0 * * * *"    },
+    { "path": "/api/cron/outbound-campaigns",          "schedule": "0 * * * *"    },
+    { "path": "/api/cron/sync-sales-kb",               "schedule": "0 4 * * 0"    },
+    { "path": "/api/cron/weekly-insights",             "schedule": "0 7 * * 1"    },
+    { "path": "/api/cron/reset-minutes",               "schedule": "0 6 1 * *"    },
+    { "path": "/api/cron/batch-eval",                  "schedule": "0 * * * *"    },
+    { "path": "/api/cron/batch-eval-retrieve",         "schedule": "*/20 * * * *" },
+    { "path": "/api/cron/scheduled-tasks",             "schedule": "*/15 * * * *" }
   ]
 }
