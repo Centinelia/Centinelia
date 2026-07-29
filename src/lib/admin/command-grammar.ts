@@ -26,7 +26,8 @@ export type Command =
   | { kind: 'enable_customllm';  portalEmail: string }
   | { kind: 'disable_customllm'; portalEmail: string }
   | { kind: 'activate';   portalEmail: string }
-  | { kind: 'deactivate'; portalEmail: string };
+  | { kind: 'deactivate'; portalEmail: string }
+  | { kind: 'show_vapi';  query: string };
 
 export type ParseResult =
   | { ok: true;  command: Command; trace: string }
@@ -168,6 +169,13 @@ const SPECS: CmdSpec[] = [
     build: (m) => ({ kind: 'deactivate', portalEmail: m[1].toLowerCase() }),
     trace: (m) => `deactivate ${m[1].toLowerCase()}`,
     help:  '`deactivate <email>` — pone active=false (el agente no recibe llamadas y no resyncea)',
+  },
+  {
+    name:  'show vapi',
+    regex: /^\s*show\s+vapi\s+(.+)$/i,
+    build: (m) => ({ kind: 'show_vapi', query: m[1].trim() }),
+    trace: (m) => `show vapi ${m[1].trim()}`,
+    help:  '`show vapi <email|business_name>` — fetchea la config actual del assistant en Vapi para diagnosticar mismatch de secrets',
   },
 ];
 
