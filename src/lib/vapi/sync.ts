@@ -354,10 +354,11 @@ interface MeerkatModelConfig {
 // Flash v2.5 + Nova-2: meerkats internos, coordinación o interlocutor no-cliente-directo. ~50% off TTS, ~35% off STT.
 const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
   // ── CARA-AL-CLIENTE: TTS premium ──────────────────────────────────────
-  // Nia: speed 0.90 (Nazre pidió bajar un poco de 0.94 para dar más aire
-  // en atención al público). minChars 18: chunks pequeños para pausas
-  // naturales en respuestas largas (números, direcciones, listas).
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 400, speed: 0.90, minChars: 18, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // Nia: speed 0.88 + minChars 25 (revertido). Nazre reportó "no suena
+  // natural, antes sonaba bien". minChars 18 podía estar cortando frases
+  // en trozos que sonaban entrecortados. Volvemos a la config previa
+  // conocida pero con speed más pausado.
+  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 400, speed: 0.88, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
   nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
