@@ -1,0 +1,205 @@
+{
+  "id": "real-20260729-1620-04",
+  "description": "Llamada real 615731c2-44e0-4431-80f1-25ad4008120d — outcome: lead_created · 8.1min · Ayuntamiento de Monterrey (Nia)",
+  "meerkat_role_id": "nia",
+  "business_context": "Negocio: Ayuntamiento de Monterrey · Rol: Recepcionista de Atención a Contribuyentes · Agente: Nia",
+  "transcript_input": [
+    {
+      "role": "assistant",
+      "text": "Atención a contribuyentes del municipio de Monterrey. ¿En qué le puedo ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Hola, buenos días. Vi tu servicio, vi el número aquí en en Palacio municipal y marqué para ver de qué trata o qué qué qué es lo que ustedes ofrecen o cómo está el servicio."
+    },
+    {
+      "role": "assistant",
+      "text": "Buenos días. Con gusto le cuento. La dirección de ingresos del ayuntamiento, atendemos desde aquí, en Washington. 2000 poniente, centro. Nos encargamos de multas de tránsito, multas de limpia y ecología, anuencias para negocios, pagos de exclusivos como terrazas y cajones de estacionamiento,"
+    },
+    {
+      "role": "user",
+      "text": "Muy bien."
+    },
+    {
+      "role": "assistant",
+      "text": "y también cheques certificados. Básicamente, todo lo relacionado con ingresos y pagos municipales. ¿Hay algo en particular en lo que le pueda ayudar hoy?"
+    },
+    {
+      "role": "user",
+      "text": "Sí, este, me gusta mucho que tengan, ofrezcan este tipo de servicio para la ciudad, este, quisiera ver si me pudieran ayudar con una una un pago de anuencias que tengo pendiente,"
+    },
+    {
+      "role": "assistant",
+      "text": "Con gusto le ayudo con eso. Cuénteme, ¿se trata de una anuencia nueva o es una renovación?"
+    },
+    {
+      "role": "user",
+      "text": "Es una renovación."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Para poder ayudarle, necesito algunos datos. ¿Cuál es el nombre de su negocio?"
+    },
+    {
+      "role": "user",
+      "text": "Nombre de mi negocio es bar Pedro."
+    },
+    {
+      "role": "assistant",
+      "text": "Bar Pedro, muy bien. ¿Y qué categoría de alcohol maneja ¿Es categoría a o categoría b?"
+    },
+    {
+      "role": "user",
+      "text": "¿Qué categoría de Es que mi a a mi esposa no le gustaba que pusiéramos la categoría A, entonces este, nada más nos quedamos con la B, así está más contenta mi esposa y y ya no estamos batallando nosotros. Y en la casa, porque luego es un batallar con con mi esposa, porque luego no hago lo que ella dice, y es un problemón porque nos mete en problemas, luego mis hijas empiezan a enojar también conmigo porque no hago lo que mi esposa está diciendo y no, no, no, es un es un batallar es un problema."
+    },
+    {
+      "role": "assistant",
+      "text": "Entiendo. Bueno, con la categoría b está bien. Entonces, la renovación de su anuencia de VAR con categoría b, el costo es de 3360 pesos, que es el 70 por 100 del costo original. ¿Cuándo vencimiento su anuencia actual?"
+    },
+    {
+      "role": "user",
+      "text": "¿Cuándo vence mi anuencia actual? ¿Preguntaste?"
+    },
+    {
+      "role": "assistant",
+      "text": "Sí, le preguntaba cuándo vence su anuencia actual, para saber si ya está vencida. Vencida o todavía le queda tiempo."
+    },
+    {
+      "role": "user",
+      "text": "Vence dentro de 3 meses, todavía le falta un poquito."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, entonces aún tiene tiempo. Cuando esté más cerca del vencimiento, puede venir a renovarla. La renovación se resuelve en 2 días hábiles si trae la documentación completa. Necesita que le diga qué documentos debe traer."
+    },
+    {
+      "role": "user",
+      "text": "Sí, pero, ¿cómo? Sea, puedo desde ahorita ya renovarla, si ahorita tengo tiempo, ya después no voy a tener no puede ser posible que no la pueda renovar ahorita."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro que sí, puede renovarla ahorita sin problema, no hay inconveniente inconveniente en que la haga con anticipación. Los documentos que necesita traer son, su identificación oficial vigente, comprobante de domicilio del negocio que no sea mayor a 3 meses, su RFC, su CURP, y el acta constitutiva o contrato de arrendamiento del local. Además, como es para alcohol, también necesita un plano de distribución del local la licencia de uso de suelo."
+    },
+    {
+      "role": "user",
+      "text": "Ok. ¿Y no hay manera de que me hagan un algún descuento por ahí de no sé, un 30, 40? Vez un 50 por 100 de descuento, es que yo soy amigo del del alcalde y y me dijo que lo que ocupara siempre estaría ahí él para mí,"
+    },
+    {
+      "role": "assistant",
+      "text": "Entiendo su situación. Los descuentos que manejamos están establecidos en la ley municipal, la renovación ya viene con un descuento del 70 por 100 del costo original. Descuentos adicionales no los puedo autorizar desde aquí, pero puedo pasar su solicitud con el equipo administrativo para que lo valoren, si lo desea. Lo que sí le recomiendo es que traiga toda la documentación completa cuando venga, y eso agiliza mucho el trámite."
+    },
+    {
+      "role": "user",
+      "text": "Este, bueno, entonces, me parece bien, entonces vamos a seguir con con esto con este registro, o bueno, con esto con esta información que me da ¿Qué más tengo que saber además de llevar la información, los documentos?"
+    },
+    {
+      "role": "assistant",
+      "text": "Lo principal es tener toda la documentación lista, viene a la ventanilla central aquí en Washington 2000 poniente, centro, lunes a viernes, de las 8 de la mañana a las 5 de la tarde. La resolución toma 2 días hábiles, así que en un par de días tiene su renovación lista. ¿Cuál es su nombre completo para anotar esto?"
+    },
+    {
+      "role": "user",
+      "text": "Mi nombre completo es Násere Astar. Es un poco complicado. Pero te te lo deletreo. Es n a z r es mi primer nombre, Nasra, pero se se dice Nasred. Y mi apellido es Asa, A s s a de dedo. No sé si"
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, lo"
+    },
+    {
+      "role": "user",
+      "text": "sí. Muy bien. Ojalá que lo hayas anotado bien."
+    },
+    {
+      "role": "assistant",
+      "text": "Claro que sí. Déjeme confirmar para asegurarme. Su nombre es Nasred, Asa. ¿Es correcto?"
+    },
+    {
+      "role": "user",
+      "text": "Pues, sí, es correcto, nomás ahí el el el la pronunciación te falla un poco, puedes decir bien hasta no, hasta,"
+    },
+    {
+      "role": "assistant",
+      "text": "Tiene razón, disculpe. ¿Cómo se pronuncia correctamente su nombre?"
+    },
+    {
+      "role": "user",
+      "text": "Es Nazare. Asad."
+    },
+    {
+      "role": "assistant",
+      "text": "Násare Asat, perfecto, lo tengo anotado así. ¿Y cuál es su teléfono de contacto para que el equipo pueda localizarle si necesita confirmar algo de los documentos?"
+    },
+    {
+      "role": "user",
+      "text": "Mi teléfono de contacto es el 81 23 44 veintiuno 6 7."
+    },
+    {
+      "role": "assistant",
+      "text": "Muy bien, déjeme confirmar su teléfono. Es 81, 23 44, veintiuno 67, ¿es correcto?"
+    },
+    {
+      "role": "user",
+      "text": "Así es."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto. Entonces, Nazareth, quedamos así. Usted viene a la ventanilla central en Washington, 2000 poniente, de lunes a viernes, de 8 de la mañana a 5 de la tarde, con toda la documentación que le mencioné, La renovación de su anuencia para bar Pedro, categoría b, cuesta 3, 3, 6, 0 pesos, y se resuelve en 2 días hábiles. ¿Hay algo más en lo que le pueda ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "Eso sería todo. ¿3 3 0 pesos te refieres a 3360 pesos?"
+    },
+    {
+      "role": "assistant",
+      "text": "Sí, exacto, 3360 pesos. Disculpe por la confusión. Le vaya bien, Nazareth."
+    },
+    {
+      "role": "user",
+      "text": "Luego,"
+    },
+    {
+      "role": "assistant",
+      "text": "Que le vaya bien."
+    },
+    {
+      "role": "user",
+      "text": "Hay No cuelga. ¿Vas a colgar?"
+    },
+    {
+      "role": "assistant",
+      "text": "Disculpe, ¿hay algo más en lo que le pueda ayudar?"
+    },
+    {
+      "role": "user",
+      "text": "¿Nada más en colgar?"
+    },
+    {
+      "role": "assistant",
+      "text": "No, claro que no. Si tiene otra pregunta, o necesita algo más, con gusto le ayudo."
+    },
+    {
+      "role": "user",
+      "text": "No, no, ya ya ya todo bien, muchas gracias, nada más estoy esperando que cuelgue."
+    },
+    {
+      "role": "assistant",
+      "text": "Perfecto, muchas gracias a usted por llamar. Le vaya bien."
+    },
+    {
+      "role": "user",
+      "text": "No, pues nunca colgó. Esta llamada la voy a colgar yo. Una, 2 y 3."
+    }
+  ],
+  "ground_truth": {
+    "outcome": "lead_created",
+    "duration_seconds": 484,
+    "summary": "El cliente llamó para informarse sobre los servicios municipales y luego solicitó orientación para renovar la anuencia de su negocio, Bar Pedro, categoría B. Se le proporcionó el costo de 3,360 pesos, los documentos necesarios y la dirección para realizar el trámite. La llamada terminó con el cliente satisfecho con la información, aunque tuvo que colgar él mismo porque el sistema no lo hizo automáticamente.",
+    "ces_data": null,
+    "self_eval_score": 4,
+    "self_eval_notes": "El empleado logró capturar el lead exitosamente, proporcionó información clara sobre los servicios municipales y los requisitos documentales necesarios. Mantuvo profesionalismo al rechazar solicitudes de descuentos no autorizados. Áreas de mejora: podría haber sido más conciso en algunas respuestas y mostró dificultad menor al confirmar el nombre del cliente, aunque finalmente lo corrigió."
+  },
+  "expected": {
+    "ces_min": null,
+    "should_not_contain": [],
+    "should_contain_any": []
+  }
+}
