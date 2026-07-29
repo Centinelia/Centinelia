@@ -332,16 +332,35 @@ async function toggleActive(portalEmail: string, active: boolean): Promise<Actio
   const supabase = createAdminClient();
   const { data: before } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, active')
+    .select('id, business_name, agent_name, active, client_paused')
     .eq('portal_email', portalEmail);
 
   if (!before?.length) return { ok: false, message: `Sin agentes para ${portalEmail}.` };
 
+  // Al activar, también quitamos `client_paused` — de lo contrario el portal
+  // considera al agente pausado por el cliente y muestra el badge.
+  const patch = active
+    ? { active: true, client_paused: false, client_paused_at: null }
+    : { active: false };
+
   const { error } = await supabase
     .from('voice_agents')
-    .update({ active })
+    .update(patch)
     .eq('portal_email', portalEmail);
   if (error) return { ok: false, message: `Error: ${error.message}` };
+
+  // Verificación post-update: si algo (trigger, RLS) revirtió el cambio, avisar.
+  const { data: after } = await supabase
+    .from('voice_agents')
+    .select('id, active')
+    .eq('portal_email', portalEmail);
+  const stillWrong = (after ?? []).filter(a => a.active !== active);
+  if (stillWrong.length > 0) {
+    return {
+      ok: false,
+      message: `⚠️ Update ejecutado sin error pero ${stillWrong.length} agente(s) siguen en \`active=${!active}\`. Puede haber un trigger o RLS revirtiendo. IDs: ${stillWrong.map(a => a.id).join(', ')}`,
+    };
+  }
 
   const summary = before.map(a => `- ${a.business_name} (${a.agent_name ?? '—'}): ${a.active} → ${active}`).join('\n');
   const nextStep = active

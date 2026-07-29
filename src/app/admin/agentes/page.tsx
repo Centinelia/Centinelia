@@ -31,8 +31,9 @@ export default async function AgentesPage({ searchParams }: Props) {
       'id, business_name, client_name, plan, active, billing_status, phone_number, created_at',
       { count: 'exact' }
     )
-    .neq('id', demoId ?? '')
-    .neq('id', demoPersonalizadoId ?? '');
+    .neq('id', demoId ?? '');
+  // NOTA: demoPersonalizadoId (Nia Monterrey en el piloto) SÍ se muestra —
+  // es un agente real usado para prospectos/pilotos, no un demo genérico.
 
   if (status === 'activos')  query = query.eq('active', true);
   if (status === 'pausados') query = query.eq('active', false);
@@ -93,7 +94,7 @@ export default async function AgentesPage({ searchParams }: Props) {
             style={{ background: '#6C3BFF', color: '#FAFBFF' }}
           >
             <Plus size={15} />
-            <span className="hidden sm:inline">Nuevo agente</span>
+            <span className="hidden sm:inline">Nuevo empleado</span>
           </Link>
         </div>
       </div>
