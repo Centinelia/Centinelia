@@ -279,7 +279,7 @@ function EmailPreview({ logoUrl, businessName, agentName, color, color2, address
             </div>
           </div>
           <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 11, margin: '14px 0 0' }}>
-            — {agentName}, {businessName}
+            {agentName}, {businessName}
           </p>
         </div>
 
