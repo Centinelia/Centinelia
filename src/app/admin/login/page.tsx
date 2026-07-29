@@ -22,7 +22,10 @@ function LoginForm() {
       body:    JSON.stringify({ password }),
     });
     if (res.ok) {
-      window.location.href = params.get('from') ?? '/admin/dashboard';
+      const from = params.get('from');
+      // Solo respetamos `from` si empieza con /admin/ — nunca fuera del panel.
+      const target = from && from.startsWith('/admin/') ? from : '/admin/inicio';
+      window.location.href = target;
     } else {
       setError('Contraseña incorrecta');
       setLoading(false);

@@ -2,10 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server } from 'lucide-react';
 
 const links = [
-  { href: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/inicio',       icon: Home,            label: 'Inicio' },
+  { href: '/admin/comando',      icon: Terminal,        label: 'Comando' },
+  { href: '/admin/ledger',       icon: DollarSign,      label: 'Ledger' },
+  { href: '/admin/aprobaciones', icon: ShieldCheck,     label: 'Aprobaciones' },
   { href: '/admin/clientes',     icon: Users,           label: 'Clientes' },
   { href: '/admin/agentes',      icon: Bot,             label: 'Empleados' },
   { href: '/admin/llamadas',     icon: Phone,           label: 'Llamadas' },
@@ -13,6 +16,7 @@ const links = [
   { href: '/admin/billing',      icon: CreditCard,      label: 'Facturación' },
   { href: '/admin/contratos',    icon: FileText,        label: 'Contratos' },
   { href: '/admin/conversacional', icon: Sparkles,      label: 'Estilo conv.' },
+  { href: '/admin/dashboard',    icon: Server,          label: 'Infra' },
 ];
 
 export default function AdminNav() {

@@ -257,7 +257,7 @@ export default function FaqPage() {
             }}
           >
             <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-              <Image src="/logo.png" alt="Centinelia" width={140} height={32} style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
+              <Image src="/logo.png" alt="Centinelia" width={140} height={32} style={{ objectFit: 'contain' }} />
             </Link>
             <Link
               href="/registro"

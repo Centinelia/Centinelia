@@ -284,8 +284,12 @@ export async function POST(req: NextRequest) {
       }
 
       // 6. Auto-pause: update DB + Vapi synchronously; notifications deferred via after()
+      // Guard `includedAfterRefill > 0`: sin plan válido (o portal sin fila en
+      // account_minutes) la comparación `used=0 >= included=0` era TRUE y
+      // desactivaba el agente después de cada llamada. Fix del bug detectado
+      // en Nia Monterrey pre-piloto.
       let agentWasPaused = false;
-      if (agent?.active && used >= includedAfterRefill) {
+      if (agent?.active && includedAfterRefill > 0 && used >= includedAfterRefill) {
         agentWasPaused = true;
         if (agent.portal_email) {
           const { data: accountAgents } = await supabase

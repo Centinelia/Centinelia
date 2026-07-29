@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 828, 1080, 1200, 1920, 2560, 3840],
     formats: ['image/avif', 'image/webp'],
   },
+  async redirects() {
+    return [
+      // URLs comunes que 404 — redirect a la más cercana en intención.
+      { source: '/precios',       destination: '/#pricing',    permanent: false },
+      { source: '/como-funciona', destination: '/empleados',   permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
