@@ -7,7 +7,7 @@ import type { NextConfig } from "next";
 //   whose exact subdomains vary per account. Tighten once domains are confirmed stable.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://www.googletagmanager.com https://www.google-analytics.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self'",
@@ -18,6 +18,8 @@ const CSP = [
     "https://api.vapi.ai wss://api.vapi.ai",           // Vapi REST + WS
     "wss://*.daily.co https://*.daily.co",             // Daily.co WebRTC (used by Vapi web SDK)
     "https://api.elevenlabs.io",                       // ElevenLabs (voice sample API)
+    "https://www.google-analytics.com https://analytics.google.com",  // GA4
+    "https://www.googletagmanager.com",                // GTM
   ].join(" "),
   "media-src 'self' blob: https:",
   "worker-src 'self' blob:",

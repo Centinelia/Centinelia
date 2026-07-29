@@ -21,7 +21,7 @@ const CATEGORIES = [
     items: [
       {
         q: '¿Que es Centinelia?',
-        a: 'Centinelia es un servicio de agentes de voz con inteligencia artificial para organizaciones mexicanas. En lugar de perder llamadas por falta de personal, tu organización tiene un equipo de agentes especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menu ("marque 1 para ventas"), es una conversacion natural con IA.',
+        a: 'Centinelia es un servicio de empleados digitales para organizaciones mexicanas. En lugar de perder llamadas por falta de personal, tu organización tiene un equipo de empleados especializados que contestan 24/7, agendan citas, capturan leads y realizan llamadas salientes. No es un bot de menú ("marque 1 para ventas"), es una conversación natural, como con cualquier persona.',
       },
       {
         q: '¿Como funciona?',
