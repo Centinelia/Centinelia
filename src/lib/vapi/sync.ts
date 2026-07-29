@@ -486,16 +486,15 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
       const explicitLite = !!agent.features.lite_prompt;
       const isLite      = explicitLite || tier === 'lite';
-      // Endpointing post-primera-llamada-real: 100→180 en lite, 150→220 en full.
-      // Feedback fue "me interrumpió mientras hablaba" — el modelo entraba muy rápido
-      // por endpointing agresivo. Trade-off: +80ms de silencio antes de responder,
-      // pero evita interrumpir al usuario.
+      // Endpointing 150ms uniforme (subida moderada desde 100 en lite, mantiene
+      // 150 en full). Nazre eligió bump conservador para reducir interrupciones
+      // sin agregar latencia notable.
       return {
         provider:    'deepgram',
         model:       cfg.sttModel ?? 'nova-3',
         language:    agent.features.multilingual ? 'multi' : 'es',
         smartFormat: false,
-        endpointing: isLite ? 180 : 220,
+        endpointing: 150,
       };
     })(),
     backgroundSound: 'office',
