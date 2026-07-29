@@ -7,12 +7,12 @@ import { PLAN_LABELS } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 
 const PLAN_COLORS: Record<string, string> = {
-  comercial: '#3b82f6', pro: '#a855f7',
+  pro: '#a855f7',
 };
 
 type StatusFilter = 'todos' | 'firmados' | 'pendientes';
 type TypeFilter   = 'todos' | 'automatico' | 'personalizado';
-type PlanFilter   = 'todos' | 'comercial' | 'pro';
+type PlanFilter   = 'todos' | 'pro';
 
 export interface ContratoRow {
   id: string;
@@ -118,7 +118,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
             ))}
           </FilterGroup>
           <FilterGroup label="Plan">
-            {(['todos', 'comercial', 'pro'] as PlanFilter[]).map(v => (
+            {(['todos', 'pro'] as PlanFilter[]).map(v => (
               <Pill key={v} active={planFilter === v} onClick={() => setPlanFilter(v)}
                 label={v === 'todos' ? 'Todos' : PLAN_LABELS[v as Plan]}
                 color={v !== 'todos' ? PLAN_COLORS[v] : undefined}
@@ -207,7 +207,7 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
             {openDropdown === 'plan' && (
               <div className="absolute top-full left-0 mt-1 z-20 rounded-xl overflow-hidden min-w-[120px]"
                 style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
-                {([['todos', 'Todos'], ['comercial', 'Empleado Centinelia'], ['pro', 'Empleado Centinelia']] as [PlanFilter, string][]).map(([v, label]) => (
+                {([['todos', 'Todos'], ['pro', 'Empleado Centinelia']] as [PlanFilter, string][]).map(([v, label]) => (
                   <button key={v} type="button"
                     onClick={() => { setPlanFilter(v); setOpenDropdown(null); }}
                     className="w-full text-left px-4 py-2.5 text-xs transition-colors"

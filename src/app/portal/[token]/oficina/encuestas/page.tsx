@@ -18,7 +18,7 @@ export default async function EncuestasPage({ params }: Props) {
     .single();
 
   const agentName  = (agent as any)?.agent_name ?? agent?.business_name ?? undefined;
-  const plan       = (agent as any)?.plan        ?? 'comercial';
+  const plan       = (agent as any)?.plan        ?? 'pro';
   const defaultTier = (agent as any)?.minutes_plan ?? 'starter';
 
   let hasSurveyAgent = false;

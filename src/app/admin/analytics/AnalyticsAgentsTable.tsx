@@ -17,11 +17,10 @@ export interface AgentRow {
 }
 
 const PLAN_META: Record<string, { label: string; color: string }> = {
-  comercial: { label: 'Empleado Centinelia',  color: '#3b82f6' },
   pro:       { label: 'Empleado Centinelia', color: '#a855f7' },
 };
 
-type TierFilter   = 'todos' | 'comercial' | 'pro';
+type TierFilter   = 'todos' | 'pro';
 type StatusFilter = 'todos' | 'activos' | 'pausados';
 
 export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
@@ -44,7 +43,6 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
   }, [rows, tier, status, search]);
 
   const counts = {
-    comercial: rows.filter(r => r.plan === 'comercial').length,
     pro:      rows.filter(r => r.plan === 'pro').length,
     activos:  rows.filter(r => r.active).length,
     pausados: rows.filter(r => !r.active).length,
@@ -96,7 +94,6 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
               <div className="flex gap-1 flex-wrap p-1 rounded-lg" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
                 {([
                   { key: 'todos',    label: `Todos (${rows.length})`,          color: undefined },
-                  { key: 'comercial', label: `Empleado Centinelia (${counts.comercial})`,   color: '#3b82f6' },
                   { key: 'pro',      label: `Empleado Centinelia (${counts.pro})`,  color: '#a855f7' },
                 ] as { key: TierFilter; label: string; color?: string }[]).map(({ key, label, color }) => (
                   <button
@@ -163,7 +160,7 @@ export default function AnalyticsAgentsTable({ rows }: { rows: AgentRow[] }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {filtered.map(row => {
-            const meta = PLAN_META[row.plan] ?? PLAN_META.comercial;
+            const meta = PLAN_META[row.plan] ?? PLAN_META.pro;
             return (
               <Link
                 key={row.id}

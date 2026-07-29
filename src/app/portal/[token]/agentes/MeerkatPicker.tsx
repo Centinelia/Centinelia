@@ -7,7 +7,7 @@ import { MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/port
 import { JORNADA_CONFIG }                                        from '@/lib/billing/plans';
 import type { JornadaType }                                      from '@/types/agent';
 
-type Plan        = 'comercial' | 'pro';
+type Plan        = 'pro';
 type MinutesTier = 'starter' | 'growth' | 'scale';
 
 export type MeerkatRec = {
@@ -17,16 +17,10 @@ export type MeerkatRec = {
 };
 
 const SETUP_FEE: Record<Plan, number> = {
-  comercial: 8990,
   pro:       14990,
 };
 
 const JORNADAS: Record<Plan, { tier: MinutesTier; label: string; minutes: number; mxn: number }[]> = {
-  comercial: [
-    { tier: 'starter', label: 'Media Jornada',    minutes: 300,  mxn: 2997  },
-    { tier: 'growth',  label: 'Jornada Completa', minutes: 600,  mxn: 5994  },
-    { tier: 'scale',   label: 'Alta Demanda',     minutes: 1200, mxn: 11988 },
-  ],
   pro: [
     { tier: 'starter', label: 'Media Jornada',    minutes: 300,  mxn: 2997  },
     { tier: 'growth',  label: 'Jornada Completa', minutes: 600,  mxn: 5994  },
@@ -80,7 +74,7 @@ function MeerkatCardImage({ role }: { role: MeerkatRole }) {
   );
 }
 
-export default function MeerkatPicker({ token, plan = 'comercial', defaultTier = 'starter', recommendations, preselect, triggerLabel }: {
+export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'starter', recommendations, preselect, triggerLabel }: {
   token:            string;
   plan?:            Plan;
   defaultTier?:     MinutesTier;

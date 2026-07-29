@@ -152,8 +152,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ empresarial: true });
   }
 
-  // ── Standard plans (comercial / pro) ─────────────────────────────────────────
-  if (!['comercial', 'pro'].includes(plan))
+  // ── Standard plans (pro) ─────────────────────────────────────────
+  if (!['pro'].includes(plan))
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
   const tier: MinutesTier = (['starter', 'growth', 'scale'] as MinutesTier[]).includes(minutes_tier) ? minutes_tier : 'starter';
   const jornadaType: JornadaType = (['combinada', 'minutos', 'tareas'] as JornadaType[]).includes(jornada_type) ? jornada_type : 'combinada';

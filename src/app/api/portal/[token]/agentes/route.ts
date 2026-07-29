@@ -172,7 +172,7 @@ export async function POST(
   try {
     const pendingAgent = await createPortalAgent({ base: base as any, role, agentName, active: false, jornadaType: jornada_type });
 
-    const plan       = (base.plan ?? 'comercial') as Plan;
+    const plan       = (base.plan ?? 'pro') as Plan;
     const planCfg    = FEATURE_PLAN_CONFIG[plan];
     const tier       = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
     const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];

@@ -24,7 +24,7 @@ export default async function OnboardingPage({ params }: Props) {
     (a: any) => (a.features as Record<string, unknown>)?.meerkat_role_id === 'naia',
   );
 
-  const plan        = (ag as any)?.plan         ?? 'comercial';
+  const plan        = (ag as any)?.plan         ?? 'pro';
   const defaultTier = (ag as any)?.minutes_plan ?? 'starter';
 
   return (
@@ -67,7 +67,7 @@ export default async function OnboardingPage({ params }: Props) {
               </p>
               <MeerkatPicker
                 token={token}
-                plan={plan as 'comercial' | 'pro'}
+                plan={plan as 'pro'}
                 defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
                 preselect="naia"
                 triggerLabel="Contratar"

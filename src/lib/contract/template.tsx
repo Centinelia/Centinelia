@@ -40,7 +40,7 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
   const planLabel       = PLAN_LABELS[agent.plan] ?? agent.plan;
   const tierCfg         = agent.minutes_plan ? MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier] : null;
   const monthlyCfg      = (agent.plan && agent.minutes_plan)
-    ? MONTHLY_CONFIG[agent.plan as 'comercial' | 'pro']?.[agent.minutes_plan as MinutesTier]
+    ? MONTHLY_CONFIG[agent.plan as 'pro']?.[agent.minutes_plan as MinutesTier]
     : null;
   const monthlyPrice    = monthlyCfg?.mxn ?? 0;
   const minutesIncluded = agent.minutes_included ?? (tierCfg?.minutes ?? 0);

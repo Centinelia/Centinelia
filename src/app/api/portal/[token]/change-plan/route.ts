@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { to_plan, to_minutes_tier } = await req.json() as { to_plan?: Plan; to_minutes_tier?: MinutesTier };
 
-  if (to_plan && !['comercial', 'pro'].includes(to_plan))
+  if (to_plan && !['pro'].includes(to_plan))
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
   if (to_minutes_tier && !['starter', 'growth', 'scale'].includes(to_minutes_tier))
     return NextResponse.json({ error: 'Tier de minutos inválido' }, { status: 400 });

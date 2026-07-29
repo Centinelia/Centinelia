@@ -112,7 +112,7 @@ function SelectMenu<T extends string>({
 // ── Generate link section ──────────────────────────────────────────────────────
 
 function GenerateLinkButton({ agentId, agentName }: { agentId: string; agentName: string }) {
-  const [featurePlan, setFeaturePlan] = useState<Plan>('comercial');
+  const [featurePlan, setFeaturePlan] = useState<Plan>('pro');
   const [minutesPlan, setMinutesPlan] = useState<MinutesPlan>('starter');
   const [loading, setLoading]         = useState(false);
   const [url, setUrl]                 = useState<string | null>(null);

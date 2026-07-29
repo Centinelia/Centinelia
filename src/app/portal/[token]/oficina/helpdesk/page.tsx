@@ -55,7 +55,7 @@ export default async function HelpdeskPage({ params }: Props) {
     ? await supabase.from('it_incidents').select('*').in('agent_id', access.ids).order('created_at', { ascending: false })
     : { data: [] };
 
-  const plan        = (agent as any)?.plan         ?? 'comercial';
+  const plan        = (agent as any)?.plan         ?? 'pro';
   const defaultTier = (agent as any)?.minutes_plan ?? 'starter';
 
   const guardia:    GuardiaSchedule       = (agent?.guardia_schedule as GuardiaSchedule)    ?? { areas: [] };
@@ -137,7 +137,7 @@ export default async function HelpdeskPage({ params }: Props) {
               <div style={{ marginRight: 30 }}>
                 <MeerkatPicker
                   token={token}
-                  plan={plan as 'comercial' | 'pro'}
+                  plan={plan as 'pro'}
                   defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
                   preselect="neo"
                   triggerLabel="Contratar"

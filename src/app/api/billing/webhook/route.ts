@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, WA_MESSAGES_PLAN_CONFIG, waMsgsPlanFromPriceId, JORNADA_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, monthlyConfigFromPriceId, nextResetDate, JORNADA_CONFIG } from '@/lib/billing/plans';
 import { resetAiOps, setAiOpsLimit } from '@/lib/ai/ops-guard';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, paymentFailedHtml, welcomeHtml } from '@/lib/email/send';
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
       // Onboarding flow: auto-create Vapi assistant + provision phone + send welcome email
       if (session.metadata?.source === 'onboarding' && agent) {
         const fullAgent = agent as VoiceAgent;
-        const planLabels: Record<string, string> = { comercial: 'Empleado Centinelia', pro: 'Empleado Centinelia' };
+        const planLabels: Record<string, string> = { pro: 'Empleado Centinelia' };
         const appUrl    = process.env.NEXT_PUBLIC_APP_URL!;
         const adminWa   = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? process.env.SUPPORT_WHATSAPP ?? '';
 
@@ -288,7 +288,7 @@ export async function POST(req: NextRequest) {
 
         // 2. Buy Twilio number + import to Vapi + assign assistant (skip for tareas-only agents)
         const areaCode = session.metadata?.area_code || undefined;
-        const concurrencyLimit = PLAN_CONCURRENT_CALLS[(fullAgent.plan ?? 'comercial') as Plan];
+        const concurrencyLimit = PLAN_CONCURRENT_CALLS[(fullAgent.plan ?? 'pro') as Plan];
         let phoneNumber: string | null = null;
         if (vapiId && jornadaTypeMeta !== 'tareas') {
           const provisioned = await provisionPhoneNumber(vapiId, areaCode, concurrencyLimit);
@@ -342,29 +342,8 @@ export async function POST(req: NextRequest) {
       const agentId     = sub.metadata?.agent_id;
       const priceId      = sub.items.data[0]?.price.id ?? '';
       const monthlyMatch = monthlyConfigFromPriceId(priceId);
-      const waMsgsPlan   = waMsgsPlanFromPriceId(priceId);
-      if (!agentId || (!monthlyMatch && !waMsgsPlan)) break;
+      if (!agentId || !monthlyMatch) break;
 
-      // ── Minutes renewal ───────────────────────────────────────────────────
-      if (!monthlyMatch) {
-        // WA-only subscription renewal — handled below
-        if (waMsgsPlan) {
-          const waCfg = WA_MESSAGES_PLAN_CONFIG[waMsgsPlan];
-          const { data: prevWa } = await supabase
-            .from('voice_agents')
-            .select('wa_messages_used, wa_messages_included')
-            .eq('id', agentId)
-            .single();
-          const waUnused   = prevWa ? Math.max(0, prevWa.wa_messages_included - prevWa.wa_messages_used) : 0;
-          const waRollover = Math.min(waUnused, waCfg.messages);
-          await supabase.from('voice_agents').update({
-            wa_messages_plan:     waMsgsPlan,
-            wa_messages_included: waCfg.messages + waRollover,
-            wa_messages_used:     0,
-          }).eq('id', agentId);
-        }
-        break;
-      }
       const { tier: minutesPlan, cfg: minutesCfg } = monthlyMatch;
 
       // Rollover: carry unused minutes (capped at 1× the plan base)

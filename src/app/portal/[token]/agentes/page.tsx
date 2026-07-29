@@ -454,7 +454,7 @@ export default async function AgentesPage({ params }: Props) {
         </div>
         <MeerkatPicker
           token={token}
-          plan={(baseAgent.plan ?? 'comercial') as 'comercial' | 'pro'}
+          plan={(baseAgent.plan ?? 'pro') as 'pro'}
           defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
           recommendations={meerkatRecs}
         />
@@ -794,7 +794,7 @@ export default async function AgentesPage({ params }: Props) {
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
               <MeerkatPicker
                 token={token}
-                plan={(baseAgent.plan ?? 'comercial') as 'comercial' | 'pro'}
+                plan={(baseAgent.plan ?? 'pro') as 'pro'}
                 defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
                 recommendations={meerkatRecs}
               />

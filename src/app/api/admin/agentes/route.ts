@@ -87,9 +87,9 @@ export async function POST(req: NextRequest) {
       phone_number:           phone_number?.trim() ?? '',
       agent_name:             plan === 'pro' ? (agent_name?.trim() ?? null) : null,
       giro_template:          body.giro_template ?? null,
-      plan:                   plan ?? 'comercial',
+      plan:                   plan ?? 'pro',
       features,
-      minutes_included:       PLAN_MINUTES[(plan ?? 'comercial') as Plan],
+      minutes_included:       PLAN_MINUTES[(plan ?? 'pro') as Plan],
       minutes_reset_date:     resetDate.toISOString().split('T')[0],
     })
     .select()

@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Calendar, CalendarCheck, Check, ChevronDown, ChevronUp, ExternalLink, Lock, MessageCircle, Save } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
-const PLAN_ORDER: Plan[] = ['comercial', 'pro'];
-const PLAN_LABELS: Record<Plan, string> = { comercial: 'Empleado Centinelia', pro: 'Empleado Centinelia' };
-const PLAN_COLORS: Record<Plan, string> = { comercial: '#3b82f6', pro: '#a855f7' };
+const PLAN_ORDER: Plan[] = ['pro'];
+const PLAN_LABELS: Record<Plan, string> = { pro: 'Empleado Centinelia' };
+const PLAN_COLORS: Record<Plan, string> = { pro: '#a855f7' };
 
 function canUse(clientPlan: Plan, required: Plan): boolean {
   return PLAN_ORDER.indexOf(clientPlan) >= PLAN_ORDER.indexOf(required);
@@ -26,7 +26,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'cal_com',
     label:        'Cal.com',
     description:  'Agendamiento directo, tu empleado crea la cita durante la llamada',
-    requiredPlan: 'comercial',
+    requiredPlan: 'pro',
     accentColor:  '#000',
     icon: (
       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -39,7 +39,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'calendly',
     label:        'Calendly',
     description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva',
-    requiredPlan: 'comercial',
+    requiredPlan: 'pro',
     accentColor:  '#006BFF',
     icon: (
       <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
@@ -59,7 +59,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'google',
     label:        'Google Calendar',
     description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva',
-    requiredPlan: 'comercial',
+    requiredPlan: 'pro',
     accentColor:  '#4285F4',
     icon: (
       <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
@@ -79,7 +79,7 @@ const INTEGRATIONS: IntegrationDef[] = [
     id:           'outlook_cal',
     label:        'Outlook Calendar',
     description:  'Agendamiento vía link, tu empleado comparte tu URL de reserva de Outlook',
-    requiredPlan: 'comercial',
+    requiredPlan: 'pro',
     accentColor:  '#0078D4',
     icon: (
       <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">

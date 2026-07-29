@@ -1455,7 +1455,7 @@ function SurveyCard({
 
 // ── Main section ──────────────────────────────────────────────────────────────
 
-export default function EncuestasSection({ token, agentName, hasSurveyAgent = true, plan = 'comercial', defaultTier = 'starter' }: {
+export default function EncuestasSection({ token, agentName, hasSurveyAgent = true, plan = 'pro', defaultTier = 'starter' }: {
   token:           string;
   agentName?:      string;
   hasSurveyAgent?: boolean;
@@ -1551,7 +1551,7 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
               <div style={{ marginRight: 30 }}>
                 <MeerkatPicker
                   token={token}
-                  plan={plan as 'comercial' | 'pro'}
+                  plan={plan as 'pro'}
                   defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
                   preselect="nia"
                   triggerLabel="Contratar"

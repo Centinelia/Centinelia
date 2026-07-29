@@ -1,9 +1,6 @@
-﻿import type { WaMessagesPlan } from '@/lib/billing/plans';
-export type { WaMessagesPlan };
+﻿// ─── Plans ────────────────────────────────────────────────────────────────────
 
-// ─── Plans ────────────────────────────────────────────────────────────────────
-
-export type Plan = 'comercial' | 'pro';
+export type Plan = 'pro';
 export type MinutesPlan = 'starter' | 'growth' | 'scale' | 'enterprise';
 export type JornadaType = 'combinada' | 'minutos' | 'tareas';
 
@@ -171,7 +168,6 @@ export interface VoiceAgent {
   capture_leads: boolean;          // capturar prospectos por WA
   capture_appointments: boolean;   // agendar citas por WA
   capture_orders: boolean;         // tomar pedidos por WA
-  wa_messages_plan?: WaMessagesPlan;
   wa_messages_included: number;    // plan base + rollover del mes anterior
   wa_messages_used: number;        // mensajes usados este mes
   active: boolean;
@@ -216,17 +212,6 @@ export interface VoiceCall {
 // ─── Plan defaults ────────────────────────────────────────────────────────────
 
 export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
-  comercial: {
-    receptionist:            true,
-    lead_qualification:      true,
-    appointment_booking:     true,
-    existing_client_support: false,
-    smart_transfer:          true,
-    order_taking:            false,
-    multilingual:            false,
-    client_memory:           false,
-    outbound_calls:          false,
-  },
   pro: {
     receptionist:            true,
     lead_qualification:      true,
@@ -241,17 +226,14 @@ export const PLAN_FEATURES: Record<Plan, AgentFeatures> = {
 };
 
 export const PLAN_MINUTES: Record<Plan, number> = {
-  comercial: 300,
   pro:       300,
 };
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  comercial: 'Empleado Centinelia',
   pro:       'Empleado Centinelia',
 };
 
 export const PLAN_CONCURRENT_CALLS: Record<Plan, number> = {
-  comercial: 1,
   pro:       3,
 };
 

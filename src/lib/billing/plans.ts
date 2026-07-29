@@ -14,7 +14,6 @@ export interface FeaturePlanConfig {
 }
 
 export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
-  comercial: { label: 'Empleado Centinelia',  setupFee: 8990,  aiOpsLimit:   0, setupPriceId: () => process.env.STRIPE_SETUP_COMERCIAL! },
   pro:       { label: 'Empleado Centinelia', setupFee: 14990, aiOpsLimit: 300, setupPriceId: () => process.env.STRIPE_SETUP_PRO! },
 };
 
@@ -23,7 +22,6 @@ export const FEATURE_PLAN_CONFIG: Record<Plan, FeaturePlanConfig> = {
 // Starter 300min = $2,997 | Growth 600min = $5,994 | Scale 1,200min = $11,988
 
 export const PLAN_BASE_MXN: Record<Plan, number> = {
-  comercial: 0,
   pro:       0,
 };
 
@@ -39,12 +37,6 @@ export interface MonthlyPlanConfig {
 }
 
 export const MONTHLY_CONFIG: Record<Plan, Record<MinutesTier, MonthlyPlanConfig>> = {
-  comercial: {
-    starter:    { label: 'Esencial',    minutes: 300,  aiOps:   0, mxn: 2997,  priceId: () => process.env.STRIPE_COMERCIAL_STARTER! },
-    growth:     { label: 'Profesional', minutes: 600,  aiOps:   0, mxn: 5994,  priceId: () => process.env.STRIPE_COMERCIAL_GROWTH! },
-    scale:      { label: 'Avanzado',    minutes: 1200, aiOps:   0, mxn: 11988, priceId: () => process.env.STRIPE_COMERCIAL_SCALE! },
-    enterprise: { label: 'Empresarial', minutes: 0,    aiOps:   0, mxn: 0,     priceId: () => '' },
-  },
   pro: {
     starter:    { label: 'Esencial',    minutes: 300,  aiOps: 100, mxn: 2997,  priceId: () => process.env.STRIPE_PRO_STARTER! },
     growth:     { label: 'Profesional', minutes: 600,  aiOps: 200, mxn: 5994,  priceId: () => process.env.STRIPE_PRO_GROWTH! },
@@ -123,26 +115,3 @@ export function nextResetDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ─── WhatsApp Messages Plans ──────────────────────────────────────────────────
-
-export type WaMessagesPlan = 'wa_200' | 'wa_500' | 'wa_1000';
-
-export interface WaMessagesPlanConfig {
-  label:    string;
-  messages: number;
-  mxn:      number;
-  priceId:  () => string;
-}
-
-export const WA_MESSAGES_PLAN_CONFIG: Record<WaMessagesPlan, WaMessagesPlanConfig> = {
-  wa_200:  { label: 'WA Starter', messages: 200,  mxn: 249, priceId: () => process.env.STRIPE_WA_200! },
-  wa_500:  { label: 'WA Growth',  messages: 500,  mxn: 449, priceId: () => process.env.STRIPE_WA_500! },
-  wa_1000: { label: 'WA Scale',   messages: 1000, mxn: 749, priceId: () => process.env.STRIPE_WA_1000! },
-};
-
-export function waMsgsPlanFromPriceId(priceId: string): WaMessagesPlan | null {
-  for (const [plan, cfg] of Object.entries(WA_MESSAGES_PLAN_CONFIG) as [WaMessagesPlan, WaMessagesPlanConfig][]) {
-    if (cfg.priceId() === priceId) return plan;
-  }
-  return null;
-}

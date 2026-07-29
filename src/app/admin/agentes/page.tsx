@@ -37,7 +37,6 @@ export default async function AgentesPage({ searchParams }: Props) {
 
   if (status === 'activos')  query = query.eq('active', true);
   if (status === 'pausados') query = query.eq('active', false);
-  if (plan === 'comercial')  query = query.eq('plan', 'comercial');
   if (plan === 'pro')        query = query.eq('plan', 'pro');
 
   if (search) {
