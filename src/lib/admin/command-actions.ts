@@ -517,10 +517,13 @@ async function resyncAllCmd(): Promise<ActionResult> {
   const result  = await pushConversationalPromptsToAllAgents();
   const ms      = Date.now() - started;
 
-  const failed  = result.details.filter(d => !d.ok);
+  const failed        = result.details.filter(d => !d.ok);
+  const phoneReassigned = result.details.filter(d => d.phoneReassigned);
   const summary = [
     `**${result.synced} agentes sincronizados${result.errors ? `, ${result.errors} errores` : ''}** en ${(ms / 1000).toFixed(1)}s`,
+    result.phoneFixes > 0 ? `**🔧 ${result.phoneFixes} phone number${result.phoneFixes > 1 ? 's' : ''} reasignado${result.phoneFixes > 1 ? 's' : ''}** (había perdido asociación al assistant)` : '',
     '',
+    ...phoneReassigned.map(d => `- 🔧 ${d.name}: phone reasignado`),
     ...failed.slice(0, 10).map(d => `- ❌ ${d.name} (${d.id}): ${d.error ?? '—'}`),
     failed.length > 10 ? `\n_+${failed.length - 10} más con error_` : '',
   ].filter(Boolean).join('\n');
@@ -528,7 +531,7 @@ async function resyncAllCmd(): Promise<ActionResult> {
   return {
     ok:      result.errors === 0,
     message: summary,
-    data:    { synced: result.synced, errors: result.errors, ms },
+    data:    { synced: result.synced, errors: result.errors, phoneFixes: result.phoneFixes, ms },
   };
 }
 

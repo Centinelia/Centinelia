@@ -616,7 +616,7 @@ export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceA
 
 // Pushes updated prompts (with current global conversational learnings) to ALL active agents.
 // Called by the cron after new learnings are activated — do NOT call on every request.
-export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: number; errors: number; details: Array<{ id: string; name: string; ok: boolean; error?: string }> }> {
+export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: number; errors: number; phoneFixes: number; details: Array<{ id: string; name: string; ok: boolean; error?: string; phoneReassigned?: boolean }> }> {
   const supabase    = createAdminClient();
   const learnings   = await fetchConversationalLearnings();
 
@@ -626,11 +626,26 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
     .eq('active', true)
     .not('vapi_agent_id', 'is', null);
 
-  if (!agents?.length) return { synced: 0, errors: 0, details: [] };
+  if (!agents?.length) return { synced: 0, errors: 0, phoneFixes: 0, details: [] };
+
+  // Fetch todos los phones de Vapi una vez para no repetir GET por cada agente.
+  const phoneMap = new Map<string, { id: string; assistantId: string | null }>();
+  try {
+    const listRes = await fetch(`${VAPI_URL}/phone-number`, { headers: headers() });
+    if (listRes.ok) {
+      const phones = await listRes.json() as Array<{ id: string; number?: string; assistantId?: string | null }>;
+      for (const p of phones) {
+        if (p.number) phoneMap.set(p.number, { id: p.id, assistantId: p.assistantId ?? null });
+      }
+    }
+  } catch (e) {
+    console.error('[pushConversationalPromptsToAllAgents] error fetching phones:', e);
+  }
 
   let synced = 0;
   let errors = 0;
-  const details: Array<{ id: string; name: string; ok: boolean; error?: string }> = [];
+  let phoneFixes = 0;
+  const details: Array<{ id: string; name: string; ok: boolean; error?: string; phoneReassigned?: boolean }> = [];
 
   // Process in batches of 5 to avoid hammering Vapi API
   for (let i = 0; i < agents.length; i += 5) {
@@ -641,18 +656,48 @@ export async function pushConversationalPromptsToAllAgents(): Promise<{ synced: 
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
       const a = batch[j];
+      const detail: { id: string; name: string; ok: boolean; error?: string; phoneReassigned?: boolean } = {
+        id: a.id, name: `${a.agent_name} (${a.business_name})`, ok: r.status === 'fulfilled' && r.value === true,
+      };
+
       if (r.status === 'fulfilled' && r.value) {
         synced++;
-        details.push({ id: a.id, name: `${a.agent_name} (${a.business_name})`, ok: true });
+
+        // Chequeo de phone assignment: si el agente tiene phone_number,
+        // verificar que Vapi lo tiene asociado al vapi_agent_id correcto.
+        // Si no, reasignar. Esto previene el bug pre-piloto Monterrey donde
+        // el phone perdió su asociación y las llamadas caían con Unauthorized.
+        if (a.phone_number) {
+          const phone = phoneMap.get(a.phone_number);
+          if (phone && phone.assistantId !== a.vapi_agent_id) {
+            try {
+              const patchRes = await fetch(`${VAPI_URL}/phone-number/${phone.id}`, {
+                method: 'PATCH',
+                headers: headers(),
+                body: JSON.stringify({ assistantId: a.vapi_agent_id }),
+              });
+              if (patchRes.ok) {
+                phoneFixes++;
+                detail.phoneReassigned = true;
+                console.log(`[resync-phone-check] reasignado ${a.phone_number} → ${a.business_name} (${a.vapi_agent_id})`);
+              } else {
+                detail.error = `sync ok pero phone reassign falló: ${patchRes.status}`;
+              }
+            } catch (e) {
+              detail.error = `sync ok pero phone reassign error: ${String(e)}`;
+            }
+          }
+        }
       } else {
         errors++;
-        const errMsg = r.status === 'rejected' ? String(r.reason) : 'unknown';
-        details.push({ id: a.id, name: `${a.agent_name} (${a.business_name})`, ok: false, error: errMsg });
+        detail.error = r.status === 'rejected' ? String(r.reason) : 'unknown';
       }
+
+      details.push(detail);
     }
   }
 
-  return { synced, errors, details };
+  return { synced, errors, phoneFixes, details };
 }
 
 export async function assignAssistantToPhone(
