@@ -10,16 +10,17 @@ const VALID_AUTOMATIONS: AutomationName[] = ['heartbeat', 'weekly_insights', 'le
 
 const LEARN_EMAIL_PROVIDERS = ['gmail', 'outlook'] as const;
 
-// Cost estimates (aprox.) per month. Source: cost-validation.md 2026-07-29.
-// Refine after 2 weeks of prod data (query ops_log by source = cron_heartbeat/etc).
-// Deploy 2 (2026-07-30) expanded heartbeat + weekly-insights to include all
-// activity sources (calls + emails + docs + tasks + appts + civic_reports).
-// Deploy 3 (2026-07-30) expanded learn to include calls + docs + tasks
-// alongside the existing emails, bumping the per-run ops cost from 30 to 40.
+// Cost estimates (aprox.) per month. Grounded in the hardcoded consumeAiOp
+// calls in each cron × monthly cadence — NOT proportional to prompt size.
+// - heartbeat: consumeAiOp(5) × 4 (weekly) to 30 (daily) = 20-150/mo
+// - weekly_insights: consumeAiOp(3) × 4 = 12/mo (0 in rules mode)
+// - learn: consumeAiOp(40) × 2 (biweekly) = 80/mo
+// If token pricing at Anthropic changes materially, revisit the ops-per-run
+// numbers in each cron rather than these strings.
 const ESTIMATED_TAREAS_MO: Record<AutomationName, string> = {
-  heartbeat:       'aprox. 300-500 tareas/mes',
-  weekly_insights: 'aprox. 100-200 tareas/mes',
-  learn:           'aprox. 300-600 tareas/mes',
+  heartbeat:       'aprox. 20-150 tareas/mes',
+  weekly_insights: 'aprox. 0-12 tareas/mes',
+  learn:           'aprox. 80 tareas/mes',
 };
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
