@@ -1,11 +1,10 @@
-// Frecuencia recomendada: "0 9 * * 1" (lunes a las 9:00 AM UTC)
-// Agregar a vercel.json cuando se active en producción (fuera del límite de Vercel Hobby).
+// Frecuencia: biweekly. vercel.json schedule "0 9 8,22 * *" (día 8 y 22 a las 9:00 UTC).
 //
-// Procesa aprendizaje continuo para todos los agentes con correo conectado:
-// - Correos de los últimos 7 días (ventana móvil, no acumulativa)
-// - Llamadas, documentos y tareas completadas del mismo período
-// - Confianza alta (≥0.85) → auto-aprobado y sincronizado a Vapi
-// - Confianza baja → queda en "pendiente" para revisión del dueño
+// Procesa aprendizaje continuo para todos los agentes con correo conectado y opt-in activo:
+// - Ventana móvil de 14 días para alinear con la cadencia biweekly (evita gaps).
+// - Fuentes: correos (Gmail/Outlook API) + llamadas + documentos + tareas (Supabase).
+// - Confianza alta (>=0.85) auto-aprobada y sincronizada a Vapi.
+// - Confianza baja queda en "pendiente" para revisión del dueño.
 
 export const maxDuration = 300;
 
@@ -158,7 +157,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, processed: 0 });
   }
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // last 7 days
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // last 14 days (biweekly cadence)
   let processed = 0;
   let totalSaved = 0;
 
