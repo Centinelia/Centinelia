@@ -3,6 +3,7 @@ import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import type { VoiceAgent } from '@/types/agent';
 import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
+import { resolveMeerkatConfig, type MeerkatModelConfig } from './resolve-meerkat';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -336,53 +337,9 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   return ids;
 }
 
-// ─── Per-meerkat model + behavior config ──────────────────────────────────────
-// Model is the last layer — personality lives in ADN → CCE → HCP → meerkat prompt.
-// These params shape output behavior only: how fast, how long, how deterministic.
-
-interface MeerkatModelConfig {
-  provider:              string;
-  model:                 string;
-  temperature:           number;
-  maxTokens:             number;
-  speed:                 number;
-  minChars:              number;
-  voiceModel?:           string;   // ElevenLabs model: eleven_turbo_v2_5 (default) o eleven_flash_v2_5 (~50% barato)
-  sttModel?:             string;   // Deepgram: nova-3 (default premium) o nova-2 (~30-40% barato, calidad muy buena)
-  punctuationBoundaries?: string[];
-}
-
-// Tiering de voz por meerkat.
-// Turbo v2.5 + Nova-3: meerkats CARA-AL-CLIENTE críticos (primera impresión, ventas, cobranza, soporte).
-// Flash v2.5 + Nova-2: meerkats internos, coordinación o interlocutor no-cliente-directo. ~50% off TTS, ~35% off STT.
-const MEERKAT_MODEL_CONFIG: Record<string, MeerkatModelConfig> = {
-  // ── CARA-AL-CLIENTE: TTS premium ──────────────────────────────────────
-  // Nia: speed 0.92 + minChars 25. Ajuste iterativo tras varias pruebas
-  // de llamada real. 0.88 sonaba lento, 0.94 apurada. 0.92 es el punto
-  // medio que Nazre validó.
-  nia:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
-  noah:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.60, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
-  nico:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
-  nelia:  { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 110, speed: 0.98, minChars: 28, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
-
-  // ── INTERNOS / OPS: TTS económico ─────────────────────────────────────
-  // Speed sutilmente bumped 0.98 → 1.02 en Nara y Naia (interlocutor tolera mejor una lectura ágil).
-  nara:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.30, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-  naia:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 150, speed: 1.02, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-  neo:    { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.20, maxTokens: 110, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-  nova:   { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.70, maxTokens: 150, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-  nox:    { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.15, maxTokens:  80, speed: 1.05, minChars: 25, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-  niva:   { provider: 'anthropic', model: 'claude-sonnet-4-6',         temperature: 0.25, maxTokens: 150, speed: 1.00, minChars: 28, voiceModel: 'eleven_flash_v2_5', sttModel: 'nova-2' },
-};
-
-const DEFAULT_MODEL_CONFIG: MeerkatModelConfig = {
-  provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.40, maxTokens: 150, speed: 0.98, minChars: 28,
-  voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3',
-};
-
 // ─── Assistant config builder ─────────────────────────────────────────────────
 
-function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = [], learnings?: AgentLearnings | null) {
+async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = [], learnings?: AgentLearnings | null) {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
 
   const messages: Array<{ role: string; content: string }> = [
@@ -407,7 +364,10 @@ function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: Te
   }
 
   const meerkatId = agent.features.meerkat_role_id;
-  const cfg: MeerkatModelConfig = (meerkatId ? MEERKAT_MODEL_CONFIG[meerkatId] : undefined) ?? DEFAULT_MODEL_CONFIG;
+  const cfg: MeerkatModelConfig = await resolveMeerkatConfig(
+    meerkatId ?? '',
+    agent.features.pinned_meerkat_version ?? null,
+  );
 
   // F1.1 — customLLM opt-in per agent. Cuando features.use_custom_llm = true
   // apuntamos Vapi a nuestro endpoint /api/voice/llm que reformatea a Anthropic
@@ -559,7 +519,7 @@ async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learn
   const res = await fetch(`${VAPI_URL}/assistant/${vapiAssistantId}`, {
     method: 'PATCH',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(enrichedAgent, toolIds, peers, resolvedLearnings)),
+    body: JSON.stringify(await buildVapiAssistant(enrichedAgent, toolIds, peers, resolvedLearnings)),
   });
   if (!res.ok) {
     const errText = await res.text();
@@ -599,7 +559,7 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
   const res = await fetch(`${VAPI_URL}/assistant`, {
     method: 'POST',
     headers: headers(),
-    body: JSON.stringify(buildVapiAssistant(enrichedAgent, toolIds, peers)),
+    body: JSON.stringify(await buildVapiAssistant(enrichedAgent, toolIds, peers)),
   });
   if (!res.ok) {
     console.error('Vapi createAssistant error:', await res.text());
@@ -736,4 +696,10 @@ export async function assignAssistantToPhone(
     return false;
   }
   return true;
+}
+
+// Exported for snapshot testing only. Wraps buildVapiAssistant with the same
+// inputs it receives during a real sync (empty tools + peers by default).
+export async function buildVapiAssistantForSnapshot(agent: VoiceAgent) {
+  return buildVapiAssistant(agent, [], [], null);
 }
