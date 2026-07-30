@@ -35,6 +35,7 @@ import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
+import AutomationsSection    from './AutomationsSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -104,6 +105,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
       ? [{ id: 'desvio',    label: 'Desvío de llamadas',     group: 'Operación'     }] : []),
     { id: 'autonomia',       label: 'Nivel de autonomía',     group: 'Operación'     },
     { id: 'checkin',         label: 'Check-in automático',    group: 'Operación'     },
+    { id: 'automatizaciones', label: 'Automatizaciones',      group: 'Operación'     },
     ...(!isCoordinator
       ? [{ id: 'notificaciones', label: 'Notificaciones',     group: 'Operación'     }] : []),
     ...(!isCoordinator
@@ -306,6 +308,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   initConfig={(agent as any).heartbeat_config ?? null}
                   isCoordinator={isCoordinator}
                 />
+              </div>
+            </div>
+
+            <div id="automatizaciones" style={SCROLL_STYLE}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Automatizaciones</h2>
+                  <InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />
+                </div>
+                <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
               </div>
             </div>
 
