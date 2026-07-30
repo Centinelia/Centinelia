@@ -500,7 +500,14 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       const parsed = JSON.parse(lastText);
       result = validateProcessedEmail(parsed);
     } catch (err) {
+      const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       console.error('[ops/inbox-processor] AI error:', err);
+      // TEMP: persistir el error en ai_summary para debug via SQL (Vercel Pro Trial no
+      // expone runtime logs). Remover una vez identificado el root cause.
+      result = {
+        ...result,
+        summary: `[DEBUG haiku_error] ${errMsg.slice(0, 400)}`,
+      };
     }
   } else if (opsResult.ok) {
     // No portalEmail — run a simple single-shot analysis without tools
@@ -515,8 +522,14 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       const parsed    = textBlock?.type === 'text' ? JSON.parse(textBlock.text.trim()) : {};
       result = validateProcessedEmail(parsed);
     } catch (err) {
+      const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       console.error('[ops/inbox-processor] AI error (no portalEmail):', err);
+      result = { ...result, summary: `[DEBUG haiku_error_np] ${errMsg.slice(0, 400)}` };
     }
+  } else if (!opsResult.ok && autoMode !== 'observador') {
+    // TEMP: opsResult failed for non-observador flow — persistir para debug
+    const usedInfo = 'used' in opsResult ? `used=${opsResult.used} limit=${opsResult.limit}` : 'no_details';
+    result = { ...result, summary: `[DEBUG ops_denied] ${usedInfo}` };
   }
 
   // Determine final status and what to store in ai_draft
