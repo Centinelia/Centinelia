@@ -119,13 +119,13 @@ export async function GET(
     want('cita') && (async () => {
       const { data } = await supabase
         .from('appointments_voice')
-        .select('id, agent_id, nombre, servicio, fecha_cita, hora_cita, created_at')
+        .select('id, agent_id, nombre, servicio, fecha, hora, created_at')
         .in('agent_id', ids)
         .gte('created_at', cutoff)
         .order('created_at', { ascending: false })
         .limit(limit);
       for (const r of data ?? []) {
-        const when = [r.fecha_cita, r.hora_cita].filter(Boolean).join(' ');
+        const when = [r.fecha, r.hora].filter(Boolean).join(' ');
         events.push({
           id:         `cita-${r.id}`,
           type:       'cita',
@@ -133,7 +133,7 @@ export async function GET(
           subtitle:   [r.servicio, when].filter(Boolean).join(' · ') || 'Sin detalle',
           agent_name: agentLabel(r.agent_id as string),
           created_at: r.created_at as string,
-          meta:       { fecha_cita: r.fecha_cita, hora_cita: r.hora_cita, servicio: r.servicio },
+          meta:       { fecha: r.fecha, hora: r.hora, servicio: r.servicio },
         });
       }
     })(),
