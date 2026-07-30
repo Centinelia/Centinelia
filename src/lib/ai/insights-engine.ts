@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getGoalsWithProgress } from '@/lib/goals/progress';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getAgentActivityWindow, renderActivityBlocks, type ActivityCaps } from './activity-window';
 
 const anthropic = new Anthropic();
 
@@ -17,6 +19,8 @@ export interface CallRow {
   self_eval_notes?:  string | null;
   ces_data?:         Record<string, unknown> | null;
 }
+
+const WEEKLY_CAPS: ActivityCaps = { calls: 30, emails: 30, docs: 30, tasks: 30, appts: 30, civic: 30 };
 
 const CES_DIMS: string[] = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'];
 const DIM_ES: Record<string, string> = {
@@ -106,10 +110,6 @@ function buildPromptLines(
     }
   }
 
-  lines.push('');
-  lines.push('Genera entre 2 y 4 recomendaciones accionables para mejorar el desempeno.');
-  lines.push('Responde SOLO con un array JSON valido:');
-  lines.push('[{"title":"...","body":"...","metric_key":"...","current_value":0,"priority":"high|medium|low"}]');
   return lines;
 }
 
@@ -149,13 +149,33 @@ export async function generateLLMInsights(opts: {
   calls:         CallRow[];
   prevWeekCalls: CallRow[];
 }): Promise<InsightRec[]> {
-  if (opts.calls.length === 0) return [];
+  const supabase = createAdminClient();
+  const weekAgoISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Fetch full activity + recent learnings in parallel
+  const [activity, learningsRes] = await Promise.all([
+    getAgentActivityWindow(opts.agentId, weekAgoISO, WEEKLY_CAPS, { includeCivic: false }),
+    supabase.from('agent_learnings')
+      .select('content, source, confidence, status, created_at')
+      .eq('agent_id', opts.agentId)
+      .gte('created_at', weekAgoISO)
+      .order('created_at', { ascending: false })
+      .limit(15),
+  ]);
+
+  const learningsList = learningsRes.data ?? [];
+
+  // Only skip if there is truly no data across all sources
+  const totalActivity = opts.calls.length
+    + activity.emails.length + activity.docs.length
+    + activity.tasks.length + activity.appts.length + activity.civic.length;
+  if (totalActivity === 0 && learningsList.length === 0) return [];
 
   const goals     = await getGoalsWithProgress(opts.agentId);
   const escalated = opts.calls.filter(c => c.outcome === 'escalated_whatsapp' || c.outcome === 'transferred').length;
-  const escalPct  = Math.round((escalated / opts.calls.length) * 100);
+  const escalPct  = opts.calls.length > 0 ? Math.round((escalated / opts.calls.length) * 100) : 0;
   const resolved  = opts.calls.filter(c => c.outcome !== 'unanswered' && c.outcome !== 'missed' && c.outcome !== 'escalated_whatsapp' && c.outcome !== 'transferred').length;
-  const autoPct   = Math.round((resolved / opts.calls.length) * 100);
+  const autoPct   = opts.calls.length > 0 ? Math.round((resolved / opts.calls.length) * 100) : 0;
   const ces       = cesAverages(opts.calls);
 
   const evalScores: number[] = [];
@@ -175,15 +195,37 @@ export async function generateLLMInsights(opts: {
     }
   }
 
+  // SECTION 1: call metrics (existing)
   const lines = buildPromptLines(
     opts.agentName, opts.agentRole,
     opts.calls.length, opts.prevWeekCalls.length,
     autoPct, escalPct, ces, evalAvg, worstNotes, goals,
   );
 
+  // SECTION 2: full activity window from all sources
+  const activityBlocks = renderActivityBlocks(activity, 'America/Monterrey');
+  lines.push('');
+  lines.push('ACTIVIDAD COMPLETA DE LA SEMANA (todas las fuentes):');
+  lines.push(activityBlocks);
+
+  // SECTION 3: recent agent learnings
+  const learningsBlock = learningsList.length
+    ? `APRENDIZAJES RECIENTES DEL EMPLEADO (${learningsList.length}):\n${learningsList.map(l => `- [fuente: ${l.source ?? '?'}, confianza: ${l.confidence ?? '?'}, estado: ${l.status ?? '?'}]: ${l.content}`).join('\n')}`
+    : '';
+  if (learningsBlock) {
+    lines.push('');
+    lines.push(learningsBlock);
+  }
+
+  // Final instruction considers all sources
+  lines.push('');
+  lines.push('Genera entre 2 y 4 recomendaciones accionables considerando toda la actividad (no solo llamadas). Prioriza impacto en negocio: leads, citas, ventas, retencion. Cada recomendacion debe referenciar datos concretos.');
+  lines.push('Responde SOLO con un array JSON valido:');
+  lines.push('[{"title":"...","body":"...","metric_key":"...","current_value":0,"priority":"high|medium|low"}]');
+
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 800,
+    max_tokens: 1000,
     messages:   [{ role: 'user', content: lines.join('\n') }],
   });
 
