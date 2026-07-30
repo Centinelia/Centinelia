@@ -14,6 +14,8 @@ import type { AgentFeatures } from '@/types/agent';
 import AgentActions from './AgentActions';
 import CallsSection from './CallsSection';
 import CopyButton from './CopyButton';
+import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
+import { AgentVersionTab } from '@/components/admin/AgentVersionTab';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -72,6 +74,19 @@ export default async function AgentDetailPage({ params }: Props) {
 
   const meerkatId  = (agent.features as any)?.meerkat_role_id as string | null;
   const jornadaType = (agent as any).jornada_type as string | null;
+
+  // Fetch active global version del meerkat del agente
+  let activeGlobalVersion: number | null = null;
+  if (meerkatId) {
+    const { data } = await supabase
+      .from('meerkat_active_versions')
+      .select('active_version')
+      .eq('meerkat_id', meerkatId)
+      .maybeSingle();
+    activeGlobalVersion = data?.active_version ?? null;
+  }
+  const availableVersions = meerkatId ? Object.keys(MEERKAT_CONFIGS[meerkatId] ?? {}).map(Number).sort((a, b) => a - b) : [];
+  const pinnedVersion = (agent.features as any)?.pinned_meerkat_version ?? null;
 
   const activeFeatures   = DISPLAY_FEATURES.filter(k => !!(agent.features as any)[k]);
   const inactiveFeatures = DISPLAY_FEATURES.filter(k => !(agent.features as any)[k]);
@@ -228,6 +243,15 @@ export default async function AgentDetailPage({ params }: Props) {
 
           {/* Recent calls */}
           <CallsSection calls={calls} timezone={agent.timezone ?? 'America/Monterrey'} />
+
+          {/* Version pin controls */}
+          <AgentVersionTab
+            agentId={agent.id}
+            meerkatId={meerkatId}
+            availableVersions={availableVersions}
+            activeGlobalVersion={activeGlobalVersion}
+            pinnedVersion={pinnedVersion}
+          />
         </div>
 
         {/* Right column */}
