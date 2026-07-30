@@ -8,6 +8,8 @@ import type { AutomationName, AutomationsConfig } from '@/types/agent';
 
 const VALID_AUTOMATIONS: AutomationName[] = ['heartbeat', 'weekly_insights', 'learn'];
 
+const LEARN_EMAIL_PROVIDERS = ['gmail', 'outlook'] as const;
+
 // Cost estimates (aprox.) per month. Source: cost-validation.md 2026-07-29.
 // Refine after 2 weeks of prod data — query ops_log by source = cron_heartbeat/etc.
 const ESTIMATED_TAREAS_MO: Record<AutomationName, string> = {
@@ -52,25 +54,17 @@ async function loadAgent(token: string, agentId: string) {
 }
 
 // ─── Email integration check ──────────────────────────────────────────────────
-// email_integrations is scoped by agent_id, so we do a 2-step lookup:
-// 1. Find all agent IDs that belong to this portal_email (org).
-// 2. Check if any of them has a live (needs_reauth=false) gmail or outlook row.
+// Single query via embedded FK join: email_integrations → voice_agents.portal_email.
 
 async function hasEmailIntegration(portalEmail: string): Promise<boolean> {
   const supabase = createAdminClient();
-  const { data: agents } = await supabase
-    .from('voice_agents')
-    .select('id')
-    .eq('portal_email', portalEmail);
-  const agentIds = (agents ?? []).map((a: { id: string }) => a.id);
-  if (!agentIds.length) return false;
-  const { data } = await supabase
+  const { data } = await (supabase
     .from('email_integrations')
-    .select('agent_id')
-    .in('agent_id', agentIds)
-    .in('provider', ['gmail', 'outlook'])
+    .select('agent_id, voice_agents!inner(portal_email)')
+    .eq('voice_agents.portal_email', portalEmail)
+    .in('provider', [...LEARN_EMAIL_PROVIDERS])
     .eq('needs_reauth', false)
-    .limit(1);
+    .limit(1) as any);
   return (data?.length ?? 0) > 0;
 }
 

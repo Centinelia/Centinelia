@@ -31,7 +31,9 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
   }
 
   const label = LABELS[automation];
-  const resetDate = agent.minutes_reset_date ?? '';
+  const resetSentence = agent.minutes_reset_date
+    ? `El pool se resetee el ${new Date(agent.minutes_reset_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}, o`
+    : `El pool se resetee en el próximo ciclo, o`;
   const portalUrl = agent.portal_token
     ? `https://www.centinelia.mx/portal/${agent.portal_token}/cuenta`
     : 'https://www.centinelia.mx';
@@ -48,7 +50,7 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
 
   await sendEmail({
     to:      agent.client_email,
-    subject: `Tu empleado necesita más tareas`,
+    subject: `Tu empleado necesita más tareas para ${label}`,
     html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;background:${C.bg};color:${C.text}">
 <h2 style="color:#EDE8FF;font-size:18px;margin:0 0 8px">Tu empleado necesita más tareas</h2>
 <p style="color:${C.sub};font-size:13px;margin:0 0 24px">${agent.agent_name ?? 'Tu empleado'} · ${new Date().toLocaleDateString('es-MX', { month: 'long', day: 'numeric' })}</p>
@@ -57,7 +59,7 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
 <p style="margin:0 0 16px">${agent.agent_name ?? 'Tu empleado'} intentó ejecutar ${label} pero se acabó tu pool mensual de tareas (${agent.ai_ops_used}/${agent.ai_ops_limit}).</p>
 <p style="margin:0 0 16px">El feature se pausa automáticamente hasta que:</p>
 <ul style="margin:0 0 16px;padding-left:20px">
-<li style="margin:0 0 8px">El pool se resetee el ${resetDate}, o</li>
+<li style="margin:0 0 8px">${resetSentence}</li>
 <li>Compres un paquete extra de tareas</li>
 </ul>
 <p style="margin:0 0 24px;text-align:center">
