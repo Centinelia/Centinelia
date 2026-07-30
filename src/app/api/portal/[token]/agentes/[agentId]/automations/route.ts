@@ -144,10 +144,21 @@ export async function PATCH(
   }
 
   const supabase = createAdminClient();
-  const currentAuto = (agent.features?.automations as AutomationsConfig | undefined) ?? {};
+
+  // Re-SELECT fresh features + heartbeat_config to avoid clobbering concurrent
+  // writes from other portal surfaces (e.g. HeartbeatEditor toggle, or two
+  // rapid clicks on the automations toggle itself).
+  const { data: fresh } = await supabase
+    .from('voice_agents')
+    .select('features, heartbeat_config')
+    .eq('id', agentId)
+    .single();
+
+  const currentFeatures = (fresh?.features ?? agent.features ?? {}) as Record<string, unknown>;
+  const currentAuto = ((currentFeatures as { automations?: AutomationsConfig }).automations) ?? {};
 
   const nextFeatures = {
-    ...(agent.features ?? {}),
+    ...currentFeatures,
     automations: {
       ...currentAuto,
       [name]: { ...(currentAuto[name] ?? {}), enabled: body.enabled },
@@ -158,7 +169,7 @@ export async function PATCH(
 
   // Constraint D9: heartbeat cron reads heartbeat_config.enabled — keep in sync
   if (name === 'heartbeat') {
-    const hcfg = (agent.heartbeat_config as Record<string, unknown> | null) ?? {};
+    const hcfg = (fresh?.heartbeat_config ?? agent.heartbeat_config ?? {}) as Record<string, unknown>;
     updates.heartbeat_config = { ...hcfg, enabled: body.enabled };
   }
 

@@ -114,7 +114,7 @@ export default function AutomationsSection({ token, agentId, roleColor }: Props)
           </span>
           {quota.resets_at && (
             <span style={{ color: 'var(--c-text-3)' }}>
-              {' '}Se renueva el {quota.resets_at}.
+              {' '}Se renueva el {new Date(quota.resets_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}.
             </span>
           )}
         </div>

@@ -16,7 +16,7 @@ interface Learning {
   created_at:   string;
   vapi_call_id: string | null;
   agent_id:     string;
-  source?:      'call' | 'email' | 'chat' | null;
+  source?:      'call' | 'email' | 'chat' | 'document' | 'task' | null;
   confidence?:  number | null;
   category?:    'role_kb' | 'guardrails' | null;
   voice_agents: AgentRef | null;
@@ -35,14 +35,18 @@ const CATEGORY_LABELS: Record<'role_kb' | 'guardrails', { label: string; icon: t
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  call:  'llamada',
-  email: 'correo',
-  chat:  'chat',
+  call:     'llamada',
+  email:    'correo',
+  chat:     'chat',
+  document: 'documento',
+  task:     'tarea',
 };
 
 function sourceColor(source: string | null | undefined): string {
-  if (source === 'email') return '#0ea5e9';
-  if (source === 'chat')  return '#22c55e';
+  if (source === 'email')    return '#0ea5e9';
+  if (source === 'chat')     return '#22c55e';
+  if (source === 'document') return '#f59e0b';
+  if (source === 'task')     return '#ec4899';
   return '#9B6DFF';
 }
 
