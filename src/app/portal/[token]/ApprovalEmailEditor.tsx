@@ -23,16 +23,26 @@ export default function ApprovalEmailEditor({ token, initialEmail }: { token: st
       .catch(() => setLoading(false));
   }, [token]);
 
+  const [error, setError] = useState<string | null>(null);
+
   async function save() {
     setSaving(true);
+    setError(null);
     try {
-      await fetch(`/api/portal/${token}/settings`, {
+      const res = await fetch(`/api/portal/${token}/settings`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ approval_email: email.trim() || null }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setError(body.error ?? `HTTP ${res.status}`);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(String(err));
     } finally { setSaving(false); }
   }
 
@@ -87,6 +97,9 @@ export default function ApprovalEmailEditor({ token, initialEmail }: { token: st
         {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}
         {saved ? 'Guardado' : 'Guardar'}
       </button>
+      {error && (
+        <p className="text-xs" style={{ color: '#ef4444' }}>Error: {error}</p>
+      )}
     </div>
   );
 }
