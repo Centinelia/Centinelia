@@ -148,6 +148,7 @@ export async function generateLLMInsights(opts: {
   agentRole:     string;
   calls:         CallRow[];
   prevWeekCalls: CallRow[];
+  timezone?:     string;
 }): Promise<InsightRec[]> {
   const supabase = createAdminClient();
   const weekAgoISO = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -203,7 +204,7 @@ export async function generateLLMInsights(opts: {
   );
 
   // SECTION 2: full activity window from all sources
-  const activityBlocks = renderActivityBlocks(activity, 'America/Monterrey');
+  const activityBlocks = renderActivityBlocks(activity, opts.timezone ?? 'America/Monterrey');
   lines.push('');
   lines.push('ACTIVIDAD COMPLETA DE LA SEMANA (todas las fuentes):');
   lines.push(activityBlocks);
