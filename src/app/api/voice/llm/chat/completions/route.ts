@@ -53,10 +53,14 @@ function authorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   if (!authorized(req)) {
-    const headers: Record<string, string> = {};
-    req.headers.forEach((v, k) => { headers[k] = k.toLowerCase().includes('auth') || k.toLowerCase().includes('secret') ? `<len=${v.length}>` : v; });
-    console.warn('[voice/llm] 401 rejection — headers arrived:', JSON.stringify(headers));
-    console.warn('[voice/llm] 401 rejection — path:', req.nextUrl.pathname, 'search:', req.nextUrl.search);
+    // Temp diagnostic for Vapi auth change 2026-07-30.
+    const auth = req.headers.get('authorization') ?? '';
+    const first10 = auth.slice(0, 12);
+    const last6  = auth.slice(-6);
+    const expected = process.env.VAPI_SERVER_SECRET ?? '';
+    console.warn('[voice/llm] 401 diag — auth prefix:', first10, 'suffix:', last6, 'len:', auth.length);
+    console.warn('[voice/llm] 401 diag — env secret len:', expected.length, 'first4:', expected.slice(0, 4));
+    console.warn('[voice/llm] 401 diag — path:', req.nextUrl.pathname, 'search:', req.nextUrl.search);
     return jsonError('Unauthorized', 401);
   }
 
