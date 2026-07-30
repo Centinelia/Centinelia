@@ -1,0 +1,122 @@
+{
+  "nia": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.35,
+      "maxTokens": 400,
+      "speed": 0.91,
+      "minChars": 25,
+      "voiceModel": "eleven_turbo_v2_5",
+      "sttModel": "nova-3"
+    }
+  },
+  "noah": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "temperature": 0.6,
+      "maxTokens": 150,
+      "speed": 1,
+      "minChars": 28,
+      "voiceModel": "eleven_turbo_v2_5",
+      "sttModel": "nova-3"
+    }
+  },
+  "nico": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.35,
+      "maxTokens": 110,
+      "speed": 0.98,
+      "minChars": 28,
+      "voiceModel": "eleven_turbo_v2_5",
+      "sttModel": "nova-3"
+    }
+  },
+  "nelia": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.4,
+      "maxTokens": 110,
+      "speed": 0.98,
+      "minChars": 28,
+      "voiceModel": "eleven_turbo_v2_5",
+      "sttModel": "nova-3"
+    }
+  },
+  "nara": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.3,
+      "maxTokens": 150,
+      "speed": 1.02,
+      "minChars": 28,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  },
+  "naia": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.35,
+      "maxTokens": 150,
+      "speed": 1.02,
+      "minChars": 28,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  },
+  "neo": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.2,
+      "maxTokens": 110,
+      "speed": 1.05,
+      "minChars": 25,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  },
+  "nova": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "temperature": 0.7,
+      "maxTokens": 150,
+      "speed": 1.05,
+      "minChars": 25,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  },
+  "nox": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "temperature": 0.15,
+      "maxTokens": 80,
+      "speed": 1.05,
+      "minChars": 25,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  },
+  "niva": {
+    "1": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "temperature": 0.25,
+      "maxTokens": 150,
+      "speed": 1,
+      "minChars": 28,
+      "voiceModel": "eleven_flash_v2_5",
+      "sttModel": "nova-2"
+    }
+  }
+}

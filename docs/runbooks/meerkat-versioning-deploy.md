@@ -3,6 +3,7 @@
 ## Pre-deploy checklist
 
 - [ ] `npx tsc --noEmit` sin errores
+- [ ] `npx tsx scripts/verify-meerkat-configs.ts` → "All 10 meerkat configs match golden snapshot"
 - [ ] `npx tsx scripts/verify-vapi-assistants-snapshot.ts` → "All snapshots match"
 - [ ] `psql "$SUPABASE_DB_URL" -f migrations/20260730_meerkat_versioning.sql` en STAGING primero
 - [ ] `psql "$SUPABASE_DB_URL" -f sql/tests/meerkat_versioning.verify.sql` en STAGING → 10 filas todas en v1
