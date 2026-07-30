@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateLLMInsights, type InsightRec } from '@/lib/ai/insights-engine';
 import { generateRulesInsights }                from '@/lib/ai/insights-rules';
+import { consumeAiOp }                          from '@/lib/ai/ops-guard';
+import { maybeSendQuotaEmail }                  from '@/lib/ai/quota-email';
 
 function currentWeekStart(): string {
   const d = new Date();
@@ -23,12 +25,13 @@ export async function GET(req: NextRequest) {
   const weekAgo     = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000).toISOString();
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  // All active agents
+  // All active agents with weekly_insights opted in
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, role, portal_email')
+    .select('id, business_name, role, portal_email, client_email, agent_name, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features')
     .eq('active', true)
-    .not('portal_email', 'is', null);
+    .not('portal_email', 'is', null)
+    .eq('features->automations->weekly_insights->>enabled', 'true');
 
   if (!agents?.length) return NextResponse.json({ ok: true, totalRecs: 0 });
 
@@ -52,6 +55,16 @@ export async function GET(req: NextRequest) {
     const orgEmail = agent.portal_email as string;
     const rawMode  = modeByOrg[orgEmail] ?? 'llm';
     const mode: 'llm' | 'rules' = rawMode === 'rules' ? 'rules' : 'llm';
+
+    // Ops guard — LLM costs 3 ops, rules costs 0
+    const cost = mode === 'rules' ? 0 : 3;
+    if (cost > 0) {
+      const ops = await consumeAiOp(agent.id, cost);
+      if (!ops.ok) {
+        await maybeSendQuotaEmail(agent, 'weekly_insights');
+        continue;
+      }
+    }
 
     const [thisRes, prevRes] = await Promise.all([
       supabase
@@ -113,6 +126,24 @@ export async function GET(req: NextRequest) {
 
     await supabase.from('agent_recommendations').insert(rows);
     totalRecs += rows.length;
+
+    // Update last_ran_at for this agent (merge-write, never replace whole features object)
+    await supabase
+      .from('voice_agents')
+      .update({
+        features: {
+          ...(agent.features ?? {}),
+          automations: {
+            ...(agent.features?.automations ?? {}),
+            weekly_insights: {
+              ...(agent.features?.automations?.weekly_insights ?? {}),
+              enabled: true,
+              last_ran_at: new Date().toISOString(),
+            },
+          },
+        },
+      })
+      .eq('id', agent.id);
   }
 
   return NextResponse.json({ ok: true, weekStart, totalRecs });
