@@ -289,10 +289,12 @@ Antes de escribir el UI, correr los 3 crons manualmente en el agente demo (`DEMO
 - Re-medir consumo de tareas y actualizar rangos si cambian significativamente
 - Tests actualizados para nueva query
 
-### Deploy 3 — Fase 4 (expansión de learn, 2-3 días)
-- `learn` procesa correos + calls + docs + tasks
-- Ajustar prompt de extracción para múltiples fuentes
-- Actualizar copy del UI para reflejar el scope expandido
-- Re-medir consumo
+### Deploy 3 — Fase 4 (expansión de learn) — LIVE 2026-07-30
+- `learn` procesa correos + calls + docs + tasks (implementado)
+- Prompt extendido con blocks por fuente + tags LLM (implementado)
+- UI copy actualizado: "correos, llamadas, documentos y tareas de las últimas 2 semanas"
+- Ventana ampliada 7d → 14d para alinear con cadencia biweekly
+- Costo estimado 300-600 tareas/mes (vs 200-400 en Deploy 1)
+- Re-medir consumo real en T+2 semanas via ops_log
 
 Total: ~8-11 días de desarrollo dividido en 3 despliegues. Cada uno con rollback trivial (revert de commit).
