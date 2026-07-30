@@ -77,6 +77,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   of_encuestas:            '',
   civic_reports:           '',
   contract_drafts:         '',
+  automations:             '',
 };
 
 const DEFAULT_FEATURES: AgentFeatures = {
@@ -86,6 +87,7 @@ const DEFAULT_FEATURES: AgentFeatures = {
   vertical: undefined, helpdesk: false, is_coordinator: false, meerkat_role_id: '',
   lite_prompt: false, skip_aup: false, skip_recording_notice: false,
   of_encuestas: false, civic_reports: false, contract_drafts: false,
+  automations: undefined,
 };
 
 export default function NuevoEmpleadoPage() {

@@ -43,7 +43,22 @@ export interface AgentFeatures {
   of_encuestas?: boolean;
   civic_reports?: boolean;
   contract_drafts?: boolean;
+
+  // Automation gating
+  automations?: AutomationsConfig;
 }
+
+// ─── Automations ──────────────────────────────────────────────────────────────
+
+export type AutomationName = 'heartbeat' | 'weekly_insights' | 'learn';
+
+export interface AutomationConfig {
+  enabled: boolean;
+  last_ran_at?: string;
+  last_quota_email_sent_at?: string;
+}
+
+export type AutomationsConfig = Partial<Record<AutomationName, AutomationConfig>>;
 
 // ─── Business hours ───────────────────────────────────────────────────────────
 
@@ -258,4 +273,5 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   of_encuestas:            '',
   civic_reports:           '',
   contract_drafts:         '',
+  automations:             '',
 };
