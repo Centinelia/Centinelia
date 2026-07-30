@@ -25,23 +25,36 @@ function shell(body: string) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="supported-color-schemes" content="light">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <style>
+    /* Force white on header even when mobile clients apply dark-mode
+       conversion (Titan Mobile, Gmail iOS, Outlook.com, etc). */
+    .force-white { background: #FFFFFF !important; background-color: #FFFFFF !important; }
+    @media (prefers-color-scheme: dark) {
+      .force-white { background: #FFFFFF !important; background-color: #FFFFFF !important; }
+    }
+    [data-ogsc] .force-white { background: #FFFFFF !important; background-color: #FFFFFF !important; }
+    [data-ogsb] .force-white { background: #FFFFFF !important; background-color: #FFFFFF !important; }
+    u + .body .force-white { background: #FFFFFF !important; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:${C.bg};font-family:Arial,Helvetica,sans-serif">
+<body class="body" style="margin:0;padding:0;background:${C.bg};font-family:Arial,Helvetica,sans-serif">
   <!-- Outer wrapper table — bgcolor survives Gmail/Titan style stripping -->
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};margin:0;padding:0">
     <tr>
       <td align="center" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};padding:32px 16px 48px">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%">
 
-          <!-- Header blanco -->
+          <!-- Header blanco (triple-wrapped anti-dark-mode) -->
           <tr>
-            <td bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0">
+            <td class="force-white" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" class="force-white" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0">
                 <tr>
-                  <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
-                    <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block">
+                  <td class="force-white" align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
+                    <div class="force-white" style="background:#FFFFFF;background-color:#FFFFFF;padding:0;margin:0">
+                      <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block;background:#FFFFFF;background-color:#FFFFFF">
+                    </div>
                   </td>
                 </tr>
               </table>
