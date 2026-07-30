@@ -38,6 +38,10 @@ export interface AgentFeatures {
   meerkat_role_id?: string;
   lite_prompt?: boolean;
   hcp_full?: boolean;
+  // Pin per-agent a una versión específica de MEERKAT_CONFIGS[meerkat_role_id].
+  // Si está seteado, el resolver ignora meerkat_active_versions.active_version
+  // para este agente. Ver docs/superpowers/specs/2026-07-30-model-prompt-versioning-design.md
+  pinned_meerkat_version?: number | null;
   skip_aup?: boolean;
   skip_recording_notice?: boolean;
   of_encuestas?: boolean;
@@ -268,6 +272,7 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   meerkat_role_id:         '',
   lite_prompt:             '',
   hcp_full:                '',
+  pinned_meerkat_version:  '',
   skip_aup:                '',
   skip_recording_notice:   '',
   of_encuestas:            '',
