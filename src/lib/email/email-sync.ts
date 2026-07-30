@@ -13,7 +13,6 @@ type AutoMode = 'observador' | 'off' | 'auto' | 'always';
 
 interface ResolveAutoModeInput {
   trust_stage: number | null;       // voice_agents.trust_stage (1=Observador, 2=Supervisado, 3=Autónomo)
-  auto_reply:  boolean | null;      // voice_agents.auto_reply (legacy override)
   orgDisabled: boolean;             // organizations.auto_mode_disabled_at IS NOT NULL
 }
 
@@ -23,15 +22,17 @@ interface ResolveAutoModeInput {
  *   Stage 2 (Supervisado) → 'off': redacta borrador, siempre a aprobación humana
  *   Stage 3 (Autónomo, default) → 'auto': classifier decide send/human/block
  *
- * Overrides (fuerzan 'off' — redacta pero espera aprobación):
- *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false'
- *   2. orgDisabled (kill switch per-org)
- *   3. auto_reply === false (legacy explicit opt-out)
+ * Overrides (fuerzan 'off'):
+ *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false' (kill switch global)
+ *   2. orgDisabled (kill switch per-org via organizations.auto_mode_disabled_at)
+ *
+ * NOTA: el override legacy `auto_reply === false` fue removido — no podía distinguir
+ * "cliente lo apagó explícitamente" de "migration default lo puso false", lo que causaba
+ * que TODOS los agentes cayeran a 'off' aunque trust_stage=3.
  */
 function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
   if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
   if (input.orgDisabled) return 'off';
-  if (input.auto_reply === false) return 'off';
 
   const stage = input.trust_stage ?? 3;
   if (stage <= 1) return 'observador';
@@ -81,7 +82,6 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const autoMode = resolveAutoMode({
     trust_stage: (agent as Record<string, unknown>).trust_stage as number | null,
-    auto_reply:  (agent as Record<string, unknown>).auto_reply as boolean | null,
     orgDisabled,
   });
 
