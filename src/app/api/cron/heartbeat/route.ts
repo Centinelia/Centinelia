@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { sendEmail } from '@/lib/email/send';
+import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, timezone, heartbeat_config, heartbeat_last_run_at')
+    .select('id, agent_name, business_name, client_email, timezone, heartbeat_config, heartbeat_last_run_at, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features')
     .eq('active', true)
     .not('heartbeat_config', 'is', null);
 
@@ -66,7 +67,10 @@ export async function GET(req: NextRequest) {
 
     // Consume ops
     const opsResult = await consumeAiOp(agent.id, 5);
-    if (!opsResult.ok) continue;
+    if (!opsResult.ok) {
+      await maybeSendQuotaEmail(agent, 'heartbeat');
+      continue;
+    }
 
     // Fetch recent calls for context
     const windowMs  = cfg.frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
