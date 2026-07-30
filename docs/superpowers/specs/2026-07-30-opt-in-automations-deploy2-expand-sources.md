@@ -2,7 +2,7 @@
 
 **Autor:** Claude Opus 4.7 + Nazre
 **Fecha:** 2026-07-30
-**Estado:** Draft — pendiente review de Nazre
+**Estado:** Deploy 2 live 2026-07-30 (autonomy mode)
 **Depende de:** Deploy 1 (spec `2026-07-29-opt-in-automations-design.md`), live desde 2026-07-29
 
 ## Contexto
