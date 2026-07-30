@@ -53,6 +53,10 @@ function authorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   if (!authorized(req)) {
+    const headers: Record<string, string> = {};
+    req.headers.forEach((v, k) => { headers[k] = k.toLowerCase().includes('auth') || k.toLowerCase().includes('secret') ? `<len=${v.length}>` : v; });
+    console.warn('[voice/llm] 401 rejection — headers arrived:', JSON.stringify(headers));
+    console.warn('[voice/llm] 401 rejection — path:', req.nextUrl.pathname, 'search:', req.nextUrl.search);
     return jsonError('Unauthorized', 401);
   }
 
