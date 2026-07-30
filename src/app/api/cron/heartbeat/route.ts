@@ -8,8 +8,11 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { sendEmail } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAgentActivityWindow, renderActivityBlocks, type ActivityCaps } from '@/lib/ai/activity-window';
 
 const anthropic = new Anthropic();
+
+const HEARTBEAT_CAPS: ActivityCaps = { calls: 20, emails: 20, docs: 20, tasks: 20, appts: 20, civic: 20 };
 
 interface HeartbeatConfig {
   enabled:     boolean;
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   for (const agent of agents) {
     const cfg = agent.heartbeat_config as HeartbeatConfig | null;
-    if (!cfg?.enabled || !cfg.task?.trim()) continue;
+    if (!cfg?.enabled) continue;
 
     const tz  = agent.timezone ?? 'America/Monterrey';
     const localNow = new Date(now.toLocaleString('en-US', { timeZone: tz }));
@@ -72,39 +75,34 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Fetch recent calls for context
+    // Fetch multi-source activity window
     const windowMs  = cfg.frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     const windowISO = new Date(now.getTime() - windowMs).toISOString();
 
-    const { data: calls } = await supabase
-      .from('voice_calls')
-      .select('outcome, summary, caller_name, created_at')
-      .eq('agent_id', agent.id)
-      .gte('created_at', windowISO)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    const callsContext = (calls ?? []).length > 0
-      ? (calls ?? []).map(c => `- [${new Date(c.created_at).toLocaleString('es-MX', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true })}] ${c.caller_name ?? 'Llamante'}: ${c.summary ?? c.outcome ?? 'sin resumen'}`).join('\n')
-      : 'No hubo llamadas en este período.';
+    const isGobierno = ((agent as any).features?.vertical) === 'gobierno';
+    const activity = await getAgentActivityWindow(agent.id, windowISO, HEARTBEAT_CAPS, { includeCivic: isGobierno });
+    const activityBlocks = renderActivityBlocks(activity, agent.timezone ?? 'America/Monterrey');
 
     const periodLabel = cfg.frequency === 'weekly' ? 'los últimos 7 días' : 'hoy';
+    const taskLine = cfg.task?.trim()
+      ? `TAREA DE CHECK-IN:\n${cfg.task.trim()}`
+      : `TAREA DE CHECK-IN:\nResume la actividad y flagea lo más importante en no más de 3 puntos accionables.`;
 
-    const prompt = `Eres ${agent.agent_name ?? agent.business_name}, el empleado digital de ${agent.business_name}.
+    const prompt = `Eres ${agent.agent_name ?? agent.business_name}, empleado digital de ${agent.business_name}.
 
-TAREA DE CHECK-IN:
-${cfg.task.trim()}
+${taskLine}
 
-LLAMADAS DE ${periodLabel.toUpperCase()}:
-${callsContext}
+ACTIVIDAD DE ${periodLabel.toUpperCase()}:
 
-Ejecuta la tarea asignada usando la información de las llamadas como base. Sé conciso, directo y enfocado en lo accionable. Máximo 300 palabras.`;
+${activityBlocks}
+
+Ejecuta la tarea usando toda la información como base. Sé conciso, directo y enfocado en resultados de negocio (leads, citas, ventas, escalaciones). Máximo 400 palabras.`;
 
     let result = '';
     try {
       const response = await anthropic.messages.create({
         model:      'claude-haiku-4-5-20251001',
-        max_tokens: 600,
+        max_tokens: 800,
         messages: [{ role: 'user', content: prompt }],
       });
       result = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
