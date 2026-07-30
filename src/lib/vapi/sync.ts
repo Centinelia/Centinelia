@@ -443,7 +443,7 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       'que tenga un excelente día', 'que tenga buena tarde', 'que tenga buena noche',
       'nos vemos', 'nos hablamos', 'estamos en contacto',
       'gracias por llamar', 'gracias por comunicarse',
-      'adiós', 'buenos días', 'buenas tardes', 'buenas noches',
+      'adiós',
       'fue un placer atenderle', 'fue un placer',
     ],
     transcriber: (() => {
@@ -464,7 +464,7 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     backgroundSound: 'office',
     backchannelingEnabled: true,
     backgroundDenoisingEnabled: true,
-    silenceTimeoutSeconds: 10,
+    silenceTimeoutSeconds: 30,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
     recordingEnabled: true,
