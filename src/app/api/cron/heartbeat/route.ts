@@ -8,11 +8,9 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { sendEmail } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
-import { getAgentActivityWindow, renderActivityBlocks, type ActivityCaps } from '@/lib/ai/activity-window';
+import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
 
 const anthropic = new Anthropic();
-
-const HEARTBEAT_CAPS: ActivityCaps = { calls: 20, emails: 20, docs: 20, tasks: 20, appts: 20, civic: 20 };
 
 interface HeartbeatConfig {
   enabled:     boolean;
@@ -79,7 +77,8 @@ export async function GET(req: NextRequest) {
     const windowMs  = cfg.frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     const windowISO = new Date(now.getTime() - windowMs).toISOString();
 
-    const isGobierno = ((agent as any).features?.vertical) === 'gobierno';
+    const vertical = (agent.features as { vertical?: string } | null)?.vertical;
+    const isGobierno = vertical === 'gobierno';
     const activity = await getAgentActivityWindow(agent.id, windowISO, HEARTBEAT_CAPS, { includeCivic: isGobierno });
     const activityBlocks = renderActivityBlocks(activity, agent.timezone ?? 'America/Monterrey');
 

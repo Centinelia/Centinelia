@@ -16,12 +16,16 @@ export interface ActivityWindow {
   docs:   Array<{ id: string; template_type: string | null; title: string | null; created_at: string }>;
   tasks:  Array<{ id: string; title: string | null; result: string | null; status: string | null; completed_at: string | null; created_at: string }>;
   appts:  Array<{ id: string; nombre: string | null; servicio: string | null; fecha: string | null; hora: string | null; status: string | null; created_at: string }>;
-  civic:  Array<{ id: string; folio: string | null; category: string | null; created_at: string }>;
+  civic:  Array<{ id: string; folio: string | null; category: string | null; status: string | null; created_at: string }>;
 }
 
 export interface ActivityOpts {
   includeCivic?: boolean; // only true when vertical === 'gobierno'
 }
+
+export const HEARTBEAT_CAPS: ActivityCaps = { calls: 20, emails: 20, docs: 20, tasks: 20, appts: 20, civic: 20 };
+export const WEEKLY_CAPS: ActivityCaps    = { calls: 30, emails: 30, docs: 30, tasks: 30, appts: 30, civic: 30 };
+export const LEARN_CAPS: ActivityCaps     = { calls: 30, emails: 0,  docs: 30, tasks: 30, appts: 0,  civic: 0  };
 
 export async function getAgentActivityWindow(
   agentId: string,
@@ -65,7 +69,7 @@ export async function getAgentActivityWindow(
       .limit(caps.appts),
     opts.includeCivic
       ? supabase.from('civic_reports')
-          .select('id, folio, category, created_at')
+          .select('id, folio, category, status, created_at')
           .eq('agent_id', agentId)
           .gte('created_at', sinceISO)
           .order('created_at', { ascending: false })
@@ -112,7 +116,7 @@ export function renderActivityBlocks(w: ActivityWindow, tz: string): string {
     blocks.push(`CITAS (${w.appts.length}):\n${w.appts.map(a => `- [${fmt(a.created_at)}] ${a.nombre ?? 'contacto'}: ${a.servicio ?? 'sin servicio'}, ${[a.fecha, a.hora].filter(Boolean).join(' ') || 'sin fecha'}`).join('\n')}`);
   }
   if (w.civic.length) {
-    blocks.push(`FOLIOS (${w.civic.length}):\n${w.civic.map(c => `- [${fmt(c.created_at)}] ${c.folio ?? 'sin folio'}: categoría ${c.category ?? 'sin categoría'}`).join('\n')}`);
+    blocks.push(`FOLIOS (${w.civic.length}):\n${w.civic.map(c => `- [${fmt(c.created_at)}] ${c.folio ?? 'sin folio'}: categoría ${c.category ?? 'sin categoría'}, estado ${c.status ?? '?'}`).join('\n')}`);
   }
 
   return blocks.length ? blocks.join('\n\n') : 'Sin actividad registrada en este período.';

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getGoalsWithProgress } from '@/lib/goals/progress';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getAgentActivityWindow, renderActivityBlocks, type ActivityCaps } from './activity-window';
+import { getAgentActivityWindow, renderActivityBlocks, WEEKLY_CAPS } from './activity-window';
 
 const anthropic = new Anthropic();
 
@@ -19,8 +19,6 @@ export interface CallRow {
   self_eval_notes?:  string | null;
   ces_data?:         Record<string, unknown> | null;
 }
-
-const WEEKLY_CAPS: ActivityCaps = { calls: 30, emails: 30, docs: 30, tasks: 30, appts: 30, civic: 30 };
 
 const CES_DIMS: string[] = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'];
 const DIM_ES: Record<string, string> = {

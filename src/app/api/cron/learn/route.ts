@@ -16,17 +16,15 @@ import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
 import { saveLearnings } from '@/lib/ai/save-learning';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
-import { getAgentActivityWindow, renderActivityBlocks } from '@/lib/ai/activity-window';
-import type { ActivityCaps } from '@/lib/ai/activity-window';
+import { getAgentActivityWindow, renderActivityBlocks, LEARN_CAPS } from '@/lib/ai/activity-window';
+import type { ActivityWindow } from '@/lib/ai/activity-window';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
 
-const LEARN_CAPS: ActivityCaps = { calls: 30, emails: 0, docs: 30, tasks: 30, appts: 0, civic: 0 };
-
 interface ExtractionSource {
   emails:   Array<{ from: string; subject: string; snippet: string }>;
-  activity: { calls: Array<any>; docs: Array<any>; tasks: Array<any> };
+  activity: Pick<ActivityWindow, 'calls' | 'docs' | 'tasks'>;
 }
 
 interface ExtractedWithSource {
@@ -55,28 +53,28 @@ async function extractLearnings(opts: {
 
   // Reuse renderActivityBlocks for calls/docs/tasks (empty sections auto-skipped)
   const activityBlocks = renderActivityBlocks(
-    { calls: activity.calls, emails: [], docs: activity.docs, tasks: activity.tasks, appts: [], civic: [] } as any,
+    { calls: activity.calls, emails: [] as ActivityWindow['emails'], docs: activity.docs, tasks: activity.tasks, appts: [] as ActivityWindow['appts'], civic: [] as ActivityWindow['civic'] },
     timezone,
   );
 
-  const prompt = `Eres un extractor de conocimiento de negocios. Tu tarea es identificar reglas de decision implicitas relevantes para un rol especifico, a partir de la actividad reciente del empleado (correos + llamadas + documentos + tareas).
+  const prompt = `Eres un extractor de conocimiento de negocios. Tu tarea es identificar reglas de decisión implícitas relevantes para un rol específico, a partir de la actividad reciente del empleado (correos + llamadas + documentos + tareas).
 
 NEGOCIO: ${businessName}
 ROL DEL EMPLEADO: ${role || 'Asistente general'}
 ${roleKb ? `\nCONTEXTO DEL ROL:\n${roleKb.slice(0, 600)}\n` : ''}
 ${emailLines ? `CORREOS RECIENTES (${emails.length}):\n${emailLines}\n\n` : ''}${activityBlocks !== 'Sin actividad registrada en este período.' ? `OTRAS FUENTES DE ACTIVIDAD:\n${activityBlocks}\n` : ''}
 INSTRUCCIONES:
-1. Identifica que items son RELEVANTES para el rol; ignora los que no tengan relacion directa.
-2. Extrae reglas de decision que el empleado deberia conocer: como se toman decisiones, que se aprueba, que se escala, que politicas informales existen.
-3. Asigna una confianza del 0 al 1 por cada regla: 1.0 = evidente en multiples items, 0.5 = inferencia razonable.
-4. Marca la FUENTE de cada regla con uno de: "email", "call", "document", "task", segun el tipo de item que la evidencia.
+1. Identifica qué items son RELEVANTES para el rol; ignora los que no tengan relación directa.
+2. Extrae reglas de decisión que el empleado debería conocer: cómo se toman decisiones, qué se aprueba, qué se escala, qué políticas informales existen.
+3. Asigna una confianza del 0 al 1 por cada regla: 1.0 = evidente en múltiples items, 0.5 = inferencia razonable.
+4. Marca la FUENTE de cada regla con uno de: "email", "call", "document", "task", según el tipo de item que la evidencia.
 
 RESTRICCIONES:
 - NO incluyas nombres de personas ni datos de clientes identificables.
-- Solo patrones generales, no casos unicos.
+- Solo patrones generales, no casos únicos.
 - Solo evidencia clara.
 
-Responde UNICAMENTE con JSON valido:
+Responde ÚNICAMENTE con JSON válido:
 {
   "learnings": [
     { "content": "Regla concreta y accionable", "confidence": 0.90, "source": "email" },
@@ -84,7 +82,7 @@ Responde UNICAMENTE con JSON valido:
   ]
 }
 
-Maximo 8 aprendizajes. Si no hay evidencia suficiente, responde con learnings vacio.`;
+Máximo 8 aprendizajes. Si no hay evidencia suficiente, responde con learnings vacío.`;
 
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
