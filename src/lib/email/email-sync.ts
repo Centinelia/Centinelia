@@ -9,6 +9,36 @@ type EmailIntegration = IntegrationRow & {
   last_sync_at: string | null;
 };
 
+type AutoMode = 'off' | 'auto' | 'always';
+
+interface ResolveAutoModeInput {
+  auto_mode:   string | null;       // voice_agents.auto_mode
+  auto_reply:  boolean | null;      // voice_agents.auto_reply (legacy fallback)
+  orgDisabled: boolean;             // organizations.auto_mode_disabled_at IS NOT NULL
+}
+
+/**
+ * Resuelve el modo efectivo del agente. Kill switches en orden descendente:
+ *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false'  → force 'off'
+ *   2. orgDisabled (auto_mode_disabled_at IS NOT NULL) → force 'off'
+ *   3. voice_agents.auto_mode explícito ('off'|'auto'|'always') → usar valor
+ *
+ * Fallback cuando auto_mode IS NULL: usar auto_reply bool legacy
+ *   true  → 'auto'  (safety-net upgrade)
+ *   false → 'off'
+ */
+function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
+  if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
+  if (input.orgDisabled) return 'off';
+
+  if (input.auto_mode === 'off' || input.auto_mode === 'auto' || input.auto_mode === 'always') {
+    return input.auto_mode;
+  }
+
+  // Fallback legacy: map auto_reply bool → AutoMode
+  return input.auto_reply === true ? 'auto' : 'off';
+}
+
 export async function syncAllEmailIntegrations(): Promise<{ synced: number; errors: number }> {
   const supabase = createAdminClient();
 
@@ -39,14 +69,21 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email')
+    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, auto_reply, auto_mode')
     .eq('id', integration.agent_id)
     .single();
 
   const { data: orgData } = agent?.portal_email
-    ? await supabase.from('organizations').select('knowledge_base').eq('portal_email', agent.portal_email).single()
+    ? await supabase.from('organizations').select('knowledge_base, auto_mode_disabled_at').eq('portal_email', agent.portal_email).single()
     : { data: null };
   const knowledge_base = orgData?.knowledge_base ?? null;
+  const orgDisabled    = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
+
+  const autoMode = resolveAutoMode({
+    auto_mode:   (agent as Record<string, unknown>).auto_mode as string | null,
+    auto_reply:  (agent as Record<string, unknown>).auto_reply as boolean | null,
+    orgDisabled,
+  });
 
   if (!agent?.client_email) return;
 
@@ -132,7 +169,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       ownerEmail:        agent.client_email as string,
       portalToken:       agent.portal_token as string,
       portalEmail:       agent.portal_email as string | undefined,
-      autoReply:         integration.auto_reply,
+      autoMode,
       approvalEmail:     (agent as Record<string, unknown>).approval_email as string | null | undefined,
       existingInboxId,
       originalEmailBody,
