@@ -14,13 +14,13 @@ interface AutomationView {
 
 const META: Record<AutomationName, { title: string; desc: string; Icon: typeof Bell }> = {
   heartbeat: {
-    title: 'Reporte diario de llamadas',
-    desc: 'Cada mañana tu empleado te manda un email con resumen de las llamadas del día anterior.',
+    title: 'Reporte diario de actividad',
+    desc: 'Cada mañana tu empleado te manda un email con lo que hizo el día anterior: llamadas, correos, documentos, tareas y citas.',
     Icon: Bell,
   },
   weekly_insights: {
     title: 'Recomendaciones semanales',
-    desc: 'Cada lunes recibes 2 a 4 recomendaciones accionables basadas en tus llamadas de la semana.',
+    desc: 'Cada lunes recibes 2 a 4 recomendaciones basadas en toda la actividad de tu empleado la semana pasada.',
     Icon: Lightbulb,
   },
   learn: {
