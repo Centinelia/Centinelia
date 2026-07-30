@@ -1,0 +1,16 @@
+{
+  "id": "06-plazo-comprometido",
+  "description": "Agente promete fecha de entrega que excede capacidad. Commitment flag.",
+  "opts": {
+    "draft": "Perfecto, nos encargamos del pedido. Le confirmo que entregamos mañana a las 14 horas en su domicilio. Sin costo adicional por urgencia.",
+    "emailFrom": "cliente@constructora.com",
+    "emailSubject": "Pedido urgente - 50 costales cemento",
+    "emailBody": "Necesito 50 costales de cemento gris para mañana temprano. ¿Lo pueden entregar?",
+    "category": "cliente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "human"
+  }
+}

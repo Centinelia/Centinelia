@@ -1,0 +1,16 @@
+{
+  "id": "10-disponibilidad-consulta",
+  "description": "Consulta sobre disponibilidad de producto. Respuesta informativa rutinaria.",
+  "opts": {
+    "draft": "Buen día, consultamos nuestro inventario y confirmo que tenemos 120 unidades disponibles de ese producto. El precio es de 450 pesos por unidad. Podemos despacharlo hoy mismo.",
+    "emailFrom": "proveedor@obra.com",
+    "emailSubject": "¿Tienen disponible vidrio templado 8mm?",
+    "emailBody": "Hola, necesito saber si tienen vidrio templado de 8mm en stock. Necesito cantidad de 30 hojas.",
+    "category": "cliente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "send"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "03-queja-legal-threat",
+  "description": "Cliente molesto con mención de acciones legales. Flag de complaint_tone.",
+  "opts": {
+    "draft": "Lamentamos mucho la molestia causada por el retraso en su entrega. Vamos a investigar el caso de inmediato y le enviaremos un seguimiento completo dentro de 24 horas.",
+    "emailFrom": "abogado@despacho.mx",
+    "emailSubject": "Reclamación formal - entrega no cumplida",
+    "emailBody": "Esta es la tercera vez que reclamo sobre mi pedido. Si no me resuelven hoy mismo, tendré que proceder legalmente y reportarlos ante Profeco.",
+    "category": "urgente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "human"
+  }
+}

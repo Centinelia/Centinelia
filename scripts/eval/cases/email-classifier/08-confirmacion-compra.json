@@ -1,0 +1,16 @@
+{
+  "id": "08-confirmacion-compra",
+  "description": "Confirmación de compra con detalles. Respuesta rutinaria sin compromisos adicionales.",
+  "opts": {
+    "draft": "Perfecto, hemos registrado su compra. Orden #2847392. Recibirá factura al correo. El pago será vía transferencia. Gracias por su compra.",
+    "emailFrom": "compras@arquitectos.com",
+    "emailSubject": "Confirmación de pedido",
+    "emailBody": "Confirmo que quiero comprar 100 metros de tubo PVC 2 pulgadas. Total: 3,500 pesos. ¿Envían factura y cuál es el plazo de pago?",
+    "category": "cliente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "send"
+  }
+}
