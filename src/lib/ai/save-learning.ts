@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { updateVapiAssistant } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
 
-export type LearningSource = 'call' | 'email' | 'chat';
+export type LearningSource = 'call' | 'email' | 'chat' | 'document' | 'task';
 
 // Learnings above this confidence threshold get auto-approved without owner review.
 const AUTO_APPROVE_THRESHOLD = 0.85;
