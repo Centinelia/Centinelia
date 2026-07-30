@@ -19,7 +19,10 @@ const C = {
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
-function shell(body: string) {
+// Exported so ad-hoc emails outside this file (heartbeat cron, quota-email,
+// onboarding submit) can use the same dark-mode-resistant wrapper instead of
+// hand-rolling inline HTML that breaks in Gmail/Titan.
+export function shell(body: string) {
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -89,18 +92,18 @@ function shell(body: string) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function badge(label: string, color = C.accent) {
+export function badge(label: string, color = C.accent) {
   return `<div style="text-align:center;margin-bottom:20px">
     <span style="display:inline-block;background:${color}22;border:1px solid ${color}40;border-radius:20px;padding:6px 16px;color:${color};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">${label}</span>
   </div>`;
 }
 
-function heading(title: string, sub?: string) {
+export function heading(title: string, sub?: string) {
   return `<h1 style="color:${C.text};font-size:22px;font-weight:700;margin:0 0 ${sub ? '6px' : '24px'};text-align:center;line-height:1.3">${title}</h1>
   ${sub ? `<p style="color:${C.sub};font-size:13px;margin:0 0 24px;text-align:center">${sub}</p>` : ''}`;
 }
 
-function infoCard(content: string, accent = false) {
+export function infoCard(content: string, accent = false) {
   const bg = accent ? '#3A2570' : C.cardAccent;  // SOLID — nested cards need solid bg to stay readable
   const bd = accent ? '#5A3AA0' : C.border;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${bg}" style="background:${bg};background-color:${bg};border:1px solid ${bd};border-radius:12px;margin-bottom:16px">
@@ -110,13 +113,13 @@ function infoCard(content: string, accent = false) {
   </table>`;
 }
 
-function btn(label: string, href: string, primary = true) {
+export function btn(label: string, href: string, primary = true) {
   return `<div style="text-align:center;margin:24px 0 8px">
     <a href="${href}" style="display:inline-block;background:${primary ? 'linear-gradient(135deg,#6C3BFF,#9B6DFF)' : 'transparent'};border:${primary ? 'none' : `1.5px solid ${C.border}`};color:${primary ? '#fff' : C.sub};font-size:14px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:12px">${label}</a>
   </div>`;
 }
 
-function sectionLabel(text: string) {
+export function sectionLabel(text: string) {
   return `<p style="color:${C.mute};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 10px">${text}</p>`;
 }
 

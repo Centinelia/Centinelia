@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { sendEmail } from '@/lib/email/send';
+import { sendEmail, shell, heading, infoCard } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
@@ -121,14 +121,14 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
     // Send via email
     if (agent.client_email) {
       const freqLabel = cfg.frequency === 'weekly' ? 'Semanal' : 'Diario';
+      const dateStr = new Date().toLocaleDateString('es-MX', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
       await sendEmail({
         to:      agent.client_email,
         subject: `Check-in ${freqLabel} — ${agent.agent_name ?? agent.business_name}`,
-        html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 16px;background:#120726;color:#e2e8f0">
-<h2 style="color:#EDE8FF;font-size:18px;margin-bottom:8px">Check-in ${freqLabel}</h2>
-<p style="color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:24px">${agent.agent_name ?? 'Tu empleado'} · ${new Date().toLocaleDateString('es-MX', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })}</p>
-<div style="background:rgba(255,255,255,0.055);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:20px;white-space:pre-wrap;font-size:14px;line-height:1.6">${result}</div>
-</div>`,
+        html: shell(
+          heading(`Check-in ${freqLabel}`, `${agent.agent_name ?? 'Tu empleado'} · ${dateStr}`) +
+          infoCard(`<div style="color:#F1EEFF;font-size:14px;line-height:1.7;white-space:pre-wrap">${result}</div>`)
+        ),
       }).catch(console.error);
     }
 

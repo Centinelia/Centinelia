@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (agent?.client_email) {
-    const { sendEmail } = await import('@/lib/email/send');
+    const { sendEmail, shell, heading, infoCard, btn } = await import('@/lib/email/send');
     const baseUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const portalUrl = agent.portal_token
       ? `${baseUrl}/portal/${agent.portal_token}?tab=oficina`
@@ -63,13 +63,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     await sendEmail({
       to:      agent.client_email as string,
       subject: `Onboarding completado: ${body.contact_name ?? 'Contacto'}`,
-      html:    `<!DOCTYPE html><html><body style="background:#120726;margin:0;padding:32px;font-family:Arial,sans-serif">
-        <div style="max-width:480px;margin:0 auto;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;color:#e2e8f0">
-          <h2 style="margin:0 0 12px;font-size:18px">Onboarding enviado</h2>
-          <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:0 0 20px">Un contacto completó su formulario de onboarding en <strong>${agent.business_name}</strong>.</p>
-          <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:10px">Ver en el portal</a>
-        </div>
-      </body></html>`,
+      html:    shell(
+        heading('Onboarding completado', agent.business_name as string) +
+        infoCard(`<p style="color:#F1EEFF;font-size:14px;line-height:1.7;margin:0">Un contacto (<strong>${body.contact_name ?? 'sin nombre'}</strong>) completó su formulario de onboarding.</p>`) +
+        btn('Ver en el portal →', portalUrl)
+      ),
     });
   }
 
