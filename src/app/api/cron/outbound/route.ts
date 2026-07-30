@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
 
   let triggered = 0;
   let failed    = 0;
-  const errors: string[] = [];
 
   for (const contact of contacts) {
     const agent = (contact as any).voice_agents;
@@ -58,17 +57,15 @@ export async function GET(req: NextRequest) {
         });
       } else {
         failed++;
-        errors.push(`${contact.id}: ${(result.error ?? 'unknown').slice(0, 300)}`);
         await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
         console.error(`cron/outbound: failed for contact ${contact.id}:`, result.error);
       }
     } catch (err) {
       failed++;
-      errors.push(`${contact.id}: THROWN ${String(err).slice(0, 300)}`);
       console.error(`cron/outbound: exception for contact ${contact.id}:`, err);
       await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
     }
   }
 
-  return NextResponse.json({ ok: true, triggered, failed, errors });
+  return NextResponse.json({ ok: true, triggered, failed });
 }

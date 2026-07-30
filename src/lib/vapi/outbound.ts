@@ -193,6 +193,12 @@ export async function triggerOutboundCall({
       assistantOverrides: {
         firstMessage,
         model: {
+          // Vapi requires provider + model when overriding messages. Reuse
+          // the meerkat's configured model (falls back to Haiku 4.5). For
+          // custom-llm agents this override still points Vapi back at our
+          // /api/voice/llm endpoint by inheriting the assistant's url.
+          provider: 'anthropic',
+          model:    'claude-haiku-4-5-20251001',
           messages: [{ role: 'system', content: systemPrompt }],
         },
       },
