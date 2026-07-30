@@ -2,22 +2,20 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle, ArrowLeftRight } from 'lucide-react';
-import { AutoModeSelector, type AutoMode } from '@/components/portal/AutoModeSelector';
 
 interface Integration {
   id:           string;
   provider:     'gmail' | 'outlook';
   email:        string;
   auto_reply:   boolean;
-  auto_mode?:   AutoMode;
   agent_id?:    string;
   last_sync_at: string | null;
   needs_reauth: boolean;
 }
 
 // IDs de agentes habilitados durante piloto de auto-mode classifier.
-// Se remueve este gate en Deploy 2 (ver runbook auto-mode-classifier.md).
-// Nia (voz-only) originalmente, Sofía (oficina) es la que realmente prueba el flujo de correo.
+// Su modo de respuesta se configura en /configurar (per-empleado), no aquí.
+// Este componente sólo esconde el toggle legacy de auto_reply para pilot agents.
 const PILOT_AGENT_IDS = new Set(
   [
     process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID,
@@ -230,19 +228,6 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 </a>
               </div>
             )}
-            {connected && !connected.needs_reauth && isPilotAgent(connected.agent_id) && (
-              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--c-border)' }}>
-                <p className="text-xs font-semibold mb-3" style={{ color: 'var(--c-text)' }}>
-                  Modo de respuesta
-                </p>
-                <AutoModeSelector
-                  token={token}
-                  provider={provider.id}
-                  current={(connected.auto_mode as AutoMode | null) ?? (connected.auto_reply ? 'auto' : 'off')}
-                />
-              </div>
-            )}
-
             {connected && !connected.needs_reauth && (
               workspacePanel ? (
                 <div className="mt-3 grid gap-3 items-center" style={{ gridTemplateColumns: '4fr 7fr' }}>

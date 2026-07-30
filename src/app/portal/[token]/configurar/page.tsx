@@ -36,6 +36,17 @@ import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
 import AutomationsSection    from './AutomationsSection';
+import { AutoModeSelector, type AutoMode } from '@/components/portal/AutoModeSelector';
+
+// IDs de agentes habilitados durante piloto de auto-mode classifier.
+// Se remueve este gate en Deploy 2 (ver runbook auto-mode-classifier.md).
+// Nia (voz-only) originalmente, Sofía (oficina) es la que realmente prueba el flujo.
+const PILOT_AGENT_IDS = new Set(
+  [
+    process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID,
+    process.env.NEXT_PUBLIC_SOFIA_DEMO_AGENT_ID,
+  ].filter((id): id is string => Boolean(id)),
+);
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -391,6 +402,22 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                         initialValue={(emailIntegration as any).send_as_email ?? ''}
                       />
                     </div>
+                    {PILOT_AGENT_IDS.has(agent.id) && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest"
+                            style={{ color: 'var(--c-text-4)' }}>
+                            Modo de respuesta
+                          </p>
+                          <InfoTooltip text={'Manual: revisas cada respuesta antes de enviarla.\n\nAuto (recomendado): el empleado envía las respuestas rutinarias sin preguntarte y escala solo los correos con compromisos, quejas graves o datos delicados.\n\nAutomático: envía todo sin verificar (solo si ya validaste el comportamiento del empleado).'} />
+                        </div>
+                        <AutoModeSelector
+                          token={token}
+                          provider={emailIntegration!.provider as string}
+                          current={((agent as { auto_mode?: AutoMode | null }).auto_mode) ?? ((agent as { auto_reply?: boolean }).auto_reply ? 'auto' : 'off')}
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : emailIntegration?.needs_reauth ? (
                   <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
@@ -413,7 +440,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
                   <div className="flex items-center gap-1.5 mb-3">
                     <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprobador de borradores</h3>
-                    <InfoTooltip text={'Cuando el empleado redacta una respuesta de correo, debe esperar aprobación antes de enviarla (si Auto-respuesta está desactivada).\n\nEsta persona recibirá la notificación para revisar y aprobar o descartar el borrador.'} />
+                    <InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />
                   </div>
                   <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
                 </div>
