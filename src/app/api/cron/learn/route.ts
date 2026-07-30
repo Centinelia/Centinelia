@@ -3,6 +3,7 @@
 //
 // Procesa aprendizaje continuo para todos los agentes con correo conectado:
 // - Correos de los últimos 7 días (ventana móvil, no acumulativa)
+// - Llamadas, documentos y tareas completadas del mismo período
 // - Confianza alta (≥0.85) → auto-aprobado y sincronizado a Vapi
 // - Confianza baja → queda en "pendiente" para revisión del dueño
 
@@ -16,61 +17,80 @@ import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
 import { saveLearnings } from '@/lib/ai/save-learning';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
+import { getAgentActivityWindow, renderActivityBlocks } from '@/lib/ai/activity-window';
+import type { ActivityCaps } from '@/lib/ai/activity-window';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
 
-interface ExtractedLearning {
+const LEARN_CAPS: ActivityCaps = { calls: 30, emails: 0, docs: 30, tasks: 30, appts: 0, civic: 0 };
+
+interface ExtractionSource {
+  emails:   Array<{ from: string; subject: string; snippet: string }>;
+  activity: { calls: Array<any>; docs: Array<any>; tasks: Array<any> };
+}
+
+interface ExtractedWithSource {
   content:    string;
   confidence: number;
+  source:     'email' | 'call' | 'document' | 'task';
 }
 
 async function extractLearnings(opts: {
   businessName: string;
   role:         string;
   roleKb:       string;
-  emails:       Array<{ from: string; subject: string; snippet: string }>;
-}): Promise<ExtractedLearning[]> {
-  const { businessName, role, roleKb, emails } = opts;
-  if (!emails.length) return [];
+  timezone:     string;
+  sources:      ExtractionSource;
+}): Promise<ExtractedWithSource[]> {
+  const { businessName, role, roleKb, timezone, sources } = opts;
+  const { emails, activity } = sources;
 
+  const totalItems = emails.length + activity.calls.length + activity.docs.length + activity.tasks.length;
+  if (totalItems === 0) return [];
+
+  // Format email block
   const emailLines = emails.slice(0, 60).map((e, i) =>
     `${i + 1}. Asunto: "${e.subject.slice(0, 100)}" | Preview: "${e.snippet.slice(0, 150)}"`,
   ).join('\n');
 
-  const prompt = `Eres un extractor de conocimiento de negocios. Tu tarea es identificar reglas de decisión implícitas relevantes para un rol específico, a partir de correos de un negocio.
+  // Reuse renderActivityBlocks for calls/docs/tasks (empty sections auto-skipped)
+  const activityBlocks = renderActivityBlocks(
+    { calls: activity.calls, emails: [], docs: activity.docs, tasks: activity.tasks, appts: [], civic: [] } as any,
+    timezone,
+  );
+
+  const prompt = `Eres un extractor de conocimiento de negocios. Tu tarea es identificar reglas de decision implicitas relevantes para un rol especifico, a partir de la actividad reciente del empleado (correos + llamadas + documentos + tareas).
 
 NEGOCIO: ${businessName}
 ROL DEL EMPLEADO: ${role || 'Asistente general'}
-${roleKb ? `\nCONTEXTO DEL ROL:\n${roleKb.slice(0, 600)}` : ''}
-
-CORREOS RECIENTES (${emails.length} correos, últimos 7 días):
-${emailLines}
-
+${roleKb ? `\nCONTEXTO DEL ROL:\n${roleKb.slice(0, 600)}\n` : ''}
+${emailLines ? `CORREOS RECIENTES (${emails.length}):\n${emailLines}\n\n` : ''}${activityBlocks !== 'Sin actividad registrada en este período.' ? `OTRAS FUENTES DE ACTIVIDAD:\n${activityBlocks}\n` : ''}
 INSTRUCCIONES:
-1. Identifica cuáles correos son RELEVANTES para el rol (ignora los que no tienen relación directa)
-2. De los relevantes, extrae reglas de decisión que el empleado debería conocer: cómo se toman decisiones, qué se aprueba, qué se escala, qué políticas informales existen
-3. Asigna una confianza del 0 al 1 por cada regla: 1.0 = evidente en múltiples correos, 0.5 = inferencia razonable
+1. Identifica que items son RELEVANTES para el rol; ignora los que no tengan relacion directa.
+2. Extrae reglas de decision que el empleado deberia conocer: como se toman decisiones, que se aprueba, que se escala, que politicas informales existen.
+3. Asigna una confianza del 0 al 1 por cada regla: 1.0 = evidente en multiples items, 0.5 = inferencia razonable.
+4. Marca la FUENTE de cada regla con uno de: "email", "call", "document", "task", segun el tipo de item que la evidencia.
 
 RESTRICCIONES:
-- NO incluyas nombres de personas ni datos de clientes identificables
-- Solo incluye patrones generales, no casos únicos
-- Solo incluye lo que tenga evidencia clara
+- NO incluyas nombres de personas ni datos de clientes identificables.
+- Solo patrones generales, no casos unicos.
+- Solo evidencia clara.
 
-Responde ÚNICAMENTE con JSON válido:
+Responde UNICAMENTE con JSON valido:
 {
   "learnings": [
-    { "content": "Regla concreta y accionable", "confidence": 0.90 },
-    { "content": "Otra regla", "confidence": 0.65 }
+    { "content": "Regla concreta y accionable", "confidence": 0.90, "source": "email" },
+    { "content": "Otra regla", "confidence": 0.65, "source": "call" }
   ]
 }
 
-Máximo 6 aprendizajes. Si no hay evidencia suficiente, responde con learnings vacío.`;
+Maximo 8 aprendizajes. Si no hay evidencia suficiente, responde con learnings vacio.`;
 
   const response = await anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
-    max_tokens: 800,
-    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 1000,
+    messages:   [{ role: 'user', content: prompt }],
   });
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
@@ -80,17 +100,20 @@ Máximo 6 aprendizajes. Si no hay evidencia suficiente, responde con learnings v
   let parsed: { learnings?: unknown[] };
   try { parsed = JSON.parse(match[0]); } catch { return []; }
 
+  const validSources = new Set(['email', 'call', 'document', 'task']);
   return (parsed.learnings ?? [])
-    .filter((l): l is ExtractedLearning =>
+    .filter((l): l is ExtractedWithSource =>
       typeof (l as any)?.content === 'string' &&
       (l as any).content.trim().length > 10 &&
-      typeof (l as any)?.confidence === 'number',
+      typeof (l as any)?.confidence === 'number' &&
+      validSources.has((l as any)?.source),
     )
     .map(l => ({
       content:    l.content.trim().slice(0, 500),
       confidence: Math.min(1, Math.max(0, l.confidence)),
+      source:     l.source,
     }))
-    .slice(0, 6);
+    .slice(0, 8);
 }
 
 export async function GET(req: NextRequest) {
@@ -118,7 +141,7 @@ export async function GET(req: NextRequest) {
       needs_reauth,
       voice_agents!agent_id!inner (
         id, agent_name, business_name, role, role_knowledge_base, portal_email, active,
-        client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features
+        client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features, timezone
       )
     `)
     .eq('needs_reauth', false)
@@ -154,30 +177,38 @@ export async function GET(req: NextRequest) {
       minutes_reset_date: string | null;
       portal_token: string | null;
       features: any;
+      timezone: string | null;
     } | null;
 
     if (!agent?.active || !agent.portal_email) continue;
 
     try {
-      const ops = await consumeAiOp(agent.id, 30); // learn is heavy; refine post-launch with prod data
+      const ops = await consumeAiOp(agent.id, 40); // learn is heavy (multi-source); refine post-launch with prod data
       if (!ops.ok) {
         await maybeSendQuotaEmail(agent, 'learn');
         continue;
       }
 
       const accessToken = await refreshIfNeeded(integration as unknown as IntegrationRow, supabase);
+      const agentTimezone = agent.timezone ?? 'America/Monterrey';
 
-      const emails = (integration as any).provider === 'gmail'
-        ? await fetchRecentGmail(accessToken, since)
-        : await fetchRecentOutlook(accessToken, since);
-
-      if (!emails.length) continue;
+      // Fetch emails from mail API and agent activity from Supabase in parallel
+      const [emails, activity] = await Promise.all([
+        (integration as any).provider === 'gmail'
+          ? fetchRecentGmail(accessToken, since)
+          : fetchRecentOutlook(accessToken, since),
+        getAgentActivityWindow(agent.id, since.toISOString(), LEARN_CAPS, { includeCivic: false }),
+      ]);
 
       const extracted = await extractLearnings({
         businessName: agent.business_name,
         role:         agent.role ?? '',
         roleKb:       agent.role_knowledge_base ?? '',
-        emails,
+        timezone:     agentTimezone,
+        sources: {
+          emails,
+          activity: { calls: activity.calls, docs: activity.docs, tasks: activity.tasks },
+        },
       });
 
       if (!extracted.length) continue;
@@ -188,7 +219,7 @@ export async function GET(req: NextRequest) {
           portalEmail: agent.portal_email,
           content:     e.content,
           confidence:  e.confidence,
-          source:      'email' as const,
+          source:      e.source, // LLM-tagged, no longer hardcoded 'email'
         })),
       );
 
