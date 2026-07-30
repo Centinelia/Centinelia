@@ -29,37 +29,46 @@ export async function GET(req: NextRequest) {
 
   let triggered = 0;
   let failed    = 0;
+  const errors: string[] = [];
 
   for (const contact of contacts) {
     const agent = (contact as any).voice_agents;
     if (!agent?.active || !agent?.features?.outbound_calls || !agent?.vapi_agent_id) continue;
 
-    const result = await triggerOutboundCall({
-      agent:          agent as any,
-      customerNumber: contact.telefono,
-      customerName:   contact.nombre ?? undefined,
-      motivo:         contact.motivo ?? undefined,
-    });
-
-    if (result.ok) {
-      triggered++;
-      await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
-      await supabase.from('outbound_calls').insert({
-        agent_id:     agent.id,
-        contact_id:   contact.id,
-        telefono:     contact.telefono,
-        nombre:       contact.nombre ?? null,
-        motivo:       contact.motivo ?? null,
-        vapi_call_id: result.callId ?? null,
-        status:       'calling',
-        called_at:    now,
+    try {
+      const result = await triggerOutboundCall({
+        agent:          agent as any,
+        customerNumber: contact.telefono,
+        customerName:   contact.nombre ?? undefined,
+        motivo:         contact.motivo ?? undefined,
       });
-    } else {
+
+      if (result.ok) {
+        triggered++;
+        await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
+        await supabase.from('outbound_calls').insert({
+          agent_id:     agent.id,
+          contact_id:   contact.id,
+          telefono:     contact.telefono,
+          nombre:       contact.nombre ?? null,
+          motivo:       contact.motivo ?? null,
+          vapi_call_id: result.callId ?? null,
+          status:       'calling',
+          called_at:    now,
+        });
+      } else {
+        failed++;
+        errors.push(`${contact.id}: ${(result.error ?? 'unknown').slice(0, 300)}`);
+        await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
+        console.error(`cron/outbound: failed for contact ${contact.id}:`, result.error);
+      }
+    } catch (err) {
       failed++;
+      errors.push(`${contact.id}: THROWN ${String(err).slice(0, 300)}`);
+      console.error(`cron/outbound: exception for contact ${contact.id}:`, err);
       await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
-      console.error(`cron/outbound: failed for contact ${contact.id}:`, result.error);
     }
   }
 
-  return NextResponse.json({ ok: true, triggered, failed });
+  return NextResponse.json({ ok: true, triggered, failed, errors });
 }
