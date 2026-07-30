@@ -13,16 +13,6 @@ interface Integration {
   needs_reauth: boolean;
 }
 
-// IDs de agentes habilitados durante piloto de auto-mode classifier.
-// Su modo de respuesta se configura en /configurar (per-empleado), no aquí.
-// Este componente sólo esconde el toggle legacy de auto_reply para pilot agents.
-const PILOT_AGENT_IDS = new Set(
-  [
-    process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID,
-    process.env.NEXT_PUBLIC_SOFIA_DEMO_AGENT_ID,
-  ].filter((id): id is string => Boolean(id)),
-);
-const isPilotAgent = (agentId?: string): boolean => !!agentId && PILOT_AGENT_IDS.has(agentId);
 
 const PROVIDERS = [
   {
@@ -167,8 +157,9 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {connected && !isPilotAgent(connected.agent_id) && (
-                  // Fallback toggle for non-demo agents
+                {connected && (
+                  // Toggle legacy de auto_reply. El nuevo Modo de respuesta (auto_mode)
+                  // se configura en /portal/[token]/configurar, per-empleado.
                   <button
                     onClick={() => toggleAutoReply(provider.id, connected.auto_reply)}
                     disabled={toggling === provider.id}

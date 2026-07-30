@@ -38,16 +38,6 @@ import SendAsEmailEditor     from '../SendAsEmailEditor';
 import AutomationsSection    from './AutomationsSection';
 import { AutoModeSelector, type AutoMode } from '@/components/portal/AutoModeSelector';
 
-// IDs de agentes habilitados durante piloto de auto-mode classifier.
-// Se remueve este gate en Deploy 2 (ver runbook auto-mode-classifier.md).
-// Nia (voz-only) originalmente, Sofía (oficina) es la que realmente prueba el flujo.
-const PILOT_AGENT_IDS = new Set(
-  [
-    process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID,
-    process.env.NEXT_PUBLIC_SOFIA_DEMO_AGENT_ID,
-  ].filter((id): id is string => Boolean(id)),
-);
-
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
 interface Props {
@@ -402,7 +392,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                         initialValue={(emailIntegration as any).send_as_email ?? ''}
                       />
                     </div>
-                    {PILOT_AGENT_IDS.has(agent.id) && (
+                    {(agent as { auto_mode?: AutoMode | null }).auto_mode != null && (
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <p className="text-[10px] font-semibold uppercase tracking-widest"
@@ -414,7 +404,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                         <AutoModeSelector
                           token={token}
                           provider={emailIntegration!.provider as string}
-                          current={((agent as { auto_mode?: AutoMode | null }).auto_mode) ?? ((agent as { auto_reply?: boolean }).auto_reply ? 'auto' : 'off')}
+                          current={((agent as { auto_mode?: AutoMode | null }).auto_mode) ?? 'off'}
                         />
                       </div>
                     )}
