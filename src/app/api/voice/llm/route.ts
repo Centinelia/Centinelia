@@ -8,5 +8,7 @@
  * variants work regardless of Vapi's current behavior.
  */
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export { POST } from './chat/completions/route';
-export { dynamic, runtime } from './chat/completions/route';
