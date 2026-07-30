@@ -25,7 +25,7 @@ const META: Record<AutomationName, { title: string; desc: string; Icon: typeof B
   },
   learn: {
     title: 'Aprendizaje quincenal',
-    desc: 'Cada 15 días tu empleado aprende reglas de tu negocio observando los correos recientes.',
+    desc: 'Cada 15 días tu empleado aprende reglas de tu negocio observando correos, llamadas, documentos y tareas de las últimas 2 semanas.',
     Icon: Brain,
   },
 };
