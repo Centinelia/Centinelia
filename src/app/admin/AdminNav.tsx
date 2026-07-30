@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server } from 'lucide-react';
+import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch } from 'lucide-react';
 
 const links = [
   { href: '/admin/inicio',       icon: Home,            label: 'Inicio' },
@@ -17,6 +17,7 @@ const links = [
   { href: '/admin/contratos',    icon: FileText,        label: 'Contratos' },
   { href: '/admin/conversacional', icon: Sparkles,      label: 'Estilo conv.' },
   { href: '/admin/dashboard',    icon: Server,          label: 'Infra' },
+  { href: '/admin/versiones',    icon: GitBranch,       label: 'Versiones' },
 ];
 
 export default function AdminNav() {
