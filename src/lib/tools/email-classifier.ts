@@ -1,15 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-let anthropic: Anthropic | null = null;
-
-function getAnthropic(): Anthropic {
-  if (!anthropic) {
-    anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-  }
-  return anthropic;
-}
+const anthropic = new Anthropic();
 
 /**
  * Auto-mode classifier — extiende el patrón de verifier.ts (F4.1) para
@@ -92,7 +83,7 @@ export async function classifyEmailDraft(opts: ClassifyOpts): Promise<AutoModeVe
   const timer = setTimeout(() => controller.abort(), CLASSIFIER_TIMEOUT_MS);
 
   try {
-    const resp = await getAnthropic().messages.create(
+    const resp = await anthropic.messages.create(
       {
         model:      MODEL,
         max_tokens: 250,

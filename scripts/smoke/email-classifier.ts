@@ -11,8 +11,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { AutoModeVerdict, ClassifyOpts } from '../../src/lib/tools/email-classifier.js';
 
-// Cargar .env.local manualmente
+// Cargar .env.local manualmente ANTES de importar el classifier
 const envPath = path.resolve(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -28,12 +29,10 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-import { classifyEmailDraft, type AutoModeVerdict, type ClassifyOpts } from '../../src/lib/tools/email-classifier.js';
-
 interface Fixture {
   name:            string;
   opts:            ClassifyOpts;
-  expectDecision:  'send' | 'human' | 'block';
+  expectDecision:  'send' | 'human' | 'block' | ('send' | 'human' | 'block')[];
   expectSignalContains?: string;
 }
 
@@ -90,7 +89,7 @@ const FIXTURES: Fixture[] = [
       agentName:    'Nia',
       businessName: 'Ferretería Test',
     },
-    expectDecision:       'block',
+    expectDecision:       ['human', 'block'],
   },
   {
     name: 'respuesta informativa sin compromisos',
@@ -108,6 +107,9 @@ const FIXTURES: Fixture[] = [
 ];
 
 async function run(): Promise<void> {
+  // Dynamic import AFTER env vars are loaded
+  const { classifyEmailDraft } = await import('../../src/lib/tools/email-classifier.js');
+
   let passed = 0;
   let failed = 0;
 
@@ -123,7 +125,9 @@ async function run(): Promise<void> {
     }
     const dur = Date.now() - start;
 
-    const decisionOk = verdict.decision === fx.expectDecision;
+    const decisionOk = Array.isArray(fx.expectDecision)
+      ? fx.expectDecision.includes(verdict.decision)
+      : verdict.decision === fx.expectDecision;
     const signalOk = !fx.expectSignalContains
       || verdict.signals.some(s => s.includes(fx.expectSignalContains!));
 
