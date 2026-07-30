@@ -260,7 +260,7 @@ export async function processInboxEmail(params: {
   ownerEmail:        string;
   portalToken:       string;
   portalEmail?:      string;
-  autoMode?:         'off' | 'auto' | 'always';
+  autoMode?:         'observador' | 'off' | 'auto' | 'always';
   approvalEmail?:    string | null;
   existingInboxId?:  string;         // set when this is a reply to an info_requested thread
   originalEmailBody?: string;        // original email body from the info_requested record
@@ -393,7 +393,34 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   };
 
   const supabase  = createAdminClient();
-  const opsResult = await consumeAiOp(agentId, 1);
+
+  // Observador (Trust Stage 1): triage-only. Sin borrador, sin tools, sin classifier.
+  // Categoría + resumen para que el humano lo lea y responda desde cero.
+  if (autoMode === 'observador') {
+    const obsOps = await consumeAiOp(agentId, 1);
+    if (obsOps.ok) {
+      try {
+        const obsResp = await anthropic.messages.create({
+          model:      'claude-haiku-4-5-20251001',
+          max_tokens: 300,
+          system: [{ type: 'text', text: `Eres un triador de correos para ${businessName}. Solo clasifica y resume, NUNCA redactes respuesta.`, cache_control: { type: 'ephemeral' } }],
+          messages: [{ role: 'user', content: `Categorías: proveedor, cliente, urgente, factura, spam, otro.\n\nDe: ${emailFrom}\nAsunto: ${emailSubject}\nCuerpo: ${effectiveBody.slice(0, 2000)}\n\nResponde SOLO JSON: { "category": "...", "summary": "1-2 oraciones en español" }` }],
+        });
+        const txt = obsResp.content.find(b => b.type === 'text');
+        const raw = txt?.type === 'text' ? txt.text.trim() : '{}';
+        const match = raw.match(/\{[\s\S]*\}/);
+        const parsed = match ? JSON.parse(match[0]) as Record<string, unknown> : {};
+        result = validateProcessedEmail({ ...parsed, draft: null, needs_info: false, escalate_to_approver: false });
+      } catch (err) {
+        console.error('[inbox-processor] observador triage error:', err);
+      }
+    }
+    // Fall through to status routing (draft=null → pending)
+  }
+
+  const opsResult = autoMode === 'observador'
+    ? { ok: false as const, error: 'skipped_observador_mode' as const }
+    : await consumeAiOp(agentId, 1);
 
   if (opsResult.ok && portalEmail) {
     // Fetch full agent row for executor context

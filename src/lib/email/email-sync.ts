@@ -9,7 +9,7 @@ type EmailIntegration = IntegrationRow & {
   last_sync_at: string | null;
 };
 
-type AutoMode = 'off' | 'auto' | 'always';
+type AutoMode = 'observador' | 'off' | 'auto' | 'always';
 
 interface ResolveAutoModeInput {
   trust_stage: number | null;       // voice_agents.trust_stage (1=Observador, 2=Supervisado, 3=Autónomo)
@@ -19,14 +19,14 @@ interface ResolveAutoModeInput {
 
 /**
  * Resuelve el modo efectivo del agente. Un solo eje de autonomía: Trust Stage.
- *   Stage 1 (Observador) → 'off': todos los drafts a pending
- *   Stage 2 (Supervisado) → 'off': todos los drafts a pending
+ *   Stage 1 (Observador) → 'observador': triage-only (categoría + resumen), sin borrador
+ *   Stage 2 (Supervisado) → 'off': redacta borrador, siempre a aprobación humana
  *   Stage 3 (Autónomo, default) → 'auto': classifier decide send/human/block
  *
- * Overrides (en orden descendente):
- *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false' → 'off'
- *   2. orgDisabled → 'off' (kill switch per-org)
- *   3. auto_reply === false (legacy explicit opt-out) → 'off'
+ * Overrides (fuerzan 'off' — redacta pero espera aprobación):
+ *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false'
+ *   2. orgDisabled (kill switch per-org)
+ *   3. auto_reply === false (legacy explicit opt-out)
  */
 function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
   if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
@@ -34,8 +34,9 @@ function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
   if (input.auto_reply === false) return 'off';
 
   const stage = input.trust_stage ?? 3;
-  if (stage >= 3) return 'auto';
-  return 'off';
+  if (stage <= 1) return 'observador';
+  if (stage === 2) return 'off';
+  return 'auto';
 }
 
 export async function syncAllEmailIntegrations(): Promise<{ synced: number; errors: number }> {
