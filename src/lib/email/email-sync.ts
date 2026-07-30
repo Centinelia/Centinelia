@@ -12,31 +12,30 @@ type EmailIntegration = IntegrationRow & {
 type AutoMode = 'off' | 'auto' | 'always';
 
 interface ResolveAutoModeInput {
-  auto_mode:   string | null;       // voice_agents.auto_mode
-  auto_reply:  boolean | null;      // voice_agents.auto_reply (legacy fallback)
+  trust_stage: number | null;       // voice_agents.trust_stage (1=Observador, 2=Supervisado, 3=Autónomo)
+  auto_reply:  boolean | null;      // voice_agents.auto_reply (legacy override)
   orgDisabled: boolean;             // organizations.auto_mode_disabled_at IS NOT NULL
 }
 
 /**
- * Resuelve el modo efectivo del agente. Kill switches en orden descendente:
- *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false'  → force 'off'
- *   2. orgDisabled (auto_mode_disabled_at IS NOT NULL) → force 'off'
- *   3. voice_agents.auto_mode explícito ('off'|'auto'|'always') → usar valor
+ * Resuelve el modo efectivo del agente. Un solo eje de autonomía: Trust Stage.
+ *   Stage 1 (Observador) → 'off': todos los drafts a pending
+ *   Stage 2 (Supervisado) → 'off': todos los drafts a pending
+ *   Stage 3 (Autónomo, default) → 'auto': classifier decide send/human/block
  *
- * Fallback cuando auto_mode IS NULL: usar auto_reply bool legacy
- *   true  → 'auto'  (safety-net upgrade)
- *   false → 'off'
+ * Overrides (en orden descendente):
+ *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false' → 'off'
+ *   2. orgDisabled → 'off' (kill switch per-org)
+ *   3. auto_reply === false (legacy explicit opt-out) → 'off'
  */
 function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
   if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
   if (input.orgDisabled) return 'off';
+  if (input.auto_reply === false) return 'off';
 
-  if (input.auto_mode === 'off' || input.auto_mode === 'auto' || input.auto_mode === 'always') {
-    return input.auto_mode;
-  }
-
-  // Fallback legacy: map auto_reply bool → AutoMode
-  return input.auto_reply === true ? 'auto' : 'off';
+  const stage = input.trust_stage ?? 3;
+  if (stage >= 3) return 'auto';
+  return 'off';
 }
 
 export async function syncAllEmailIntegrations(): Promise<{ synced: number; errors: number }> {
@@ -69,7 +68,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, auto_reply, auto_mode')
+    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, auto_reply, trust_stage')
     .eq('id', integration.agent_id)
     .single();
 
@@ -80,7 +79,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
   const orgDisabled    = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
 
   const autoMode = resolveAutoMode({
-    auto_mode:   (agent as Record<string, unknown>).auto_mode as string | null,
+    trust_stage: (agent as Record<string, unknown>).trust_stage as number | null,
     auto_reply:  (agent as Record<string, unknown>).auto_reply as boolean | null,
     orgDisabled,
   });

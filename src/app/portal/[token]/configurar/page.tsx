@@ -36,7 +36,6 @@ import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
 import AutomationsSection    from './AutomationsSection';
-import { AutoModeSelector, type AutoMode } from '@/components/portal/AutoModeSelector';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -392,22 +391,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                         initialValue={(emailIntegration as any).send_as_email ?? ''}
                       />
                     </div>
-                    {(agent as { auto_mode?: AutoMode | null }).auto_mode != null && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest"
-                            style={{ color: 'var(--c-text-4)' }}>
-                            Modo de respuesta
-                          </p>
-                          <InfoTooltip text={'Manual: revisas cada respuesta antes de enviarla.\n\nAuto (recomendado): el empleado envía las respuestas rutinarias sin preguntarte y escala solo los correos con compromisos, quejas graves o datos delicados.\n\nAutomático: envía todo sin verificar (solo si ya validaste el comportamiento del empleado).'} />
-                        </div>
-                        <AutoModeSelector
-                          token={token}
-                          provider={emailIntegration!.provider as string}
-                          current={((agent as { auto_mode?: AutoMode | null }).auto_mode) ?? 'off'}
-                        />
-                      </div>
-                    )}
                   </div>
                 ) : emailIntegration?.needs_reauth ? (
                   <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"

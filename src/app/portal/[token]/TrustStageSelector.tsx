@@ -14,21 +14,21 @@ const STAGES = [
     icon:  Eye,
     name:  'Observador',
     short: 'Solo informa, no actúa',
-    desc:  'Tu empleado responde preguntas y recopila información, pero no ejecuta ninguna acción. Tú o tu equipo toman todas las decisiones.',
+    desc:  'Tu empleado responde preguntas y recopila información, pero no ejecuta ninguna acción. Tú o tu equipo toman todas las decisiones. En correos: no envía respuestas, solo redacta borradores para que tú los apruebes.',
   },
   {
     value: 2,
     icon:  Bell,
     name:  'Supervisado',
     short: 'Actúa y te avisa de cada paso',
-    desc:  'Tu empleado ejecuta sus responsabilidades, pero te notifica inmediatamente por cada acción que toma. Ideal mientras lo conoces.',
+    desc:  'Tu empleado ejecuta sus responsabilidades, pero te notifica inmediatamente por cada acción que toma. En correos: siempre espera tu aprobación antes de enviar.',
   },
   {
     value: 3,
     icon:  Zap,
     name:  'Autónomo',
     short: 'Actúa con criterio propio',
-    desc:  'Tu empleado trabaja de forma independiente dentro de sus límites de autoridad. Solo te avisa cuando algo requiere tu atención.',
+    desc:  'Tu empleado trabaja de forma independiente dentro de sus límites de autoridad. Solo te avisa cuando algo requiere tu atención. En correos: una capa de seguridad revisa cada borrador y escala solo los que involucran compromisos, quejas graves o datos delicados.',
   },
 ];
 
