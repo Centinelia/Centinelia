@@ -70,12 +70,23 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
   });
 
   const supabase = createAdminClient();
+
+  // Re-SELECT fresh features to avoid clobbering concurrent PATCH toggles
+  const { data: freshAgent } = await supabase
+    .from('voice_agents')
+    .select('features')
+    .eq('id', agent.id)
+    .single();
+  const currentFeatures = (freshAgent?.features ?? agent.features ?? {}) as Record<string, any>;
+  const currentAuto     = (currentFeatures.automations ?? {}) as Record<string, any>;
+  const currentEntry    = (currentAuto[automation] ?? {}) as Record<string, any>;
+
   const nextFeatures = {
-    ...(agent.features ?? {}),
+    ...currentFeatures,
     automations: {
-      ...((agent.features?.automations ?? {}) as object),
+      ...currentAuto,
       [automation]: {
-        ...((agent.features?.automations?.[automation] ?? {}) as object),
+        ...currentEntry,
         last_quota_email_sent_at: new Date().toISOString(),
       },
     },

@@ -41,7 +41,7 @@ async function loadAgent(token: string, agentId: string) {
   // Load the target agent and verify it belongs to the same org
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, portal_token, portal_email, ai_ops_used, ai_ops_limit, minutes_reset_date, features, heartbeat_config')
+    .select('id, portal_token, portal_email, ai_ops_used, ai_ops_limit, minutes_reset_date, features, heartbeat_config, heartbeat_last_run_at')
     .eq('id', agentId)
     .single();
   if (!agent) return { agent: null, error: 'Not found', status: 404 };
@@ -92,7 +92,9 @@ export async function GET(
       acc[name] = {
         enabled:              !!auto[name]?.enabled,
         estimated_tareas_mo:  ESTIMATED_TAREAS_MO[name],
-        last_ran_at:          auto[name]?.last_ran_at ?? null,
+        last_ran_at:          name === 'heartbeat'
+          ? (auto.heartbeat?.last_ran_at ?? (agent as any).heartbeat_last_run_at ?? null)
+          : (auto[name]?.last_ran_at ?? null),
         requires_email:       name === 'learn',
         available:            name === 'learn' ? emailConnected : true,
       };

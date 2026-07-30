@@ -128,15 +128,25 @@ export async function GET(req: NextRequest) {
     totalRecs += rows.length;
 
     // Update last_ran_at for this agent (merge-write, never replace whole features object)
+    // Re-SELECT fresh features to avoid clobbering concurrent PATCH toggles
+    const { data: freshAgent } = await supabase
+      .from('voice_agents')
+      .select('features')
+      .eq('id', agent.id)
+      .single();
+    const currentFeatures = (freshAgent?.features ?? agent.features ?? {}) as Record<string, any>;
+    const currentAuto     = (currentFeatures.automations ?? {}) as Record<string, any>;
+    const currentEntry    = (currentAuto.weekly_insights ?? {}) as Record<string, any>;
+
     await supabase
       .from('voice_agents')
       .update({
         features: {
-          ...(agent.features ?? {}),
+          ...currentFeatures,
           automations: {
-            ...(agent.features?.automations ?? {}),
+            ...currentAuto,
             weekly_insights: {
-              ...(agent.features?.automations?.weekly_insights ?? {}),
+              ...currentEntry,
               enabled: true,
               last_ran_at: new Date().toISOString(),
             },
