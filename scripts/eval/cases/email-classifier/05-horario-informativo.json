@@ -1,0 +1,16 @@
+{
+  "id": "05-horario-informativo",
+  "description": "Respuesta informativa sobre horario de atención. Patrón routine.",
+  "opts": {
+    "draft": "Nuestro horario de atención es lunes a viernes de 9:00 a 18:00 horas. Los sábados atendemos de 9:00 a 14:00. Domingos cerrado. Quedo atento a cualquier duda.",
+    "emailFrom": "consulta@ejemplo.com",
+    "emailSubject": "¿Qué horario tienen de atención?",
+    "emailBody": "Buenas tardes, quería saber su horario de atención al público y si atienden fines de semana.",
+    "category": "cliente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "send"
+  }
+}

@@ -2,15 +2,22 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { AutoModeSelector, type AutoMode } from '@/components/portal/AutoModeSelector';
 
 interface Integration {
   id:           string;
   provider:     'gmail' | 'outlook';
   email:        string;
   auto_reply:   boolean;
+  auto_mode?:   AutoMode;
+  agent_id?:    string;
   last_sync_at: string | null;
   needs_reauth: boolean;
 }
+
+// ID del agente demo Nia Monterrey — el ÚNICO habilitado durante piloto.
+// Se remueve este gate en Deploy 2 (ver runbook auto-mode-classifier.md).
+const NIA_DEMO_ID = process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID ?? '';
 
 const PROVIDERS = [
   {
@@ -155,35 +162,37 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {connected ? (
-                  <>
-                    <button
-                      onClick={() => toggleAutoReply(provider.id, connected.auto_reply)}
-                      disabled={toggling === provider.id}
-                      title={connected.auto_reply ? 'Respuesta automática activa' : 'Respuesta automática desactivada'}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
-                      style={connected.auto_reply
-                        ? { background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }
-                        : { background: 'var(--c-bg)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
-                    >
-                      {toggling === provider.id
-                        ? <Loader2 size={12} className="animate-spin" />
-                        : connected.auto_reply ? <Zap size={12} /> : <ZapOff size={12} />}
-                      Auto-respuesta
-                    </button>
-                    <button
-                      onClick={() => disconnect(provider.id)}
-                      disabled={disconnecting === provider.id}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10 disabled:opacity-50"
-                      style={{ color: 'var(--c-text-3)' }}
-                      title="Desconectar"
-                    >
-                      {disconnecting === provider.id
-                        ? <Loader2 size={14} className="animate-spin" />
-                        : <Trash2 size={14} />}
-                    </button>
-                  </>
-                ) : (
+                {connected && connected.agent_id !== NIA_DEMO_ID && (
+                  // Fallback toggle for non-demo agents
+                  <button
+                    onClick={() => toggleAutoReply(provider.id, connected.auto_reply)}
+                    disabled={toggling === provider.id}
+                    title={connected.auto_reply ? 'Respuesta automática activa' : 'Respuesta automática desactivada'}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+                    style={connected.auto_reply
+                      ? { background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }
+                      : { background: 'var(--c-bg)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+                  >
+                    {toggling === provider.id
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : connected.auto_reply ? <Zap size={12} /> : <ZapOff size={12} />}
+                    Auto-respuesta
+                  </button>
+                )}
+                {connected && (
+                  <button
+                    onClick={() => disconnect(provider.id)}
+                    disabled={disconnecting === provider.id}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                    style={{ color: 'var(--c-text-3)' }}
+                    title="Desconectar"
+                  >
+                    {disconnecting === provider.id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Trash2 size={14} />}
+                  </button>
+                )}
+                {!connected && (
                   <a
                     href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
@@ -214,6 +223,19 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 </a>
               </div>
             )}
+            {connected && !connected.needs_reauth && connected.agent_id === NIA_DEMO_ID && (
+              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--c-border)' }}>
+                <p className="text-xs font-semibold mb-3" style={{ color: 'var(--c-text)' }}>
+                  Modo de respuesta
+                </p>
+                <AutoModeSelector
+                  token={token}
+                  provider={provider.id}
+                  current={(connected.auto_mode as AutoMode | null) ?? (connected.auto_reply ? 'auto' : 'off')}
+                />
+              </div>
+            )}
+
             {connected && !connected.needs_reauth && (
               workspacePanel ? (
                 <div className="mt-3 grid gap-3 items-center" style={{ gridTemplateColumns: '4fr 7fr' }}>

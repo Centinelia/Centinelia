@@ -7,6 +7,7 @@ import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
 import { getQBClient } from '@/lib/qb/client';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
+import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-classifier';
 
 const anthropic = new Anthropic();
 
@@ -259,7 +260,7 @@ export async function processInboxEmail(params: {
   ownerEmail:        string;
   portalToken:       string;
   portalEmail?:      string;
-  autoReply?:        boolean;
+  autoMode?:         'off' | 'auto' | 'always';
   approvalEmail?:    string | null;
   existingInboxId?:  string;         // set when this is a reply to an info_requested thread
   originalEmailBody?: string;        // original email body from the info_requested record
@@ -269,7 +270,7 @@ export async function processInboxEmail(params: {
     agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
     emailBody, attachments, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
-    autoReply, approvalEmail, existingInboxId, originalEmailBody, sendReplyFn,
+    autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody, sendReplyFn,
   } = params;
 
   // If this is a reply to an info_requested thread, prepend the original context
@@ -494,6 +495,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   // Determine final status and what to store in ai_draft
   let finalStatus: string;
   let finalDraft: string | null;
+  let autoModeVerdict: AutoModeVerdict | null = null;
 
   if (result.category === 'spam') {
     finalStatus = 'skipped';
@@ -504,10 +506,39 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   } else if (result.needsInfo && !result.escalateToApprover) {
     finalStatus = 'info_requested';
     finalDraft  = result.requestToSender;
-  } else if (result.draft && autoReply && sendReplyFn) {
+  } else if (!result.draft) {
+    finalStatus = 'pending';
+    finalDraft  = null;
+  } else if (autoMode === 'always' && sendReplyFn) {
+    // Bright-line: always bypasses classifier
     finalStatus = 'auto_replied';
     finalDraft  = result.draft;
+  } else if (autoMode === 'auto' && sendReplyFn) {
+    autoModeVerdict = await classifyEmailDraft({
+      draft:           result.draft,
+      emailFrom,
+      emailSubject,
+      emailBody:       effectiveBody,
+      category:        result.category,
+      agentName,
+      businessName,
+      businessContext: knowledgeBase,
+      agentRole,
+    });
+
+    if (autoModeVerdict.decision === 'send') {
+      finalStatus = 'auto_replied';
+      finalDraft  = result.draft;
+    } else if (autoModeVerdict.decision === 'block') {
+      finalStatus = 'escalated';
+      finalDraft  = result.draft;
+    } else {
+      // decision === 'human' — includes classifier_error signals (fail-closed)
+      finalStatus = 'pending';
+      finalDraft  = result.draft;
+    }
   } else {
+    // autoMode === 'off' or no sendReplyFn
     finalStatus = 'pending';
     finalDraft  = result.draft;
   }
@@ -527,6 +558,9 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         invoice_data:        result.invoiceData,
         invoice_valid:       result.invoiceValid,
         invoice_discrepancy: result.invoiceDiscrepancy,
+        auto_mode_decision:  autoModeVerdict?.decision ?? null,
+        auto_mode_reason:    autoModeVerdict?.reason ?? null,
+        auto_mode_signals:   autoModeVerdict?.signals ?? [],
       })
       .eq('id', existingInboxId)
       .select('id, approval_token')
@@ -552,6 +586,9 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         invoice_valid:       result.invoiceValid,
         invoice_discrepancy: result.invoiceDiscrepancy,
         status:              finalStatus,
+        auto_mode_decision:  autoModeVerdict?.decision ?? null,
+        auto_mode_reason:    autoModeVerdict?.reason ?? null,
+        auto_mode_signals:   autoModeVerdict?.signals ?? [],
       })
       .select('id, approval_token')
       .single();
@@ -585,10 +622,46 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       console.error('[ops/inbox-processor] info_requested send failed:', err)
     );
 
-  } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn) {
-    await sendReplyFn(result.draft).catch(err =>
-      console.error('[ops/inbox-processor] auto_reply send failed:', err)
-    );
+  } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
+    try {
+      await sendReplyFn(result.draft);
+    } catch (err) {
+      console.error('[ops/inbox-processor] auto_reply send failed:', err);
+      // Degrade to pending so a human sees it
+      await supabase
+        .from('ops_inbox')
+        .update({
+          status:            'pending',
+          auto_mode_signals: [...(autoModeVerdict?.signals ?? []), 'send_failed'],
+        })
+        .eq('id', item.id);
+
+      // Fallback: send approval email
+      const approveUrl = `${baseUrl}/api/ops/approve/${item.approval_token}`;
+      const rejectUrl  = `${baseUrl}/api/ops/reject/${item.approval_token}`;
+      const html = approvalEmailHtml({
+        businessName,
+        emailFrom,
+        emailSubject,
+        category:           result.category,
+        categoryLabel:      CATEGORY_LABELS[result.category] ?? result.category,
+        summary:            result.summary,
+        draft:              result.draft,
+        itemType:           looksLikeInvoice ? 'invoice' : 'email',
+        invoiceData:        result.invoiceData,
+        invoiceValid:       result.invoiceValid,
+        invoiceDiscrepancy: result.invoiceDiscrepancy,
+        approveUrl,
+        rejectUrl,
+        portalUrl,
+        attachmentCount:    attachments.length,
+      });
+      await sendEmail({
+        to:      notifyTo,
+        subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} - envío falló, requiere aprobación`,
+        html,
+      });
+    }
 
   } else if (finalStatus === 'pending') {
     const approveUrl = `${baseUrl}/api/ops/approve/${item.approval_token}`;

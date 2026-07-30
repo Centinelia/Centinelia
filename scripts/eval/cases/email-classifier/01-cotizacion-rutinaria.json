@@ -1,0 +1,16 @@
+{
+  "id": "01-cotizacion-rutinaria",
+  "description": "Acuse de recibo de cotización solicitada. Respuesta informativa sin compromisos.",
+  "opts": {
+    "draft": "Gracias por su solicitud. Adjunto encontrará la cotización que nos pidió. El precio es válido por 30 días hábiles. Cualquier duda quedo pendiente. Saludos.",
+    "emailFrom": "cliente@construcciones.com",
+    "emailSubject": "Solicitud de cotización - tornillos hex M8",
+    "emailBody": "Buen día, necesito cotización de tornillos hex M8 inoxidables. Cantidad: 500 piezas. ¿Cuál es el precio unitario y tiempo de entrega?",
+    "category": "cliente",
+    "agentName": "Nia",
+    "businessName": "Ferretería Del Centro"
+  },
+  "expected": {
+    "decision": "send"
+  }
+}
