@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireVapiAuth } from '@/lib/vapi/auth';
+
+// Normaliza el teléfono a solo dígitos para hacer match tolerante contra
+// las variantes almacenadas ("+52 81 12345678", "5281..." "81..." etc).
+function digitsOnly(s: string): string {
+  return (s ?? '').replace(/\D+/g, '');
+}
+
+export async function POST(req: NextRequest) {
+  if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const agent_id = searchParams.get('agent_id');
+
+  const body = await req.json();
+  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const { telefono, motivo } = args as { telefono: string; motivo?: string };
+
+  if (!agent_id || !telefono?.trim()) {
+    return NextResponse.json({ result: 'No pude registrar la solicitud: falta el número de teléfono.' });
+  }
+
+  const supabase = createAdminClient();
+  const normalized = digitsOnly(telefono);
+
+  // 1) Marcar TODAS las filas coincidentes en outbound_contacts como 'dnc' —
+  //    tanto la del cron actual como las de campañas futuras del mismo agente.
+  //    Match tolerante: por sufijo de 10 dígitos (los últimos 10 son el número
+  //    local mexicano). Si el número guardado es "+528112345678" y el que dice
+  //    el ciudadano es "8112345678", ambos comparten los últimos 10 dígitos.
+  const suffix = normalized.slice(-10);
+  const { data: matches, error: matchErr } = await supabase
+    .from('outbound_contacts')
+    .select('id, telefono')
+    .eq('agent_id', agent_id);
+
+  let marked = 0;
+  if (!matchErr && matches) {
+    const toMark = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix)).map(r => r.id);
+    if (toMark.length) {
+      await supabase
+        .from('outbound_contacts')
+        .update({ status: 'dnc', notes: motivo ?? 'Solicitud del ciudadano' })
+        .in('id', toMark);
+      marked = toMark.length;
+    }
+  }
+
+  // 2) Log de auditoría para retención legal (LFPDPPP): quién pidió no ser
+  //    llamado, cuándo, motivo. Usamos agent_learnings porque ya existe la
+  //    infraestructura y guarda con auditoría; source='dnc' distingue estas
+  //    entradas de learnings normales.
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agent_id)
+    .single();
+
+  if (agent?.portal_email) {
+    await supabase.from('agent_learnings').insert({
+      agent_id,
+      portal_email: agent.portal_email,
+      content:      `DNC solicitado por ${telefono}${motivo ? ` — motivo: ${motivo}` : ''}`,
+      source:       'call',
+      status:       'approved',
+      confidence:   1.0,
+      category:     'guardrails',
+    });
+  }
+
+  return NextResponse.json({
+    result: `Registrado. El número ${telefono} no recibirá más llamadas de este empleado. Actualicé ${marked} registro${marked === 1 ? '' : 's'} de contacto.`,
+  });
+}

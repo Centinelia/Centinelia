@@ -136,7 +136,7 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
 // ─── Voice tool distribution by meerkat role ─────────────────────────────────
 
 export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
-  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'consultar_agente', 'delegar_tarea', 'reportar_falla'],
+  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar'],
   noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'search_leads', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'consultar_agente', 'reportar_falla'],
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'reportar_falla'],
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'consultar_agente', 'reportar_falla'],
@@ -241,6 +241,8 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
 
     case 'reportar_falla': return { type: 'function', function: { name: 'reportar_falla', description: 'Envía un reporte de falla o irregularidad al equipo técnico de Centinelia. Úsalo cuando: (1) detectes un comportamiento inesperado en ti mismo, (2) el usuario reporte que algo no funcionó correctamente en llamadas anteriores, (3) encuentres un error del sistema, datos incorrectos o una limitación que impida tu trabajo. No lo uses para quejas del negocio del usuario, solo para fallas técnicas del sistema Centinelia.', parameters: { type: 'object', properties: { tipo: { type: 'string', description: 'Categoría de la falla: "Bug de sistema", "Comportamiento inesperado", "Datos incorrectos", "Limitación técnica" u "Otro".' }, descripcion: { type: 'string', description: 'Descripción clara de la falla: qué ocurrió, cuándo, y cuál debería ser el comportamiento correcto.' }, contexto: { type: 'string', description: 'Contexto relevante de la conversación o llamada donde se detectó la falla (opcional).' } }, required: ['tipo', 'descripcion'] } }, server: server('reportar-falla') };
 
+    case 'marcar_no_llamar': return { type: 'function', function: { name: 'marcar_no_llamar', description: 'Marca un número de teléfono como "no volver a llamar". Úsala inmediatamente cuando el ciudadano diga que no quiere recibir más llamadas ("no me llamen", "quítenme de la lista", "no me interesa"). Los futuros crons de llamadas salientes respetarán esta marca. Después de llamar esta herramienta, termina la llamada con cortesía sin insistir.', parameters: { type: 'object', properties: { telefono: { type: 'string', description: 'Número de teléfono del ciudadano tal como está en el sistema (con o sin lada). Se normaliza automáticamente en el servidor.' }, motivo: { type: 'string', description: 'Motivo breve de la solicitud (ej: "no interesado", "número equivocado", "ya no vive aquí"). Opcional.' } }, required: ['telefono'] } }, server: server('marcar-no-llamar') };
+
     default: return null;
   }
 }
@@ -286,6 +288,7 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
       tools.push(buildToolDef('delegar_tarea',    agent, server)!);
     }
     if (agent.features.of_encuestas) tools.push(buildToolDef('registrar_encuesta', agent, server)!);
+    if (agent.features.outbound_calls) tools.push(buildToolDef('marcar_no_llamar', agent, server)!);
     tools.push(buildToolDef('reportar_falla', agent, server)!);
   }
 
