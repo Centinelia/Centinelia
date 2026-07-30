@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search } from 'lucide-react';
+import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 
 interface InboxItem {
@@ -20,6 +21,9 @@ interface InboxItem {
   attachments:        Array<{ name: string; url: string; type: string }>;
   sent_at:            string | null;
   created_at:         string;
+  auto_mode_decision: string | null;
+  auto_mode_reason:   string | null;
+  auto_mode_flagged_at: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -192,7 +196,31 @@ export default function OpsInboxSection({ token }: { token: string }) {
                       Factura
                     </span>
                   )}
-                  {!isPending && (
+                  {item.auto_mode_decision === 'send' && item.status === 'auto_replied' && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#0F5132] bg-[#D1E7DD] border border-[#0F5132]/20 rounded-full px-2 py-0.5"
+                      title={item.auto_mode_reason ?? 'Enviado sin humano por el modo Auto'}
+                    >
+                      Enviado automático
+                    </span>
+                  )}
+                  {item.auto_mode_decision === 'block' && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#842029] bg-[#F8D7DA] border border-[#842029]/20 rounded-full px-2 py-0.5"
+                      title={item.auto_mode_reason ?? 'Bloqueado por red de seguridad'}
+                    >
+                      Bloqueado
+                    </span>
+                  )}
+                  {item.auto_mode_flagged_at && (
+                    <span
+                      className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-[#664D03] bg-[#FFF3CD] border border-[#664D03]/20 rounded-full px-2 py-0.5"
+                      title="Marcado como envío incorrecto"
+                    >
+                      Reportado
+                    </span>
+                  )}
+                  {!isPending && !item.auto_mode_flagged_at && (
                     <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{STATUS_LABELS[item.status]}</span>
                   )}
                 </div>
@@ -280,6 +308,37 @@ export default function OpsInboxSection({ token }: { token: string }) {
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                       style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
                       <X size={12} />Rechazar
+                    </button>
+                  </div>
+                )}
+
+                {/* Reportar mal envío button */}
+                {item.auto_mode_decision === 'send' && !item.auto_mode_flagged_at && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const reason = window.prompt('¿Por qué no debió enviarse? (opcional)');
+                        if (reason === null) return; // User cancelled
+
+                        try {
+                          const res = await fetch(`/api/portal/${token}/ops-inbox/${item.id}/flag-auto-mode`, {
+                            method:  'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body:    JSON.stringify({ flagged: true, reason: reason || undefined }),
+                          });
+                          if (!res.ok) throw new Error();
+                          toast.success('Anotado. El empleado aprenderá de este caso.');
+                          // Refresh the items list to show the "Reportado" badge
+                          load();
+                        } catch {
+                          toast.error('No se pudo reportar. Intenta de nuevo.');
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+                      style={{ color: '#842029', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      <AlertTriangle size={12} />
+                      Reportar mal envío
                     </button>
                   </div>
                 )}
