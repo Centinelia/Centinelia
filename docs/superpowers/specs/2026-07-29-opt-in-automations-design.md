@@ -2,7 +2,7 @@
 
 **Autor:** Claude Opus 4.7 + Nazre
 **Fecha:** 2026-07-29
-**Estado:** Draft — pendiente review de Nazre
+**Estado:** Deploy 1 live 2026-07-29. Deploy 2 y 3 pendientes.
 
 ## Contexto
 
