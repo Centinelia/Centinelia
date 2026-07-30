@@ -71,9 +71,13 @@ function onboardingWelcomeHtml(opts: {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:${BG};font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px 48px">
-    <div style="background:#EDE8FF;border-radius:16px 16px 0 0;padding:20px 32px;text-align:center;border-bottom:1px solid rgba(108,59,255,0.15)">
-      <img src="${LOGO}" alt="Centinelia" width="200" style="width:200px;height:auto;display:inline-block">
-    </div>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
+      <tr>
+        <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
+          <img src="${LOGO}" alt="Centinelia" width="200" style="width:200px;height:auto;display:inline-block">
+        </td>
+      </tr>
+    </table>
     <div style="background:${CARD};border:1px solid ${BORDER};border-top:none;border-radius:0 0 16px 16px;padding:32px">
       <div style="text-align:center;margin-bottom:20px">
         <span style="display:inline-block;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:20px;padding:6px 16px;color:#22c55e;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Onboarding</span>
@@ -134,9 +138,13 @@ function onboardingStatusHtml(opts: {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:${BG};font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px 48px">
-    <div style="background:#EDE8FF;border-radius:16px 16px 0 0;padding:20px 32px;text-align:center;border-bottom:1px solid rgba(108,59,255,0.15)">
-      <img src="${LOGO}" alt="Centinelia" width="200" style="width:200px;height:auto;display:inline-block">
-    </div>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
+      <tr>
+        <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
+          <img src="${LOGO}" alt="Centinelia" width="200" style="width:200px;height:auto;display:inline-block">
+        </td>
+      </tr>
+    </table>
     <div style="background:${CARD};border:1px solid ${BORDER};border-top:none;border-radius:0 0 16px 16px;padding:32px">
       <h1 style="color:${TEXT};font-size:20px;font-weight:700;margin:0 0 6px;text-align:center">Actualización de tu onboarding</h1>
       <p style="color:${SUB};font-size:13px;margin:0 0 24px;text-align:center">${businessName}</p>

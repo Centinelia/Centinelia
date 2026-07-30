@@ -26,10 +26,14 @@ function shell(body: string) {
 <body style="margin:0;padding:0;background:${C.bg};font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 16px 48px">
 
-    <!-- Header lavanda -->
-    <div style="background:${C.header};border-radius:16px 16px 0 0;padding:20px 32px;text-align:center;border-bottom:1px solid rgba(108,59,255,0.15)">
-      <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block">
-    </div>
+    <!-- Header blanco (dark-mode resistant vía table + bgcolor) -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
+      <tr>
+        <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
+          <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block">
+        </td>
+      </tr>
+    </table>
 
     <!-- Body oscuro -->
     <div style="background:${C.card};border:1px solid ${C.border};border-top:none;border-radius:0 0 16px 16px;padding:32px">
