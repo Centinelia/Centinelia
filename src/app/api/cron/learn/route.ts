@@ -14,6 +14,8 @@ import { refreshIfNeeded } from '@/lib/connectors';
 import type { IntegrationRow } from '@/lib/connectors';
 import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
 import { saveLearnings } from '@/lib/ai/save-learning';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
@@ -102,7 +104,9 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Get all active agents with a valid email integration
+  // Get all active agents with a valid email integration.
+  // !inner ensures PostgREST uses INNER JOIN so the .eq() on the joined column
+  // filters rows at the SQL level rather than just filtering nested objects.
   const { data: integrations } = await supabase
     .from('email_integrations')
     .select(`
@@ -112,13 +116,22 @@ export async function GET(req: NextRequest) {
       refresh_token,
       token_expiry,
       needs_reauth,
-      voice_agents!agent_id (
-        id, agent_name, business_name, role, role_knowledge_base, portal_email, active
+      voice_agents!agent_id!inner (
+        id, agent_name, business_name, role, role_knowledge_base, portal_email, active,
+        client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features
       )
     `)
-    .eq('needs_reauth', false);
+    .eq('needs_reauth', false)
+    .eq('voice_agents.features->automations->learn->>enabled', 'true');
 
-  if (!integrations?.length) {
+  // Belt-and-suspenders: re-filter in memory in case the JSONB filter on the
+  // joined column silently fails (PostgREST version mismatch, etc.).
+  const filtered = (integrations ?? []).filter(row => {
+    const agent = (row as any).voice_agents;
+    return agent?.features?.automations?.learn?.enabled === true;
+  });
+
+  if (!filtered.length) {
     return NextResponse.json({ ok: true, processed: 0 });
   }
 
@@ -126,7 +139,7 @@ export async function GET(req: NextRequest) {
   let processed = 0;
   let totalSaved = 0;
 
-  for (const integration of integrations) {
+  for (const integration of filtered) {
     const agent = (integration as any).voice_agents as {
       id: string;
       agent_name: string | null;
@@ -135,11 +148,23 @@ export async function GET(req: NextRequest) {
       role_knowledge_base: string | null;
       portal_email: string | null;
       active: boolean;
+      client_email: string | null;
+      ai_ops_used: number;
+      ai_ops_limit: number;
+      minutes_reset_date: string | null;
+      portal_token: string | null;
+      features: any;
     } | null;
 
     if (!agent?.active || !agent.portal_email) continue;
 
     try {
+      const ops = await consumeAiOp(agent.id, 30); // learn is heavy; refine post-launch with prod data
+      if (!ops.ok) {
+        await maybeSendQuotaEmail(agent, 'learn');
+        continue;
+      }
+
       const accessToken = await refreshIfNeeded(integration as unknown as IntegrationRow, supabase);
 
       const emails = (integration as any).provider === 'gmail'
@@ -169,6 +194,23 @@ export async function GET(req: NextRequest) {
 
       totalSaved += saved;
       processed++;
+
+      await supabase
+        .from('voice_agents')
+        .update({
+          features: {
+            ...((agent as any).features ?? {}),
+            automations: {
+              ...((agent as any).features?.automations ?? {}),
+              learn: {
+                ...((agent as any).features?.automations?.learn ?? {}),
+                enabled: true,
+                last_ran_at: new Date().toISOString(),
+              },
+            },
+          },
+        })
+        .eq('id', agent.id);
     } catch (err) {
       console.error(`[cron/learn] agent ${agent.id} failed:`, err);
     }

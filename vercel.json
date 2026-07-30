@@ -13,7 +13,7 @@
     { "path": "/api/cron/cleanup-recordings",          "schedule": "0 2 * * *"    },
     { "path": "/api/cron/cleanup-pending",             "schedule": "0 4 * * *"    },
     { "path": "/api/cron/cleanup-cancelled",           "schedule": "0 3 * * 0"    },
-    { "path": "/api/cron/learn",                       "schedule": "0 9 * * 1"    },
+    { "path": "/api/cron/learn",                       "schedule": "0 9 8,22 * *" },
     { "path": "/api/cron/push-conversational-prompts", "schedule": "0 3 * * 1"    },
     { "path": "/api/cron/process-tasks",               "schedule": "0 * * * *"    },
     { "path": "/api/cron/outbound",                    "schedule": "0 * * * *"    },
