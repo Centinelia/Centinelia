@@ -72,6 +72,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   meerkat_role_id:         '',
   lite_prompt:             '',
   hcp_full:                '',
+  pinned_meerkat_version:  '',
   skip_aup:                '',
   skip_recording_notice:   '',
   of_encuestas:            '',
