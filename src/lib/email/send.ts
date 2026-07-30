@@ -1,14 +1,19 @@
 const FROM     = process.env.RESEND_FROM_EMAIL ?? 'Centinelia <notificaciones@centinelia.mx>';
 const LOGO_URL = 'https://www.centinelia.mx/logo-tagline.png';
 
+// Email colors — SOLID hex only. Semi-transparent rgba() breaks in Gmail/
+// Titan/Outlook web because those clients strip <body> background styling
+// and the transparency reveals a white base, making light text invisible.
+// See 2026-07-30 bug: reportar_falla llegó ilegible por text-on-white.
 const C = {
-  bg:     '#120726',
-  card:   'rgba(255,255,255,0.055)',
-  border: 'rgba(255,255,255,0.10)',
+  bg:     '#120726',  // outer wrapper (solid dark)
+  card:   '#1D1141',  // inner body card (solid, slightly lighter)
+  cardAccent: '#2A1B5C', // accent variant of card
+  border: '#3D2E6A',  // solid border tone (was rgba)
   accent: '#9B6DFF',
-  text:   '#e2e8f0',
-  sub:    'rgba(255,255,255,0.58)',
-  mute:   'rgba(255,255,255,0.35)',
+  text:   '#F1EEFF',  // primary text (brighter for contrast)
+  sub:    '#C8BEE8',  // secondary text (solid, was rgba)
+  mute:   '#8C7FB8',  // muted text (solid, still readable on dark)
   header: '#FFFFFF',
 };
 
@@ -24,32 +29,47 @@ function shell(body: string) {
   <meta name="supported-color-schemes" content="light">
 </head>
 <body style="margin:0;padding:0;background:${C.bg};font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px 48px">
+  <!-- Outer wrapper table — bgcolor survives Gmail/Titan style stripping -->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};margin:0;padding:0">
+    <tr>
+      <td align="center" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};padding:32px 16px 48px">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%">
 
-    <!-- Header blanco (dark-mode resistant vía table + bgcolor) -->
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
-      <tr>
-        <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
-          <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block">
-        </td>
-      </tr>
-    </table>
+          <!-- Header blanco -->
+          <tr>
+            <td bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0;border-bottom:1px solid rgba(108,59,255,0.15)">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;border-radius:16px 16px 0 0">
+                <tr>
+                  <td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;background-color:#FFFFFF;padding:20px 32px">
+                    <img src="${LOGO_URL}" alt="Centinelia" width="230" height="89" style="width:230px;height:auto;display:inline-block">
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <!-- Body oscuro -->
-    <div style="background:${C.card};border:1px solid ${C.border};border-top:none;border-radius:0 0 16px 16px;padding:32px">
-      ${body}
-    </div>
+          <!-- Body oscuro (solid bg via table + bgcolor) -->
+          <tr>
+            <td bgcolor="${C.card}" style="background:${C.card};background-color:${C.card};border-radius:0 0 16px 16px;padding:32px">
+              ${body}
+            </td>
+          </tr>
 
-    <!-- Footer -->
-    <div style="text-align:center;padding:24px 0 0">
-      <p style="color:${C.mute};font-size:12px;line-height:1.8;margin:0">
-        <a href="https://www.centinelia.mx" style="color:${C.mute};text-decoration:none">centinelia.mx</a>
-        &nbsp;·&nbsp;
-        <a href="mailto:hola@centinelia.mx" style="color:${C.accent};text-decoration:none">hola@centinelia.mx</a>
-      </p>
-    </div>
+          <!-- Footer -->
+          <tr>
+            <td align="center" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};padding:24px 0 0">
+              <p style="color:${C.mute};font-size:12px;line-height:1.8;margin:0">
+                <a href="https://www.centinelia.mx" style="color:${C.mute};text-decoration:none">centinelia.mx</a>
+                &nbsp;·&nbsp;
+                <a href="mailto:hola@centinelia.mx" style="color:${C.accent};text-decoration:none">hola@centinelia.mx</a>
+              </p>
+            </td>
+          </tr>
 
-  </div>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
@@ -68,9 +88,13 @@ function heading(title: string, sub?: string) {
 }
 
 function infoCard(content: string, accent = false) {
-  return `<div style="background:${accent ? 'rgba(155,109,255,0.10)' : 'rgba(255,255,255,0.04)'};border:1px solid ${accent ? 'rgba(155,109,255,0.25)' : C.border};border-radius:12px;padding:20px;margin-bottom:16px">
-    ${content}
-  </div>`;
+  const bg = accent ? '#3A2570' : C.cardAccent;  // SOLID — nested cards need solid bg to stay readable
+  const bd = accent ? '#5A3AA0' : C.border;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${bg}" style="background:${bg};background-color:${bg};border:1px solid ${bd};border-radius:12px;margin-bottom:16px">
+    <tr><td bgcolor="${bg}" style="background:${bg};background-color:${bg};padding:20px">
+      ${content}
+    </td></tr>
+  </table>`;
 }
 
 function btn(label: string, href: string, primary = true) {
