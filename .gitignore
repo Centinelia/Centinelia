@@ -50,3 +50,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Claude Code local scratch (never commit)
+.claude/
+.superpowers/
