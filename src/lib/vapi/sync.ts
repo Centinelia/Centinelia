@@ -737,3 +737,9 @@ export async function assignAssistantToPhone(
   }
   return true;
 }
+
+// Exported for snapshot testing only. Wraps buildVapiAssistant with the same
+// inputs it receives during a real sync (empty tools + peers by default).
+export async function buildVapiAssistantForSnapshot(agent: VoiceAgent) {
+  return buildVapiAssistant(agent, [], [], null);
+}
