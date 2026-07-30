@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mail, CheckCircle, Loader2, Trash2, Zap, ZapOff, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 
 interface Integration {
   id:           string;
   provider:     'gmail' | 'outlook';
   email:        string;
-  auto_reply:   boolean;
   agent_id?:    string;
   last_sync_at: string | null;
   needs_reauth: boolean;
@@ -48,19 +47,9 @@ const PROVIDERS = [
 export default function EmailOAuthSection({ token, only, workspacePanel }: { token: string; only?: 'gmail' | 'outlook'; workspacePanel?: React.ReactNode }) {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading,      setLoading]      = useState(true);
-  const [toggling,     setToggling]     = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [showAll,      setShowAll]      = useState(false);
   const noteRef = useRef<HTMLDivElement>(null);
-
-  function flashNote() {
-    const el = noteRef.current;
-    if (!el) return;
-    el.classList.remove('anchor-active');
-    void el.offsetWidth;
-    el.classList.add('anchor-active');
-    setTimeout(() => el.classList.remove('anchor-active'), 2000);
-  }
 
   const load = useCallback(async () => {
     const res  = await fetch(`/api/portal/${token}/email-oauth`);
@@ -73,18 +62,6 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
 
   function connectedFor(provider: 'gmail' | 'outlook') {
     return integrations.find(i => i.provider === provider) ?? null;
-  }
-
-  async function toggleAutoReply(provider: 'gmail' | 'outlook', current: boolean) {
-    setToggling(provider);
-    await fetch(`/api/portal/${token}/email-oauth`, {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ provider, auto_reply: !current }),
-    });
-    setIntegrations(prev => prev.map(i => i.provider === provider ? { ...i, auto_reply: !current } : i));
-    setToggling(null);
-    flashNote();
   }
 
   async function disconnect(provider: 'gmail' | 'outlook') {
@@ -158,24 +135,6 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {connected && (
-                  // Toggle legacy de auto_reply. El nuevo Modo de respuesta (auto_mode)
-                  // se configura en /portal/[token]/configurar, per-empleado.
-                  <button
-                    onClick={() => toggleAutoReply(provider.id, connected.auto_reply)}
-                    disabled={toggling === provider.id}
-                    title={connected.auto_reply ? 'Respuesta automática activa' : 'Respuesta automática desactivada'}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
-                    style={connected.auto_reply
-                      ? { background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }
-                      : { background: 'var(--c-bg)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
-                  >
-                    {toggling === provider.id
-                      ? <Loader2 size={12} className="animate-spin" />
-                      : connected.auto_reply ? <Zap size={12} /> : <ZapOff size={12} />}
-                    Auto-respuesta
-                  </button>
-                )}
-                {connected && (
                   <button
                     onClick={() => disconnect(provider.id)}
                     disabled={disconnecting === provider.id}
@@ -226,13 +185,9 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                   <div className="flex flex-col gap-2">
                     <div ref={noteRef} className="flex items-start gap-2 rounded-lg px-3 py-2"
                       style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
-                      {connected.auto_reply
-                        ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-                        : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
+                      <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
                       <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        {connected.auto_reply
-                          ? 'Tu empleado lee el correo entrante, redacta una respuesta y la envía directamente sin pedir aprobación.'
-                          : 'Tu empleado redacta una respuesta y se la envía a tu aprobador asignado para que la apruebe o descarte antes de que salga.'}
+                        Cada empleado decide qué hacer con los correos según su Nivel de autonomía, configurable desde su página de configuración.
                       </p>
                     </div>
                     <div className="flex items-start gap-2 rounded-lg px-3 py-2"
@@ -248,13 +203,9 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 <div className="mt-3 flex flex-col gap-2">
                   <div className="flex items-start gap-2 rounded-lg px-3 py-2"
                     style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
-                    {connected.auto_reply
-                      ? <Zap size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-                      : <ZapOff size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0, marginTop: 1 }} />}
+                    <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
                     <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                      {connected.auto_reply
-                        ? 'Tu empleado responde automáticamente a los correos entrantes usando el borrador redactado, sin requerir tu aprobación.'
-                        : 'Los correos entrantes se procesan y aparecen en La Oficina. Recibirás un correo para aprobar o descartar la respuesta de tu empleado.'}
+                      Cada empleado decide qué hacer con los correos entrantes según su Nivel de autonomía, configurable desde la página de configuración del empleado.
                     </p>
                   </div>
                   <div className="flex items-start gap-2 rounded-lg px-3 py-2"
