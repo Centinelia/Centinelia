@@ -15,9 +15,16 @@ interface Integration {
   needs_reauth: boolean;
 }
 
-// ID del agente demo Nia Monterrey — el ÚNICO habilitado durante piloto.
+// IDs de agentes habilitados durante piloto de auto-mode classifier.
 // Se remueve este gate en Deploy 2 (ver runbook auto-mode-classifier.md).
-const NIA_DEMO_ID = process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID ?? '';
+// Nia (voz-only) originalmente, Sofía (oficina) es la que realmente prueba el flujo de correo.
+const PILOT_AGENT_IDS = new Set(
+  [
+    process.env.NEXT_PUBLIC_NIA_DEMO_AGENT_ID,
+    process.env.NEXT_PUBLIC_SOFIA_DEMO_AGENT_ID,
+  ].filter((id): id is string => Boolean(id)),
+);
+const isPilotAgent = (agentId?: string): boolean => !!agentId && PILOT_AGENT_IDS.has(agentId);
 
 const PROVIDERS = [
   {
@@ -162,7 +169,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {connected && connected.agent_id !== NIA_DEMO_ID && (
+                {connected && !isPilotAgent(connected.agent_id) && (
                   // Fallback toggle for non-demo agents
                   <button
                     onClick={() => toggleAutoReply(provider.id, connected.auto_reply)}
@@ -223,7 +230,7 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                 </a>
               </div>
             )}
-            {connected && !connected.needs_reauth && connected.agent_id === NIA_DEMO_ID && (
+            {connected && !connected.needs_reauth && isPilotAgent(connected.agent_id) && (
               <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--c-border)' }}>
                 <p className="text-xs font-semibold mb-3" style={{ color: 'var(--c-text)' }}>
                   Modo de respuesta
