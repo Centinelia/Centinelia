@@ -13,12 +13,13 @@ const LEARN_EMAIL_PROVIDERS = ['gmail', 'outlook'] as const;
 // Cost estimates (aprox.) per month. Source: cost-validation.md 2026-07-29.
 // Refine after 2 weeks of prod data (query ops_log by source = cron_heartbeat/etc).
 // Deploy 2 (2026-07-30) expanded heartbeat + weekly-insights to include all
-// activity sources (calls + emails + docs + tasks + appts + civic_reports),
-// so both ranges roughly 2-3x their Deploy 1 values.
+// activity sources (calls + emails + docs + tasks + appts + civic_reports).
+// Deploy 3 (2026-07-30) expanded learn to include calls + docs + tasks
+// alongside the existing emails, bumping the per-run ops cost from 30 to 40.
 const ESTIMATED_TAREAS_MO: Record<AutomationName, string> = {
   heartbeat:       'aprox. 300-500 tareas/mes',
   weekly_insights: 'aprox. 100-200 tareas/mes',
-  learn:           'aprox. 200-400 tareas/mes',
+  learn:           'aprox. 300-600 tareas/mes',
 };
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
