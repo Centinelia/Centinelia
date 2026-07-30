@@ -26,6 +26,12 @@ SELECT column_name FROM information_schema.columns
 WHERE table_name = 'voice_agents' AND column_name = 'auto_reply';
 -- Expected: 1 row
 
+-- 4b. Verifica default de auto_reply
+SELECT column_default
+FROM information_schema.columns
+WHERE table_name = 'voice_agents' AND column_name = 'auto_reply';
+-- Expected: 'false' (o valor existente si ya estaba en prod con otro default)
+
 -- 5. Verifica columnas en organizations
 SELECT column_name FROM information_schema.columns
 WHERE table_name = 'organizations' AND column_name IN ('auto_mode_disabled_at','auto_mode_notified_at');

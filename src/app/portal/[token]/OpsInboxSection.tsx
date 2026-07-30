@@ -45,11 +45,14 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending:  'Pendiente',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  sent:     'Enviado',
-  skipped:  'Ignorado',
+  pending:        'Pendiente',
+  approved:       'Aprobado',
+  rejected:       'Rechazado',
+  sent:           'Enviado',
+  skipped:        'Ignorado',
+  auto_replied:   'Enviado automáticamente',
+  escalated:      'Escalado a ti',
+  info_requested: 'Info solicitada al remitente',
 };
 
 export default function OpsInboxSection({ token }: { token: string }) {

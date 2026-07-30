@@ -52,6 +52,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         id:           row.id,
         provider:     row.provider,
         email:        row.account_label,
+        agent_id:     agent.id,
         auto_reply:   (meta.auto_reply as boolean) ?? false,
         auto_mode:    voiceAgent?.auto_mode ?? null,
         last_sync_at: (meta.last_sync_at as string | null) ?? null,
@@ -77,6 +78,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const augmented = (data ?? []).map((row) => ({
     ...row,
+    agent_id:  agent.id,
     auto_mode: voiceAgents?.auto_mode ?? null,
   }));
 

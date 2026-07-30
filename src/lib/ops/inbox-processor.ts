@@ -658,7 +658,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       });
       await sendEmail({
         to:      notifyTo,
-        subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} — envio fallo, requiere aprobacion`,
+        subject: `[${CATEGORY_LABELS[result.category] ?? 'Email'}] ${emailSubject || '(sin asunto)'} - envío falló, requiere aprobación`,
         html,
       });
     }

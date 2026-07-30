@@ -9,6 +9,10 @@ ALTER TABLE voice_agents
   ADD COLUMN IF NOT EXISTS auto_mode text
   CHECK (auto_mode IS NULL OR auto_mode IN ('off','auto','always'));
 
+-- voice_agents: safeguard para auto_reply (pre-existente en prod, no documentado en repo)
+ALTER TABLE voice_agents
+  ADD COLUMN IF NOT EXISTS auto_reply boolean DEFAULT false;
+
 -- organizations: kill switch per-org + notify idempotency
 ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS auto_mode_disabled_at timestamptz;
