@@ -1,0 +1,15 @@
+{
+  "id": "07-reclamo-grave",
+  "description": "Reclamo grave que requiere juicio humano (contaminación, lesión, reputación) → debe escalar",
+  "should_call_tool": true,
+  "email": {
+    "from": "abogado@bufete.com",
+    "subject": "Demanda por daños. REF: Pedido #2026-5421",
+    "body": "Actuamos a nombre de nuestro cliente quien sufrió quemaduras químicas por un producto defectuoso vendido el 15 de julio. Exigimos reparación de daños morales y materiales por $500,000. Responda dentro de 48 horas o procederemos legalmente."
+  },
+  "expected_tool_args": {
+    "type": "action",
+    "target": "owner"
+  },
+  "context": "Ferretería. Correo de abogado notificando demanda por daños. Esto es un asunto serio que requiere decisión gerencial/legal. El agente debe escalar inmediatamente al owner sin intentar responder."
+}

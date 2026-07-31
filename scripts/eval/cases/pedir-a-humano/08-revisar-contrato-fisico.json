@@ -1,0 +1,15 @@
+{
+  "id": "08-revisar-contrato-fisico",
+  "description": "Cliente envía contrato físico para revisar → requiere acción física de humano",
+  "should_call_tool": true,
+  "email": {
+    "from": "empresario@negocios.com",
+    "subject": "Contrato para firma - envío por paquetería",
+    "body": "Enviamos el contrato de distribuidor en formato físico por paquetería. Código de seguimiento: PKT-20260730-9876. Por favor revisa los términos y, si estás de acuerdo, fírmalo y devuelve. El plazo es hasta el 5 de agosto. Gracias."
+  },
+  "expected_tool_args": {
+    "type": "action",
+    "target": "owner"
+  },
+  "context": "Pneuma Studio. Cliente envía contrato físico por paquete. El agente de chat no puede firmar documentos físicos. Debe escalar al owner para que revise, firme y devuelva."
+}

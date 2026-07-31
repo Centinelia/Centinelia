@@ -1,0 +1,15 @@
+{
+  "id": "03-cliente-llamada-sin-minutos",
+  "description": "Cliente pide hablar por llamada pero el agente NO tiene minutos disponibles → debe pedir a humano",
+  "should_call_tool": true,
+  "email": {
+    "from": "cliente@startup.com",
+    "subject": "Necesito hablar con alguien por teléfono",
+    "body": "Tengo varias preguntas sobre los precios y las opciones de entrega. Me gustaría hablar directamente con alguien por teléfono. ¿Pueden llamarme al +52 8112345678?"
+  },
+  "expected_tool_args": {
+    "type": "action",
+    "target": "approver"
+  },
+  "context": "Pneuma Studio. Cliente pide llamada telefónica explícitamente. El agente de chat NO tiene minutos disponibles en su jornada (está en puras tareas de correo). Debe escalar a humano para que haga la llamada."
+}

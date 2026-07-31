@@ -1,0 +1,13 @@
+{
+  "id": "05-info-en-drive",
+  "description": "Cliente pide información que está disponible en Google Drive → NO debe llamar pedir_a_humano",
+  "should_call_tool": false,
+  "email": {
+    "from": "proveedor@x.com",
+    "subject": "Necesito el catálogo de productos actualizado",
+    "body": "¿Me pueden enviar el catálogo de 2026 con precios vigentes? Quiero revisar qué tienen disponible."
+  },
+  "expected_tool_args": null,
+  "alternate_tool": "search_files",
+  "context": "Ferretería. Cliente pide catálogo. El catálogo está en Drive como PDF. El agente debe usar search_files y luego read_file, NO pedir a humano."
+}
