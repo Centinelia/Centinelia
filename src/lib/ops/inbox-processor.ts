@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
-import { approvalEmailHtml, escalationEmailHtml } from '@/lib/ops/approval-email';
+import { approvalEmailHtml } from '@/lib/ops/approval-email';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
@@ -28,7 +28,6 @@ interface ProcessedEmail {
   invoiceValid:       boolean | null;
   invoiceDiscrepancy: string | null;
   needsInfo:          boolean;
-  escalateToApprover: boolean;
   infoNeeded:         string | null;
   requestToSender:    string | null;
 }
@@ -57,7 +56,6 @@ function validateProcessedEmail(raw: unknown): ProcessedEmail {
     invoiceValid:       isBool(r.invoice_valid) ? r.invoice_valid : null,
     invoiceDiscrepancy: strOrNull(r.invoice_discrepancy, 500),
     needsInfo:          isBool(r.needs_info) ? r.needs_info : false,
-    escalateToApprover: isBool(r.escalate_to_approver) ? r.escalate_to_approver : false,
     infoNeeded:         strOrNull(r.info_needed, 2000),
     requestToSender:    strOrNull(r.request_to_sender, 4000),
   };
@@ -397,20 +395,15 @@ REGLAS ESTRICTAS ANTI-FABRICACIÓN — NO NEGOCIABLES:
 
 Prefiere PEDIR AYUDA que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
-Si después de usar todas las herramientas disponibles no puedes encontrar la información necesaria para responder correctamente:
+Si necesitas algo del equipo humano (info, una acción, o aprobación): usa la tool pedir_a_humano. El humano recibe form con opción de subir archivos y también puede responder directo por correo. El flujo se auto-completa cuando responde.
 
-PREFIERE SIEMPRE pedir_a_humano SOBRE escalate_to_approver cuando aplique:
-- pedir_a_humano({type:'info', ...}) — necesitas info específica del equipo (fotos, casos, credenciales, catálogos, políticas reales). ES LA OPCIÓN CORRECTA para el escenario "cliente pide X que no tengo".
+- pedir_a_humano({type:'info', ...}) — necesitas info específica del equipo (fotos, casos, credenciales, catálogos, políticas reales).
 - pedir_a_humano({type:'action', ...}) — necesitas que un humano ejecute algo físico (llamar cliente, revisar stock, verificar contrato en papel).
 - pedir_a_humano({type:'approval', ...}) — necesitas aprobación de una decisión (descuento no estándar, plazo especial, cambio de condiciones).
 
-La tool pedir_a_humano tiene UX mejor: el humano recibe form estructurado con opción de subir archivos, redirigir a otro compañero, y el flujo se auto-completa cuando responde. Úsala como primera opción SIEMPRE que necesites algo del equipo.
+Si el remitente mismo debe proporcionar la info (datos de su empresa, especificaciones que solo él conoce), sí usa "needs_info": true + redacta la request en "request_to_sender".
 
-Alternativa legacy (solo si pedir_a_humano NO aplica — casos raros): pon "needs_info": true + "escalate_to_approver": true/false. Este path funciona pero da al humano solo un botón aprobar/rechazar, sin capacidad de responder con info o archivos. RARAMENTE es la mejor opción cuando existe pedir_a_humano.
-
-Si el remitente mismo debe proporcionar la info (datos de su empresa, especificaciones que solo él conoce), sí usa "needs_info": true + "escalate_to_approver": false + redacta la request en "request_to_sender".
-
-Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false, "escalate_to_approver": false.
+Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false.
 
 Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, sin markdown, sin texto adicional.`;
 
@@ -444,7 +437,6 @@ Produce JSON con:
   "summary": "<resumen de 1-2 oraciones en español>",
   "draft": "<borrador de respuesta en español, o null si no aplica>",
   "needs_info": false,
-  "escalate_to_approver": false,
   "info_needed": null,
   "request_to_sender": null
 }
@@ -458,7 +450,6 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     invoiceValid:       null,
     invoiceDiscrepancy: null,
     needsInfo:          false,
-    escalateToApprover: false,
     infoNeeded:         null,
     requestToSender:    null,
   };
@@ -481,7 +472,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         const raw = txt?.type === 'text' ? txt.text.trim() : '{}';
         const match = raw.match(/\{[\s\S]*\}/);
         const parsed = match ? JSON.parse(match[0]) as Record<string, unknown> : {};
-        result = validateProcessedEmail({ ...parsed, draft: null, needs_info: false, escalate_to_approver: false });
+        result = validateProcessedEmail({ ...parsed, draft: null, needs_info: false });
       } catch (err) {
         console.error('[inbox-processor] observador triage error:', err);
       }
@@ -611,10 +602,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   if (result.category === 'spam') {
     finalStatus = 'skipped';
     finalDraft  = null;
-  } else if (result.needsInfo && result.escalateToApprover) {
-    finalStatus = 'escalated';
-    finalDraft  = result.infoNeeded;
-  } else if (result.needsInfo && !result.escalateToApprover) {
+  } else if (result.needsInfo) {
     finalStatus = 'info_requested';
     finalDraft  = result.requestToSender;
   } else if (!result.draft) {
@@ -641,7 +629,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       finalStatus = 'auto_replied';
       finalDraft  = result.draft;
     } else if (autoModeVerdict.decision === 'block') {
-      finalStatus = 'escalated';
+      finalStatus = 'pending';
       finalDraft  = result.draft;
     } else {
       // decision === 'human' — includes classifier_error signals (fail-closed)
@@ -720,23 +708,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   const portalUrl = `${baseUrl}/portal/${portalToken}/oficina/bandeja`;
   const notifyTo  = approvalEmail || ownerEmail;
 
-  if (finalStatus === 'escalated') {
-    const html = escalationEmailHtml({
-      agentName,
-      businessName,
-      emailFrom,
-      emailSubject,
-      summary:    result.summary,
-      infoNeeded: result.infoNeeded ?? '',
-      portalUrl,
-    });
-    await sendEmail({
-      to:      notifyTo,
-      subject: `[Consulta de ${agentName}] ${emailSubject || '(sin asunto)'}`,
-      html,
-    });
-
-  } else if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
+  if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
     await sendReplyFn(result.requestToSender).catch(err =>
       console.error('[ops/inbox-processor] info_requested send failed:', err)
     );
