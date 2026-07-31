@@ -137,6 +137,42 @@ export default function OpsInboxSection({ token }: { token: string }) {
     setFlaggingId(null);
     setFlagReason('');
   };
+  const [correctionOpenId, setCorrectionOpenId] = useState<string | null>(null);
+  const [correctionText, setCorrectionText]     = useState<string>('');
+  const [sendingCorrection, setSendingCorrection] = useState<boolean>(false);
+
+  const openCorrection = (id: string, senderName: string) => {
+    setCorrectionOpenId(id);
+    setCorrectionText(`Hola${senderName ? ' ' + senderName : ''},\n\nDisculpa, la respuesta que te enviamos anteriormente contenía información imprecisa. Aquí va la respuesta correcta:\n\n[Escribe aquí la respuesta correcta]\n\nDisculpa nuevamente el inconveniente.\n\nSaludos`);
+  };
+  const closeCorrection = () => {
+    setCorrectionOpenId(null);
+    setCorrectionText('');
+  };
+  const sendCorrection = async (id: string) => {
+    if (!correctionText.trim()) {
+      toast.error('El correo no puede estar vacío.');
+      return;
+    }
+    setSendingCorrection(true);
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox/${id}/send-correction`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ body: correctionText.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? 'No se pudo enviar la corrección.');
+        return;
+      }
+      toast.success('Corrección enviada al cliente.');
+      closeCorrection();
+    } finally {
+      setSendingCorrection(false);
+    }
+  };
+
   const submitFlag = async (id: string) => {
     setSubmittingFlag(true);
     try {
@@ -630,6 +666,50 @@ export default function OpsInboxSection({ token }: { token: string }) {
                     <p className="text-[11px] mt-1.5" style={{ color: 'var(--c-text-4)' }}>
                       {new Date(item.auto_mode_flagged_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </p>
+
+                    {/* Correo de corrección */}
+                    {correctionOpenId !== item.id && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => openCorrection(item.id, (item.email_from ?? '').split('<')[0].trim().split('@')[0])}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+                          style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)' }}>
+                          <MessageSquare size={12} />
+                          Enviar corrección al cliente
+                        </button>
+                      </div>
+                    )}
+                    {correctionOpenId === item.id && (
+                      <div className="mt-3 space-y-2">
+                        <label className="text-xs block" style={{ color: 'var(--c-text-4)' }}>
+                          Correo de corrección a {item.email_from}
+                        </label>
+                        <textarea
+                          value={correctionText}
+                          onChange={e => setCorrectionText(e.target.value)}
+                          rows={Math.min(20, Math.max(8, correctionText.split('\n').length + 1))}
+                          className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => sendCorrection(item.id)}
+                            disabled={sendingCorrection}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
+                            style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.35)', color: '#6C3BFF' }}>
+                            <Check size={12} />
+                            {sendingCorrection ? 'Enviando…' : 'Enviar corrección'}
+                          </button>
+                          <button
+                            onClick={closeCorrection}
+                            disabled={sendingCorrection}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
+                            style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
