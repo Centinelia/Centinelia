@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const agentIds = await getAccountAgentIds(supabase, acct.portal_email);
   const { data: items } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, email_from, email_subject, category, ai_summary, ai_draft, item_type, invoice_data, invoice_valid, invoice_discrepancy, status, attachments, sent_at, created_at, auto_mode_decision, auto_mode_reason, auto_mode_flagged_at')
+    .select('id, agent_id, email_from, email_subject, category, ai_summary, ai_draft, item_type, invoice_data, invoice_valid, invoice_discrepancy, status, attachments, sent_at, created_at, auto_mode_decision, auto_mode_reason, auto_mode_flagged_at, auto_mode_flag_reason, auto_mode_flag_category')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false })
     .limit(100);

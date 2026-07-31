@@ -21,9 +21,11 @@ interface InboxItem {
   attachments:         Array<{ name: string; url: string; type: string }>;
   sent_at:             string | null;
   created_at:          string;
-  auto_mode_decision:  string | null;
-  auto_mode_reason:    string | null;
-  auto_mode_flagged_at: string | null;
+  auto_mode_decision:      string | null;
+  auto_mode_reason:        string | null;
+  auto_mode_flagged_at:    string | null;
+  auto_mode_flag_reason:   string | null;
+  auto_mode_flag_category: string | null;
 }
 
 interface HumanRequest {
@@ -79,7 +81,15 @@ const URGENCY_COLORS: Record<string, string> = {
   alta:  '#ef4444',
 };
 
-type Tab = 'pendientes' | 'auto' | 'spam' | 'todo';
+type Tab = 'pendientes' | 'auto' | 'spam' | 'reportados' | 'todo';
+
+const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
+  { key: 'alucinacion',        label: 'Alucinación',                     hint: 'Datos inventados (horarios, precios, políticas)' },
+  { key: 'tono',               label: 'Tono inapropiado',                hint: 'Demasiado formal/informal, o no acorde a marca' },
+  { key: 'info_incorrecta',    label: 'Info incorrecta',                 hint: 'Datos reales pero mal presentados o desactualizados' },
+  { key: 'no_debia_responder', label: 'No debía responder solo',         hint: 'Requería aprobación humana previa' },
+  { key: 'otro',               label: 'Otro',                            hint: 'Describe en el texto abajo' },
+];
 
 export default function OpsInboxSection({ token }: { token: string }) {
   const [items, setItems]               = useState<InboxItem[]>([]);
@@ -113,6 +123,38 @@ export default function OpsInboxSection({ token }: { token: string }) {
   useEffect(() => { load(); }, [load]);
 
   const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});
+  const [flaggingId, setFlaggingId]   = useState<string | null>(null);
+  const [flagCategory, setFlagCategory] = useState<string>('alucinacion');
+  const [flagReason, setFlagReason]     = useState<string>('');
+  const [submittingFlag, setSubmittingFlag] = useState<boolean>(false);
+
+  const openFlagForm = (id: string) => {
+    setFlaggingId(id);
+    setFlagCategory('alucinacion');
+    setFlagReason('');
+  };
+  const closeFlagForm = () => {
+    setFlaggingId(null);
+    setFlagReason('');
+  };
+  const submitFlag = async (id: string) => {
+    setSubmittingFlag(true);
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox/${id}/flag-auto-mode`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ flagged: true, category: flagCategory, reason: flagReason.trim() || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success('Reporte enviado. El empleado aprenderá de este caso.');
+      closeFlagForm();
+      load();
+    } catch {
+      toast.error('No se pudo enviar el reporte.');
+    } finally {
+      setSubmittingFlag(false);
+    }
+  };
 
   const act = async (id: string, status: 'approved' | 'rejected') => {
     setActing(id);
@@ -169,6 +211,8 @@ export default function OpsInboxSection({ token }: { token: string }) {
       base = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
     } else if (activeTab === 'spam') {
       base = items.filter(i => i.status === 'skipped' && i.category === 'spam');
+    } else if (activeTab === 'reportados') {
+      base = items.filter(i => !!i.auto_mode_flagged_at);
     } else {
       base = items;
     }
@@ -187,11 +231,13 @@ export default function OpsInboxSection({ token }: { token: string }) {
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
   const autoCount          = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
   const spamCount          = items.filter(i => i.status === 'skipped' && i.category === 'spam').length;
+  const reportedCount      = items.filter(i => !!i.auto_mode_flagged_at).length;
 
   const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
     { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
     { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined },
     { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined },
+    { key: 'reportados', label: 'Reportados',    count: reportedCount > 0 ? reportedCount : undefined },
     { key: 'todo',       label: 'Todo' },
   ];
 
@@ -493,33 +539,97 @@ export default function OpsInboxSection({ token }: { token: string }) {
                   </div>
                 )}
 
-                {/* Reportar mal envío button */}
-                {item.auto_mode_decision === 'send' && !item.auto_mode_flagged_at && (
+                {/* Reportar mal envío: botón / form inline / detalle si ya reportado */}
+                {item.auto_mode_decision === 'send' && !item.auto_mode_flagged_at && flaggingId !== item.id && (
                   <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
                     <button
                       type="button"
-                      onClick={async () => {
-                        const reason = window.prompt('¿Por qué no debió enviarse? (opcional)');
-                        if (reason === null) return; // User cancelled
-
-                        try {
-                          const res = await fetch(`/api/portal/${token}/ops-inbox/${item.id}/flag-auto-mode`, {
-                            method:  'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body:    JSON.stringify({ flagged: true, reason: reason || undefined }),
-                          });
-                          if (!res.ok) throw new Error();
-                          toast.success('Anotado. El empleado aprenderá de este caso.');
-                          load();
-                        } catch {
-                          toast.error('No se pudo reportar. Intenta de nuevo.');
-                        }
-                      }}
+                      onClick={() => openFlagForm(item.id)}
                       className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
                       style={{ color: '#842029', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                       <AlertTriangle size={12} />
                       Reportar mal envío
                     </button>
+                  </div>
+                )}
+
+                {/* Form inline para reportar */}
+                {flaggingId === item.id && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#842029' }}>Reportar mal envío</p>
+
+                    <div className="space-y-1.5">
+                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>¿Qué salió mal?</p>
+                      {FLAG_CATEGORIES.map(cat => (
+                        <label key={cat.key} className="flex items-start gap-2 cursor-pointer px-2 py-1.5 rounded-md hover:bg-[rgba(239,68,68,0.04)]">
+                          <input
+                            type="radio"
+                            name={`flag-cat-${item.id}`}
+                            value={cat.key}
+                            checked={flagCategory === cat.key}
+                            onChange={() => setFlagCategory(cat.key)}
+                            className="mt-0.5 accent-[#ef4444]"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>{cat.label}</div>
+                            <div className="text-[11px] leading-snug" style={{ color: 'var(--c-text-4)' }}>{cat.hint}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="text-xs block mb-1" style={{ color: 'var(--c-text-4)' }}>Detalle (opcional)</label>
+                      <textarea
+                        value={flagReason}
+                        onChange={e => setFlagReason(e.target.value)}
+                        rows={3}
+                        placeholder="Contexto adicional que ayude al empleado a evitar este error en el futuro."
+                        className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => submitFlag(item.id)}
+                        disabled={submittingFlag}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
+                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}>
+                        <AlertTriangle size={12} />
+                        {submittingFlag ? 'Enviando…' : 'Enviar reporte'}
+                      </button>
+                      <button
+                        onClick={closeFlagForm}
+                        disabled={submittingFlag}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
+                        style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Detalle del reporte si ya está flagged */}
+                {item.auto_mode_flagged_at && (
+                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#842029' }}>Reportado como mal envío</p>
+                    {item.auto_mode_flag_category && (
+                      <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
+                        <span style={{ color: 'var(--c-text-4)' }}>Categoría:</span>{' '}
+                        <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>
+                          {FLAG_CATEGORIES.find(c => c.key === item.auto_mode_flag_category)?.label ?? item.auto_mode_flag_category}
+                        </span>
+                      </p>
+                    )}
+                    {item.auto_mode_flag_reason && (
+                      <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                        <span style={{ color: 'var(--c-text-4)' }}>Detalle:</span> {item.auto_mode_flag_reason}
+                      </p>
+                    )}
+                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--c-text-4)' }}>
+                      {new Date(item.auto_mode_flagged_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
                   </div>
                 )}
 

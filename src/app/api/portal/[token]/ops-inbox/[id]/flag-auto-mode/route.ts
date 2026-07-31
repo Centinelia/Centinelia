@@ -44,8 +44,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // 4. Parse body
   const body = (await req.json().catch(() => ({}))) as {
-    flagged?: boolean;
-    reason?: string;
+    flagged?:  boolean;
+    reason?:   string;
+    category?: string;
   };
 
   if (body.flagged !== true) {
@@ -58,12 +59,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const reason =
     typeof body.reason === 'string' ? body.reason.slice(0, 500) : null;
 
+  const VALID_CATEGORIES = new Set(['alucinacion', 'tono', 'info_incorrecta', 'no_debia_responder', 'otro']);
+  const category = typeof body.category === 'string' && VALID_CATEGORIES.has(body.category)
+    ? body.category
+    : null;
+
   // 5. UPDATE inbox
   const { error: updErr } = await supabase
     .from('ops_inbox')
     .update({
-      auto_mode_flagged_at: new Date().toISOString(),
-      auto_mode_flag_reason: reason,
+      auto_mode_flagged_at:    new Date().toISOString(),
+      auto_mode_flag_reason:   reason,
+      auto_mode_flag_category: category,
     })
     .eq('id', item.id);
 
@@ -76,11 +83,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { error: feedbackErr } = await supabase
     .from('auto_mode_feedback_log')
     .insert({
-      agent_id: agent.id,
-      inbox_id: item.id,
-      decision: item.auto_mode_decision ?? 'unknown',
-      signals: item.auto_mode_signals ?? [],
-      flag_reason: reason,
+      agent_id:      agent.id,
+      inbox_id:      item.id,
+      decision:      item.auto_mode_decision ?? 'unknown',
+      signals:       item.auto_mode_signals ?? [],
+      flag_reason:   reason,
+      flag_category: category,
     });
 
   if (feedbackErr) {
