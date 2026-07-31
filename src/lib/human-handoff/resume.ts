@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector } from '@/lib/connectors';
+import { resolveAutoMode } from '@/lib/email/email-sync';
 
 export async function resumeAgentAfterHumanResponse(requestId: string): Promise<void> {
   const supabase = createAdminClient();
@@ -41,18 +42,13 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
     ? await supabase.from('organizations').select('knowledge_base, auto_mode_disabled_at').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
 
-  // Resolve autoMode the same way email-sync.ts does (spec §4 happy path)
+  // Comparte helper con email-sync.ts para que el kill switch env se comporte igual
+  // en el flujo de sync inicial y en el resume post-handoff.
   const orgDisabled = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
-  type AutoMode = 'observador' | 'off' | 'auto' | 'always';
-  function resolveAutoMode(trust_stage: number | null, disabledOrg: boolean): AutoMode {
-    if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
-    if (disabledOrg) return 'off';
-    const stage = trust_stage ?? 3;
-    if (stage <= 1) return 'observador';
-    if (stage === 2) return 'off';
-    return 'auto';
-  }
-  const autoMode = resolveAutoMode((agent as Record<string, unknown>).trust_stage as number | null, orgDisabled);
+  const autoMode = resolveAutoMode({
+    trust_stage: (agent as Record<string, unknown>).trust_stage as number | null,
+    orgDisabled,
+  });
 
   // Build sendReplyFn — fetch email integration for the agent so resumes can auto-send
   let sendReplyFn: ((body: string) => Promise<void>) | undefined;

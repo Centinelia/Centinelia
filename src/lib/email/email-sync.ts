@@ -9,11 +9,23 @@ type EmailIntegration = IntegrationRow & {
   last_sync_at: string | null;
 };
 
-type AutoMode = 'observador' | 'off' | 'auto' | 'always';
+export type AutoMode = 'observador' | 'off' | 'auto' | 'always';
 
 interface ResolveAutoModeInput {
   trust_stage: number | null;       // voice_agents.trust_stage (1=Observador, 2=Supervisado, 3=Autónomo)
   orgDisabled: boolean;             // organizations.auto_mode_disabled_at IS NOT NULL
+}
+
+/**
+ * Kill switch global. Antes hacía strict `=== 'false'`, lo que provocaba que
+ * `AUTO_MODE_CLASSIFIER_ENABLED=off` (o `'0'`, `'no'`, `'False'`) NO deshabilitara
+ * como el operador esperaba. Aceptamos ahora los valores comunes de disable.
+ * Default (undefined) sigue siendo enabled — es el comportamiento intencional.
+ */
+export function isAutoModeClassifierDisabled(): boolean {
+  const raw = process.env.AUTO_MODE_CLASSIFIER_ENABLED?.trim().toLowerCase();
+  if (raw === undefined || raw === '') return false;
+  return ['false', 'off', '0', 'no', 'disabled'].includes(raw);
 }
 
 /**
@@ -23,15 +35,15 @@ interface ResolveAutoModeInput {
  *   Stage 3 (Autónomo, default) → 'auto': classifier decide send/human/block
  *
  * Overrides (fuerzan 'off'):
- *   1. env AUTO_MODE_CLASSIFIER_ENABLED === 'false' (kill switch global)
+ *   1. env AUTO_MODE_CLASSIFIER_ENABLED disabled (kill switch global — ver helper)
  *   2. orgDisabled (kill switch per-org via organizations.auto_mode_disabled_at)
  *
  * NOTA: el override legacy `auto_reply === false` fue removido — no podía distinguir
  * "cliente lo apagó explícitamente" de "migration default lo puso false", lo que causaba
  * que TODOS los agentes cayeran a 'off' aunque trust_stage=3.
  */
-function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
-  if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
+export function resolveAutoMode(input: ResolveAutoModeInput): AutoMode {
+  if (isAutoModeClassifierDisabled()) return 'off';
   if (input.orgDisabled) return 'off';
 
   const stage = input.trust_stage ?? 3;
