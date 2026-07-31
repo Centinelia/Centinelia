@@ -122,8 +122,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  const { error } = await supabase.from('ops_inbox').update(update).eq('id', item.id);
+  // Guard TOCTOU: dos requests simultáneos ambos pasaron la validación de línea 82;
+  // el .eq('status','pending') asegura que solo el primero muta el estado.
+  const { data: updated, error } = await supabase
+    .from('ops_inbox')
+    .update(update)
+    .eq('id', item.id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!updated) return NextResponse.json({ error: 'Already processed' }, { status: 409 });
 
   return NextResponse.json({ ok: true });
 }
