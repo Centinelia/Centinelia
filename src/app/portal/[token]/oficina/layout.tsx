@@ -97,14 +97,27 @@ export default async function OficinaLayout({
         const readContract = (contractR.data ?? []).map((r: any) => r.item_id as string);
         const readMeeting  = (meetingR.data  ?? []).map((r: any) => r.item_id as string);
 
-        // Unread inbox (pending, last 30 days)
+        // Unread inbox: refleja lo que aparece en la tab "Pendientes" del portal.
+        // Incluye pending + escalated + info_requested (los 3 estados que requieren
+        // atención humana) y suma human_requests activos (que también cuentan en la tab).
         let inboxQ = supabase.from('ops_inbox')
           .select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).eq('status', 'pending').gte('created_at', cutoff);
+          .in('agent_id', agentIds)
+          .in('status', ['pending', 'escalated', 'info_requested'])
+          .gte('created_at', cutoff);
         if (readInbox.length > 0)
           inboxQ = inboxQ.not('id', 'in', `(${readInbox.join(',')})`);
         const { count: ic } = await inboxQ;
-        badges.bandeja = ic ?? 0;
+
+        // Human requests activos (target al owner o approver de este portal)
+        const { count: hrc } = await supabase
+          .from('human_requests')
+          .select('id', { count: 'exact', head: true })
+          .in('agent_id', agentIds)
+          .in('status', ['pending', 'escalated'])
+          .gte('created_at', cutoff);
+
+        badges.bandeja = (ic ?? 0) + (hrc ?? 0);
 
         // Unread contracts (new in last 30 days)
         let contractQ = supabase.from('ops_contracts')
