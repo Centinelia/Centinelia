@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { invalidateFlagCache } from '@/lib/feature-flags/evaluator';
 import { writeFlagAudit } from '@/lib/feature-flags/audit';
+import { computeAt100Transition } from '@/lib/feature-flags/auto-promote';
 
 const ADMIN_ACTOR = 'admin@centinelia.mx';
 
@@ -76,6 +77,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `flag_key ya existe: ${flag_key}` }, { status: 409 });
   }
 
+  const at_100_since = computeAt100Transition({
+    before: null,
+    after_pct: rollout_pct,
+    after_killed: false,
+  });
+
   const row = {
     flag_key,
     description,
@@ -83,9 +90,10 @@ export async function POST(req: NextRequest) {
     allowlist,
     denylist,
     default_on,
-    killed:     false,
-    updated_by: ADMIN_ACTOR,
-    updated_at: new Date().toISOString(),
+    killed:       false,
+    at_100_since,
+    updated_by:   ADMIN_ACTOR,
+    updated_at:   new Date().toISOString(),
   };
 
   const { data: inserted, error } = await supabase

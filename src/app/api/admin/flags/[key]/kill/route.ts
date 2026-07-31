@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { invalidateFlagCache } from '@/lib/feature-flags/evaluator';
 import { writeFlagAudit } from '@/lib/feature-flags/audit';
+import { computeAt100Transition } from '@/lib/feature-flags/auto-promote';
 
 const ADMIN_ACTOR = 'admin@centinelia.mx';
 
@@ -42,9 +43,15 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ flag: before, noop: true });
   }
 
+  const at_100_since = computeAt100Transition({
+    before: { rollout_pct: before.rollout_pct, killed: before.killed, at_100_since: before.at_100_since },
+    after_pct: before.rollout_pct,
+    after_killed: targetKilled,
+  });
+
   const { data: after, error } = await supabase
     .from('feature_flags')
-    .update({ killed: targetKilled, updated_by: ADMIN_ACTOR, updated_at: new Date().toISOString() })
+    .update({ killed: targetKilled, at_100_since, updated_by: ADMIN_ACTOR, updated_at: new Date().toISOString() })
     .eq('flag_key', key)
     .select('*')
     .single();

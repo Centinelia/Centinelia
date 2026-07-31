@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { invalidateFlagCache } from '@/lib/feature-flags/evaluator';
 import { writeFlagAudit } from '@/lib/feature-flags/audit';
+import { computeAt100Transition } from '@/lib/feature-flags/auto-promote';
 import type { FlagRow } from '@/lib/feature-flags/types';
 
 const ADMIN_ACTOR = 'admin@centinelia.mx';
@@ -62,9 +63,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Solo permitimos editar estos campos por PATCH. flag_key es inmutable.
   // killed se maneja por endpoint dedicado /kill para claridad de audit.
+  const nextPct    = (typeof body.rollout_pct === 'number' && body.rollout_pct >= 0 && body.rollout_pct <= 100)
+    ? body.rollout_pct
+    : before.rollout_pct;
+  const nextKilled = before.killed; // PATCH no toca killed
+
   const patch: Partial<FlagRow> = {
-    updated_by: ADMIN_ACTOR,
-    updated_at: new Date().toISOString(),
+    updated_by:   ADMIN_ACTOR,
+    updated_at:   new Date().toISOString(),
+    at_100_since: computeAt100Transition({
+      before: { rollout_pct: before.rollout_pct, killed: before.killed, at_100_since: before.at_100_since },
+      after_pct: nextPct,
+      after_killed: nextKilled,
+    }),
   };
   if (typeof body.description === 'string') patch.description = body.description;
   if (typeof body.rollout_pct === 'number' && body.rollout_pct >= 0 && body.rollout_pct <= 100) {
