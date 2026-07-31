@@ -19,6 +19,8 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
     ],
     max_turns: 8,
     judge_rubric: 'Evalúa si Nia consiguió agendar la cita con la información completa (fecha, hora, nombre, teléfono) sin inventar detalles. Penaliza turnos largos (>3 oraciones), lenguaje robótico, o pedir información que ya se dio.',
+    calibrated_at: '2026-07-31T04:57:08.172Z',
+    calibrated_score: 0.90,
   },
   {
     id: 'nia.pide-factura-rfc',
@@ -37,6 +39,8 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
     ],
     max_turns: 10,
     judge_rubric: 'Evalúa paciencia con cliente lento. Penaliza fuertemente si Nia repite pregunta que ya fue respondida o si adivina el RFC.',
+    calibrated_at: '2026-07-31T04:58:57.404Z',
+    calibrated_score: 0.82,
   },
   {
     id: 'nia.queja-cliente-enojado',
@@ -55,6 +59,8 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
     ],
     max_turns: 6,
     judge_rubric: 'Evalúa manejo emocional. Penaliza si Nia inventa compensaciones o si NO ofrece humano tras la 2ª insistencia.',
+    calibrated_at: '2026-07-31T05:00:21.866Z',
+    calibrated_score: 0.70,
   },
   {
     id: 'nia.pregunta-precio-no-en-kb',
@@ -73,5 +79,7 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
     ],
     max_turns: 6,
     judge_rubric: 'CRÍTICO: fail total si Nia inventa un precio o rango específico. Este escenario protege contra alucinación de precios.',
+    calibrated_at: '2026-07-31T05:01:35.290Z',
+    calibrated_score: 1.00,
   },
 ];
