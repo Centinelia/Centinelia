@@ -74,6 +74,12 @@ export async function GET(req: NextRequest) {
 
     const { data: contacts } = await q.limit(100);
 
+    // Contadores por campaña para detectar fallo total (audit sesión 53).
+    // Antes, campañas 'once' se marcaban 'completed' aunque todas las llamadas
+    // fallaran; el usuario asumía envío exitoso silenciosamente.
+    let campaignTriggered = 0;
+    let campaignFailed    = 0;
+
     if (contacts?.length) {
       for (const contact of contacts) {
         const result = await triggerOutboundCall({
@@ -86,6 +92,7 @@ export async function GET(req: NextRequest) {
 
         if (result.ok) {
           totalTriggered++;
+          campaignTriggered++;
           await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
           await supabase.from('outbound_calls').insert({
             agent_id:     campaign.agent_id,
@@ -100,6 +107,7 @@ export async function GET(req: NextRequest) {
           });
         } else {
           totalFailed++;
+          campaignFailed++;
         }
       }
     }
@@ -111,10 +119,13 @@ export async function GET(req: NextRequest) {
       ? null
       : computeNextRunAt(tz, campaign.run_at_time ?? '09:00', campaign.schedule_type as ScheduleType, campaign.run_on_days ?? []);
 
+    // Solo 'once' cambia estado terminal aquí. Si intentó contactos y TODOS fallaron,
+    // marca 'failed' en vez de 'completed' para que el usuario lo detecte.
+    const onceFinalStatus = campaignTriggered === 0 && campaignFailed > 0 ? 'failed' : 'completed';
     await supabase.from('outbound_campaigns').update({
       last_run_at: now,
       next_run_at: nextRun?.toISOString() ?? null,
-      status:      isOnce ? 'completed' : 'active',
+      status:      isOnce ? onceFinalStatus : 'active',
     }).eq('id', campaign.id);
   }
 
