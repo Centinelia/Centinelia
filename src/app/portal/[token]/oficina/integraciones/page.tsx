@@ -15,6 +15,11 @@ export default async function IntegracionesPage({ params }: Props) {
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
+  // Sub-usuario sin módulo asignado no puede acceder por URL directa.
+  // El sidebar ya filtra por modules, este guard cierra el bypass.
+  if (session?.isSubUser && session.modules && !session.modules.includes('integraciones'))
+    redirect(`/portal/${token}/oficina`);
+
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')

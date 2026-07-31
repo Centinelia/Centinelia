@@ -1,12 +1,22 @@
 export const dynamic = 'force-dynamic';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import OpsReportsSection     from '../../OpsReportsSection';
+import { createAdminClient }            from '@/lib/supabase/admin';
+import { cookies }                      from 'next/headers';
+import { redirect }                     from 'next/navigation';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import OpsReportsSection                from '../../OpsReportsSection';
 
 interface Props { params: Promise<{ token: string }> }
 
 export default async function ReportesPage({ params }: Props) {
   const { token } = await params;
+
+  const cookieStore = await cookies();
+  const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+
+  // Sub-usuario sin módulo asignado no puede acceder por URL directa.
+  if (session?.isSubUser && session.modules && !session.modules.includes('of_reportes'))
+    redirect(`/portal/${token}/oficina`);
 
   const supabase    = createAdminClient();
   const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
