@@ -111,7 +111,7 @@ export function escalationEmailHtml(opts: {
         <p style="color:#f59e0b;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin:0 0 8px">Información que necesita</p>
         <p style="color:${TEXT};font-size:13px;line-height:1.65;margin:0;white-space:pre-wrap">${infoNeeded}</p>
       </div>
-      <p style="color:${SUB};font-size:13px;line-height:1.65;text-align:center;margin:0 0 20px">Responde a este correo con la información solicitada o gestiona el email directamente desde el portal.</p>
+      <p style="color:${SUB};font-size:13px;line-height:1.65;text-align:center;margin:0 0 20px">Abre el portal para gestionar este correo. Responder a este mensaje no funciona: viene del sistema y no llega al empleado.</p>
       <div style="text-align:center">
         <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:12px">Ver en el portal</a>
       </div>
