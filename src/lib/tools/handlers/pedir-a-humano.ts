@@ -36,21 +36,34 @@ export async function pedirAHumano(
 ): Promise<PedirAHumanoResult> {
   const supabase = ctx.supabase ?? createAdminClient();
 
-  // Kill switches
+  // Kill switches (hierarchical: broader scope first for defense-in-depth)
   if (process.env.HUMAN_HANDOFF_ENABLED === 'false') {
     return { ok: false, error: 'Handoff a humano deshabilitado globalmente' };
   }
 
   const agent = ctx.agent as Record<string, unknown> | undefined;
-  const trustStage = (agent?.trust_stage as number | null) ?? 3;
-  if (trustStage <= 1) {
-    return { ok: false, error: 'Trust Stage 1 no permite pedir a humano' };
+
+  // Org-level kill switch (per-org disable)
+  if (agent?.portal_email) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('human_handoff_disabled_at')
+      .eq('portal_email', agent.portal_email as string)
+      .maybeSingle();
+    if (org?.human_handoff_disabled_at) {
+      return { ok: false, error: 'Handoff deshabilitado para esta organización' };
+    }
   }
 
   // Feature flag per-agente (default true si trust_stage >= 2)
   const features = (agent?.features as Record<string, unknown> | undefined) ?? {};
   if (features.human_handoff_enabled === false) {
     return { ok: false, error: 'Handoff a humano deshabilitado para este empleado' };
+  }
+
+  const trustStage = (agent?.trust_stage as number | null) ?? 3;
+  if (trustStage <= 1) {
+    return { ok: false, error: 'Trust Stage 1 no permite pedir a humano' };
   }
 
   // Anti-loop
@@ -79,18 +92,6 @@ export async function pedirAHumano(
 
   if (!targetEmail) {
     return { ok: false, error: 'No hay destinatario configurado para este agente' };
-  }
-
-  // Org-level kill switch
-  if (agent?.portal_email) {
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('human_handoff_disabled_at')
-      .eq('portal_email', agent.portal_email as string)
-      .maybeSingle();
-    if (org?.human_handoff_disabled_at) {
-      return { ok: false, error: 'Handoff deshabilitado para esta organización' };
-    }
   }
 
   // INSERT
