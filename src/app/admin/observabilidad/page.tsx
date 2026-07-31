@@ -1,15 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import { getAllFlagKeys } from '@/lib/feature-flags/evaluator';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { ObservabilityView } from './ObservabilityView';
 
-async function isAdmin(): Promise<boolean> {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
 
 export default async function ObservabilityPage() {
   if (!(await isAdmin())) redirect('/admin/login');

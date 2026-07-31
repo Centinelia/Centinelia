@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listApprovals, createApproval, type ApprovalStatus, type CreateApprovalInput } from '@/lib/admin/approvals';
+import { isAdmin } from '@/lib/admin/auth';
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_COOKIE = 'Centinelia_admin';
-
-function requireAdmin(req: NextRequest): boolean {
-  const c = req.cookies.get(ADMIN_COOKIE)?.value;
-  return !!c && c === process.env.ADMIN_SECRET;
-}
-
 export async function GET(req: NextRequest) {
-  if (!requireAdmin(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
   const status = req.nextUrl.searchParams.get('status') as ApprovalStatus | null;
   try {
@@ -23,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!requireAdmin(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
   let body: CreateApprovalInput;
   try {

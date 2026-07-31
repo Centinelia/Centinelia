@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { isAdmin } from '@/lib/admin/auth';
 import { fetchObservabilityData } from '@/app/admin/observabilidad/queries';
 import type { ObsFilters, ObsWindow } from '@/app/admin/observabilidad/types';
 
-async function isAdmin(): Promise<boolean> {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
 
 const VALID_WINDOWS: ObsWindow[] = ['24h', '7d', '30d', 'since_activation'];
 

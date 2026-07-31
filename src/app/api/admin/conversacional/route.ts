@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { cookies } from 'next/headers';
-
-async function requireAdmin() {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
+import { isAdmin } from '@/lib/admin/auth';
 
 export async function GET(req: NextRequest) {
-  if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const status = req.nextUrl.searchParams.get('status') ?? 'pending';
   const supabase = createAdminClient();
@@ -25,7 +20,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id, status, body } = await req.json() as {
     id:      string;
@@ -57,7 +52,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!await requireAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await req.json() as { id: string };
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });

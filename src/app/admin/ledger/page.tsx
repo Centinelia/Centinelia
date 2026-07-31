@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { Plan, MinutesTier } from '@/lib/billing/plans';
@@ -11,7 +11,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_COOKIE = 'Centinelia_admin';
 const DEMO_EMAILS = ['demo@centinelia.mx', 'centinelia.dev@gmail.com'];
 
 // ── Modelo de costos (todo en USD, convertimos al final) ────────────────────
@@ -104,9 +103,7 @@ function marginColor(pct: number): string {
 }
 
 export default async function LedgerPage() {
-  const c = await cookies();
-  const admin = c.get(ADMIN_COOKIE)?.value;
-  if (!admin || admin !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     redirect('/admin/login?from=/admin/ledger');
   }
 

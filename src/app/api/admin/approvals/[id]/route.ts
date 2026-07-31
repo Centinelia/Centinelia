@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decideApproval, executeApproval, getApproval } from '@/lib/admin/approvals';
+import { isAdmin } from '@/lib/admin/auth';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_COOKIE = 'Centinelia_admin';
-
-function requireAdmin(req: NextRequest): boolean {
-  const c = req.cookies.get(ADMIN_COOKIE)?.value;
-  return !!c && c === process.env.ADMIN_SECRET;
-}
 
 interface Params { params: Promise<{ id: string }> }
 
 export async function GET(req: NextRequest, { params }: Params) {
-  if (!requireAdmin(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const item = await getApproval(id);
   if (!item) return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
@@ -25,7 +19,7 @@ export async function GET(req: NextRequest, { params }: Params) {
  * Si approve=true, ejecuta la acción respaldada por el approval.
  */
 export async function PATCH(req: NextRequest, { params }: Params) {
-  if (!requireAdmin(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  if (!await isAdmin()) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
 
   let body: { approve?: boolean; note?: string };

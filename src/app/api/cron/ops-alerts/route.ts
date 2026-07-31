@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 const THRESHOLD          = 0.8;                  // 80% del pool
 const RATE_LIMIT_MS      = 7 * 24 * 60 * 60 * 1000;
@@ -30,8 +31,7 @@ interface Agent {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

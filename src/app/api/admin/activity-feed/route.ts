@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_COOKIE = 'Centinelia_admin';
 
 export interface ActivityEvent {
   id:      string;
@@ -21,8 +20,7 @@ export interface ActivityEvent {
  * 15s para el feed en vivo.
  */
 export async function GET(req: NextRequest) {
-  const admin = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (!admin || admin !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 

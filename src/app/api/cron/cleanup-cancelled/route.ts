@@ -2,12 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 // Purges all client data for accounts cancelled 30+ days ago.
 // Deletes: voice_calls, leads_voice, agent_learnings, agent_messages, then the agent record.
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

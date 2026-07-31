@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import Link from 'next/link';
 import { ArrowLeft, Terminal } from 'lucide-react';
 import { listApprovals } from '@/lib/admin/approvals';
@@ -7,12 +7,9 @@ import ApprovalsClient from './ApprovalsClient';
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_COOKIE = 'Centinelia_admin';
 
 export default async function AprobacionesPage() {
-  const c = await cookies();
-  const admin = c.get(ADMIN_COOKIE)?.value;
-  if (!admin || admin !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     redirect('/admin/login?from=/admin/aprobaciones');
   }
 

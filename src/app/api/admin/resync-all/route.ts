@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { isAdmin } from '@/lib/admin/auth';
 import { pushConversationalPromptsToAllAgents } from '@/lib/vapi/sync';
 
-async function isAdmin(): Promise<boolean> {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
 
 // POST /api/admin/resync-all
 // Rebuilds and pushes every active agent's Vapi assistant config.

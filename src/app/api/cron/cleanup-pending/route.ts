@@ -2,13 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 // Deletes voice_agents that:
 // - were never paid (billing_status = 'pendiente', active = false, no stripe subscription)
 // - are older than 7 days
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

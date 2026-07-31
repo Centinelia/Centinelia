@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 // Configurable: hours before appointment to send reminder
 const REMINDER_HOURS_BEFORE = parseInt(process.env.OUTBOUND_REMINDER_HOURS ?? '24');
@@ -58,8 +59,7 @@ async function fireVapiCall(params: {
 export async function GET(req: NextRequest) {
   // Vercel sends Authorization: Bearer <CRON_SECRET> automatically for cron jobs.
   // CRON_SECRET is a system env var set by Vercel — no need to embed it in vercel.json.
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +27,7 @@ function extractJson(text: string): Record<string, unknown> | null {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 

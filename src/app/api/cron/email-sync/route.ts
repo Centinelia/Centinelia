@@ -3,10 +3,10 @@ export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncAllEmailIntegrations } from '@/lib/email/email-sync';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

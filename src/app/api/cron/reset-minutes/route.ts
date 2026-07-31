@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { nextResetDate } from '@/lib/billing/plans';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

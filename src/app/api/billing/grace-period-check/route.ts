@@ -3,10 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, agentPausedHtml } from '@/lib/email/send';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

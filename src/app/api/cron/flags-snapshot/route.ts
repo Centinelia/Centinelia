@@ -4,10 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hashBucket } from '@/lib/feature-flags/evaluator';
 import type { FlagRow, FlagCounts } from '@/lib/feature-flags/types';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -3,14 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, infraAlertHtml } from '@/lib/email/send';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 const VAPI_LOW_THRESHOLD   = 20;   // USD
 const TWILIO_LOW_THRESHOLD = 10;   // USD
 const CLAUDE_COST_PER_OP   = 0.0024;
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

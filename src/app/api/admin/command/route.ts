@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseCommand } from '@/lib/admin/command-grammar';
 import { executeCommand } from '@/lib/admin/command-actions';
+import { isAdmin } from '@/lib/admin/auth';
 
 export const dynamic = 'force-dynamic';
-
-const ADMIN_COOKIE = 'Centinelia_admin';
 
 /**
  * C2 — Command line del admin. Deterministic first.
@@ -16,8 +15,7 @@ const ADMIN_COOKIE = 'Centinelia_admin';
  * algo que es regex.)
  */
 export async function POST(req: NextRequest) {
-  const admin = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (!admin || admin !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 

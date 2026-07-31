@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,8 +48,7 @@ const SELF_EVAL_PROMPT_STABLE = `Evalúa esta llamada del 1 al 5 y da 1-2 notas 
 Responde SOLO JSON: { "score": <1-5>, "notes": "..." }`;
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 

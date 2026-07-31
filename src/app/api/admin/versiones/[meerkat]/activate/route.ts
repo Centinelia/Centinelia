@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { clearMeerkatVersionCache } from '@/lib/vapi/resolve-meerkat';
@@ -11,9 +11,7 @@ import { writeFlagAudit } from '@/lib/feature-flags/audit';
 import { computeAt100Transition } from '@/lib/feature-flags/auto-promote';
 
 async function currentAdminEmail(): Promise<{ ok: boolean; email?: string }> {
-  const store = await cookies();
-  const secret = store.get('Centinelia_admin')?.value;
-  if (secret !== process.env.ADMIN_SECRET) return { ok: false };
+  if (!(await isAdmin())) return { ok: false };
   return { ok: true, email: 'admin@centinelia.mx' };
 }
 

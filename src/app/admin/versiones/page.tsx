@@ -1,15 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { VersionesTable } from '@/components/admin/VersionesTable';
 
-async function isAdmin(): Promise<boolean> {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
 
 export default async function VersionesPage() {
   if (!(await isAdmin())) redirect('/admin/login');

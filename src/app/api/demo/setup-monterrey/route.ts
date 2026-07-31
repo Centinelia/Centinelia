@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
+import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 // One-time demo setup route — creates or updates the Monterrey personalized demo agent.
 // Protected by ADMIN_SECRET. Hit GET /api/demo/setup-monterrey?secret=<ADMIN_SECRET>
@@ -153,8 +154,10 @@ async function assignPhoneToAssistant(): Promise<{ ok: boolean; vapiPhoneId?: st
 }
 
 function auth(req: NextRequest): boolean {
-  const secret = req.nextUrl.searchParams.get('secret');
-  return secret === process.env.ADMIN_SECRET;
+  const secret   = req.nextUrl.searchParams.get('secret') ?? '';
+  const expected = process.env.ADMIN_SECRET;
+  if (!expected || !secret) return false;
+  return timingSafeCompareStrings(secret, expected);
 }
 
 export async function GET(req: NextRequest) {

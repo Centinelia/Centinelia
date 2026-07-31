@@ -4,13 +4,12 @@ import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import type { VoiceAgent } from '@/types/agent';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization') ?? '';
-  const secret = process.env.CRON_SECRET;
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

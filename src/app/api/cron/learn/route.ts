@@ -10,6 +10,7 @@ export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 import { refreshIfNeeded } from '@/lib/connectors';
 import type { IntegrationRow } from '@/lib/connectors';
 import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
@@ -114,12 +115,8 @@ Máximo 8 aprendizajes. Si no hay evidencia suficiente, responde con learnings v
 }
 
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  if (!verifyCronAuth(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = createAdminClient();

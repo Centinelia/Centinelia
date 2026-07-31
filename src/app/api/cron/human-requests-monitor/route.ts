@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendReminderNotification, sendEscalationNotification } from '@/lib/human-handoff/notify';
 import { resumeAgentAfterHumanResponse } from '@/lib/human-handoff/resume';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

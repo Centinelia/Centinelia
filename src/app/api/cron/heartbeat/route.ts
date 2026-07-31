@@ -9,6 +9,7 @@ import { sendEmail, shell, heading, infoCard, mdToEmailHtml } from '@/lib/email/
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 const anthropic = new Anthropic();
 
@@ -21,8 +22,7 @@ interface HeartbeatConfig {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

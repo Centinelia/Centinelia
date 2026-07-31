@@ -1,14 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { GoldenTestsHealthTable } from '@/components/admin/GoldenTestsHealthTable';
 
-async function isAdmin(): Promise<boolean> {
-  const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
-}
 
 export default async function HealthPage() {
   if (!(await isAdmin())) redirect('/admin/login');

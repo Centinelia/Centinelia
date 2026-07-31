@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkAccount } from '@/lib/compliance/account-guard';
-
-const ADMIN_COOKIE = 'Centinelia_admin';
+import { isAdmin } from '@/lib/admin/auth';
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (token !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

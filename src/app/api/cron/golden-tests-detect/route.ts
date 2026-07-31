@@ -6,10 +6,10 @@ import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { MEERKAT_IDS, type MeerkatId } from '@/lib/golden-tests/types';
 import { hashScenarioSet } from '@/lib/golden-tests/hash';
 import { checkDailyCap, computeTotalScenarios, N_ATTEMPTS } from '@/lib/golden-tests/orchestrator';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

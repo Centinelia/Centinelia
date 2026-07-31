@@ -1,9 +1,11 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 export async function POST(req: NextRequest) {
   const { password } = await req.json();
+  const expected = process.env.ADMIN_SECRET;
 
-  if (!password || password !== process.env.ADMIN_SECRET) {
+  if (!password || !expected || !timingSafeCompareStrings(String(password), expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

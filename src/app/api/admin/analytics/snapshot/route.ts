@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 // Called daily by Vercel cron. Vercel automatically sends
 // Authorization: Bearer {CRON_SECRET} on cron invocations.
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  if (!auth || auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

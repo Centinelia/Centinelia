@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 import {
@@ -11,7 +11,6 @@ import { pendingCount as pendingApprovalsCount } from '@/lib/admin/approvals';
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_COOKIE = 'Centinelia_admin';
 const DEMO_EMAILS = ['demo@centinelia.mx', 'centinelia.dev@gmail.com'];
 
 interface AgentRow {
@@ -46,9 +45,7 @@ interface InboxRow {
 }
 
 export default async function InicioPage() {
-  const c = await cookies();
-  const admin = c.get(ADMIN_COOKIE)?.value;
-  if (!admin || admin !== process.env.ADMIN_SECRET) {
+  if (!await isAdmin()) {
     redirect('/admin/login?from=/admin/inicio');
   }
 
