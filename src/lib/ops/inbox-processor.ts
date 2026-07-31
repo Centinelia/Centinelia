@@ -395,15 +395,39 @@ REGLAS ESTRICTAS ANTI-FABRICACIÓN — NO NEGOCIABLES:
 
 Prefiere PEDIR AYUDA que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
-Si necesitas algo del equipo humano (info, una acción, o aprobación): usa la tool pedir_a_humano. El humano recibe form con opción de subir archivos y también puede responder directo por correo. El flujo se auto-completa cuando responde.
+=== CUÁNDO ESCALAR AL EQUIPO INTERNO (info que el remitente NO tiene) ===
 
-- pedir_a_humano({type:'info', ...}) — necesitas info específica del equipo (fotos, casos, credenciales, catálogos, políticas reales).
-- pedir_a_humano({type:'action', ...}) — necesitas que un humano ejecute algo físico (llamar cliente, revisar stock, verificar contrato en papel).
-- pedir_a_humano({type:'approval', ...}) — necesitas aprobación de una decisión (descuento no estándar, plazo especial, cambio de condiciones).
+Ejemplo A: Cliente pide cotización para proyecto grande. El precio depende del alcance y NO está en el knowledge base. Necesitas que un humano del equipo confirme un rango.
+→ USA LA TOOL: pedir_a_humano({type:'approval', description:'Cliente pide cotización para X. Rango que autorizas: ...', urgency:'alta'})
+→ NO uses needs_info=true. Ese campo NO comunica con el equipo interno.
 
-Si el remitente mismo debe proporcionar la info (datos de su empresa, especificaciones que solo él conoce), sí usa "needs_info": true + redacta la request en "request_to_sender".
+Ejemplo B: Cliente pide casos de éxito de un sector específico. Search_files no los encontró en Drive.
+→ USA LA TOOL: pedir_a_humano({type:'info', description:'Cliente pide casos de éxito sector Y. Drive no tiene. ¿Cuáles puedo compartir?'})
 
-Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false.
+Ejemplo C: Cliente pide agendar reunión con un ejecutivo específico. No tienes acceso a su calendario.
+→ USA LA TOOL: pedir_a_humano({type:'action', description:'Cliente pide reunión con [ejecutivo] próxima semana. Necesito que confirmes horario disponible.'})
+
+Tipos de pedir_a_humano:
+- type:'info' — necesitas info específica del equipo (precios, políticas reales, casos, credenciales, catálogos).
+- type:'action' — necesitas que un humano ejecute algo físico (llamar cliente, revisar stock, verificar contrato).
+- type:'approval' — necesitas aprobación de una decisión (descuento, plazo, condición no estándar).
+
+=== CUÁNDO USAR needs_info + request_to_sender (info que SOLO el remitente conoce) ===
+
+Ejemplo D: Cliente pide cotización sin decir cuántas unidades ni plazo.
+→ needs_info: true
+→ request_to_sender: "Para cotizarte con precisión necesito: cuántas unidades, plazo objetivo, si requieres entrega en sitio."
+
+Ejemplo E: Cliente pide factura pero no dio RFC ni razón social.
+→ needs_info: true
+→ request_to_sender: "Para emitirte la factura confirma: RFC, razón social, uso CFDI y forma de pago."
+
+REGLA DE ORO — NO NEGOCIABLE:
+- needs_info=true SIEMPRE requiere request_to_sender con texto real.
+- Si necesitas info del equipo interno (no del remitente), USA LA TOOL pedir_a_humano, NUNCA needs_info=true.
+- Si dudas entre "escalar al equipo" o "pedir al remitente": ¿la info que necesito la tiene el remitente mismo? Sí → needs_info + request_to_sender. No → pedir_a_humano.
+
+Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false y llena "draft".
 
 Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, sin markdown, sin texto adicional.`;
 
@@ -602,9 +626,16 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   if (result.category === 'spam') {
     finalStatus = 'skipped';
     finalDraft  = null;
-  } else if (result.needsInfo) {
+  } else if (result.needsInfo && result.requestToSender) {
     finalStatus = 'info_requested';
     finalDraft  = result.requestToSender;
+  } else if (result.needsInfo) {
+    // Model emitió needs_info=true sin request_to_sender. Significa que quería
+    // escalar al equipo interno pero no usó la tool pedir_a_humano. Caer a
+    // pending (visible en bandeja) en vez de silent drop.
+    console.warn('[inbox-processor] needsInfo=true sin requestToSender, fallback a pending. info_needed:', result.infoNeeded);
+    finalStatus = 'pending';
+    finalDraft  = result.draft;
   } else if (!result.draft) {
     finalStatus = 'pending';
     finalDraft  = null;

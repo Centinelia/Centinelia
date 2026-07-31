@@ -5,14 +5,12 @@ import { sendEmail } from '@/lib/email/send';
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
 const INBOX_DOMAIN = process.env.EMAIL_INBOX_DOMAIN ?? 'inbox.centinelia.mx';
-const REPLY_ENABLED = process.env.HANDOFF_REPLY_EMAIL_ENABLED === 'true';
 
 async function ensureReplyToken(
   supabase: ReturnType<typeof createAdminClient>,
   requestId: string,
   existingToken: string | null | undefined,
 ): Promise<string | null> {
-  if (!REPLY_ENABLED) return null;
   if (existingToken) return existingToken;
   const token = crypto.randomBytes(8).toString('hex');
   const { error } = await supabase
