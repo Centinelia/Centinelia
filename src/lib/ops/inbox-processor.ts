@@ -367,7 +367,17 @@ export async function processInboxEmail(params: {
 Categorías: proveedor, cliente, urgente, factura, spam, otro.
 - "urgente": emergencias, quejas graves, solicitudes de alta prioridad.
 - "factura": cualquier email con factura, cargo o solicitud de pago de un proveedor.
-- "spam": publicidad, marketing no solicitado.
+- "otro": correos de trabajo legítimos que no encajan en las otras 4 categorías.
+
+MARCA COMO 'spam' TODO CORREO QUE NO REQUIERE ATENCIÓN DEL EQUIPO:
+- Publicidad/promociones de tiendas, marcas, o servicios que NO son proveedores actuales
+- Newsletters, blog updates, product announcements de servicios que NO usa el negocio
+- Notificaciones automáticas de plataformas que NO son operacionales (LinkedIn "añade a...", Google Analytics reports, security alerts genéricas)
+- Ofertas comerciales frías (cold outreach de vendedores externos)
+- Contenido educativo/motivacional no solicitado
+
+Si dudas entre 'spam' y 'otro', piensa: "¿el equipo tiene que hacer algo con esto?".
+Si no, es spam. Mejor archivar de más que llenar la bandeja con ruido.
 
 Tienes herramientas para consultar datos reales del negocio (Drive, internet, QuickBooks, calendario, reportes ciudadanos, compañeros, etc.). Úsalas proactivamente si el email pide información específica para que el borrador de respuesta sea preciso y con datos reales.
 
