@@ -126,21 +126,13 @@ export async function markRunCompleted(runId: string): Promise<void> {
 }
 
 /**
- * Read-modify-write increment of completed_scenarios.
- * Safe because the worker is single-writer per run (guaranteed by SELECT FOR UPDATE SKIP LOCKED).
+ * Atomically increments completed_scenarios via a server-side SQL function.
+ * Avoids the read-modify-write race when two cron ticks process the same run
+ * concurrently (I1 fix).
  */
 export async function bumpCompletedScenarios(runId: string): Promise<void> {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('golden_test_runs')
-    .select('completed_scenarios')
-    .eq('id', runId)
-    .maybeSingle();
-  if (!data) return;
-  await supabase
-    .from('golden_test_runs')
-    .update({ completed_scenarios: (data.completed_scenarios ?? 0) + 1 })
-    .eq('id', runId);
+  await supabase.rpc('golden_bump_completed', { p_run_id: runId });
 }
 
 /**

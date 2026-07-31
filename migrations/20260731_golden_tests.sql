@@ -62,6 +62,13 @@ create table if not exists golden_test_baselines (
 -- la lista de (scenario_id, version, attempt) esperados vía CTE inline en la query.
 -- Esta función es un helper básico que solo revisa runs.total_scenarios vs completed_scenarios.
 -- El "shape" real del próximo pending se calcula en el orchestrator TS.
+--
+-- I3 fix: pg_try_advisory_xact_lock prevents two cron ticks from processing the same run
+-- concurrently. The xact-scoped lock releases when the RPC transaction ends (~milliseconds),
+-- which is still short. Combined with the UNIQUE constraint on scenario_runs and the atomic
+-- golden_bump_completed function (I1), worst case is: a second worker gets the same run in a
+-- later tick, findNextPendingScenario returns the next slot, and any duplicate INSERT is
+-- blocked by the UNIQUE constraint.
 
 create or replace function golden_run_lock_next(p_status text default 'queued')
 returns table (
@@ -77,7 +84,14 @@ returns table (
          r.total_scenarios, r.completed_scenarios, r.status
   from golden_test_runs r
   where r.status in ('queued','running')
+    and pg_try_advisory_xact_lock(hashtext(r.id::text))
   order by r.created_at asc
   limit 1
   for update skip locked;
+$$;
+
+-- I1 fix: atomic increment of completed_scenarios to avoid read-modify-write race.
+-- Use create or replace so re-running this migration is safe (idempotent).
+create or replace function golden_bump_completed(p_run_id uuid) returns void language sql as $$
+  update golden_test_runs set completed_scenarios = completed_scenarios + 1 where id = p_run_id;
 $$;
