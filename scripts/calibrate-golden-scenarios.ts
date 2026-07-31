@@ -62,11 +62,17 @@ async function calibrate(scenario: GoldenScenario, version: number) {
 }
 
 async function main() {
+  // Filtro opcional: SCENARIO_IDS=id1,id2 corre solo esos escenarios.
+  const filter = process.env.SCENARIO_IDS?.split(',').map(s => s.trim()).filter(Boolean);
+  const scenarios = filter?.length
+    ? NIA_SCENARIOS.filter(s => filter.includes(s.id))
+    : NIA_SCENARIOS;
+
   console.log(`Calibracion golden tests — N=${N_CALIBRATION} por escenario`);
   console.log(`Target rango: [${TARGET_MIN}, ${TARGET_MAX}]`);
-  console.log(`Escenarios: ${NIA_SCENARIOS.length}`);
+  console.log(`Escenarios: ${scenarios.length}${filter?.length ? ` (filtro: ${filter.join(',')})` : ''}`);
 
-  for (const scenario of NIA_SCENARIOS) {
+  for (const scenario of scenarios) {
     await calibrate(scenario, 1);
   }
 
