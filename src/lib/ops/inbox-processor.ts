@@ -211,6 +211,119 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     description: 'Reporta una falla técnica inesperada al equipo de soporte.',
     input_schema: { type: 'object' as const, properties: { tipo: { type: 'string' }, descripcion: { type: 'string' }, contexto: { type: 'string' } }, required: ['tipo', 'descripcion'] },
   },
+  // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
+  {
+    name:        'crear_lead',
+    description: 'Registra al remitente (o a un prospecto mencionado en el correo) como lead cuando el email exprese interés en contratar, cotizar o probar un servicio. Visible después en Llamadas → Leads.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre:      { type: 'string', description: 'Nombre completo del prospecto' },
+        negocio:     { type: 'string', description: 'Nombre del negocio del prospecto' },
+        giro:        { type: 'string', description: 'Giro o industria del negocio' },
+        servicio:    { type: 'string', description: 'Servicio en el que está interesado' },
+        presupuesto: { type: 'string', description: 'Presupuesto aproximado si lo menciona' },
+        timeline:    { type: 'string', description: 'Para cuándo lo necesita si lo menciona' },
+        email:       { type: 'string', description: 'Correo del prospecto (usa el email del remitente si no da otro)' },
+        whatsapp:    { type: 'string', description: 'WhatsApp del prospecto si lo comparte' },
+      },
+      required: ['nombre', 'servicio'],
+    },
+  },
+  {
+    name:        'agendar_cita',
+    description: 'Agenda, modifica o cancela una cita cuando el remitente confirma día y hora. Antes de agendar, usa list_calendar_events para verificar disponibilidad.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        accion:   { type: 'string', enum: ['agendar', 'modificar', 'cancelar'], description: 'Acción a realizar' },
+        nombre:   { type: 'string', description: 'Nombre del cliente' },
+        servicio: { type: 'string', description: 'Servicio para la cita' },
+        fecha:    { type: 'string', description: 'Fecha de la cita. Ej: "lunes 28 de julio"' },
+        hora:     { type: 'string', description: 'Hora de la cita. Ej: "10:00 AM"' },
+        telefono: { type: 'string', description: 'Teléfono del cliente (necesario para modificar o cancelar)' },
+      },
+      required: ['accion', 'nombre'],
+    },
+  },
+  {
+    name:        'registrar_pedido',
+    description: 'Registra un pedido cuando el email contiene una orden clara: producto, cantidad, forma de entrega. Si algún dato falta, mejor pídelo en la respuesta antes de crear el pedido.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        nombre:    { type: 'string', description: 'Nombre del cliente' },
+        telefono:  { type: 'string', description: 'Teléfono del cliente' },
+        items:     { type: 'string', description: 'Descripción de los productos o servicios pedidos' },
+        tipo:      { type: 'string', enum: ['entrega', 'recoger'], description: '"entrega" a domicilio o "recoger" en sucursal' },
+        direccion: { type: 'string', description: 'Dirección de entrega (solo si tipo es "entrega")' },
+        notas:     { type: 'string', description: 'Notas adicionales del pedido' },
+      },
+      required: ['nombre', 'items', 'tipo'],
+    },
+  },
+  {
+    name:        'buscar_cliente',
+    description: 'Busca el historial (llamadas, leads, pedidos, citas) del remitente antes de redactar la respuesta, para dar contexto y evitar preguntar por datos que ya tenemos. Búscalo por email, nombre o teléfono.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        identificador: { type: 'string', description: 'Nombre completo, número de teléfono o email del cliente a buscar' },
+      },
+      required: ['identificador'],
+    },
+  },
+  // ── Helpdesk / IT (voz+chat+email según regla de 3 canales) ───────────────
+  {
+    name:        'crear_ticket',
+    description: 'Crea un ticket de soporte IT cuando el correo reporta un problema técnico que requiere seguimiento. Después incluye el folio en la respuesta al remitente.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        titulo:        { type: 'string', description: 'Título breve del problema' },
+        categoria:     { type: 'string', enum: ['red', 'servidores', 'usuario', 'software', 'hardware', 'accesos', 'otro'], description: 'Categoría del problema' },
+        prioridad:     { type: 'string', enum: ['baja', 'normal', 'alta', 'critica'], description: 'Prioridad del ticket' },
+        descripcion:   { type: 'string', description: 'Descripción detallada del problema' },
+        caller_number: { type: 'string', description: 'Teléfono del usuario afectado (opcional)' },
+      },
+      required: ['titulo', 'categoria', 'prioridad'],
+    },
+  },
+  {
+    name:        'consultar_incidentes',
+    description: 'Verifica si el problema reportado en el correo ya está registrado como incidente activo. Úsala ANTES de crear_ticket para evitar duplicados y responder con el mensaje oficial.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tema: { type: 'string', description: 'Tema o sistema sobre el que preguntas (ej: internet, correo, SAP). Opcional.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name:        'buscar_directorio',
+    description: 'Busca en el directorio interno quién atiende un tipo de problema o área. Úsala para saber a quién referir al remitente cuando el email pide contacto de un especialista.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tipo_problema: { type: 'string', description: 'Tipo de problema o área (ej: red, VPN, impresoras, SAP)' },
+      },
+      required: ['tipo_problema'],
+    },
+  },
+  {
+    name:        'iniciar_onboarding',
+    description: 'Inicia el proceso de onboarding para un nuevo empleado, cliente o proveedor cuando el correo así lo solicita. Dispara el envío del correo de bienvenida y crea el registro de seguimiento.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        contact_name:  { type: 'string', description: 'Nombre completo del contacto' },
+        contact_email: { type: 'string', description: 'Correo electrónico del contacto (usa el del remitente si aplica)' },
+        template_name: { type: 'string', description: 'Nombre de la plantilla a usar (opcional)' },
+      },
+      required: ['contact_name', 'contact_email'],
+    },
+  },
   {
     name:        'pedir_a_humano',
     description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.

@@ -686,11 +686,13 @@ export async function executeAgentTool(
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'crear_lead') {
     const args = toolInput as Record<string, string | undefined>;
+    // source refleja el canal real donde llegó el lead (chat portal, voz, email).
+    // Antes hardcodeaba 'chat', escondiendo métricas de leads por canal.
     const { error } = await supabase.from('leads_voice').insert({
       agent_id: agentId, nombre: args.nombre ?? null, negocio: args.negocio ?? null,
       giro: args.giro ?? null, servicio: args.servicio ?? null, presupuesto: args.presupuesto ?? null,
       timeline: args.timeline ?? null, email: args.email ?? null, whatsapp: args.whatsapp ?? null,
-      source: 'chat',
+      source: ctx.channel ?? 'chat',
     });
     return error
       ? { ok: false, error: 'No se pudo registrar el lead.' }
