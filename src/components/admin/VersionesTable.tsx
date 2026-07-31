@@ -22,9 +22,15 @@ export function VersionesTable({ rows }: { rows: Row[] }) {
 
   return (
     <>
-      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+      <div
+        className="rounded-lg overflow-hidden border"
+        style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface)' }}
+      >
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+          <thead
+            className="text-xs uppercase tracking-wide"
+            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
+          >
             <tr>
               <th className="text-left px-4 py-3">Meerkat</th>
               <th className="text-left px-4 py-3">Activa</th>
@@ -34,28 +40,39 @@ export function VersionesTable({ rows }: { rows: Row[] }) {
               <th className="text-right px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ color: 'var(--c-text)' }}>
             {rows.map(r => (
-              <tr key={r.meerkat_id} className="border-t border-slate-100">
-                <td className="px-4 py-3 font-medium text-slate-900">{r.meerkat_id}</td>
+              <tr key={r.meerkat_id} className="border-t" style={{ borderColor: 'var(--c-divider)' }}>
+                <td className="px-4 py-3 font-medium" style={{ color: 'var(--c-text)' }}>{r.meerkat_id}</td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium"
+                    style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399', border: '1px solid rgba(16,185,129,0.4)' }}
+                  >
                     <GitBranch className="w-3 h-3" /> v{r.active_version}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-600 text-xs">
+                <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
                   {new Date(r.activated_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
-                  {r.activated_by && <span className="text-slate-400"> · {r.activated_by}</span>}
+                  {r.activated_by && <span style={{ color: 'var(--c-text-4)' }}> · {r.activated_by}</span>}
                 </td>
-                <td className="px-4 py-3 text-slate-700">
+                <td className="px-4 py-3" style={{ color: 'var(--c-text-2)' }}>
                   {r.agent_count}
                   {r.pinned_count > 0 && (
-                    <span className="text-slate-400 text-xs"> ({r.agent_count - r.pinned_count} latest, {r.pinned_count} pinned)</span>
+                    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}> ({r.agent_count - r.pinned_count} latest, {r.pinned_count} pinned)</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-slate-600 text-xs">
+                <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
                   {r.available_versions.map(v => (
-                    <span key={v} className={`inline-block px-1.5 py-0.5 mr-1 rounded ${v === r.active_version ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                    <span
+                      key={v}
+                      className="inline-block px-1.5 py-0.5 mr-1 rounded"
+                      style={
+                        v === r.active_version
+                          ? { background: 'rgba(16,185,129,0.15)', color: '#34d399' }
+                          : { background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }
+                      }
+                    >
                       v{v}
                     </span>
                   ))}
@@ -64,14 +81,16 @@ export function VersionesTable({ rows }: { rows: Row[] }) {
                   {r.available_versions.length > 1 && (
                     <button
                       onClick={() => setModalRow(r)}
-                      className="text-xs px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-50 mr-1"
+                      className="text-xs px-2 py-1 rounded mr-1 hover:opacity-80 transition-opacity"
+                      style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
                     >
                       Cambiar versión <ArrowRight className="inline w-3 h-3" />
                     </button>
                   )}
                   <button
                     onClick={() => setHistoryMeerkat(r.meerkat_id)}
-                    className="text-xs px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
+                    style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
                   >
                     <History className="inline w-3 h-3" /> Historial
                   </button>

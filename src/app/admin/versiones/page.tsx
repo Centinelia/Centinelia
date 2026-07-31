@@ -51,8 +51,8 @@ export default async function VersionesPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Versiones de meerkats</h1>
-        <p className="text-sm text-slate-600 mt-1">
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Versiones de meerkats</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
           Cada meerkat corre en la versión activa listada. Rollback = activar versión anterior. Cambios propagan en ≤60s + resync a Vapi.
         </p>
       </div>

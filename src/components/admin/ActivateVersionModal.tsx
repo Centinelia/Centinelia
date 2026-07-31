@@ -71,27 +71,39 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
 
   const affectedAgents = row.agent_count - row.pinned_count;
 
-  const btnCls =
-    verdict === 'fail' ? 'bg-red-600 hover:bg-red-700' :
-    verdict === 'warn' ? 'bg-amber-600 hover:bg-amber-700' :
-    'bg-slate-900 hover:bg-slate-800';
+  const btnStyle =
+    verdict === 'fail' ? { background: '#dc2626' } :
+    verdict === 'warn' ? { background: '#d97706' } :
+    { background: 'var(--accent)' };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Activar versión: {row.meerkat_id}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+    >
+      <div className="rounded-lg shadow-xl max-w-md w-full" style={{ background: 'var(--c-modal)' }}>
+        <div
+          className="p-4 flex items-center justify-between"
+          style={{ borderBottom: '1px solid var(--c-border)' }}
+        >
+          <h2 className="font-semibold" style={{ color: 'var(--c-text)' }}>Activar versión: {row.meerkat_id}</h2>
+          <button
+            onClick={onClose}
+            className="hover:opacity-80 transition-opacity"
+            style={{ color: 'var(--c-text-4)' }}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="text-sm">
-            <div className="text-slate-600">Versión activa actual: <span className="font-medium text-slate-900">v{row.active_version}</span></div>
-            <div className="text-slate-600">Última activación: {new Date(row.activated_at).toLocaleString('es-MX')}</div>
+          <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+            <div>Versión activa actual: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{row.active_version}</span></div>
+            <div>Última activación: {new Date(row.activated_at).toLocaleString('es-MX')}</div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-700 mb-1 block">Nueva versión</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>Nueva versión</label>
             <select
               value={selectedVersion}
               onChange={e => {
@@ -99,7 +111,8 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
                 setOverrideReason('');
                 setVerdict(null);
               }}
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm"
+              className="w-full rounded px-2 py-1.5 text-sm"
+              style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
             >
               {otherVersions.map(v => (
                 <option key={v} value={v}>v{v}</option>
@@ -109,28 +122,32 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
 
           <GateVerdictPanel meerkat_id={row.meerkat_id} target_version={selectedVersion} />
 
-          <div className="text-sm bg-slate-50 rounded p-3">
-            <div className="text-slate-700">Agentes que veran el cambio: <span className="font-medium">{affectedAgents}</span></div>
+          <div
+            className="text-sm rounded p-3"
+            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}
+          >
+            <div>Agentes que veran el cambio: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{affectedAgents}</span></div>
             {row.pinned_count > 0 && (
-              <div className="text-slate-500 text-xs mt-1">
+              <div className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
                 {row.pinned_count} agente(s) protegidos por pin — no reciben el cambio.
               </div>
             )}
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-700 mb-1 block">Motivo (opcional)</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>Motivo (opcional)</label>
             <input
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="ej. rollback por score bajo"
-              className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm"
+              className="w-full rounded px-2 py-1.5 text-sm"
+              style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
             />
           </div>
 
           {needsOverride && (
             <div>
-              <label className="text-xs font-medium text-red-700 mb-1 block">
+              <label className="text-xs font-medium mb-1 block" style={{ color: '#f87171' }}>
                 Motivo del override (obligatorio):
               </label>
               <textarea
@@ -138,17 +155,40 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
                 onChange={e => setOverrideReason(e.target.value)}
                 placeholder="ej. rollback urgente por incidente. Se que degrada."
                 rows={3}
-                className="w-full border border-red-300 rounded px-2 py-1.5 text-sm"
+                className="w-full rounded px-2 py-1.5 text-sm"
+                style={{ border: '1px solid rgba(239,68,68,0.5)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
               />
             </div>
           )}
 
-          {error && <div className="text-sm text-red-600 bg-red-50 rounded p-2">{error}</div>}
+          {error && (
+            <div
+              className="text-sm rounded p-2"
+              style={{ color: '#f87171', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)' }}
+            >
+              {error}
+            </div>
+          )}
         </div>
 
-        <div className="p-4 border-t border-slate-200 flex justify-end gap-2">
-          <button onClick={onClose} disabled={submitting} className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 rounded">Cancelar</button>
-          <button onClick={submit} disabled={submitting || !canSubmit} className={`px-3 py-1.5 text-sm text-white rounded disabled:opacity-50 ${btnCls}`}>
+        <div
+          className="p-4 flex justify-end gap-2"
+          style={{ borderTop: '1px solid var(--c-border)' }}
+        >
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className="px-3 py-1.5 text-sm rounded hover:opacity-80 transition-opacity"
+            style={{ color: 'var(--c-text-2)' }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={submit}
+            disabled={submitting || !canSubmit}
+            className="px-3 py-1.5 text-sm text-white rounded disabled:opacity-50"
+            style={btnStyle}
+          >
             {submitting ? 'Activando...' : `Activar v${selectedVersion}`}
           </button>
         </div>
