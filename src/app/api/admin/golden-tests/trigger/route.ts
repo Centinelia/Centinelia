@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { isAdmin } from '@/lib/admin/auth';
+import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
+import { MEERKAT_IDS, type MeerkatId } from '@/lib/golden-tests/types';
+import { hashScenarioSet } from '@/lib/golden-tests/hash';
+import { computeTotalScenarios, checkDailyCap } from '@/lib/golden-tests/orchestrator';
+
+export async function POST(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const meerkat = body.meerkat_id as string;
+  const versionsInput = body.versions as number[] | undefined;
+  const reason = (body.reason as string) ?? 'manual trigger';
+
+  if (!MEERKAT_IDS.includes(meerkat as MeerkatId)) {
+    return NextResponse.json({ error: `Unknown meerkat: ${meerkat}` }, { status: 400 });
+  }
+
+  const meerkatId = meerkat as MeerkatId;
+  const supabase = createAdminClient();
+
+  const cap = await checkDailyCap();
+  if (!cap.within) return NextResponse.json({ error: 'Daily cap reached', count: cap.count }, { status: 429 });
+
+  const versionsInBundle = Object.keys(MEERKAT_CONFIGS[meerkatId] ?? {}).map(Number);
+
+  let versions: number[];
+  if (versionsInput?.length) {
+    const invalid = versionsInput.filter(v => !versionsInBundle.includes(v));
+    if (invalid.length) return NextResponse.json({ error: `Versions not in bundle: ${invalid.join(',')}` }, { status: 400 });
+    versions = versionsInput;
+  } else {
+    const { data: active } = await supabase
+      .from('meerkat_active_versions')
+      .select('active_version')
+      .eq('meerkat_id', meerkatId)
+      .maybeSingle();
+    versions = [active?.active_version ?? 1];
+  }
+
+  const totalScenarios = computeTotalScenarios(meerkatId, versions);
+  if (totalScenarios === 0) {
+    return NextResponse.json({ error: `No calibrated scenarios for ${meerkatId}` }, { status: 400 });
+  }
+
+  const { data: run, error } = await supabase
+    .from('golden_test_runs')
+    .insert({
+      meerkat_id: meerkatId,
+      versions,
+      trigger: 'manual',
+      triggered_by: 'admin@centinelia.mx',
+      status: 'queued',
+      total_scenarios: totalScenarios,
+      scenario_hash: hashScenarioSet(meerkatId),
+    })
+    .select('id')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, run_id: run.id, meerkat_id: meerkatId, versions, reason });
+}
