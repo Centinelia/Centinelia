@@ -122,19 +122,31 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Upload files to Storage
   const uploadedFiles: { name: string; url: string; mime_type: string; size: number }[] = [];
-  for (const f of body.response_files ?? []) {
-    const path = `${id}/${Date.now()}-${f.name.replace(/[^a-z0-9._-]/gi, '_')}`;
-    const buffer = Buffer.from(f.base64, 'base64');
-    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, buffer, {
-      contentType: f.mime_type,
-      upsert: false,
-    });
-    if (upErr) {
-      console.error('[respond] upload failed:', upErr);
-      return NextResponse.json({ error: 'upload_failed', detail: upErr.message }, { status: 500 });
+  const uploadedPaths: string[] = [];
+  try {
+    for (const f of body.response_files ?? []) {
+      const path = `${id}/${Date.now()}-${f.name.replace(/[^a-z0-9._-]/gi, '_')}`;
+      const buffer = Buffer.from(f.base64, 'base64');
+      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+        contentType: f.mime_type,
+        upsert: false,
+      });
+      if (upErr) {
+        throw new Error(upErr.message);
+      }
+      uploadedPaths.push(path);
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 30); // 30d
+      uploadedFiles.push({ name: f.name, url: signed?.signedUrl ?? path, mime_type: f.mime_type, size: buffer.length });
     }
-    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 24 * 30); // 30d
-    uploadedFiles.push({ name: f.name, url: signed?.signedUrl ?? path, mime_type: f.mime_type, size: buffer.length });
+  } catch (uploadErr) {
+    // Rollback: borrar los archivos que sí subieron
+    if (uploadedPaths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(uploadedPaths).catch(err =>
+        console.error('[respond] rollback failed:', err)
+      );
+    }
+    console.error('[respond] upload failed:', uploadErr);
+    return NextResponse.json({ error: 'upload_failed', detail: String(uploadErr) }, { status: 500 });
   }
 
   const { error: updErr } = await supabase.from('human_requests').update({
