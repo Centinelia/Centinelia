@@ -79,6 +79,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   civic_reports:           '',
   contract_drafts:         '',
   automations:             '',
+  human_handoff_enabled:   '',
 };
 
 const DEFAULT_FEATURES: AgentFeatures = {

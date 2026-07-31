@@ -48,6 +48,9 @@ export interface AgentFeatures {
   civic_reports?: boolean;
   contract_drafts?: boolean;
 
+  // Human handoff — pedir_a_humano tool
+  human_handoff_enabled?: boolean;
+
   // Automation gating
   automations?: AutomationsConfig;
 }
@@ -279,4 +282,5 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   civic_reports:           '',
   contract_drafts:         '',
   automations:             '',
+  human_handoff_enabled:   '',
 };

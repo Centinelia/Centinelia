@@ -959,5 +959,13 @@ export async function executeAgentTool(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // pedir_a_humano
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'pedir_a_humano') {
+    const { pedirAHumano } = await import('@/lib/tools/handlers/pedir-a-humano');
+    return await pedirAHumano(toolInput as unknown as Parameters<typeof pedirAHumano>[0], ctx);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }

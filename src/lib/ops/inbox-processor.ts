@@ -213,6 +213,37 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     description: 'Reporta una falla técnica inesperada al equipo de soporte.',
     input_schema: { type: 'object' as const, properties: { tipo: { type: 'string' }, descripcion: { type: 'string' }, contexto: { type: 'string' } }, required: ['tipo', 'descripcion'] },
   },
+  {
+    name:        'pedir_a_humano',
+    description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.
+
+Úsala CUANDO:
+- Necesitas datos/archivos que no están en Drive ni puedes obtener con otras tools
+- Requiere una acción FÍSICA que solo un humano puede hacer (revisar stock, firmar documento en papel)
+- Requiere aprobación de una decisión que excede tu autoridad
+
+Para llamadas telefónicas:
+- Si tienes minutos disponibles Y toda la info → usa trigger_outbound_call, NO pidas a humano
+- Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
+
+NO la uses para:
+- Info obtenible con search_files, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegate_task)
+- Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        type:         { type: 'string', enum: ['info', 'action', 'approval'] },
+        target:       { type: 'string', enum: ['approver', 'owner', 'specific'] },
+        target_email: { type: 'string' },
+        title:        { type: 'string' },
+        description:  { type: 'string' },
+        urgency:      { type: 'string', enum: ['baja', 'media', 'alta'] },
+        needed_by:    { type: 'string' },
+      },
+      required: ['type', 'target', 'title', 'description'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
@@ -324,6 +355,11 @@ export async function processInboxEmail(params: {
   const contextBlocks: string[] = [];
   if (knowledgeBase?.trim()) contextBlocks.push(`NEGOCIO:\n${knowledgeBase.trim()}`);
   if (agentRole?.trim() && roleKB?.trim()) contextBlocks.push(`ROL DEL AGENTE: ${agentRole}\n${roleKB.trim()}`);
+  if (portalEmail) {
+    const { buildInternalDirectoryString } = await import('@/lib/human-handoff/directory');
+    const directory = await buildInternalDirectoryString(portalEmail);
+    if (directory) contextBlocks.push(directory);
+  }
   const contextSection = contextBlocks.length ? `\n\n${contextBlocks.join('\n\n')}` : '';
 
   const systemPrompt = `Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}

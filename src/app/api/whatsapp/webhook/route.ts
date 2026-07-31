@@ -139,6 +139,38 @@ const BUSCAR_EN_WEB_TOOL: Anthropic.Tool = {
   },
 };
 
+const PEDIR_A_HUMANO_TOOL: Anthropic.Tool = {
+  name: 'pedir_a_humano',
+  description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.
+
+Úsala CUANDO:
+- Necesitas datos/archivos que no están en Drive ni puedes obtener con otras tools
+- Requiere una acción FÍSICA que solo un humano puede hacer (revisar stock, firmar documento en papel)
+- Requiere aprobación de una decisión que excede tu autoridad
+
+Para llamadas telefónicas:
+- Si tienes minutos disponibles Y toda la info → usa trigger_outbound_call, NO pidas a humano
+- Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
+
+NO la uses para:
+- Info obtenible con search_files, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegate_task)
+- Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
+  input_schema: {
+    type: 'object',
+    properties: {
+      type:         { type: 'string', enum: ['info', 'action', 'approval'] },
+      target:       { type: 'string', enum: ['approver', 'owner', 'specific'] },
+      target_email: { type: 'string' },
+      title:        { type: 'string' },
+      description:  { type: 'string' },
+      urgency:      { type: 'string', enum: ['baja', 'media', 'alta'] },
+      needed_by:    { type: 'string' },
+    },
+    required: ['type', 'target', 'title', 'description'],
+  },
+};
+
 async function callVoiceRoute(
   routeName: string,
   agentId:   string,
@@ -167,6 +199,7 @@ const WA_ROUTE_MAP: Record<string, string> = {
   buscar_archivo:   'buscar-archivo',
   leer_archivo:     'leer-archivo',
   buscar_en_web:    'buscar-en-web',
+  pedir_a_humano:   'exec/pedir_a_humano',
 };
 
 export async function POST(req: NextRequest) {
@@ -241,6 +274,7 @@ export async function POST(req: NextRequest) {
     BUSCAR_ARCHIVO_TOOL,
     LEER_ARCHIVO_TOOL,
     BUSCAR_EN_WEB_TOOL,
+    PEDIR_A_HUMANO_TOOL,
   ];
   if (agent.capture_appointments) {
     tools.push(CITA_TOOL);

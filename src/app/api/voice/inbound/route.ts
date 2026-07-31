@@ -1182,6 +1182,45 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     });
   }
 
+  // pedir_a_humano — disponible para agentes con human_handoff habilitado y trust_stage >= 2
+  if (agent.features?.human_handoff_enabled !== false && (agent.trust_stage ?? 3) >= 2) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'pedir_a_humano',
+        description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.
+
+Úsala CUANDO:
+- Necesitas datos/archivos que no están en Drive ni puedes obtener con otras tools
+- Requiere una acción FÍSICA que solo un humano puede hacer (revisar stock, firmar documento en papel)
+- Requiere aprobación de una decisión que excede tu autoridad
+
+Para llamadas telefónicas:
+- Si tienes minutos disponibles Y toda la info → usa trigger_outbound_call, NO pidas a humano
+- Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
+
+NO la uses para:
+- Info obtenible con search_files, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegate_task)
+- Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
+        parameters: {
+          type: 'object',
+          properties: {
+            type:         { type: 'string', enum: ['info', 'action', 'approval'] },
+            target:       { type: 'string', enum: ['approver', 'owner', 'specific'] },
+            target_email: { type: 'string' },
+            title:        { type: 'string' },
+            description:  { type: 'string' },
+            urgency:      { type: 'string', enum: ['baja', 'media', 'alta'] },
+            needed_by:    { type: 'string' },
+          },
+          required: ['type', 'target', 'title', 'description'],
+        },
+        serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/pedir_a_humano?agent_id=${agent.id}`,
+      },
+    });
+  }
+
   // Vapi requires serverUrl at tool top level, not inside the function object
   return tools.map(tool => {
     const t = tool as Record<string, unknown>;
