@@ -58,12 +58,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // Fetch the item first (needed for email sending on approve)
   const { data: item } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, email_from, email_subject, ai_draft, item_type, status')
+    .select('id, agent_id, email_from, email_subject, ai_draft, item_type, status, category')
     .eq('id', body.id)
     .in('agent_id', agentIds)
     .single();
 
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // Rescatar: mover un correo marcado spam de vuelta a pending para revisión humana.
+  // Solo aplica a items status='skipped' + category='spam' (false positives del clasificador).
+  if (body.status === 'unspam') {
+    if (item.status !== 'skipped' || item.category !== 'spam') {
+      return NextResponse.json({ error: 'Solo correos marcados spam se pueden rescatar' }, { status: 400 });
+    }
+    const { error } = await supabase
+      .from('ops_inbox')
+      .update({ status: 'pending', category: 'otro', updated_at: new Date().toISOString() })
+      .eq('id', item.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   if (item.status !== 'pending') return NextResponse.json({ error: 'Already processed' }, { status: 409 });
 
   const newStatus = body.status as string;

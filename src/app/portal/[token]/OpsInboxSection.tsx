@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 
@@ -79,7 +79,7 @@ const URGENCY_COLORS: Record<string, string> = {
   alta:  '#ef4444',
 };
 
-type Tab = 'pendientes' | 'auto' | 'todo';
+type Tab = 'pendientes' | 'auto' | 'spam' | 'todo';
 
 export default function OpsInboxSection({ token }: { token: string }) {
   const [items, setItems]               = useState<InboxItem[]>([]);
@@ -127,6 +127,24 @@ export default function OpsInboxSection({ token }: { token: string }) {
     } finally { setActing(null); }
   };
 
+  const unspam = async (id: string) => {
+    setActing(id);
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, status: 'unspam' }),
+      });
+      if (res.ok) {
+        setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'pending', category: 'otro' } : i));
+        setExpanded(null);
+        toast.success('Rescatado. Ahora aparece en Pendientes.');
+      } else {
+        toast.error('No se pudo rescatar el correo.');
+      }
+    } finally { setActing(null); }
+  };
+
   // Tab-filtered ops_inbox items
   const filteredItems = (() => {
     let base: InboxItem[];
@@ -134,6 +152,8 @@ export default function OpsInboxSection({ token }: { token: string }) {
       base = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
     } else if (activeTab === 'auto') {
       base = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    } else if (activeTab === 'spam') {
+      base = items.filter(i => i.status === 'skipped' && i.category === 'spam');
     } else {
       base = items;
     }
@@ -151,10 +171,12 @@ export default function OpsInboxSection({ token }: { token: string }) {
   const pendingOpsCount    = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
   const autoCount          = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+  const spamCount          = items.filter(i => i.status === 'skipped' && i.category === 'spam').length;
 
   const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
-    { key: 'pendientes', label: 'Pendientes', count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
+    { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
     { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined },
+    { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined },
     { key: 'todo',       label: 'Todo' },
   ];
 
@@ -423,6 +445,17 @@ export default function OpsInboxSection({ token }: { token: string }) {
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                       style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
                       <X size={12} />Rechazar
+                    </button>
+                  </div>
+                )}
+
+                {/* Rescatar: solo cuando el correo está marcado spam (false positive del clasificador) */}
+                {item.status === 'skipped' && item.category === 'spam' && (
+                  <div className="mt-2">
+                    <button onClick={() => unspam(item.id)} disabled={!!acting}
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)', color: '#6C3BFF' }}>
+                      {acting === item.id ? 'Rescatando…' : <><RotateCcw size={12} />Rescatar (no era spam)</>}
                     </button>
                   </div>
                 )}
