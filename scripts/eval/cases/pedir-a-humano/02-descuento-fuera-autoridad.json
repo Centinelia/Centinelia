@@ -1,0 +1,15 @@
+{
+  "id": "02-descuento-fuera-autoridad",
+  "description": "Cliente pide descuento que excede la autoridad del agente → debe pedir aprobación",
+  "should_call_tool": true,
+  "email": {
+    "from": "comprador@empresa.com",
+    "subject": "Solicitud de descuento en pedido grande",
+    "body": "Quiero comprar 500 unidades de tuercas M10. ¿Pueden hacer un descuento del 20% si pago de contado? El volumen justifica el descuento."
+  },
+  "expected_tool_args": {
+    "type": "approval",
+    "target": "approver"
+  },
+  "context": "Ferretería. Pedido grande con solicitud de descuento fuera del rango de autoridad del agente (digamos, solo autorizado hasta 10%). El agente debe pedir aprobación formal a un gerente."
+}

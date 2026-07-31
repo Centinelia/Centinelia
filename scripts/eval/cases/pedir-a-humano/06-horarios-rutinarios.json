@@ -1,0 +1,12 @@
+{
+  "id": "06-horarios-rutinarios",
+  "description": "Cliente pregunta por horarios de atención rutinarios → NO debe llamar pedir_a_humano",
+  "should_call_tool": false,
+  "email": {
+    "from": "cliente@mail.com",
+    "subject": "¿Hasta qué hora atienden?",
+    "body": "Hola, ¿cuál es el horario de atención de la sucursal? Quiero ir a comprar mañana por la tarde."
+  },
+  "expected_tool_args": null,
+  "context": "Ferretería. Cliente pide horarios. Esta es una consulta rutinaria que el agente conoce y puede responder sin verificaciones. NO es necesario escalar."
+}

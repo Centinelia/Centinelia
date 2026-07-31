@@ -1,0 +1,15 @@
+{
+  "id": "01-cliente-pide-fotos",
+  "description": "Cliente pide fotos de producto que el agente NO tiene en Drive → debe llamar pedir_a_humano",
+  "should_call_tool": true,
+  "email": {
+    "from": "cliente@x.com",
+    "subject": "Fotos del producto SKU-A214",
+    "body": "Antes de decidir, ¿me pueden enviar 3 fotos del producto SKU-A214 en distintos ángulos? Gracias."
+  },
+  "expected_tool_args": {
+    "type": "info",
+    "target": "approver"
+  },
+  "context": "Ferretería. Cliente pregunta por fotos de un SKU. El agente no tiene acceso a una base de fotos ni puede buscarlas en Drive. Debe pedir a humano que busque/envíe las fotos."
+}

@@ -1,0 +1,13 @@
+{
+  "id": "04-cliente-llamada-con-minutos",
+  "description": "Cliente pide hablar por llamada Y el agente TIENE minutos disponibles → NO debe llamar pedir_a_humano",
+  "should_call_tool": false,
+  "email": {
+    "from": "cliente@empresa.com",
+    "subject": "Consulta por teléfono",
+    "body": "¿Pueden llamarme para aclarar algunos detalles del presupuesto? Mi número es +52 8119876543. Estoy disponible en la tarde."
+  },
+  "expected_tool_args": null,
+  "alternate_tool": "trigger_outbound_call",
+  "context": "Pneuma Studio. Cliente pide llamada. El agente de voz TIENE minutos disponibles y toda la información necesaria (teléfono, contexto). Debe usar trigger_outbound_call, NO pedir a humano."
+}

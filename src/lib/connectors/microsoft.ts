@@ -11,10 +11,11 @@ class MicrosoftEmail implements EmailConnector {
     return { Authorization: `Bearer ${this.tok}` };
   }
 
-  async fetchUnread(since: Date): Promise<EmailMessage[]> {
-    const filter = `isRead eq false and receivedDateTime gt ${since.toISOString()}`;
-    const select = 'id,conversationId,subject,from,body,receivedDateTime';
-    const url    = `${GRAPH}/me/mailFolders/inbox/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
+  async fetchUnread(since: Date, folder: 'inbox' | 'spam' = 'inbox'): Promise<EmailMessage[]> {
+    const folderName = folder === 'spam' ? 'JunkEmail' : 'Inbox';
+    const filter     = `isRead eq false and receivedDateTime gt ${since.toISOString()}`;
+    const select     = 'id,conversationId,subject,from,body,receivedDateTime';
+    const url        = `${GRAPH}/me/mailFolders/${folderName}/messages?$filter=${encodeURIComponent(filter)}&$select=${select}&$top=20&$orderby=receivedDateTime desc`;
     const res = await fetch(url, { headers: this.h() });
     if (!res.ok) return [];
     const data = await res.json();
@@ -31,6 +32,14 @@ class MicrosoftEmail implements EmailConnector {
       subject:  m.subject ?? '',
       body:     stripHtml(m.body?.content ?? ''),
     }));
+  }
+
+  async unmarkSpam(messageId: string): Promise<void> {
+    await fetch(`${GRAPH}/me/messages/${messageId}/move`, {
+      method:  'POST',
+      headers: { ...this.h(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ destinationId: 'inbox' }),
+    });
   }
 
   async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void> {

@@ -1,0 +1,12 @@
+{
+  "id": "10-acuse-rutinario",
+  "description": "Confirmación/acuse de recibo rutinario → NO debe llamar pedir_a_humano",
+  "should_call_tool": false,
+  "email": {
+    "from": "despacho@logistica.com",
+    "subject": "Entrega completada - REF: ENV-2026-15623",
+    "body": "Notificamos que la entrega de su pedido #2026-5401 se completó exitosamente el 30 de julio a las 14:30. Puede descargar el comprobante de entrega en nuestro portal. Gracias por su compra."
+  },
+  "expected_tool_args": null,
+  "context": "Ferretería. Correo de despacho informando entrega completada. Es una notificación informativa que el agente puede registrar/clasificar sin necesidad de escalar a humano."
+}

@@ -77,6 +77,12 @@ export interface AgentToolContext {
   cookieHeader?: string;
   /** Mutable counter for read_url calls (max 3 per session). */
   readUrlCount?: ReadUrlCounter;
+  /** Source channel — used by pedir_a_humano to tag human_requests.source_channel. */
+  channel?:       'voice' | 'chat' | 'email';
+  /** Source inbox row id — used by pedir_a_humano anti-loop counter. */
+  sourceInboxId?: string;
+  /** Source Vapi call id — used by pedir_a_humano for voice channel tracking. */
+  sourceCallId?:  string;
 }
 
 async function fetchPeerAgent(agentId: string, portalEmail: string, supabase: SupabaseClient) {
@@ -956,6 +962,14 @@ export async function executeAgentTool(
       ok:      true,
       message: `Onboarding iniciado para ${contactName}. Le envié el correo de bienvenida a ${contactEmail} con el proceso "${(tpl as any).name}".`,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // pedir_a_humano
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'pedir_a_humano') {
+    const { pedirAHumano } = await import('@/lib/tools/handlers/pedir-a-humano');
+    return await pedirAHumano(toolInput as unknown as Parameters<typeof pedirAHumano>[0], ctx);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

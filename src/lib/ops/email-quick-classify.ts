@@ -43,6 +43,22 @@ const NOTIFICATION_LOCAL_PATTERNS = NOTIFICATION_LOCAL_PARTS.map(lp =>
   new RegExp(`^${lp}([+._-][a-z0-9]+)?@`, 'i')
 );
 
+// ── Q4 Spam Filter Enhancements ──
+// Patrones agresivos para detectar correos de marketing/promo/retailer
+
+const PROMO_SENDER_REGEX = /@(promociones?|promo|marketing|newsletter|noreply|no-reply|notifications?|hello|hi|team|info|hola|ofertas?|deals?|updates?)\./i;
+const BULK_SENDER_REGEX  = /@.*\.(mailchimp|sendgrid|constantcontact|hubspot|marketo|braze|iterable|klaviyo|convertkit)\./i;
+
+const RETAILER_DOMAINS = new Set([
+  'officedepot.com', 'liverpool.com.mx', 'amazon.com', 'mercadolibre.com',
+  'sears.com.mx', 'walmart.com.mx', 'coppel.com', 'palacio.com.mx',
+  'booking.com', 'expedia.com', 'groupon.com.mx', 'cinepolis.com',
+  'grouponmx.com', 'zapatoo.com.mx', 'aeromexico.com', 'volaris.com',
+]);
+
+const SUBJECT_PROMO_REGEX = /(oferta|descuento|% off|black friday|hot sale|promo|cup[oó]n|last chance|limited time|regalo|gana|precio especial|liquidaci[oó]n)/i;
+const SUBJECT_EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+
 // ── Marketing / newsletter (necesita match tanto en asunto como cuerpo) ──
 
 const MARKETING_SUBJECT_PATTERNS: RegExp[] = [
@@ -123,7 +139,35 @@ export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResu
     return { category: 'auto_notification', reason: `asunto de recibo/confirmación ("${subject.slice(0, 40)}…")` };
   }
 
-  // 3. Marketing — requiere señales dobles (asunto Y cuerpo). Un solo match
+  // 3. Q4: Detectores de spam agresivos — patrones de promo/retailer directo
+  if (PROMO_SENDER_REGEX.test(from)) {
+    return { category: 'spam', reason: `promo_sender (${from})` };
+  }
+  if (BULK_SENDER_REGEX.test(from)) {
+    return { category: 'spam', reason: `bulk_provider (${from})` };
+  }
+
+  // 3b. Retailer domain check
+  const domain = from.split('@')[1]?.split('>')[0]?.trim();
+  if (domain && RETAILER_DOMAINS.has(domain)) {
+    return { category: 'spam', reason: `retailer_domain (${domain})` };
+  }
+
+  // 3c. Subject promos + emojis (strong indicators)
+  if (SUBJECT_PROMO_REGEX.test(subject)) {
+    return { category: 'spam', reason: `subject_promo ("${subject.slice(0, 40)}")` };
+  }
+  if (SUBJECT_EMOJI_REGEX.test(subject)) {
+    return { category: 'spam', reason: `subject_emoji` };
+  }
+
+  // 3d. Bulk email headers in body (List-Unsubscribe, Precedence: bulk, X-Campaign-ID)
+  const headerScan = body.slice(0, 500);
+  if (/list-unsubscribe|precedence:\s*bulk|x-campaign-id/i.test(headerScan)) {
+    return { category: 'spam', reason: `bulk_headers_detected` };
+  }
+
+  // 4. Marketing — requiere señales dobles (asunto Y cuerpo). Un solo match
   //    no es suficiente para arriesgar un falso positivo con un cliente real.
   const marketingSubject = matchesAny(subject, MARKETING_SUBJECT_PATTERNS);
   const marketingBody    = matchesAny(body,    MARKETING_BODY_PATTERNS);
@@ -131,7 +175,7 @@ export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResu
     return { category: 'spam', reason: `marketing (asunto + cuerpo con "${marketingBody.source.slice(0, 30)}")` };
   }
 
-  // 4. Solo body "unsubscribe" pero sin sujeto marketing → probablemente
+  // 5. Solo body "unsubscribe" pero sin sujeto marketing → probablemente
   //    boletín confirmable como spam. Solo si además `from` tiene dominio de
   //    envío masivo típico.
   if (marketingBody) {

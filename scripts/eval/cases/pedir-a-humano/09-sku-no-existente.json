@@ -1,0 +1,15 @@
+{
+  "id": "09-sku-no-existente",
+  "description": "Pedido con SKU no existente en el sistema → debe pedir a humano que investigue",
+  "should_call_tool": true,
+  "email": {
+    "from": "cliente@construccion.com",
+    "subject": "Cotización para SKU-ZX999-CUSTOM",
+    "body": "Necesito cotización de 100 unidades del SKU-ZX999-CUSTOM. Es un producto personalizado que nos vendieron hace 3 años. ¿Sigue disponible? ¿Cuál sería el costo unitario hoy?"
+  },
+  "expected_tool_args": {
+    "type": "info",
+    "target": "approver"
+  },
+  "context": "Ferretería. Cliente pide un SKU personalizado que NO existe en la base de datos actual. El agente debe buscar en la base (buscar_producto) pero si no lo encuentra, debe pedir a humano que verifique archivos históricos o customización."
+}

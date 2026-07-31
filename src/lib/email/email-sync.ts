@@ -70,7 +70,7 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, auto_reply, trust_stage')
+    .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, auto_reply, trust_stage, features')
     .eq('id', integration.agent_id)
     .single();
 
@@ -181,5 +181,88 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
         body,
       }),
     });
+  }
+
+  // ── Spam folder sync (opt-in, rate-limited) ──────────────────────────────────
+  const agentFeatures = ((agent as Record<string, unknown>).features as Record<string, unknown> | null) ?? {};
+  const checkSpam     = agentFeatures.check_spam_folder === true;
+
+  if (checkSpam && conn.email.fetchUnread) {
+    // Fetch last_spam_sync_at from integration_accounts metadata
+    let lastSpamSyncAt: string | undefined;
+    if (agent.portal_email) {
+      const { data: ia } = await supabase
+        .from('integration_accounts')
+        .select('metadata')
+        .eq('portal_email', agent.portal_email)
+        .eq('provider', integration.provider)
+        .maybeSingle();
+      lastSpamSyncAt = ((ia?.metadata as Record<string, unknown>) ?? {}).last_spam_sync_at as string | undefined;
+    }
+
+    const thirtyMinMs  = 30 * 60 * 1000;
+    const canSyncSpam  = !lastSpamSyncAt || (Date.now() - new Date(lastSpamSyncAt).getTime()) > thirtyMinMs;
+
+    if (canSyncSpam) {
+      const spamMessages = await conn.email.fetchUnread(since, 'spam');
+
+      for (const msg of spamMessages) {
+        const { data: existing } = await supabase
+          .from('ops_inbox')
+          .select('id')
+          .eq('agent_id', agent.id)
+          .eq('raw_message_id', msg.id)
+          .maybeSingle();
+
+        if (existing) continue;
+
+        await processInboxEmail({
+          agentId:       agent.id,
+          source:        integration.provider,
+          rawMessageId:  msg.id,
+          threadId:      msg.threadId,
+          emailFrom:     msg.from,
+          emailSubject:  msg.subject,
+          emailBody:     msg.body,
+          attachments:   [],
+          agentName:     (agent.agent_name as string | null) ?? 'Centinelia',
+          businessName:  agent.business_name as string,
+          knowledgeBase: knowledge_base,
+          roleKB:        agent.role_knowledge_base as string | null,
+          agentRole:     agent.role as string | null,
+          ownerEmail:    agent.client_email as string,
+          portalToken:   agent.portal_token as string,
+          portalEmail:   agent.portal_email as string | undefined,
+          autoMode,
+          approvalEmail: (agent as Record<string, unknown>).approval_email as string | null | undefined,
+          fromSpamFolder: true,
+          unmarkSpamFn:  conn.email.unmarkSpam
+            ? (id: string) => conn.email.unmarkSpam!(id)
+            : undefined,
+          sendReplyFn:   (body: string) => conn.email.sendReply({
+            messageId: msg.id,
+            threadId:  msg.threadId,
+            to:        msg.from,
+            subject:   msg.subject,
+            body,
+          }),
+        });
+      }
+
+      // Update last_spam_sync_at in integration_accounts
+      if (agent.portal_email) {
+        const { data: ia } = await supabase
+          .from('integration_accounts')
+          .select('metadata')
+          .eq('portal_email', agent.portal_email)
+          .eq('provider', integration.provider)
+          .maybeSingle();
+        const meta = (ia?.metadata as Record<string, unknown>) ?? {};
+        await supabase.from('integration_accounts')
+          .update({ metadata: { ...meta, last_spam_sync_at: new Date().toISOString() } })
+          .eq('portal_email', agent.portal_email)
+          .eq('provider', integration.provider);
+      }
+    }
   }
 }

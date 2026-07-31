@@ -213,6 +213,37 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     description: 'Reporta una falla técnica inesperada al equipo de soporte.',
     input_schema: { type: 'object' as const, properties: { tipo: { type: 'string' }, descripcion: { type: 'string' }, contexto: { type: 'string' } }, required: ['tipo', 'descripcion'] },
   },
+  {
+    name:        'pedir_a_humano',
+    description: `Pide a un humano del equipo del negocio: info que no tienes, una acción física, o confirmación de una decisión importante.
+
+Úsala CUANDO:
+- Necesitas datos/archivos que no están en Drive ni puedes obtener con otras tools
+- Requiere una acción FÍSICA que solo un humano puede hacer (revisar stock, firmar documento en papel)
+- Requiere aprobación de una decisión que excede tu autoridad
+
+Para llamadas telefónicas:
+- Si tienes minutos disponibles Y toda la info → usa trigger_outbound_call, NO pidas a humano
+- Solo pide llamada a humano si: sin minutos, cliente pidió humano, o conversación delicada
+
+NO la uses para:
+- Info obtenible con search_files, buscar_en_web, o QB
+- Cosas que puede hacer otro agente (usa delegate_task)
+- Llamadas que puedes hacer tú (usa trigger_outbound_call primero)`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        type:         { type: 'string', enum: ['info', 'action', 'approval'] },
+        target:       { type: 'string', enum: ['approver', 'owner', 'specific'] },
+        target_email: { type: 'string' },
+        title:        { type: 'string' },
+        description:  { type: 'string' },
+        urgency:      { type: 'string', enum: ['baja', 'media', 'alta'] },
+        needed_by:    { type: 'string' },
+      },
+      required: ['type', 'target', 'title', 'description'],
+    },
+  },
 ];
 
 const QB_EMAIL_TOOLS: Anthropic.Tool[] = [
@@ -264,13 +295,16 @@ export async function processInboxEmail(params: {
   approvalEmail?:    string | null;
   existingInboxId?:  string;         // set when this is a reply to an info_requested thread
   originalEmailBody?: string;        // original email body from the info_requested record
+  fromSpamFolder?:   boolean;        // true when fetched from provider spam/junk folder
+  unmarkSpamFn?:     (messageId: string) => Promise<void>; // best-effort: move out of spam in provider
   sendReplyFn?:      (body: string) => Promise<void>;
 }): Promise<void> {
   const {
     agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
     emailBody, attachments, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
-    autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody, sendReplyFn,
+    autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
+    fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
   } = params;
 
   // If this is a reply to an info_requested thread, prepend the original context
@@ -287,10 +321,10 @@ export async function processInboxEmail(params: {
 
   // C5 — clasificación determinística. Correos obviamente automáticos o
   // marketing no van a Claude: se marcan `skipped` sin consumir ops.
-  // Excepciones: si es una respuesta a un info_requested (existingInboxId)
-  // o si el correo huele a factura, sigue el pipeline normal para no
-  // arriesgar perder algo importante.
-  if (!existingInboxId && !looksLikeInvoice) {
+  // Excepciones: si es una respuesta a un info_requested (existingInboxId),
+  // si el correo huele a factura, o si vino de la carpeta spam del proveedor
+  // (fromSpamFolder=true) — en ese caso Haiku ya evaluará si es legítimo.
+  if (!existingInboxId && !looksLikeInvoice && !fromSpamFolder) {
     const quick = quickClassifyEmail({
       from:    emailFrom,
       subject: emailSubject,
@@ -324,14 +358,33 @@ export async function processInboxEmail(params: {
   const contextBlocks: string[] = [];
   if (knowledgeBase?.trim()) contextBlocks.push(`NEGOCIO:\n${knowledgeBase.trim()}`);
   if (agentRole?.trim() && roleKB?.trim()) contextBlocks.push(`ROL DEL AGENTE: ${agentRole}\n${roleKB.trim()}`);
+  if (portalEmail) {
+    const { buildInternalDirectoryString } = await import('@/lib/human-handoff/directory');
+    const directory = await buildInternalDirectoryString(portalEmail);
+    if (directory) contextBlocks.push(directory);
+  }
   const contextSection = contextBlocks.length ? `\n\n${contextBlocks.join('\n\n')}` : '';
 
-  const systemPrompt = `Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}
+  const spamRescueNote = fromSpamFolder
+    ? `\n\nATENCIÓN: Este correo fue marcado como SPAM por el proveedor de correo. Tu tarea es evaluar si realmente es spam o si es un correo legítimo que fue malfilteado. Si concluyes que es legítimo (cliente real, proveedor conocido, solicitud de trabajo), clasifícalo con la categoría correcta y redacta la respuesta normal — será RESCATADO de la carpeta spam. Si confirmas que sí es spam/publicidad no deseada, clasifícalo como 'spam'.`
+    : '';
+
+  const systemPrompt = `Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}${spamRescueNote}
 
 Categorías: proveedor, cliente, urgente, factura, spam, otro.
 - "urgente": emergencias, quejas graves, solicitudes de alta prioridad.
 - "factura": cualquier email con factura, cargo o solicitud de pago de un proveedor.
-- "spam": publicidad, marketing no solicitado.
+- "otro": correos de trabajo legítimos que no encajan en las otras 4 categorías.
+
+MARCA COMO 'spam' TODO CORREO QUE NO REQUIERE ATENCIÓN DEL EQUIPO:
+- Publicidad/promociones de tiendas, marcas, o servicios que NO son proveedores actuales
+- Newsletters, blog updates, product announcements de servicios que NO usa el negocio
+- Notificaciones automáticas de plataformas que NO son operacionales (LinkedIn "añade a...", Google Analytics reports, security alerts genéricas)
+- Ofertas comerciales frías (cold outreach de vendedores externos)
+- Contenido educativo/motivacional no solicitado
+
+Si dudas entre 'spam' y 'otro', piensa: "¿el equipo tiene que hacer algo con esto?".
+Si no, es spam. Mejor archivar de más que llenar la bandeja con ruido.
 
 Tienes herramientas para consultar datos reales del negocio (Drive, internet, QuickBooks, calendario, reportes ciudadanos, compañeros, etc.). Úsalas proactivamente si el email pide información específica para que el borrador de respuesta sea preciso y con datos reales.
 
@@ -443,10 +496,13 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       agentName,
       businessName,
       portalToken,
-      agent:        (agentRow ?? { id: agentId, agent_name: agentName, business_name: businessName }) as Record<string, unknown>,
+      agent:          (agentRow ?? { id: agentId, agent_name: agentName, business_name: businessName }) as Record<string, unknown>,
       supabase,
-      userContext:  effectiveBody.slice(0, 500),
-      readUrlCount: { value: 0 } as ReadUrlCounter,
+      userContext:    effectiveBody.slice(0, 500),
+      readUrlCount:   { value: 0 } as ReadUrlCounter,
+      channel:        'email' as const,
+      // existingInboxId is set when resuming a thread — anti-loop counter applies here
+      sourceInboxId:  existingInboxId,
     };
 
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
@@ -523,6 +579,11 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       console.error('[ops/inbox-processor] AI error (no portalEmail):', err);
     }
   }
+
+  // Determine source_folder for tracking
+  const finalSourceFolder = fromSpamFolder
+    ? (result.category === 'spam' ? 'spam_confirmed' : 'spam_rescued')
+    : 'inbox';
 
   // Determine final status and what to store in ai_draft
   let finalStatus: string;
@@ -618,6 +679,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         invoice_valid:       result.invoiceValid,
         invoice_discrepancy: result.invoiceDiscrepancy,
         status:              finalStatus,
+        source_folder:       finalSourceFolder,
         auto_mode_decision:  autoModeVerdict?.decision ?? null,
         auto_mode_reason:    autoModeVerdict?.reason ?? null,
         auto_mode_signals:   autoModeVerdict?.signals ?? [],
@@ -625,6 +687,13 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       .select('id, approval_token')
       .single();
     item = data as unknown as InboxItem | null;
+  }
+
+  // Best-effort: unmark spam in provider after INSERT so we don't block on failure
+  if (fromSpamFolder && finalSourceFolder === 'spam_rescued' && rawMessageId && unmarkSpamFn) {
+    unmarkSpamFn(rawMessageId).catch(err =>
+      console.error('[inbox-processor] unmarkSpam failed for', rawMessageId, err)
+    );
   }
 
   if (!item || finalStatus === 'skipped') return;

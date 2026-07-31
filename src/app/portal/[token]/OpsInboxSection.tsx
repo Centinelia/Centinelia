@@ -1,29 +1,41 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle } from 'lucide-react';
+import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 
 interface InboxItem {
-  id:                 string;
-  agent_id:           string;
-  email_from:         string;
-  email_subject:      string;
-  category:           string | null;
-  ai_summary:         string | null;
-  ai_draft:           string | null;
-  item_type:          'email' | 'invoice';
-  invoice_data:       Record<string, string | number | null> | null;
-  invoice_valid:      boolean | null;
+  id:                  string;
+  agent_id:            string;
+  email_from:          string;
+  email_subject:       string;
+  category:            string | null;
+  ai_summary:          string | null;
+  ai_draft:            string | null;
+  item_type:           'email' | 'invoice';
+  invoice_data:        Record<string, string | number | null> | null;
+  invoice_valid:       boolean | null;
   invoice_discrepancy: string | null;
-  status:             string;
-  attachments:        Array<{ name: string; url: string; type: string }>;
-  sent_at:            string | null;
-  created_at:         string;
-  auto_mode_decision: string | null;
-  auto_mode_reason:   string | null;
+  status:              string;
+  attachments:         Array<{ name: string; url: string; type: string }>;
+  sent_at:             string | null;
+  created_at:          string;
+  auto_mode_decision:  string | null;
+  auto_mode_reason:    string | null;
   auto_mode_flagged_at: string | null;
+}
+
+interface HumanRequest {
+  id:           string;
+  agent_id:     string;
+  request_type: string;
+  title:        string;
+  description:  string | null;
+  urgency:      string;
+  target_email: string | null;
+  status:       string;
+  created_at:   string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -55,13 +67,28 @@ const STATUS_LABELS: Record<string, string> = {
   info_requested: 'Info solicitada al remitente',
 };
 
+const URGENCY_LABELS: Record<string, string> = {
+  baja:  'Baja',
+  media: 'Media',
+  alta:  'Alta',
+};
+
+const URGENCY_COLORS: Record<string, string> = {
+  baja:  '#6b7280',
+  media: '#f59e0b',
+  alta:  '#ef4444',
+};
+
+type Tab = 'pendientes' | 'auto' | 'todo';
+
 export default function OpsInboxSection({ token }: { token: string }) {
-  const [items, setItems]         = useState<InboxItem[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [expandedId, setExpanded] = useState<string | null>(null);
-  const [acting, setActing]       = useState<string | null>(null);
-  const [filter, setFilter]       = useState<'all' | 'pending' | 'done'>('pending');
-  const [search, setSearch]       = useState('');
+  const [items, setItems]               = useState<InboxItem[]>([]);
+  const [humanRequests, setHumanReqs]   = useState<HumanRequest[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [expandedId, setExpanded]       = useState<string | null>(null);
+  const [acting, setActing]             = useState<string | null>(null);
+  const [activeTab, setActiveTab]       = useState<Tab>('pendientes');
+  const [search, setSearch]             = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +97,7 @@ export default function OpsInboxSection({ token }: { token: string }) {
       if (res.ok) {
         const data = await res.json();
         setItems(data.items ?? []);
+        setHumanReqs(data.humanRequests ?? []);
       }
     } finally { setLoading(false); }
   }, [token]);
@@ -99,20 +127,36 @@ export default function OpsInboxSection({ token }: { token: string }) {
     } finally { setActing(null); }
   };
 
-  const filtered = items.filter(i => {
-    const statusOk = filter === 'pending' ? i.status === 'pending' : filter === 'done' ? i.status !== 'pending' : true;
-    if (!statusOk) return false;
-    if (!search.trim()) return true;
+  // Tab-filtered ops_inbox items
+  const filteredItems = (() => {
+    let base: InboxItem[];
+    if (activeTab === 'pendientes') {
+      base = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
+    } else if (activeTab === 'auto') {
+      base = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    } else {
+      base = items;
+    }
+    if (!search.trim()) return base;
     const q = search.toLowerCase();
-    return (
+    return base.filter(i =>
       (i.email_subject ?? '').toLowerCase().includes(q) ||
       (i.email_from    ?? '').toLowerCase().includes(q) ||
       (i.ai_summary    ?? '').toLowerCase().includes(q) ||
       (i.category      ?? '').toLowerCase().includes(q)
     );
-  });
+  })();
 
-  const pendingCount = items.filter(i => i.status === 'pending').length;
+  // Badge counts
+  const pendingOpsCount    = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
+  const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
+  const autoCount          = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
+
+  const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
+    { key: 'pendientes', label: 'Pendientes', count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
+    { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined },
+    { key: 'todo',       label: 'Todo' },
+  ];
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">
@@ -122,30 +166,46 @@ export default function OpsInboxSection({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header + filter */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Inbox size={16} style={{ color: '#6C3BFF' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Bandeja de entrada</span>
           <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por correo procesado." />
-          {pendingCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-              {pendingCount}
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-1">
-          {(['pending', 'all', 'done'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
-              style={{ background: filter === f ? '#6C3BFF' : 'transparent', color: filter === f ? '#fff' : 'var(--c-text-3)' }}>
-              {f === 'pending' ? 'Pendientes' : f === 'done' ? 'Procesados' : 'Todos'}
-            </button>
-          ))}
-          <button onClick={load} className="ml-1 p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
-            <RefreshCw size={12} />
+        <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
+          <RefreshCw size={12} />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-0 border-b" style={{ borderColor: 'var(--c-border)' }}>
+        {TAB_CONFIG.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
+            style={{
+              borderColor:  activeTab === tab.key ? '#6C3BFF' : 'transparent',
+              color:        activeTab === tab.key ? 'var(--c-text)' : 'var(--c-text-3)',
+              fontWeight:   activeTab === tab.key ? 600 : 400,
+              background:   'transparent',
+            }}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: activeTab === tab.key ? 'rgba(108,59,255,0.12)' : 'rgba(239,68,68,0.12)',
+                  color:      activeTab === tab.key ? '#6C3BFF' : '#ef4444',
+                }}
+              >
+                {tab.count}
+              </span>
+            )}
           </button>
-        </div>
+        ))}
       </div>
 
       {/* Search */}
@@ -161,14 +221,66 @@ export default function OpsInboxSection({ token }: { token: string }) {
         />
       </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-12" style={{ color: 'var(--c-text-4)' }}>
-          <Inbox size={28} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">{filter === 'pending' ? 'Sin emails pendientes de revisión.' : 'Sin elementos.'}</p>
+      {/* Human Requests section — only shown in Pendientes tab */}
+      {activeTab === 'pendientes' && humanRequests.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+            Pendientes tuyos
+          </p>
+          {humanRequests.map(hr => {
+            const urgColor = URGENCY_COLORS[hr.urgency] ?? '#6b7280';
+            const urgLabel = URGENCY_LABELS[hr.urgency] ?? hr.urgency;
+            return (
+              <a
+                key={hr.id}
+                href={`/portal/${token}/requests/${hr.id}`}
+                className="block rounded-xl transition-opacity hover:opacity-80"
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', textDecoration: 'none' }}
+              >
+                <div className="flex items-center justify-between px-4 py-3 gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <MessageSquare size={14} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{hr.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                        {hr.request_type}
+                        <span className="mx-1.5" style={{ color: 'var(--c-border-2)' }}>·</span>
+                        <span style={{ color: urgColor }}>Urgencia {urgLabel}</span>
+                        <span className="mx-1.5" style={{ color: 'var(--c-border-2)' }}>·</span>
+                        {new Date(hr.created_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold flex-shrink-0" style={{ color: '#6C3BFF' }}>Responder</span>
+                </div>
+              </a>
+            );
+          })}
         </div>
       )}
 
-      {filtered.map(item => {
+      {/* Ops inbox items */}
+      {filteredItems.length === 0 && humanRequests.length === 0 && activeTab === 'pendientes' && (
+        <div className="text-center py-12" style={{ color: 'var(--c-text-4)' }}>
+          <Inbox size={28} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm">Sin elementos pendientes de revisión.</p>
+        </div>
+      )}
+
+      {filteredItems.length === 0 && activeTab !== 'pendientes' && (
+        <div className="text-center py-12" style={{ color: 'var(--c-text-4)' }}>
+          <Inbox size={28} className="mx-auto mb-3 opacity-40" />
+          <p className="text-sm">Sin elementos.</p>
+        </div>
+      )}
+
+      {activeTab === 'pendientes' && filteredItems.length > 0 && (
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+          Correos pendientes
+        </p>
+      )}
+
+      {filteredItems.map(item => {
         const isExpanded = expandedId === item.id;
         const catColor   = CATEGORY_COLORS[item.category ?? 'otro'] ?? '#6b7280';
         const catLabel   = CATEGORY_LABELS[item.category ?? 'otro'] ?? 'Otro';
@@ -332,7 +444,6 @@ export default function OpsInboxSection({ token }: { token: string }) {
                           });
                           if (!res.ok) throw new Error();
                           toast.success('Anotado. El empleado aprenderá de este caso.');
-                          // Refresh the items list to show the "Reportado" badge
                           load();
                         } catch {
                           toast.error('No se pudo reportar. Intenta de nuevo.');

@@ -13,9 +13,10 @@ class GoogleEmail implements EmailConnector {
     return { Authorization: `Bearer ${this.tok}` };
   }
 
-  async fetchUnread(since: Date): Promise<EmailMessage[]> {
-    const after = Math.floor(since.getTime() / 1000);
-    const query = `in:inbox is:unread after:${after}`;
+  async fetchUnread(since: Date, folder: 'inbox' | 'spam' = 'inbox'): Promise<EmailMessage[]> {
+    const after   = Math.floor(since.getTime() / 1000);
+    const labelId = folder === 'spam' ? 'SPAM' : 'INBOX';
+    const query   = `label:${labelId} is:unread after:${after}`;
     const res = await fetch(
       `${GMAIL}/messages?q=${encodeURIComponent(query)}&maxResults=20`,
       { headers: this.h() },
@@ -26,6 +27,14 @@ class GoogleEmail implements EmailConnector {
     if (!ids.length) return [];
     const msgs = await Promise.all(ids.map(id => this.getMessage(id)));
     return msgs.filter(Boolean) as EmailMessage[];
+  }
+
+  async unmarkSpam(messageId: string): Promise<void> {
+    await fetch(`${GMAIL}/messages/${messageId}/modify`, {
+      method:  'POST',
+      headers: { ...this.h(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ removeLabelIds: ['SPAM'], addLabelIds: ['INBOX'] }),
+    });
   }
 
   private async getMessage(id: string): Promise<EmailMessage | null> {
