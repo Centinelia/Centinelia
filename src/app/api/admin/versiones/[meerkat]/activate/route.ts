@@ -33,12 +33,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     gate_verdict?: 'pass' | 'warn' | 'fail' | 'incomplete';
   };
 
-  if ((gate_verdict === 'fail' || gate_verdict === 'incomplete') && !override_reason?.trim()) {
-    return NextResponse.json({
-      error: `override_reason is required when gate_verdict is '${gate_verdict}'`,
-    }, { status: 400 });
-  }
-
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
     return NextResponse.json({ error: 'Invalid version' }, { status: 400 });
   }
@@ -68,6 +62,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   // No-op si ya está en esa versión (evitar history duplicado)
   if (currentVersion === version) {
     return NextResponse.json({ ok: true, noop: true, message: `Already active on v${version}` });
+  }
+
+  if ((gate_verdict === 'fail' || gate_verdict === 'incomplete') && !override_reason?.trim()) {
+    return NextResponse.json({
+      error: `override_reason is required when gate_verdict is '${gate_verdict}'`,
+    }, { status: 400 });
   }
 
   // Determinar reason automático si no viene
