@@ -27,6 +27,7 @@ export async function previewFlagAssignment(
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     updated_by: null,
+    at_100_since: null,
     ...(existing as Partial<FlagRow> | null),
     ...patch,
   };

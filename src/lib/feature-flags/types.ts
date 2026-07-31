@@ -9,6 +9,7 @@ export type FlagRow = {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  at_100_since: string | null;
 };
 
 export type FlagCounts = {
