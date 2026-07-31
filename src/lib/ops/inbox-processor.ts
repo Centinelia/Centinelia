@@ -295,13 +295,16 @@ export async function processInboxEmail(params: {
   approvalEmail?:    string | null;
   existingInboxId?:  string;         // set when this is a reply to an info_requested thread
   originalEmailBody?: string;        // original email body from the info_requested record
+  fromSpamFolder?:   boolean;        // true when fetched from provider spam/junk folder
+  unmarkSpamFn?:     (messageId: string) => Promise<void>; // best-effort: move out of spam in provider
   sendReplyFn?:      (body: string) => Promise<void>;
 }): Promise<void> {
   const {
     agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
     emailBody, attachments, agentName, businessName,
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
-    autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody, sendReplyFn,
+    autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
+    fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
   } = params;
 
   // If this is a reply to an info_requested thread, prepend the original context
@@ -318,10 +321,10 @@ export async function processInboxEmail(params: {
 
   // C5 — clasificación determinística. Correos obviamente automáticos o
   // marketing no van a Claude: se marcan `skipped` sin consumir ops.
-  // Excepciones: si es una respuesta a un info_requested (existingInboxId)
-  // o si el correo huele a factura, sigue el pipeline normal para no
-  // arriesgar perder algo importante.
-  if (!existingInboxId && !looksLikeInvoice) {
+  // Excepciones: si es una respuesta a un info_requested (existingInboxId),
+  // si el correo huele a factura, o si vino de la carpeta spam del proveedor
+  // (fromSpamFolder=true) — en ese caso Haiku ya evaluará si es legítimo.
+  if (!existingInboxId && !looksLikeInvoice && !fromSpamFolder) {
     const quick = quickClassifyEmail({
       from:    emailFrom,
       subject: emailSubject,
@@ -362,7 +365,11 @@ export async function processInboxEmail(params: {
   }
   const contextSection = contextBlocks.length ? `\n\n${contextBlocks.join('\n\n')}` : '';
 
-  const systemPrompt = `Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}
+  const spamRescueNote = fromSpamFolder
+    ? `\n\nATENCIÓN: Este correo fue marcado como SPAM por el proveedor de correo. Tu tarea es evaluar si realmente es spam o si es un correo legítimo que fue malfilteado. Si concluyes que es legítimo (cliente real, proveedor conocido, solicitud de trabajo), clasifícalo con la categoría correcta y redacta la respuesta normal — será RESCATADO de la carpeta spam. Si confirmas que sí es spam/publicidad no deseada, clasifícalo como 'spam'.`
+    : '';
+
+  const systemPrompt = `Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}${spamRescueNote}
 
 Categorías: proveedor, cliente, urgente, factura, spam, otro.
 - "urgente": emergencias, quejas graves, solicitudes de alta prioridad.
@@ -570,6 +577,11 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     }
   }
 
+  // Determine source_folder for tracking
+  const finalSourceFolder = fromSpamFolder
+    ? (result.category === 'spam' ? 'spam_confirmed' : 'spam_rescued')
+    : 'inbox';
+
   // Determine final status and what to store in ai_draft
   let finalStatus: string;
   let finalDraft: string | null;
@@ -664,6 +676,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         invoice_valid:       result.invoiceValid,
         invoice_discrepancy: result.invoiceDiscrepancy,
         status:              finalStatus,
+        source_folder:       finalSourceFolder,
         auto_mode_decision:  autoModeVerdict?.decision ?? null,
         auto_mode_reason:    autoModeVerdict?.reason ?? null,
         auto_mode_signals:   autoModeVerdict?.signals ?? [],
@@ -671,6 +684,13 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       .select('id, approval_token')
       .single();
     item = data as unknown as InboxItem | null;
+  }
+
+  // Best-effort: unmark spam in provider after INSERT so we don't block on failure
+  if (fromSpamFolder && finalSourceFolder === 'spam_rescued' && rawMessageId && unmarkSpamFn) {
+    unmarkSpamFn(rawMessageId).catch(err =>
+      console.error('[inbox-processor] unmarkSpam failed for', rawMessageId, err)
+    );
   }
 
   if (!item || finalStatus === 'skipped') return;
