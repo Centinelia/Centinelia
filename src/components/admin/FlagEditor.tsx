@@ -33,10 +33,10 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
   });
 
   const onPreview = () => {
-    if (mode === 'create') { setError('Guarda el flag antes de hacer preview.'); return; }
+    if (!flagKey.trim()) { setError('Escribe un flag_key antes de hacer preview.'); return; }
     setError(null);
     startTransition(async () => {
-      const res = await fetch(`/api/admin/flags/${encodeURIComponent(flagKey)}/preview`, {
+      const res = await fetch(`/api/admin/flags/${encodeURIComponent(flagKey.trim())}/preview`, {
         method:  'POST',
         headers: { 'content-type': 'application/json' },
         body:    JSON.stringify(buildPatch()),
@@ -83,7 +83,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
   };
 
   const onDelete = () => {
-    if (!confirm(`Borrar flag ${flagKey}. Esta accion se registra pero no se puede deshacer. Continuar?`)) return;
+    if (!confirm(`Borrar flag ${flagKey}. Esta acción se registra pero no se puede deshacer. ¿Continuar?`)) return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/flags/${encodeURIComponent(flagKey)}`, { method: 'DELETE' });
       if (res.ok) router.push('/admin/flags');
@@ -147,7 +147,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descripcion</label>
+        <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descripción</label>
         <input
           type="text"
           value={description}
@@ -175,7 +175,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Allowlist (portal_email por linea)</label>
+          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Allowlist (portal_email por línea)</label>
           <textarea
             value={allowlist}
             onChange={e => setAllowlist(e.target.value)}
@@ -186,7 +186,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Denylist (portal_email por linea)</label>
+          <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Denylist (portal_email por línea)</label>
           <textarea
             value={denylist}
             onChange={e => setDenylist(e.target.value)}
@@ -199,7 +199,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
 
       <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text)' }}>
         <input type="checkbox" checked={defaultOn} onChange={e => setDefaultOn(e.target.checked)} />
-        default_on (usar cuando no hay org email, ej. webhook anonimo)
+        default_on (usar cuando no hay org email, ej. webhook anónimo)
       </label>
 
       {error && (
@@ -211,7 +211,7 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
       <div className="flex items-center gap-2 pt-2">
         <button
           onClick={onPreview}
-          disabled={pending || mode === 'create'}
+          disabled={pending || !flagKey.trim()}
           className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
           style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
         >

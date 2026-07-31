@@ -56,14 +56,14 @@ export default async function FlagDetailPage({ params }: Params) {
       <FlagEditor flag={flag as FlagRow} mode="edit" />
 
       <div>
-        <h2 className="text-sm font-semibold mb-2" style={{ color: 'var(--c-text)' }}>Historial (ultimas 20)</h2>
+        <h2 className="text-sm font-semibold mb-2" style={{ color: 'var(--c-text)' }}>Historial (últimas 20)</h2>
         <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
           <table className="w-full text-xs">
             <thead style={{ background: 'var(--c-surface-2)' }}>
               <tr>
                 <th className="text-left px-3 py-2" style={{ color: 'var(--c-text-2)' }}>fecha</th>
                 <th className="text-left px-3 py-2" style={{ color: 'var(--c-text-2)' }}>actor</th>
-                <th className="text-left px-3 py-2" style={{ color: 'var(--c-text-2)' }}>accion</th>
+                <th className="text-left px-3 py-2" style={{ color: 'var(--c-text-2)' }}>acción</th>
               </tr>
             </thead>
             <tbody>

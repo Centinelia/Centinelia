@@ -37,6 +37,27 @@ export default async function VersionesPage() {
     }
   }
 
+  // Pilar 3: flags meerkat.<id>.v<n> son la source of truth per-org.
+  // meerkat_active_versions solo se usa como fallback legacy cuando ningún flag matchea.
+  const { data: meerkatFlags } = await supabase
+    .from('feature_flags')
+    .select('flag_key, rollout_pct, killed')
+    .like('flag_key', 'meerkat.%');
+
+  const rolloutsByMeerkat = new Map<string, { version: number; pct: number; killed: boolean }[]>();
+  for (const f of meerkatFlags ?? []) {
+    const m = /^meerkat\.([^.]+)\.v(\d+)$/.exec(f.flag_key as string);
+    if (!m) continue;
+    const [, mId, vStr] = m;
+    const arr = rolloutsByMeerkat.get(mId) ?? [];
+    arr.push({ version: Number(vStr), pct: f.rollout_pct as number, killed: f.killed as boolean });
+    rolloutsByMeerkat.set(mId, arr);
+  }
+  for (const [mId, arr] of rolloutsByMeerkat) {
+    arr.sort((a, b) => b.version - a.version);
+    rolloutsByMeerkat.set(mId, arr);
+  }
+
   const rows = (activeRows ?? []).map(r => ({
     meerkat_id: r.meerkat_id,
     active_version: r.active_version,
@@ -46,6 +67,7 @@ export default async function VersionesPage() {
     available_versions: Object.keys(MEERKAT_CONFIGS[r.meerkat_id] ?? {}).map(Number).sort((a, b) => a - b),
     agent_count: agentCounts.get(r.meerkat_id) ?? 0,
     pinned_count: pinnedCounts.get(r.meerkat_id) ?? 0,
+    rollouts: rolloutsByMeerkat.get(r.meerkat_id) ?? [],
   }));
 
   return (
@@ -53,7 +75,7 @@ export default async function VersionesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Versiones de meerkats</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-          Cada meerkat corre en la versión activa listada. Rollback = activar versión anterior. Cambios propagan en ≤60s + resync a Vapi.
+          Rollout real per-org se controla por flags (ver <a href="/admin/flags" style={{ color: '#9B6DFF' }}>Feature flags</a>). La columna &ldquo;Rollout activo&rdquo; muestra los flags meerkat.&lt;id&gt;.v&lt;n&gt; existentes; la columna &ldquo;Fallback&rdquo; muestra la versión legacy que reciben los agentes sin flag aplicable.
         </p>
       </div>
       <VersionesTable rows={rows} />
