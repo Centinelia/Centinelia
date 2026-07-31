@@ -127,6 +127,54 @@ function statPill(label: string, color: string) {
   return `<span style="display:inline-block;background:${color}22;color:${color};font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;letter-spacing:0.05em;text-transform:uppercase">${label}</span>`;
 }
 
+// ── Markdown → email-friendly HTML ────────────────────────────────────────────
+
+// Rendering markdown output from an LLM into HTML that survives Gmail/Outlook.
+// Uses `marked` (sync mode) + inline styles per element to survive email clients
+// stripping <head> and <style> blocks. Preserves list bullets, headings, bold,
+// italic, links, code blocks, and blockquotes with the Centinelia dark palette.
+import { marked } from 'marked';
+
+marked.setOptions({ gfm: true, breaks: true });
+
+const MD_STYLE_MAP: Record<string, string> = {
+  h1:         `color:${C.text};font-size:20px;font-weight:700;line-height:1.3;margin:16px 0 12px`,
+  h2:         `color:${C.text};font-size:17px;font-weight:700;line-height:1.4;margin:20px 0 10px`,
+  h3:         `color:${C.text};font-size:15px;font-weight:600;line-height:1.4;margin:18px 0 8px`,
+  h4:         `color:${C.sub};font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;margin:16px 0 6px`,
+  p:          `color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 12px`,
+  ul:         `color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 12px;padding-left:22px`,
+  ol:         `color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 12px;padding-left:22px`,
+  li:         `margin:0 0 4px`,
+  strong:     `color:${C.text};font-weight:700`,
+  em:         `color:${C.sub};font-style:italic`,
+  a:          `color:${C.accent};text-decoration:underline`,
+  hr:         `border:none;border-top:1px solid ${C.border};margin:16px 0`,
+  blockquote: `border-left:3px solid ${C.accent};padding:4px 12px;margin:0 0 12px;color:${C.sub};font-style:italic`,
+  code:       `background:rgba(255,255,255,0.06);color:${C.text};padding:2px 5px;border-radius:4px;font-family:Menlo,Monaco,Consolas,monospace;font-size:13px`,
+  pre:        `background:rgba(255,255,255,0.04);border:1px solid ${C.border};padding:12px;border-radius:8px;overflow-x:auto;margin:0 0 12px;font-family:Menlo,Monaco,Consolas,monospace;font-size:13px;color:${C.text};white-space:pre-wrap`,
+};
+
+/**
+ * Convierte markdown a HTML con inline styles listos para email clients.
+ * Uso: contenido generado por LLMs que viene en markdown y debe renderizarse
+ * en emails (heartbeat check-in, weekly insights, etc.).
+ */
+export function mdToEmailHtml(md: string): string {
+  const raw = marked.parse(md, { async: false }) as string;
+  // Aplica estilo inline a cada tag conocido. Los clientes de email strippean
+  // <style> blocks, entonces cada tag necesita su style="..." embebido.
+  return raw.replace(/<(h[1-6]|p|ul|ol|li|strong|em|a|hr|blockquote|code|pre)(\s[^>]*)?>/gi, (m, tag: string, rest = '') => {
+    const style = MD_STYLE_MAP[tag.toLowerCase()];
+    if (!style) return m;
+    // Si ya tiene style=, no lo pisamos (ej. <a href="..." style="...">). Anexamos.
+    if (/style\s*=/.test(rest)) {
+      return `<${tag}${rest.replace(/style\s*=\s*"([^"]*)"/i, `style="$1;${style}"`)}>`;
+    }
+    return `<${tag}${rest} style="${style}">`;
+  });
+}
+
 // ── sendEmail ─────────────────────────────────────────────────────────────────
 
 export async function sendEmail(opts: {

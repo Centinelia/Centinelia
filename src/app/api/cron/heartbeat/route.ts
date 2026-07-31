@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { sendEmail, shell, heading, infoCard } from '@/lib/email/send';
+import { sendEmail, shell, heading, infoCard, mdToEmailHtml } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
@@ -127,7 +127,7 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
         subject: `Check-in ${freqLabel} — ${agent.agent_name ?? agent.business_name}`,
         html: shell(
           heading(`Check-in ${freqLabel}`, `${agent.agent_name ?? 'Tu empleado'} · ${dateStr}`) +
-          infoCard(`<div style="color:#F1EEFF;font-size:14px;line-height:1.7;white-space:pre-wrap">${result}</div>`)
+          infoCard(mdToEmailHtml(result))
         ),
       }).catch(console.error);
     }
