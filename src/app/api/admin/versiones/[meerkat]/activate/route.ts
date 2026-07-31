@@ -8,6 +8,7 @@ import { MEERKAT_IDS, type MeerkatId } from '@/lib/golden-tests/types';
 import { computeGateVerdict } from '@/lib/golden-tests/gate';
 import { invalidateFlagCache } from '@/lib/feature-flags/evaluator';
 import { writeFlagAudit } from '@/lib/feature-flags/audit';
+import { computeAt100Transition } from '@/lib/feature-flags/auto-promote';
 
 async function currentAdminEmail(): Promise<{ ok: boolean; email?: string }> {
   const store = await cookies();
@@ -115,6 +116,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     .eq('flag_key', flagKey)
     .maybeSingle();
 
+  const at_100_since = computeAt100Transition({
+    before: beforeFlag
+      ? { rollout_pct: beforeFlag.rollout_pct, killed: beforeFlag.killed, at_100_since: beforeFlag.at_100_since }
+      : null,
+    after_pct: initialPct,
+    after_killed: false,
+  });
+
   const { data: afterFlag, error: flagErr } = await supabase
     .from('feature_flags')
     .upsert({
@@ -125,6 +134,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       denylist:    [],
       killed:      false,
       default_on:  false,
+      at_100_since,
       updated_by:  auth.email,
       updated_at:  new Date().toISOString(),
     }, { onConflict: 'flag_key' })
