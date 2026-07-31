@@ -177,6 +177,12 @@ export async function POST(req: NextRequest) {
         type: att.type,
         size: att.buf.length,
       });
+    } else {
+      // Silent drop era invisible: el correo se guardaba con 0 attachments y el
+      // usuario nunca sabía. Loguear con contexto para poder rehacer manualmente.
+      console.error('[email-inbound] attachment_upload_failed', {
+        path, filename: att.name, mime: att.type, size: att.buf.length,
+      });
     }
   }
 
@@ -213,7 +219,9 @@ export async function POST(req: NextRequest) {
     senderName: senderName || '',
   }).catch(err => console.error('[comms-routing] error:', err));
 
-  // Nox coordinator email routing (non-blocking)
+  // Nox coordinator email routing (non-blocking).
+  // El catch antes era vacío `.catch(() => {})` y silenciosamente perdía
+  // emails de escalación destinados a Nox. Audit sesión 53 lo cerró.
   findNoxAgent(portalEmail).then(nox => {
     if (!nox || nox.id === opsAgent.id) return;
     const sibs = (agents ?? []).filter(a => a.id !== nox.id);
@@ -225,7 +233,11 @@ export async function POST(req: NextRequest) {
       emailSubject: subject,
       emailBody:    text,
     }).catch(err => console.error('[nox] email routing error:', err));
-  }).catch(() => {});
+  }).catch(err => {
+    console.error('[nox] findNoxAgent failed — email may lose Nox routing', {
+      portalEmail, subject, error: String(err),
+    });
+  });
 
   // Ops AI processing (non-blocking — returns 200 immediately)
   const ownerEmail = opsAgent.client_email;
