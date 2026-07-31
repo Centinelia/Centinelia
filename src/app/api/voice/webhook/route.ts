@@ -15,6 +15,9 @@ import { ingestCall as ingestMemory } from '@/lib/memory';
 import { getGoalsContext } from '@/lib/goals/progress';
 import { checkVoiceInitiative } from '@/lib/initiative/detector';
 import { addCallEntry } from '@/lib/notion/client';
+import { getMeerkatIdForAgentRow } from '@/lib/vapi/meerkat-map';
+import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
+import { evaluateFlagsForOrg } from '@/lib/feature-flags/all-active';
 
 export async function POST(req: NextRequest) {
   const vapiSecret = process.env.VAPI_SERVER_SECRET;
@@ -132,6 +135,15 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // Observability snapshot — fetch agent row with features for meerkat/flags resolution
+      const { data: obsAgentRow } = await supabase
+        .from('voice_agents')
+        .select('id, portal_email, features')
+        .eq('id', resolvedAgentId)
+        .maybeSingle();
+
+      const obs = await resolveObservabilitySnapshot(obsAgentRow, call);
+
       const rawStartedAt = call?.startedAt ?? message.startedAt;
       const rawEndedAt   = call?.endedAt   ?? message.endedAt;
       const startedAt    = rawStartedAt ? new Date(rawStartedAt).getTime() : 0;
@@ -164,6 +176,11 @@ export async function POST(req: NextRequest) {
         cost_usd:            call?.cost ?? null,
         nivel_interes:        structured?.nivel_interes       ?? null,
         acciones_pendientes:  structured?.acciones_pendientes ?? null,
+        meerkat_id:          obs.meerkat_id,
+        meerkat_version:     obs.meerkat_version,
+        active_flags:        obs.active_flags,
+        latency_ms_p50:      obs.latency_ms_p50,
+        latency_ms_p95:      obs.latency_ms_p95,
       }).select('id').single();
       const callDbId: string | null = (callRow as { id?: string } | null)?.id ?? null;
 
@@ -683,6 +700,77 @@ async function triggerCrossAgentQueue(
 
     console.log(`[cross-agent] Queued ${normPhone} → ${roleLabel} (agent ${peer.id})`);
   }
+}
+
+// ── Pilar 5 — Observabilidad segmentada ──────────────────────────────────────
+
+type ObsSnapshot = {
+  meerkat_id: string | null;
+  meerkat_version: number | null;
+  active_flags: string[] | null;
+  latency_ms_p50: number | null;
+  latency_ms_p95: number | null;
+};
+
+async function resolveObservabilitySnapshot(
+  agentRow: { id: string; portal_email: string | null; features: unknown } | null,
+  call: unknown,
+): Promise<ObsSnapshot> {
+  const empty: ObsSnapshot = {
+    meerkat_id: null,
+    meerkat_version: null,
+    active_flags: null,
+    latency_ms_p50: null,
+    latency_ms_p95: null,
+  };
+  if (!agentRow) return empty;
+
+  let meerkatId: string | null = null;
+  let meerkatVer: number | null = null;
+  let activeFlags: string[] | null = null;
+
+  try {
+    meerkatId = getMeerkatIdForAgentRow(agentRow);
+    if (meerkatId) {
+      const featuresObj =
+        agentRow.features && typeof agentRow.features === 'object'
+          ? (agentRow.features as Record<string, unknown>)
+          : {};
+      meerkatVer = await resolveMeerkatVersionForAgent(meerkatId, {
+        portal_email: agentRow.portal_email,
+        features: featuresObj as { pinned_meerkat_version?: number | null; [k: string]: unknown },
+      });
+    }
+  } catch (e) {
+    console.warn('[obs] meerkat resolve failed', { agentId: agentRow.id, error: String(e) });
+  }
+
+  try {
+    if (agentRow.portal_email) {
+      activeFlags = await evaluateFlagsForOrg(agentRow.portal_email);
+    }
+  } catch (e) {
+    console.warn('[obs] flags resolve failed', { agentId: agentRow.id, error: String(e) });
+  }
+
+  const c = call as Record<string, unknown> | null | undefined;
+  const metrics = (c?.performanceMetrics ?? (c?.metrics as Record<string, unknown> | undefined)) as
+    | Record<string, unknown>
+    | undefined;
+  const latencyMs = (metrics?.latency ?? metrics?.latencyMs) as
+    | Record<string, unknown>
+    | undefined;
+
+  const toInt = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null;
+
+  return {
+    meerkat_id: meerkatId,
+    meerkat_version: meerkatVer,
+    active_flags: activeFlags,
+    latency_ms_p50: toInt(latencyMs?.p50),
+    latency_ms_p95: toInt(latencyMs?.p95),
+  };
 }
 
 function detectOutcome(message: any, structured: any): string {
