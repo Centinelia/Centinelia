@@ -69,10 +69,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     .maybeSingle();
   const currentVersion = current?.active_version ?? null;
 
-  if (currentVersion === version) {
-    return NextResponse.json({ ok: true, noop: true, message: `Already active on v${version}` });
-  }
-
   // Gate verdict SERVER-SIDE (client_gate_verdict solo informativo).
   let serverVerdict: string = 'incomplete';
   if (MEERKAT_IDS.includes(meerkat as MeerkatId)) {

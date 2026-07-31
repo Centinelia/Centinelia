@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -8,7 +9,13 @@ import { FlagEditor } from '@/components/admin/FlagEditor';
 
 async function isAdmin(): Promise<boolean> {
   const store = await cookies();
-  return store.get('Centinelia_admin')?.value === process.env.ADMIN_SECRET;
+  const secret = store.get('Centinelia_admin')?.value;
+  const expected = process.env.ADMIN_SECRET;
+  if (!secret || !expected) return false;
+  const a = Buffer.from(secret);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export default async function NewFlagPage() {
