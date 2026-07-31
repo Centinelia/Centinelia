@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
@@ -99,7 +100,13 @@ export default function OpsInboxSection({ token }: { token: string }) {
   const [loading, setLoading]           = useState(true);
   const [expandedId, setExpanded]       = useState<string | null>(null);
   const [acting, setActing]             = useState<string | null>(null);
-  const [activeTab, setActiveTab]       = useState<Tab>('pendientes');
+  const searchParams = useSearchParams();
+  const initialTab: Tab = (() => {
+    const t = searchParams.get('tab');
+    if (t === 'auto' || t === 'spam' || t === 'reportados' || t === 'todo' || t === 'pendientes') return t;
+    return 'pendientes';
+  })();
+  const [activeTab, setActiveTab]       = useState<Tab>(initialTab);
   const [search, setSearch]             = useState('');
 
   const load = useCallback(async () => {

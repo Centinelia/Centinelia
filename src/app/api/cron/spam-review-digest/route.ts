@@ -155,7 +155,7 @@ function digestHtml(args: {
   portalToken:  string;
   items:        SuspiciousSpam[];
 }): string {
-  const portalUrl = `${BASE_URL}/portal/${args.portalToken}/oficina/bandeja`;
+  const portalUrl = `${BASE_URL}/portal/${args.portalToken}/oficina/bandeja?tab=spam`;
 
   const itemsHtml = args.items.map(it => `
     <tr>

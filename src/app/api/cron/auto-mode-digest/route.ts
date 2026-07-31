@@ -123,7 +123,7 @@ function digestHtml(args: {
   portalToken:  string;
   items:        InboxItem[];
 }): string {
-  const portalUrl = `${BASE_URL}/portal/${args.portalToken}/oficina/bandeja`;
+  const portalUrl = `${BASE_URL}/portal/${args.portalToken}/oficina/bandeja?tab=auto`;
 
   const itemsHtml = args.items.map(it => `
     <tr>
@@ -144,7 +144,7 @@ function digestHtml(args: {
       <p style="color:rgba(26,10,59,0.6);font-size:14px;margin:0 0 20px">Estos correos se enviaron sin necesitar tu aprobación (modo Auto). Si alguno no debió enviarse, entra al portal y márcalo.</p>
       <table style="width:100%;border-collapse:collapse">${itemsHtml}</table>
       <div style="text-align:center;margin-top:24px">
-        <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Ver bandeja completa</a>
+        <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Ver correos auto-enviados</a>
       </div>
       <p style="color:rgba(26,10,59,0.4);font-size:11px;line-height:1.5;margin:20px 0 0;text-align:center">Cambia el modo del empleado en Portal → Correo</p>
     </div>
