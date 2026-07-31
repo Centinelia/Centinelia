@@ -30,7 +30,19 @@ export async function processMeetingAudio(opts: {
   const { meetingId, agentId, audioUrl, title, participants, ownerEmail, businessName, knowledgeBase, roleKnowledgeBase, instructions } = opts;
   const supabase = createAdminClient();
 
-  await supabase.from('ops_meetings').update({ status: 'processing' }).eq('id', meetingId);
+  // Guard: si el webhook Vapi reintenta o dos workers procesan al mismo tiempo,
+  // solo el primero avanza a processing. Los duplicados abortan sin llamar ElevenLabs+Claude.
+  const { data: claimed } = await supabase
+    .from('ops_meetings')
+    .update({ status: 'processing' })
+    .eq('id', meetingId)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
+  if (!claimed) {
+    console.info('[meeting-processor] skip: already processed or in progress', meetingId);
+    return;
+  }
 
   try {
     // Download audio and transcribe with ElevenLabs STT
