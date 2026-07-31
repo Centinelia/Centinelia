@@ -84,7 +84,7 @@ const URGENCY_COLORS: Record<string, string> = {
   alta:  '#ef4444',
 };
 
-type Tab = 'pendientes' | 'auto' | 'spam' | 'reportados' | 'todo';
+type Tab = 'pendientes' | 'auto' | 'spam' | 'rechazados' | 'reportados' | 'todo';
 
 const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
   { key: 'alucinacion',        label: 'Alucinación',                     hint: 'Datos inventados (horarios, precios, políticas)' },
@@ -265,6 +265,9 @@ export default function OpsInboxSection({ token }: { token: string }) {
       base = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
     } else if (activeTab === 'spam') {
       base = items.filter(i => i.status === 'skipped' && i.category === 'spam');
+    } else if (activeTab === 'rechazados') {
+      // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
+      base = items.filter(i => i.status === 'rejected');
     } else if (activeTab === 'reportados') {
       base = items.filter(i => !!i.auto_mode_flagged_at);
     } else {
@@ -285,12 +288,14 @@ export default function OpsInboxSection({ token }: { token: string }) {
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
   const autoCount          = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send').length;
   const spamCount          = items.filter(i => i.status === 'skipped' && i.category === 'spam').length;
+  const rejectedCount      = items.filter(i => i.status === 'rejected').length;
   const reportedCount      = items.filter(i => !!i.auto_mode_flagged_at).length;
 
   const TAB_CONFIG: { key: Tab; label: string; count?: number }[] = [
     { key: 'pendientes', label: 'Pendientes',    count: pendingBadgeCount > 0 ? pendingBadgeCount : undefined },
     { key: 'auto',       label: 'Auto-enviados', count: autoCount > 0 ? autoCount : undefined },
     { key: 'spam',       label: 'Spam',          count: spamCount > 0 ? spamCount : undefined },
+    { key: 'rechazados', label: 'Rechazados',    count: rejectedCount > 0 ? rejectedCount : undefined },
     { key: 'reportados', label: 'Reportados',    count: reportedCount > 0 ? reportedCount : undefined },
     { key: 'todo',       label: 'Todo' },
   ];
