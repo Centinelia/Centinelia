@@ -33,13 +33,15 @@ export default async function HealthPage() {
   const failRate = total24h > 0 ? failed24h / total24h : 0;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ color: 'var(--c-text)' }}>
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Golden tests: health</h1>
-        <p className="text-sm text-slate-600 mt-1">Últimos runs, costo, y tasa de fallo técnico.</p>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Golden tests: health</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
+          Últimos runs, costo, y tasa de fallo técnico.
+        </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card label="Scenario runs 24h" value={String(total24h)} />
         <Card
           label="Fallos técnicos 24h"
@@ -57,12 +59,14 @@ export default async function HealthPage() {
 function Card({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <div
-      className={`rounded-lg border p-4 ${
-        warn ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'
-      }`}
+      className="rounded-lg border p-4"
+      style={{
+        borderColor: warn ? 'rgba(251,191,36,0.5)' : 'var(--c-border)',
+        background: warn ? 'rgba(251,191,36,0.10)' : 'var(--c-surface)',
+      }}
     >
-      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
-      <div className="text-xl font-semibold mt-1">{value}</div>
+      <div className="text-xs uppercase tracking-wide" style={{ color: 'var(--c-text-3)' }}>{label}</div>
+      <div className="text-xl font-semibold mt-1" style={{ color: 'var(--c-text)' }}>{value}</div>
     </div>
   );
 }
