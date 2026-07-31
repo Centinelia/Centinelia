@@ -10,9 +10,9 @@ interface Props {
 
 const WINDOWS: { value: ObsWindow; label: string }[] = [
   { value: '24h',              label: '24h' },
-  { value: '7d',               label: '7 dias' },
-  { value: '30d',              label: '30 dias' },
-  { value: 'since_activation', label: 'Desde activacion' },
+  { value: '7d',               label: '7 días' },
+  { value: '30d',              label: '30 días' },
+  { value: 'since_activation', label: 'Desde activación' },
 ];
 
 export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
@@ -90,7 +90,7 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
             checked={includeUnattr}
             onChange={e => setIncludeUnattr(e.target.checked)}
           />
-          Incluir sin atribucion
+          Incluir sin atribución
         </label>
 
         {pending && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>cargando...</span>}
@@ -133,16 +133,23 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
 }
 
 function fmt(v: number | null, decimals: number, suffix = ''): string {
-  if (v == null) return '—';
+  if (v == null) return '-';
   return v.toFixed(decimals) + suffix;
 }
 
-function delta(cur: number | null, prev: number | null): string {
-  if (cur == null || prev == null || prev === 0) return '';
-  const diff = ((cur - prev) / Math.abs(prev)) * 100;
-  const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '';
-  const color = diff > 0 ? '#22C55E' : diff < 0 ? '#EF4444' : 'var(--c-text-3)';
-  return `<span style="color:${color};margin-left:4px">${arrow} ${Math.abs(diff).toFixed(1)}%</span>`;
+function Delta({ cur, prev, invert = false }: { cur: number | null; prev: number | null; invert?: boolean }) {
+  if (cur == null || prev == null || prev === 0) return null;
+  const signedCur  = invert ? -cur  : cur;
+  const signedPrev = invert ? -prev : prev;
+  const diff = ((signedCur - signedPrev) / Math.abs(signedPrev)) * 100;
+  if (Math.abs(diff) < 0.05) return null;
+  const arrow = diff > 0 ? '▲' : '▼';
+  const color = diff > 0 ? '#22C55E' : '#EF4444';
+  return (
+    <span style={{ color, marginLeft: 4 }}>
+      {arrow} {Math.abs(diff).toFixed(1)}%
+    </span>
+  );
 }
 
 function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObservabilityRow[] }) {
@@ -154,9 +161,9 @@ function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObs
       <table className="w-full text-sm">
         <thead>
           <tr style={{ color: 'var(--c-text-3)' }}>
-            <th className="text-left px-4 py-2 font-normal">Version</th>
+            <th className="text-left px-4 py-2 font-normal">Versión</th>
             <th className="text-right px-4 py-2 font-normal">Calls</th>
-            <th className="text-right px-4 py-2 font-normal">Autonomia</th>
+            <th className="text-right px-4 py-2 font-normal">Autonomía</th>
             <th className="text-right px-4 py-2 font-normal">CES avg</th>
             <th className="text-right px-4 py-2 font-normal">Costo/call</th>
             <th className="text-right px-4 py-2 font-normal">p50 lat</th>
@@ -166,14 +173,23 @@ function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObs
         <tbody>
           {rows.map((r, i) => {
             const prev = i > 0 ? rows[i - 1] : null;
-            const label = r.meerkat_version == null ? 'sin attr' : `v${r.meerkat_version}`;
+            const label = r.meerkat_version == null ? 'sin atrib.' : `v${r.meerkat_version}`;
             return (
               <tr key={label} style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
                 <td className="px-4 py-2">{label}</td>
                 <td className="text-right px-4 py-2">{r.calls}</td>
-                <td className="text-right px-4 py-2" dangerouslySetInnerHTML={{ __html: fmt(r.autonomia_pct, 1, '%') + delta(r.autonomia_pct, prev?.autonomia_pct ?? null) }} />
-                <td className="text-right px-4 py-2" dangerouslySetInnerHTML={{ __html: fmt(r.ces_avg, 2) + delta(r.ces_avg, prev?.ces_avg ?? null) }} />
-                <td className="text-right px-4 py-2" dangerouslySetInnerHTML={{ __html: '$' + fmt(r.cost_avg, 3) + delta(r.cost_avg == null ? null : -r.cost_avg, prev?.cost_avg == null ? null : -prev.cost_avg) }} />
+                <td className="text-right px-4 py-2">
+                  {fmt(r.autonomia_pct, 1, '%')}
+                  <Delta cur={r.autonomia_pct} prev={prev?.autonomia_pct ?? null} />
+                </td>
+                <td className="text-right px-4 py-2">
+                  {fmt(r.ces_avg, 2)}
+                  <Delta cur={r.ces_avg} prev={prev?.ces_avg ?? null} />
+                </td>
+                <td className="text-right px-4 py-2">
+                  ${fmt(r.cost_avg, 3)}
+                  <Delta cur={r.cost_avg} prev={prev?.cost_avg ?? null} invert />
+                </td>
                 <td className="text-right px-4 py-2">{fmt(r.lat_p50, 0, 'ms')}</td>
                 <td className="text-right px-4 py-2">{fmt(r.lat_p95, 0, 'ms')}</td>
               </tr>

@@ -22,7 +22,7 @@ export default async function ObservabilityPage() {
       <div>
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Observabilidad segmentada</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-          Metricas de produccion rebanadas por version de empleado y flags activos.
+          Métricas de producción rebanadas por versión de empleado y flags activos.
         </p>
       </div>
       <ObservabilityView meerkatIds={meerkatIds} flagKeys={flagKeys.sort()} />
