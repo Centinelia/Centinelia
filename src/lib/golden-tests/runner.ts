@@ -24,6 +24,7 @@ export async function runScenario(
   const startedAt = Date.now();
   const transcript: ConversationTurn[] = [];
   const tokens = { user: 0, meerkat: 0, judge: 0 };
+  let meerkatModel: string | null = null;
   let error: ScenarioError | null = null;
 
   const timeoutPromise = new Promise<never>((_, rej) =>
@@ -52,6 +53,7 @@ export async function runScenario(
         const m = await invokeMeerkat(scenario.meerkat_id, version, transcript);
         transcript.push({ role: 'meerkat', content: m.content });
         tokens.meerkat += m.tokens;
+        meerkatModel = m.model;
       } catch (e) {
         throw new Error(`MEERKAT_FAIL: ${(e as Error).message}`);
       }
@@ -100,7 +102,7 @@ export async function runScenario(
   const score = judgeOutput?.score ?? null;
   const scenario_passed = score != null ? score >= 0.70 : false;
 
-  const cost_usd = estimateCost(tokens);
+  const cost_usd = estimateCost(tokens, meerkatModel);
   const duration_ms = Date.now() - startedAt;
 
   return {
@@ -118,17 +120,35 @@ export async function runScenario(
 }
 
 /**
- * Estimación conservadora de costo.
- * Precios blended (input+output promediados):
- *   Haiku  ≈ $2.40/M tokens
- *   Sonnet ≈ $9.00/M tokens
+ * Estimación conservadora de costo por scenario_run.
  *
- * Tanto user como meerkat asumen Haiku (el caso más común en prod).
- * El juez usa Sonnet. Ajustar si el config del meerkat cambia de modelo.
+ * Rates blended input+output (aprox. media de anthropic pricing):
+ *   Haiku 4.5    ≈ $2.40/M tokens
+ *   Sonnet 4.6   ≈ $9.00/M tokens
+ *   Opus         ≈ $45.00/M tokens (por si algún meerkat lo usa en el futuro)
+ *
+ * User simulado siempre es Haiku. Judge siempre es Sonnet.
+ * Meerkat: usa el modelo resuelto en runtime (puede ser Haiku, Sonnet, o Opus).
+ * Si meerkatModel es null (falló antes del primer turno), asume Haiku conservadoramente.
  */
-function estimateCost(tokens: { user: number; meerkat: number; judge: number }): number {
-  const userCost    = (tokens.user    / 1_000_000) * 2.4;
-  const meerkatCost = (tokens.meerkat / 1_000_000) * 2.4; // asume Haiku; ajustar si meerkat es Sonnet
-  const judgeCost   = (tokens.judge   / 1_000_000) * 9.0;
+function estimateCost(
+  tokens: { user: number; meerkat: number; judge: number },
+  meerkatModel: string | null,
+): number {
+  const userRate  = 2.4;
+  const judgeRate = 9.0;
+  const meerkatRate = rateForModel(meerkatModel);
+
+  const userCost    = (tokens.user    / 1_000_000) * userRate;
+  const meerkatCost = (tokens.meerkat / 1_000_000) * meerkatRate;
+  const judgeCost   = (tokens.judge   / 1_000_000) * judgeRate;
   return Math.round((userCost + meerkatCost + judgeCost) * 10_000) / 10_000;
+}
+
+function rateForModel(model: string | null): number {
+  if (!model) return 2.4; // conservador
+  const lower = model.toLowerCase();
+  if (lower.includes('opus')) return 45.0;
+  if (lower.includes('sonnet')) return 9.0;
+  return 2.4; // haiku o cualquier otro barato
 }

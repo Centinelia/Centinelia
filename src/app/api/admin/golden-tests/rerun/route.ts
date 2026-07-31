@@ -4,7 +4,7 @@ import { isAdmin } from '@/lib/admin/auth';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { MEERKAT_IDS, type MeerkatId } from '@/lib/golden-tests/types';
 import { hashScenarioSet } from '@/lib/golden-tests/hash';
-import { computeTotalScenarios } from '@/lib/golden-tests/orchestrator';
+import { computeTotalScenarios, checkDailyCap } from '@/lib/golden-tests/orchestrator';
 
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const meerkat = body.meerkat_id as string;
   const versions = body.versions as number[];
+  const force = body.force === true;
 
   if (!MEERKAT_IDS.includes(meerkat as MeerkatId)) {
     return NextResponse.json({ error: `Unknown meerkat: ${meerkat}` }, { status: 400 });
@@ -24,6 +25,19 @@ export async function POST(req: NextRequest) {
   const versionsInBundle = Object.keys(MEERKAT_CONFIGS[meerkatId] ?? {}).map(Number);
   const invalid = versions.filter(v => !versionsInBundle.includes(v));
   if (invalid.length) return NextResponse.json({ error: `Versions not in bundle: ${invalid.join(',')}` }, { status: 400 });
+
+  // Daily cap protection. Rerun bypasses this ONLY if force=true is explicitly set —
+  // useful for a real emergency (e.g., baseline suddenly wrong post-incident) but requires
+  // deliberate override so runaway rerun loops don't blow the budget.
+  if (!force) {
+    const cap = await checkDailyCap();
+    if (!cap.within) {
+      return NextResponse.json({
+        error: 'Daily scenario_runs cap reached. Send {"force":true} to override deliberately.',
+        count: cap.count,
+      }, { status: 429 });
+    }
+  }
 
   const supabase = createAdminClient();
 

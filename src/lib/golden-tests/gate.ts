@@ -77,10 +77,12 @@ export async function computeGateVerdict(
       ? (runInProgress!.status as 'queued' | 'running')
       : 'none';
 
-  const targetProgress = targetInRun && (runInProgress!.total_scenarios as number) > 0
-    ? (runInProgress!.completed_scenarios as number) / (runInProgress!.total_scenarios as number)
-    : targetBaseline
-      ? 1
+  // Baseline exists → always report 100% complete, even if a rerun happens to be in progress.
+  // (Race window: baseline write vs later run picking up target again.)
+  const targetProgress = targetBaseline
+    ? 1
+    : targetInRun && (runInProgress!.total_scenarios as number) > 0
+      ? (runInProgress!.completed_scenarios as number) / (runInProgress!.total_scenarios as number)
       : 0;
 
   const targetScored = targetBaseline

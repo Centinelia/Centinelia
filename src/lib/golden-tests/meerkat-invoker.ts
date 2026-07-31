@@ -23,6 +23,7 @@ export function getSystemPromptForMeerkat(meerkatId: MeerkatId): string {
 interface InvokeResult {
   content: string;
   tokens: number;
+  model: string;
 }
 
 /**
@@ -61,5 +62,6 @@ export async function invokeMeerkat(
   return {
     content: text,
     tokens: response.usage.input_tokens + response.usage.output_tokens,
+    model: config.model,
   };
 }
