@@ -1,7 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { saveLearning } from '@/lib/ai/save-learning';
 
 export const dynamic = 'force-dynamic';
+
+// Convierte el feedback del humano en un learning estructurado auto-aprobado
+// (confidence=1.0, viene de fuente supervisada directa). El learning se
+// mergea inmediato en role_learnings/guardrails_learnings del agent y se
+// sync a Vapi por saveLearning. Aprendizaje instantáneo, no espera al cron.
+function buildLearningContent(
+  category: string,
+  reason: string | null,
+  emailSubject: string,
+): { content: string; category: 'role_kb' | 'guardrails' } {
+  const subj = emailSubject.slice(0, 80) || '(sin asunto)';
+  const detail = reason?.trim() || 'sin detalle adicional';
+
+  switch (category) {
+    case 'alucinacion':
+      return {
+        content: `Alucinación reportada en correo "${subj}". Detalle: ${detail}. Antes de mencionar horarios/precios/políticas: verificar con list_calendar_events, search_files, o usar pedir_a_humano si no puedes verificar.`,
+        category: 'guardrails',
+      };
+    case 'tono':
+      return {
+        content: `Tono inapropiado reportado en correo "${subj}". Detalle: ${detail}. Ajustar tono en correos similares.`,
+        category: 'guardrails',
+      };
+    case 'info_incorrecta':
+      return {
+        content: `Info incorrecta reportada en correo "${subj}". Detalle: ${detail}. Verificar datos con search_files o buscar_en_web antes de incluirlos en respuestas.`,
+        category: 'guardrails',
+      };
+    case 'no_debia_responder':
+      return {
+        content: `Correo "${subj}" requería aprobación humana antes de enviar. Contexto: ${detail}. Escalar correos similares con pedir_a_humano en vez de auto-responder.`,
+        category: 'guardrails',
+      };
+    default:
+      return {
+        content: `Feedback del humano sobre correo "${subj}": ${detail}.`,
+        category: 'role_kb',
+      };
+  }
+}
 
 interface Params {
   params: Promise<{ token: string; id: string }>;
@@ -14,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // 1. Resolver agent_id vía portal_token
   const { data: agent, error: agentErr } = await supabase
     .from('voice_agents')
-    .select('id')
+    .select('id, portal_email')
     .eq('portal_token', token)
     .maybeSingle();
 
@@ -25,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // 2. Verificar ownership del inbox item
   const { data: item, error: itemErr } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, auto_mode_decision, auto_mode_signals, auto_mode_flagged_at')
+    .select('id, agent_id, auto_mode_decision, auto_mode_signals, auto_mode_flagged_at, email_subject')
     .eq('id', id)
     .maybeSingle();
 
@@ -93,6 +135,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (feedbackErr) {
     console.error('[flag-auto-mode] feedback log insert failed:', feedbackErr);
+  }
+
+  // 7. Aprendizaje inmediato: convertir feedback en learning auto-aprobado.
+  // Fire-and-forget para no bloquear la respuesta HTTP. saveLearning con
+  // confidence=1.0 mergea inmediato en role/guardrails_learnings del agent
+  // y sync a Vapi. Sin dependencia del cron learn biweekly.
+  if (category) {
+    const { content, category: learningCategory } = buildLearningContent(
+      category,
+      reason,
+      (item.email_subject as string | null) ?? '',
+    );
+    saveLearning({
+      agentId:     agent.id,
+      portalEmail: (agent.portal_email as string | null) ?? null,
+      content,
+      source:      'email',
+      confidence:  1.0,
+      category:    learningCategory,
+    }).catch(err => console.error('[flag-auto-mode] saveLearning failed:', err));
   }
 
   return NextResponse.json({ ok: true });

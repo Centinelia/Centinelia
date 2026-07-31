@@ -182,7 +182,7 @@ export default function OpsInboxSection({ token }: { token: string }) {
         body:    JSON.stringify({ flagged: true, category: flagCategory, reason: flagReason.trim() || undefined }),
       });
       if (!res.ok) throw new Error();
-      toast.success('Reporte enviado. El empleado aprenderá de este caso.');
+      toast.success('Reporte enviado. El empleado ya aprendió: la regla nueva aplica desde el próximo correo.');
       closeFlagForm();
       load();
     } catch {
