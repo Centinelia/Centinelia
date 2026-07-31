@@ -11,14 +11,16 @@ function fromAddress(): string {
 }
 
 /**
- * From con display name del empleado. Cero consumo de cuota Gmail del
- * cliente. El humano ve "Sofía (empleado)" en negritas en su bandeja
- * aunque técnicamente el correo sale de notificaciones@centinelia.mx.
+ * From con display name del empleado usando "Centinelia" como apellido.
+ * Cero consumo de cuota Gmail del cliente. El humano ve "Sofía Centinelia"
+ * en negritas en su bandeja aunque técnicamente el correo sale de
+ * notificaciones@centinelia.mx. Convención: a los empleados que no
+ * conoces por nombre les llamas "Centinelias".
  */
 export function agentBrandedFrom(agentName: string | null | undefined): string {
   const name = (agentName ?? '').trim();
   if (!name) return FROM;
-  return `${name} (empleado) <${fromAddress()}>`;
+  return `${name} Centinelia <${fromAddress()}>`;
 }
 
 // Email colors — SOLID hex only. Semi-transparent rgba() breaks in Gmail/
