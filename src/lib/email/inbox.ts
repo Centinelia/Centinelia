@@ -64,3 +64,34 @@ export function parseToToken(toHeader: string): string {
   const addr  = match ? match[1] : toHeader;
   return addr.split('@')[0].replace(/[^a-f0-9]/g, '');
 }
+
+export interface HandoffRequestMatch {
+  id:            string;
+  status:        string;
+  agent_id:      string;
+  target_email:  string;
+  title:         string;
+}
+
+/**
+ * Resuelve un token de 16 hex chars a la human_request correspondiente.
+ * Early exit por longitud: agent tokens y inbox tokens son 12 chars, reply
+ * tokens son 16. Cero riesgo de colisión.
+ */
+export async function resolveHumanRequestFromToken(token: string): Promise<HandoffRequestMatch | null> {
+  if (token.length !== 16) return null;
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('human_requests')
+    .select('id, status, agent_id, target_email, title')
+    .eq('reply_token', token)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    id:           data.id as string,
+    status:       data.status as string,
+    agent_id:     data.agent_id as string,
+    target_email: data.target_email as string,
+    title:        data.title as string,
+  };
+}
