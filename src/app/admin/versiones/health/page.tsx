@@ -35,14 +35,14 @@ export default async function HealthPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Golden tests — health</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Golden tests: health</h1>
         <p className="text-sm text-slate-600 mt-1">Últimos runs, costo, y tasa de fallo técnico.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <Card label="Scenario runs 24h" value={String(total24h)} />
         <Card
-          label="Fallos tecnicos 24h"
+          label="Fallos técnicos 24h"
           value={`${failed24h} (${(failRate * 100).toFixed(1)}%)`}
           warn={failRate > 0.10}
         />

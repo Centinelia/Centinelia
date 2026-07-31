@@ -61,14 +61,14 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
         <div>
           <div className="text-slate-500">Activa (v{active?.version ?? '?'})</div>
           <div className="text-slate-900 font-mono">
-            {active ? active.median.toFixed(2) : '—'}
+            {active ? active.median.toFixed(2) : '--'}
             {active && <span className="text-slate-400"> ({active.scenarios_scored} esc.)</span>}
           </div>
         </div>
         <div>
           <div className="text-slate-500">Objetivo (v{target.version})</div>
           <div className="text-slate-900 font-mono">
-            {target.median != null ? target.median.toFixed(2) : '—'}
+            {target.median != null ? target.median.toFixed(2) : '--'}
             <span className="text-slate-400"> ({target.scenarios_scored} esc.)</span>
           </div>
         </div>
@@ -82,7 +82,7 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
 
       {verdict === 'incomplete' && target.run_status === 'none' && (
         <div className="text-xs text-amber-700 pt-1 border-t border-slate-200">
-          No hay baseline para esta version. Correr golden tests primero para tener veredicto.
+          No hay baseline para esta versión. Correr golden tests primero para tener veredicto.
         </div>
       )}
     </div>
@@ -92,7 +92,7 @@ export function GateVerdictPanel({ meerkat_id, target_version }: Props) {
 function VerdictBadge({ verdict }: { verdict: GateVerdict }) {
   const cfg: Record<GateVerdict, { icon: React.ReactNode; label: string; cls: string }> = {
     pass:       { icon: <CheckCircle2 className="w-4 h-4" />, label: 'Pasa',             cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-    warn:       { icon: <AlertTriangle className="w-4 h-4" />, label: 'Degradacion leve', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
+    warn:       { icon: <AlertTriangle className="w-4 h-4" />, label: 'Degradación leve', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
     fail:       { icon: <XCircle className="w-4 h-4" />,       label: 'Falla',            cls: 'text-red-700 bg-red-50 border-red-200' },
     incomplete: { icon: <Loader2 className="w-4 h-4" />,       label: 'Sin veredicto',   cls: 'text-slate-700 bg-white border-slate-200' },
   };

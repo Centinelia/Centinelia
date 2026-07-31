@@ -80,18 +80,18 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
     <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">Activar version — {row.meerkat_id}</h2>
+          <h2 className="font-semibold text-slate-900">Activar versión: {row.meerkat_id}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="p-4 space-y-4">
           <div className="text-sm">
-            <div className="text-slate-600">Version activa actual: <span className="font-medium text-slate-900">v{row.active_version}</span></div>
-            <div className="text-slate-600">Ultima activacion: {new Date(row.activated_at).toLocaleString('es-MX')}</div>
+            <div className="text-slate-600">Versión activa actual: <span className="font-medium text-slate-900">v{row.active_version}</span></div>
+            <div className="text-slate-600">Última activación: {new Date(row.activated_at).toLocaleString('es-MX')}</div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-700 mb-1 block">Nueva version</label>
+            <label className="text-xs font-medium text-slate-700 mb-1 block">Nueva versión</label>
             <select
               value={selectedVersion}
               onChange={e => {
