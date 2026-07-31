@@ -129,10 +129,14 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       continue;
     }
 
-    // Detect thread reply: check if this is a response to an info_requested email
+    // Detect thread reply: dos casos distintos.
+    //   (1) status='info_requested' → reusar row existente (Sofía pidió info al cliente y este responde)
+    //   (2) status IN ('pending','escalated') o human_request activo → NO reusar row, pero MARCAR client_replied_at
+    //       en ambas tablas para advertir al humano que el draft/escalación puede estar desactualizada
     let existingInboxId: string | undefined;
     let originalEmailBody: string | undefined;
     if (msg.threadId) {
+      // Caso 1: info_requested — reusar row para continuar el hilo
       const { data: infoThread } = await supabase
         .from('ops_inbox')
         .select('id, email_body')
@@ -145,6 +149,31 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       if (infoThread) {
         existingInboxId   = infoThread.id as string;
         originalEmailBody = infoThread.email_body as string;
+      } else {
+        // Caso 2: pending o escalated. NO reusamos, pero marcamos advertencia.
+        const nowIso = new Date().toISOString();
+        const { data: activeThread } = await supabase
+          .from('ops_inbox')
+          .select('id')
+          .eq('agent_id', agent.id)
+          .eq('thread_id', msg.threadId)
+          .in('status', ['pending', 'escalated'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeThread) {
+          await supabase
+            .from('ops_inbox')
+            .update({ client_replied_at: nowIso })
+            .eq('id', activeThread.id);
+
+          // Human requests ligados a ese ops_inbox también reciben la advertencia
+          await supabase
+            .from('human_requests')
+            .update({ client_replied_at: nowIso })
+            .eq('source_inbox_id', activeThread.id)
+            .in('status', ['pending', 'escalated']);
+        }
       }
     }
 

@@ -26,18 +26,20 @@ interface InboxItem {
   auto_mode_flagged_at:    string | null;
   auto_mode_flag_reason:   string | null;
   auto_mode_flag_category: string | null;
+  client_replied_at:       string | null;
 }
 
 interface HumanRequest {
-  id:           string;
-  agent_id:     string;
-  request_type: string;
-  title:        string;
-  description:  string | null;
-  urgency:      string;
-  target_email: string | null;
-  status:       string;
-  created_at:   string;
+  id:                string;
+  agent_id:          string;
+  request_type:      string;
+  title:             string;
+  description:       string | null;
+  urgency:           string;
+  target_email:      string | null;
+  status:            string;
+  created_at:        string;
+  client_replied_at: string | null;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -193,6 +195,15 @@ export default function OpsInboxSection({ token }: { token: string }) {
   };
 
   const act = async (id: string, status: 'approved' | 'rejected') => {
+    // Confirm si el cliente ya respondió mientras el draft esperaba aprobación
+    if (status === 'approved') {
+      const item = items.find(i => i.id === id);
+      if (item?.client_replied_at) {
+        const fecha = new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const ok = window.confirm(`El cliente ya respondió a este hilo el ${fecha}. Este borrador puede estar desactualizado. ¿Enviar de todos modos?`);
+        if (!ok) return;
+      }
+    }
     setActing(id);
     try {
       const editedDraft = draftEdits[id];
@@ -371,6 +382,12 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
                         <span className="mx-1.5" style={{ color: 'var(--c-border-2)' }}>·</span>
                         {new Date(hr.created_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
                       </p>
+                      {hr.client_replied_at && (
+                        <p className="text-xs mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}>
+                          <AlertTriangle size={10} />
+                          Cliente ya respondió el {new Date(hr.client_replied_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="text-xs font-semibold flex-shrink-0" style={{ color: '#6C3BFF' }}>Responder</span>
@@ -485,6 +502,19 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
             {/* Expanded body */}
             {isExpanded && (
               <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColor}20` }}>
+
+                {/* Advertencia: el cliente respondió mientras el draft esperaba aprobación */}
+                {item.client_replied_at && isPending && (
+                  <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg flex items-start gap-2" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El cliente respondió a este hilo</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                        Nuevo mensaje recibido el {new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Este borrador puede estar desactualizado; revisa la bandeja por un correo más reciente antes de aprobar.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Summary */}
                 {item.ai_summary && (
