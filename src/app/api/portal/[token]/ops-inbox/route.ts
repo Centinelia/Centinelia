@@ -88,6 +88,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   };
   if (body.owner_feedback) update.owner_feedback = body.owner_feedback;
 
+  // Draft editado por el humano antes de aprobar: sobreescribe el ai_draft del modelo.
+  // Se guarda en DB y se usa para el send del correo.
+  const editedDraft = typeof body.ai_draft === 'string' && body.ai_draft.trim() ? body.ai_draft.trim() : null;
+  if (editedDraft) update.ai_draft = editedDraft;
+
   if (newStatus === 'approved') {
     update.sent_at = new Date().toISOString();
 
@@ -98,7 +103,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     // Send the draft response if this is an email type
-    if (item.item_type === 'email' && item.ai_draft && item.email_from) {
+    const draftToSend = editedDraft ?? (item.ai_draft as string | null);
+    if (item.item_type === 'email' && draftToSend && item.email_from) {
       const { data: agt } = await supabase
         .from('voice_agents')
         .select('business_name, agent_name')
@@ -111,7 +117,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       sendEmail({
         to:      item.email_from as string,
         subject: `Re: ${(item.email_subject as string) || ''}`.trim(),
-        html:    simpleResponseHtml(businessName, agentName, item.ai_draft as string),
+        html:    simpleResponseHtml(businessName, agentName, draftToSend),
       }).catch(console.error);
     }
   }

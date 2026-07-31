@@ -112,17 +112,32 @@ export default function OpsInboxSection({ token }: { token: string }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});
+
   const act = async (id: string, status: 'approved' | 'rejected') => {
     setActing(id);
     try {
+      const editedDraft = draftEdits[id];
+      const payload: Record<string, unknown> = { id, status };
+      if (status === 'approved' && editedDraft?.trim()) {
+        payload.ai_draft = editedDraft.trim();
+      }
       const res = await fetch(`/api/portal/${token}/ops-inbox`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id, status }),
+        body:    JSON.stringify(payload),
       });
       if (res.ok) {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+        setItems(prev => prev.map(i => i.id === id
+          ? { ...i, status, ai_draft: editedDraft?.trim() ? editedDraft.trim() : i.ai_draft }
+          : i
+        ));
         setExpanded(null);
+        setDraftEdits(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
       }
     } finally { setActing(null); }
   };
@@ -412,8 +427,23 @@ export default function OpsInboxSection({ token }: { token: string }) {
                   </div>
                 )}
 
-                {/* Draft */}
-                {item.ai_draft && (
+                {/* Draft: editable si pendiente, solo lectura después */}
+                {item.ai_draft && isPending && (
+                  <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
+                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puedes editar antes de aprobar</p>
+                    </div>
+                    <textarea
+                      value={draftEdits[item.id] ?? item.ai_draft}
+                      onChange={e => setDraftEdits(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      rows={Math.min(20, Math.max(6, (draftEdits[item.id] ?? item.ai_draft).split('\n').length + 1))}
+                      className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                    />
+                  </div>
+                )}
+                {item.ai_draft && !isPending && (
                   <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
                     <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
                     <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{item.ai_draft}</p>
@@ -434,20 +464,23 @@ export default function OpsInboxSection({ token }: { token: string }) {
                 )}
 
                 {/* Actions */}
-                {isPending && (
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={() => act(item.id, 'approved')} disabled={!!acting}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                      style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
-                      {acting === item.id ? 'Procesando…' : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : 'Aprobar y enviar'}</>}
-                    </button>
-                    <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                      <X size={12} />Rechazar
-                    </button>
-                  </div>
-                )}
+                {isPending && (() => {
+                  const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
+                  return (
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => act(item.id, 'approved')} disabled={!!acting}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                        style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
+                        {acting === item.id ? 'Procesando…' : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : wasEdited ? 'Enviar con tus cambios' : 'Aprobar y enviar'}</>}
+                      </button>
+                      <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+                        <X size={12} />Rechazar
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Rescatar: solo cuando el correo está marcado spam (false positive del clasificador) */}
                 {item.status === 'skipped' && item.category === 'spam' && (
