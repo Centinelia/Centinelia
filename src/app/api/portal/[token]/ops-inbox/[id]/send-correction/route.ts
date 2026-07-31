@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail } from '@/lib/email/send';
+import { sendEmail, agentBrandedFrom } from '@/lib/email/send';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { checkAccount } from '@/lib/compliance/account-guard';
 
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const sent = await sendEmail({
     to:      item.email_from as string,
+    from:    agentBrandedFrom(agentName),
     subject,
     html:    correctionEmailHtml(businessName, agentName, correctionText),
   });

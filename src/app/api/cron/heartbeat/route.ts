@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
-import { sendEmail, shell, heading, infoCard, mdToEmailHtml } from '@/lib/email/send';
+import { sendEmail, shell, heading, infoCard, mdToEmailHtml, agentBrandedFrom } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
@@ -124,6 +124,7 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
       const dateStr = new Date().toLocaleDateString('es-MX', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
       await sendEmail({
         to:      agent.client_email,
+        from:    agentBrandedFrom(agent.agent_name as string | null),
         subject: `Check-in ${freqLabel}: ${agent.agent_name ?? agent.business_name}`,
         html: shell(
           heading(`Check-in ${freqLabel}`, `${agent.agent_name ?? 'Tu empleado'} · ${dateStr}`) +
