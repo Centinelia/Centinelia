@@ -57,3 +57,8 @@ export async function evaluate(
   const on = bucket < flag.rollout_pct;
   return { on, reason: on ? 'hash_on' : 'hash_off' };
 }
+
+export async function getAllFlagKeys(): Promise<string[]> {
+  const rows = await loadAll();
+  return Array.from(rows.keys());
+}
