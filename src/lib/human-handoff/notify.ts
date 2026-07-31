@@ -87,7 +87,7 @@ export async function sendReminderNotification(requestId: string): Promise<void>
 
   await sendEmail({
     to:      request.target_email,
-    subject: `Recordatorio — ${agent.agent_name} sigue esperando: ${request.title}`,
+    subject: `Recordatorio: ${agent.agent_name} sigue esperando: ${request.title}`,
     html:    buildReminderEmailHtml(request as HumanRequest, agent as Agent),
   });
 }

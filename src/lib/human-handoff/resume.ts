@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
+import { getConnector } from '@/lib/connectors';
 
 export async function resumeAgentAfterHumanResponse(requestId: string): Promise<void> {
   const supabase = createAdminClient();
@@ -37,8 +38,43 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
   if (!agent) { console.error('[resume] agent not found', request.agent_id); return; }
 
   const { data: orgData } = agent.portal_email
-    ? await supabase.from('organizations').select('knowledge_base').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('knowledge_base, auto_mode_disabled_at').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
+
+  // Resolve autoMode the same way email-sync.ts does (spec §4 happy path)
+  const orgDisabled = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
+  type AutoMode = 'observador' | 'off' | 'auto' | 'always';
+  function resolveAutoMode(trust_stage: number | null, disabledOrg: boolean): AutoMode {
+    if (process.env.AUTO_MODE_CLASSIFIER_ENABLED === 'false') return 'off';
+    if (disabledOrg) return 'off';
+    const stage = trust_stage ?? 3;
+    if (stage <= 1) return 'observador';
+    if (stage === 2) return 'off';
+    return 'auto';
+  }
+  const autoMode = resolveAutoMode((agent as Record<string, unknown>).trust_stage as number | null, orgDisabled);
+
+  // Build sendReplyFn — fetch email integration for the agent so resumes can auto-send
+  let sendReplyFn: ((body: string) => Promise<void>) | undefined;
+  const { data: emailIntegration } = await supabase
+    .from('email_integrations')
+    .select('*')
+    .eq('agent_id', request.agent_id)
+    .maybeSingle();
+  if (emailIntegration) {
+    try {
+      const conn = await getConnector(emailIntegration as Parameters<typeof getConnector>[0], supabase);
+      sendReplyFn = (body: string) => conn.email.sendReply({
+        messageId: inbox.raw_message_id as string ?? '',
+        threadId:  inbox.thread_id   as string | undefined,
+        to:        inbox.email_from  as string,
+        subject:   inbox.email_subject as string ?? '',
+        body,
+      });
+    } catch (err) {
+      console.error('[resume] could not build sendReplyFn, degrading to pending:', err);
+    }
+  }
 
   // Build enriched context
   let humanBlock = '';
@@ -75,9 +111,11 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
       ownerEmail:         agent.client_email as string,
       portalToken:        agent.portal_token as string,
       portalEmail:        agent.portal_email as string | undefined,
+      autoMode,
       approvalEmail:      (agent as Record<string, unknown>).approval_email as string | null | undefined,
       existingInboxId:    inbox.id,          // ← reutiliza row existente
       originalEmailBody:  inbox.email_body as string | undefined,
+      sendReplyFn,
     });
 
     await supabase.from('human_requests').update({ resume_triggered_at: new Date().toISOString() }).eq('id', requestId);

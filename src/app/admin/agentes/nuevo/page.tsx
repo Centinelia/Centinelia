@@ -89,7 +89,7 @@ const DEFAULT_FEATURES: AgentFeatures = {
   vertical: undefined, helpdesk: false, is_coordinator: false, meerkat_role_id: '',
   lite_prompt: false, skip_aup: false, skip_recording_notice: false,
   of_encuestas: false, civic_reports: false, contract_drafts: false,
-  automations: undefined,
+  automations: undefined, human_handoff_enabled: true,
 };
 
 export default function NuevoEmpleadoPage() {

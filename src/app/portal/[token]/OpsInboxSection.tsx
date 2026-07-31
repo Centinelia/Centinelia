@@ -68,17 +68,15 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const URGENCY_LABELS: Record<string, string> = {
-  low:      'Baja',
-  medium:   'Media',
-  high:     'Alta',
-  critical: 'Crítica',
+  baja:  'Baja',
+  media: 'Media',
+  alta:  'Alta',
 };
 
 const URGENCY_COLORS: Record<string, string> = {
-  low:      '#6b7280',
-  medium:   '#f59e0b',
-  high:     '#ef4444',
-  critical: '#7f1d1d',
+  baja:  '#6b7280',
+  media: '#f59e0b',
+  alta:  '#ef4444',
 };
 
 type Tab = 'pendientes' | 'auto' | 'todo';

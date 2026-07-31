@@ -496,10 +496,13 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       agentName,
       businessName,
       portalToken,
-      agent:        (agentRow ?? { id: agentId, agent_name: agentName, business_name: businessName }) as Record<string, unknown>,
+      agent:          (agentRow ?? { id: agentId, agent_name: agentName, business_name: businessName }) as Record<string, unknown>,
       supabase,
-      userContext:  effectiveBody.slice(0, 500),
-      readUrlCount: { value: 0 } as ReadUrlCounter,
+      userContext:    effectiveBody.slice(0, 500),
+      readUrlCount:   { value: 0 } as ReadUrlCounter,
+      channel:        'email' as const,
+      // existingInboxId is set when resuming a thread — anti-loop counter applies here
+      sourceInboxId:  existingInboxId,
     };
 
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
