@@ -4,6 +4,7 @@ import type { VoiceAgent } from '@/types/agent';
 import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 import { MEERKAT_PROMPT_TIER } from '@/lib/voice/rules';
 import { resolveMeerkatConfig, type MeerkatModelConfig } from './resolve-meerkat';
+import { resolveMeerkatVersionForAgent } from '@/lib/feature-flags/version-flag-resolver';
 
 const VAPI_URL = 'https://api.vapi.ai';
 const VAPI_KEY = process.env.VAPI_API_KEY!;
@@ -366,10 +367,16 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
   }
 
   const meerkatId = agent.features.meerkat_role_id;
-  const cfg: MeerkatModelConfig = await resolveMeerkatConfig(
-    meerkatId ?? '',
-    agent.features.pinned_meerkat_version ?? null,
-  );
+  // Primero resolvemos la versión (aplicando flags + pin + legacy fallback),
+  // luego pedimos el config. Esto mete pilar 3 sin cambiar la firma de
+  // resolveMeerkatConfig (usada también por golden tests con versión explícita).
+  const version = meerkatId
+    ? await resolveMeerkatVersionForAgent(meerkatId, {
+        portal_email: agent.portal_email ?? null,
+        features: agent.features as unknown as { [k: string]: unknown; pinned_meerkat_version?: number | null | undefined; },
+      })
+    : null;
+  const cfg: MeerkatModelConfig = await resolveMeerkatConfig(meerkatId ?? '', version);
 
   // F1.1 — customLLM opt-in per agent. Cuando features.use_custom_llm = true
   // apuntamos Vapi a nuestro endpoint /api/voice/llm que reformatea a Anthropic
