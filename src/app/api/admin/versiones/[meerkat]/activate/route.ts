@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import { clearMeerkatVersionCache } from '@/lib/vapi/resolve-meerkat';
 import { resyncAgentsByMeerkat } from '@/lib/vapi/resync-meerkat';
+import { MEERKAT_IDS, type MeerkatId } from '@/lib/golden-tests/types';
+import { computeGateVerdict } from '@/lib/golden-tests/gate';
 
 async function currentAdminEmail(): Promise<{ ok: boolean; email?: string }> {
   const store = await cookies();
@@ -25,12 +27,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     version,
     reason,
     override_reason,
-    gate_verdict,
+    // gate_verdict from client is intentionally IGNORED for security.
+    // We compute it server-side below to prevent bypass attacks.
+    gate_verdict: client_gate_verdict,
   } = body as {
     version?: number;
     reason?: string;
     override_reason?: string;
-    gate_verdict?: 'pass' | 'warn' | 'fail' | 'incomplete';
+    gate_verdict?: string;
   };
 
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
@@ -59,23 +63,48 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const currentVersion = current?.active_version ?? null;
 
-  // No-op si ya está en esa versión (evitar history duplicado)
+  // No-op si ya está en esa versión (evitar history duplicado) — fires BEFORE gate check.
   if (currentVersion === version) {
     return NextResponse.json({ ok: true, noop: true, message: `Already active on v${version}` });
   }
 
-  if ((gate_verdict === 'fail' || gate_verdict === 'incomplete') && !override_reason?.trim()) {
+  // Compute gate verdict SERVER-SIDE. Client-supplied gate_verdict is never trusted for gating.
+  let serverVerdict: string = 'incomplete';
+  if (MEERKAT_IDS.includes(meerkat as MeerkatId)) {
+    try {
+      const gateResult = await computeGateVerdict(meerkat as MeerkatId, version);
+      serverVerdict = gateResult.verdict;
+
+      // Audit log: if client sent a different verdict, note the divergence (informational).
+      if (client_gate_verdict && client_gate_verdict !== serverVerdict) {
+        console.warn('[activate] client_gate_verdict diverges from server', {
+          meerkat,
+          version,
+          client: client_gate_verdict,
+          server: serverVerdict,
+        });
+      }
+    } catch (e) {
+      // Gate computation failure is non-blocking (avoids bricking activations if DB is slow).
+      // Log and continue; verdict stays 'incomplete' which requires override_reason.
+      console.error('[activate] computeGateVerdict failed', { meerkat, version, error: (e as Error).message });
+    }
+  }
+
+  // Enforce override requirement using the SERVER-COMPUTED verdict.
+  if ((serverVerdict === 'fail' || serverVerdict === 'incomplete') && !override_reason?.trim()) {
     return NextResponse.json({
-      error: `override_reason is required when gate_verdict is '${gate_verdict}'`,
+      error: `override_reason is required when gate_verdict is '${serverVerdict}'`,
+      gate_verdict: serverVerdict,
     }, { status: 400 });
   }
 
   // Determinar reason automático si no viene
   const finalReason = reason ?? (currentVersion != null && version < currentVersion ? 'rollback' : 'rollout');
 
-  // Transacción implícita: history primero, luego UPDATE active_versions.
+  // Use SERVER verdict in the history record (not the client-supplied one).
   const historyReason = override_reason?.trim()
-    ? `[OVERRIDE:${gate_verdict}] ${override_reason.trim()}${reason ? ` — ${reason}` : ''}`
+    ? `[OVERRIDE:${serverVerdict}] ${override_reason.trim()}${reason ? ` — ${reason}` : ''}`
     : (reason ?? finalReason);
 
   const { error: histErr } = await supabase.from('meerkat_version_history').insert({
@@ -115,6 +144,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     from_version: currentVersion,
     to_version: version,
     reason: finalReason,
+    gate_verdict: serverVerdict,
     message: `${meerkat} v${version} activated. Resync in progress.`,
   });
 }
