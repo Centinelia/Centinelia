@@ -398,9 +398,19 @@ REGLAS ESTRICTAS ANTI-FABRICACIÓN — NO NEGOCIABLES:
 Prefiere PEDIR AYUDA que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
 Si después de usar todas las herramientas disponibles no puedes encontrar la información necesaria para responder correctamente:
-- Primera opción: usa pedir_a_humano para pedir la info al equipo (usualmente approver) y redacta un draft con placeholder tipo "verificamos [X] y te contestamos con la info exacta pronto".
-- Alternativa legacy (solo si pedir_a_humano no aplica): pon "needs_info": true. Si tu aprobador podría tener la información, pon "escalate_to_approver": true y describe en "info_needed" qué necesitas. Si solo el remitente puede darla, pon "escalate_to_approver": false y redacta el email en "request_to_sender".
-- Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false, "escalate_to_approver": false.
+
+PREFIERE SIEMPRE pedir_a_humano SOBRE escalate_to_approver cuando aplique:
+- pedir_a_humano({type:'info', ...}) — necesitas info específica del equipo (fotos, casos, credenciales, catálogos, políticas reales). ES LA OPCIÓN CORRECTA para el escenario "cliente pide X que no tengo".
+- pedir_a_humano({type:'action', ...}) — necesitas que un humano ejecute algo físico (llamar cliente, revisar stock, verificar contrato en papel).
+- pedir_a_humano({type:'approval', ...}) — necesitas aprobación de una decisión (descuento no estándar, plazo especial, cambio de condiciones).
+
+La tool pedir_a_humano tiene UX mejor: el humano recibe form estructurado con opción de subir archivos, redirigir a otro compañero, y el flujo se auto-completa cuando responde. Úsala como primera opción SIEMPRE que necesites algo del equipo.
+
+Alternativa legacy (solo si pedir_a_humano NO aplica — casos raros): pon "needs_info": true + "escalate_to_approver": true/false. Este path funciona pero da al humano solo un botón aprobar/rechazar, sin capacidad de responder con info o archivos. RARAMENTE es la mejor opción cuando existe pedir_a_humano.
+
+Si el remitente mismo debe proporcionar la info (datos de su empresa, especificaciones que solo él conoce), sí usa "needs_info": true + "escalate_to_approver": false + redacta la request en "request_to_sender".
+
+Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false, "escalate_to_approver": false.
 
 Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, sin markdown, sin texto adicional.`;
 
