@@ -26,7 +26,7 @@ type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 export async function runAutoPromote(
   supabase: SupabaseAdmin,
   opts?: { now?: Date },
-): Promise<{ candidates: number; promoted: number; skipped_non_meerkat: number; errors: string[] }> {
+): Promise<{ candidates: number; promoted: number; skipped_non_meerkat: number; skipped_superseded: number; errors: string[] }> {
   const now = opts?.now ?? new Date();
   const cutoff = new Date(now.getTime() - SOAK_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
@@ -39,21 +39,50 @@ export async function runAutoPromote(
     .not('at_100_since', 'is', null);
 
   if (error) {
-    return { candidates: 0, promoted: 0, skipped_non_meerkat: 0, errors: [error.message] };
+    return { candidates: 0, promoted: 0, skipped_non_meerkat: 0, skipped_superseded: 0, errors: [error.message] };
   }
 
-  const result = { candidates: (candidates ?? []).length, promoted: 0, skipped_non_meerkat: 0, errors: [] as string[] };
+  const result = {
+    candidates: (candidates ?? []).length,
+    promoted: 0,
+    skipped_non_meerkat: 0,
+    skipped_superseded: 0,
+    errors: [] as string[],
+  };
 
   const meerkatRe = /^meerkat\.([^.]+)\.v(\d+)$/;
+
+  // Separar candidatos meerkat de los que no lo son
+  const nonMeerkatFlags: FlagRow[] = [];
+  const meerkatMap = new Map<string, Array<{ flag: FlagRow; version: number }>>();
 
   for (const flag of (candidates ?? []) as FlagRow[]) {
     const m = meerkatRe.exec(flag.flag_key);
     if (!m) {
-      result.skipped_non_meerkat++;
+      nonMeerkatFlags.push(flag);
       continue;
     }
-    const meerkatId = m[1];
-    const version = Number(m[2]);
+    const mId = m[1];
+    const ver = Number(m[2]);
+    if (!meerkatMap.has(mId)) meerkatMap.set(mId, []);
+    meerkatMap.get(mId)!.push({ flag, version: ver });
+  }
+
+  // Flags no-meerkat: comportamiento original (solo contar, no promover)
+  result.skipped_non_meerkat = nonMeerkatFlags.length;
+
+  // Flags meerkat: por cada meerkat_id solo promover la version mas alta
+  for (const [meerkatId, entries] of meerkatMap) {
+    // Ordenar descendente por version; index 0 = version mas alta
+    entries.sort((a, b) => b.version - a.version);
+
+    const toPromote = entries[0];
+    const superseded = entries.slice(1);
+
+    // Los de version menor se dejan intactos; admin puede eliminarlos manualmente
+    result.skipped_superseded += superseded.length;
+
+    const { flag, version } = toPromote;
     try {
       const { data: currentActive } = await supabase
         .from('meerkat_active_versions')
