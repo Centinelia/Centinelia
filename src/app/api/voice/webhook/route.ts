@@ -307,13 +307,25 @@ export async function POST(req: NextRequest) {
 
       // 5. Auto-refill: trigger when remaining just crossed below threshold this call
       let includedAfterRefill = included;
+      let refillAttemptFailed = false;
+      let refillFailError: string | null = null;
       if (agent?.auto_refill_enabled && agent?.stripe_customer_id && included > 0) {
         const threshold     = agent.auto_refill_threshold ?? 50;
         const remaining     = included - used;
         const prevRemaining = remaining + minutes;
         if (prevRemaining >= threshold && remaining < threshold) {
-          const refill = await executeAutoRefill(resolvedAgentId).catch(() => ({ ok: false }));
-          if (refill.ok) includedAfterRefill += agent.auto_refill_minutes ?? 100;
+          const refill = await executeAutoRefill(resolvedAgentId).catch((err: unknown) => {
+            // Silent fail crítico previo: si Stripe declinaba, refill quedaba sin log
+            // y agent se pausaba sin explicar el motivo al cliente.
+            console.error('[voice-webhook] auto_refill_failed', { agentId: resolvedAgentId, error: String(err) });
+            return { ok: false, error: String(err) } as const;
+          });
+          if (refill.ok) {
+            includedAfterRefill += agent.auto_refill_minutes ?? 100;
+          } else {
+            refillAttemptFailed = true;
+            refillFailError = ('error' in refill ? refill.error : null) ?? 'auto_refill_declined';
+          }
         }
       }
 
@@ -345,6 +357,20 @@ export async function POST(req: NextRequest) {
 
       // ── All notifications and AI tasks run after the HTTP response ─────
       after(async () => {
+        // A0. Auto-refill declinada: notificar antes que el pause message para
+        // que el cliente sepa distinguir "sin plan" de "Stripe rechazó tarjeta".
+        if (refillAttemptFailed && agent) {
+          const refillMsg = `⚠️ *Recarga automática falló, ${agent.business_name}*\n\nIntenté recargar tus minutos pero Stripe no procesó el pago. Verifica tu método de pago en el portal antes de que el agente se pause.\n\n${appUrl}/portal/${agent.portal_token}`;
+          if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, refillMsg).catch(console.error);
+          if (agent.client_email) {
+            await sendEmail({
+              to:      agent.client_email,
+              subject: `⚠️ Recarga automática falló, ${agent.business_name}`,
+              html:    `<p>Intentamos ejecutar tu recarga automática pero Stripe rechazó el cargo.</p><p><strong>Motivo:</strong> ${refillFailError ?? 'no especificado'}</p><p>Verifica tu método de pago en el <a href="${appUrl}/portal/${agent.portal_token}">portal</a> antes de que el agente se pause.</p>`,
+            }).catch(console.error);
+          }
+        }
+
         // A. Pause notifications — skip everything else when paused
         if (agentWasPaused && agent) {
           const pauseMsg = `⚠️ *Límite de minutos alcanzado, ${agent.business_name}*\n\nTu agente de voz ha sido *pausado automáticamente* al haber utilizado los ${includedAfterRefill} minutos de tu plan.\n\nContacta a tu asesor de Centinelia para reactivar el servicio o adquirir minutos adicionales.`;
