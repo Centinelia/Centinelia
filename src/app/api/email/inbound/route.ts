@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveInboxToken, parseSenderName, parseToToken, resolveAgentFromToken } from '@/lib/email/inbox';
+import { resolveInboxToken, parseSenderName, parseToToken, resolveAgentFromToken, resolveHumanRequestFromToken } from '@/lib/email/inbox';
+import { processHandoffReply, type HandoffAttachment } from '@/lib/human-handoff/inbound';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { applyCommsRouting } from '@/lib/comms/routing';
 import { findNoxAgent, processEmailWithNox } from '@/lib/ops/nox-coordinator';
@@ -59,7 +60,43 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Check if this is a direct reply to a specific agent
+  // Helper: upload attachments to human-request-files bucket (handoff path only)
+  async function uploadHandoffAttachments(requestId: string, agentId: string): Promise<HandoffAttachment[]> {
+    const stored: HandoffAttachment[] = [];
+    for (const att of rawAttachments) {
+      const safeName = att.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${agentId}/${requestId}/${Date.now()}-${safeName}`;
+      const { data: uploaded } = await supabase.storage
+        .from('human-request-files')
+        .upload(path, att.buf, { contentType: att.type, upsert: false });
+      if (uploaded?.path) {
+        const { data: signed } = await supabase.storage
+          .from('human-request-files')
+          .createSignedUrl(uploaded.path, 60 * 60 * 24 * 30); // 30d — match respond/route.ts pattern
+        if (signed?.signedUrl) {
+          stored.push({ name: att.name, url: signed.signedUrl, type: att.type, size: att.buf.length });
+        }
+      }
+    }
+    return stored;
+  }
+
+  // 1. Try handoff reply first (16 hex chars, unique length discriminator)
+  const handoffMatch = await resolveHumanRequestFromToken(token);
+  if (handoffMatch) {
+    const attachments = await uploadHandoffAttachments(handoffMatch.id, handoffMatch.agent_id);
+    // Process non-blocking so the webhook returns 200 fast
+    processHandoffReply({
+      request:     handoffMatch,
+      from,
+      subject,
+      text,
+      attachments,
+    }).catch(err => console.error('[handoff-inbound] processHandoffReply failed:', err));
+    return NextResponse.json({ ok: true });
+  }
+
+  // 2. Check if this is a direct reply to a specific agent
   const agentMatch = await resolveAgentFromToken(token);
 
   if (agentMatch) {
