@@ -1,6 +1,26 @@
 const FROM     = process.env.RESEND_FROM_EMAIL ?? 'Centinelia <notificaciones@centinelia.mx>';
 const LOGO_URL = 'https://www.centinelia.mx/logo-tagline.png';
 
+// Extrae la dirección del FROM configurado ("Name <addr>" o solo "addr").
+// Se usa para construir Froms brandeados por agente sin cambiar el dominio
+// (que debe estar verificado en Resend). Sigue enviando desde Centinelia,
+// solo cambia el display name a algo tipo "Sofía (empleado)".
+function fromAddress(): string {
+  const match = FROM.match(/<([^>]+)>/) ?? FROM.match(/(\S+@\S+)/);
+  return match ? match[1] : 'notificaciones@centinelia.mx';
+}
+
+/**
+ * From con display name del empleado. Cero consumo de cuota Gmail del
+ * cliente. El humano ve "Sofía (empleado)" en negritas en su bandeja
+ * aunque técnicamente el correo sale de notificaciones@centinelia.mx.
+ */
+export function agentBrandedFrom(agentName: string | null | undefined): string {
+  const name = (agentName ?? '').trim();
+  if (!name) return FROM;
+  return `${name} (empleado) <${fromAddress()}>`;
+}
+
 // Email colors — SOLID hex only. Semi-transparent rgba() breaks in Gmail/
 // Titan/Outlook web because those clients strip <body> background styling
 // and the transparency reveals a white base, making light text invisible.

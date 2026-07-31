@@ -124,7 +124,7 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
       const dateStr = new Date().toLocaleDateString('es-MX', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
       await sendEmail({
         to:      agent.client_email,
-        subject: `Check-in ${freqLabel} — ${agent.agent_name ?? agent.business_name}`,
+        subject: `Check-in ${freqLabel}: ${agent.agent_name ?? agent.business_name}`,
         html: shell(
           heading(`Check-in ${freqLabel}`, `${agent.agent_name ?? 'Tu empleado'} · ${dateStr}`) +
           infoCard(mdToEmailHtml(result))

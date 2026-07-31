@@ -100,20 +100,32 @@ export function renderActivityBlocks(w: ActivityWindow, tz: string): string {
   const fmt = (iso: string) => new Date(iso).toLocaleString('es-MX', { timeZone: tz, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
   const blocks: string[] = [];
 
+  const secToLabel = (s: number | null | undefined): string => {
+    if (s == null || s <= 0) return '';
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return r === 0 ? `${m}m` : `${m}m${r}s`;
+  };
+
   if (w.calls.length) {
-    blocks.push(`LLAMADAS (${w.calls.length}):\n${w.calls.map(c => `- [${fmt(c.created_at)}] ${c.caller_name ?? 'Llamante'}: outcome=${c.outcome ?? '?'}, resumen=${c.summary?.slice(0, 200) ?? 'sin resumen'}`).join('\n')}`);
+    blocks.push(`LLAMADAS (${w.calls.length}):\n${w.calls.map(c => {
+      const dur = secToLabel(c.duration_seconds);
+      const durPart = dur ? `, duración=${dur}` : '';
+      return `- [${fmt(c.created_at)}] ${c.caller_name ?? 'Llamante'}: outcome=${c.outcome ?? '?'}${durPart}, resumen=${c.summary?.slice(0, 200) ?? 'sin resumen'}`;
+    }).join('\n')}`);
   }
   if (w.emails.length) {
-    blocks.push(`CORREOS (${w.emails.length}):\n${w.emails.map(e => `- [${fmt(e.created_at)}] ${e.email_from ?? 'remitente'}: asunto=${e.email_subject?.slice(0, 100) ?? '(sin asunto)'}, estado=${e.status ?? '?'}`).join('\n')}`);
+    blocks.push(`CORREOS (${w.emails.length}):\n${w.emails.map(e => `- [${fmt(e.created_at)}] ${e.email_from ?? 'remitente'}: asunto=${e.email_subject?.slice(0, 100) ?? '(sin asunto)'}, categoría=${e.category ?? '?'}, estado=${e.status ?? '?'}`).join('\n')}`);
   }
   if (w.docs.length) {
     blocks.push(`DOCUMENTOS (${w.docs.length}):\n${w.docs.map(d => `- [${fmt(d.created_at)}] ${d.template_type ?? 'doc'}: ${d.title ?? 'sin título'}`).join('\n')}`);
   }
   if (w.tasks.length) {
-    blocks.push(`TAREAS COMPLETADAS (${w.tasks.length}):\n${w.tasks.map(t => `- [${fmt(t.completed_at ?? t.created_at)}] ${t.title ?? 'tarea'}: resultado=${t.result?.slice(0, 100) ?? '?'}`).join('\n')}`);
+    blocks.push(`TAREAS COMPLETADAS (${w.tasks.length}):\n${w.tasks.map(t => `- [${fmt(t.completed_at ?? t.created_at)}] ${t.title ?? 'tarea'}: estado=${t.status ?? '?'}, resultado=${t.result?.slice(0, 100) ?? '?'}`).join('\n')}`);
   }
   if (w.appts.length) {
-    blocks.push(`CITAS (${w.appts.length}):\n${w.appts.map(a => `- [${fmt(a.created_at)}] ${a.nombre ?? 'contacto'}: ${a.servicio ?? 'sin servicio'}, ${[a.fecha, a.hora].filter(Boolean).join(' ') || 'sin fecha'}`).join('\n')}`);
+    blocks.push(`CITAS (${w.appts.length}):\n${w.appts.map(a => `- [${fmt(a.created_at)}] ${a.nombre ?? 'contacto'}: ${a.servicio ?? 'sin servicio'}, ${[a.fecha, a.hora].filter(Boolean).join(' ') || 'sin fecha'}, estado=${a.status ?? '?'}`).join('\n')}`);
   }
   if (w.civic.length) {
     blocks.push(`FOLIOS (${w.civic.length}):\n${w.civic.map(c => `- [${fmt(c.created_at)}] ${c.folio ?? 'sin folio'}: categoría ${c.category ?? 'sin categoría'}, estado ${c.status ?? '?'}`).join('\n')}`);

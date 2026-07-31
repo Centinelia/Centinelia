@@ -19,12 +19,13 @@ interface AgentSubset {
   ai_ops_limit:       number;
   minutes_reset_date: string | null;
   portal_token:       string | null;
-  features:           any;
+  features:           Record<string, unknown> | null;
 }
 
 export async function maybeSendQuotaEmail(agent: AgentSubset, automation: AutomationName): Promise<{ sent: boolean }> {
   if (!agent.client_email) return { sent: false };
-  const last = agent.features?.automations?.[automation]?.last_quota_email_sent_at as string | undefined;
+  const automations = (agent.features?.automations ?? {}) as Record<string, { last_quota_email_sent_at?: string } | undefined>;
+  const last = automations[automation]?.last_quota_email_sent_at;
   if (last) {
     const age = Date.now() - new Date(last).getTime();
     if (age < RATE_LIMIT_MS) return { sent: false };
@@ -39,9 +40,10 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
     : 'https://www.centinelia.mx';
   const dateStr = new Date().toLocaleDateString('es-MX', { month: 'long', day: 'numeric' });
 
+  const agentLabel = agent.agent_name?.trim() || agent.business_name?.trim() || 'Tu empleado';
   await sendEmail({
     to:      agent.client_email,
-    subject: `Tu empleado necesita más tareas para ${label}`,
+    subject: `${agentLabel} necesita más tareas para ${label}`,
     html: shell(
       heading('Tu empleado necesita más tareas', `${agent.agent_name ?? 'Tu empleado'} · ${dateStr}`) +
       infoCard(`
@@ -66,9 +68,9 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
     .select('features')
     .eq('id', agent.id)
     .single();
-  const currentFeatures = (freshAgent?.features ?? agent.features ?? {}) as Record<string, any>;
-  const currentAuto     = (currentFeatures.automations ?? {}) as Record<string, any>;
-  const currentEntry    = (currentAuto[automation] ?? {}) as Record<string, any>;
+  const currentFeatures = (freshAgent?.features ?? agent.features ?? {}) as Record<string, unknown>;
+  const currentAuto     = (currentFeatures.automations ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  const currentEntry    = (currentAuto[automation] ?? {}) as Record<string, unknown>;
 
   const nextFeatures = {
     ...currentFeatures,

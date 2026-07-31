@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail } from '@/lib/email/send';
+import { sendEmail, agentBrandedFrom } from '@/lib/email/send';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
@@ -83,6 +83,7 @@ export async function dispatchHumanRequestNotification(requestId: string): Promi
     try {
       await sendEmail({
         to:      request.target_email,
+        from:    agentBrandedFrom(agent.agent_name as string | null),
         subject: `[${agent.agent_name}] Necesito tu ayuda: ${request.title}`,
         html:    buildRequestEmailHtml(request as HumanRequest, agent as Agent),
         replyTo,
@@ -127,6 +128,7 @@ export async function sendReminderNotification(requestId: string): Promise<void>
 
   await sendEmail({
     to:      request.target_email,
+    from:    agentBrandedFrom(agent.agent_name as string | null),
     subject: `Recordatorio: ${agent.agent_name} sigue esperando: ${request.title}`,
     html:    buildReminderEmailHtml(request as HumanRequest, agent as Agent),
     replyTo,
@@ -149,6 +151,7 @@ export async function sendEscalationNotification(requestId: string, escalateToEm
 
   await sendEmail({
     to:      escalateToEmail,
+    from:    agentBrandedFrom(agent.agent_name as string | null),
     subject: `[Escalado] ${agent.agent_name} no ha recibido respuesta a: ${request.title}`,
     html:    buildEscalationEmailHtml(request as HumanRequest, agent as Agent, escalateToEmail),
     replyTo,
