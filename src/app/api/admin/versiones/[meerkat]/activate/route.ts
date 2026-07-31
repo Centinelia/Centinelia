@@ -21,7 +21,23 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { meerkat } = await params;
   const body = await req.json().catch(() => ({}));
-  const { version, reason } = body as { version?: number; reason?: string };
+  const {
+    version,
+    reason,
+    override_reason,
+    gate_verdict,
+  } = body as {
+    version?: number;
+    reason?: string;
+    override_reason?: string;
+    gate_verdict?: 'pass' | 'warn' | 'fail' | 'incomplete';
+  };
+
+  if ((gate_verdict === 'fail' || gate_verdict === 'incomplete') && !override_reason?.trim()) {
+    return NextResponse.json({
+      error: `override_reason is required when gate_verdict is '${gate_verdict}'`,
+    }, { status: 400 });
+  }
 
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
     return NextResponse.json({ error: 'Invalid version' }, { status: 400 });
@@ -58,12 +74,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   const finalReason = reason ?? (currentVersion != null && version < currentVersion ? 'rollback' : 'rollout');
 
   // Transacción implícita: history primero, luego UPDATE active_versions.
+  const historyReason = override_reason?.trim()
+    ? `[OVERRIDE:${gate_verdict}] ${override_reason.trim()}${reason ? ` — ${reason}` : ''}`
+    : (reason ?? finalReason);
+
   const { error: histErr } = await supabase.from('meerkat_version_history').insert({
     meerkat_id: meerkat,
     from_version: currentVersion,
     to_version: version,
     changed_by: auth.email,
-    reason: finalReason,
+    reason: historyReason,
   });
   if (histErr) return NextResponse.json({ error: histErr.message }, { status: 500 });
 
