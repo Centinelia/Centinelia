@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Ban, PlayCircle, Save, Trash2, Eye } from 'lucide-react';
 import type { FlagRow, FlagCounts } from '@/lib/feature-flags/types';
+import { computeAt100Badge } from '@/lib/feature-flags/badges';
 
 type Mode = 'create' | 'edit';
 
@@ -19,6 +20,8 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
   const [defaultOn,   setDefaultOn]   = useState(flag?.default_on  ?? false);
   const [preview,     setPreview]     = useState<{ counts: FlagCounts; sample_on: string[]; sample_off: string[] } | null>(null);
   const [error,       setError]       = useState<string | null>(null);
+
+  const at100 = flag ? computeAt100Badge(flag) : null;
 
   const parseList = (text: string): string[] =>
     text.split('\n').map(s => s.trim()).filter(Boolean);
@@ -145,6 +148,17 @@ export function FlagEditor({ flag, mode }: { flag?: FlagRow; mode: Mode }) {
           </div>
         )}
       </div>
+
+      {mode === 'edit' && at100 && (
+        <div className="rounded-lg px-3 py-2 text-sm" style={{
+          background: at100.tone === 'green' ? 'rgba(22,163,74,0.1)' : 'rgba(108,59,255,0.1)',
+          color:      at100.tone === 'green' ? '#16A34A' : '#9B6DFF',
+          border:     `1px solid ${at100.tone === 'green' ? 'rgba(22,163,74,0.3)' : 'rgba(108,59,255,0.3)'}`,
+        }}>
+          {at100.label}
+          {at100.tone === 'green' && !at100.isMeerkat && ': borra el guard en codigo antes de borrar el flag para evitar comportamiento inesperado.'}
+        </div>
+      )}
 
       <div className="space-y-1">
         <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descripción</label>

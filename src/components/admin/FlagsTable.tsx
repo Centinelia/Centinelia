@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Ban } from 'lucide-react';
 import type { FlagRow } from '@/lib/feature-flags/types';
+import { computeAt100Badge } from '@/lib/feature-flags/badges';
 
 type Prefix = 'all' | 'meerkat' | 'portal' | 'tool' | 'silent';
 
@@ -95,7 +96,9 @@ export function FlagsTable({ initialFlags }: { initialFlags: FlagRow[] }) {
                 </td>
               </tr>
             )}
-            {filtered.map(f => (
+            {filtered.map(f => {
+              const at100 = computeAt100Badge(f);
+              return (
               <tr key={f.flag_key} style={{ borderTop: '1px solid var(--c-border)' }}>
                 <td className="px-4 py-2">
                   <Link href={`/admin/flags/${encodeURIComponent(f.flag_key)}`} style={{ color: '#9B6DFF' }}>
@@ -110,6 +113,13 @@ export function FlagsTable({ initialFlags }: { initialFlags: FlagRow[] }) {
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style={{ background: 'rgba(220,38,38,0.15)', color: '#DC2626' }}>
                       <Ban size={12} /> KILLED
                     </span>
+                  ) : at100 ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style={{
+                      background: at100.tone === 'green' ? 'rgba(22,163,74,0.15)' : 'rgba(108,59,255,0.15)',
+                      color:      at100.tone === 'green' ? '#16A34A' : '#9B6DFF',
+                    }}>
+                      {at100.label}
+                    </span>
                   ) : (
                     <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>activo</span>
                   )}
@@ -118,7 +128,8 @@ export function FlagsTable({ initialFlags }: { initialFlags: FlagRow[] }) {
                   {timeAgo(f.updated_at)}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
