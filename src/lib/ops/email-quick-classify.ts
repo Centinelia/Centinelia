@@ -56,7 +56,11 @@ const RETAILER_DOMAINS = new Set([
   'grouponmx.com', 'zapatoo.com.mx', 'aeromexico.com', 'volaris.com',
 ]);
 
-const SUBJECT_PROMO_REGEX = /(oferta|descuento|% off|black friday|hot sale|promo|cup[oó]n|last chance|limited time|regalo|gana|precio especial|liquidaci[oó]n)/i;
+// Solo patrones inequívocamente comerciales/promocionales. NO incluir
+// "descuento", "oferta", "promo", "regalo", "gana", "precio especial" —
+// esas las usan clientes reales pidiendo cotización (falsos positivos
+// documentados en 2026-07-31 con lead de Ferretería).
+const SUBJECT_PROMO_REGEX = /(% off|black\s+friday|hot\s+sale|buen\s+fin|cyber\s+monday|cup[oó]n|last\s+chance|limited\s+time|liquidaci[oó]n|-?\d{2,}%\s+de\s+descuento)/i;
 const SUBJECT_EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 
 // ── Marketing / newsletter (necesita match tanto en asunto como cuerpo) ──
