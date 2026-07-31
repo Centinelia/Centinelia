@@ -35,6 +35,7 @@ import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
+import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
@@ -89,6 +90,40 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase = orgRow?.owner_passphrase ?? '';
+
+  // Fetch spam folder stats for the last 7 days
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  let spamRevisados = 0;
+  let spamRescatados = 0;
+  try {
+    const { count } = await supabase
+      .from('ops_inbox')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_id', agent.id)
+      .like('source_folder', 'spam%')
+      .gte('created_at', sevenDaysAgo);
+    spamRevisados = count ?? 0;
+  } catch {
+    // Silently fail if table/column doesn't exist yet
+  }
+  try {
+    const { count } = await supabase
+      .from('ops_inbox')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_id', agent.id)
+      .eq('source_folder', 'spam_rescued')
+      .gte('created_at', sevenDaysAgo);
+    spamRescatados = count ?? 0;
+  } catch {
+    // Silently fail if table/column doesn't exist yet
+  }
+
+  const spamCheckEnabled = ((agent.features as Record<string, unknown>)?.check_spam_folder) === true;
+  const spamStats = {
+    revisados: spamRevisados,
+    rescatados: spamRescatados,
+    ops_consumidas: Math.round(spamRevisados * 0.3),
+  };
 
   // Build sidebar sections list matching what's actually rendered
   const sidebarSections: SidebarSection[] = [
@@ -407,6 +442,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                       Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
                     </span>
+                  </div>
+                )}
+
+                {connectedEmail && (
+                  <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                    <SpamFolderToggle
+                      token={token}
+                      initial={spamCheckEnabled}
+                      stats={spamStats.revisados > 0 ? spamStats : null}
+                    />
                   </div>
                 )}
 

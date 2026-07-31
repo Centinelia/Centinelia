@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Keys stored inside the features JSONB column — merge instead of flat update
-  const featureJsonKeys = ['outbound_calls', 'role_color', 'avatar'];
+  const featureJsonKeys = ['outbound_calls', 'role_color', 'avatar', 'check_spam_folder'];
   const featureJsonUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureJsonKeys.includes(k)));
   if (Object.keys(featureJsonUpdate).length > 0) {
     const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureJsonUpdate };
