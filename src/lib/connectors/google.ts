@@ -4,6 +4,13 @@ const GMAIL     = 'https://www.googleapis.com/gmail/v1/users/me';
 const DRIVE     = 'https://www.googleapis.com/drive/v3';
 const GCAL      = 'https://www.googleapis.com/calendar/v3';
 
+// RFC 2047 encoding para headers con caracteres non-ASCII (acentos, em-dashes, etc.).
+// Sin esto los receivers muestran mojibake: "Cotización" → "CotizaciÃƒÂ³n".
+function encodeHeaderRFC2047(value: string): string {
+  if (/^[\x00-\x7F]*$/.test(value)) return value; // ASCII puro, no encoding
+  return `=?UTF-8?B?${Buffer.from(value, 'utf-8').toString('base64')}?=`;
+}
+
 // ── Email ─────────────────────────────────────────────────────────────────────
 
 class GoogleEmail implements EmailConnector {
@@ -72,6 +79,7 @@ class GoogleEmail implements EmailConnector {
   }
 
   async send(to: string, subject: string, body: string, attachment?: Attachment, fromEmail?: string): Promise<void> {
+    const encodedSubject = encodeHeaderRFC2047(subject);
     let raw: string;
     if (attachment) {
       const boundary = `centinelia_${Date.now()}`;
@@ -79,7 +87,7 @@ class GoogleEmail implements EmailConnector {
         'MIME-Version: 1.0',
         `To: ${to}`,
         ...(fromEmail ? [`From: ${fromEmail}`] : []),
-        `Subject: ${subject}`,
+        `Subject: ${encodedSubject}`,
         `Content-Type: multipart/mixed; boundary="${boundary}"`,
         '',
         `--${boundary}`,
@@ -97,7 +105,7 @@ class GoogleEmail implements EmailConnector {
         `--${boundary}--`,
       ].join('\r\n');
     } else {
-      const headers = [`To: ${to}`, ...(fromEmail ? [`From: ${fromEmail}`] : []), `Subject: ${subject}`, 'Content-Type: text/plain; charset=utf-8'];
+      const headers = [`To: ${to}`, ...(fromEmail ? [`From: ${fromEmail}`] : []), `Subject: ${encodedSubject}`, 'Content-Type: text/plain; charset=utf-8'];
       raw = [...headers, '', body].join('\r\n');
     }
     await fetch(`${GMAIL}/messages/send`, {
@@ -109,10 +117,11 @@ class GoogleEmail implements EmailConnector {
 
   async sendReply({ messageId, threadId, to = '', subject = '', body }: ReplyParams): Promise<void> {
     const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
+    const encodedSubject = encodeHeaderRFC2047(replySubject);
     const refId = threadId ?? messageId;
     const raw = [
       `To: ${to}`,
-      `Subject: ${replySubject}`,
+      `Subject: ${encodedSubject}`,
       `In-Reply-To: ${refId}`,
       `References: ${refId}`,
       'Content-Type: text/plain; charset=utf-8',
