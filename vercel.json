@@ -28,6 +28,7 @@
     { "path": "/api/cron/auto-mode-digest",            "schedule": "0 2 * * *"    },
     { "path": "/api/cron/golden-tests-detect",         "schedule": "*/15 * * * *" },
     { "path": "/api/cron/golden-tests-worker",         "schedule": "*/5 * * * *"  },
-    { "path": "/api/cron/human-requests-monitor",      "schedule": "0 */2 * * *"  }
+    { "path": "/api/cron/human-requests-monitor",      "schedule": "0 */2 * * *"  },
+    { "path": "/api/cron/flags-snapshot",              "schedule": "0 10 * * *"   }
   ]
 }
