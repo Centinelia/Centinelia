@@ -198,10 +198,22 @@ export async function POST(req: NextRequest) {
           minutes_plan:           session.metadata?.minutes_plan ?? null,
         }).eq('id', agentId);
 
-        const vapiId = await createVapiAssistant(pendingAgent as VoiceAgent).catch(() => null);
+        const vapiId = await createVapiAssistant(pendingAgent as VoiceAgent).catch((err: unknown) => {
+          // Silent fail crítico: cliente pagó, agente marcado active, pero sin vapi_agent_id
+          // llamadas fallan al llegar. Registramos + notificamos ops en el catch de arriba.
+          console.error('[billing-webhook] vapi_creation_failed', { agentId, error: String(err) });
+          return null;
+        });
         if (vapiId) {
           await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', agentId);
           resyncPeerAgents(pendingAgent.portal_email, agentId).catch(console.error);
+        } else {
+          // Notificar admin: intervención manual necesaria antes de que el cliente reciba llamadas.
+          await sendEmail({
+            to:      'hola@centinelia.mx',
+            subject: `[URGENTE] Vapi setup falló para agente ${agentId}`,
+            html:    `<p>El pago se completó pero <code>createVapiAssistant()</code> falló. Cliente: <strong>${pendingAgent.business_name ?? '(sin nombre)'}</strong> (${pendingAgent.portal_email ?? '(sin email)'}).</p><p>Reintentar manualmente desde admin y setear <code>vapi_agent_id</code>.</p>`,
+          }).catch(e => console.error('[billing-webhook] admin notify failed', e));
         }
 
         void agentToken; // used in success_url redirect — no extra action needed here
