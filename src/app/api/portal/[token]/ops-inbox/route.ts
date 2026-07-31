@@ -28,7 +28,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     .order('created_at', { ascending: false })
     .limit(100);
 
-  return NextResponse.json({ items: items ?? [] });
+  const { data: humanReqs } = await supabase
+    .from('human_requests')
+    .select('id, agent_id, request_type, title, description, urgency, target_email, status, created_at')
+    .in('agent_id', agentIds)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  return NextResponse.json({ items: items ?? [], humanRequests: humanReqs ?? [] });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
