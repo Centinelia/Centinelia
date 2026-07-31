@@ -26,6 +26,8 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
   const [reason, setReason] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [verdict, setVerdict] = useState<GateVerdict | null>(null);
+  const [initialPct, setInitialPct] = useState<number>(10);
+  const [allowlistText, setAllowlistText] = useState<string>('nazre@gmail.com');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +60,8 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
           reason: reason || undefined,
           override_reason: needsOverride ? overrideReason.trim() : undefined,
           gate_verdict: verdict,
+          initial_pct: initialPct,
+          allowlist: allowlistText.split('\n').map(s => s.trim()).filter(Boolean),
         }),
       });
       const data = await res.json();
@@ -143,6 +147,38 @@ export function ActivateVersionModal({ row, onClose, onSuccess }: Props) {
               className="w-full rounded px-2 py-1.5 text-sm"
               style={{ border: '1px solid var(--c-input-border)', background: 'var(--c-input-bg)', color: 'var(--c-text)' }}
             />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+              Rollout inicial: <span className="font-mono">{initialPct}%</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={initialPct}
+              onChange={e => setInitialPct(parseInt(e.target.value, 10))}
+              className="w-full"
+            />
+            <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+              Despues puedes subirlo desde /admin/flags cuando estes a gusto.
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Allowlist (portal_email por linea)</label>
+            <textarea
+              value={allowlistText}
+              onChange={e => setAllowlistText(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg text-sm font-mono"
+              style={{ background: 'var(--c-surface)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            />
+            <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+              Estas orgs siempre reciben la nueva version aunque el hash caiga off. Util para dogfooding.
+            </p>
           </div>
 
           {needsOverride && (
