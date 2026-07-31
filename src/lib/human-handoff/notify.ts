@@ -1,7 +1,34 @@
+import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+
+const INBOX_DOMAIN = process.env.EMAIL_INBOX_DOMAIN ?? 'inbox.centinelia.mx';
+const REPLY_ENABLED = process.env.HANDOFF_REPLY_EMAIL_ENABLED === 'true';
+
+async function ensureReplyToken(
+  supabase: ReturnType<typeof createAdminClient>,
+  requestId: string,
+  existingToken: string | null | undefined,
+): Promise<string | null> {
+  if (!REPLY_ENABLED) return null;
+  if (existingToken) return existingToken;
+  const token = crypto.randomBytes(8).toString('hex');
+  const { error } = await supabase
+    .from('human_requests')
+    .update({ reply_token: token })
+    .eq('id', requestId);
+  if (error) {
+    console.error('[notify] failed to persist reply_token:', error);
+    return null;
+  }
+  return token;
+}
+
+function replyToFor(token: string | null): string | undefined {
+  return token ? `${token}@${INBOX_DOMAIN}` : undefined;
+}
 
 interface HumanRequest {
   id:             string;
@@ -47,12 +74,20 @@ export async function dispatchHumanRequestNotification(requestId: string): Promi
 
   const dispatched: string[] = [];
 
+  const replyToken = await ensureReplyToken(
+    supabase,
+    requestId,
+    (request as Record<string, unknown>).reply_token as string | null | undefined,
+  );
+  const replyTo = replyToFor(replyToken);
+
   if (sendViaEmail) {
     try {
       await sendEmail({
         to:      request.target_email,
         subject: `[${agent.agent_name}] Necesito tu ayuda: ${request.title}`,
         html:    buildRequestEmailHtml(request as HumanRequest, agent as Agent),
+        replyTo,
       });
       dispatched.push('email');
     } catch (err) {
@@ -85,10 +120,18 @@ export async function sendReminderNotification(requestId: string): Promise<void>
   const { data: agent } = await supabase.from('voice_agents').select('agent_name, portal_token').eq('id', request.agent_id).single();
   if (!agent) return;
 
+  const replyToken = await ensureReplyToken(
+    supabase,
+    requestId,
+    (request as Record<string, unknown>).reply_token as string | null | undefined,
+  );
+  const replyTo = replyToFor(replyToken);
+
   await sendEmail({
     to:      request.target_email,
     subject: `Recordatorio: ${agent.agent_name} sigue esperando: ${request.title}`,
     html:    buildReminderEmailHtml(request as HumanRequest, agent as Agent),
+    replyTo,
   });
 }
 
@@ -99,10 +142,18 @@ export async function sendEscalationNotification(requestId: string, escalateToEm
   const { data: agent } = await supabase.from('voice_agents').select('agent_name, business_name, portal_token').eq('id', request.agent_id).single();
   if (!agent) return;
 
+  const replyToken = await ensureReplyToken(
+    supabase,
+    requestId,
+    (request as Record<string, unknown>).reply_token as string | null | undefined,
+  );
+  const replyTo = replyToFor(replyToken);
+
   await sendEmail({
     to:      escalateToEmail,
     subject: `[Escalado] ${agent.agent_name} no ha recibido respuesta a: ${request.title}`,
     html:    buildEscalationEmailHtml(request as HumanRequest, agent as Agent, escalateToEmail),
+    replyTo,
   });
 }
 
