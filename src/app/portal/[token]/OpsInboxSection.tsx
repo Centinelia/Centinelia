@@ -290,7 +290,10 @@ export default function OpsInboxSection({ token }: { token: string }) {
         <div className="flex items-center gap-2">
           <Inbox size={16} style={{ color: '#6C3BFF' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Bandeja de entrada</span>
-          <InfoTooltip text="¿Cuántas tareas consume?\n1 tarea por correo procesado." />
+          <InfoTooltip text={`¿Cuántas tareas consume?
+1 tarea por cada correo entrante que el empleado analiza y clasifica.
+
+No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`} />
         </div>
         <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
           <RefreshCw size={12} />
