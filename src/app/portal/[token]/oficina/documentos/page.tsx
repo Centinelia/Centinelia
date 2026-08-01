@@ -163,7 +163,7 @@ export default function DocumentosPage() {
   // Metrics
   const startMonth  = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
   const porVencer   = docs.filter(d => daysLeft(d.expires_at) <= 7);
-  const esteMe      = docs.filter(d => new Date(d.created_at).getTime() >= startMonth).length;
+  const esteMe      = docs.filter(d => d.created_at && new Date(d.created_at).getTime() >= startMonth).length;
   const firstAgentName = Object.values(agentNames).find(Boolean) ?? null;
   const employeeName   = firstAgentName ? contextualizeEmployeeName(firstAgentName) : 'tu empleado';
 

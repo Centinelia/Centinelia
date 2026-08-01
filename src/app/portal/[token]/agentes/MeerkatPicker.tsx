@@ -190,7 +190,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
           : { background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)', padding: '6px 12px' }
         }
       >
-        {triggerLabel ?? <><Plus size={13} /> Agregar empleado</>}
+        {triggerLabel ?? <><Plus size={13} /> Contratar empleado</>}
       </button>
 
       {open && (

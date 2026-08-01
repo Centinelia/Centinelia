@@ -5,7 +5,7 @@ import { verifySession, PORTAL_COOKIE }  from '@/lib/portal/auth';
 import { MEERKAT_MAP, type MeerkatRoleId, type MeerkatRole } from '@/lib/portal/meerkat-roles';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { stripe }                        from '@/lib/stripe';
-import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { randomUUID }                    from 'crypto';
 import type { Plan, JornadaType }        from '@/types/agent';
 import { JORNADA_CONFIG }               from '@/lib/billing/plans';
@@ -27,7 +27,6 @@ export async function createPortalAgent({
     client_name: string | null;
     client_email: string | null;
     business_name: string;
-    business_description: string | null;
     plan: string | null;
     stripe_customer_id: string | null;
     billing_status: string | null;
@@ -70,7 +69,6 @@ export async function createPortalAgent({
       client_email:          base.client_email,
       portal_token:          newToken,
       business_name:         base.business_name,
-      business_description:  base.business_description,
       plan:                  base.plan,
       jornada_type:          effectiveJornada,
       minutes_included:      alloc.minutes,
@@ -141,7 +139,7 @@ export async function POST(
     .from('voice_agents')
     .select(`
       portal_email, portal_password_hash, client_name, client_email,
-      business_name, business_description, plan,
+      business_name, plan,
       stripe_customer_id, billing_status, active, timezone,
       organization_mission, service_definition, speech_style,
       auto_refill_enabled, auto_refill_threshold, auto_refill_minutes,
@@ -175,15 +173,17 @@ export async function POST(
     const plan       = (base.plan ?? 'pro') as Plan;
     const planCfg    = FEATURE_PLAN_CONFIG[plan];
     const tier       = (minutes_plan ?? base.minutes_plan ?? 'starter') as import('@/lib/billing/plans').MinutesTier;
-    const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];
+    const isCoord2        = !!(role.features as any)?.is_coordinator;
+    const monthlyCfg = isCoord2 ? NOX_MONTHLY_CONFIG[tier] : MONTHLY_CONFIG[plan]?.[tier];
     const customerId      = base.stripe_customer_id ?? undefined;
     const appUrl          = process.env.NEXT_PUBLIC_APP_URL!;
-    const isCoord2        = !!(role.features as any)?.is_coordinator;
     const effectiveJornada: JornadaType = isCoord2 ? 'tareas' : ((jornada_type ?? 'combinada') as JornadaType);
 
     const checkoutSession = await stripe.checkout.sessions.create({
-      ...(customerId ? { customer: customerId } : {}),
+      ...(customerId ? { customer: customerId, customer_update: { address: 'auto', name: 'auto' } } : {}),
       mode: 'subscription',
+      automatic_tax:      { enabled: true },
+      tax_id_collection:  { enabled: true, required: 'if_supported' },
       line_items: [
         { price: planCfg.setupPriceId(), quantity: 1 },           // one-time setup fee
         ...(monthlyCfg ? [{ price: monthlyCfg.priceId(), quantity: 1 }] : []), // recurring jornada
