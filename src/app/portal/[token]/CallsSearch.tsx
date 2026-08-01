@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CallCard from './CallCard';
 import type { VoiceCall } from '@/types/agent';
 
@@ -110,30 +111,24 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         </div>
 
         {availableOutcomes.length > 1 && (
-          <div className="relative shrink-0">
-            <select
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-2 rounded-lg text-xs h-full"
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger
+              className="w-auto shrink-0 py-2 text-xs bg-[color:var(--c-surface-2)]"
               style={{
-                background:  'var(--c-surface-2)',
-                border:      typeFilter !== 'all'
-                  ? '1px solid rgba(108,59,255,0.5)'
-                  : '1px solid var(--c-border)',
-                color:       typeFilter !== 'all' ? '#9B6DFF' : 'var(--c-text-3)',
-                outline:     'none',
-                cursor:      'pointer',
-                fontWeight:  typeFilter !== 'all' ? 600 : 400,
+                border: typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid var(--c-border)',
+                color: typeFilter !== 'all' ? '#9B6DFF' : 'var(--c-text-3)',
+                fontWeight: typeFilter !== 'all' ? 600 : 400,
               }}
             >
-              <option value="all">Tipo: todos</option>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tipo: todos</SelectItem>
               {availableOutcomes.map(o => (
-                <option key={o} value={o}>{OUTCOME_LABELS[o] ?? o}</option>
+                <SelectItem key={o} value={o!}>{OUTCOME_LABELS[o!] ?? o}</SelectItem>
               ))}
-            </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: typeFilter !== 'all' ? '#9B6DFF' : 'var(--c-text-3)' }} />
-          </div>
+            </SelectContent>
+          </Select>
         )}
       </div>
 

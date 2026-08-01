@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Check, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 interface HeartbeatConfig {
@@ -74,16 +75,7 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
     persist(next);
   }
 
-  const sel: React.CSSProperties = {
-    padding: '6px 10px',
-    background: 'var(--c-surface-2)',
-    border: '1px solid var(--c-border)',
-    borderRadius: '8px',
-    color: 'var(--c-text)',
-    fontSize: '12px',
-    fontFamily: 'inherit',
-    outline: 'none',
-  };
+  const triggerCls = 'w-auto py-1.5 px-2.5 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]';
 
   return (
     <div className="flex flex-col gap-4">
@@ -122,22 +114,31 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
           <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--c-text-2)' }}>
             <Clock size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
             <span>Ejecutar</span>
-            <select value={config.frequency} onChange={e => update({ frequency: e.target.value as 'daily' | 'weekly' })} style={sel}>
-              <option value="daily">todos los días</option>
-              <option value="weekly">cada semana</option>
-            </select>
+            <Select value={config.frequency} onValueChange={v => update({ frequency: v as 'daily' | 'weekly' })}>
+              <SelectTrigger className={triggerCls}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">todos los días</SelectItem>
+                <SelectItem value="weekly">cada semana</SelectItem>
+              </SelectContent>
+            </Select>
             {config.frequency === 'weekly' && (
               <>
                 <span>el</span>
-                <select value={config.day_of_week} onChange={e => update({ day_of_week: Number(e.target.value) })} style={sel}>
-                  {DAYS.map(d => <option key={d.v} value={d.v}>{d.l}</option>)}
-                </select>
+                <Select value={String(config.day_of_week)} onValueChange={v => update({ day_of_week: Number(v) })}>
+                  <SelectTrigger className={triggerCls}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map(d => <SelectItem key={d.v} value={String(d.v)}>{d.l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </>
             )}
             <span>a las</span>
-            <select value={config.hour} onChange={e => update({ hour: Number(e.target.value) })} style={sel}>
-              {HOURS.map(h => <option key={h.v} value={h.v}>{h.l}</option>)}
-            </select>
+            <Select value={String(config.hour)} onValueChange={v => update({ hour: Number(v) })}>
+              <SelectTrigger className={triggerCls}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {HOURS.map(h => <SelectItem key={h.v} value={String(h.v)}>{h.l}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Task */}

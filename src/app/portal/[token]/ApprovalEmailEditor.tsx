@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Check, Loader2, ChevronDown } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SubUser {
   id:   string;
@@ -55,23 +56,22 @@ export default function ApprovalEmailEditor({ token, initialEmail }: { token: st
       </p>
 
       {subUsers.length > 0 ? (
-        <div className="relative">
-          <select
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            className="w-full text-sm px-3 py-2 pr-8 rounded-lg outline-none appearance-none"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: email ? 'var(--c-text)' : 'var(--c-text-4)' }}
-          >
-            <option value="">Sin aprobador asignado</option>
+        <Select
+          value={email || '__none'}
+          onValueChange={v => setEmail(v === '__none' ? '' : v)}
+        >
+          <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+            <SelectValue placeholder="Sin aprobador asignado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Sin aprobador asignado</SelectItem>
             {subUsers.map(u => (
-              <option key={u.id} value={u.email}>
+              <SelectItem key={u.id} value={u.email}>
                 {u.name ? `${u.name} · ${u.email}` : u.email}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'var(--c-text-3)' }} />
-        </div>
+          </SelectContent>
+        </Select>
       ) : (
         <div className="flex flex-col gap-1.5">
           <input
