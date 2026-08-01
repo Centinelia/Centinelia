@@ -10,8 +10,13 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const call = body.toolCallList?.[0];
-  const args = call?.function?.arguments ?? body;
+  // Vapi envia { message: { toolCallList: [...] } } (formato nuevo) o
+  // { toolCallList: [...] } (formato viejo). Aceptamos ambos. Si toolCallId
+  // no matchea con el que Vapi espera, Vapi reporta "No result returned".
+  const msg  = body.message ?? body;
+  const call = msg.toolCallList?.[0] ?? body.toolCallList?.[0];
+  const rawArgs = call?.function?.arguments ?? body;
+  const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
   const toolCallId: string = call?.id ?? 'call_1';
 
   // Helper para responder en el formato que Vapi espera actualmente:
