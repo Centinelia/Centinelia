@@ -9,6 +9,7 @@ import {
 import PortalContactsSection from './PortalContactsSection';
 import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
 import { OUTBOUND_ROLES_MAP } from './OutboundRoleSelector';
+import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -351,14 +352,10 @@ function ScheduleForm({ token, agents, onCreated }: {
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Fecha" required>
-                  <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} min={todayStr}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  <DatePicker value={fecha} onChange={setFecha} min={todayStr} />
                 </Field>
                 <Field label="Hora" required>
-                  <input type="time" value={hora} onChange={e => setHora(e.target.value)}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  <TimeInput value={hora} onChange={setHora} />
                 </Field>
               </div>
               {error   && <ErrorBanner>{error}</ErrorBanner>}
@@ -417,14 +414,10 @@ function ScheduleForm({ token, agents, onCreated }: {
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Fecha de inicio" required>
-                  <input type="date" value={fechaBulk} onChange={e => setFechaBulk(e.target.value)} min={todayStr}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  <DatePicker value={fechaBulk} onChange={setFechaBulk} min={todayStr} />
                 </Field>
                 <Field label="Hora" required>
-                  <input type="time" value={horaBulk} onChange={e => setHoraBulk(e.target.value)}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  <TimeInput value={horaBulk} onChange={setHoraBulk} />
                 </Field>
               </div>
               {bulkCount !== null && bulkCount > 0 && (

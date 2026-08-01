@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import type { OutboundAgent } from './PortalOutboundSection';
 import { OUTBOUND_ROLES_MAP } from './OutboundRoleSelector';
+import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -309,17 +310,13 @@ function ScheduleModal({
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
                 Fecha <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} min={todayStr}
-                className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              <DatePicker value={fecha} onChange={setFecha} min={todayStr} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
                 Hora <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <input type="time" value={hora} onChange={e => setHora(e.target.value)}
-                className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              <TimeInput value={hora} onChange={setHora} />
             </div>
           </div>
 

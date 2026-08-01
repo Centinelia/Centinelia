@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { CalendarDays, Filter, Pencil, X, Check, Loader2, Download } from 'lucide-react';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 
 type ApptStatus = 'confirmada' | 'completada' | 'cancelada' | 'no_asistio';
 
@@ -135,13 +136,9 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
           </div>
           {quickFilter === 'custom' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                className="rounded-lg px-3 py-1.5 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              <DatePicker value={customFrom} onChange={setCustomFrom} className="w-auto min-w-[160px]" />
               <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>–</span>
-              <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                className="rounded-lg px-3 py-1.5 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              <DatePicker value={customTo} onChange={setCustomTo} className="w-auto min-w-[160px]" />
             </div>
           )}
         </div>
@@ -257,10 +254,18 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
               {EDIT_FIELDS.map(({ key, label: fl, type, placeholder }) => (
                 <div key={key}>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{fl}</label>
-                  <input type={type ?? 'text'} value={(editForm[key] as string) ?? ''} placeholder={placeholder}
-                    onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  {type === 'date' ? (
+                    <DatePicker value={(editForm[key] as string) ?? ''}
+                      onChange={v => setEditForm(f => ({ ...f, [key]: v }))} />
+                  ) : type === 'time' ? (
+                    <TimeInput value={(editForm[key] as string) ?? ''}
+                      onChange={v => setEditForm(f => ({ ...f, [key]: v }))} />
+                  ) : (
+                    <input type={type ?? 'text'} value={(editForm[key] as string) ?? ''} placeholder={placeholder}
+                      onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                  )}
                 </div>
               ))}
             </div>

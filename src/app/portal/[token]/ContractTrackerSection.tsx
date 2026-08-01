@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface Contract {
   id: string; agent_id: string; name: string; contract_type: string;
@@ -79,7 +80,9 @@ export default function ContractTrackerSection({ token }: { token: string }) {
   }
 
   async function handleCreate(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    if (!form.expiry_date) return;
+    setSaving(true);
     try {
       const alertDays = form.alert_days_before.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
       await fetch(`/api/portal/${token}/ops-contracts`, {
@@ -164,7 +167,7 @@ export default function ContractTrackerSection({ token }: { token: string }) {
             </div>
             <div>
               <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Fecha de vencimiento *</label>
-              <input required type="date" value={form.expiry_date} onChange={e => setForm(p => ({ ...p, expiry_date: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              <DatePicker value={form.expiry_date} onChange={v => setForm(p => ({ ...p, expiry_date: v }))} />
             </div>
             <div>
               <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Alertar (días antes)</label>

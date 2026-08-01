@@ -5,6 +5,7 @@ import { User, MessageCircle, Mail, DollarSign, Calendar, Pencil, X, Check, Load
 import ExportCSVButton from './ExportCSVButton';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 
 type LeadStatus = 'nuevo' | 'contactado' | 'cerrado' | 'perdido';
 
@@ -166,21 +167,9 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
 
           {quickFilter === 'custom' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <input
-                type="date"
-                value={customFrom}
-                onChange={e => setCustomFrom(e.target.value)}
-                className="rounded-lg px-3 py-1.5 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
-              />
+              <DatePicker value={customFrom} onChange={setCustomFrom} className="w-auto min-w-[160px]" />
               <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>–</span>
-              <input
-                type="date"
-                value={customTo}
-                onChange={e => setCustomTo(e.target.value)}
-                className="rounded-lg px-3 py-1.5 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
-              />
+              <DatePicker value={customTo} onChange={setCustomTo} className="w-auto min-w-[160px]" />
             </div>
           )}
         </div>

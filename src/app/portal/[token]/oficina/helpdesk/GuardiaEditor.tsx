@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import type { GuardiaSchedule, GuardiaTurno } from '@/lib/helpdesk/folio';
+import { TimeInput } from '@/components/ui/date-picker';
 
 const DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'] as const;
 const DIA_LABEL: Record<string, string> = {
@@ -135,15 +136,13 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
                       style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <input type="time" value={turno.hora_inicio}
-                      onChange={e => updateTurno(area.id, turno.id, 'hora_inicio', e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                    <TimeInput value={turno.hora_inicio}
+                      onChange={v => updateTurno(area.id, turno.id, 'hora_inicio', v)}
+                      className="w-auto min-w-[110px]" />
                     <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>a</span>
-                    <input type="time" value={turno.hora_fin}
-                      onChange={e => updateTurno(area.id, turno.id, 'hora_fin', e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                    <TimeInput value={turno.hora_fin}
+                      onChange={v => updateTurno(area.id, turno.id, 'hora_fin', v)}
+                      className="w-auto min-w-[110px]" />
                     <button onClick={() => removeTurno(area.id, turno.id)}
                       className="ml-auto p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
                       style={{ background: 'none', border: 'none', color: 'var(--c-text-4)', cursor: 'pointer' }}>

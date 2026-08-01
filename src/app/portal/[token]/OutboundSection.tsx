@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, BarChart2,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -374,9 +375,8 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
       {scheduleType === 'once' && (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Fecha</label>
-          <input type="date" value={runAtDate} onChange={e => setRunAtDate(e.target.value)}
-            min={new Date().toISOString().slice(0, 10)}
-            className={inputCls} style={inputSty} />
+          <DatePicker value={runAtDate} onChange={setRunAtDate}
+            min={new Date().toISOString().slice(0, 10)} />
         </div>
       )}
 
@@ -407,8 +407,7 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
         <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
           Hora de ejecución
         </label>
-        <input type="time" value={runAtTime} onChange={e => setRunAtTime(e.target.value)}
-          className={inputCls} style={{ ...inputSty, maxWidth: 160 }} />
+        <TimeInput value={runAtTime} onChange={setRunAtTime} className="max-w-[160px]" />
         <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>
           El cron corre cada 10 min, la hora exacta puede variar hasta 10 min.
         </p>
