@@ -194,10 +194,11 @@ export async function POST(req: NextRequest) {
 
         const typedAgent = agent as VoiceAgent;
         const plan = (typedAgent.plan ?? 'pro') as Plan;
+        const oldSubId = (agent as { stripe_subscription_id?: string | null }).stripe_subscription_id ?? null;
 
         // 1. Cancelar la subscripción vieja (NOX) — el checkout creó una nueva combinada.
-        if (typedAgent.stripe_subscription_id && typedAgent.stripe_subscription_id !== session.subscription) {
-          await stripe.subscriptions.cancel(typedAgent.stripe_subscription_id).catch(err =>
+        if (oldSubId && oldSubId !== session.subscription) {
+          await stripe.subscriptions.cancel(oldSubId).catch(err =>
             console.error('[billing-webhook] cancel old NOX sub failed', { agentId, error: String(err) })
           );
         }
