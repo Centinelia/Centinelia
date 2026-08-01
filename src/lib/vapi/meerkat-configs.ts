@@ -25,6 +25,9 @@ type MeerkatConfigVersions = Record<number, MeerkatModelConfig>;
 
 const NIA_CONFIGS: MeerkatConfigVersions = {
   1: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.35, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
+  // v2: primer battle test del pilar 3. Cambio minimo (temperature 0.35 -> 0.36)
+  // para validar el flujo goldens -> flag rollout gradual -> llamada real -> observabilidad.
+  2: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001', temperature: 0.36, maxTokens: 400, speed: 0.91, minChars: 25, voiceModel: 'eleven_turbo_v2_5', sttModel: 'nova-3' },
 };
 
 const NOAH_CONFIGS: MeerkatConfigVersions = {
