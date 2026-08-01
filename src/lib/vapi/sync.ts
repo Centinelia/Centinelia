@@ -442,6 +442,13 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       }
       return `${agent.business_name}, buenos días. Le habla ${agentName}. ${notice} ¿En qué le puedo ayudar?`;
     })(),
+    // El firstMessage default de Vapi ('assistant-speaks-first') sintetiza el
+    // saludo como UN bloque completo en 11labs antes de reproducirlo — se siente
+    // lento en el primer turno. Con 'assistant-speaks-first-with-model-generated-message'
+    // Vapi hace que el MODELO genere el saludo con el mismo streaming chunked que
+    // el resto de la conversacion, quedando fluido desde el turno 1.
+    // firstMessage sigue siendo el guion sugerido para el modelo.
+    firstMessageMode: 'assistant-speaks-first-with-model-generated-message',
     endCallMessage: 'Hasta luego.',
     // Ampliadas post-primera-llamada-real: la lista original era muy formal y
     // el modelo con CCP nuevo cierra corto ("Hasta luego." o "Que le vaya bien.").
