@@ -52,7 +52,7 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
 
   return (
     <button
-      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50/50"
+      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--c-hover)]"
       onClick={onToggle}
       style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
     >
