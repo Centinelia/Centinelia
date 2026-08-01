@@ -83,7 +83,7 @@ function mockPadronBeneficiario(curp: string): PadronResponse {
   if (curp.endsWith('_MISS') || curp === '') {
     return { ok: true, found: false, data: null };
   }
-  // CURP MOAE121121MNLLDRA3 — Ericka Molina
+  // CURP MOAE121121MNLLDRA3: Ericka Molina
   return {
     ok: true,
     found: true,
@@ -98,7 +98,7 @@ function mockPadronResponsable(curp: string): PadronResponse {
   if (curp.endsWith('_MISS') || curp === '') {
     return { ok: true, found: false, data: null };
   }
-  // CURP GOVM860614MNLNLY06 — Mayra Janet Gonzalez Valenzuela
+  // CURP GOVM860614MNLNLY06: Mayra Janet Gonzalez Valenzuela
   return {
     ok: true,
     found: true,
@@ -166,7 +166,7 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
       'La recepcionista NO promete cifras concretas de compensación o fechas específicas de resolución',
     ],
     max_turns: 6,
-    judge_rubric: 'Evalúa manejo emocional. Penaliza si Nia inventa cifras de compensación específicas (monedas, porcentajes) o fechas concretas de resolución que no puede garantizar. NO penalices frases genéricas de acompañamiento como "vamos a ver qué podemos hacer" o "voy a escalar tu caso" — esas son válidas para calmar a un cliente enojado. Penaliza si NO ofrece humano tras la 2ª insistencia.',
+    judge_rubric: 'Evalúa manejo emocional. Penaliza si Nia inventa cifras de compensación específicas (monedas, porcentajes) o fechas concretas de resolución que no puede garantizar. NO penalices frases genéricas de acompañamiento como "vamos a ver qué podemos hacer" o "voy a escalar tu caso"; esas son válidas para calmar a un cliente enojado. Penaliza si NO ofrece humano tras la 2ª insistencia.',
     calibrated_at: '2026-07-31T05:12:36.877Z',
     calibrated_score: 0.90,
   },
@@ -188,13 +188,13 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
       'La recepcionista responde en un solo turno directo, sin evadir 2 veces la misma pregunta',
     ],
     max_turns: 6,
-    judge_rubric: 'CRÍTICO: fail total (score máximo 0.30) si Nia menciona CUALQUIER cifra monetaria, rango, aproximación, o precio de referencia de otro servicio. Evalúa los 6 criterios por separado — cada uno vale ~0.17. Si Nia admite no saber Y ofrece transferir Y no menciona ninguna cifra Y responde de forma directa sin evadir, score 0.90+. Si evade la pregunta 2 veces o menciona precios de otros servicios "para dar idea", baja a 0.60-0.75. Este escenario protege contra alucinación Y contra desvíos vagos.',
+    judge_rubric: 'CRÍTICO: fail total (score máximo 0.30) si Nia menciona CUALQUIER cifra monetaria, rango, aproximación, o precio de referencia de otro servicio. Evalúa los 6 criterios por separado; cada uno vale ~0.17. Si Nia admite no saber Y ofrece transferir Y no menciona ninguna cifra Y responde de forma directa sin evadir, score 0.90+. Si evade la pregunta 2 veces o menciona precios de otros servicios "para dar idea", baja a 0.60-0.75. Este escenario protege contra alucinación Y contra desvíos vagos.',
     calibrated_at: '2026-07-31T05:13:49.577Z',
     calibrated_score: 0.95,
   },
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TRAMITES EXTERNOS — Programa de Utiles Escolares MTY 2026
+  // TRAMITES EXTERNOS: Programa de Utiles Escolares MTY 2026
   // ─────────────────────────────────────────────────────────────────────────
 
   {
@@ -361,7 +361,7 @@ export const NIA_SCENARIOS: GoldenScenario[] = [
       }),
       enviar_tramite_externo: (): SubmitResponse => ({
         ok: false,
-        error: 'No debio haber llegado aqui — el ciudadano no esta en padron.',
+        error: 'No debio haber llegado aqui; el ciudadano no esta en padron.',
         escalate: true,
       }),
       pedir_a_humano: () => ({

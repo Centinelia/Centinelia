@@ -1,7 +1,7 @@
 import type { Tool } from '@anthropic-ai/sdk/resources/messages';
 
 /**
- * Tool schemas de Nia para golden tests — tramites externos.
+ * Tool schemas de Nia para golden tests: tramites externos.
  *
  * Subset del executor.ts real (src/lib/tools/executor.ts, ramas 1105-1175).
  * En produccion las tools consultan Supabase y llaman endpoints externos.
@@ -18,7 +18,7 @@ export const NIA_TOOLS: Tool[] = [
     name: 'consultar_catalogo_externo',
     description:
       'Obtiene los items de un catalogo externo del tramite (sedes, escuelas, grados, turnos, colonias, etc.). ' +
-      'Llama esta tool antes de ofrecer opciones al ciudadano — nunca inventes valores de catalogo. ' +
+      'Llama esta tool antes de ofrecer opciones al ciudadano: nunca inventes valores de catalogo. ' +
       'Si el catalogo requiere un filtro (ej. nombre de escuela), incluyelo en filtros.',
     input_schema: {
       type: 'object',
