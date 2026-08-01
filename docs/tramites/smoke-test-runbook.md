@@ -66,15 +66,15 @@ npx tsx scripts/tramites/seed-mty-utiles.ts
 
 This script:
 - Checks for an organization with `business_name ILIKE 'Gobierno de Monterrey%'`
-- Inserts the `external_tramites` row with slug `'mty-pre-registro-utiles-2026'`
+- Inserts the `external_tramites` row with slug `'mty-utiles-2026'`
 - Sets mock endpoints for catalogos, lookups, and submit
 - Initially sets `activo=false`
 
 **Verify the insert:**
 ```sql
-SELECT id, slug, nombre, activo, endpoint_base
+SELECT id, slug, nombre_publico, activo, endpoint_base
 FROM external_tramites
-WHERE slug ILIKE 'mty-pre-registro-utiles%';
+WHERE slug ILIKE 'mty-utiles%';
 ```
 
 ---
@@ -84,7 +84,7 @@ WHERE slug ILIKE 'mty-pre-registro-utiles%';
 ```sql
 UPDATE external_tramites
 SET activo = true
-WHERE slug = 'mty-pre-registro-utiles-2026';
+WHERE slug = 'mty-utiles-2026';
 ```
 
 ---
@@ -105,7 +105,7 @@ Visit `http://localhost:3000` and log in as the org owner. Navigate to **Agentes
 TRÁMITES EXTERNOS QUE PUEDES GESTIONAR:
 
 • Programa de Pre-registro de Útiles 2026 (MTY)
-  - ID: mty-pre-registro-utiles-2026
+  - ID: mty-utiles-2026
   - Campos requeridos: [...list of 20 fields...]
   - Orden de captura: CURP estudiante → Sede → Escuela → Grado → ...
   - Protocolo CURP: Pedir por formato, [...]
@@ -222,17 +222,17 @@ After testing, you can deactivate and/or delete the test trámite:
 -- Deactivate
 UPDATE external_tramites
 SET activo = false
-WHERE slug = 'mty-pre-registro-utiles-2026';
+WHERE slug = 'mty-utiles-2026';
 
 -- Delete (if needed)
 DELETE FROM external_tramites
-WHERE slug = 'mty-pre-registro-utiles-2026';
+WHERE slug = 'mty-utiles-2026';
 
 -- Delete test org and submissions (if needed)
 DELETE FROM external_tramites_submissions
 WHERE tramite_id IN (
   SELECT id FROM external_tramites
-  WHERE slug = 'mty-pre-registro-utiles-2026'
+  WHERE slug = 'mty-utiles-2026'
 );
 
 DELETE FROM organizations
