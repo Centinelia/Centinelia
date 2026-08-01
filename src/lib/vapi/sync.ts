@@ -119,6 +119,12 @@ async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   }
 }
 
+// Coordinadores no son voice-capable NUNCA. Excluir de peers de transferencia:
+// generar transferir_a_<coordinador> apunta a assistantName que Vapi puede o no
+// resolver segun estado; en cualquier caso son cuentas que no atienden por
+// telefono y no deberian estar en tools de transferCall en vivo.
+const NON_VOICE_ROLES = new Set(['nox', 'niva']);
+
 async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
   if (!agent.portal_email) return [];
   try {
@@ -129,13 +135,14 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
       .eq('portal_email', agent.portal_email)
       .eq('active', true)
       .neq('id', agent.id)
-      // Solo peers voice-capable: coordinadores (nox, niva) no tienen vapi_agent_id
-      // porque corren via Claude/executor, no via Vapi. Si los incluimos, generamos
-      // tools transferir_a_<nox> con assistantName inexistente en Vapi, y todas las
-      // llamadas al assistant fallan con "Invalid Destination".
       .not('vapi_agent_id', 'is', null);
 
-    return (data ?? []).filter((p): p is TeamPeer => !!p.vapi_agent_id);
+    return (data ?? [])
+      .filter((p): p is TeamPeer => !!p.vapi_agent_id)
+      .filter(p => {
+        const role = (p.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id;
+        return !role || !NON_VOICE_ROLES.has(role);
+      });
   } catch {
     return [];
   }
@@ -577,7 +584,24 @@ export async function resyncPeerAgents(portalEmail: string | null | undefined, e
   }
 }
 
+/**
+ * Guard: coordinadores (Nox, Niva) NUNCA deben crearse ni actualizarse en Vapi.
+ * Corren via nox-coordinator.ts / agent-chat con Claude directo. Si por error
+ * llegan aca, no-op silencioso para prevenir provisionar assistants huerfanos.
+ */
+function isNonVoiceRole(agent: VoiceAgent): boolean {
+  const role = (agent.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id;
+  return !!role && NON_VOICE_ROLES.has(role);
+}
+
 export async function createVapiAssistant(agent: VoiceAgent): Promise<string | null> {
+  if (isNonVoiceRole(agent)) {
+    console.warn('[vapi] refusing createVapiAssistant for non-voice role', {
+      agentId: agent.id,
+      role: (agent.features as { meerkat_role_id?: string })?.meerkat_role_id,
+    });
+    return null;
+  }
   const enrichedAgent = await enrichWithOrgData(agent);
   const peers   = await fetchTeamPeers(enrichedAgent);
   const toolIds = await createVapiTools(enrichedAgent, peers);
@@ -596,6 +620,13 @@ export async function createVapiAssistant(agent: VoiceAgent): Promise<string | n
 }
 
 export async function updateVapiAssistant(vapiAssistantId: string, agent: VoiceAgent): Promise<boolean> {
+  if (isNonVoiceRole(agent)) {
+    console.warn('[vapi] refusing updateVapiAssistant for non-voice role', {
+      agentId: agent.id,
+      role: (agent.features as { meerkat_role_id?: string })?.meerkat_role_id,
+    });
+    return false;
+  }
   // throws if Vapi rejects — callers should catch
   await syncAgentToVapi(vapiAssistantId, agent);
   // Fire-and-forget: push the updated tool list to all sibling agents
