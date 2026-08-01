@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
@@ -66,18 +65,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   google:      'Google',
   onedrive:    'OneDrive',
   mercadolibre:'MercadoLibre',
-};
-
-
-const STATUS_LABELS: Record<string, string> = {
-  pending:        'Pendiente',
-  approved:       'Aprobado',
-  rejected:       'Rechazado',
-  sent:           'Enviado',
-  skipped:        'Ignorado',
-  auto_replied:   'Enviado automáticamente',
-  escalated:      'Escalado a ti',
-  info_requested: 'Info solicitada al remitente',
 };
 
 const URGENCY_LABELS: Record<string, string> = {
