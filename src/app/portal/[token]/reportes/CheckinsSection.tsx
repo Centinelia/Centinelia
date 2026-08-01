@@ -135,6 +135,8 @@ export default function CheckinsSection({ token, agents }: Props) {
         <button
           type="button"
           onClick={load}
+          aria-label="Actualizar lista de check-ins"
+          title="Actualizar"
           className="p-1.5 rounded-lg"
           style={{ color: 'var(--c-text-4)' }}
         >
@@ -158,7 +160,7 @@ export default function CheckinsSection({ token, agents }: Props) {
             <button
               type="button"
               onClick={() => toggle(run.id)}
-              className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50/50"
+              className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--c-hover)]"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
               <div className="flex-shrink-0 pt-1">

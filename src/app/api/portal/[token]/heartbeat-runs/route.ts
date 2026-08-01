@@ -15,8 +15,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { data: acct } = await supabase
     .from('voice_agents').select('portal_email').eq('portal_token', token).single();
   if (!acct?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  if (auth.portalEmail && auth.portalEmail !== acct.portal_email)
+  if (auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  // Defense-in-depth: además de portal_email match, restringimos a agent_ids
+  // que pertenecen explícitamente al portal (evita cualquier fuga si un row
+  // quedara mal-atribuido con un agent_id de otro tenant).
+  const { data: portalAgents } = await supabase
+    .from('voice_agents').select('id').eq('portal_email', acct.portal_email);
+  const agentIds = (portalAgents ?? []).map(a => a.id as string);
+  if (agentIds.length === 0) return NextResponse.json({ runs: [] });
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString();
 
@@ -24,6 +32,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     .from('heartbeat_runs')
     .select('id, agent_id, ran_at, frequency, subject, content_md, read_at')
     .eq('portal_email', acct.portal_email)
+    .in('agent_id', agentIds)
     .gte('ran_at', thirtyDaysAgo)
     .order('ran_at', { ascending: false })
     .limit(100);
