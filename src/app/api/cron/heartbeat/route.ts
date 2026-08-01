@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, client_email, timezone, heartbeat_config, heartbeat_last_run_at, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features')
+    .select('id, agent_name, business_name, client_email, portal_email, timezone, heartbeat_config, heartbeat_last_run_at, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features')
     .eq('active', true)
     .not('heartbeat_config', 'is', null);
 
@@ -118,9 +118,11 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
       .update({ heartbeat_last_run_at: now.toISOString() })
       .eq('id', agent.id);
 
+    // Etiqueta de frecuencia reutilizada por email e insert de persistencia.
+    const freqLabel = cfg.frequency === 'weekly' ? 'Semanal' : 'Diario';
+
     // Send via email
     if (agent.client_email) {
-      const freqLabel = cfg.frequency === 'weekly' ? 'Semanal' : 'Diario';
       const dateStr = new Date().toLocaleDateString('es-MX', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
       await sendEmail({
         to:      agent.client_email,
@@ -131,6 +133,24 @@ Ejecuta la tarea usando toda la información como base. Sé conciso, directo y e
           infoCard(mdToEmailHtml(result))
         ),
       }).catch(console.error);
+    }
+
+    // Persistir check-in a heartbeat_runs solo si el agente es coordinator (Nox / Niva).
+    // Fire-and-forget: no bloquea el cron ni el rate limit del siguiente agente.
+    // El insert corre haya tenido o no exito el email (correo es notificacion, DB es fuente de verdad).
+    const meerkatId     = (agent.features as { meerkat_role_id?: string } | null)?.meerkat_role_id ?? null;
+    const isCoordinator = meerkatId === 'nox' || meerkatId === 'niva';
+
+    if (isCoordinator && agent.portal_email) {
+      supabase.from('heartbeat_runs').insert({
+        agent_id:     agent.id,
+        portal_email: agent.portal_email,
+        frequency:    cfg.frequency,
+        subject:      `Check-in ${freqLabel}: ${agent.agent_name ?? agent.business_name}`,
+        content_md:   result,
+      }).then(({ error }) => {
+        if (error) console.error('[heartbeat] persist error:', error);
+      });
     }
 
     ran++;
