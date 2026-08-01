@@ -26,15 +26,43 @@ export interface GoldenScenario {
   max_turns: number;
   /** Instrucciones adicionales para el juez (además de los success_criteria) */
   judge_rubric: string;
+  /**
+   * Mock de respuestas de tools. Clave = nombre de tool.
+   * Valor = objeto estatico o funcion (input) => output.
+   * Solo aplica si el meerkat tiene tools registradas.
+   * Si el meerkat llama una tool sin mock, el invoker devuelve un error generico
+   * que el meerkat vera como tool_result — util para probar recovery.
+   */
+  mock_responses?: Record<string, unknown | ((input: unknown) => unknown)>;
+  /**
+   * Override de config del modelo para este scenario. Usar cuando el meerkat
+   * tiene multiples paths de prod con configs distintas (ej. Nox voz vs coordinador).
+   * El invoker parte de resolveMeerkatConfig y aplica el override encima solo para
+   * los campos declarados (model, maxTokens, temperature). Los demas se ignoran.
+   * Debe reflejar fielmente la config real del codepath que se esta emulando.
+   */
+  config_override?: {
+    model?:       string;
+    maxTokens?:   number;
+    temperature?: number;
+  };
   /** ISO date. Sin esto, el escenario NO afecta gate_verdict */
   calibrated_at?: string;
   /** Score mediano observado en calibración inicial (N=5) */
   calibrated_score?: number;
 }
 
+export interface ToolCall {
+  name: string;
+  input: unknown;
+  output: unknown;
+}
+
 export interface ConversationTurn {
   role: 'user' | 'meerkat';
   content: string;
+  /** Solo turnos meerkat pueden tener tool_calls (order = orden ejecución dentro del turno). */
+  tool_calls?: ToolCall[];
 }
 
 export interface JudgeOutput {

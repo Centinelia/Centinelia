@@ -1,5 +1,39 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { GoldenScenario, ConversationTurn, JudgeOutput } from './types';
+import type { GoldenScenario, ConversationTurn, JudgeOutput, MeerkatId } from './types';
+
+/**
+ * Etiqueta legible del rol del meerkat para el juez.
+ * Se muestra en el transcript y en el prompt del juez.
+ */
+const MEERKAT_ROLE_LABEL: Record<MeerkatId, string> = {
+  nia:   'RECEPCIONISTA',
+  noah:  'VENDEDOR',
+  nico:  'COBRANZA',
+  nelia: 'ATENCION',
+  nara:  'COORDINADORA',
+  naia:  'RRHH',
+  neo:   'OPERACIONES',
+  nova:  'DESPACHO',
+  nox:   'COORDINADOR',
+  niva:  'COORDINADORA',
+};
+
+/**
+ * Etiqueta legible del interlocutor del meerkat.
+ * Nia habla con clientes; Nox/Niva hablan con el dueno del negocio.
+ */
+const MEERKAT_COUNTERPART_LABEL: Record<MeerkatId, string> = {
+  nia:   'CLIENTE',
+  noah:  'PROSPECTO',
+  nico:  'DEUDOR',
+  nelia: 'CLIENTE',
+  nara:  'CIUDADANO',
+  naia:  'EMPLEADO',
+  neo:   'USUARIO',
+  nova:  'SOLICITANTE',
+  nox:   'DUENO',
+  niva:  'DUENO',
+};
 
 const client = new Anthropic();
 
@@ -109,34 +143,55 @@ function validateJudgeOutput(raw: unknown): { ok: true; value: JudgeOutput } | {
 }
 
 function buildJudgeSystemPrompt(scenario: GoldenScenario): string {
-  return `Eres un juez imparcial que evalúa una llamada entre un cliente y una recepcionista digital.
+  const roleLabel = MEERKAT_ROLE_LABEL[scenario.meerkat_id];
+  const counterpartLabel = MEERKAT_COUNTERPART_LABEL[scenario.meerkat_id];
+
+  return `Eres un juez imparcial que evalua una interaccion entre un ${counterpartLabel.toLowerCase()} y un empleado digital (${roleLabel.toLowerCase()}).
 
 TU TRABAJO:
-1. Leer el transcript completo.
+1. Leer el transcript completo (incluyendo las llamadas a tools que el empleado hizo).
 2. Evaluar cada criterio de success_criteria por separado.
-3. Dar un score global 0.00-1.00 usando la rúbrica del escenario.
+3. Dar un score global 0.00-1.00 usando la rubrica del escenario.
 4. Usar la herramienta submit_verdict para reportar tu veredicto.
 
-RÚBRICA ESPECÍFICA DE ESTE ESCENARIO:
+RUBRICA ESPECIFICA DE ESTE ESCENARIO:
 ${scenario.judge_rubric}
 
 REGLAS:
-- Sé objetivo. Score 1.00 significa "cumplió todo perfectamente". Score 0.00 significa "fracaso total".
-- Score típico de una llamada aceptable: 0.75-0.90.
-- Si el escenario tiene un criterio marcado como CRÍTICO en la rúbrica y falló, el score máximo posible es 0.30.
-- passed_criteria y failed_criteria deben usar el texto EXACTO de success_criteria (para que se puedan agregar en agregado).`.trim();
+- Se objetivo. Score 1.00 significa "cumplio todo perfectamente". Score 0.00 significa "fracaso total".
+- Score tipico de una interaccion aceptable: 0.75-0.90.
+- Si el escenario tiene un criterio marcado como CRITICO en la rubrica y fallo, el score maximo posible es 0.30.
+- passed_criteria y failed_criteria deben usar el texto EXACTO de success_criteria (para que se puedan agregar en agregado).
+- Si el empleado usa tools, evalua QUE tool eligio (correcta o no), CON QUE PARAMS y CUANTAS VECES. La eleccion de tool suele ser parte del criterio a evaluar.`.trim();
 }
 
 function buildJudgeUserMessage(scenario: GoldenScenario, transcript: ConversationTurn[]): string {
+  const roleLabel = MEERKAT_ROLE_LABEL[scenario.meerkat_id];
+  const counterpartLabel = MEERKAT_COUNTERPART_LABEL[scenario.meerkat_id];
+
   const transcriptText = transcript
-    .map(t => `${t.role === 'user' ? 'CLIENTE' : 'RECEPCIONISTA'}: ${t.content}`)
+    .map(t => {
+      if (t.role === 'user') return `${counterpartLabel}: ${t.content}`;
+      // Tool calls ocurren ANTES del texto final del turno (el texto es la sintesis
+      // post-tool). Se renderizan primero para que el juez vea el orden real.
+      const lines: string[] = [];
+      if (t.tool_calls && t.tool_calls.length > 0) {
+        for (const tc of t.tool_calls) {
+          const inputStr = JSON.stringify(tc.input);
+          const outputStr = JSON.stringify(tc.output);
+          lines.push(`  [tool] ${tc.name}(${inputStr}) => ${outputStr}`);
+        }
+      }
+      lines.push(`${roleLabel}: ${t.content || '(sin texto)'}`);
+      return lines.join('\n');
+    })
     .join('\n');
 
   const criteriaText = scenario.success_criteria.map((c, i) => `${i + 1}. ${c}`).join('\n');
 
   return `Escenario: ${scenario.title}
 
-Criterios de éxito:
+Criterios de exito:
 ${criteriaText}
 
 Transcript:

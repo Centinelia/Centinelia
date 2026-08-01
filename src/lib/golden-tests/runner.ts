@@ -50,8 +50,15 @@ export async function runScenario(
     while (transcript.length < scenario.max_turns * 2) {
       // Meerkat turn
       try {
-        const m = await invokeMeerkat(scenario.meerkat_id, version, transcript);
-        transcript.push({ role: 'meerkat', content: m.content });
+        const m = await invokeMeerkat(
+          scenario.meerkat_id, version, transcript,
+          scenario.mock_responses, scenario.config_override,
+        );
+        transcript.push({
+          role: 'meerkat',
+          content: m.content,
+          ...(m.tool_calls.length > 0 ? { tool_calls: m.tool_calls } : {}),
+        });
         tokens.meerkat += m.tokens;
         meerkatModel = m.model;
       } catch (e) {
