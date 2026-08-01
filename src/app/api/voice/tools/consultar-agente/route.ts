@@ -161,7 +161,13 @@ export async function POST(req: NextRequest) {
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const response = await client.messages.create({
-        model:      'claude-haiku-4-5-20251001',
+        // Sonnet 4.6 en vez de Haiku 4.5: Haiku halucinaba tool use ("busque
+        // en internet") sin invocar buscar_en_web. Ver call 019fbf47: Noah
+        // dijo "no logré obtener info a través de búsquedas" pero Brave si
+        // tenía la respuesta (Shopify Basic $19 USD/mes MX 2026 en primer
+        // resultado). Sonnet sigue instrucciones mucho mejor a costa de
+        // ~3x latencia, dentro del budget de 30s de Vapi.
+        model:      'claude-sonnet-4-6',
         max_tokens: 1024,
         system:     systemPrompt,
         tools:      AGENT_TOOLS,

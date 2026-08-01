@@ -363,7 +363,9 @@ export async function POST(req: NextRequest) {
       if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
       const response = await client.messages.create({
-        model:      'claude-haiku-4-5-20251001',
+        // Sonnet 4.6 en vez de Haiku 4.5 por mismo motivo que consultar-agente:
+        // Haiku halucinaba tool use sin invocar realmente los tools.
+        model:      'claude-sonnet-4-6',
         max_tokens: 1024,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         tools:      DELEGATION_TOOLS,
