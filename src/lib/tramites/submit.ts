@@ -158,7 +158,7 @@ export async function submitTramite(
     .from('external_tramites_submissions')
     .insert({
       tramite_id:        tramite.id,
-      org_id:            tramite.org_id,
+      portal_email:      tramite.portal_email,
       agent_id:          ctx.agentId ?? null,
       call_id:           ctx.callId  ?? null,
       channel:           ctx.channel,

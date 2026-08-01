@@ -14,59 +14,64 @@ This runbook guides Nazre through the end-to-end smoke test of the external trá
 
 ## Step 1: Create Test Organization
 
-Connect to Supabase and insert a test organization:
+En este repo, `organizations` está keyed por `portal_email` (text PRIMARY KEY). Elige un correo de prueba (ej: `municipio-mty-test@centinelia.mx`) y créalo:
 
 ```sql
-INSERT INTO organizations (business_name)
-VALUES ('Gobierno de Monterrey (TEST)')
-RETURNING id;
+INSERT INTO organizations (portal_email, name, plan)
+VALUES ('municipio-mty-test@centinelia.mx', 'Gobierno de Monterrey (TEST)', 'starter')
+ON CONFLICT (portal_email) DO NOTHING;
 ```
 
-**Save the returned `org_id`** — you'll need it for the next steps.
+**Guarda el `portal_email`** — es la llave que usarás en los siguientes pasos.
 
 ---
 
 ## Step 2: Create a Voice Agent (Nia) in the Test Org
 
+Voice agents se ligan a la org por `portal_email` (no hay `org_id`).
+
 Option A (SQL — fastest):
 ```sql
 INSERT INTO voice_agents (
-  org_id,
+  portal_email,
   agent_name,
   business_name,
-  meerkat_role,
-  active
+  client_name,
+  active,
+  features
 )
 VALUES (
-  <ORG_ID>,
+  'municipio-mty-test@centinelia.mx',
   'Nia',
   'Gobierno de Monterrey (TEST)',
-  'nia',
-  true
+  'Contacto MTY',
+  true,
+  '{"meerkat_role_id":"nia"}'::jsonb
 )
 RETURNING id, agent_name;
 ```
 
 Option B (Portal UI):
-1. Open `http://localhost:3000` (after `npm run dev` in Step 5)
-2. Log in as the org owner
-3. Navigate to **Agentes** → **Agregar agente**
-4. Select **Nia** (meerkat_role = 'nia')
-5. Fill in name and business name, activate
+1. Registro normal usando `municipio-mty-test@centinelia.mx` como portal_email
+2. Sigue el flujo de registro y selecciona Nia como rol
 
 ---
 
 ## Step 3: Seed the Mock Trámite
 
-From the worktree root, run:
+From the repo root, run:
 
 ```bash
+# Preferido — pasas el portal_email explícito
+MTY_PORTAL_EMAIL='municipio-mty-test@centinelia.mx' npx tsx scripts/tramites/seed-mty-utiles.ts
+
+# Alternativo — busca por nombre ILIKE '%monterrey%' en organizations.name
 npx tsx scripts/tramites/seed-mty-utiles.ts
 ```
 
 This script:
-- Checks for an organization with `business_name ILIKE 'Gobierno de Monterrey%'`
-- Inserts the `external_tramites` row with slug `'mty-utiles-2026'`
+- Resuelve el `portal_email` (del env `MTY_PORTAL_EMAIL` o vía `organizations.name ILIKE '%monterrey%'`)
+- Inserta la fila en `external_tramites` con slug `'mty-utiles-2026'`
 - Sets mock endpoints for catalogos, lookups, and submit
 - Initially sets `activo=false`
 
@@ -236,7 +241,7 @@ WHERE tramite_id IN (
 );
 
 DELETE FROM organizations
-WHERE business_name = 'Gobierno de Monterrey (TEST)';
+WHERE portal_email = 'municipio-mty-test@centinelia.mx';
 ```
 
 ---

@@ -26,7 +26,7 @@ export async function POST() {
       model: {
         provider: 'anthropic',
         model: 'claude-3-5-haiku-20241022',
-        messages: [{ role: 'system', content: await buildSystemPrompt(agent as VoiceAgent, null, (agent as Record<string, unknown>).org_id as string | undefined, supabase) }],
+        messages: [{ role: 'system', content: await buildSystemPrompt(agent as VoiceAgent, null, (agent as Record<string, unknown>).portal_email as string | undefined, supabase) }],
         temperature: 0.4,
         maxTokens: VAPI_VOICE_MAX_TOKENS,
       },

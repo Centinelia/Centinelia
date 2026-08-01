@@ -365,7 +365,7 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
 
   const supabaseSync = createAdminClient();
   const messages: Array<{ role: string; content: string }> = [
-    { role: 'system', content: await buildSystemPrompt(agent, learnings, (agent as unknown as Record<string, unknown>).org_id as string | undefined, supabaseSync) },
+    { role: 'system', content: await buildSystemPrompt(agent, learnings, agent.portal_email ?? undefined, supabaseSync) },
   ];
 
   if (peers.length > 0) {

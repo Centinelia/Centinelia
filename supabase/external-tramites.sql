@@ -1,7 +1,8 @@
--- external_tramites: catálogo de trámites externos configurables per-org
+-- external_tramites: catálogo de trámites externos configurables per-org.
+-- La organización se referencia por portal_email (PK de organizations en este repo).
 CREATE TABLE IF NOT EXISTS external_tramites (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id                 uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  portal_email           text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
   slug                   text NOT NULL,
   nombre_publico         text NOT NULL,
   descripcion_agente     text NOT NULL,
@@ -18,23 +19,23 @@ CREATE TABLE IF NOT EXISTS external_tramites (
   aviso_privacidad_url   text,
   created_at             timestamptz NOT NULL DEFAULT now(),
   updated_at             timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (org_id, slug)
+  UNIQUE (portal_email, slug)
 );
 
 CREATE INDEX IF NOT EXISTS idx_external_tramites_org_active
-  ON external_tramites(org_id, activo);
+  ON external_tramites(portal_email, activo);
 
 -- external_secrets: referencia a secrets encriptados en Supabase Vault
 CREATE TABLE IF NOT EXISTS external_secrets (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id          uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  portal_email    text NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
   key             text NOT NULL,
   vault_secret_id uuid NOT NULL,
   description     text,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now(),
   last_rotated_at timestamptz,
-  UNIQUE (org_id, key)
+  UNIQUE (portal_email, key)
 );
 
 -- external_tramites_audit: log de cambios al schema del trámite
@@ -55,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_external_tramites_audit_tramite
 CREATE TABLE IF NOT EXISTS external_tramites_submissions (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tramite_id         uuid NOT NULL REFERENCES external_tramites(id),
-  org_id             uuid NOT NULL REFERENCES organizations(id),
+  portal_email       text NOT NULL REFERENCES organizations(portal_email),
   agent_id           uuid REFERENCES voice_agents(id),
   call_id            uuid,
   channel            text NOT NULL,

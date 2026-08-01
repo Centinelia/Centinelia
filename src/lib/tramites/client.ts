@@ -7,17 +7,17 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 const TIMEOUT_MS = 10_000;
 
 async function buildAuthHeaders(
-  orgId:    string,
-  auth:     AuthConfig,
-  supabase: SupabaseClient,
+  portalEmail: string,
+  auth:        AuthConfig,
+  supabase:    SupabaseClient,
 ): Promise<Record<string, string>> {
   if (auth.type === 'none') return {};
   if (auth.type === 'bearer') {
-    const token = auth.secret_key ? await resolveSecretByKey(orgId, auth.secret_key, supabase) : null;
+    const token = auth.secret_key ? await resolveSecretByKey(portalEmail, auth.secret_key, supabase) : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
   if (auth.type === 'api_key_header') {
-    const token = auth.secret_key ? await resolveSecretByKey(orgId, auth.secret_key, supabase) : null;
+    const token = auth.secret_key ? await resolveSecretByKey(portalEmail, auth.secret_key, supabase) : null;
     if (!token || !auth.header_name) return {};
     return { [auth.header_name]: token };
   }
@@ -56,7 +56,7 @@ export async function callTramiteEndpoint(
   supabase: SupabaseClient,
 ): Promise<{ status: number; body: unknown; timedOut: boolean }> {
   const url = tramite.endpoint_base.replace(/\/$/, '') + pathAndQuery;
-  const authHeaders = await buildAuthHeaders(tramite.org_id, tramite.auth_config, supabase);
+  const authHeaders = await buildAuthHeaders(tramite.portal_email, tramite.auth_config, supabase);
   const init: RequestInit = {
     method: opts.method,
     headers: {

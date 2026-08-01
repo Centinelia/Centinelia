@@ -1112,10 +1112,9 @@ export async function executeAgentTool(
     if (!tramiteId) return { ok: false, error: 'El ID del trámite es requerido (tramite_id).' };
     if (!catalogoKey) return { ok: false, error: 'La clave del catálogo es requerida (catalogo_key).' };
 
-    const orgId = agent.org_id as string | undefined;
-    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+    if (!portalEmail) return { ok: false, error: 'No se pudo determinar la organización.' };
 
-    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    const tramite = await getTramiteById(tramiteId, portalEmail, supabase);
     if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
 
     // Convertir filtros a Record<string, string> para compatibilidad con fetchCatalogo
@@ -1142,10 +1141,9 @@ export async function executeAgentTool(
     if (!lookupKey) return { ok: false, error: 'La clave del padrón es requerida (lookup_key).' };
     if (!valor) return { ok: false, error: 'El valor a buscar es requerido (valor).' };
 
-    const orgId = agent.org_id as string | undefined;
-    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+    if (!portalEmail) return { ok: false, error: 'No se pudo determinar la organización.' };
 
-    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    const tramite = await getTramiteById(tramiteId, portalEmail, supabase);
     if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
 
     const result = await fetchLookup(tramite, lookupKey, valor, supabase);
@@ -1161,10 +1159,9 @@ export async function executeAgentTool(
 
     if (!tramiteId) return { ok: false, error: 'El ID del trámite es requerido (tramite_id).' };
 
-    const orgId = agent.org_id as string | undefined;
-    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+    if (!portalEmail) return { ok: false, error: 'No se pudo determinar la organización.' };
 
-    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    const tramite = await getTramiteById(tramiteId, portalEmail, supabase);
     if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
 
     const channel = ctx.channel === 'email' ? 'email' : 'chat';

@@ -4,13 +4,13 @@ import type { Tramite } from './types';
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 export async function getActiveTramitesForOrg(
-  orgId: string,
-  supabase: SupabaseClient,
+  portalEmail: string,
+  supabase:    SupabaseClient,
 ): Promise<Tramite[]> {
   const { data, error } = await supabase
     .from('external_tramites')
     .select('*')
-    .eq('org_id', orgId)
+    .eq('portal_email', portalEmail)
     .eq('activo', true)
     .order('created_at', { ascending: true });
   if (error) {
@@ -21,15 +21,15 @@ export async function getActiveTramitesForOrg(
 }
 
 export async function getTramiteById(
-  id:       string,
-  orgId:    string,
-  supabase: SupabaseClient,
+  id:          string,
+  portalEmail: string,
+  supabase:    SupabaseClient,
 ): Promise<Tramite | null> {
   const { data } = await supabase
     .from('external_tramites')
     .select('*')
     .eq('id', id)
-    .eq('org_id', orgId)  // defensa IDOR — nunca confiar solo en el id
+    .eq('portal_email', portalEmail)  // defensa IDOR: nunca confiar solo en el id
     .maybeSingle();
   return (data as Tramite | null) ?? null;
 }

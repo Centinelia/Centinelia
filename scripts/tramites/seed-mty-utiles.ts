@@ -17,15 +17,32 @@ import { createAdminClient } from '@/lib/supabase/admin';
 async function main() {
   const supabase = createAdminClient();
 
-  const { data: org, error: orgErr } = await supabase
-    .from('organizations')
-    .select('id, business_name')
-    .ilike('business_name', '%monterrey%')
-    .maybeSingle();
-  if (orgErr || !org) throw new Error(`No se encontró org "Gobierno de Monterrey": ${orgErr?.message ?? 'no rows'}`);
+  // La org se identifica por portal_email (PK de organizations).
+  // Puedes pasar el correo por env `MTY_PORTAL_EMAIL` o dejar que el script
+  // busque por nombre. Si hay varias coincidencias, especifica el env.
+  const explicitEmail = process.env.MTY_PORTAL_EMAIL;
+  let portalEmail: string | null = null;
+
+  if (explicitEmail) {
+    const { data: found } = await supabase
+      .from('organizations')
+      .select('portal_email')
+      .eq('portal_email', explicitEmail)
+      .maybeSingle();
+    if (!found) throw new Error(`No se encontró la org con portal_email=${explicitEmail}`);
+    portalEmail = found.portal_email;
+  } else {
+    const { data: org, error: orgErr } = await supabase
+      .from('organizations')
+      .select('portal_email, name')
+      .ilike('name', '%monterrey%')
+      .maybeSingle();
+    if (orgErr || !org) throw new Error(`No se encontró org con "monterrey" en el nombre. Setea MTY_PORTAL_EMAIL explícito. Detalle: ${orgErr?.message ?? 'no rows'}`);
+    portalEmail = org.portal_email;
+  }
 
   const tramite = {
-    org_id:                 org.id,
+    portal_email:           portalEmail,
     slug:                   'mty-utiles-2026',
     nombre_publico:         'Pre-registro Programa de Útiles Escolares 2026',
     descripcion_agente:     'Pre-registro del Programa Municipal de Útiles Escolares 2026 de Monterrey. Permite al ciudadano seleccionar sede de entrega, capturar los datos del estudiante (CURP autocompletado desde padrón, escuela, grado) y del adulto responsable que recogerá el kit (CURP, domicilio, contacto). Al finalizar se le entrega un folio y la lista de documentos que debe presentar el día de la entrega.',
@@ -80,7 +97,7 @@ async function main() {
 
   const { data, error } = await supabase
     .from('external_tramites')
-    .upsert(tramite, { onConflict: 'org_id,slug' })
+    .upsert(tramite, { onConflict: 'portal_email,slug' })
     .select('id, slug, activo')
     .single();
 

@@ -17,9 +17,10 @@ SELECT vault.create_secret(
 -- Anotar el UUID que regresa.
 
 -- 2) Registrar la referencia en external_secrets
-INSERT INTO external_secrets (org_id, key, vault_secret_id, description, last_rotated_at)
+--    portal_email es la PK de organizations en este repo.
+INSERT INTO external_secrets (portal_email, key, vault_secret_id, description, last_rotated_at)
 VALUES (
-  '<uuid_de_la_org_del_municipio>',
+  '<portal_email_de_la_org_del_municipio>',
   'mty_utiles_api_key',
   '<uuid_del_paso_1>',
   'Bearer token API Municipio MTY - Programa Utiles 2026',

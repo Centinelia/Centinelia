@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
     qbConnected = !!qbRow?.realm_id;
   }
 
-  const systemPrompt = await buildSystemPrompt(typedAgent, null, (typedAgent as unknown as Record<string, unknown>).org_id as string | undefined, supabase) + (teamCallerContext || callerContext) + surveyPrompt +
+  const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
   const tools = buildTools(typedAgent, qbConnected);
 

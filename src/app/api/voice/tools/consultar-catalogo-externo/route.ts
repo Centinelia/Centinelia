@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
   if (!tramite_id || !catalogo_key) return respond({ ok: false, error: 'tramite_id y catalogo_key son requeridos.' });
 
   const supabase = createAdminClient();
-  const { data: agent } = await supabase.from('voice_agents').select('org_id').eq('id', agentId).maybeSingle();
-  if (!agent?.org_id) return respond({ ok: false, error: 'Agente sin organización.' });
+  const { data: agent } = await supabase.from('voice_agents').select('portal_email').eq('id', agentId).maybeSingle();
+  if (!agent?.portal_email) return respond({ ok: false, error: 'Agente sin organización.' });
 
-  const tramite = await getTramiteById(tramite_id, agent.org_id, supabase);
+  const tramite = await getTramiteById(tramite_id, agent.portal_email, supabase);
   if (!tramite) return respond({ ok: false, error: 'Trámite no encontrado o no pertenece a esta organización.' });
 
   const result = await fetchCatalogo(tramite, catalogo_key, filtros ?? {}, supabase);

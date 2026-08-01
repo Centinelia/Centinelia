@@ -62,7 +62,7 @@ export interface ReglasNegocio {
 
 export interface Tramite {
   id:                     string;
-  org_id:                 string;
+  portal_email:           string;
   slug:                   string;
   nombre_publico:         string;
   descripcion_agente:     string;
