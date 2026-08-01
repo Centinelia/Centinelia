@@ -381,10 +381,13 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
   const agentName = agent.agent_name?.trim() || 'Centinelia';
 
   const supabaseSync = createAdminClient();
-  const messages: Array<{ role: string; content: string }> = [
-    { role: 'system', content: await buildSystemPrompt(agent, learnings, agent.portal_email ?? undefined, supabaseSync) },
-  ];
-
+  // Peer awareness block. Fusionado al system message principal (no como
+  // mensaje separado) porque Haiku 4.5 ignora system messages secundarios
+  // cuando el primero es largo. Ver call 019fbf3f: Sofia dijo "no tengo un
+  // compañero llamado Noah" a pesar de que Noah estaba listado en el 2do
+  // system message. Al inyectarlo al FINAL del prompt principal aprovechamos
+  // el recency bias del LLM.
+  let peerBlock = '';
   if (peers.length > 0) {
     const meerkatIdForPeers = agent.features.meerkat_role_id;
     const roleToolsForPeers = meerkatIdForPeers && meerkatIdForPeers !== 'custom'
@@ -394,11 +397,9 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     const hasDelegar   = roleToolsForPeers.includes('delegar_tarea');
 
     const lines = [
-      `COMPAÑEROS DE EQUIPO:`,
-      `Trabajas junto a otros empleados del mismo negocio. Son tus compañeros, no tus subordinados ni tus superiores.`,
-      `Si un compañero te llama o te contacta, identifícate como su compañero/a: "Soy ${agentName}, tu compañero/a de equipo." No digas que eres empleado/a de él o ella — ambos son empleados del negocio.`,
+      `TU EQUIPO — COMPAÑEROS DISPONIBLES:`,
+      `Trabajas junto a otros empleados del mismo negocio. Estos son sus nombres reales, no ficticios. Si un cliente te pregunta si conoces a alguno o te pide consultar con alguno, SÍ los conoces:`,
       ``,
-      `Compañeros disponibles:`,
       ...peers.map(p => {
         const label      = peerRoleLabel(p);
         const peerName   = p.agent_name || label;
@@ -407,28 +408,34 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
         const capsSuffix = toolCaps.length > 0 ? ` Puede: ${toolCaps.join(', ')}.` : '';
         return `- ${peerName} (${label}): ${cap}${capsSuffix}`;
       }),
+      ``,
+      `NUNCA digas "no conozco a ${peers.map(p => p.agent_name || 'ese compañero').join(' / ')}" — esos son tus compañeros de equipo reales.`,
+      `Si un compañero te llama, identifícate: "Soy ${agentName}, tu compañero/a de equipo."`,
     ];
 
     if (hasConsultar || hasDelegar) {
-      lines.push(``, `MODOS DE COLABORACIÓN — elige la herramienta correcta según lo que pide el cliente:`);
+      lines.push(``, `MODOS DE COLABORACIÓN con tu equipo:`);
       if (hasConsultar) lines.push(
-        `- consultar_agente(rol, tarea): úsala cuando el cliente hace una pregunta puntual que un compañero puede responder. En "rol" usa el NOMBRE EXACTO del compañero de tu lista (ej: "Noah", "Nara", "Nelia") — nunca uses roles genéricos como "técnico" o "administrativo". Di al cliente "un momento por favor mientras consulto" antes de invocarla. El compañero responde internamente en unos segundos y tú comunicas la respuesta al cliente.`
+        `- consultar_agente(rol, tarea): pregunta puntual a un compañero. En "rol" usa el NOMBRE EXACTO del compañero de tu lista (ej: "Noah", "Nara") — nunca uses roles genéricos como "técnico" o "administrativo". Di "un momento por favor mientras consulto" antes de invocarla. El compañero responde y tú comunicas la respuesta al cliente.`
       );
       if (hasDelegar) lines.push(
-        `- delegar_tarea(agente, tarea, success_criteria): úsala para investigación o acciones que toman minutos (cotizaciones, búsquedas amplias, redactar y enviar correos con datos compilados). En "agente" usa el NOMBRE EXACTO del compañero. En "tarea" incluye TODO lo necesario para que él la ejecute: correo del cliente, datos, contexto, formato esperado. Ofrécele al cliente recibir el resultado por correo o callback.`
+        `- delegar_tarea(agente, tarea, success_criteria): para trabajo que toma minutos (cotizaciones, búsquedas amplias, redactar y enviar correos con datos compilados). En "agente" usa el NOMBRE EXACTO. En "tarea" incluye TODO lo necesario para que él la ejecute: correo del cliente, datos, contexto, formato.`
       );
       lines.push(
-        `REGLA CRÍTICA — PROMESAS DE CORREO: si le prometes al cliente que alguien "le enviará un correo con la información" o "el equipo lo contactará", DEBES invocar delegar_tarea ANTES de despedirte, no despues. La tarea debe incluir: (1) correo del cliente confirmado, (2) qué debe investigar/hacer el compañero, (3) formato de respuesta esperado. Sin la llamada a delegar_tarea, la promesa NO se cumple y quedas mal con el cliente.`
+        `REGLA CRÍTICA — PROMESAS DE CORREO: si le prometes al cliente que "te enviaremos un correo" o "el equipo te contactará", DEBES invocar delegar_tarea ANTES de despedirte. Sin la llamada al tool, la promesa NO se cumple. La tarea debe incluir: (1) correo del cliente confirmado, (2) qué debe hacer el compañero, (3) formato esperado.`
       );
       lines.push(
-        `REGLA DE ORO: si es info que un compañero sabe → consultar_agente. Si toma minutos + prometiste correo → delegar_tarea antes de colgar. NUNCA digas "no puedo ayudarte con eso" si tienes un compañero que sí puede.`
+        `REGLA DE ORO: nunca digas "no puedo ayudarte con eso" o "no conozco a X" si tienes un compañero que puede. Consúltale o deléga.`
       );
-    } else {
-      lines.push(``, `Si el cliente solicita algo que corresponde a un compañero especialista, tómalo como consulta interna: recopila los detalles y usa las herramientas a tu disposición para responder o dejarle seguimiento por correo.`);
     }
 
-    messages.push({ role: 'system', content: lines.join('\n') });
+    peerBlock = '\n\n' + lines.join('\n');
   }
+
+  const mainSystemPrompt = await buildSystemPrompt(agent, learnings, agent.portal_email ?? undefined, supabaseSync);
+  const messages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: mainSystemPrompt + peerBlock },
+  ];
 
   const meerkatId = agent.features.meerkat_role_id;
   // Primero resolvemos la versión (aplicando flags + pin + legacy fallback),
