@@ -97,6 +97,44 @@ function peerCapabilitySummary(peer: TeamPeer): string {
   return peerRoleDesc(peer);
 }
 
+// Traduce nombres tecnicos de tools a capacidades comprensibles para el prompt.
+// Se usa para exponer a cada peer con SUS herramientas clave — asi Sofia sabe
+// que Noah puede buscar en internet aunque su rol sea Ventas.
+const TOOL_HUMAN_LABEL: Record<string, string> = {
+  buscar_en_web:        'buscar información en internet',
+  read_url:             'leer páginas web',
+  search_leads:         'buscar prospectos en línea',
+  enviar_correo:        'enviar correos',
+  crear_documento:      'crear documentos y PDFs',
+  create_file:          'crear archivos de texto',
+  create_contract_draft:'redactar contratos',
+  buscar_archivo:       'buscar archivos en Drive',
+  leer_archivo:         'leer archivos del Drive',
+  save_to_drive:        'guardar archivos en la nube',
+  organize_files:       'organizar carpetas',
+  list_calendar_events: 'consultar la agenda',
+  create_calendar_event:'agendar eventos en calendario',
+  crear_ticket:         'abrir tickets de soporte',
+  consultar_incidentes: 'consultar incidentes abiertos',
+  buscar_directorio:    'buscar en directorio interno',
+  qb_consultar_facturas:'consultar facturas de QuickBooks',
+  qb_buscar_cliente:    'buscar clientes en QuickBooks',
+  qb_crear_factura:     'emitir facturas',
+  llamar_a:             'hacer llamadas salientes',
+  create_civic_report:  'registrar reportes ciudadanos',
+  analizar_publicaciones_ml: 'analizar MercadoLibre',
+  crear_publicacion_ml: 'crear publicaciones en MercadoLibre',
+};
+
+function peerToolCapabilities(peer: TeamPeer): string[] {
+  const meerkatId = (peer.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id;
+  if (!meerkatId || meerkatId === 'custom') return [];
+  const roleTools = MEERKAT_VOICE_DISTRIBUTION[meerkatId] ?? [];
+  return roleTools
+    .map(t => TOOL_HUMAN_LABEL[t])
+    .filter((s): s is string => !!s);
+}
+
 // ─── Org-level data enrichment ───────────────────────────────────────────────
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
@@ -309,36 +347,15 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
     tools.push(buildToolDef('reportar_falla', agent, server)!);
   }
 
-  // One transferCall tool per active team peer — enables live agent-to-agent routing
-  for (const peer of peers) {
-    const toolName  = peerToolName(peer);
-    const roleLabel = peerRoleLabel(peer);
-    const peerName  = peer.agent_name || roleLabel;
-    tools.push({
-      type: 'transferCall',
-      function: {
-        name: toolName,
-        description: `Transfiere la llamada a ${peerName} (${roleLabel}): ${peerCapabilitySummary(peer)} Úsalo cuando el cliente necesite este especialista.`,
-        parameters: {
-          type: 'object',
-          properties: {
-            motivo: { type: 'string', description: 'Motivo breve de la transferencia' },
-          },
-          required: ['motivo'],
-        },
-      },
-      destinations: [{
-        type: 'assistant',
-        // Vapi API espera assistantName (no assistantId): matchea por el
-        // 'name' del assistant en Vapi, que sigue el patron
-        // '${agentName}, ${business_name}' (ver line ~417 de este archivo).
-        // Usa peer.business_name si esta disponible, fallback a agent.business_name
-        // (peers deberian compartir el mismo negocio pero es defensivo).
-        assistantName: `${peer.agent_name || peerName}, ${peer.business_name || agent.business_name}`,
-        message: `Con gusto, te comunico con ${peerName} ahora mismo.`,
-      }],
-    });
-  }
+  // TransferCall a peers desactivado: Vapi rechazaba "assistantName not found"
+  // aunque el nombre existía exacto, tirando "Call.start.error get assistant"
+  // (todas las llamadas fallando). Ver call 019f...430ca (sesion 2026-08-01).
+  // El intento con assistantId dio "assistantId should not exist" (schema).
+  //
+  // Como workaround, mantenemos solo consultar_agente + delegar_tarea para
+  // colaboracion con peers, que no requieren referenciar al peer por Vapi ID.
+  // El warm transfer a peer es reactivable cuando Vapi documente el pattern
+  // correcto o cuando cambiemos a Vapi Squads.
 
   const ids: string[] = [];
   for (const tool of tools) {
@@ -369,19 +386,47 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
   ];
 
   if (peers.length > 0) {
+    const meerkatIdForPeers = agent.features.meerkat_role_id;
+    const roleToolsForPeers = meerkatIdForPeers && meerkatIdForPeers !== 'custom'
+      ? MEERKAT_VOICE_DISTRIBUTION[meerkatIdForPeers] ?? []
+      : [];
+    const hasConsultar = roleToolsForPeers.includes('consultar_agente');
+    const hasDelegar   = roleToolsForPeers.includes('delegar_tarea');
+
     const lines = [
-      `COMPAÑEROS DE EQUIPO (transferencia en tiempo real):`,
+      `COMPAÑEROS DE EQUIPO:`,
       `Trabajas junto a otros empleados del mismo negocio. Son tus compañeros, no tus subordinados ni tus superiores.`,
       `Si un compañero te llama o te contacta, identifícate como su compañero/a: "Soy ${agentName}, tu compañero/a de equipo." No digas que eres empleado/a de él o ella — ambos son empleados del negocio.`,
+      ``,
+      `Compañeros disponibles:`,
       ...peers.map(p => {
-        const label    = peerRoleLabel(p);
-        const toolName = peerToolName(p);
-        const peerName = p.agent_name || label;
-        const cap      = peerCapabilitySummary(p);
-        return `- ${peerName} (${label}): ${cap} Herramienta: ${toolName}.`;
+        const label      = peerRoleLabel(p);
+        const peerName   = p.agent_name || label;
+        const cap        = peerCapabilitySummary(p);
+        const toolCaps   = peerToolCapabilities(p);
+        const capsSuffix = toolCaps.length > 0 ? ` Puede: ${toolCaps.join(', ')}.` : '';
+        return `- ${peerName} (${label}): ${cap}${capsSuffix}`;
       }),
-      'Si el cliente solicita algo que corresponde a un compañero especialista, transfiérelo de inmediato con la herramienta indicada. No le hagas esperar ni expliques el proceso técnico.',
     ];
+
+    if (hasConsultar || hasDelegar) {
+      lines.push(``, `MODOS DE COLABORACIÓN — elige la herramienta correcta según lo que pide el cliente:`);
+      if (hasConsultar) lines.push(
+        `- consultar_agente(rol, tarea): úsala cuando el cliente hace una pregunta puntual que un compañero puede responder. En "rol" usa el NOMBRE EXACTO del compañero de tu lista (ej: "Noah", "Nara", "Nelia") — nunca uses roles genéricos como "técnico" o "administrativo". Di al cliente "un momento por favor mientras consulto" antes de invocarla. El compañero responde internamente en unos segundos y tú comunicas la respuesta al cliente.`
+      );
+      if (hasDelegar) lines.push(
+        `- delegar_tarea(agente, tarea, success_criteria): úsala para investigación o acciones que toman minutos (cotizaciones, búsquedas amplias, redactar y enviar correos con datos compilados). En "agente" usa el NOMBRE EXACTO del compañero. En "tarea" incluye TODO lo necesario para que él la ejecute: correo del cliente, datos, contexto, formato esperado. Ofrécele al cliente recibir el resultado por correo o callback.`
+      );
+      lines.push(
+        `REGLA CRÍTICA — PROMESAS DE CORREO: si le prometes al cliente que alguien "le enviará un correo con la información" o "el equipo lo contactará", DEBES invocar delegar_tarea ANTES de despedirte, no despues. La tarea debe incluir: (1) correo del cliente confirmado, (2) qué debe investigar/hacer el compañero, (3) formato de respuesta esperado. Sin la llamada a delegar_tarea, la promesa NO se cumple y quedas mal con el cliente.`
+      );
+      lines.push(
+        `REGLA DE ORO: si es info que un compañero sabe → consultar_agente. Si toma minutos + prometiste correo → delegar_tarea antes de colgar. NUNCA digas "no puedo ayudarte con eso" si tienes un compañero que sí puede.`
+      );
+    } else {
+      lines.push(``, `Si el cliente solicita algo que corresponde a un compañero especialista, tómalo como consulta interna: recopila los detalles y usa las herramientas a tu disposición para responder o dejarle seguimiento por correo.`);
+    }
+
     messages.push({ role: 'system', content: lines.join('\n') });
   }
 
@@ -467,15 +512,15 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       return `Le habla ${agentName} de ${agent.business_name}, su llamada puede ser grabada. ¿En qué le puedo ayudar?`;
     })(),
     endCallMessage: 'Hasta luego.',
-    // Ampliadas post-primera-llamada-real: la lista original era muy formal y
-    // el modelo con CCP nuevo cierra corto ("Hasta luego." o "Que le vaya bien.").
-    // Vapi necesita matchear alguna de estas para colgar.
+    // Solo frases INEQUÍVOCAS de cierre. "gracias por llamar" y "gracias por
+    // comunicarse" fueron removidas porque agentes las usan como respuesta
+    // amable a saludos del cliente ("Hello" → "Hola, gracias por llamar")
+    // y Vapi cortaba a mitad de conversación. Ver call 019f...e0e88.
     endCallPhrases: [
       'hasta luego', 'hasta pronto', 'hasta la próxima',
       'que le vaya bien', 'que le vaya muy bien', 'que tenga buen día',
       'que tenga un excelente día', 'que tenga buena tarde', 'que tenga buena noche',
       'nos vemos', 'nos hablamos', 'estamos en contacto',
-      'gracias por llamar', 'gracias por comunicarse',
       'adiós',
       'fue un placer atenderle', 'fue un placer',
     ],
