@@ -74,7 +74,7 @@ export default async function OficinaLayout({
   ).values()];
 
   // ── Unread badge counts ──────────────────────────────────────────────────
-  const badges: Record<string, number> = { bandeja: 0, contratos: 0, juntas: 0 };
+  const badges: Record<string, number> = { bandeja: 0, contratos: 0, juntas: 0, reportes: 0 };
 
   if (lookupEmail) {
     try {
@@ -136,6 +136,15 @@ export default async function OficinaLayout({
           meetingQ = meetingQ.not('id', 'in', `(${readMeeting.join(',')})`);
         const { count: mc } = await meetingQ;
         badges.juntas = mc ?? 0;
+
+        // Unread check-ins de coordinators (Nox / Niva) últimos 30d
+        const { count: hrc2 } = await supabase
+          .from('heartbeat_runs')
+          .select('id', { count: 'exact', head: true })
+          .eq('portal_email', lookupEmail)
+          .is('read_at', null)
+          .gte('ran_at', cutoff);
+        badges.reportes = hrc2 ?? 0;
       }
     } catch {
       // portal_read_receipts table may not exist yet; badges default to 0
