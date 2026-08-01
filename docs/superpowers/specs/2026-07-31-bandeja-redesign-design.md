@@ -78,7 +78,8 @@ Dentro de cada tab actual, el contenido pasa de lista plana a esta estructura ve
 - **Conteo dinámico:** `Cliente 8`. Refleja el resultado post-search cuando hay término activo.
 - **Estado visual:** activo con fondo `#6C3BFF` + texto blanco. Inactivos con borde suave + texto neutro.
 - **Auto-oculto:** si el tab activo tiene ≤3 items totales, los chips no se muestran.
-- **URL:** el chip activo se refleja en `?tab=pending&cat=cliente`. Sobrevive refresh y permite compartir vista filtrada. No rompe deep-links existentes (`?tab=auto`, `?tab=spam`).
+- **URL:** el chip activo se refleja en `?tab=pending&cat=<slug>` donde `slug ∈ { cliente, proveedor, factura, urgente, otros }`. Ausencia de `cat` equivale a "Todas". Sobrevive refresh y permite compartir vista filtrada. No rompe deep-links existentes (`?tab=auto`, `?tab=spam`).
+- **"Todas" siempre presente**, aunque haya cero items en el tab.
 
 ### Rediseño visual de la fila colapsada
 
@@ -164,7 +165,12 @@ Cada componente tiene una responsabilidad clara:
 
 ## Riesgos y mitigaciones
 
-- **Categorías inconsistentes en `ops_inbox.category`.** Los agentes clasifican con texto libre. Puede haber `cliente`, `Cliente`, `clientes`. Mitigación: normalizar con `.toLowerCase().trim()` y mapear variantes obvias a las 5 conocidas. Todo lo no reconocido cae a "Otros".
+- **Categorías inconsistentes en `ops_inbox.category`.** Los agentes clasifican con texto libre. Puede haber `cliente`, `Cliente`, `clientes`. Mitigación: normalizar con `.toLowerCase().trim()` y aplicar tabla explícita de sinónimos:
+  - `cliente | clientes | client → cliente`
+  - `proveedor | proveedores | supplier | vendor → proveedor`
+  - `factura | facturas | invoice | recibo → factura`
+  - `urgente | urgent | urgencia | prioritario → urgente`
+  - todo lo demás cae a "Otros".
 - **Sofía legacy en chip de agente.** El chip mostrará "Sofía" en portales donde exista, aunque memory nota que Sofía no es parte del roster oficial de meerkats. Aceptable por ahora, se etiquetará como demo legacy en el futuro (fuera de scope de este spec).
 - **Múltiples archivos nuevos.** Se recomienda commits incrementales: (1) extract subcomponentes preservando comportamiento actual, (2) agregar filtro chips, (3) agregar partición zonas, (4) rediseñar row visual, (5) URL sync.
 
