@@ -128,7 +128,12 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
       .select('id, vapi_agent_id, agent_name, business_name, role, features, role_knowledge_base')
       .eq('portal_email', agent.portal_email)
       .eq('active', true)
-      .neq('id', agent.id);
+      .neq('id', agent.id)
+      // Solo peers voice-capable: coordinadores (nox, niva) no tienen vapi_agent_id
+      // porque corren via Claude/executor, no via Vapi. Si los incluimos, generamos
+      // tools transferir_a_<nox> con assistantName inexistente en Vapi, y todas las
+      // llamadas al assistant fallan con "Invalid Destination".
+      .not('vapi_agent_id', 'is', null);
 
     return (data ?? []).filter((p): p is TeamPeer => !!p.vapi_agent_id);
   } catch {
