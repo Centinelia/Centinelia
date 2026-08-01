@@ -5,23 +5,23 @@ function describeCampo(c: Campo): string {
   const req = c.required ? 'obligatorio' : 'opcional';
   switch (c.tipo) {
     case 'curp':
-      return `${c.key} (CURP, ${req}) — captura con protocolo crítico. Si tiene autocomplete via padrón, primero llama buscar_en_padron_externo y si trae datos confírmalos con la persona.`;
+      return `${c.key} (CURP, ${req}): captura con protocolo crítico. Si tiene autocomplete via padrón, primero llama buscar_en_padron_externo y si trae datos confírmalos con la persona.`;
     case 'catalogo_pick':
-      return `${c.key} (opción de catálogo "${c.catalogo}", ${req}) — llama consultar_catalogo_externo, ofrece las opciones y captura la elección.`;
+      return `${c.key} (opción de catálogo "${c.catalogo}", ${req}): llama consultar_catalogo_externo, ofrece las opciones y captura la elección.`;
     case 'catalogo_search':
-      return `${c.key} (búsqueda en catálogo "${c.catalogo}", ${req}) — pide un texto del ciudadano y usa consultar_catalogo_externo con el filtro correspondiente.`;
+      return `${c.key} (búsqueda en catálogo "${c.catalogo}", ${req}): pide un texto del ciudadano y usa consultar_catalogo_externo con el filtro correspondiente.`;
     case 'cp':
       return `${c.key} (código postal, 5 dígitos, ${req}).`;
     case 'email':
-      return `${c.key} (correo electrónico, ${req}) — usa el protocolo de captura de correo.`;
+      return `${c.key} (correo electrónico, ${req}): usa el protocolo de captura de correo.`;
     case 'telefono_mx':
-      return `${c.key} (teléfono 10 dígitos, ${req}) — usa el protocolo de captura de teléfono.`;
+      return `${c.key} (teléfono 10 dígitos, ${req}): usa el protocolo de captura de teléfono.`;
     case 'fecha':
       return `${c.key} (fecha AAAA-MM-DD, ${req}).`;
     case 'consentimiento':
-      return `${c.key} (consentimiento explícito del aviso de privacidad, ${req}) — DEBE ser el último paso antes de enviar.`;
+      return `${c.key} (consentimiento explícito del aviso de privacidad, ${req}): DEBE ser el último paso antes de enviar.`;
     default:
-      return `${c.key} (${c.tipo}, ${req})${c.prompt_captura ? ` — ${c.prompt_captura}` : ''}`;
+      return `${c.key} (${c.tipo}, ${req})${c.prompt_captura ? `: ${c.prompt_captura}` : ''}`;
   }
 }
 
@@ -29,7 +29,7 @@ function renderTramite(t: Tramite): string {
   const camposOrdenados = t.campos.slice().sort((a, b) => a.orden - b.orden);
   const pasos = camposOrdenados.map((c, i) => `${i + 1}. ${describeCampo(c)}`).join('\n');
   const avisoBlock = t.aviso_privacidad_texto
-    ? `\nAviso de privacidad — LEE al ciudadano antes de capturar cualquier dato personal, y confirma verbalmente que acepta:\n"${t.aviso_privacidad_texto}"\n${t.aviso_privacidad_url ? `Documento completo: ${t.aviso_privacidad_url}` : ''}`
+    ? `\nAviso de privacidad: LEE al ciudadano antes de capturar cualquier dato personal, y confirma verbalmente que acepta:\n"${t.aviso_privacidad_texto}"\n${t.aviso_privacidad_url ? `Documento completo: ${t.aviso_privacidad_url}` : ''}`
     : '';
   const reglas = t.reglas_negocio;
   const reglasBlock = [
