@@ -5,6 +5,17 @@ import { useSearchParams } from 'next/navigation';
 import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
+import type { InboxAgent } from './inbox/categories';
+import { normalizeCategory, CATEGORY_LABELS as CAT_LABELS, CATEGORY_COLORS as CAT_COLORS } from './inbox/categories';
+
+// Temporal: mientras InboxRow no exista, adaptamos las viejas keys al helper nuevo.
+// Se elimina en Task 3.
+function catColorLegacy(raw: string | null | undefined): string {
+  return CAT_COLORS[normalizeCategory(raw)].fg;
+}
+function catLabelLegacy(raw: string | null | undefined): string {
+  return CAT_LABELS[normalizeCategory(raw)];
+}
 
 interface InboxItem {
   id:                  string;
@@ -61,23 +72,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   mercadolibre:'MercadoLibre',
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  proveedor: 'Proveedor',
-  cliente:   'Cliente',
-  urgente:   'Urgente',
-  factura:   'Factura',
-  spam:      'Spam',
-  otro:      'Otro',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  proveedor: '#6C3BFF',
-  cliente:   '#22c55e',
-  urgente:   '#ef4444',
-  factura:   '#f59e0b',
-  spam:      '#94a3b8',
-  otro:      '#6b7280',
-};
 
 const STATUS_LABELS: Record<string, string> = {
   pending:        'Pendiente',
@@ -112,7 +106,12 @@ const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
   { key: 'otro',               label: 'Otro',                            hint: 'Describe en el texto abajo' },
 ];
 
-export default function OpsInboxSection({ token }: { token: string }) {
+interface OpsInboxSectionProps {
+  token:  string;
+  agents: InboxAgent[];
+}
+
+export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps) {
   const [items, setItems]                                 = useState<InboxItem[]>([]);
   const [humanRequests, setHumanReqs]                     = useState<HumanRequest[]>([]);
   const [reauthNeeded, setReauthNeeded]                   = useState<ReauthNeeded[]>([]);
@@ -484,8 +483,8 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
 
       {filteredItems.map(item => {
         const isExpanded = expandedId === item.id;
-        const catColor   = CATEGORY_COLORS[item.category ?? 'otro'] ?? '#6b7280';
-        const catLabel   = CATEGORY_LABELS[item.category ?? 'otro'] ?? 'Otro';
+        const catColor   = catColorLegacy(item.category);
+        const catLabel   = catLabelLegacy(item.category);
         const isPending  = item.status === 'pending';
 
         return (
