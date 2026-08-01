@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { cliente_nombre, descripcion, monto, fecha_vencimiento } =
-    body.toolCallList?.[0]?.function?.arguments ?? body;
+    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!cliente_nombre || !descripcion || !monto) {
     return NextResponse.json({ result: 'Necesito el nombre del cliente, descripción del servicio y monto para crear la factura.' });

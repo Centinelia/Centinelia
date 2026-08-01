@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } =
-    body.toolCallList?.[0]?.function?.arguments ?? body;
+    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 

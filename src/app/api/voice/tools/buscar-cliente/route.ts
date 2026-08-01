@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const { identificador } = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const { identificador } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
   if (!identificador) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });

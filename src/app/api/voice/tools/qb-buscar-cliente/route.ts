@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { nombre } = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const { nombre } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!nombre) return NextResponse.json({ result: 'Necesito el nombre del cliente para buscarlo en QuickBooks.' });
 

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido' });
 
   const body = await req.json();
-  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const { title, content, filename, template_type, client_name, client_email, total_price, validity_days, recipient_name, recipient_email } =
     args as { title: string; content: string; filename?: string; template_type?: string; client_name?: string; client_email?: string; total_price?: string; validity_days?: number; recipient_name?: string; recipient_email?: string };
 

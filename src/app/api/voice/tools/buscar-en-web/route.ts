@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body    = await req.json() as Record<string, unknown>;
-  const call    = (body.toolCallList as Record<string, unknown>[])?.[0];
+  const call    = (((body.message as Record<string, unknown> | undefined)?.toolCallList ?? body.toolCallList) as Record<string, unknown>[])?.[0];
   const rawArgs = (call?.function as Record<string, unknown>)?.arguments ?? body;
   const args    = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, string>;
 

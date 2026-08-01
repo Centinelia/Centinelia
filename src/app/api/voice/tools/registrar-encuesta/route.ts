@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json() as Record<string, unknown>;
 
-  const call       = (body.toolCallList as Record<string, unknown>[])?.[0];
+  const call       = (((body.message as Record<string, unknown> | undefined)?.toolCallList ?? body.toolCallList) as Record<string, unknown>[])?.[0];
   const rawArgs    = (call?.function as Record<string, unknown>)?.arguments ?? body;
   const args       = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, unknown>;
   const toolCallId = (call?.id as string) ?? 'call_1';

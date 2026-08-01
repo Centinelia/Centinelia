@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json();
-  const args    = body.toolCallList?.[0]?.function?.arguments ?? body;
-  const toolId  = body.toolCallList?.[0]?.id ?? 'tool';
+  const args    = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const toolId  = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? 'tool';
 
   const { titulo, categoria = 'otro', prioridad = 'normal', descripcion, caller_number } = args as {
     titulo?: string; categoria?: string; prioridad?: string; descripcion?: string; caller_number?: string;

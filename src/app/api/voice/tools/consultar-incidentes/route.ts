@@ -6,8 +6,8 @@ export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const agentId = req.nextUrl.searchParams.get('agent_id') ?? '';
   const body    = await req.json();
-  const args    = body.toolCallList?.[0]?.function?.arguments ?? body;
-  const toolId  = body.toolCallList?.[0]?.id ?? 'tool';
+  const args    = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const toolId  = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? 'tool';
 
   const { tema } = args as { tema?: string };
 

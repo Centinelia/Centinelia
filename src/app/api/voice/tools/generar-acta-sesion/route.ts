@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
-  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const {
     numero_sesion = '',
     tipo_sesion   = 'Ordinaria',

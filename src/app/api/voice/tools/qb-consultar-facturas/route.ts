@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error: agent_id requerido.' });
 
   const body = await req.json();
-  const { cliente, solo_pendientes = true } = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const { cliente, solo_pendientes = true } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase

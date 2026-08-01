@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
   const body = await req.json();
-  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const { folio, documento, tramite_tipo } = args as {
     folio: string;
     documento: string;

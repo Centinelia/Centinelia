@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { cliente_nombre, factura_numero, monto } =
-    body.toolCallList?.[0]?.function?.arguments ?? body;
+    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!cliente_nombre || !monto) {
     return NextResponse.json({ result: 'Necesito el nombre del cliente y el monto del pago para registrarlo.' });

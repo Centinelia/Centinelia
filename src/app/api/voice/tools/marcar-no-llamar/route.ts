@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const { telefono, motivo } = args as { telefono: string; motivo?: string };
 
   if (!agent_id || !telefono?.trim()) {

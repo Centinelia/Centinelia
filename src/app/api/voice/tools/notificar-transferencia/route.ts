@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const { nombre, motivo, resumen } = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const { nombre, motivo, resumen } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
