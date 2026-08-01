@@ -203,23 +203,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2b. Save appointment
-      if (structured?.tipo_contacto === 'cita' || structured?.cita_fecha) {
-        const telefono = structured.cita_telefono ?? structured.whatsapp ?? callerNumber ?? null;
-        const fechaIso = structured.cita_fecha && /^\d{4}-\d{2}-\d{2}$/.test(structured.cita_fecha)
-          ? structured.cita_fecha
-          : null;
-        await supabase.from('appointments_voice').insert({
-          agent_id:   resolvedAgentId,
-          nombre:     structured.nombre    ?? null,
-          telefono,
-          servicio:   structured.servicio  ?? null,
-          fecha:      structured.cita_fecha ?? null,
-          hora:       structured.cita_hora  ?? null,
-          fecha_iso:  fechaIso,
-          status:     'confirmada',
-        });
-      }
+      // 2b. Save appointment — REMOVIDO.
+      //
+      // Antes: si el structured post-call decia tipo_contacto=cita o venia cita_fecha,
+      // se INSERTABA cita automatica sin importar si el modelo llamo agendar_cita
+      // durante la llamada. Este "safety net" causo bugs graves: llamadas cortadas
+      // a mitad donde el cliente solo MENCIONO una fecha (sin confirmar) generaban
+      // citas fantasma con status=confirmada, sin starts_at, sin conflict check.
+      //
+      // Fix: la cita solo se crea si el modelo llama agendar_cita durante la
+      // llamada (el tool call es la fuente de verdad). Si el modelo por alguna
+      // razon no la llamo, mejor no crear cita que crear una falsa.
+      //
+      // Si en el futuro necesitamos recuperar citas mencionadas pero no
+      // agendadas via tool, hacerlo con un flujo separado + revision humana.
 
       // 2c. Outbound contact upsert (race-safe — unique constraint on agent_id,telefono)
       const callTypeRaw   = call?.type ?? '';
