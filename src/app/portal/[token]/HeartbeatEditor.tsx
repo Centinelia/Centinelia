@@ -38,7 +38,7 @@ const DEFAULT_TASK_COORDINATOR = 'Revisa la actividad operativa del día: tareas
 export default function HeartbeatEditor({ token, initConfig, isCoordinator = false }: Props) {
   const base: HeartbeatConfig = {
     enabled:     false,
-    frequency:   'daily',
+    frequency:   isCoordinator ? 'weekly' : 'daily',
     day_of_week: 1,
     hour:        18,
     task:        '',
