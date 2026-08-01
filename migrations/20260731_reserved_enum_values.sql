@@ -1,0 +1,50 @@
+-- ============================================================================
+-- Reserved enum values — H1 del audit deferred handoff (sesión 54)
+-- ============================================================================
+--
+-- Este archivo es documental. NO ejecuta cambios de schema.
+--
+-- Durante el audit sesión 53 se identificaron 3 valores en CHECK constraints
+-- que nunca son escritos por el código actual. En sesión 54 se evaluó
+-- dropearlos vs dejarlos reservados. Se decidió DEJARLOS RESERVADOS porque
+-- corresponden a features en el roadmap cercano, no a enums muertos.
+--
+-- Si en el futuro se detecta que alguno REALMENTE no se va a usar, dropear
+-- del CHECK y borrar la entrada de esta lista.
+--
+-- ----------------------------------------------------------------------------
+-- 1. agent_tasks.status = 'partial'
+-- ----------------------------------------------------------------------------
+-- Intención: el loop agéntico de Nox completa parcialmente (p.ej. 3 de 5
+-- sub-tasks). Distinto de 'success' (todo OK) y 'failed' (nada OK).
+--
+-- Cómo usarlo cuando toque: en nox-coordinator, tras el loop, si
+-- successful_subtasks > 0 && successful_subtasks < total_subtasks →
+-- status='partial'.
+--
+-- ----------------------------------------------------------------------------
+-- 2. agent_tasks.trigger_type IN ('cron', 'manual')
+-- ----------------------------------------------------------------------------
+-- Intención:
+--   'cron'   → task creada por cron programado (tareas-programadas UI)
+--   'manual' → task creada por admin trigger (debug, testing, one-off)
+--
+-- Actualmente solo se usan 'email' | 'voice' | 'chat' (canal origen).
+-- Cuando el cron de tareas-programadas empiece a insertar tasks, usar 'cron'.
+-- Cuando exista un admin "correr ahora" en /admin/tareas, usar 'manual'.
+--
+-- ----------------------------------------------------------------------------
+-- 3. golden_test_runs.status = 'failed'
+-- ----------------------------------------------------------------------------
+-- Intención: falla a NIVEL RUN (infra, timeout, LLM 500, cost cap alcanzado)
+-- distinto de scenarios individuales que fallen su rubric. Actualmente el
+-- runner solo escribe 'running' | 'completed'; si un scenario truena, el
+-- run completa con completed pero el scenario tiene status='failed' en
+-- golden_test_scenario_runs.
+--
+-- Cómo usarlo cuando toque: envolver el runner en try/catch y setear
+-- runs.status='failed' + error_message si el bootstrap del run truena.
+--
+-- ============================================================================
+-- No-op para que el file sea válido como migration si algo lo corre.
+SELECT 1 AS h1_documented;
