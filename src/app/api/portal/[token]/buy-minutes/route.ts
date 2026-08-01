@@ -37,12 +37,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
   const checkout = await stripe.checkout.sessions.create({
-    customer: agent.stripe_customer_id ?? undefined,
-    customer_creation: agent.stripe_customer_id ? undefined : 'always',
+    ...(agent.stripe_customer_id
+      ? { customer: agent.stripe_customer_id, customer_update: { address: 'auto', name: 'auto' } }
+      : { customer_creation: 'always' as const }
+    ),
+    automatic_tax:     { enabled: true },
+    tax_id_collection: { enabled: true, required: 'if_supported' },
     line_items: [{
       price_data: {
-        currency: 'mxn',
-        unit_amount: minutes * PRICE_PER_MIN,
+        currency:      'mxn',
+        unit_amount:   minutes * PRICE_PER_MIN,
+        tax_behavior:  'exclusive',
         product_data: {
           name: `${minutes} minutos extra · ${agent.business_name}`,
           description: `Paquete adicional de ${minutes} minutos para tu agente de voz Centinelia`,

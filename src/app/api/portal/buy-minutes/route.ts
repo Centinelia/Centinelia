@@ -54,14 +54,18 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
   const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode:     'payment',
+    customer:            customerId,
+    customer_update:     { address: 'auto', name: 'auto' },
+    mode:                'payment',
+    automatic_tax:       { enabled: true },
+    tax_id_collection:   { enabled: true, required: 'if_supported' },
     payment_intent_data: { setup_future_usage: 'off_session' },
     line_items: [{
       quantity: 1,
       price_data: {
-        currency:     'mxn',
-        unit_amount:  priceMxn * 100,
+        currency:      'mxn',
+        unit_amount:   priceMxn * 100,
+        tax_behavior:  'inclusive',
         product_data: {
           name:        `${minutes} minutos extra, Centinelia`,
           description: `Se suman inmediatamente al saldo de ${agent.business_name}`,

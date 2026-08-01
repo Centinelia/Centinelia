@@ -225,8 +225,11 @@ export async function POST(req: NextRequest) {
 
   const appUrl  = process.env.NEXT_PUBLIC_APP_URL!;
   const session = await stripe.checkout.sessions.create({
-    customer:  customer.id,
-    mode:      'subscription',
+    customer:          customer.id,
+    customer_update:   { address: 'auto', name: 'auto' },
+    mode:              'subscription',
+    automatic_tax:     { enabled: true },
+    tax_id_collection: { enabled: true, required: 'if_supported' },
     line_items: [
       { price: FEATURE_PLAN_CONFIG[p].setupPriceId(),  quantity: 1 },
       { price: monthlyConfig.priceId(),                quantity: 1 },

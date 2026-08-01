@@ -46,8 +46,11 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
   const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode:     'subscription',
+    customer:          customerId,
+    customer_update:   { address: 'auto', name: 'auto' },
+    mode:              'subscription',
+    automatic_tax:     { enabled: true },
+    tax_id_collection: { enabled: true, required: 'if_supported' },
     line_items: [
       { price: featureCfg.setupPriceId(), quantity: 1 }, // one-time setup fee
       { price: minutesCfg.priceId(),      quantity: 1 }, // recurring minutes

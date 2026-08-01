@@ -62,13 +62,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     // Agent type upgrade: charge setup difference via Checkout
     const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
     const session = await stripe.checkout.sessions.create({
-      customer: agent.stripe_customer_id ?? undefined,
-      mode:     'payment',
+      ...(agent.stripe_customer_id ? { customer: agent.stripe_customer_id, customer_update: { address: 'auto', name: 'auto' } } : {}),
+      mode:              'payment',
+      automatic_tax:     { enabled: true },
+      tax_id_collection: { enabled: true, required: 'if_supported' },
       line_items: [{
         quantity: 1,
         price_data: {
-          currency:    'mxn',
-          unit_amount: setup_diff * 100,
+          currency:      'mxn',
+          unit_amount:   setup_diff * 100,
+          tax_behavior:  'exclusive',
           product_data: {
             name:        `Upgrade a ${to_cfg.label}, Centinelia`,
             description: `Diferencia de instalación: ${from_cfg.label} → ${to_cfg.label}`,
