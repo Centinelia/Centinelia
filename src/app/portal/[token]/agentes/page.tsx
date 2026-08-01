@@ -344,6 +344,7 @@ export default async function AgentesPage({ params }: Props) {
         .from('voice_agents')
         .select('id, agent_name, role, plan, phone_number, active, client_paused, billing_status, portal_token, features, business_name, ai_ops_used, jornada_type')
         .eq('portal_email', lookupEmail)
+        .neq('billing_status', 'pendiente_pago')
         .order('created_at', { ascending: true })
     : { data: [] };
 
