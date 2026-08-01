@@ -744,14 +744,23 @@ export async function executeAgentTool(
     }
 
     if (accion === 'agendar' || accion === 'modificar') {
+      // Guard duro: sin fecha_iso + hora parseables no podemos detectar empalmes.
+      // Rechazamos con mensaje explicito para que el modelo reintente correctamente.
+      if (!startsAt || !endsAt) {
+        return {
+          ok: false,
+          message: 'No puedo confirmar la cita sin fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h). Pregunta al cliente el dia y hora exactos, y vuelve a llamar agendar_cita incluyendo AMBOS campos.',
+        };
+      }
+
       if (accion === 'modificar' && telefono) {
         await supabase.from('appointments_voice').update({ status: 'cancelada' })
           .eq('agent_id', agentId).eq('telefono', telefono).eq('status', 'confirmada');
       }
 
-      // Conflict check solo si tenemos starts_at parseado.
-      if (startsAt && endsAt) {
-        // 1) DB interna: mismo starts_at exacto = colision definitiva.
+      // Conflict check
+      {
+        // 1) DB interna via starts_at (rows creadas con executor nuevo).
         const { data: dbConflicts } = await supabase
           .from('appointments_voice')
           .select('nombre, hora, telefono')
@@ -760,6 +769,24 @@ export async function executeAgentTool(
           .eq('starts_at', startsAt.toISOString());
         if (dbConflicts && dbConflicts.length > 0) {
           const c = dbConflicts[0];
+          return {
+            ok: false,
+            message: `Ese horario ya esta ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propon al cliente un horario distinto.`,
+          };
+        }
+
+        // 1b) Fallback DB check via fecha + hora string exacto (atrapa rows viejos
+        //     con starts_at NULL pero fecha en formato YYYY-MM-DD igual a fecha_iso).
+        const { data: legacyConflicts } = await supabase
+          .from('appointments_voice')
+          .select('nombre, hora, telefono, starts_at')
+          .eq('agent_id', agentId)
+          .eq('status', 'confirmada')
+          .eq('fecha', fechaIso)
+          .eq('hora', hora ?? '')
+          .is('starts_at', null);
+        if (legacyConflicts && legacyConflicts.length > 0) {
+          const c = legacyConflicts[0];
           return {
             ok: false,
             message: `Ese horario ya esta ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propon al cliente un horario distinto.`,
