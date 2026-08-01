@@ -1,0 +1,7 @@
+{"data": [
+  {"id": "esc-001", "nombre": "11 DE MAYO DE 1988", "turno": "MATUTINO", "nivel": "PRIMARIA"},
+  {"id": "esc-002", "nombre": "BENITO JUAREZ", "turno": "VESPERTINO", "nivel": "PRIMARIA"},
+  {"id": "esc-003", "nombre": "JOSEFA ORTIZ DE DOMINGUEZ", "turno": "MATUTINO", "nivel": "SECUNDARIA"},
+  {"id": "esc-004", "nombre": "MIGUEL HIDALGO", "turno": "MATUTINO", "nivel": "PRIMARIA"},
+  {"id": "esc-005", "nombre": "SOR JUANA INES DE LA CRUZ", "turno": "VESPERTINO", "nivel": "SECUNDARIA"}
+]}
