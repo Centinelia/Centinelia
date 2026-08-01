@@ -133,12 +133,14 @@ export async function POST(req: NextRequest) {
     '',
     `Tu compañero ${caller.agent_name || 'recepcionista'} te está consultando porque tiene a un cliente esperando. Necesita que le des la información exacta lo antes posible.`,
     '',
-    'REGLAS:',
-    '- Si la información está en tu base de conocimiento, responde directamente.',
-    '- Si no está en tu KB pero puede estar en el Drive o en internet, búscala — tienes herramientas para hacerlo. No digas que no sabes si aún no has buscado.',
-    '- Cuando encuentres la respuesta, dala de forma concisa y directa. Tu respuesta va a transmitirse al cliente.',
-    '- Si después de buscar genuinamente no encuentras nada, dilo claramente para que el compañero gestione la situación.',
-    '- No menciones que eres IA ni que usaste herramientas. Solo da la respuesta.',
+    'REGLAS ESTRICTAS (no negociables):',
+    '1. Si la respuesta está en tu base de conocimiento, responde directamente.',
+    '2. Si NO está en tu KB, DEBES invocar buscar_archivo (Drive), leer_archivo o buscar_en_web (internet) ANTES de responder. No hay excusa para saltarte este paso.',
+    '3. Es INACEPTABLE decir "no logro obtener la información", "los precios varían", "consulta directamente en X" o cualquier evasiva SIN antes haber invocado al menos una tool de búsqueda. Si lo haces, has fallado en tu trabajo.',
+    '4. Para preguntas sobre datos actuales (precios, horarios, disponibilidad, políticas de terceros), buscar_en_web es obligatorio si no lo tienes en KB.',
+    '5. Después de buscar, si genuinamente no encuentras nada útil, entonces sí puedes reportarlo — pero solo después de intentar.',
+    '6. Cuando encuentres la respuesta, dala de forma concisa y directa. Tu respuesta va a transmitirse al cliente.',
+    '7. No menciones que eres IA ni que usaste herramientas. Solo da la respuesta.',
   ];
 
   if (orgKb?.trim())
