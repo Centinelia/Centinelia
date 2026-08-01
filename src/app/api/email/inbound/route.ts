@@ -85,14 +85,33 @@ export async function POST(req: NextRequest) {
   const handoffMatch = await resolveHumanRequestFromToken(token);
   if (handoffMatch) {
     const attachments = await uploadHandoffAttachments(handoffMatch.id, handoffMatch.agent_id);
-    // Process non-blocking so the webhook returns 200 fast
+    // Process non-blocking so the webhook returns 200 fast. Si falla, persiste
+    // en handoff_failed_responses para que el cron retry-failed-handoffs lo
+    // recupere (audit sesión 53, ver migrations/20260731_handoff_retry_queue.sql).
     processHandoffReply({
       request:     handoffMatch,
       from,
       subject,
       text,
       attachments,
-    }).catch(err => console.error('[handoff-inbound] processHandoffReply failed:', err));
+    }).catch(async err => {
+      console.error('[handoff-inbound] processHandoffReply failed:', err);
+      try {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await supabase.from('handoff_failed_responses').insert({
+          human_request_id: handoffMatch.id,
+          from_email:       from,
+          subject:          subject || null,
+          text_body:        text || null,
+          attachments,
+          last_error:       errMsg.slice(0, 2000),
+          retry_count:      0,
+          next_retry_at:    new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        });
+      } catch (persistErr) {
+        console.error('[handoff-inbound] failed to persist failure to retry queue:', persistErr);
+      }
+    });
     return NextResponse.json({ ok: true });
   }
 
