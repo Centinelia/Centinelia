@@ -2,20 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
+import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { InboxAgent } from './inbox/categories';
-import { normalizeCategory, CATEGORY_LABELS as CAT_LABELS, CATEGORY_COLORS as CAT_COLORS } from './inbox/categories';
-
-// Temporal: mientras InboxRow no exista, adaptamos las viejas keys al helper nuevo.
-// Se elimina en Task 3.
-function catColorLegacy(raw: string | null | undefined): string {
-  return CAT_COLORS[normalizeCategory(raw)].fg;
-}
-function catLabelLegacy(raw: string | null | undefined): string {
-  return CAT_LABELS[normalizeCategory(raw)];
-}
+import { normalizeCategory, CATEGORY_COLORS } from './inbox/categories';
+import InboxRow from './inbox/InboxRow';
 
 interface InboxItem {
   id:                  string;
@@ -482,88 +474,29 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
       )}
 
       {filteredItems.map(item => {
-        const isExpanded = expandedId === item.id;
-        const catColor   = catColorLegacy(item.category);
-        const catLabel   = catLabelLegacy(item.category);
-        const isPending  = item.status === 'pending';
+        const isExpanded  = expandedId === item.id;
+        const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
+        const catColorHex = catColorObj.fg;
+        const isPending   = item.status === 'pending';
 
         return (
           <div key={item.id} className="rounded-xl overflow-hidden"
-            style={{ border: `1px solid ${isExpanded ? catColor + '44' : 'var(--c-border)'}`, background: isExpanded ? `${catColor}08` : 'var(--c-surface-2)' }}>
+            style={{ border: `1px solid ${isExpanded ? catColorHex + '44' : 'var(--c-border)'}`, background: isExpanded ? `${catColorHex}08` : 'var(--c-surface-2)' }}>
 
-            {/* Collapsed row */}
-            <button className="w-full flex items-start gap-3 px-4 py-3 text-left"
-              onClick={() => {
+            <InboxRow
+              item={item}
+              agents={agents}
+              isExpanded={isExpanded}
+              onToggle={() => {
                 const opening = expandedId !== item.id;
                 setExpanded(opening ? item.id : null);
                 if (opening) markRead(item.id);
               }}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-              <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-0.5">
-                <div className="w-2 h-2 rounded-full" style={{ background: isPending ? catColor : 'var(--c-border-2)' }} />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: `${catColor}18`, color: catColor, border: `1px solid ${catColor}30` }}>
-                    {catLabel}
-                  </span>
-                  {item.item_type === 'invoice' && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
-                      Factura
-                    </span>
-                  )}
-                  {item.auto_mode_decision === 'send' && item.status === 'auto_replied' && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#0F5132] bg-[#D1E7DD] border border-[#0F5132]/20 rounded-full px-2 py-0.5"
-                      title={item.auto_mode_reason ?? 'Enviado sin humano por el modo Auto'}
-                    >
-                      Enviado automático
-                    </span>
-                  )}
-                  {item.auto_mode_decision === 'block' && (
-                    <span
-                      className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#842029] bg-[#F8D7DA] border border-[#842029]/20 rounded-full px-2 py-0.5"
-                      title={item.auto_mode_reason ?? 'Bloqueado por red de seguridad'}
-                    >
-                      Bloqueado
-                    </span>
-                  )}
-                  {item.auto_mode_flagged_at && (
-                    <span
-                      className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wider text-[#664D03] bg-[#FFF3CD] border border-[#664D03]/20 rounded-full px-2 py-0.5"
-                      title="Marcado como envío incorrecto"
-                    >
-                      Reportado
-                    </span>
-                  )}
-                  {!isPending && !item.auto_mode_flagged_at && (
-                    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{STATUS_LABELS[item.status]}</span>
-                  )}
-                </div>
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                  {item.email_subject || '(sin asunto)'}
-                </p>
-                <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                  {item.email_from}
-                </p>
-                {item.ai_summary && !isExpanded && (
-                  <p className="text-xs mt-1 line-clamp-1" style={{ color: 'var(--c-text-4)' }}>{item.ai_summary}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                {item.attachments?.length > 0 && (
-                  <Paperclip size={11} style={{ color: 'var(--c-text-4)' }} />
-                )}
-                <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                  {new Date(item.created_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
-                </span>
-                {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--c-text-4)' }} /> : <ChevronDown size={13} style={{ color: 'var(--c-text-4)' }} />}
-              </div>
-            </button>
+            />
 
             {/* Expanded body */}
             {isExpanded && (
-              <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColor}20` }}>
+              <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColorHex}20` }}>
 
                 {/* Advertencia: el cliente respondió mientras el draft esperaba aprobación */}
                 {item.client_replied_at && isPending && (
