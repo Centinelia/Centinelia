@@ -40,15 +40,19 @@ interface InboxRowProps {
   showStateBadge?: boolean;
 }
 
-export default function InboxRow({ item, isExpanded, onToggle }: InboxRowProps) {
+export default function InboxRow({ item, agents, isExpanded, onToggle, showStateBadge = false }: InboxRowProps) {
   const cat       = normalizeCategory(item.category);
   const catColor  = CATEGORY_COLORS[cat];
   const catLabel  = CATEGORY_LABELS[cat];
-  const isPending = item.status === 'pending';
+  const isPending = ['pending', 'escalated', 'info_requested'].includes(item.status);
+
+  const agent      = agents.find(a => a.id === item.agent_id) ?? null;
+  const agentLabel = agent?.agent_name ?? agent?.business_name ?? null;
+  const showAgent  = agents.length > 1 && !!agentLabel;
 
   return (
     <button
-      className="w-full flex items-start gap-3 px-4 py-3 text-left"
+      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50/50"
       onClick={onToggle}
       style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
     >
@@ -69,6 +73,18 @@ export default function InboxRow({ item, isExpanded, onToggle }: InboxRowProps) 
               style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}
             >
               Factura
+            </span>
+          )}
+          {showAgent && (
+            <span
+              className="text-[11px] px-1.5 py-0.5 rounded-full"
+              style={{
+                background: 'var(--c-surface)',
+                color:      'var(--c-text-3)',
+                border:     '1px solid var(--c-border)',
+              }}
+            >
+              {agentLabel}
             </span>
           )}
           {item.auto_mode_decision === 'send' && item.status === 'auto_replied' && (
@@ -95,11 +111,14 @@ export default function InboxRow({ item, isExpanded, onToggle }: InboxRowProps) 
               Reportado
             </span>
           )}
-          {!isPending && !item.auto_mode_flagged_at && (
+          {!isPending && !item.auto_mode_flagged_at && !showStateBadge && (
             <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{STATUS_LABELS[item.status]}</span>
           )}
         </div>
-        <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+        <p
+          className={`text-sm truncate ${isPending ? 'font-semibold' : 'font-normal'}`}
+          style={{ color: isPending ? 'var(--c-text)' : 'var(--c-text-3)' }}
+        >
           {item.email_subject || '(sin asunto)'}
         </p>
         <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{item.email_from}</p>
@@ -108,6 +127,22 @@ export default function InboxRow({ item, isExpanded, onToggle }: InboxRowProps) 
         )}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+        {showStateBadge && item.status === 'escalated' && (
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(239,68,68,0.12)', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.30)' }}
+          >
+            Escalado
+          </span>
+        )}
+        {showStateBadge && item.status === 'info_requested' && (
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(245,158,11,0.12)', color: '#B45309', border: '1px solid rgba(245,158,11,0.30)' }}
+          >
+            Info solicitada
+          </span>
+        )}
         {item.attachments?.length > 0 && (
           <Paperclip size={11} style={{ color: 'var(--c-text-4)' }} />
         )}
