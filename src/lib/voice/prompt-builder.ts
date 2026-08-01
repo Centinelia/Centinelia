@@ -2,11 +2,18 @@
 import { TEMPLATE_MAP } from '@/lib/voice/templates';
 import { VOICE_RULES, CONVERSATIONAL_DNA, CCP, HCP_FULL, HCP_CONCISE, LITE_RULES, LITE_OPS, MEERKAT_PROMPT_TIER, type PromptTier } from '@/lib/voice/rules';
 import { MEERKAT_MAP, COORDINATOR_ROLE_IDS, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import type { createAdminClient } from '@/lib/supabase/admin';
+import { getActiveTramitesForOrg } from '@/lib/tramites/config';
+import { renderTramitesSection } from '@/lib/tramites/prompt';
 
-export function buildSystemPrompt(
+type SupabaseClient = ReturnType<typeof createAdminClient>;
+
+export async function buildSystemPrompt(
   agent: VoiceAgent,
   learnings?: { general?: string | null; micro?: string | null } | null,
-): string {
+  orgId?: string | null,
+  supabase?: SupabaseClient,
+): Promise<string> {
   const { features, business_hours, timezone } = agent;
   const f = features;
   const agentName = agent.agent_name?.trim() || 'Centinelia';
@@ -95,6 +102,13 @@ TONO Y ESTILO DE VOZ:
 - Si el cliente tiene un problema, muestra empatía con una frase corta: "Entiendo, con gusto le ayudo."
 - Varía la longitud de tus respuestas según el contexto. Respuestas cortas para confirmaciones; un poco más largas para explicaciones.
 - TRATO AL CLIENTE: ${agent.speech_style === 'tu' ? 'Tutea al cliente en todo momento, usa "tú", "te", "tu". Ej: "¿Cómo te puedo ayudar?", "¿Cuál es tu nombre?"' : 'Trata al cliente de usted en todo momento, usa "usted", "le", "su". Ej: "¿En qué le puedo ayudar?", "¿Cuál es su nombre?"'}. Mantén este trato durante toda la llamada sin mezclar.`);
+  }
+
+  // ── Trámites externos (per-org) ──────────────────────────────────────────
+  if (orgId && supabase) {
+    const tramites = await getActiveTramitesForOrg(orgId, supabase);
+    const section = renderTramitesSection(tramites);
+    if (section) blocks.push(section);
   }
 
   // ── Owner profile (User File) ─────────────────────────────────────────────
