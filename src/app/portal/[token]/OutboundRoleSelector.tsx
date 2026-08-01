@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const OUTBOUND_ROLES = [
   { id: 'vendedor',     label: 'Vendedor',      desc: 'Prospección y cierre de ventas',          color: '#22c55e' },
@@ -49,23 +50,17 @@ export default function OutboundRoleSelector({
 
   return (
     <div>
-      <select
-        value={role}
-        onChange={e => onChange(e.target.value)}
-        disabled={saving}
-        className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-        style={{
-          background: 'var(--c-input-bg)',
-          border: '1px solid var(--c-input-border)',
-          color: role ? 'var(--c-text)' : 'var(--c-text-3)',
-          opacity: saving ? 0.6 : 1,
-        }}
-      >
-        <option value="">Sin rol asignado</option>
-        {OUTBOUND_ROLES.map(r => (
-          <option key={r.id} value={r.id}>{r.label}: {r.desc}</option>
-        ))}
-      </select>
+      <Select value={role || '__none'} onValueChange={v => onChange(v === '__none' ? '' : v)} disabled={saving}>
+        <SelectTrigger>
+          <SelectValue placeholder="Sin rol asignado" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none">Sin rol asignado</SelectItem>
+          {OUTBOUND_ROLES.map(r => (
+            <SelectItem key={r.id} value={r.id}>{r.label}: {r.desc}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <div className="mt-2 h-4 flex items-center gap-1.5">
         {saving && <><Loader2 size={11} className="animate-spin" style={{ color: 'var(--c-text-3)' }} /><span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Guardando…</span></>}
