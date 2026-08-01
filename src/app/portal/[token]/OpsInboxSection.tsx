@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { InboxAgent } from './inbox/categories';
-import { normalizeCategory, CATEGORY_COLORS } from './inbox/categories';
+import { normalizeCategory, CATEGORY_COLORS, CATEGORY_ORDER } from './inbox/categories';
+import type { CategorySlug } from './inbox/categories';
 import InboxRow from './inbox/InboxRow';
+import CategoryChips from './inbox/CategoryChips';
 
 interface InboxItem {
   id:                  string;
@@ -118,6 +121,23 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   })();
   const [activeTab, setActiveTab]       = useState<Tab>(initialTab);
   const [search, setSearch]             = useState('');
+
+  const router = useRouter();
+
+  const initialCategory: CategorySlug | null = (() => {
+    const c = searchParams.get('cat');
+    if (c && (CATEGORY_ORDER as string[]).includes(c)) return c as CategorySlug;
+    return null;
+  })();
+  const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(initialCategory);
+
+  const changeCategory = useCallback((next: CategorySlug | null) => {
+    setActiveCategory(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set('cat', next); else params.delete('cat');
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }, [router, searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -268,31 +288,27 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   };
 
   // Tab-filtered ops_inbox items
-  const filteredItems = (() => {
-    let base: InboxItem[];
-    if (activeTab === 'pendientes') {
-      base = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
-    } else if (activeTab === 'auto') {
-      base = items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
-    } else if (activeTab === 'spam') {
-      base = items.filter(i => i.status === 'skipped' && i.category === 'spam');
-    } else if (activeTab === 'rechazados') {
-      // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
-      base = items.filter(i => i.status === 'rejected');
-    } else if (activeTab === 'reportados') {
-      base = items.filter(i => !!i.auto_mode_flagged_at);
-    } else {
-      base = items;
-    }
-    if (!search.trim()) return base;
-    const q = search.toLowerCase();
-    return base.filter(i =>
+  const tabItems = useMemo<InboxItem[]>(() => {
+    if (activeTab === 'pendientes')  return items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status));
+    if (activeTab === 'auto')        return items.filter(i => i.status === 'auto_replied' && i.auto_mode_decision === 'send');
+    if (activeTab === 'spam')        return items.filter(i => i.status === 'skipped' && i.category === 'spam');
+    // Audit trail: decisiones de rechazo pasadas eran invisibles antes (audit sesión 53).
+    if (activeTab === 'rechazados')  return items.filter(i => i.status === 'rejected');
+    if (activeTab === 'reportados')  return items.filter(i => !!i.auto_mode_flagged_at);
+    return items;
+  }, [items, activeTab]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const bySearch = !q ? tabItems : tabItems.filter(i =>
       (i.email_subject ?? '').toLowerCase().includes(q) ||
       (i.email_from    ?? '').toLowerCase().includes(q) ||
       (i.ai_summary    ?? '').toLowerCase().includes(q) ||
       (i.category      ?? '').toLowerCase().includes(q)
     );
-  })();
+    if (!activeCategory) return bySearch;
+    return bySearch.filter(i => normalizeCategory(i.category) === activeCategory);
+  }, [tabItems, search, activeCategory]);
 
   // Badge counts
   const pendingOpsCount    = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
@@ -370,7 +386,10 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
         {TAB_CONFIG.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => {
+              setActiveTab(tab.key);
+              changeCategory(null);
+            }}
             className="flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
             style={{
               borderColor:  activeTab === tab.key ? '#6C3BFF' : 'transparent',
@@ -407,6 +426,13 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
           style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
         />
       </div>
+
+      {/* Category filter chips */}
+      <CategoryChips
+        items={tabItems}
+        activeCategory={activeCategory}
+        onSelect={changeCategory}
+      />
 
       {/* Human Requests section — only shown in Pendientes tab */}
       {activeTab === 'pendientes' && humanRequests.length > 0 && (
