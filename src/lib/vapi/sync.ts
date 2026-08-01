@@ -51,6 +51,7 @@ interface TeamPeer {
   id: string;
   vapi_agent_id: string;
   agent_name: string | null;
+  business_name: string | null;
   role: string | null;
   features: Record<string, boolean>;
   role_knowledge_base: string | null;
@@ -124,7 +125,7 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from('voice_agents')
-      .select('id, vapi_agent_id, agent_name, role, features, role_knowledge_base')
+      .select('id, vapi_agent_id, agent_name, business_name, role, features, role_knowledge_base')
       .eq('portal_email', agent.portal_email)
       .eq('active', true)
       .neq('id', agent.id);
@@ -316,7 +317,12 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
       },
       destinations: [{
         type: 'assistant',
-        assistantId: peer.vapi_agent_id,
+        // Vapi API espera assistantName (no assistantId): matchea por el
+        // 'name' del assistant en Vapi, que sigue el patron
+        // '${agentName}, ${business_name}' (ver line ~417 de este archivo).
+        // Usa peer.business_name si esta disponible, fallback a agent.business_name
+        // (peers deberian compartir el mismo negocio pero es defensivo).
+        assistantName: `${peer.agent_name || peerName}, ${peer.business_name || agent.business_name}`,
         message: `Con gusto, te comunico con ${peerName} ahora mismo.`,
       }],
     });
