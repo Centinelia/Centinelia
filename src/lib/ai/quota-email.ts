@@ -36,7 +36,7 @@ export async function maybeSendQuotaEmail(agent: AgentSubset, automation: Automa
     ? `El pool se resetee el ${new Date(agent.minutes_reset_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}, o`
     : `El pool se resetee en el próximo ciclo, o`;
   const portalUrl = agent.portal_token
-    ? `https://www.centinelia.mx/portal/${agent.portal_token}/cuenta`
+    ? `https://www.centinelia.mx/portal/${agent.portal_token}?tab=cuenta#comprar`
     : 'https://www.centinelia.mx';
   const dateStr = new Date().toLocaleDateString('es-MX', { month: 'long', day: 'numeric' });
 
