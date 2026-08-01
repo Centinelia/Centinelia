@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw } from 'lucide-react';
+import { Inbox, ChevronDown, ChevronUp, Check, X, FileText, Paperclip, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 
@@ -42,6 +42,24 @@ interface HumanRequest {
   created_at:        string;
   client_replied_at: string | null;
 }
+
+interface ReauthNeeded {
+  provider:   string;
+  email:      string;
+  capability: string;
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  gmail:       'Gmail',
+  outlook:     'Outlook',
+  microsoft:   'Outlook',
+  quickbooks:  'QuickBooks',
+  notion:      'Notion',
+  drive:       'Google Drive',
+  google:      'Google',
+  onedrive:    'OneDrive',
+  mercadolibre:'MercadoLibre',
+};
 
 const CATEGORY_LABELS: Record<string, string> = {
   proveedor: 'Proveedor',
@@ -95,8 +113,9 @@ const FLAG_CATEGORIES: { key: string; label: string; hint: string }[] = [
 ];
 
 export default function OpsInboxSection({ token }: { token: string }) {
-  const [items, setItems]               = useState<InboxItem[]>([]);
-  const [humanRequests, setHumanReqs]   = useState<HumanRequest[]>([]);
+  const [items, setItems]                                 = useState<InboxItem[]>([]);
+  const [humanRequests, setHumanReqs]                     = useState<HumanRequest[]>([]);
+  const [reauthNeeded, setReauthNeeded]                   = useState<ReauthNeeded[]>([]);
   const [loading, setLoading]           = useState(true);
   const [expandedId, setExpanded]       = useState<string | null>(null);
   const [acting, setActing]             = useState<string | null>(null);
@@ -117,6 +136,7 @@ export default function OpsInboxSection({ token }: { token: string }) {
         const data = await res.json();
         setItems(data.items ?? []);
         setHumanReqs(data.humanRequests ?? []);
+        setReauthNeeded(data.integrationsNeedingReauth ?? []);
       }
     } finally { setLoading(false); }
   }, [token]);
@@ -322,6 +342,37 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
           <RefreshCw size={12} />
         </button>
       </div>
+
+      {/* Banner: integraciones OAuth expiradas.
+          Solo afecta la ingesta entrante — el envío de aprobados sigue OK
+          (va por Resend con FROM fijo, no por el OAuth del cliente). */}
+      {reauthNeeded.length > 0 && (
+        <div className="rounded-xl px-3 py-2.5 flex items-start gap-2.5" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+          <PlugZap size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>
+              {reauthNeeded.length === 1 ? 'Una integración necesita reconexión' : `${reauthNeeded.length} integraciones necesitan reconexión`}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              {reauthNeeded.map((r, i) => (
+                <span key={`${r.provider}-${r.email}-${i}`}>
+                  {i > 0 && <span style={{ color: 'var(--c-border-2)' }}> · </span>}
+                  {PROVIDER_LABELS[r.provider] ?? r.provider}
+                  {r.email && <span style={{ color: 'var(--c-text-4)' }}> ({r.email})</span>}
+                </span>
+              ))}
+              . Los correos entrantes de estas cuentas no se están sincronizando hasta que reconectes.
+            </p>
+          </div>
+          <a
+            href={`/portal/${token}/oficina/integraciones`}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-opacity hover:opacity-80"
+            style={{ background: '#f59e0b', color: '#fff', textDecoration: 'none' }}
+          >
+            Reconectar
+          </a>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-0 border-b" style={{ borderColor: 'var(--c-border)' }}>

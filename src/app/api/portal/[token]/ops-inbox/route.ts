@@ -35,7 +35,44 @@ export async function GET(req: NextRequest, { params }: Params) {
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
-  return NextResponse.json({ items: items ?? [], humanRequests: humanReqs ?? [] });
+  // Integraciones que perdieron OAuth (afecta INGESTA de correo del cliente, no
+  // el envío saliente que va por Resend). Sin este signal el usuario ve una
+  // Bandeja vacía y cree que no llegaron correos — silent failure resuelto en
+  // audit sesión 53 (ver [[audit-deferred-handoff]] sección G).
+  const integrationsNeedingReauth: Array<{ provider: string; email: string; capability: string }> = [];
+  if (acct.portal_email) {
+    const { data: reauth } = await supabase
+      .from('integration_accounts')
+      .select('provider, account_label, capability')
+      .eq('portal_email', acct.portal_email)
+      .eq('status', 'needs_reauth');
+    for (const row of reauth ?? []) {
+      integrationsNeedingReauth.push({
+        provider:   row.provider as string,
+        email:      (row.account_label as string) ?? '',
+        capability: (row.capability as string) ?? '',
+      });
+    }
+  } else {
+    const { data: emailReauth } = await supabase
+      .from('email_integrations')
+      .select('provider, email, needs_reauth')
+      .in('agent_id', agentIds)
+      .eq('needs_reauth', true);
+    for (const row of emailReauth ?? []) {
+      integrationsNeedingReauth.push({
+        provider:   row.provider as string,
+        email:      (row.email as string) ?? '',
+        capability: 'email',
+      });
+    }
+  }
+
+  return NextResponse.json({
+    items:                    items ?? [],
+    humanRequests:            humanReqs ?? [],
+    integrationsNeedingReauth,
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
