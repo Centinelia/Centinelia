@@ -576,8 +576,15 @@ export async function resyncPeerAgents(portalEmail: string | null | undefined, e
       .not('vapi_agent_id', 'is', null);
 
     if (!peers?.length) return;
+    // Excluir coordinadores (nox, niva): no son voice-capable, no tienen assistant
+    // valido en Vapi, cualquier intento de update devuelve 404. Ver NON_VOICE_ROLES.
+    const voicePeers = peers.filter(p => {
+      const role = (p.features as { meerkat_role_id?: string } | null | undefined)?.meerkat_role_id;
+      return !role || !NON_VOICE_ROLES.has(role);
+    });
+    if (!voicePeers.length) return;
     await Promise.allSettled(
-      peers.map(p => syncAgentToVapi(p.vapi_agent_id, p as VoiceAgent)),
+      voicePeers.map(p => syncAgentToVapi(p.vapi_agent_id, p as VoiceAgent)),
     );
   } catch (e) {
     console.error('resyncPeerAgents error:', e);
