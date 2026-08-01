@@ -204,7 +204,8 @@ function render(a) {
 
   return shell(
     badge(`${pct}% DEL POOL USADO`, alertColor) +
-    heading('El pool de tu equipo está por agotarse', a.businessName) +
+    `<h1 style="color:#F1EEFF;font-size:22px;font-weight:700;margin:0 0 20px;text-align:center;line-height:1.3">El pool de tu equipo está por agotarse</h1>
+     <p style="color:#C8BEE8;font-size:16px;font-weight:600;margin:0 0 20px;text-align:center;line-height:1.4">${a.businessName}</p>` +
     bigNumber +
     poolBar +
     statsRow +
@@ -223,7 +224,7 @@ function render(a) {
       : '') +
     btn('Comprar tareas extras', portalUrl) +
     btn('Ver mi cuenta', portalUrl, false) +
-    `<p style="color:#C8BEE8;font-size:12px;margin:24px 0 0;text-align:center">¿Crees que esto es un error? Respóndenos a <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF;text-decoration:none">hola@centinelia.mx</a>.</p>`
+    `<p style="color:#C8BEE8;font-size:12px;margin:24px 0 0;text-align:center;line-height:1.7">¿Crees que esto es un error?<br>Contáctanos a <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF;text-decoration:none">hola@centinelia.mx</a>.</p>`
   );
 }
 
