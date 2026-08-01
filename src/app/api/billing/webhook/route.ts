@@ -176,6 +176,86 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // Jornada change: agente pasa de 'tareas' (NOX) a 'combinada' (voz + tareas).
+      // Cliente pagó la nueva subscripción; ahora cambiamos la subscripción vieja,
+      // provisionamos número Twilio, y activamos el canal de voz.
+      if (session.metadata?.type === 'jornada_change_to_voice') {
+        const agentId = session.metadata?.agent_id;
+        const tierMeta = (session.metadata?.minutes_plan ?? 'starter') as MinutesTier;
+        if (!agentId) break;
+
+        const { data: agent } = await supabase
+          .from('voice_agents')
+          .select('*')
+          .eq('id', agentId)
+          .single();
+
+        if (!agent) break;
+
+        const typedAgent = agent as VoiceAgent;
+        const plan = (typedAgent.plan ?? 'pro') as Plan;
+
+        // 1. Cancelar la subscripción vieja (NOX) — el checkout creó una nueva combinada.
+        if (typedAgent.stripe_subscription_id && typedAgent.stripe_subscription_id !== session.subscription) {
+          await stripe.subscriptions.cancel(typedAgent.stripe_subscription_id).catch(err =>
+            console.error('[billing-webhook] cancel old NOX sub failed', { agentId, error: String(err) })
+          );
+        }
+
+        // 2. Actualizar la fila con la nueva subscripción combinada.
+        await supabase.from('voice_agents').update({
+          stripe_subscription_id: session.subscription as string ?? null,
+          jornada_type:           'combinada',
+          minutes_plan:           tierMeta,
+        }).eq('id', agentId);
+
+        // 3. Asegurar Vapi assistant (crearlo si el agente estaba tareas-only).
+        let vapiId = typedAgent.vapi_agent_id ?? null;
+        if (!vapiId) {
+          vapiId = await createVapiAssistant(typedAgent).catch((err: unknown) => {
+            console.error('[billing-webhook] vapi_creation_failed for jornada_change', { agentId, error: String(err) });
+            return null;
+          });
+          if (vapiId) {
+            await supabase.from('voice_agents').update({ vapi_agent_id: vapiId }).eq('id', agentId);
+          }
+        }
+
+        // 4. Provisionar número Twilio + asignarlo al assistant.
+        if (vapiId) {
+          const concurrency = PLAN_CONCURRENT_CALLS[plan];
+          const provisioned = await provisionPhoneNumber(vapiId, undefined, concurrency);
+          if (provisioned) {
+            const alloc = JORNADA_CONFIG['combinada'][tierMeta];
+            await supabase.from('voice_agents').update({
+              phone_number:         provisioned.phoneNumber,
+              vapi_phone_number_id: provisioned.vapiPhoneId ?? null,
+              minutes_included:     alloc.minutes,
+            }).eq('id', agentId);
+
+            if (typedAgent.portal_email) {
+              await supabase.from('account_minutes').upsert({
+                portal_email:      typedAgent.portal_email,
+                minutes_included:  alloc.minutes,
+                minutes_plan:      tierMeta,
+                updated_at:        new Date().toISOString(),
+              }, { onConflict: 'portal_email' });
+            }
+          } else {
+            console.error('[billing-webhook] provisionPhoneNumber failed', { agentId });
+            await sendEmail({
+              to:      'hola@centinelia.mx',
+              subject: `[URGENTE] Falta número Twilio tras jornada_change agente ${agentId}`,
+              html:    `<p>El cliente pagó el cambio a combinada pero <code>provisionPhoneNumber()</code> falló. Cliente: <strong>${typedAgent.business_name ?? '(sin nombre)'}</strong> (${typedAgent.portal_email ?? '(sin email)'}).</p><p>Comprar y asignar manualmente.</p>`,
+            }).catch(e => console.error('[billing-webhook] admin notify failed', e));
+          }
+
+          resyncPeerAgents(typedAgent.portal_email, agentId).catch(console.error);
+        }
+
+        break;
+      }
+
       // New agent hired from portal
       if (session.metadata?.type === 'new_agent') {
         const agentId    = session.metadata?.agent_id;

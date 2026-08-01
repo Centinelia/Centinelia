@@ -41,9 +41,12 @@ async function buyTwilioNumber(areaCode?: string): Promise<string | null> {
   const numberToBuy = candidates[0];
 
   const buyParams: Record<string, string> = { PhoneNumber: numberToBuy };
-  // Mexico local numbers require an approved Regulatory Bundle (BU... SID)
-  const bundleSid = process.env.TWILIO_REGULATORY_BUNDLE_SID;
-  if (bundleSid) buyParams.BundleSid = bundleSid;
+  // Mexico local numbers require both a Regulatory Bundle (BU...) and a
+  // registered Address (AD...) — Twilio 21631 fires without AddressSid.
+  const bundleSid  = process.env.TWILIO_REGULATORY_BUNDLE_SID;
+  const addressSid = process.env.TWILIO_ADDRESS_SID;
+  if (bundleSid)  buyParams.BundleSid  = bundleSid;
+  if (addressSid) buyParams.AddressSid = addressSid;
 
   const buyRes = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers.json`,

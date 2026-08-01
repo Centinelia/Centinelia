@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Settings, Mail, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Mail, CheckCircle, AlertTriangle, Phone, Zap, Clock } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -175,34 +175,73 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Agent identity header */}
-        <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: `${roleColor}1a`, border: `1px solid ${roleColor}33` }}>
-              <Settings size={16} color={roleColor} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <AgentNameEditor token={token} initialName={agentName} />
-                {agentRole && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                    style={{ background: `${roleColor}1f`, color: roleColor, border: `1px solid ${roleColor}40` }}>
-                    {agentRole}
-                  </span>
+        {/* Agent identity header — premium */}
+        {(() => {
+          const avatarSrc = (features.avatar as string | null) || null;
+          const initial   = (agentName?.trim() || (agent.business_name as string) || 'C').charAt(0).toUpperCase();
+          const JORNADA_META: Record<string, { label: string; desc: string; icon: React.ReactNode; color: string }> = {
+            combinada: { label: 'Combinada',    desc: 'Minutos de voz + tareas',  icon: <><Clock size={11}/><Zap size={11}/></>, color: '#6C3BFF' },
+            minutos:   { label: 'Solo minutos', desc: 'Canal de voz',              icon: <Clock size={11}/>,                       color: '#3b82f6' },
+            tareas:    { label: 'Solo tareas',  desc: 'Sin canal de voz',          icon: <Zap size={11}/>,                         color: '#10b981' },
+          };
+          const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
+
+          return (
+            <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex items-center gap-5">
+
+                {/* Avatar grande con imagen del meerkat */}
+                <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 relative"
+                  style={{ background: `${roleColor}12`, border: `1px solid ${roleColor}33` }}>
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt={agentName}
+                      className="w-full h-full"
+                      style={{ objectFit: 'contain', objectPosition: 'center bottom' }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl font-black"
+                      style={{ color: roleColor }}>
+                      {initial}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nombre + rol + business + chip de jornada */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <AgentNameEditor token={token} initialName={agentName} />
+                    {agentRole && (
+                      <span className="text-sm font-semibold" style={{ color: roleColor }}>
+                        {agentRole}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    {agent.business_name}
+                  </p>
+                  {!isCoordinator && (
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full"
+                        style={{ background: `${jornada.color}12`, color: jornada.color, border: `1px solid ${jornada.color}33` }}>
+                        <span className="flex items-center gap-0.5">{jornada.icon}</span>
+                        {jornada.label}
+                      </span>
+                      <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                        {jornada.desc}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CTA lateral: contratar canal de voz (solo si jornada=tareas y no coordinador) */}
+                {!isCoordinator && jornadaType === 'tareas' && (
+                  <div className="flex-shrink-0 w-64">
+                    <JornadaSection token={token} jornadaType={jornadaType} />
+                  </div>
                 )}
               </div>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                {agent.business_name}
-              </p>
             </div>
-            {!isCoordinator && (
-              <div className="flex-shrink-0 w-72">
-                <JornadaSection token={token} jornadaType={jornadaType} />
-              </div>
-            )}
-          </div>
-        </div>
+          );
+        })()}
 
         {/* 2-column layout */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex gap-8 items-start">

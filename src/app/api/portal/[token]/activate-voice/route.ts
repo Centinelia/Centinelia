@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { stripe } from '@/lib/stripe';
 import { createVapiAssistant } from '@/lib/vapi/sync';
 import { provisionPhoneNumber } from '@/lib/vapi/provision';
-import { JORNADA_CONFIG } from '@/lib/billing/plans';
+import { JORNADA_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { PLAN_CONCURRENT_CALLS } from '@/types/agent';
 import type { VoiceAgent } from '@/types/agent';
 import type { Plan } from '@/types/agent';
@@ -36,6 +37,46 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const fullAgent = agent as VoiceAgent;
   const tier      = (agent.minutes_plan ?? 'starter') as MinutesTier;
+  const plan      = (agent.plan ?? 'pro') as Plan;
+
+  // Sin bypass: crear Stripe Checkout para cambiar suscripcion NOX → combinada.
+  // El webhook activa la voz post-pago (metadata type=jornada_change_to_voice).
+  const bypass = process.env.BYPASS_AGENT_PAYMENT === 'true';
+  if (!bypass) {
+    if (!agent.stripe_customer_id) {
+      return NextResponse.json({ error: 'Cuenta sin suscripcion activa. Escribenos a hola@centinelia.mx.' }, { status: 400 });
+    }
+    const monthlyCfg = MONTHLY_CONFIG[plan]?.[tier];
+    if (!monthlyCfg) {
+      return NextResponse.json({ error: 'Plan invalido para activar voz.' }, { status: 400 });
+    }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    try {
+      const checkout = await stripe.checkout.sessions.create({
+        customer:          agent.stripe_customer_id,
+        customer_update:   { address: 'auto', name: 'auto' },
+        mode:              'subscription',
+        automatic_tax:     { enabled: true },
+        tax_id_collection: { enabled: true, required: 'if_supported' },
+        line_items: [{ price: monthlyCfg.priceId(), quantity: 1 }],
+        metadata: {
+          type:         'jornada_change_to_voice',
+          agent_id:     agent.id,
+          agent_token:  token,
+          minutes_plan: tier,
+        },
+        subscription_data: {
+          metadata: { agent_id: agent.id, minutes_plan: tier, jornada_type: 'combinada' },
+        },
+        success_url: `${appUrl}/portal/${token}/configurar?voz=activada`,
+        cancel_url:  `${appUrl}/portal/${token}/configurar`,
+      });
+      return NextResponse.json({ checkoutUrl: checkout.url });
+    } catch (e) {
+      console.error('activate-voice checkout error:', e);
+      return NextResponse.json({ error: 'No se pudo iniciar el cambio de plan. Intenta de nuevo.' }, { status: 500 });
+    }
+  }
 
   // 1. Create Vapi assistant if not already present
   let vapiId = fullAgent.vapi_agent_id ?? null;
