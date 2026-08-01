@@ -10,6 +10,7 @@ import type { InboxAgent } from './inbox/categories';
 import { normalizeCategory, CATEGORY_COLORS, CATEGORY_ORDER } from './inbox/categories';
 import type { CategorySlug } from './inbox/categories';
 import InboxRow from './inbox/InboxRow';
+import InboxZone from './inbox/InboxZone';
 import CategoryChips from './inbox/CategoryChips';
 
 interface InboxItem {
@@ -310,6 +311,15 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     return bySearch.filter(i => normalizeCategory(i.category) === activeCategory);
   }, [tabItems, search, activeCategory]);
 
+  const attentionItems = useMemo(
+    () => filteredItems.filter(i => i.status === 'escalated' || i.status === 'info_requested'),
+    [filteredItems]
+  );
+  const restItems = useMemo(
+    () => filteredItems.filter(i => i.status !== 'escalated' && i.status !== 'info_requested'),
+    [filteredItems]
+  );
+
   // Badge counts
   const pendingOpsCount    = items.filter(i => ['pending', 'escalated', 'info_requested'].includes(i.status)).length;
   const pendingBadgeCount  = pendingOpsCount + humanRequests.length;
@@ -326,6 +336,288 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
     { key: 'reportados', label: 'Reportados',    count: reportedCount > 0 ? reportedCount : undefined },
     { key: 'todo',       label: 'Todo' },
   ];
+
+  const applyPartition = activeTab !== 'reportados' && attentionItems.length > 0;
+
+  const renderItem = (item: InboxItem, showStateBadge: boolean) => {
+    const isExpanded  = expandedId === item.id;
+    const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
+    const catColorHex = catColorObj.fg;
+    const isPending   = item.status === 'pending';
+
+    return (
+      <div
+        key={item.id}
+        className="rounded-xl overflow-hidden"
+        style={{
+          border:     `1px solid ${isExpanded ? catColorHex + '44' : 'var(--c-border)'}`,
+          background: isExpanded ? `${catColorHex}08` : 'var(--c-surface-2)',
+        }}
+      >
+        <InboxRow
+          item={item}
+          agents={agents}
+          isExpanded={isExpanded}
+          onToggle={() => {
+            const opening = expandedId !== item.id;
+            setExpanded(opening ? item.id : null);
+            if (opening) markRead(item.id);
+          }}
+          showStateBadge={showStateBadge}
+        />
+
+        {/* Expanded body */}
+        {isExpanded && (
+          <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColorHex}20` }}>
+
+            {/* Advertencia: el cliente respondió mientras el draft esperaba aprobación */}
+            {item.client_replied_at && isPending && (
+              <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg flex items-start gap-2" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
+                <div>
+                  <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El cliente respondió a este hilo</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                    Nuevo mensaje recibido el {new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Este borrador puede estar desactualizado; revisa la bandeja por un correo más reciente antes de aprobar.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Summary */}
+            {item.ai_summary && (
+              <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{item.ai_summary}</p>
+              </div>
+            )}
+
+            {/* Invoice data */}
+            {item.item_type === 'invoice' && item.invoice_data && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#f59e0b' }}>Datos de la factura</p>
+                {item.invoice_data.vendor     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Proveedor:</span> {String(item.invoice_data.vendor)}</p>}
+                {item.invoice_data.amount     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Monto:</span> ${Number(item.invoice_data.amount).toLocaleString('es-MX')} {String(item.invoice_data.currency ?? 'MXN')}</p>}
+                {item.invoice_data.invoice_no && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>No. Factura:</span> {String(item.invoice_data.invoice_no)}</p>}
+                {item.invoice_data.po_ref     && <p className="text-xs" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Ref OC:</span> {String(item.invoice_data.po_ref)}</p>}
+              </div>
+            )}
+
+            {/* Discrepancy */}
+            {item.invoice_discrepancy && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: '#ef4444' }}>Discrepancia</p>
+                <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>{item.invoice_discrepancy}</p>
+              </div>
+            )}
+
+            {/* Draft: editable si pendiente, solo lectura después */}
+            {item.ai_draft && isPending && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
+                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puedes editar antes de aprobar</p>
+                </div>
+                <textarea
+                  value={draftEdits[item.id] ?? item.ai_draft}
+                  onChange={e => setDraftEdits(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  rows={Math.min(20, Math.max(6, (draftEdits[item.id] ?? item.ai_draft).split('\n').length + 1))}
+                  className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                />
+              </div>
+            )}
+            {item.ai_draft && !isPending && (
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
+                <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{item.ai_draft}</p>
+              </div>
+            )}
+
+            {/* Attachments */}
+            {item.attachments?.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {item.attachments.map((att, i) => (
+                  <a key={i} href={att.url} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                    <FileText size={10} />{att.name}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            {isPending && (() => {
+              const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
+              return (
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => act(item.id, 'approved')} disabled={!!acting}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                    style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
+                    {acting === item.id ? 'Procesando…' : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : wasEdited ? 'Enviar con tus cambios' : 'Aprobar y enviar'}</>}
+                  </button>
+                  <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+                    <X size={12} />Rechazar
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Rescatar: solo cuando el correo está marcado spam (false positive del clasificador) */}
+            {item.status === 'skipped' && item.category === 'spam' && (
+              <div className="mt-2">
+                <button onClick={() => unspam(item.id)} disabled={!!acting}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                  style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)', color: '#6C3BFF' }}>
+                  {acting === item.id ? 'Rescatando…' : <><RotateCcw size={12} />Rescatar (no era spam)</>}
+                </button>
+              </div>
+            )}
+
+            {/* Reportar mal envío: botón / form inline / detalle si ya reportado */}
+            {item.auto_mode_decision === 'send' && !item.auto_mode_flagged_at && flaggingId !== item.id && (
+              <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
+                <button
+                  type="button"
+                  onClick={() => openFlagForm(item.id)}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+                  style={{ color: '#842029', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <AlertTriangle size={12} />
+                  Reportar mal envío
+                </button>
+              </div>
+            )}
+
+            {/* Form inline para reportar */}
+            {flaggingId === item.id && (
+              <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#842029' }}>Reportar mal envío</p>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>¿Qué salió mal?</p>
+                  {FLAG_CATEGORIES.map(cat => (
+                    <label key={cat.key} className="flex items-start gap-2 cursor-pointer px-2 py-1.5 rounded-md hover:bg-[rgba(239,68,68,0.04)]">
+                      <input
+                        type="radio"
+                        name={`flag-cat-${item.id}`}
+                        value={cat.key}
+                        checked={flagCategory === cat.key}
+                        onChange={() => setFlagCategory(cat.key)}
+                        className="mt-0.5 accent-[#ef4444]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>{cat.label}</div>
+                        <div className="text-[11px] leading-snug" style={{ color: 'var(--c-text-4)' }}>{cat.hint}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-xs block mb-1" style={{ color: 'var(--c-text-4)' }}>Detalle (opcional)</label>
+                  <textarea
+                    value={flagReason}
+                    onChange={e => setFlagReason(e.target.value)}
+                    rows={3}
+                    placeholder="Contexto adicional que ayude al empleado a evitar este error en el futuro."
+                    className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => submitFlag(item.id)}
+                    disabled={submittingFlag}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
+                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}>
+                    <AlertTriangle size={12} />
+                    {submittingFlag ? 'Enviando…' : 'Enviar reporte'}
+                  </button>
+                  <button
+                    onClick={closeFlagForm}
+                    disabled={submittingFlag}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
+                    style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Detalle del reporte si ya está flagged */}
+            {item.auto_mode_flagged_at && (
+              <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#842029' }}>Reportado como mal envío</p>
+                {item.auto_mode_flag_category && (
+                  <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
+                    <span style={{ color: 'var(--c-text-4)' }}>Categoría:</span>{' '}
+                    <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>
+                      {FLAG_CATEGORIES.find(c => c.key === item.auto_mode_flag_category)?.label ?? item.auto_mode_flag_category}
+                    </span>
+                  </p>
+                )}
+                {item.auto_mode_flag_reason && (
+                  <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                    <span style={{ color: 'var(--c-text-4)' }}>Detalle:</span> {item.auto_mode_flag_reason}
+                  </p>
+                )}
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--c-text-4)' }}>
+                  {new Date(item.auto_mode_flagged_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </p>
+
+                {/* Correo de corrección */}
+                {correctionOpenId !== item.id && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => openCorrection(item.id, (item.email_from ?? '').split('<')[0].trim().split('@')[0])}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+                      style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)' }}>
+                      <MessageSquare size={12} />
+                      Enviar corrección al cliente
+                    </button>
+                  </div>
+                )}
+                {correctionOpenId === item.id && (
+                  <div className="mt-3 space-y-2">
+                    <label className="text-xs block" style={{ color: 'var(--c-text-4)' }}>
+                      Correo de corrección a {item.email_from}
+                    </label>
+                    <textarea
+                      value={correctionText}
+                      onChange={e => setCorrectionText(e.target.value)}
+                      rows={Math.min(20, Math.max(8, correctionText.split('\n').length + 1))}
+                      className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
+                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => sendCorrection(item.id)}
+                        disabled={sendingCorrection}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
+                        style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.35)', color: '#6C3BFF' }}>
+                        <Check size={12} />
+                        {sendingCorrection ? 'Enviando…' : 'Enviar corrección'}
+                      </button>
+                      <button
+                        onClick={closeCorrection}
+                        disabled={sendingCorrection}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
+                        style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">
@@ -493,285 +785,20 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
         </div>
       )}
 
-      {activeTab === 'pendientes' && filteredItems.length > 0 && (
-        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-          Correos pendientes
-        </p>
+      {applyPartition ? (
+        <>
+          <InboxZone title="Requieren tu acción" count={attentionItems.length} tone="attention">
+            {attentionItems.map(item => renderItem(item, true))}
+          </InboxZone>
+          {restItems.length > 0 && (
+            <InboxZone title="Al día" count={restItems.length} tone="neutral">
+              {restItems.map(item => renderItem(item, false))}
+            </InboxZone>
+          )}
+        </>
+      ) : (
+        filteredItems.map(item => renderItem(item, false))
       )}
-
-      {filteredItems.map(item => {
-        const isExpanded  = expandedId === item.id;
-        const catColorObj = CATEGORY_COLORS[normalizeCategory(item.category)];
-        const catColorHex = catColorObj.fg;
-        const isPending   = item.status === 'pending';
-
-        return (
-          <div key={item.id} className="rounded-xl overflow-hidden"
-            style={{ border: `1px solid ${isExpanded ? catColorHex + '44' : 'var(--c-border)'}`, background: isExpanded ? `${catColorHex}08` : 'var(--c-surface-2)' }}>
-
-            <InboxRow
-              item={item}
-              agents={agents}
-              isExpanded={isExpanded}
-              onToggle={() => {
-                const opening = expandedId !== item.id;
-                setExpanded(opening ? item.id : null);
-                if (opening) markRead(item.id);
-              }}
-            />
-
-            {/* Expanded body */}
-            {isExpanded && (
-              <div className="px-4 pb-4" style={{ borderTop: `1px solid ${catColorHex}20` }}>
-
-                {/* Advertencia: el cliente respondió mientras el draft esperaba aprobación */}
-                {item.client_replied_at && isPending && (
-                  <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg flex items-start gap-2" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)' }}>
-                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
-                    <div>
-                      <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El cliente respondió a este hilo</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                        Nuevo mensaje recibido el {new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Este borrador puede estar desactualizado; revisa la bandeja por un correo más reciente antes de aprobar.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Summary */}
-                {item.ai_summary && (
-                  <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{item.ai_summary}</p>
-                  </div>
-                )}
-
-                {/* Invoice data */}
-                {item.item_type === 'invoice' && item.invoice_data && (
-                  <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#f59e0b' }}>Datos de la factura</p>
-                    {item.invoice_data.vendor     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Proveedor:</span> {String(item.invoice_data.vendor)}</p>}
-                    {item.invoice_data.amount     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Monto:</span> ${Number(item.invoice_data.amount).toLocaleString('es-MX')} {String(item.invoice_data.currency ?? 'MXN')}</p>}
-                    {item.invoice_data.invoice_no && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>No. Factura:</span> {String(item.invoice_data.invoice_no)}</p>}
-                    {item.invoice_data.po_ref     && <p className="text-xs" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Ref OC:</span> {String(item.invoice_data.po_ref)}</p>}
-                  </div>
-                )}
-
-                {/* Discrepancy */}
-                {item.invoice_discrepancy && (
-                  <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                    <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: '#ef4444' }}>Discrepancia</p>
-                    <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>{item.invoice_discrepancy}</p>
-                  </div>
-                )}
-
-                {/* Draft: editable si pendiente, solo lectura después */}
-                {item.ai_draft && isPending && (
-                  <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
-                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puedes editar antes de aprobar</p>
-                    </div>
-                    <textarea
-                      value={draftEdits[item.id] ?? item.ai_draft}
-                      onChange={e => setDraftEdits(prev => ({ ...prev, [item.id]: e.target.value }))}
-                      rows={Math.min(20, Math.max(6, (draftEdits[item.id] ?? item.ai_draft).split('\n').length + 1))}
-                      className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
-                    />
-                  </div>
-                )}
-                {item.ai_draft && !isPending && (
-                  <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                    <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
-                    <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{item.ai_draft}</p>
-                  </div>
-                )}
-
-                {/* Attachments */}
-                {item.attachments?.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {item.attachments.map((att, i) => (
-                      <a key={i} href={att.url} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-                        <FileText size={10} />{att.name}
-                      </a>
-                    ))}
-                  </div>
-                )}
-
-                {/* Actions */}
-                {isPending && (() => {
-                  const wasEdited = !!draftEdits[item.id] && draftEdits[item.id].trim() !== (item.ai_draft ?? '').trim();
-                  return (
-                    <div className="flex gap-2 mt-2">
-                      <button onClick={() => act(item.id, 'approved')} disabled={!!acting}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                        style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }}>
-                        {acting === item.id ? 'Procesando…' : <><Check size={12} />{item.item_type === 'invoice' ? 'Aprobar factura' : wasEdited ? 'Enviar con tus cambios' : 'Aprobar y enviar'}</>}
-                      </button>
-                      <button onClick={() => act(item.id, 'rejected')} disabled={!!acting}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                        <X size={12} />Rechazar
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* Rescatar: solo cuando el correo está marcado spam (false positive del clasificador) */}
-                {item.status === 'skipped' && item.category === 'spam' && (
-                  <div className="mt-2">
-                    <button onClick={() => unspam(item.id)} disabled={!!acting}
-                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)', color: '#6C3BFF' }}>
-                      {acting === item.id ? 'Rescatando…' : <><RotateCcw size={12} />Rescatar (no era spam)</>}
-                    </button>
-                  </div>
-                )}
-
-                {/* Reportar mal envío: botón / form inline / detalle si ya reportado */}
-                {item.auto_mode_decision === 'send' && !item.auto_mode_flagged_at && flaggingId !== item.id && (
-                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
-                    <button
-                      type="button"
-                      onClick={() => openFlagForm(item.id)}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
-                      style={{ color: '#842029', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                      <AlertTriangle size={12} />
-                      Reportar mal envío
-                    </button>
-                  </div>
-                )}
-
-                {/* Form inline para reportar */}
-                {flaggingId === item.id && (
-                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#842029' }}>Reportar mal envío</p>
-
-                    <div className="space-y-1.5">
-                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>¿Qué salió mal?</p>
-                      {FLAG_CATEGORIES.map(cat => (
-                        <label key={cat.key} className="flex items-start gap-2 cursor-pointer px-2 py-1.5 rounded-md hover:bg-[rgba(239,68,68,0.04)]">
-                          <input
-                            type="radio"
-                            name={`flag-cat-${item.id}`}
-                            value={cat.key}
-                            checked={flagCategory === cat.key}
-                            onChange={() => setFlagCategory(cat.key)}
-                            className="mt-0.5 accent-[#ef4444]"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>{cat.label}</div>
-                            <div className="text-[11px] leading-snug" style={{ color: 'var(--c-text-4)' }}>{cat.hint}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div>
-                      <label className="text-xs block mb-1" style={{ color: 'var(--c-text-4)' }}>Detalle (opcional)</label>
-                      <textarea
-                        value={flagReason}
-                        onChange={e => setFlagReason(e.target.value)}
-                        rows={3}
-                        placeholder="Contexto adicional que ayude al empleado a evitar este error en el futuro."
-                        className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => submitFlag(item.id)}
-                        disabled={submittingFlag}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
-                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444' }}>
-                        <AlertTriangle size={12} />
-                        {submittingFlag ? 'Enviando…' : 'Enviar reporte'}
-                      </button>
-                      <button
-                        onClick={closeFlagForm}
-                        disabled={submittingFlag}
-                        className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
-                        style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Detalle del reporte si ya está flagged */}
-                {item.auto_mode_flagged_at && (
-                  <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
-                    <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#842029' }}>Reportado como mal envío</p>
-                    {item.auto_mode_flag_category && (
-                      <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
-                        <span style={{ color: 'var(--c-text-4)' }}>Categoría:</span>{' '}
-                        <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>
-                          {FLAG_CATEGORIES.find(c => c.key === item.auto_mode_flag_category)?.label ?? item.auto_mode_flag_category}
-                        </span>
-                      </p>
-                    )}
-                    {item.auto_mode_flag_reason && (
-                      <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                        <span style={{ color: 'var(--c-text-4)' }}>Detalle:</span> {item.auto_mode_flag_reason}
-                      </p>
-                    )}
-                    <p className="text-[11px] mt-1.5" style={{ color: 'var(--c-text-4)' }}>
-                      {new Date(item.auto_mode_flagged_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-
-                    {/* Correo de corrección */}
-                    {correctionOpenId !== item.id && (
-                      <div className="mt-3">
-                        <button
-                          onClick={() => openCorrection(item.id, (item.email_from ?? '').split('<')[0].trim().split('@')[0])}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
-                          style={{ color: '#6C3BFF', background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.25)' }}>
-                          <MessageSquare size={12} />
-                          Enviar corrección al cliente
-                        </button>
-                      </div>
-                    )}
-                    {correctionOpenId === item.id && (
-                      <div className="mt-3 space-y-2">
-                        <label className="text-xs block" style={{ color: 'var(--c-text-4)' }}>
-                          Correo de corrección a {item.email_from}
-                        </label>
-                        <textarea
-                          value={correctionText}
-                          onChange={e => setCorrectionText(e.target.value)}
-                          rows={Math.min(20, Math.max(8, correctionText.split('\n').length + 1))}
-                          className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => sendCorrection(item.id)}
-                            disabled={sendingCorrection}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-60"
-                            style={{ background: 'rgba(108,59,255,0.15)', border: '1px solid rgba(108,59,255,0.35)', color: '#6C3BFF' }}>
-                            <Check size={12} />
-                            {sendingCorrection ? 'Enviando…' : 'Enviar corrección'}
-                          </button>
-                          <button
-                            onClick={closeCorrection}
-                            disabled={sendingCorrection}
-                            className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
-                            style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
