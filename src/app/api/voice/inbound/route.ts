@@ -382,7 +382,11 @@ export async function POST(req: NextRequest) {
       backgroundDenoisingEnabled: true,
       silenceTimeoutSeconds: 10,
       maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
-      recordingEnabled: true,
+      artifactPlan: {
+        recordingEnabled: true,
+        recordingFormat: 'wav;l16',
+        transcriptPlan: { enabled: true },
+      },
       analysisPlan: {
         summaryPrompt: 'Resume esta llamada en 2-3 oraciones en texto plano, sin markdown, sin encabezados, sin negritas: qué quería el cliente y cómo terminó la llamada.',
         successEvaluationPrompt: '¿Se resolvió la solicitud del cliente satisfactoriamente?',
