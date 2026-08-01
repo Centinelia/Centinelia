@@ -55,4 +55,6 @@ export const NIVA_PREGUNTA_RAPIDA: GoldenScenario = {
       message: 'Escalacion registrada. Un humano dara seguimiento.',
     }),
   },
+  calibrated_at: '2026-07-31T21:30:00.000Z',
+  calibrated_score: 0.75,
 };
