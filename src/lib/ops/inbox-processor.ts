@@ -34,6 +34,31 @@ interface ProcessedEmail {
 
 const VALID_CATEGORIES = ['proveedor', 'cliente', 'urgente', 'factura', 'spam', 'otro'] as const;
 
+// Aprendizajes globales de conversación aprobados vía admin/conversacional.
+// Voz los inyecta en cada assistant build (src/lib/vapi/sync.ts:26).
+// Email los ganó en audit sesión 53 (ver [[audit-deferred-handoff]] sección E)
+// para mantener paridad — si el equipo aprueba un ajuste de estilo tras
+// revisar llamadas, los correos también deben adoptarlo.
+async function fetchConversationalLearningsForEmail(): Promise<{ general: string | null; micro: string | null }> {
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('conversational_learnings')
+      .select('body, target_document')
+      .eq('status', 'active')
+      .order('approved_at', { ascending: true });
+    if (!data?.length) return { general: null, micro: null };
+    const general = data.filter(l => l.target_document !== 'mdp');
+    const micro   = data.filter(l => l.target_document === 'mdp');
+    return {
+      general: general.length ? general.map((l, i) => `${i + 1}. ${l.body}`).join('\n') : null,
+      micro:   micro.length   ? micro.map(l => l.body).join('\n') : null,
+    };
+  } catch {
+    return { general: null, micro: null };
+  }
+}
+
 function isStr(v: unknown): v is string { return typeof v === 'string'; }
 function isBool(v: unknown): v is boolean { return typeof v === 'boolean'; }
 function strOrNull(v: unknown, max = 5000): string | null {
@@ -486,6 +511,25 @@ export async function processInboxEmail(params: {
     ? '\n\nMODO OBSERVADOR: No prometas ejecutar acciones (agendar, crear, registrar). El equipo revisará tu borrador; explícale al remitente que su mensaje fue recibido y será atendido, sin comprometerte a resultados.'
     : '';
 
+  // Aprendizajes de conversación — paridad con voz (ver comment arriba).
+  const learnings = await fetchConversationalLearningsForEmail();
+  const learningsBlock = (() => {
+    const parts: string[] = [];
+    if (learnings.general?.trim()) {
+      parts.push(`AJUSTES DE ESTILO — APRENDIDOS DE INTERACCIONES REALES:
+Aplícalos de forma natural en el borrador, sin mencionarlos explícitamente:
+
+${learnings.general.trim()}`);
+    }
+    if (learnings.micro?.trim()) {
+      parts.push(`MICRODECISIONES CONVERSACIONALES — CENTINELIA:
+Conductas situacionales aprendidas. Aplícalas exactamente cuando ocurra la señal indicada, no en general:
+
+${learnings.micro.trim()}`);
+    }
+    return parts.length ? `\n\n${parts.join('\n\n')}` : '';
+  })();
+
   // ── Política de Uso Aceptable ─────────────────────────────────────────────
   // Voz y WhatsApp la traen; email la ganó en audit sesión 53. La aplicamos
   // siempre en email (no hay skip_aup en este flujo por ahora).
@@ -506,7 +550,7 @@ DIVULGACIÓN: Si el remitente pregunta si eres humano o IA, responde honestament
 
 `;
 
-  const systemPrompt = `${aupBlock}Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}${spamRescueNote}${trustNote}
+  const systemPrompt = `${aupBlock}Eres ${agentName}, empleado de oficina de ${businessName}. Analizas emails entrantes y produces JSON con la categoría, resumen y borrador de respuesta.${contextSection}${learningsBlock}${spamRescueNote}${trustNote}
 
 === REGLAS CRÍTICAS ANTI-FABRICACIÓN — LÉELAS PRIMERO ===
 
