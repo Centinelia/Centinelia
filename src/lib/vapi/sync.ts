@@ -440,15 +440,14 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
         if (noNotice || custom.toLowerCase().includes('grabada')) return custom;
         return `${custom} ${notice}`;
       }
-      return `${agent.business_name}, buenos días. Le habla ${agentName}. ${notice} ¿En qué le puedo ayudar?`;
+      // Default corto y directo. Descubierto en primer battle test real: el default
+      // anterior ('Business, buenos dias. Le habla X. Esta llamada puede ser grabada.
+      // En que le puedo ayudar?') pesaba 17 palabras / ~7s de TTS a speed=0.91 y se
+      // sentia lentisimo antes de que arrancara el streaming chunked del resto.
+      // Este es 11 palabras / ~4s: mismo cumplimiento LFPDPPP, sin 'buenos dias'
+      // (que depende del horario) ni '¿en que le puedo ayudar?' redundante.
+      return `Le habla ${agentName} de ${agent.business_name}, su llamada puede ser grabada.`;
     })(),
-    // El firstMessage default de Vapi ('assistant-speaks-first') sintetiza el
-    // saludo como UN bloque completo en 11labs antes de reproducirlo — se siente
-    // lento en el primer turno. Con 'assistant-speaks-first-with-model-generated-message'
-    // Vapi hace que el MODELO genere el saludo con el mismo streaming chunked que
-    // el resto de la conversacion, quedando fluido desde el turno 1.
-    // firstMessage sigue siendo el guion sugerido para el modelo.
-    firstMessageMode: 'assistant-speaks-first-with-model-generated-message',
     endCallMessage: 'Hasta luego.',
     // Ampliadas post-primera-llamada-real: la lista original era muy formal y
     // el modelo con CCP nuevo cierra corto ("Hasta luego." o "Que le vaya bien.").
