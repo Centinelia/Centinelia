@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+
+interface Params { params: Promise<{ token: string }> }
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const cookie = req.cookies.get(PORTAL_COOKIE)?.value ?? '';
+  const auth   = await verifySession(cookie);
+  if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const { token } = await params;
+  const supabase  = createAdminClient();
+
+  const { data: acct } = await supabase
+    .from('voice_agents').select('portal_email').eq('portal_token', token).single();
+  if (!acct?.portal_email) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  if (auth.portalEmail && auth.portalEmail !== acct.portal_email)
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString();
+
+  const { data: runs } = await supabase
+    .from('heartbeat_runs')
+    .select('id, agent_id, ran_at, frequency, subject, content_md, read_at')
+    .eq('portal_email', acct.portal_email)
+    .gte('ran_at', thirtyDaysAgo)
+    .order('ran_at', { ascending: false })
+    .limit(100);
+
+  return NextResponse.json({ runs: runs ?? [] });
+}

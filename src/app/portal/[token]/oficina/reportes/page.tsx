@@ -30,6 +30,15 @@ export default async function ReportesPage({ params }: Props) {
     role:          a.role ?? null,
   }));
 
+  const checkinsAgents = (all ?? []).map((a: any) => ({
+    id:              a.id,
+    business_name:   a.business_name,
+    meerkat_role_id: (a.features as any)?.meerkat_role_id ?? null,
+  }));
+  const hasCoordinator = checkinsAgents.some(a =>
+    a.meerkat_role_id === 'nox' || a.meerkat_role_id === 'niva'
+  );
+
   // Prefer coordinator (handles reporting/dispatch); fallback to any with role
   const reporter = (all ?? []).find(
     (a: any) => (a.features as any)?.is_coordinator
@@ -40,7 +49,14 @@ export default async function ReportesPage({ params }: Props) {
 
   return (
     <div id="of-reportes">
-      <OpsReportsSection token={token} agents={agents} meerkatRoleId={meerkatRoleId} reportAgentId={reportAgentId} />
+      <OpsReportsSection
+        token={token}
+        agents={agents}
+        meerkatRoleId={meerkatRoleId}
+        reportAgentId={reportAgentId}
+        hasCoordinator={hasCoordinator}
+        checkinsAgents={checkinsAgents}
+      />
     </div>
   );
 }

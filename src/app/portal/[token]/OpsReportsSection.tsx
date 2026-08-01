@@ -6,6 +6,7 @@ import InfoTooltip from '@/components/InfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import CheckinsSection, { type CheckinsSectionAgent } from './reportes/CheckinsSection';
 
 interface OpsReport {
   id:                  string;
@@ -97,11 +98,13 @@ function SendResultModal({ message, onClose }: { message: string; onClose: () =>
   );
 }
 
-export default function OpsReportsSection({ token, agents, meerkatRoleId, reportAgentId }: {
-  token:          string;
-  agents:         Array<{ id: string; business_name: string; role: string | null }>;
-  meerkatRoleId?: string | null;
-  reportAgentId?: string;
+export default function OpsReportsSection({ token, agents, meerkatRoleId, reportAgentId, hasCoordinator, checkinsAgents }: {
+  token:           string;
+  agents:          Array<{ id: string; business_name: string; role: string | null }>;
+  meerkatRoleId?:  string | null;
+  reportAgentId?:  string;
+  hasCoordinator?: boolean;
+  checkinsAgents?: CheckinsSectionAgent[];
 }) {
   const [reports, setReports]       = useState<OpsReport[]>([]);
   const [runs, setRuns]             = useState<ReportRun[]>([]);
@@ -291,6 +294,14 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
             </div>
           )}
         </div>
+
+        {/* Check-ins de coordinadores */}
+        {hasCoordinator && checkinsAgents && (
+          <>
+            <CheckinsSection token={token} agents={checkinsAgents} />
+            <div className="h-px w-full" style={{ background: 'var(--c-border)' }} />
+          </>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between">
