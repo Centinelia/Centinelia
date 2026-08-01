@@ -74,11 +74,19 @@ export default async function EntrantesPage({ params }: Props) {
   const orders = ordersRes.data  ?? [];
   const appts  = apptsRes.data   ?? [];
 
+  // Requiere ≥7 dígitos para evitar que un teléfono parcial mapee a un nombre
+  // y ese nombre aparezca en llamadas de otros contactos.
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
   const callerNames: Record<string, string> = {};
-  for (const l of leads  as any[]) { if (l.whatsapp && l.nombre) { const k = normPhone(l.whatsapp); if (k && !callerNames[k]) callerNames[k] = l.nombre; } }
-  for (const a of appts  as any[]) { if (a.telefono && a.nombre) { const k = normPhone(a.telefono); if (k && !callerNames[k]) callerNames[k] = a.nombre; } }
-  for (const o of orders as any[]) { if (o.telefono && o.nombre) { const k = normPhone(o.telefono); if (k && !callerNames[k]) callerNames[k] = o.nombre; } }
+  const addName = (rawPhone: unknown, name: unknown) => {
+    if (typeof rawPhone !== 'string' || typeof name !== 'string' || !name.trim()) return;
+    const k = normPhone(rawPhone);
+    if (k.length < 7) return;
+    if (!callerNames[k]) callerNames[k] = name.trim();
+  };
+  for (const l of leads  as any[]) addName(l.whatsapp, l.nombre);
+  for (const a of appts  as any[]) addName(a.telefono, a.nombre);
+  for (const o of orders as any[]) addName(o.telefono, o.nombre);
 
 
   return (
@@ -134,7 +142,7 @@ export default async function EntrantesPage({ params }: Props) {
                 {calls.length === 0 ? (
                   <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
                 ) : (
-                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} />
+                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} agentName={(agent as any).agent_name ?? agent.business_name} />
                 )}
               </div>
 

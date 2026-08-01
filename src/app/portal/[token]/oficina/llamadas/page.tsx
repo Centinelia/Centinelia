@@ -47,12 +47,31 @@ export default async function OficinaLlamadasPage({ params }: Props) {
   const orders   = ordersRes.data  ?? [];
   const appts    = apptsRes.data   ?? [];
 
-  // Build caller name lookup from captured data
+  // Build caller name lookup from captured data. Requiere ≥7 dígitos para
+  // evitar que teléfonos parciales o ruidosos (ej. "N/A" → "") mapeen a un
+  // nombre y ese nombre aparezca en llamadas de otros contactos.
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
   const callerNames: Record<string, string> = {};
-  for (const l of leads  as any[]) { if (l.whatsapp && l.nombre) { const k = normPhone(l.whatsapp); if (k && !callerNames[k]) callerNames[k] = l.nombre; } }
-  for (const a of appts  as any[]) { if (a.telefono && a.nombre) { const k = normPhone(a.telefono); if (k && !callerNames[k]) callerNames[k] = a.nombre; } }
-  for (const o of orders as any[]) { if (o.telefono && o.nombre) { const k = normPhone(o.telefono); if (k && !callerNames[k]) callerNames[k] = o.nombre; } }
+  const addName = (rawPhone: unknown, name: unknown) => {
+    if (typeof rawPhone !== 'string' || typeof name !== 'string' || !name.trim()) return;
+    const k = normPhone(rawPhone);
+    if (k.length < 7) return;
+    if (!callerNames[k]) callerNames[k] = name.trim();
+  };
+  for (const l of leads  as any[]) addName(l.whatsapp, l.nombre);
+  for (const a of appts  as any[]) addName(a.telefono, a.nombre);
+  for (const o of orders as any[]) addName(o.telefono, o.nombre);
+
+  // Map agent_id → agent_name para que cada llamada muestre quién realmente la
+  // atendió. Antes se pasaba un único agentName basado en el token del portal,
+  // así que en cuentas con varios empleados todas las llamadas aparecían como
+  // atendidas por el mismo agente.
+  const agentNameById: Record<string, string> = {};
+  for (const p of allPeers) {
+    const id   = p.id as string | undefined;
+    const name = ((p as any).agent_name ?? p.business_name) as string | undefined;
+    if (id && name) agentNameById[id] = name;
+  }
 
   const outboundAgents = allPeers
     .filter(a => !!((a.features as any)?.outbound_calls))
@@ -79,6 +98,7 @@ export default async function OficinaLlamadasPage({ params }: Props) {
         outboundCampaigns={campaignsRes.data ?? []}
         outboundAgents={outboundAgents}
         callerNames={callerNames}
+        agentNameById={agentNameById}
       />
     </div>
   );

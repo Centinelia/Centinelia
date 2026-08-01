@@ -33,6 +33,7 @@ interface Props {
   outboundCampaigns: any[];
   outboundAgents:    OutboundAgent[];
   callerNames:       Record<string, string>;
+  agentNameById?:    Record<string, string>;
 }
 
 export default function LlamadasTabs({
@@ -41,7 +42,7 @@ export default function LlamadasTabs({
   showLeads, showOrders, showAppts,
   showOutbound, initOutbound, initMissedCall,
   contactOutbound, outboundCampaigns, outboundAgents,
-  callerNames,
+  callerNames, agentNameById,
 }: Props) {
   const [tab, setTab] = useState<Tab>('entrantes');
 
@@ -119,6 +120,7 @@ export default function LlamadasTabs({
                 callerNames={callerNames}
                 token={token}
                 agentName={agentName}
+                agentNameById={agentNameById}
               />
             )}
           </div>

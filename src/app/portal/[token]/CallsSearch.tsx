@@ -18,12 +18,13 @@ const OUTCOME_LABELS: Record<string, string> = {
   other:              'Otro',
 };
 
-export default function CallsSearch({ calls, isPro, callerNames = {}, token, agentName }: {
-  calls:        VoiceCall[];
-  isPro:        boolean;
-  callerNames?: Record<string, string>;
-  token?:       string;
-  agentName?:   string;
+export default function CallsSearch({ calls, isPro, callerNames = {}, token, agentName, agentNameById }: {
+  calls:          VoiceCall[];
+  isPro:          boolean;
+  callerNames?:   Record<string, string>;
+  token?:         string;
+  agentName?:     string;
+  agentNameById?: Record<string, string>;
 }) {
   const [query,      setQuery]      = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -141,16 +142,21 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
                 {isFiltered ? 'Sin resultados para este filtro' : 'Sin llamadas en este período'}
               </p>
             )
-            : filtered.map(call => (
-                <CallCard
-                  key={call.id}
-                  call={call}
-                  isPro={isPro}
-                  clientName={callerNames[(call.caller_number ?? '').replace(/\D/g, '')]}
-                  agentName={agentName}
-                  token={token}
-                />
-              ))
+            : filtered.map(call => {
+                const key       = (call.caller_number ?? '').replace(/\D/g, '');
+                const knownName = key.length >= 7 ? callerNames[key] : undefined;
+                const perAgent  = agentNameById?.[call.agent_id] ?? agentName;
+                return (
+                  <CallCard
+                    key={call.id}
+                    call={call}
+                    isPro={isPro}
+                    clientName={knownName}
+                    agentName={perAgent}
+                    token={token}
+                  />
+                );
+              })
           }
         </div>
       </div>
