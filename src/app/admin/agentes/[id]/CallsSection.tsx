@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Mic, FileText, ExternalLink, Copy, Check } from 'lucide-react';
 import type { VoiceCall } from '@/types/agent';
+import TranscriptView from '@/components/TranscriptView';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
   lead_created:       { label: 'Lead',       color: '#22c55e' },
@@ -43,7 +44,7 @@ function CopyTranscriptButton({ text }: { text: string }) {
   );
 }
 
-function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
+function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: string; agentName?: string }) {
   const [open, setOpen] = useState(false);
   const hasDetails = call.summary || call.transcript || call.recording_url;
 
@@ -121,12 +122,7 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
                 <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Transcripción</div>
                 <CopyTranscriptButton text={call.transcript} />
               </div>
-              <div
-                className="text-xs leading-relaxed rounded-lg p-3 max-h-48 overflow-y-auto whitespace-pre-wrap"
-                style={{ background: 'var(--c-code-bg)', color: 'var(--c-text-2)', fontFamily: 'monospace' }}
-              >
-                {call.transcript}
-              </div>
+              <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={192} />
             </div>
           )}
         </div>
@@ -135,7 +131,7 @@ function CallRow({ call, timezone }: { call: VoiceCall; timezone: string }) {
   );
 }
 
-export default function CallsSection({ calls, timezone }: { calls: VoiceCall[]; timezone: string }) {
+export default function CallsSection({ calls, timezone, agentName }: { calls: VoiceCall[]; timezone: string; agentName?: string }) {
   return (
     <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -148,7 +144,7 @@ export default function CallsSection({ calls, timezone }: { calls: VoiceCall[]; 
       ) : (
         <div className="flex flex-col gap-2">
           {calls.map(call => (
-            <CallRow key={call.id} call={call} timezone={timezone} />
+            <CallRow key={call.id} call={call} timezone={timezone} agentName={agentName} />
           ))}
         </div>
       )}

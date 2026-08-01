@@ -7,6 +7,7 @@ import {
   Mic, FileText, ExternalLink, Copy, Check, Phone,
 } from 'lucide-react';
 import type { VoiceCall } from '@/types/agent';
+import TranscriptView from '@/components/TranscriptView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -240,10 +241,7 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
                 <div className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Transcripción</div>
                 <CopyButton text={call.transcript} title="Copiar transcripción" />
               </div>
-              <div className="text-xs leading-relaxed rounded-lg p-3 max-h-48 overflow-y-auto whitespace-pre-wrap"
-                style={{ background: 'var(--c-code-bg)', color: 'var(--c-text-2)', fontFamily: 'monospace' }}>
-                {call.transcript}
-              </div>
+              <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={192} />
             </div>
           )}
         </div>

@@ -242,7 +242,7 @@ export default async function AgentDetailPage({ params }: Props) {
           </Card>
 
           {/* Recent calls */}
-          <CallsSection calls={calls} timezone={agent.timezone ?? 'America/Monterrey'} />
+          <CallsSection calls={calls} timezone={agent.timezone ?? 'America/Monterrey'} agentName={agent.agent_name} />
 
           {/* Version pin controls */}
           <AgentVersionTab

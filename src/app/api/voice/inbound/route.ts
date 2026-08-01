@@ -385,7 +385,11 @@ export async function POST(req: NextRequest) {
       artifactPlan: {
         recordingEnabled: true,
         recordingFormat: 'wav;l16',
-        transcriptPlan: { enabled: true },
+        transcriptPlan: {
+          enabled: true,
+          assistantName: agentName,
+          userName: 'Cliente',
+        },
       },
       analysisPlan: {
         summaryPrompt: 'Resume esta llamada en 2-3 oraciones en texto plano, sin markdown, sin encabezados, sin negritas: qué quería el cliente y cómo terminó la llamada.',

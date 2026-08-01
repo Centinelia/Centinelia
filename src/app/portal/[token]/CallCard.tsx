@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Download, Clock, X, FileText, Star, Phone, User, ChevronDown } from 'lucide-react';
+import TranscriptView from '@/components/TranscriptView';
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   lead_created:       { label: 'Lead',        color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)'  },
@@ -270,11 +271,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
               )}
 
               {effectiveTab === 'transcripcion' && call.transcript && (
-                <div className="rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap overflow-y-auto"
-                  style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)',
-                    border: '1px solid var(--c-border)', maxHeight: 220 }}>
-                  {call.transcript}
-                </div>
+                <TranscriptView transcript={call.transcript} agentName={agentName} maxHeight={220} />
               )}
             </div>
           </div>
