@@ -10,7 +10,16 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const args = body.toolCallList?.[0]?.function?.arguments ?? body;
+  const call = body.toolCallList?.[0];
+  const args = call?.function?.arguments ?? body;
+  const toolCallId: string = call?.id ?? 'call_1';
+
+  // Helper para responder en el formato que Vapi espera actualmente:
+  // { results: [{ toolCallId, result }] }. El formato viejo { result } causa
+  // "No result returned" en Vapi y el modelo continua sin ver el resultado.
+  const reply = (msg: string, extra?: Record<string, unknown>) =>
+    NextResponse.json({ results: [{ toolCallId, result: msg, ...(extra ?? {}) }] });
+
   const accion:      string | undefined = args.accion;
   const nombre:      string | undefined = args.nombre;
   const servicio:    string | undefined = args.servicio;
@@ -22,7 +31,7 @@ export async function POST(req: NextRequest) {
     ? args.duracion_min
     : (typeof args.duracion_min === 'string' ? parseInt(args.duracion_min, 10) : 60);
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  if (!agent_id) return reply('Error de configuración.');
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -52,9 +61,7 @@ export async function POST(req: NextRequest) {
     // Guard: sin fecha_iso + hora parseables no podemos detectar empalmes ni
     // sincronizar calendar. Rechazamos para que el modelo reintente con datos completos.
     if (!startsAt || !endsAt) {
-      return NextResponse.json({
-        result: 'No puedo confirmar la cita sin fecha exacta (YYYY-MM-DD) y hora (HH:MM 24h). Pregunta al cliente el día y hora exactos, y vuelve a llamar agendar_cita incluyendo AMBOS campos.',
-      });
+      return reply('No puedo confirmar la cita sin fecha exacta (YYYY-MM-DD) y hora (HH:MM 24h). Pregunta al cliente el día y hora exactos, y vuelve a llamar agendar_cita incluyendo AMBOS campos.');
     }
 
     // Conflict check
@@ -67,9 +74,7 @@ export async function POST(req: NextRequest) {
       .eq('starts_at', startsAt.toISOString());
     if (dbConflicts && dbConflicts.length > 0) {
       const c = dbConflicts[0];
-      return NextResponse.json({
-        result: `Ese horario ya está ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propón al cliente un horario distinto.`,
-      });
+      return reply(`Ese horario ya está ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propón al cliente un horario distinto.`);
     }
 
     // 1b) Fallback legacy check por columna fecha string exacta con starts_at NULL.
@@ -83,9 +88,7 @@ export async function POST(req: NextRequest) {
       .is('starts_at', null);
     if (legacyConflicts && legacyConflicts.length > 0) {
       const c = legacyConflicts[0];
-      return NextResponse.json({
-        result: `Ese horario ya está ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propón al cliente un horario distinto.`,
-      });
+      return reply(`Ese horario ya está ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propón al cliente un horario distinto.`);
     }
 
     // 2) Google/Outlook Calendar si está conectado: overlap con eventos externos.
@@ -100,9 +103,7 @@ export async function POST(req: NextRequest) {
       if (overlapping.length > 0) {
         const first = overlapping[0] as { title: string; start: string };
         const timeStr = new Date(first.start).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        return NextResponse.json({
-          result: `El calendario ya tiene "${first.title}" a las ${timeStr}. Propón al cliente un horario distinto.`,
-        });
+        return reply(`El calendario ya tiene "${first.title}" a las ${timeStr}. Propón al cliente un horario distinto.`);
       }
     }
 
@@ -169,8 +170,8 @@ export async function POST(req: NextRequest) {
     cancelar:  `Su cita ha sido cancelada. Si necesita reagendar estamos a sus órdenes.`,
   };
 
-  return NextResponse.json({
-    result: responses[accion as string] ?? 'Solicitud de cita procesada.',
-    calendar_url: agent?.calendar_url ?? null,
-  });
+  return reply(
+    responses[accion as string] ?? 'Solicitud de cita procesada.',
+    { calendar_url: agent?.calendar_url ?? null },
+  );
 }
