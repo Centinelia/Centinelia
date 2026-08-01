@@ -55,7 +55,7 @@ export default function LiveNotifications({ token }: { token: string }) {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       new Notification('Centinelia · Nueva actividad', {
         body: toast.message,
-        icon: '/logo.png',
+        icon: '/logo-icon.png',
         tag:  call.id,
       });
     }
