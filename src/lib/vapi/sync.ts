@@ -363,8 +363,9 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
 async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], peers: TeamPeer[] = [], learnings?: AgentLearnings | null) {
   const agentName = agent.agent_name?.trim() || 'Centinelia';
 
+  const supabaseSync = createAdminClient();
   const messages: Array<{ role: string; content: string }> = [
-    { role: 'system', content: buildSystemPrompt(agent, learnings) },
+    { role: 'system', content: await buildSystemPrompt(agent, learnings, (agent as unknown as Record<string, unknown>).org_id as string | undefined, supabaseSync) },
   ];
 
   if (peers.length > 0) {

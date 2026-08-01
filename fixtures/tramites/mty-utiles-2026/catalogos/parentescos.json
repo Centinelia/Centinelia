@@ -1,0 +1,7 @@
+{"data": [
+  {"id": "par-madre", "nombre": "MADRE"},
+  {"id": "par-padre", "nombre": "PADRE"},
+  {"id": "par-tutor", "nombre": "TUTOR"},
+  {"id": "par-abuelo", "nombre": "ABUELO/A"},
+  {"id": "par-hermano", "nombre": "HERMANO/A"}
+]}

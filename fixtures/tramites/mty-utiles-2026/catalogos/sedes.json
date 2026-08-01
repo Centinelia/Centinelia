@@ -1,0 +1,5 @@
+{"data": [
+  {"id": "sede-001", "nombre": "PLAZA PASEO LA QUINTA", "direccion": "Andador Democracia, Sarabia, Monterrey, NL 64490", "fechas": "Del 10 al 11 de agosto", "horario": "9:00 a 16:00"},
+  {"id": "sede-002", "nombre": "PARQUE TUCAN", "direccion": "Parque Tucan, Monterrey, NL", "fechas": "Del 6 al 7 de agosto", "horario": "9:00 a 16:00"},
+  {"id": "sede-003", "nombre": "GIMNASIO MONTERREY 400", "direccion": "Calle las Selvas, Carmen Serdan, Monterrey, NL 64249", "fechas": "Del 3 al 5 de agosto", "horario": "9:00 a 16:00"}
+]}

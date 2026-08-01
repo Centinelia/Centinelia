@@ -39,6 +39,10 @@ import {
   peerReviewText, peerReviewSlides, isCriticalDocument,
 } from '@/lib/documents/quality-enhancer';
 import { PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getTramiteById } from '@/lib/tramites/config';
+import { fetchCatalogo } from '@/lib/tramites/catalog';
+import { fetchLookup } from '@/lib/tramites/lookup';
+import { submitTramite } from '@/lib/tramites/submit';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -1095,6 +1099,77 @@ export async function executeAgentTool(
   if (toolName === 'pedir_a_humano') {
     const { pedirAHumano } = await import('@/lib/tools/handlers/pedir-a-humano');
     return await pedirAHumano(toolInput as unknown as Parameters<typeof pedirAHumano>[0], ctx);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // consultar_catalogo_externo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'consultar_catalogo_externo') {
+    const tramiteId = toolInput.tramite_id as string | undefined;
+    const catalogoKey = toolInput.catalogo_key as string | undefined;
+    const filtrosInput = toolInput.filtros as Record<string, unknown> | undefined;
+
+    if (!tramiteId) return { ok: false, error: 'El ID del trámite es requerido (tramite_id).' };
+    if (!catalogoKey) return { ok: false, error: 'La clave del catálogo es requerida (catalogo_key).' };
+
+    const orgId = agent.org_id as string | undefined;
+    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+
+    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
+
+    // Convertir filtros a Record<string, string> para compatibilidad con fetchCatalogo
+    const filtros: Record<string, string> = {};
+    if (filtrosInput) {
+      for (const [k, v] of Object.entries(filtrosInput)) {
+        filtros[k] = String(v ?? '');
+      }
+    }
+
+    const result = await fetchCatalogo(tramite, catalogoKey, filtros, supabase);
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // buscar_en_padron_externo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_en_padron_externo') {
+    const tramiteId = toolInput.tramite_id as string | undefined;
+    const lookupKey = toolInput.lookup_key as string | undefined;
+    const valor = toolInput.valor as string | undefined;
+
+    if (!tramiteId) return { ok: false, error: 'El ID del trámite es requerido (tramite_id).' };
+    if (!lookupKey) return { ok: false, error: 'La clave del padrón es requerida (lookup_key).' };
+    if (!valor) return { ok: false, error: 'El valor a buscar es requerido (valor).' };
+
+    const orgId = agent.org_id as string | undefined;
+    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+
+    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
+
+    const result = await fetchLookup(tramite, lookupKey, valor, supabase);
+    return result;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // enviar_tramite_externo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'enviar_tramite_externo') {
+    const tramiteId = toolInput.tramite_id as string | undefined;
+    const campos = (toolInput.campos as Record<string, unknown> | undefined) ?? {};
+
+    if (!tramiteId) return { ok: false, error: 'El ID del trámite es requerido (tramite_id).' };
+
+    const orgId = agent.org_id as string | undefined;
+    if (!orgId) return { ok: false, error: 'No se pudo determinar la organización.' };
+
+    const tramite = await getTramiteById(tramiteId, orgId, supabase);
+    if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
+
+    const channel = ctx.channel === 'email' ? 'email' : 'chat';
+    const result = await submitTramite(tramite, campos, { channel, agentId }, supabase);
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
