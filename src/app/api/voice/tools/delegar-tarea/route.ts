@@ -9,7 +9,6 @@ type SiblingAgent = {
   id: string;
   agent_name: string | null;
   role: string | null;
-  knowledge_base: string | null;
   role_knowledge_base: string | null;
   transfer_whatsapp: string | null;
   portal_email: string;
@@ -263,18 +262,31 @@ export async function POST(req: NextRequest) {
 
   if (!caller?.portal_email) return fail('No se pudo identificar al agente que delega.');
 
-  // Find sibling agents
-  const { data: siblings } = await supabase
+  // Find sibling agents. knowledge_base es org-level (commit e372013 lo movio
+  // a organizations), lo hidratamos aparte abajo.
+  const { data: siblings, error: siblingsErr } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, knowledge_base, role_knowledge_base, transfer_whatsapp, portal_email, portal_token')
+    .select('id, agent_name, role, role_knowledge_base, transfer_whatsapp, portal_email, portal_token')
     .eq('portal_email', caller.portal_email)
     .eq('active', true)
     .neq('id', agentId);
 
+  if (siblingsErr) {
+    console.error('delegar-tarea: siblings query error', siblingsErr);
+    return fail('No se pudo cargar el equipo. Intenta de nuevo en un momento.');
+  }
   if (!siblings?.length) return fail('No hay otros agentes disponibles en el equipo.');
 
   const target = [...siblings]
     .sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0] as SiblingAgent;
+
+  // Hidrata knowledge_base org-level
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('knowledge_base')
+    .eq('portal_email', caller.portal_email)
+    .maybeSingle();
+  const orgKb = (orgRow?.knowledge_base as string | null) ?? null;
 
   // Build target agent system prompt
   const promptLines = [
@@ -293,8 +305,8 @@ export async function POST(req: NextRequest) {
   if (success_criteria) {
     promptLines.push('', `## Criterio de éxito`, `La tarea se considera completada cuando: ${success_criteria}`);
   }
-  if (target.knowledge_base?.trim()) {
-    promptLines.push('', '## Base de conocimiento', target.knowledge_base.trim());
+  if (orgKb?.trim()) {
+    promptLines.push('', '## Base de conocimiento', orgKb.trim());
   }
   if (target.role_knowledge_base?.trim()) {
     promptLines.push('', '## Conocimiento de tu rol', target.role_knowledge_base.trim());

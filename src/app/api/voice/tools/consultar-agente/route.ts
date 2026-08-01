@@ -96,15 +96,30 @@ export async function POST(req: NextRequest) {
 
   if (!caller?.portal_email) return fail('No se pudo identificar al agente consultante.');
 
-  // Find sibling agents in the same account
-  const { data: siblings } = await supabase
+  // Find sibling agents in the same account. knowledge_base es org-level
+  // (commit e372013 lo movio a organizations), lo hidratamos aparte abajo.
+  const { data: siblings, error: siblingsErr } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, knowledge_base, role_knowledge_base')
+    .select('id, agent_name, role, role_knowledge_base')
     .eq('portal_email', caller.portal_email)
     .eq('active', true)
     .neq('id', agentId);
 
+  if (siblingsErr) {
+    console.error('consultar-agente: siblings query error', siblingsErr);
+    return fail('No se pudo cargar el equipo. Intenta de nuevo en un momento.');
+  }
   if (!siblings?.length) return fail('No hay otros agentes disponibles en el equipo en este momento.');
+
+  // Hidrata knowledge_base org-level (todos los agentes del mismo portal_email
+  // comparten el mismo KB de negocio) — usada como fallback si el compañero
+  // no tiene role_knowledge_base propio.
+  const { data: orgRow } = await supabase
+    .from('organizations')
+    .select('knowledge_base')
+    .eq('portal_email', caller.portal_email)
+    .maybeSingle();
+  const orgKb = (orgRow?.knowledge_base as string | null) ?? null;
 
   // Pick best match by name / role
   const target = siblings
@@ -126,8 +141,8 @@ export async function POST(req: NextRequest) {
     '- No menciones que eres IA ni que usaste herramientas. Solo da la respuesta.',
   ];
 
-  if (target.knowledge_base?.trim())
-    parts.push('', '## Tu base de conocimiento', target.knowledge_base.trim());
+  if (orgKb?.trim())
+    parts.push('', '## Tu base de conocimiento', orgKb.trim());
   if (target.role_knowledge_base?.trim())
     parts.push('', '## Conocimiento de tu rol', target.role_knowledge_base.trim());
 
