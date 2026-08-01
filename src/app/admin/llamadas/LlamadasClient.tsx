@@ -224,8 +224,8 @@ function FlatCallRow({ call, agentName, timezone }: { call: VoiceCall; agentName
             <div>
               <div className="text-xs font-semibold mb-1.5 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Grabación</div>
               <div className="flex items-center gap-2">
-                <audio controls src={call.recording_url} className="w-full h-8" style={{ accentColor: '#a855f7' }} />
-                <a href={call.recording_url} target="_blank" rel="noopener noreferrer"
+                <audio controls src={`/api/admin/recording/${call.id}`} className="w-full h-8" style={{ accentColor: '#a855f7' }} />
+                <a href={`/api/admin/recording/${call.id}`} target="_blank" rel="noopener noreferrer"
                   title="Abrir en nueva pestaña"
                   className="flex-shrink-0 p-1.5 rounded hover:bg-[var(--c-surface-2)] transition-colors"
                   style={{ color: 'var(--c-text-2)' }}>

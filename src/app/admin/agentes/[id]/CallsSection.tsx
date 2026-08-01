@@ -98,12 +98,12 @@ function CallRow({ call, timezone, agentName }: { call: VoiceCall; timezone: str
               <div className="flex items-center gap-2">
                 <audio
                   controls
-                  src={call.recording_url}
+                  src={`/api/admin/recording/${call.id}`}
                   className="w-full h-8"
                   style={{ accentColor: '#a855f7' }}
                 />
                 <a
-                  href={call.recording_url}
+                  href={`/api/admin/recording/${call.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Abrir en nueva pestaña"

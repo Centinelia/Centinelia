@@ -266,8 +266,8 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
                 </>
               )}
 
-              {effectiveTab === 'audio' && showRec && (
-                <RecordingPlayer url={call.recording_url!} createdAt={call.created_at} />
+              {effectiveTab === 'audio' && showRec && token && (
+                <RecordingPlayer url={`/api/portal/${token}/recording/${call.id}`} createdAt={call.created_at} />
               )}
 
               {effectiveTab === 'transcripcion' && call.transcript && (
