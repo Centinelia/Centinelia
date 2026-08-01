@@ -150,6 +150,9 @@ export async function submitTramite(
     folio = raw != null ? String(raw) : null;
   }
 
+  // C1: Si el endpoint respondió con éxito pero no hay folio, tratar como error anómalo.
+  const dbStatus = statusLabel === 'success' && !folio ? 'error' : statusLabel;
+
   // 5. Persistir en external_tramites_submissions
   const { error: insertErr } = await supabase
     .from('external_tramites_submissions')
@@ -164,8 +167,8 @@ export async function submitTramite(
       response_status:   httpResult.timedOut ? 0 : httpResult.status,
       response_body:     httpResult.body,
       folio,
-      status:            statusLabel,
-      error:             statusLabel !== 'success'
+      status:            dbStatus,
+      error:             dbStatus !== 'success'
         ? JSON.stringify(httpResult.body ?? { timedOut: httpResult.timedOut })
         : null,
     });
@@ -187,14 +190,23 @@ export async function submitTramite(
         already_submitted: true,
       };
     }
-    // Otro error de DB — reportar pero no bloquear si el envío fue exitoso
-    if (statusLabel === 'success') {
+    // Otro error de DB — reportar pero no bloquear si el envío fue exitoso con folio.
+    if (statusLabel === 'success' && folio) {
       return { ok: true, folio };
     }
   }
 
   // 6. Construir resultado para el agente
   if (statusLabel === 'success') {
+    // C1: Si el endpoint respondió éxito pero no incluyó folio, es una respuesta anómala.
+    // El agente no puede confirmar el trámite sin folio — escalar a humano.
+    if (!folio) {
+      return {
+        ok:       false,
+        error:    'El endpoint respondió éxito pero no incluyó folio. Escalando a humano.',
+        escalate: true,
+      };
+    }
     return { ok: true, folio };
   }
 
@@ -222,9 +234,10 @@ export async function submitTramite(
     };
   }
 
-  // Generic error (4xx etc.)
+  // Generic error (4xx etc.) — I2: escalate=true porque el agente no puede resolver esto.
   return {
-    ok:    false,
-    error: `El trámite no pudo completarse. El servidor respondió con código ${httpResult.status}. Verifica los datos o contacta a soporte.`,
+    ok:       false,
+    error:    `El trámite no pudo completarse. El servidor respondió con código ${httpResult.status}. Verifica los datos o contacta a soporte.`,
+    escalate: true,
   };
 }

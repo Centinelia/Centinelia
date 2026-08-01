@@ -55,12 +55,6 @@ function resolvePath(endpointTemplate: string, filtros: Record<string, string>):
   );
 }
 
-export interface FetchCatalogoResult {
-  items:     { id: string; label: string; extra?: string[] }[];
-  truncated: boolean;
-  error?:    string;
-}
-
 /**
  * Obtiene los items de un catálogo para un trámite.
  *
@@ -76,13 +70,15 @@ export async function fetchCatalogo(
   catalogoKey: string,
   filtros:     Record<string, string>,
   supabase:    SupabaseClient,
-): Promise<FetchCatalogoResult> {
+): Promise<
+  | { ok: true;  items: { id: string; label: string; extra?: string[] }[]; truncated: boolean }
+  | { ok: false; error: string }
+> {
   const catalogo = tramite.catalogos.find(c => c.key === catalogoKey);
   if (!catalogo) {
     return {
-      items:    [],
-      truncated: false,
-      error:    `Catálogo '${catalogoKey}' no encontrado en la configuración del trámite '${tramite.slug}'.`,
+      ok:    false,
+      error: `Catálogo '${catalogoKey}' no encontrado en la configuración del trámite '${tramite.slug}'.`,
     };
   }
 
@@ -91,9 +87,8 @@ export async function fetchCatalogo(
     const queryValue = filtros[catalogo.query_param] ?? '';
     if (queryValue.length < catalogo.min_query_length) {
       return {
-        items:    [],
-        truncated: false,
-        error:    `Se requieren al menos ${catalogo.min_query_length} caracteres para buscar en el catálogo '${catalogoKey}'. Proporciona más texto.`,
+        ok:    false,
+        error: `Se requieren al menos ${catalogo.min_query_length} caracteres para buscar en el catálogo '${catalogoKey}'. Proporciona más texto.`,
       };
     }
   }
@@ -103,9 +98,8 @@ export async function fetchCatalogo(
     const fixture = await loadFixture(tramite.slug, 'catalogos', catalogoKey);
     if (fixture === null) {
       return {
-        items:    [],
-        truncated: false,
-        error:    `Fixture de catálogo '${catalogoKey}' no encontrada para el trámite '${tramite.slug}'.`,
+        ok:    false,
+        error: `Fixture de catálogo '${catalogoKey}' no encontrada para el trámite '${tramite.slug}'.`,
       };
     }
     const allItems = extractItems(fixture, catalogo.response_items_path);
@@ -113,7 +107,7 @@ export async function fetchCatalogo(
       .map(r => mapItem(r, catalogo.item_fields))
       .filter((x): x is { id: string; label: string; extra?: string[] } => x !== null);
     const truncated = mapped.length > MAX_ITEMS;
-    return { items: mapped.slice(0, MAX_ITEMS), truncated };
+    return { ok: true, items: mapped.slice(0, MAX_ITEMS), truncated };
   }
 
   // Modo real: construir path y query
@@ -139,16 +133,14 @@ export async function fetchCatalogo(
 
   if (result.timedOut) {
     return {
-      items:    [],
-      truncated: false,
-      error:    `El catálogo '${catalogoKey}' tardó demasiado en responder. Intenta de nuevo en unos momentos.`,
+      ok:    false,
+      error: `El catálogo '${catalogoKey}' tardó demasiado en responder. Intenta de nuevo en unos momentos.`,
     };
   }
   if (result.status < 200 || result.status >= 300) {
     return {
-      items:    [],
-      truncated: false,
-      error:    `El catálogo '${catalogoKey}' respondió con error ${result.status}. Intenta de nuevo o contacta a soporte.`,
+      ok:    false,
+      error: `El catálogo '${catalogoKey}' respondió con error ${result.status}. Intenta de nuevo o contacta a soporte.`,
     };
   }
 
@@ -157,5 +149,5 @@ export async function fetchCatalogo(
     .map(r => mapItem(r, catalogo.item_fields))
     .filter((x): x is { id: string; label: string; extra?: string[] } => x !== null);
   const truncated = mapped.length > MAX_ITEMS;
-  return { items: mapped.slice(0, MAX_ITEMS), truncated };
+  return { ok: true, items: mapped.slice(0, MAX_ITEMS), truncated };
 }
