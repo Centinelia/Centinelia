@@ -239,7 +239,7 @@ Puedes agendar, modificar y cancelar ${appointmentLabel}s.
 ${agent.calendar_url ? `Comparte este enlace para agendar: ${agent.calendar_url}` : `Pregunta fecha y hora preferida.`}
 Pide: nombre del cliente, servicio o motivo, fecha y hora preferida, teléfono de confirmación.
 Confirma solo fecha, hora y nombre antes de cerrar, no repitas todos los datos capturados.
-El sistema registra la cita automáticamente al terminar la llamada.
+Al llamar agendar_cita, SIEMPRE incluye fecha_iso (YYYY-MM-DD) y hora (HH:MM 24h): el sistema los usa para detectar empalmes y sincronizar con el calendario conectado. Si el sistema te responde que el horario esta ocupado, propon otro horario al cliente; NUNCA prometas una hora que no fue confirmada por la herramienta.
 Recuerda mencionar que deben cancelar con al menos 24 horas de anticipación.`);
   }
 

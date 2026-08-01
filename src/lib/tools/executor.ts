@@ -701,19 +701,115 @@ export async function executeAgentTool(
 
   // ─────────────────────────────────────────────────────────────────────────
   // agendar_cita
+  //
+  // Con proteccion contra empalmes: si el agente recibe fecha_iso + hora en
+  // formato parseable, calcula starts_at y verifica colisiones ANTES de
+  // insertar. Doble capa: (1) appointments_voice del mismo agente, (2) Google
+  // Calendar / Outlook si esta conectado. Si conflict, devuelve error para que
+  // el modelo proponga otro horario. Si libre y hay calendar conectado, tambien
+  // crea el evento ahi.
+  //
+  // Fallback: si fecha_iso no viene (formato natural viejo), inserta sin check
+  // como antes — no rompe agentes que aun no tienen prompt actualizado.
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'agendar_cita') {
-    const args = toolInput as Record<string, string | undefined>;
-    const { accion, nombre, servicio, fecha, hora, telefono } = args;
+    const args = toolInput as Record<string, string | number | undefined>;
+    const accion   = args.accion as string | undefined;
+    const nombre   = args.nombre as string | undefined;
+    const servicio = args.servicio as string | undefined;
+    const fecha    = args.fecha as string | undefined;
+    const hora     = args.hora as string | undefined;
+    const telefono = args.telefono as string | undefined;
+    const fechaIso = args.fecha_iso as string | undefined;
+    const duracionMin = typeof args.duracion_min === 'number'
+      ? args.duracion_min
+      : (typeof args.duracion_min === 'string' ? parseInt(args.duracion_min, 10) : 60);
+
+    // Parsear a Date en zona horaria Mexico City (UTC-6, sin DST desde 2022).
+    // Requiere fecha_iso (YYYY-MM-DD) + hora (HH:MM). Si algo falla, startsAt = null.
+    let startsAt: Date | null = null;
+    let endsAt: Date | null = null;
+    if (fechaIso && hora && /^\d{4}-\d{2}-\d{2}$/.test(fechaIso)) {
+      const m = hora.trim().match(/^(\d{1,2}):?(\d{2})?/);
+      if (m) {
+        const hh = String(parseInt(m[1], 10)).padStart(2, '0');
+        const mm = m[2] ? m[2].padStart(2, '0') : '00';
+        const iso = `${fechaIso}T${hh}:${mm}:00-06:00`;
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+          startsAt = d;
+          endsAt = new Date(d.getTime() + duracionMin * 60_000);
+        }
+      }
+    }
+
     if (accion === 'agendar' || accion === 'modificar') {
       if (accion === 'modificar' && telefono) {
         await supabase.from('appointments_voice').update({ status: 'cancelada' })
           .eq('agent_id', agentId).eq('telefono', telefono).eq('status', 'confirmada');
       }
+
+      // Conflict check solo si tenemos starts_at parseado.
+      if (startsAt && endsAt) {
+        // 1) DB interna: mismo starts_at exacto = colision definitiva.
+        const { data: dbConflicts } = await supabase
+          .from('appointments_voice')
+          .select('nombre, hora, telefono')
+          .eq('agent_id', agentId)
+          .eq('status', 'confirmada')
+          .eq('starts_at', startsAt.toISOString());
+        if (dbConflicts && dbConflicts.length > 0) {
+          const c = dbConflicts[0];
+          return {
+            ok: false,
+            message: `Ese horario ya esta ocupado por una cita con ${c.nombre ?? 'otro cliente'} a las ${c.hora ?? hora}. Propon al cliente un horario distinto.`,
+          };
+        }
+
+        // 2) Google/Outlook Calendar si esta conectado: overlap con eventos externos.
+        //    Margen de 15min hacia atras para atrapar eventos que empiezan justo antes.
+        const rangeStart = new Date(startsAt.getTime() - 15 * 60_000);
+        const calResult = await executeListCalendarEvents(agentId, rangeStart, endsAt, supabase);
+        if (calResult.ok && Array.isArray(calResult.events)) {
+          const overlapping = calResult.events.filter((e: { start: string; end: string }) => {
+            const es = new Date(e.start).getTime();
+            const ee = new Date(e.end).getTime();
+            return es < endsAt.getTime() && ee > startsAt.getTime();
+          });
+          if (overlapping.length > 0) {
+            const first = overlapping[0] as { title: string; start: string };
+            const timeStr = new Date(first.start).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+            return {
+              ok: false,
+              message: `El calendario ya tiene "${first.title}" a las ${timeStr}. Propon al cliente un horario distinto.`,
+            };
+          }
+        }
+      }
+
+      // Insert principal en appointments_voice
       await supabase.from('appointments_voice').insert({
         agent_id: agentId, nombre: nombre ?? null, telefono: telefono ?? null,
-        servicio: servicio ?? null, fecha: fecha ?? null, hora: hora ?? null, status: 'confirmada',
+        servicio: servicio ?? null, fecha: fecha ?? null, hora: hora ?? null,
+        starts_at: startsAt ? startsAt.toISOString() : null,
+        status: 'confirmada',
       });
+
+      // Sync a Google/Outlook Calendar si esta conectado. Fire and log — si falla
+      // no revertimos la cita en DB (la cita interna es la fuente de verdad para
+      // outbound reminders del cron).
+      if (startsAt && endsAt) {
+        const title = `Cita ${servicio ? `— ${servicio} ` : ''}${nombre ? `(${nombre})` : ''}`.trim();
+        const created = await executeCreateCalendarEvent(agentId, {
+          title,
+          start: startsAt.toISOString(),
+          end:   endsAt.toISOString(),
+          description: telefono ? `Tel: ${telefono}` : undefined,
+        }, supabase);
+        if (!created.ok) {
+          console.warn('[agendar_cita] calendar sync skipped', { agentId, error: created.error });
+        }
+      }
     } else if (accion === 'cancelar' && telefono) {
       await supabase.from('appointments_voice').update({ status: 'cancelada' })
         .eq('agent_id', agentId).eq('telefono', telefono).eq('status', 'confirmada');
