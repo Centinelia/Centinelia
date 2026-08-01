@@ -168,8 +168,8 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
         <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
           {config.enabled
             ? isCoordinator
-              ? 'Consume 3–8 tareas por check-in · el resultado queda en Reportes de la Oficina'
-              : 'Consume 3–8 tareas por check-in · el resultado llega por tus canales de notificación'
+              ? 'Consume 3-8 tareas por check-in · el resultado llega por correo al owner'
+              : 'Consume 3-8 tareas por check-in · el resultado llega por tus canales de notificación'
             : 'Activa para que tu empleado trabaje sin que tengas que pedírselo'}
         </p>
         {saving && <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>}
