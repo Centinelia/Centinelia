@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useRef, type ReactNode } from 'react';
 import {
   Phone, X, RefreshCw, RotateCcw,
   CheckCircle2, PhoneMissed, Loader, Filter, Plus,
@@ -146,6 +146,8 @@ function ScheduleForm({ token, agents, onCreated }: {
   const [fechaBulk, setFechaBulk]     = useState('');
   const [horaBulk, setHoraBulk]       = useState('');
   const [bulkCount, setBulkCount]     = useState<number | null>(null);
+  const [dragActive, setDragActive]   = useState(false);
+  const csvInputRef                   = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
@@ -370,17 +372,42 @@ function ScheduleForm({ token, agents, onCreated }: {
           {formTab === 'lista' && (
             <div className="flex flex-col gap-3">
               <Field label="Archivo CSV" required hint='Columnas requeridas: "telefono". Opcionales: "nombre".'>
-                <label className="flex flex-col items-center justify-center gap-2 w-full rounded-lg py-6 cursor-pointer transition-colors hover:bg-[rgba(108,59,255,0.04)]"
-                  style={{ border: '2px dashed rgba(108,59,255,0.3)', background: file ? 'rgba(108,59,255,0.06)' : 'var(--c-input-bg)' }}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => csvInputRef.current?.click()}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); csvInputRef.current?.click(); } }}
+                  onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={e => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    const dropped = e.dataTransfer.files?.[0];
+                    if (!dropped) return;
+                    const isCsv = dropped.type === 'text/csv' || dropped.name.toLowerCase().endsWith('.csv');
+                    if (!isCsv) { setError('El archivo debe ser CSV.'); return; }
+                    handleFileChange(dropped);
+                  }}
+                  className="flex flex-col items-center justify-center gap-2 w-full rounded-lg py-6 cursor-pointer transition-colors hover:bg-[rgba(108,59,255,0.04)] outline-none"
+                  style={{
+                    border: `2px dashed ${dragActive ? '#6C3BFF' : 'rgba(108,59,255,0.3)'}`,
+                    background: dragActive || file ? 'rgba(108,59,255,0.06)' : 'var(--c-input-bg)',
+                  }}
+                >
                   <Upload size={20} style={{ color: file ? '#9B6DFF' : 'var(--c-text-3)' }} />
                   <span className="text-xs" style={{ color: file ? '#9B6DFF' : 'var(--c-text-3)' }}>
                     {file
                       ? `${file.name}${bulkCount !== null ? ` · ${bulkCount} contactos` : ''}`
-                      : 'Haz clic para seleccionar CSV'}
+                      : 'Haz clic o arrastra tu CSV aquí'}
                   </span>
-                  <input type="file" accept=".csv,text/csv" className="sr-only"
-                    onChange={e => handleFileChange(e.target.files?.[0] ?? null)} />
-                </label>
+                  <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="sr-only"
+                    onChange={e => handleFileChange(e.target.files?.[0] ?? null)}
+                  />
+                </div>
               </Field>
               <Field label="¿De qué hablará el empleado?" required hint="Se aplica el mismo contexto a todos los contactos de la lista.">
                 <textarea value={motivoBulk} onChange={e => setMotivoBulk(e.target.value)} rows={3}
