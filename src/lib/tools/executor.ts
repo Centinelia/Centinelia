@@ -1167,8 +1167,8 @@ export async function executeAgentTool(
     const tramite = await getTramiteById(tramiteId, orgId, supabase);
     if (!tramite) return { ok: false, error: `No se encontró el trámite ${tramiteId}.` };
 
-    const channel = ctx.channel === 'email' ? 'email' : (ctx.channel === 'voice' ? 'voice' : 'chat');
-    const result = await submitTramite(tramite, campos, { channel, agentId, callId: ctx.sourceCallId }, supabase);
+    const channel = ctx.channel === 'email' ? 'email' : 'chat';
+    const result = await submitTramite(tramite, campos, { channel, agentId }, supabase);
     return result;
   }
 
