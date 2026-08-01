@@ -6,6 +6,7 @@ import {
   STATUS_LABELS, STATUS_COLORS, CATEGORY_LABELS,
   type CivicStatus, type TramiteDocsConfig,
 } from '@/lib/civic/folio';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CivicReport {
   id:               string;
@@ -348,27 +349,36 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
           {search && <button onClick={() => setSearch('')}><X size={12} style={{ color: 'var(--c-text-3)' }} /></button>}
         </div>
 
-        <select value={statusF} onChange={e => setStatusF(e.target.value as CivicStatus | '')}
-          className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', outline: 'none' }}>
-          <option value="">Todos los estatus</option>
-          {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-        </select>
+        <Select value={statusF || '__all'} onValueChange={v => setStatusF(v === '__all' ? '' : (v as CivicStatus))}>
+          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Todos los estatus</SelectItem>
+            {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
-        <select value={categoryF} onChange={e => setCategoryF(e.target.value)}
-          className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', outline: 'none' }}>
-          <option value="">Todas las categorías</option>
-          {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <Select value={categoryF || '__all'} onValueChange={v => setCategoryF(v === '__all' ? '' : v)}>
+          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Todas las categorías</SelectItem>
+            {Object.entries(CATEGORY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
         {allAreas.length > 0 && (
-          <select value={areaF} onChange={e => setAreaF(e.target.value)}
-            className="text-xs px-3 py-2 rounded-lg"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', outline: 'none' }}>
-            <option value="">Todas las áreas</option>
-            {allAreas.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <Select value={areaF || '__all'} onValueChange={v => setAreaF(v === '__all' ? '' : v)}>
+            <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas las áreas</SelectItem>
+              {allAreas.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
         )}
       </div>
 

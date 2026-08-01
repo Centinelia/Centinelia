@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Database, Trash2, CheckCircle2, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, X, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface RequiredProp { name: string; type: string }
 
@@ -220,11 +221,14 @@ export default function NotionSchemasSection({ token }: { token: string }) {
                 placeholder="Nombre del campo"
                 className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
                 style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
-              <select value={form.propTypeInput} onChange={e => setForm(f => ({ ...f, propTypeInput: e.target.value }))}
-                className="rounded-xl px-2 py-2 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                {PROP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <Select value={form.propTypeInput} onValueChange={v => setForm(f => ({ ...f, propTypeInput: v }))}>
+                <SelectTrigger className="w-auto rounded-xl py-2 px-2 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROP_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <button onClick={addProp}
                 className="px-3 py-2 rounded-xl text-xs font-semibold"
                 style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF' }}>

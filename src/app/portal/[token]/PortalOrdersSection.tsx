@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { ShoppingBag, Filter, Truck, Store, Pencil, X, Check, Loader2, Download, FileText } from 'lucide-react';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type OrderStatus = 'nuevo' | 'en_proceso' | 'listo' | 'entregado' | 'cancelado';
 
@@ -225,15 +226,25 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
                         style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
                         <FileText size={10} /> PDF
                       </a>
-                    <select value={status} disabled={updatingStatus === order.id}
-                      onChange={e => updateStatus(order.id, e.target.value as OrderStatus)}
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs font-semibold rounded-full px-2.5 py-1 outline-none cursor-pointer border-0 appearance-none"
-                      style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === order.id ? 0.5 : 1 }}>
-                      {(Object.entries(STATUS_CONFIG) as [OrderStatus, typeof sc][]).map(([val, cfg]) => (
-                        <option key={val} value={val}>{cfg.label}</option>
-                      ))}
-                    </select>
+                    <div onClick={e => e.stopPropagation()}>
+                      <Select
+                        value={status}
+                        disabled={updatingStatus === order.id}
+                        onValueChange={v => updateStatus(order.id, v as OrderStatus)}
+                      >
+                        <SelectTrigger
+                          className="w-auto text-xs font-semibold rounded-full px-2.5 py-1 border-0"
+                          style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === order.id ? 0.5 : 1 }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.entries(STATUS_CONFIG) as [OrderStatus, typeof sc][]).map(([val, cfg]) => (
+                            <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     </div>
                   </div>
                 </div>

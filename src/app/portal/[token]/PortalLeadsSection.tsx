@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { User, MessageCircle, Mail, DollarSign, Calendar, Pencil, X, Check, Loader2, Filter, Phone } from 'lucide-react';
 import ExportCSVButton from './ExportCSVButton';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type LeadStatus = 'nuevo' | 'contactado' | 'cerrado' | 'perdido';
 
@@ -255,18 +256,25 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
                     <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                       {new Date(lead.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <select
-                      value={status}
-                      disabled={updatingStatus === lead.id}
-                      onChange={e => updateStatus(lead.id, e.target.value as LeadStatus)}
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs font-semibold rounded-full px-2.5 py-1 outline-none cursor-pointer border-0 appearance-none"
-                      style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === lead.id ? 0.5 : 1 }}
-                    >
-                      {(Object.entries(STATUS_CONFIG) as [LeadStatus, typeof sc][]).map(([val, cfg]) => (
-                        <option key={val} value={val}>{cfg.label}</option>
-                      ))}
-                    </select>
+                    <div onClick={e => e.stopPropagation()}>
+                      <Select
+                        value={status}
+                        disabled={updatingStatus === lead.id}
+                        onValueChange={v => updateStatus(lead.id, v as LeadStatus)}
+                      >
+                        <SelectTrigger
+                          className="w-auto text-xs font-semibold rounded-full px-2.5 py-1 border-0"
+                          style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === lead.id ? 0.5 : 1 }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.entries(STATUS_CONFIG) as [LeadStatus, typeof sc][]).map(([val, cfg]) => (
+                            <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>

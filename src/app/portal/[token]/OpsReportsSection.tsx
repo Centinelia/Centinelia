@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 interface OpsReport {
@@ -345,12 +346,15 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                   {form.frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}
                 </label>
                 {form.frequency === 'weekly' ? (
-                  <select value={form.schedule?.day_of_week ?? 1}
-                    onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(e.target.value) } }))}
-                    className="w-full rounded-xl px-3 py-2.5 text-xs outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                    {DAYS_OF_WEEK.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                  </select>
+                  <Select value={String(form.schedule?.day_of_week ?? 1)}
+                    onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(v) } }))}>
+                    <SelectTrigger className="rounded-xl py-2.5 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS_OF_WEEK.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <input type="number" min={1} max={28} value={form.schedule?.day_of_month ?? 1}
                     onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_month: Number(e.target.value) } }))}
@@ -360,12 +364,15 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
               </div>
               <div style={{ width: 100 }}>
                 <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Hora</label>
-                <select value={form.schedule?.hour ?? 8}
-                  onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(e.target.value) } }))}
-                  className="w-full rounded-xl px-3 py-2.5 text-xs outline-none"
-                  style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                  {HOURS.map(h => <option key={h} value={h}>{fmtH(h)}</option>)}
-                </select>
+                <Select value={String(form.schedule?.hour ?? 8)}
+                  onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(v) } }))}>
+                  <SelectTrigger className="rounded-xl py-2.5 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

@@ -6,6 +6,7 @@ import {
   Pencil, PhoneOutgoing, Pause, Play, CalendarClock, Search, AlertTriangle,
   ChevronDown, ChevronUp, BarChart2,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -357,12 +358,16 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
         <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
           Tipo de programación
         </label>
-        <select value={scheduleType} onChange={e => setScheduleType(e.target.value as ScheduleType)}
-          className={inputCls} style={inputSty}>
-          <option value="once">Una vez</option>
-          <option value="daily">Diario</option>
-          <option value="weekly">Semanal</option>
-        </select>
+        <Select value={scheduleType} onValueChange={v => setScheduleType(v as ScheduleType)}>
+          <SelectTrigger className="rounded-xl py-2.5">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="once">Una vez</SelectItem>
+            <SelectItem value="daily">Diario</SelectItem>
+            <SelectItem value="weekly">Semanal</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Conditional schedule fields */}
@@ -416,13 +421,17 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
         <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
           Contactos a llamar
         </label>
-        <select value={contactFilter} onChange={e => setContactFilter(e.target.value as typeof contactFilter)}
-          className={inputCls} style={inputSty}>
-          <option value="all">Todos los pendientes</option>
-          <option value="llamada_entrante">Solo llamadas entrantes</option>
-          <option value="csv">Solo CSV</option>
-          <option value="manual">Solo manuales</option>
-        </select>
+        <Select value={contactFilter} onValueChange={v => setContactFilter(v as typeof contactFilter)}>
+          <SelectTrigger className="rounded-xl py-2.5">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los pendientes</SelectItem>
+            <SelectItem value="llamada_entrante">Solo llamadas entrantes</SelectItem>
+            <SelectItem value="csv">Solo CSV</SelectItem>
+            <SelectItem value="manual">Solo manuales</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (
@@ -769,17 +778,17 @@ export default function OutboundSection({
                 </button>
               )}
             </div>
-            <select
-              value={sourceFilter}
-              onChange={e => setSourceFilter(e.target.value as SourceFilter)}
-              className="rounded-lg px-3 py-2 text-xs outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text-2)' }}
-            >
-              <option value="all">Todas</option>
-              <option value="llamada_entrante">Entrante</option>
-              <option value="csv">CSV</option>
-              <option value="manual">Manual</option>
-            </select>
+            <Select value={sourceFilter} onValueChange={v => setSourceFilter(v as SourceFilter)}>
+              <SelectTrigger className="w-auto py-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="llamada_entrante">Entrante</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Work queue panel */}
@@ -826,13 +835,16 @@ export default function OutboundSection({
                 {selectedPending.length > 0 && (
                   <>
                     {agents.length > 1 ? (
-                      <select value={selectedAgentId} onChange={e => setSelectedAgentId(e.target.value)}
-                        className="rounded-xl px-3 py-1.5 text-xs outline-none"
-                        style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}>
-                        {agents.map(a => (
-                          <option key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</option>
-                        ))}
-                      </select>
+                      <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                        <SelectTrigger className="w-auto rounded-xl py-1.5 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {agents.map(a => (
+                            <SelectItem key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : agents.length === 1 ? (
                       <span className="text-xs px-2 py-0.5 rounded-full"
                         style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>

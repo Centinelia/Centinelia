@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Database, ExternalLink, Loader2, RefreshCw, Unlink, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface NotionStatus {
   connected:       boolean;
@@ -146,16 +147,20 @@ export default function NotionSection({ token }: { token: string }) {
               </p>
             ) : (
               <div className="flex flex-col sm:flex-row gap-2">
-                <select
-                  value={selectedPage}
-                  onChange={e => setSelected(e.target.value)}
-                  className="flex-1 text-xs rounded-lg px-3 py-2"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}>
-                  <option value="">Elige una página...</option>
-                  {status.pages.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
+                <Select
+                  value={selectedPage || '__none'}
+                  onValueChange={v => setSelected(v === '__none' ? '' : v)}
+                >
+                  <SelectTrigger className="flex-1 text-xs bg-[color:var(--c-bg)] border-[color:var(--c-border-2)]">
+                    <SelectValue placeholder="Elige una página..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Elige una página...</SelectItem>
+                    {status.pages.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <button
                   onClick={handleSetupDb}
                   disabled={!selectedPage || saving}

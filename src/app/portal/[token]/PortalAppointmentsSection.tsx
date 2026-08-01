@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { CalendarDays, Filter, Pencil, X, Check, Loader2, Download } from 'lucide-react';
 import ActivityDetailModal, { type ActivityItem } from './ActivityDetailModal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type ApptStatus = 'confirmada' | 'completada' | 'cancelada' | 'no_asistio';
 
@@ -214,15 +215,25 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
                     <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
                       {new Date(appt.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <select value={status} disabled={updatingStatus === appt.id}
-                      onChange={e => updateStatus(appt.id, e.target.value as ApptStatus)}
-                      onClick={e => e.stopPropagation()}
-                      className="text-xs font-semibold rounded-full px-2.5 py-1 outline-none cursor-pointer border-0 appearance-none"
-                      style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === appt.id ? 0.5 : 1 }}>
-                      {(Object.entries(STATUS_CONFIG) as [ApptStatus, typeof sc][]).map(([val, cfg]) => (
-                        <option key={val} value={val}>{cfg.label}</option>
-                      ))}
-                    </select>
+                    <div onClick={e => e.stopPropagation()}>
+                      <Select
+                        value={status}
+                        disabled={updatingStatus === appt.id}
+                        onValueChange={v => updateStatus(appt.id, v as ApptStatus)}
+                      >
+                        <SelectTrigger
+                          className="w-auto text-xs font-semibold rounded-full px-2.5 py-1 border-0"
+                          style={{ background: sc.bg, color: sc.color, opacity: updatingStatus === appt.id ? 0.5 : 1 }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.entries(STATUS_CONFIG) as [ApptStatus, typeof sc][]).map(([val, cfg]) => (
+                            <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>

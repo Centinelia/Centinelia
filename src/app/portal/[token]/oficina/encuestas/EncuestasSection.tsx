@@ -9,6 +9,7 @@ import {
   Download, List, PlayCircle,
 } from 'lucide-react';
 import MeerkatPicker from '../../agentes/MeerkatPicker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -407,24 +408,26 @@ function ConditionEditor({
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>Si el cliente responde</span>
         {isRating ? (
-          <select
-            value={threshold}
-            onChange={e => setThreshold(Number(e.target.value))}
-            style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
-          >
-            {Array.from({ length: maxVal }, (_, i) => i + 1).map(n => (
-              <option key={n} value={n}>{n} o menos</option>
-            ))}
-          </select>
+          <Select value={String(threshold)} onValueChange={v => setThreshold(Number(v))}>
+            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: maxVal }, (_, i) => i + 1).map(n => (
+                <SelectItem key={n} value={String(n)}>{n} o menos</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
-          <select
-            value={ifAnswer}
-            onChange={e => setIfAnswer(e.target.value)}
-            style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
-          >
-            <option value="no">No</option>
-            <option value="si">Sí</option>
-          </select>
+          <Select value={ifAnswer} onValueChange={setIfAnswer}>
+            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">No</SelectItem>
+              <SelectItem value="si">Sí</SelectItem>
+            </SelectContent>
+          </Select>
         )}
         <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>el empleado dice:</span>
       </div>
@@ -542,15 +545,19 @@ function ActionsTab({
           <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Umbral</p>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Activar cuando la calificación sea</span>
-            <select
-              value={actions.threshold}
-              onChange={e => { setActions(prev => ({ ...prev, threshold: Number(e.target.value) })); setSaved(false); }}
-              style={{ fontSize: 12, padding: '3px 8px', borderRadius: 7, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', cursor: 'pointer' }}
+            <Select
+              value={String(actions.threshold)}
+              onValueChange={v => { setActions(prev => ({ ...prev, threshold: Number(v) })); setSaved(false); }}
             >
-              {Array.from({ length: maxThreshold }, (_, i) => i + 1).map(n => (
-                <option key={n} value={n}>{n} o menos</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-auto py-1 px-2 text-xs rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: maxThreshold }, (_, i) => i + 1).map(n => (
+                  <SelectItem key={n} value={String(n)}>{n} o menos</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
@@ -1410,13 +1417,16 @@ function SurveyCard({
                     className="w-full px-3 py-2 rounded-lg text-xs resize-none"
                     style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
                   />
-                  <select value={qTipo} onChange={e => setQTipo(e.target.value as QuestionType)}
-                    className="w-full px-3 py-2 rounded-lg text-xs"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}>
-                    {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([v, l]) => (
-                      <option key={v} value={v}>{l}</option>
-                    ))}
-                  </select>
+                  <Select value={qTipo} onValueChange={v => setQTipo(v as QuestionType)}>
+                    <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([v, l]) => (
+                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {qTipo === 'multiple' && (
                     <input value={qOpciones} onChange={e => setQOpciones(e.target.value)}
                       placeholder="Opciones separadas por coma"

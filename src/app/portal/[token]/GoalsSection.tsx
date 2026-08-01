@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Goal {
   id: string;
@@ -186,24 +187,26 @@ export default function GoalsSection({
             style={inputStyle}
           />
           <div className="flex gap-2">
-            <select
-              value={form.metric}
-              onChange={e => setForm(f => ({ ...f, metric: e.target.value }))}
-              style={{ ...inputStyle, width: undefined, flex: 1 }}
-            >
-              {METRIC_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <select
-              value={form.period}
-              onChange={e => setForm(f => ({ ...f, period: e.target.value }))}
-              style={{ ...inputStyle, width: undefined, flex: 1 }}
-            >
-              {PERIOD_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <Select value={form.metric} onValueChange={v => setForm(f => ({ ...f, metric: v }))}>
+              <SelectTrigger className="flex-1 bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {METRIC_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={form.period} onValueChange={v => setForm(f => ({ ...f, period: v }))}>
+              <SelectTrigger className="flex-1 bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <input
             type="number"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const OVERDUE_MS: Record<string, number> = {
   critica: 4  * 60 * 60 * 1000,
@@ -194,16 +195,22 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
             className="w-full px-3 py-2 rounded-lg text-sm"
             style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
           <div className="grid grid-cols-2 gap-2">
-            <select value={newCat} onChange={e => setNewCat(e.target.value)}
-              className="px-3 py-2 rounded-lg text-xs"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}>
-              {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={newPri} onChange={e => setNewPri(e.target.value)}
-              className="px-3 py-2 rounded-lg text-xs"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}>
-              {PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            <Select value={newCat} onValueChange={setNewCat}>
+              <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={newPri} onValueChange={setNewPri}>
+              <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
             placeholder="Descripción (opcional)"
@@ -303,12 +310,14 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                     <div className="flex flex-wrap gap-2">
                       <div>
                         <label className="block text-[10px] mb-1" style={{ color: 'var(--c-text-4)' }}>Estatus</label>
-                        <select value={ticket.status}
-                          onChange={e => updateTicket(ticket.id, { status: e.target.value })}
-                          className="px-2 py-1 rounded-lg text-xs"
-                          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}>
-                          {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</option>)}
-                        </select>
+                        <Select value={ticket.status} onValueChange={v => updateTicket(ticket.id, { status: v })}>
+                          <SelectTrigger className="w-auto py-1 px-2 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-[10px] mb-1" style={{ color: 'var(--c-text-4)' }}>Asignado a</label>

@@ -6,6 +6,7 @@ import {
   Ticket, AlertTriangle, FileText, PieChart, RefreshCw,
   ArrowRightLeft, Mail,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ActivityEvent, EventType } from '@/app/api/portal/[token]/actividad/route';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -141,16 +142,19 @@ export default function ActividadFeed({ token }: { token: string }) {
         </div>
         <div className="flex items-center gap-2">
           {/* Days selector */}
-          <select
-            value={days}
-            onChange={e => { setDays(Number(e.target.value)); setLimit(60); }}
-            className="px-3 py-1.5 rounded-lg text-xs"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+          <Select
+            value={String(days)}
+            onValueChange={v => { setDays(Number(v)); setLimit(60); }}
           >
-            {DAYS_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-auto py-1.5 px-3 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DAYS_OPTIONS.map(o => (
+                <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button
             onClick={() => load(days, type, limit)}
             disabled={loading}

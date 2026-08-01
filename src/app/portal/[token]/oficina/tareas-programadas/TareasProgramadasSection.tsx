@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, Clock, RefreshCw, ChevronDown, ChevronUp,
   Play, Loader2, AlertTriangle,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Agent {
   id:              string;
@@ -256,17 +257,28 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
             <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Asignar a</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {selectedAgent && <AgentAvatar agent={selectedAgent} size={36} />}
-              <select
-                value={agentId}
-                onChange={e => setAgentId(e.target.value)}
-                style={{ ...inputStyle, flex: 1 }}
-              >
-                {agents.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.agent_name ?? a.role ?? 'Agente'}{a.is_coordinator ? ' (Coordinador)' : ''}
-                  </option>
-                ))}
-              </select>
+              <div style={{ flex: 1 }}>
+                <Select value={agentId} onValueChange={setAgentId}>
+                  <SelectTrigger
+                    className="rounded-xl"
+                    style={{
+                      background: 'var(--c-surface-2)',
+                      border: '1px solid var(--c-border-2)',
+                      padding: '10px 14px',
+                      fontSize: 14,
+                    }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.agent_name ?? a.role ?? 'Agente'}{a.is_coordinator ? ' (Coordinador)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -308,13 +320,17 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
             {successCriteria && (
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ color: 'var(--c-text-3)', fontSize: 12 }}>Reintentos si no se cumple:</span>
-                <select
-                  value={maxIterations}
-                  onChange={e => setMaxIterations(Number(e.target.value))}
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', borderRadius: 8, padding: '4px 8px', color: 'var(--c-text)', fontSize: 12, outline: 'none' }}
-                >
-                  {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+                <Select value={String(maxIterations)} onValueChange={v => setMaxIterations(Number(v))}>
+                  <SelectTrigger
+                    className="w-auto rounded-md"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '4px 8px', fontSize: 12 }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
@@ -338,13 +354,17 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
               {frequency === 'weekly' && (
                 <div style={{ flex: 1 }}>
                   <label style={{ color: 'var(--c-text-4)', fontSize: 11, display: 'block', marginBottom: 4 }}>Día</label>
-                  <select
-                    value={dayOfWeek}
-                    onChange={e => setDayOfWeek(Number(e.target.value))}
-                    style={{ width: '100%', background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', borderRadius: 12, padding: '8px 12px', color: 'var(--c-text)', fontSize: 13, outline: 'none' }}
-                  >
-                    {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                  </select>
+                  <Select value={String(dayOfWeek)} onValueChange={v => setDayOfWeek(Number(v))}>
+                    <SelectTrigger
+                      className="rounded-xl"
+                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '8px 12px', fontSize: 13 }}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               {frequency === 'monthly' && (
@@ -360,13 +380,17 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
               )}
               <div style={{ flex: 1 }}>
                 <label style={{ color: 'var(--c-text-4)', fontSize: 11, display: 'block', marginBottom: 4 }}>Hora</label>
-                <select
-                  value={hour}
-                  onChange={e => setHour(Number(e.target.value))}
-                  style={{ width: '100%', background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', borderRadius: 12, padding: '8px 12px', color: 'var(--c-text)', fontSize: 13, outline: 'none' }}
-                >
-                  {HOURS.map(h => <option key={h} value={h}>{fmtH(h)}</option>)}
-                </select>
+                <Select value={String(hour)} onValueChange={v => setHour(Number(v))}>
+                  <SelectTrigger
+                    className="rounded-xl"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '8px 12px', fontSize: 13 }}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

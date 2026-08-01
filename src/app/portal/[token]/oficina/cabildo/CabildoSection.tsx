@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Copy, Trash2, ChevronDown, Check, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CabildoDoc {
   id:          string;
@@ -166,12 +167,15 @@ export default function CabildoSection({ token }: { token: string }) {
           </p>
         </div>
 
-        <select value={tipoF} onChange={e => setTipoF(e.target.value)}
-          className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', outline: 'none' }}>
-          <option value="">Todos los tipos</option>
-          {Object.entries(TIPO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <Select value={tipoF || '__all'} onValueChange={v => setTipoF(v === '__all' ? '' : v)}>
+          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Todos los tipos</SelectItem>
+            {Object.entries(TIPO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (

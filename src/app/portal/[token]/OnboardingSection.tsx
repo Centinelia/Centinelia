@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronDown, ChevronUp, Trash2, UserCheck, Send, Users, ExternalLink, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface OTemplate {
   id:                string;
@@ -270,11 +271,14 @@ export default function OnboardingSection({ token }: {
             </div>
             <div>
               <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Tipo</label>
-              <select value={tplForm.type} onChange={e => setTplForm(p => ({ ...p, type: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
-                {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              <Select value={tplForm.type} onValueChange={v => setTplForm(p => ({ ...p, type: v }))}>
+                <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TYPE_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

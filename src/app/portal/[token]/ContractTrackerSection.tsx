@@ -6,6 +6,7 @@ import {
   Clock, Search,
 } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Contract {
   id: string; agent_id: string; name: string; contract_type: string;
@@ -148,9 +149,14 @@ export default function ContractTrackerSection({ token }: { token: string }) {
             </div>
             <div>
               <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Tipo</label>
-              <select value={form.contract_type} onChange={e => setForm(p => ({ ...p, contract_type: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
-                {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              <Select value={form.contract_type} onValueChange={v => setForm(p => ({ ...p, contract_type: v }))}>
+                <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TYPE_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Contraparte</label>
