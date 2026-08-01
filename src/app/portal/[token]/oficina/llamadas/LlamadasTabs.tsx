@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { PhoneCall, PhoneOutgoing } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { VoiceCall } from '@/types/agent';
 import CallsSearch      from '../../CallsSearch';
 import DownloadCallsCSV from '../../DownloadCallsCSV';
@@ -110,13 +111,7 @@ export default function LlamadasTabs({
               />
             </div>
             {calls.length === 0 ? (
-              <div className="flex flex-col items-center py-10 gap-3">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                  <PhoneCall size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} />
-                </div>
-                <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin llamadas todavía</p>
-              </div>
+              <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
             ) : (
               <CallsSearch
                 calls={calls as any}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker, TimeInput } from '@/components/ui/date-picker';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -907,11 +908,13 @@ export default function OutboundSection({
 
           {/* Contact cards */}
           {contacts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 rounded-2xl"
+            <div className="rounded-2xl"
               style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-              <PhoneCall size={28} style={{ color: 'var(--c-text-3)', opacity: 0.4 }} />
-              <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>No hay contactos aún</p>
-              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Agrega uno o sube un CSV</p>
+              <EmptyState
+                icon={PhoneCall}
+                title="No hay contactos aún"
+                description="Agrega uno o sube un CSV"
+              />
             </div>
           ) : visibleContacts.length === 0 ? (
             <p className="text-xs text-center py-6" style={{ color: 'var(--c-text-3)' }}>

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send } from 'lucide-react';
+import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send, SearchX } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/empty-state';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 interface OpsReport {
@@ -501,9 +502,13 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
         {/* Reports list */}
         {reports.length > 0 && search.trim() && reports.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-          <div className="rounded-xl px-4 py-8 text-center" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>Prueba con otro nombre de reporte</p>
+          <div className="rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <EmptyState
+              icon={SearchX}
+              title={`Sin resultados para "${search}"`}
+              description="Prueba con otro nombre de reporte"
+              size="sm"
+            />
           </div>
         )}
         {reports.filter(r => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase())).map(r => {

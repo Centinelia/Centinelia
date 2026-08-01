@@ -7,6 +7,7 @@ import {
   type CivicStatus, type TramiteDocsConfig,
 } from '@/lib/civic/folio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface CivicReport {
   id:               string;
@@ -391,17 +392,12 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
           ))}
         </div>
       ) : reports.length === 0 ? (
-        <div className="flex flex-col items-center py-12 gap-2">
-          <MapPin size={28} style={{ color: 'var(--c-text-4)' }} />
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-            {search || statusF || categoryF ? 'Sin resultados para ese filtro' : 'No hay reportes ciudadanos aún'}
-          </p>
-        </div>
+        <EmptyState
+          icon={MapPin}
+          title={search || statusF || categoryF ? 'Sin resultados para ese filtro' : 'No hay reportes ciudadanos aún'}
+        />
       ) : displayReports.length === 0 ? (
-        <div className="flex flex-col items-center py-12 gap-2">
-          <MapPin size={28} style={{ color: 'var(--c-text-4)' }} />
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin resultados para ese filtro</p>
-        </div>
+        <EmptyState icon={MapPin} title="Sin resultados para ese filtro" />
       ) : (
         <div className="flex flex-col gap-2">
           {displayReports.map(r => (

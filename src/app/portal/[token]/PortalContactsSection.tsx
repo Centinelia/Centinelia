@@ -8,6 +8,7 @@ import {
 import type { OutboundAgent } from './PortalOutboundSection';
 import { OUTBOUND_ROLES_MAP } from './OutboundRoleSelector';
 import { DatePicker, TimeInput } from '@/components/ui/date-picker';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -504,20 +505,13 @@ export default function PortalContactsSection({
 
         {/* List */}
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-10 gap-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-              <User size={20} style={{ color: '#6C3BFF', opacity: 0.5 }} aria-hidden="true" />
-            </div>
-            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-              {contacts.length === 0 ? 'Sin contactos todavía' : 'Sin resultados para los filtros aplicados'}
-            </p>
-            {contacts.length === 0 && (
-              <p className="text-xs text-center px-8" style={{ color: 'var(--c-text-3)' }}>
-                Los leads de llamadas y contactos de salientes aparecerán aquí automáticamente.
-              </p>
-            )}
-          </div>
+          <EmptyState
+            icon={User}
+            title={contacts.length === 0 ? 'Sin contactos todavía' : 'Sin resultados para los filtros aplicados'}
+            description={contacts.length === 0
+              ? 'Los leads de llamadas y contactos de salientes aparecerán aquí automáticamente.'
+              : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map(c => (

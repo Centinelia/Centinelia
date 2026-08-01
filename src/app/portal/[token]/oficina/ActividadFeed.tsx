@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Phone, UserPlus, CalendarDays, ShoppingBag,
   Ticket, AlertTriangle, FileText, PieChart, RefreshCw,
-  ArrowRightLeft, Mail,
+  ArrowRightLeft, Mail, Activity,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { ActivityEvent, EventType } from '@/app/api/portal/[token]/actividad/route';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -203,10 +204,11 @@ export default function ActividadFeed({ token }: { token: string }) {
             <p className="text-sm" style={{ color: 'var(--c-text-4)' }}>Cargando actividad...</p>
           </div>
         ) : events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Prueba ampliar el rango de fechas</p>
-          </div>
+          <EmptyState
+            icon={Activity}
+            title="Sin actividad en este período"
+            description="Prueba ampliar el rango de fechas"
+          />
         ) : (
           <>
             {events.map(ev => <EventCard key={ev.id} event={ev} />)}
