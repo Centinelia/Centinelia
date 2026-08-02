@@ -463,6 +463,153 @@ function onboardingWelcomeEmail() {
   );
 }
 
+// ── Annual contracts mocks (E1-E6) ───────────────────────────────────────────
+
+const MOCK_CONTRACT = {
+  id:                        'ctr-mock-01',
+  organization_email:        'monterrey@gob.mx',
+  contract_folio:            'CTR-2026-0003',
+  status:                    'active',
+  start_date:                '2026-08-15',
+  end_date:                  '2027-08-14',
+  amount_mxn:                180000,
+  monthly_minutes_pool:      12000,
+  monthly_ops_pool:          500,
+  included_employees:        3,
+  invoice_folio:             'A-4523',
+};
+
+function annualContractActivatedEmail() {
+  const c = MOCK_CONTRACT;
+  return shell(
+    `${badge('Contrato activo', '#22C55E')}
+    ${heading('Contrato anual activado', 'Municipio Monterrey')}
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 20px">Hola, Miguel Estrada, tu contrato anual con Centinelia (folio <strong style="color:${C.text}">${c.contract_folio}</strong>) está activo. Aquí están los detalles:</p>
+    ${infoCard(`
+      ${sectionLabel('Vigencia')}
+      <p style="color:${C.text};font-size:15px;font-weight:600;margin:0 0 4px">15 de agosto de 2026 al 14 de agosto de 2027</p>
+      <p style="color:${C.sub};font-size:13px;margin:0">364 días de servicio</p>
+    `, true)}
+    ${infoCard(`
+      ${sectionLabel('Pool mensual incluido')}
+      <p style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 4px"><strong>12,000</strong> minutos de llamadas</p>
+      <p style="color:${C.text};font-size:14px;line-height:1.7;margin:0"><strong>500</strong> tareas de oficina</p>
+      <p style="color:${C.mute};font-size:12px;margin:8px 0 0">El pool se renueva cada mes en la fecha aniversaria del contrato.</p>
+    `)}
+    ${infoCard(`
+      ${sectionLabel('Empleados incluidos')}
+      <ul style="margin:0;padding-left:20px">
+        <li style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 4px">Nia</li>
+        <li style="color:${C.text};font-size:14px;line-height:1.7;margin:0 0 4px">Nara</li>
+        <li style="color:${C.text};font-size:14px;line-height:1.7;margin:0">Nova</li>
+      </ul>
+    `)}
+    ${infoCard(`
+      ${sectionLabel('Facturación')}
+      <p style="color:${C.text};font-size:14px;margin:0 0 4px">Monto: <strong>$180,000</strong></p>
+      <p style="color:${C.sub};font-size:13px;margin:0">CFDI: A-4523</p>
+    `)}
+    ${btn('Entrar al portal →', 'https://www.centinelia.mx/portal/setup', { color: '#22C55E' })}
+    <p style="color:${C.mute};font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center">Cualquier duda sobre tu contrato, responde este correo o escribe a <a href="mailto:hola@centinelia.mx" style="color:#9B6DFF;text-decoration:none">hola@centinelia.mx</a>.</p>`,
+    { preheader: `Contrato ${c.contract_folio} activo hasta 14 ago 2027` },
+  );
+}
+
+function annualContractRenewalReminderEmail(urgency) {
+  const isUrgent = urgency === '15d';
+  const accent = isUrgent ? '#EF4444' : '#FBBF24';
+  const badgeLabel = isUrgent ? 'Renovación urgente · 15 días' : 'Renovación · 60 días';
+  return shell(
+    `${badge(badgeLabel, accent)}
+    ${heading(isUrgent ? 'Necesitamos renovar el contrato pronto' : 'Es tiempo de renovar tu contrato', 'Municipio Monterrey')}
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">Tu contrato anual con Centinelia (folio <strong style="color:${C.text}">CTR-2026-0003</strong>) vence el <strong style="color:${C.text}">14 de agosto de 2027</strong> (en ${isUrgent ? 15 : 60} días).</p>
+    ${infoCard(`
+      ${sectionLabel('Consumo promedio del año')}
+      ${progressBar(72, accent)}
+      <p style="color:${C.sub};font-size:13px;margin:10px 0 0"><strong style="color:${C.text}">8,640</strong> de 12,000 min mensuales (72%)</p>
+      <p style="color:${C.sub};font-size:13px;margin:6px 0 0"><strong style="color:${C.text}">380</strong> de 500 tareas mensuales</p>
+    `, true)}
+    ${infoCard(`
+      ${sectionLabel('¿Qué pasa si no renuevas?')}
+      <p style="color:${C.sub};font-size:13px;line-height:1.7;margin:0">Al vencer el contrato tu oficina se pausará automáticamente. Tus empleados dejarán de recibir llamadas y de completar tareas hasta que firmemos la renovación.</p>
+    `)}
+    ${btn('Renovar mi contrato →', 'mailto:hola@centinelia.mx', { color: accent })}`,
+    { preheader: badgeLabel },
+  );
+}
+
+function annualContractExpiredEmail() {
+  return shell(
+    `${badge('Oficina pausada', '#F87171')}
+    ${heading('Tu contrato venció y tu oficina fue pausada', 'Municipio Monterrey')}
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 20px">El contrato <strong style="color:${C.text}">CTR-2026-0003</strong> venció el <strong style="color:${C.text}">14 de agosto de 2027</strong>. <strong style="color:#F87171">Tu oficina fue pausada</strong> y tus empleados no pueden recibir llamadas ni completar tareas hasta que firmemos la renovación.</p>
+    ${infoCard(`
+      ${sectionLabel('Puedes reactivar en cualquier momento')}
+      <p style="color:${C.sub};font-size:13px;line-height:1.7;margin:0">Nuestro equipo te contactará hoy con la propuesta de renovación. En cuanto firmes, tu oficina vuelve a operar de inmediato con el pool completo del nuevo ciclo.</p>
+    `, true)}
+    ${btn('Contactar a Centinelia →', 'mailto:hola@centinelia.mx', { color: '#F87171' })}`,
+    { preheader: 'Contrato CTR-2026-0003 vencido, oficina pausada' },
+  );
+}
+
+function annualContractOverageAlertEmail(threshold) {
+  const isCritical = threshold === '120';
+  const accent = isCritical ? '#EF4444' : '#FBBF24';
+  const badgeLabel = isCritical ? 'Overage 20% arriba' : 'Pool al límite';
+  const minPct = isCritical ? 120 : 100;
+  return shell(
+    `${badge(badgeLabel, accent)}
+    ${heading('Municipio Monterrey está en overage', 'CTR-2026-0003')}
+    ${infoCard(`
+      ${sectionLabel('Consumo del ciclo actual')}
+      <p style="color:${C.text};font-size:14px;margin:0 0 6px">Minutos: <strong>${isCritical ? '14,400' : '12,050'}</strong> de 12,000 (<span style="color:${accent}">${minPct}%</span>)</p>
+      <p style="color:${C.text};font-size:14px;margin:0 0 6px">Tareas: <strong>${isCritical ? '600' : '505'}</strong> de 500 (<span style="color:${accent}">${minPct}%</span>)</p>
+      <p style="color:${C.mute};font-size:12px;margin:8px 0 0">Reset del pool en 8 días.</p>
+    `, true)}
+    ${infoCard(`
+      ${sectionLabel('Sugerencia')}
+      <p style="color:${C.sub};font-size:13px;line-height:1.7;margin:0">El consumo real está ${isCritical ? '20%' : 'al límite'} arriba del contratado. Considera renegociar el pool en la próxima renovación.</p>
+    `)}
+    ${btn('Ver contrato →', 'https://www.centinelia.mx/admin/facturacion/ctr-mock-01', { color: accent })}`,
+    { preheader: badgeLabel },
+  );
+}
+
+function annualContractWeeklyOverageDigestEmail() {
+  const items = [
+    { businessName: 'Municipio Monterrey', contractFolio: 'CTR-2026-0003', minPct: 92, daysToReset: 8 },
+    { businessName: 'Corporativo XYZ',     contractFolio: 'CTR-2026-0002', minPct: 84, daysToReset: 14 },
+    { businessName: 'Grupo Cerro Verde',   contractFolio: 'CTR-2026-0001', minPct: 80, daysToReset: 21 },
+  ];
+  const rows = items.map(it => infoCard(`
+    <p style="color:${C.text};font-size:14px;font-weight:600;margin:0 0 4px">${it.businessName}</p>
+    <p style="color:${C.mute};font-size:12px;margin:0 0 8px">${it.contractFolio}</p>
+    <p style="color:${C.sub};font-size:13px;margin:0"><strong style="color:#FBBF24">${it.minPct}%</strong> del pool consumido · reset en ${it.daysToReset} días</p>
+  `)).join('');
+  return shell(
+    `${badge('Digest semanal', '#9B6DFF')}
+    ${heading(`${items.length} contratos con pool ≥80%`, 'Overage watch')}
+    ${rows}
+    ${btn('Ver todos los contratos →', 'https://www.centinelia.mx/admin/facturacion?tab=contratos')}`,
+    { preheader: `${items.length} contratos consumidos ≥80% esta semana` },
+  );
+}
+
+function annualContractExpiredInternalEmail() {
+  return shell(
+    `${badge('Contrato vencido sin renovación', '#EF4444')}
+    ${heading('Municipio Monterrey', 'CTR-2026-0003')}
+    ${infoCard(`
+      ${sectionLabel('Detalles')}
+      <p style="color:${C.text};font-size:14px;margin:0 0 4px">Vigencia: 15 de agosto de 2026 al 14 de agosto de 2027</p>
+      <p style="color:${C.text};font-size:14px;margin:0 0 4px">Valor anualidad: $180,000</p>
+      <p style="color:${C.sub};font-size:13px;margin:0">Última interacción de renovación: hace 22 días</p>
+    `, true)}
+    ${btn('Ver contrato →', 'https://www.centinelia.mx/admin/facturacion/ctr-mock-01', { color: '#EF4444' })}`,
+    { preheader: 'CTR-2026-0003 vencido sin renovar' },
+  );
+}
+
 // ── Render ───────────────────────────────────────────────────────────────────
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -494,7 +641,15 @@ const templates = [
   { id: 'agent-paused',       title: 'Oficina pausada (falta pago)',     html: agentPausedEmail() },
   { id: 'payment-failed',     title: 'Pago fallido',                     html: paymentFailedEmail() },
   { id: 'welcome',            title: 'Welcome post-pago',                html: welcomeEmail() },
-  { id: 'onboarding-welcome', title: 'Onboarding welcome',               html: onboardingWelcomeEmail() },
+  { id: 'onboarding-welcome',       title: 'Onboarding welcome',                  html: onboardingWelcomeEmail() },
+  { id: 'annual-activated',         title: 'E1 · Contrato anual activado',        html: annualContractActivatedEmail() },
+  { id: 'annual-renewal-60d',       title: 'E2 · Recordatorio renovación 60d',    html: annualContractRenewalReminderEmail('60d') },
+  { id: 'annual-renewal-15d',       title: 'E2 · Recordatorio renovación 15d',    html: annualContractRenewalReminderEmail('15d') },
+  { id: 'annual-expired',           title: 'E3 · Contrato expirado (cliente)',    html: annualContractExpiredEmail() },
+  { id: 'annual-overage-100',       title: 'E4 · Overage 100% (interno)',         html: annualContractOverageAlertEmail('100') },
+  { id: 'annual-overage-120',       title: 'E4 · Overage 120% (interno)',         html: annualContractOverageAlertEmail('120') },
+  { id: 'annual-weekly-digest',     title: 'E5 · Digest semanal 80%+ (interno)',  html: annualContractWeeklyOverageDigestEmail() },
+  { id: 'annual-expired-internal',  title: 'E6 · Vencido sin renovar (interno)',  html: annualContractExpiredInternalEmail() },
 ];
 
 for (const t of templates) {

@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceAgent } from '@/types/agent';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, minutesAlertHtml, newLeadHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
-import { consumePoolMinutes } from '@/lib/annual-contracts/pool-consume';
+import { consumePoolMinutes, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { executeAutoRefill } from '@/lib/billing/auto-refill';
@@ -292,6 +292,11 @@ export async function POST(req: NextRequest) {
           poolConsumed = true;
           used     = pool.minutes_used_after;
           included = pool.minutes_pool;
+          // E4: overage alert interno (fire and forget)
+          void fireOverageAlertIfNeeded(agent.portal_email, {
+            crossed_100_threshold: pool.crossed_100_threshold,
+            crossed_120_threshold: pool.crossed_120_threshold,
+          });
           // resetDateStr se resuelve del organizations.pool_reset_date en E-mails
           // internos; el cliente annual no recibe minutesAlertHtml.
         } else {

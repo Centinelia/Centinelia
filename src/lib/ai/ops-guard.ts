@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
-import { consumePoolOps } from '@/lib/annual-contracts/pool-consume';
+import { consumePoolOps, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
 
 export interface OpsResult {
   ok:    boolean;
@@ -27,6 +27,11 @@ export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult
   if (portalEmail) {
     const pool = await consumePoolOps(portalEmail, count, supabase);
     if (pool.consumed) {
+      // E4: overage alert interno (fire and forget)
+      void fireOverageAlertIfNeeded(portalEmail, {
+        crossed_100_threshold: pool.crossed_100_threshold,
+        crossed_120_threshold: pool.crossed_120_threshold,
+      });
       return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
     }
   }

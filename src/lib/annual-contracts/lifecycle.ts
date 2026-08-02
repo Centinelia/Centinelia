@@ -5,6 +5,14 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AnnualContract } from '@/types/annual-contract';
+import { sendEmail } from '@/lib/email/send';
+import {
+  annualContractRenewalReminderHtml,
+  annualContractExpiredHtml,
+  annualContractExpiredInternalHtml,
+} from '@/lib/email/annual-contracts';
+
+const ADMIN_MAIL = 'hola@centinelia.mx';
 
 type Supabase = ReturnType<typeof createAdminClient>;
 
@@ -61,6 +69,7 @@ export async function runLifecycleTick(
     // 2. Auto-expiración si end_date < today
     if (daysBetween(today, c.end_date) < 0) {
       await autoExpire(sb, c);
+      await sendExpiredEmails(sb, c);
       result.auto_expired.push(c.id);
       continue;
     }
@@ -71,18 +80,88 @@ export async function runLifecycleTick(
       await sb.from('annual_contracts')
         .update({ renewal_reminder_60d_sent: true })
         .eq('id', c.id);
+      await sendRenewalReminder(sb, c, '60d');
       result.reminders_60d_sent.push(c.id);
-      // El envío del correo lo hace el caller/cron (separación email vs state).
     }
     if (daysToExpiry <= 15 && daysToExpiry >= 0 && !c.renewal_reminder_15d_sent) {
       await sb.from('annual_contracts')
         .update({ renewal_reminder_15d_sent: true })
         .eq('id', c.id);
+      await sendRenewalReminder(sb, c, '15d');
       result.reminders_15d_sent.push(c.id);
     }
   }
 
   return result;
+}
+
+// ── Email helpers ───────────────────────────────────────────────────────────
+
+async function resolveRecipient(sb: Supabase, orgEmail: string): Promise<{ to: string; businessName: string; contactName: string | null } | null> {
+  const { data: org } = await sb.from('organizations').select('name').eq('portal_email', orgEmail).maybeSingle();
+  const { data: agent } = await sb.from('voice_agents').select('business_name, client_name, client_email, approval_email').eq('portal_email', orgEmail).limit(1).maybeSingle();
+  const to = (agent?.approval_email as string | null) ?? (agent?.client_email as string | null) ?? orgEmail;
+  if (!to) return null;
+  return {
+    to,
+    businessName: (agent?.business_name as string | null) ?? (org?.name as string | null) ?? orgEmail,
+    contactName:  (agent?.client_name as string | null) ?? null,
+  };
+}
+
+async function sendRenewalReminder(sb: Supabase, contract: AnnualContract, urgency: '60d' | '15d'): Promise<void> {
+  const rcp = await resolveRecipient(sb, contract.organization_email);
+  if (!rcp) return;
+
+  // Average usage del ciclo actual (aproximación: monthly_used del mes en curso).
+  const { data: org } = await sb.from('organizations').select('monthly_minutes_used, monthly_ops_used').eq('portal_email', contract.organization_email).maybeSingle();
+
+  const html = annualContractRenewalReminderHtml({
+    businessName:   rcp.businessName,
+    contract,
+    urgency,
+    avgMinutesUsed: (org?.monthly_minutes_used as number) ?? 0,
+    avgOpsUsed:     (org?.monthly_ops_used as number)     ?? 0,
+  });
+
+  const label = urgency === '60d' ? 'Renovación · 60 días' : 'Renovación urgente · 15 días';
+  await sendEmail({
+    to:      rcp.to,
+    subject: `[${label}] ${rcp.businessName} · ${contract.contract_folio}`,
+    html,
+    from:    `Centinelia <notificaciones@centinelia.mx>`,
+  }).catch(err => console.error('[annual-contracts-lifecycle] renewal reminder send failed:', err));
+
+  // CC interno a Nazre en el mismo template (envío separado — Resend no soporta CC directo)
+  await sendEmail({
+    to:      ADMIN_MAIL,
+    subject: `[Copia · ${label}] ${rcp.businessName} · ${contract.contract_folio}`,
+    html,
+  }).catch(err => console.error('[annual-contracts-lifecycle] renewal reminder CC failed:', err));
+}
+
+async function sendExpiredEmails(sb: Supabase, contract: AnnualContract): Promise<void> {
+  const rcp = await resolveRecipient(sb, contract.organization_email);
+  if (rcp) {
+    const html = annualContractExpiredHtml({ businessName: rcp.businessName, contract });
+    await sendEmail({
+      to:      rcp.to,
+      subject: `⚠️ Contrato ${contract.contract_folio} vencido — oficina pausada`,
+      html,
+    }).catch(err => console.error('[annual-contracts-lifecycle] expired email send failed:', err));
+  }
+
+  // Interno para Nazre
+  const internalHtml = annualContractExpiredInternalHtml({
+    businessName: rcp?.businessName ?? contract.organization_email,
+    contract,
+    lastInteractionDaysAgo: null,
+  });
+  await sendEmail({
+    to:      ADMIN_MAIL,
+    subject: `[Vencido sin renovar] ${rcp?.businessName ?? contract.organization_email} · ${contract.contract_folio}`,
+    html:    internalHtml,
+  }).catch(err => console.error('[annual-contracts-lifecycle] expired internal failed:', err));
 }
 
 // Resetea el pool si pool_reset_date <= today.

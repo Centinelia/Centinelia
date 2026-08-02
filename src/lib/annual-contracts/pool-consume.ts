@@ -3,7 +3,55 @@
 // executor no dupliquen el guard.
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { BillingModel } from '@/types/annual-contract';
+import { sendEmail } from '@/lib/email/send';
+import { annualContractOverageAlertHtml } from '@/lib/email/annual-contracts';
+import type { AnnualContract, BillingModel } from '@/types/annual-contract';
+
+const ADMIN_MAIL = 'hola@centinelia.mx';
+
+// Envía el correo E4 (interno) cuando el pool cruzó 100% o 120%. Fire and
+// forget: no bloquea la llamada/tool que lo disparó.
+export async function fireOverageAlertIfNeeded(
+  portalEmail: string,
+  result: { crossed_100_threshold?: boolean; crossed_120_threshold?: boolean },
+): Promise<void> {
+  const threshold: '100' | '120' | null = result.crossed_120_threshold ? '120' : result.crossed_100_threshold ? '100' : null;
+  if (!threshold) return;
+
+  const supabase = createAdminClient();
+  const { data: org } = await supabase.from('organizations')
+    .select('name, active_contract_id, monthly_minutes_used, monthly_ops_used, pool_reset_date')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+  if (!org?.active_contract_id) return;
+
+  const { data: contract } = await supabase.from('annual_contracts')
+    .select('*')
+    .eq('id', org.active_contract_id)
+    .maybeSingle();
+  if (!contract) return;
+
+  const resetISO = (org.pool_reset_date as string | null) ?? '';
+  const daysRemaining = resetISO
+    ? Math.max(0, Math.round((new Date(resetISO + 'T00:00:00Z').getTime() - Date.now()) / 86_400_000))
+    : 0;
+
+  const html = annualContractOverageAlertHtml({
+    businessName:       (org.name as string | null) ?? portalEmail,
+    contract:           contract as AnnualContract,
+    minutesUsed:        (org.monthly_minutes_used as number) ?? 0,
+    opsUsed:            (org.monthly_ops_used as number) ?? 0,
+    daysRemainingCycle: daysRemaining,
+    threshold,
+  });
+
+  const label = threshold === '120' ? 'Overage 20% arriba' : 'Pool al límite';
+  await sendEmail({
+    to:      ADMIN_MAIL,
+    subject: `[${label}] ${(org.name as string | null) ?? portalEmail} · ${(contract.contract_folio as string)}`,
+    html,
+  }).catch(err => console.error('[pool-consume] overage alert failed:', err));
+}
 
 type Supabase = ReturnType<typeof createAdminClient>;
 

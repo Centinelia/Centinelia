@@ -3,6 +3,8 @@
 // consulta atómica de contratos. Las rutas API son thin wrappers sobre esto.
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmail } from '@/lib/email/send';
+import { annualContractActivatedHtml } from '@/lib/email/annual-contracts';
 import type {
   AnnualContract,
   CreateAnnualContractInput,
@@ -179,6 +181,37 @@ async function applyActivation(contract: AnnualContract, sb: Supabase): Promise<
     .from('voice_agents')
     .update({ minutes_used: 0, minutes_included: 0 })
     .eq('portal_email', contract.organization_email);
+
+  // E1: correo de bienvenida al cliente (fire and forget)
+  void sendActivationEmail(contract, sb).catch(err => console.error('[annual-contracts service] E1 send failed:', err));
+}
+
+async function sendActivationEmail(contract: AnnualContract, sb: Supabase): Promise<void> {
+  const { data: agents } = await sb.from('voice_agents')
+    .select('agent_name, client_name, client_email, approval_email, business_name')
+    .eq('portal_email', contract.organization_email);
+
+  const first = (agents ?? [])[0];
+  const to = (first?.approval_email as string | null) ?? (first?.client_email as string | null);
+  if (!to) return;
+
+  const employeesList = (agents ?? [])
+    .map(a => (a.agent_name as string | null)?.trim())
+    .filter((n): n is string => !!n);
+
+  const html = annualContractActivatedHtml({
+    businessName:       (first?.business_name as string | null) ?? contract.organization_email,
+    clientContactName:  (first?.client_name as string | null) ?? null,
+    contract,
+    portalUrl:          (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx') + '/portal/setup',
+    employeesList,
+  });
+
+  await sendEmail({
+    to,
+    subject: `Contrato ${contract.contract_folio} activo · ${first?.business_name ?? 'Centinelia'}`,
+    html,
+  });
 }
 
 // ── Renew ──────────────────────────────────────────────────────────────────
