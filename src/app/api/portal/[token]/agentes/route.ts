@@ -5,6 +5,7 @@ import { verifySession, PORTAL_COOKIE }  from '@/lib/portal/auth';
 import { MEERKAT_MAP, type MeerkatRoleId, type MeerkatRole } from '@/lib/portal/meerkat-roles';
 import { createVapiAssistant, resyncPeerAgents } from '@/lib/vapi/sync';
 import { stripe }                        from '@/lib/stripe';
+import { requireStripeEligible }         from '@/lib/billing/require-stripe-eligible';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG, NOX_MONTHLY_CONFIG } from '@/lib/billing/plans';
 import { randomUUID }                    from 'crypto';
 import type { Plan, JornadaType }        from '@/types/agent';
@@ -151,6 +152,11 @@ export async function POST(
   if (!base) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (session.portalEmail && base.portal_email && session.portalEmail !== base.portal_email)
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const eligible = await requireStripeEligible(base.portal_email as string | null);
+  if (!eligible.ok) {
+    return NextResponse.json({ error: eligible.reason, message: eligible.message, contact: eligible.contact }, { status: 409 });
+  }
 
   const agentName = agent_name?.trim() || (role.id === 'custom' ? 'Empleado' : role.nombre);
 

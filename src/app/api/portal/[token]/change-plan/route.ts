@@ -9,6 +9,7 @@ import { PLAN_FEATURES } from '@/types/agent';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 import { rateLimit, limiters } from '@/lib/ratelimit';
+import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -43,6 +44,11 @@ export async function POST(req: NextRequest, { params }: Params) {
     .from('voice_agents').select('portal_email').eq('id', agent.id).single();
   if (auth.portalEmail && agentMeta?.portal_email && auth.portalEmail !== agentMeta.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  const eligible = await requireStripeEligible(agentMeta?.portal_email as string | null);
+  if (!eligible.ok) {
+    return NextResponse.json({ error: eligible.reason, message: eligible.message, contact: eligible.contact }, { status: 409 });
+  }
 
   if (!agent.stripe_subscription_id) return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 400 });
 

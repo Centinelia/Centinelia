@@ -27,6 +27,7 @@ import PortalOrdersSection     from './PortalOrdersSection';
 import PortalAppointmentsSection from './PortalAppointmentsSection';
 import BuyMinutesSection       from './BuyMinutesSection';
 import BuyOpsSection           from './BuyOpsSection';
+import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
@@ -134,10 +135,33 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, billing_model')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
+
+  // Anual: si la org está en contrato prepagado, esconde botones Stripe (compra
+  // minutos/tareas/plan) y muestra callout. Fetch contract info sólo si aplica.
+  const billingModel = (orgSettings?.billing_model as string | null) ?? 'stripe';
+  const isAnnualOrExpired = billingModel === 'annual_prepaid' || billingModel === 'expired';
+  let annualContractInfo: { folio: string; endDate: string; isExpired: boolean } | null = null;
+  if (isAnnualOrExpired && agent.portal_email) {
+    const { data: latestContract } = await supabase
+      .from('annual_contracts')
+      .select('contract_folio, end_date')
+      .eq('organization_email', agent.portal_email)
+      .in('status', ['active', 'expired'])
+      .order('end_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestContract) {
+      annualContractInfo = {
+        folio:     latestContract.contract_folio as string,
+        endDate:   latestContract.end_date as string,
+        isExpired: billingModel === 'expired',
+      };
+    }
+  }
 
   // Agents with outbound calling enabled — available to select when scheduling
   const outboundAgents = allClientAgents
@@ -1021,23 +1045,31 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           </p>
                         )}
                         <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
-                        <div className="flex flex-col gap-5">
-                          {minutesIncluded > 0 && (
-                            <div>
-                              {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                              <BuyMinutesSection token={token} />
-                            </div>
-                          )}
-                          {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                        {annualContractInfo ? (
+                          <div className="flex flex-col gap-5">
+                            <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
                             <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                          )}
-                          {aiOpsLimit > 0 && (
-                            <div>
-                              {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                              <BuyOpsSection token={token} />
-                            </div>
-                          )}
-                        </div>
+                            <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-5">
+                            {minutesIncluded > 0 && (
+                              <div>
+                                {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                                <BuyMinutesSection token={token} />
+                              </div>
+                            )}
+                            {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                              <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                            )}
+                            {aiOpsLimit > 0 && (
+                              <div>
+                                {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                                <BuyOpsSection token={token} />
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

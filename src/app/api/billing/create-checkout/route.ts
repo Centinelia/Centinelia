@@ -3,6 +3,7 @@ import { isAdmin } from '@/lib/admin/auth';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FEATURE_PLAN_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
+import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
 import type { Plan } from '@/types/agent';
 import type { MinutesTier } from '@/lib/billing/plans';
 
@@ -24,11 +25,16 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, client_name, business_name, stripe_customer_id')
+    .select('id, client_name, business_name, stripe_customer_id, portal_email')
     .eq('id', agentId)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
+
+  const eligible = await requireStripeEligible(agent.portal_email as string | null);
+  if (!eligible.ok) {
+    return NextResponse.json({ error: eligible.reason, message: eligible.message, contact: eligible.contact }, { status: 409 });
+  }
 
   const featureCfg = FEATURE_PLAN_CONFIG[featurePlan];
   const minutesCfg = MONTHLY_CONFIG[featurePlan][minutesPlan];

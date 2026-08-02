@@ -9,6 +9,7 @@ import { Settings2, Bot, Zap, Clock } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
+import AnnualContractCallout           from '../AnnualContractCallout';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
 
@@ -375,9 +376,32 @@ export default async function AgentesPage({ params }: Props) {
   const callCountMap = Object.fromEntries(callCounts.map(c => [c.id, c.count]));
 
   const { data: orgRow } = baseAgent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', baseAgent.portal_email).single()
+    ? await supabase.from('organizations').select('owner_passphrase, billing_model, active_contract_id').eq('portal_email', baseAgent.portal_email).single()
     : { data: null };
   const hasPassphrase = !!orgRow?.owner_passphrase?.trim();
+
+  // Anual: si la org está en contrato prepagado, no se puede autocontratar por Stripe.
+  const billingModel = (orgRow?.billing_model as string | null) ?? 'stripe';
+  const isAnnualOrExpired = billingModel === 'annual_prepaid' || billingModel === 'expired';
+  let annualContractInfo: { folio: string; endDate: string; isExpired: boolean } | null = null;
+  if (isAnnualOrExpired) {
+    // Última contrato activo o expirado más reciente
+    const { data: latestContract } = await supabase
+      .from('annual_contracts')
+      .select('contract_folio, end_date')
+      .eq('organization_email', baseAgent.portal_email!)
+      .in('status', ['active', 'expired'])
+      .order('end_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestContract) {
+      annualContractInfo = {
+        folio:     latestContract.contract_folio as string,
+        endDate:   latestContract.end_date as string,
+        isExpired: billingModel === 'expired',
+      };
+    }
+  }
 
   // Tool coverage by business category
   const coveredToolKeys = new Set<string>();
@@ -453,13 +477,24 @@ export default async function AgentesPage({ params }: Props) {
             {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
           </p>
         </div>
-        <MeerkatPicker
-          token={token}
-          plan={(baseAgent.plan ?? 'pro') as 'pro'}
-          defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
-          recommendations={meerkatRecs}
-        />
+        {!annualContractInfo && (
+          <MeerkatPicker
+            token={token}
+            plan={(baseAgent.plan ?? 'pro') as 'pro'}
+            defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+            recommendations={meerkatRecs}
+          />
+        )}
       </div>
+
+      {annualContractInfo && (
+        <AnnualContractCallout
+          action="contratar_empleado"
+          folio={annualContractInfo.folio}
+          endDate={annualContractInfo.endDate}
+          isExpired={annualContractInfo.isExpired}
+        />
+      )}
 
       {/* Empty state */}
       {agents.length === 0 && (
@@ -791,7 +826,7 @@ export default async function AgentesPage({ params }: Props) {
           </div>
 
           {/* CTA */}
-          {missingCats.length > 0 && (
+          {missingCats.length > 0 && !annualContractInfo && (
             <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
               <MeerkatPicker
                 token={token}

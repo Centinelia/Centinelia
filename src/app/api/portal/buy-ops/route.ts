@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { rateLimit, limiters } from '@/lib/ratelimit';
+import { requireStripeEligible } from '@/lib/billing/require-stripe-eligible';
 
 const FIXED_PACKAGES: Record<number, number> = { 100: 800, 300: 2100 };
 const PRICE_PER_OP = 8.5;
@@ -40,6 +41,11 @@ export async function POST(req: NextRequest) {
   if (!agent) return NextResponse.json({ error: 'Agente no encontrado' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+  const eligible = await requireStripeEligible(agent.portal_email as string | null);
+  if (!eligible.ok) {
+    return NextResponse.json({ error: eligible.reason, message: eligible.message, contact: eligible.contact }, { status: 409 });
+  }
 
   let customerId: string = agent.stripe_customer_id ?? '';
   if (!customerId) {
