@@ -1,6 +1,16 @@
 import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail, agentBrandedFrom } from '@/lib/email/send';
+import {
+  sendEmail,
+  agentBrandedFrom,
+  shell,
+  badge,
+  heading,
+  infoCard,
+  btn,
+  sectionLabel,
+} from '@/lib/email/send';
+import { resolveMeerkatFromAgent } from '@/lib/email/meerkat-identity';
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
@@ -41,11 +51,29 @@ interface HumanRequest {
 }
 
 interface Agent {
-  agent_name:   string;
+  agent_name:    string | null;
   business_name: string;
-  portal_token: string;
-  features?:    Record<string, unknown> | null;
+  portal_token:  string;
+  features:      Record<string, unknown> | null;
 }
+
+const URGENCY_COLOR: Record<HumanRequest['urgency'], string> = {
+  baja:  '#8C7FB8',
+  media: '#FBBF24',
+  alta:  '#EF4444',
+};
+
+const URGENCY_LABEL: Record<HumanRequest['urgency'], string> = {
+  baja:  'Urgencia baja',
+  media: 'Urgencia media',
+  alta:  'Urgencia alta',
+};
+
+const TYPE_LABEL: Record<HumanRequest['request_type'], string> = {
+  info:     'Necesito información',
+  action:   'Necesito una acción',
+  approval: 'Necesito tu aprobación',
+};
 
 export async function dispatchHumanRequestNotification(requestId: string): Promise<void> {
   const supabase = createAdminClient();
@@ -85,7 +113,7 @@ export async function dispatchHumanRequestNotification(requestId: string): Promi
         to:      request.target_email,
         from:    agentBrandedFrom(agent.agent_name as string | null),
         subject: `[${agent.agent_name}] Necesito tu ayuda: ${request.title}`,
-        html:    buildRequestEmailHtml(request as HumanRequest, agent as Agent),
+        html:    buildRequestEmailHtml(request as HumanRequest, agent as Agent, replyTo),
         replyTo,
       });
       dispatched.push('email');
@@ -95,13 +123,11 @@ export async function dispatchHumanRequestNotification(requestId: string): Promi
   }
 
   if (sendViaWA) {
-    // STUB: cuando WhatsApp salga de sandbox (spec §5.7)
     console.log('[notify] WA stub for request', requestId);
     dispatched.push('wa_stub');
   }
 
   if (sendViaCall) {
-    // STUB: implementación de llamada via Vapi outbound queda para fase 2 según spec
     console.log('[notify] call stub for request', requestId);
     dispatched.push('call_stub');
   }
@@ -116,7 +142,11 @@ export async function sendReminderNotification(requestId: string): Promise<void>
   const supabase = createAdminClient();
   const { data: request } = await supabase.from('human_requests').select('*').eq('id', requestId).single();
   if (!request) return;
-  const { data: agent } = await supabase.from('voice_agents').select('agent_name, portal_token').eq('id', request.agent_id).single();
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('agent_name, business_name, portal_token, features')
+    .eq('id', request.agent_id)
+    .single();
   if (!agent) return;
 
   const replyToken = await ensureReplyToken(
@@ -139,7 +169,11 @@ export async function sendEscalationNotification(requestId: string, escalateToEm
   const supabase = createAdminClient();
   const { data: request } = await supabase.from('human_requests').select('*').eq('id', requestId).single();
   if (!request) return;
-  const { data: agent } = await supabase.from('voice_agents').select('agent_name, business_name, portal_token').eq('id', request.agent_id).single();
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('agent_name, business_name, portal_token, features')
+    .eq('id', request.agent_id)
+    .single();
   if (!agent) return;
 
   const replyToken = await ensureReplyToken(
@@ -153,7 +187,7 @@ export async function sendEscalationNotification(requestId: string, escalateToEm
     to:      escalateToEmail,
     from:    agentBrandedFrom(agent.agent_name as string | null),
     subject: `[Escalado] ${agent.agent_name} no ha recibido respuesta a: ${request.title}`,
-    html:    buildEscalationEmailHtml(request as HumanRequest, agent as Agent, escalateToEmail),
+    html:    buildEscalationEmailHtml(request as HumanRequest, agent as Agent),
     replyTo,
   });
 }
@@ -166,64 +200,75 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildRequestEmailHtml(req: HumanRequest, agent: Agent): string {
+function replyHint(replyTo: string | undefined): string {
+  if (!replyTo) return '';
+  return `<p style="color:#8C7FB8;font-size:12px;line-height:1.6;text-align:center;margin:16px 0 0">
+    Puedes responder este correo directamente y tu respuesta quedará registrada en la solicitud.
+  </p>`;
+}
+
+function sourceContextBlock(source: string | null): string {
+  if (!source) return '';
+  return `<div style="margin:16px 0 0">
+    ${sectionLabel('Correo original')}
+    <p style="color:#C8BEE8;font-size:12px;line-height:1.6;margin:0;white-space:pre-wrap;padding:14px;background:#2A1B5C;border-left:3px solid #3D2E6A;border-radius:8px">${escapeHtml(source)}</p>
+  </div>`;
+}
+
+function buildRequestEmailHtml(req: HumanRequest, agent: Agent, replyTo?: string): string {
+  const meerkat = resolveMeerkatFromAgent(agent);
   const url = requestUrl(agent.portal_token, req.id);
-  const typeLabel = { info: 'Necesita información', action: 'Necesita acción', approval: 'Necesita aprobación' }[req.request_type];
-  const urgencyLabel = { baja: 'Baja', media: 'Media', alta: 'Alta' }[req.urgency];
-  return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#FAFBFF;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px">
-    <div style="background:#fff;border:1px solid rgba(108,59,255,0.12);border-radius:12px;padding:28px">
-      <p style="color:rgba(26,10,59,0.6);font-size:12px;margin:0 0 6px">${escapeHtml(agent.business_name)} · ${typeLabel} · Urgencia: ${urgencyLabel}</p>
-      <h1 style="color:#1A0A3B;font-size:20px;font-weight:700;margin:0 0 16px">${escapeHtml(agent.agent_name)} necesita tu ayuda</h1>
-      <div style="background:#F4F0FF;border-left:3px solid #6C3BFF;padding:16px;margin:0 0 20px">
-        <p style="color:#1A0A3B;font-size:14px;font-weight:600;margin:0 0 8px">${escapeHtml(req.title)}</p>
-        <p style="color:rgba(26,10,59,0.7);font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap">${escapeHtml(req.description)}</p>
-      </div>
-      ${req.source_context ? `<details style="margin:0 0 20px"><summary style="color:rgba(26,10,59,0.5);font-size:12px;cursor:pointer">Contexto (correo original)</summary><p style="color:rgba(26,10,59,0.6);font-size:12px;line-height:1.5;margin:8px 0 0;white-space:pre-wrap">${escapeHtml(req.source_context)}</p></details>` : ''}
-      <div style="text-align:center">
-        <a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Responder ahora</a>
-      </div>
-    </div>
-  </div>
-</body></html>`;
+  const accent = URGENCY_COLOR[req.urgency];
+
+  return shell(
+    `${badge(URGENCY_LABEL[req.urgency], accent)}
+    ${heading('Necesito tu ayuda', `${agent.business_name} · ${TYPE_LABEL[req.request_type]}`)}
+    ${infoCard(`
+      ${sectionLabel('Solicitud')}
+      <p style="color:#F1EEFF;font-size:15px;font-weight:600;margin:0 0 10px;line-height:1.4">${escapeHtml(req.title)}</p>
+      <p style="color:#C8BEE8;font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap">${escapeHtml(req.description)}</p>
+    `, true)}
+    ${sourceContextBlock(req.source_context)}
+    ${btn('Responder ahora →', url, { color: meerkat.color })}
+    ${replyHint(replyTo)}`,
+    { meerkat, preheader: `${meerkat.name}: ${req.title}` },
+  );
 }
 
 function buildReminderEmailHtml(req: HumanRequest, agent: Agent): string {
+  const meerkat = resolveMeerkatFromAgent(agent);
   const url = requestUrl(agent.portal_token, req.id);
-  return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#FAFBFF;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px">
-    <div style="background:#fff;border:1px solid rgba(245,158,11,0.24);border-radius:12px;padding:28px">
-      <h1 style="color:#1A0A3B;font-size:18px;font-weight:700;margin:0 0 12px">Recordatorio</h1>
-      <p style="color:rgba(26,10,59,0.7);font-size:14px;line-height:1.6;margin:0 0 16px">${escapeHtml(agent.agent_name)} sigue esperando tu respuesta desde hace 24 horas:</p>
-      <p style="color:#1A0A3B;font-size:14px;font-weight:600;margin:0 0 16px">${escapeHtml(req.title)}</p>
-      <div style="text-align:center">
-        <a href="${url}" style="display:inline-block;background:#f59e0b;color:#000;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Responder ahora</a>
-      </div>
-    </div>
-  </div>
-</body></html>`;
+  const ambar = '#FBBF24';
+
+  return shell(
+    `${badge('Recordatorio · 24 horas', ambar)}
+    ${heading('Sigo esperando tu respuesta', agent.business_name)}
+    ${infoCard(`
+      ${sectionLabel('Solicitud pendiente')}
+      <p style="color:#F1EEFF;font-size:15px;font-weight:600;margin:0;line-height:1.4">${escapeHtml(req.title)}</p>
+    `, true)}
+    ${btn('Responder ahora →', url, { color: ambar })}`,
+    { meerkat, preheader: `Recordatorio: ${req.title}` },
+  );
 }
 
-function buildEscalationEmailHtml(req: HumanRequest, agent: Agent, escalatedTo: string): string {
+function buildEscalationEmailHtml(req: HumanRequest, agent: Agent): string {
+  const meerkat = resolveMeerkatFromAgent(agent);
   const url = requestUrl(agent.portal_token, req.id);
-  return `<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#FAFBFF;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px">
-    <div style="background:#fff;border:1px solid rgba(239,68,68,0.24);border-radius:12px;padding:28px">
-      <p style="color:#dc2626;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px">Escalado a ti</p>
-      <h1 style="color:#1A0A3B;font-size:18px;font-weight:700;margin:0 0 12px">${escapeHtml(agent.agent_name)} no recibió respuesta en 48 horas</h1>
-      <p style="color:rgba(26,10,59,0.7);font-size:14px;line-height:1.6;margin:0 0 8px">Solicitud original a ${escapeHtml(req.target_email)}:</p>
-      <p style="color:#1A0A3B;font-size:14px;font-weight:600;margin:0 0 16px">${escapeHtml(req.title)}</p>
-      <p style="color:rgba(26,10,59,0.7);font-size:13px;line-height:1.6;margin:0 0 20px;white-space:pre-wrap">${escapeHtml(req.description)}</p>
-      <div style="text-align:center">
-        <a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Responder ahora</a>
-      </div>
-    </div>
-  </div>
-</body></html>`;
+  const rojo = '#EF4444';
+
+  return shell(
+    `${badge('Escalado · 48h sin respuesta', rojo)}
+    ${heading('Necesito respuesta', agent.business_name)}
+    <p style="color:#C8BEE8;font-size:14px;line-height:1.7;margin:0 0 16px">
+      La solicitud original fue enviada a <strong style="color:#F1EEFF">${escapeHtml(req.target_email)}</strong> hace 48 horas sin respuesta.
+    </p>
+    ${infoCard(`
+      ${sectionLabel('Solicitud')}
+      <p style="color:#F1EEFF;font-size:15px;font-weight:600;margin:0 0 10px;line-height:1.4">${escapeHtml(req.title)}</p>
+      <p style="color:#C8BEE8;font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap">${escapeHtml(req.description)}</p>
+    `, true)}
+    ${btn('Responder ahora →', url, { color: rojo })}`,
+    { meerkat, preheader: `Escalado: ${req.title}` },
+  );
 }

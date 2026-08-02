@@ -1,5 +1,6 @@
 const FROM     = process.env.RESEND_FROM_EMAIL ?? 'Centinelia <notificaciones@centinelia.mx>';
 const LOGO_URL = 'https://www.centinelia.mx/logo-tagline.png';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
 
 // Extrae la dirección del FROM configurado ("Name <addr>" o solo "addr").
 // Se usa para construir Froms brandeados por agente sin cambiar el dominio
@@ -39,12 +40,91 @@ const C = {
   header: '#FFFFFF',
 };
 
+// ── Meerkat identity ──────────────────────────────────────────────────────────
+
+// Identidad del "empleado digital" que envía el correo. Se usa para inyectar
+// avatar + banner de acento arriba del body, y para tintar el CTA con el color
+// del rol (Nia lila, Nox teal, Sofía verde, etc). Ver resolveMeerkatFromAgent
+// en meerkat-identity.ts para construirlo a partir del voice_agents row.
+export interface MeerkatIdentity {
+  roleId:   string | null;
+  name:     string;
+  role:     string;
+  color:    string;
+  imageUrl: string | null;
+}
+
+// Calibración de crop por meerkat (escalada del TeamFlowSection mobile ~54-64px
+// al avatar de correo de 56px). Nia/Neo/Nova tienen algo en las manos y su cara
+// queda desplazada del centro geométrico; requieren zoom + translate para que
+// la cara caiga en el crop circular. Ver [[feedback-meerkat-avatar-crop]] y
+// src/app/TeamFlowSection.tsx:29-43 (fuente de verdad de los valores).
+interface AvatarCrop {
+  objectPosition: string;
+  scale:          number;
+  shiftX:         number; // px
+  shiftY:         number; // px
+  transformOrigin: string;
+}
+const DEFAULT_CROP: AvatarCrop = {
+  objectPosition:  'center 3%',
+  scale:           1,
+  shiftX:          0,
+  shiftY:          0,
+  transformOrigin: 'center center',
+};
+const AVATAR_CROP: Record<string, AvatarCrop> = {
+  nia:   { objectPosition: 'center 10%', scale: 1.35, shiftX:  8, shiftY: 1, transformOrigin: 'center 12%' },
+  noah:  { objectPosition: 'center 3%',  scale: 1.00, shiftX:  0, shiftY: 0, transformOrigin: 'center center' },
+  nara:  { objectPosition: 'center 8%',  scale: 1.20, shiftX: -2, shiftY: 3, transformOrigin: 'center 10%' },
+  nico:  { objectPosition: 'center 8%',  scale: 1.00, shiftX:  0, shiftY: 2, transformOrigin: 'center center' },
+  naia:  { objectPosition: 'center 8%',  scale: 1.00, shiftX:  0, shiftY: 0, transformOrigin: 'center center' },
+  nelia: { objectPosition: 'center 8%',  scale: 1.00, shiftX:  0, shiftY: 3, transformOrigin: 'center center' },
+  neo:   { objectPosition: 'center 10%', scale: 1.45, shiftX: 11, shiftY: 4, transformOrigin: 'center 12%' },
+  nova:  { objectPosition: 'center 5%',  scale: 2.00, shiftX: 17, shiftY: 4, transformOrigin: 'center 12%' },
+  nox:   { objectPosition: 'center 8%',  scale: 1.10, shiftX:  0, shiftY: 2, transformOrigin: 'center center' },
+  niva:  { objectPosition: 'center 8%',  scale: 1.10, shiftX:  0, shiftY: 2, transformOrigin: 'center center' },
+};
+
+export function meerkatHeader(m: MeerkatIdentity): string {
+  const tinted = `${m.color}26`; // ~15% opacity in hex — safe for Gmail/Outlook
+  const crop = (m.roleId && AVATAR_CROP[m.roleId]) || DEFAULT_CROP;
+  const transform = `translate(${crop.shiftX}px, ${crop.shiftY}px) scale(${crop.scale})`;
+
+  const avatar = m.imageUrl
+    ? `<div style="width:56px;height:56px;border-radius:50%;overflow:hidden;background:${tinted};display:inline-block;line-height:0">
+        <img src="${m.imageUrl}" alt="${m.name}" width="56" height="56" style="width:56px;height:56px;display:block;object-fit:cover;object-position:${crop.objectPosition};transform:${transform};transform-origin:${crop.transformOrigin}">
+      </div>`
+    : `<div style="width:56px;height:56px;border-radius:50%;background:${tinted};color:${m.color};font-size:22px;font-weight:800;line-height:56px;text-align:center;font-family:Arial,Helvetica,sans-serif">${m.name.charAt(0).toUpperCase()}</div>`;
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px">
+    <tr>
+      <td width="56" valign="middle" style="width:56px;padding:0 14px 0 0">${avatar}</td>
+      <td valign="middle" style="vertical-align:middle">
+        <p style="color:${C.text};font-size:15px;font-weight:700;margin:0;line-height:1.3">${m.name}</p>
+        <p style="color:${C.mute};font-size:12px;margin:2px 0 0;line-height:1.3">${m.role}</p>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding:16px 0 0"><div style="height:1px;background:${m.color}33;line-height:1px;font-size:0">&nbsp;</div></td>
+    </tr>
+  </table>`;
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 // Exported so ad-hoc emails outside this file (heartbeat cron, quota-email,
 // onboarding submit) can use the same dark-mode-resistant wrapper instead of
 // hand-rolling inline HTML that breaks in Gmail/Titan.
-export function shell(body: string) {
+export function shell(body: string, opts?: {
+  meerkat?:   MeerkatIdentity;
+  preheader?: string;
+}) {
+  const preheader = opts?.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:${C.bg};opacity:0">${opts.preheader}</div>`
+    : '';
+  const header = opts?.meerkat ? meerkatHeader(opts.meerkat) : '';
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -65,6 +145,7 @@ export function shell(body: string) {
   </style>
 </head>
 <body class="body" style="margin:0;padding:0;background:${C.bg};font-family:Arial,Helvetica,sans-serif">
+  ${preheader}
   <!-- Outer wrapper table — bgcolor survives Gmail/Titan style stripping -->
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${C.bg}" style="background:${C.bg};background-color:${C.bg};margin:0;padding:0">
     <tr>
@@ -89,6 +170,7 @@ export function shell(body: string) {
           <!-- Body oscuro (solid bg via table + bgcolor) -->
           <tr>
             <td bgcolor="${C.card}" style="background:${C.card};background-color:${C.card};border-radius:0 0 16px 16px;padding:32px">
+              ${header}
               ${body}
             </td>
           </tr>
@@ -121,8 +203,10 @@ export function badge(label: string, color = C.accent) {
 }
 
 export function heading(title: string, sub?: string) {
-  return `<h1 style="color:${C.text};font-size:22px;font-weight:700;margin:0 0 ${sub ? '6px' : '24px'};text-align:center;line-height:1.3">${title}</h1>
-  ${sub ? `<p style="color:${C.sub};font-size:13px;margin:0 0 24px;text-align:center">${sub}</p>` : ''}`;
+  // Sub en 15px semibold sobre C.text: el business_name suele ir como sub y
+  // necesita presencia editorial, no un muted 13px que desaparece.
+  return `<h1 style="color:${C.text};font-size:22px;font-weight:700;margin:0 0 ${sub ? '8px' : '24px'};text-align:center;line-height:1.3">${title}</h1>
+  ${sub ? `<p style="color:${C.text};font-size:15px;font-weight:600;margin:0 0 24px;text-align:center;line-height:1.4">${sub}</p>` : ''}`;
 }
 
 export function infoCard(content: string, accent = false) {
@@ -135,9 +219,37 @@ export function infoCard(content: string, accent = false) {
   </table>`;
 }
 
-export function btn(label: string, href: string, primary = true) {
+// Lighten a #RRGGBB hex by ~25% for the gradient's second stop.
+function lightenHex(hex: string, amt = 0.25): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const mix = (c: number) => Math.min(255, Math.round(c + (255 - c) * amt));
+  const hx = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${hx(mix(r))}${hx(mix(g))}${hx(mix(b))}`;
+}
+
+// btn(label, href) → primary con acento default
+// btn(label, href, false) → secundario (retro-compat, boolean)
+// btn(label, href, { color, primary }) → forma extendida con color custom
+export function btn(label: string, href: string, opts: boolean | { primary?: boolean; color?: string } = true) {
+  const norm = typeof opts === 'boolean' ? { primary: opts } : opts;
+  const primary = norm.primary !== false;
+  const color = norm.color ?? '#6C3BFF';
+  const grad = `linear-gradient(135deg,${color},${lightenHex(color)})`;
   return `<div style="text-align:center;margin:24px 0 8px">
-    <a href="${href}" style="display:inline-block;background:${primary ? 'linear-gradient(135deg,#6C3BFF,#9B6DFF)' : 'transparent'};border:${primary ? 'none' : `1.5px solid ${C.border}`};color:${primary ? '#fff' : C.sub};font-size:14px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:12px">${label}</a>
+    <a href="${href}" style="display:inline-block;background:${primary ? grad : 'transparent'};background-color:${primary ? color : 'transparent'};border:${primary ? 'none' : `1.5px solid ${C.border}`};color:${primary ? '#fff' : C.sub};font-size:14px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:12px">${label}</a>
+  </div>`;
+}
+
+// Barra de progreso reutilizable (weeklyReport, minutesAlert, y otros que muestren % de consumo).
+export function progressBar(pct: number, color?: string): string {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const c = color ?? (p >= 100 ? '#F87171' : p >= 80 ? '#FBBF24' : C.accent);
+  return `<div style="background:rgba(255,255,255,0.10);border-radius:6px;height:10px;overflow:hidden">
+    <div style="height:10px;width:${p}%;background:${c};border-radius:6px;line-height:10px;font-size:0">&nbsp;</div>
   </div>`;
 }
 
@@ -263,10 +375,8 @@ export function weeklyReportHtml(opts: {
 
   const minutesSection = infoCard(`
     ${sectionLabel('Minutos del plan')}
-    <div style="background:rgba(255,255,255,0.10);border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px">
-      <div style="height:100%;width:${Math.min(pct, 100)}%;background:${barColor};border-radius:6px"></div>
-    </div>
-    <p style="color:${C.sub};font-size:13px;margin:0">${opts.minutesUsed} de ${opts.minutesTotal} min usados <span style="color:${C.mute}">(${pct}%)</span></p>
+    ${progressBar(pct, barColor)}
+    <p style="color:${C.sub};font-size:13px;margin:10px 0 0">${opts.minutesUsed} de ${opts.minutesTotal} min usados <span style="color:${C.mute}">(${pct}%)</span></p>
     ${opts.peakHour ? `<p style="color:${C.mute};font-size:12px;margin:10px 0 0">Hora pico: <strong style="color:${C.sub}">${opts.peakHour}</strong></p>` : ''}
   `, true);
 
@@ -286,9 +396,9 @@ export function weeklyReportHtml(opts: {
 export function welcomeHtml(opts: { businessName: string; setupUrl: string }) {
   return shell(`
     ${badge('Bienvenido a Centinelia', '#9B6DFF')}
-    ${heading('Tu agente de voz estará listo pronto', opts.businessName)}
+    ${heading('Tu empleado estará listo pronto', opts.businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">
-      Tu pago fue procesado exitosamente. En las próximas horas asignaremos tu número de teléfono dedicado y te avisaremos por WhatsApp cuando tu agente esté en línea.
+      Tu pago fue procesado exitosamente. En las próximas horas asignaremos tu número de teléfono dedicado y te avisaremos por WhatsApp cuando tu empleado esté en línea.
     </p>
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">
       Mientras tanto, configura tu acceso al portal para monitorear tus llamadas, leads y minutos:
@@ -351,7 +461,7 @@ export function newLeadHtml(opts: {
 
   return shell(`
     ${badge(outcomeLabels[opts.outcome] ?? 'Llamada completada')}
-    ${heading(opts.businessName, 'Tu agente de voz capturó nueva actividad')}
+    ${heading(opts.businessName, 'Tu empleado capturó nueva actividad')}
     <div style="background:rgba(255,255,255,0.04);border:1px solid ${C.border};border-radius:12px;padding:4px 20px;margin-bottom:16px">
       <table style="width:100%;border-collapse:collapse">${rows}</table>
     </div>
@@ -373,13 +483,19 @@ export function minutesAlertHtml(opts: {
   const isPaused   = opts.pct >= 100;
   const alertColor = isPaused ? '#F87171' : '#FBBF24';
   const bodyText   = isPaused
-    ? `Tu agente <strong style="color:${C.text}">${opts.businessName}</strong> ha sido <strong style="color:#F87171">pausado automáticamente</strong> al agotar los ${opts.included} minutos de tu plan. Puedes reactivarlo comprando minutos adicionales o cambiando de plan.`
-    : `Tu agente <strong style="color:${C.text}">${opts.businessName}</strong> ha usado <strong style="color:#FBBF24">${opts.used} de ${opts.included} minutos</strong> (${Math.round(opts.pct)}%). Si necesitas más antes del ${opts.resetDate}, puedes comprar minutos adicionales o ampliar tu plan.`;
+    ? `Se agotaron los ${opts.included} minutos del ciclo. <strong style="color:#F87171">Tu oficina fue pausada</strong> y tus empleados no pueden recibir ni hacer más llamadas hasta que compres minutos adicionales o amplíes tu plan. Las tareas de oficina siguen funcionando.`
+    : `Tu oficina lleva <strong style="color:#FBBF24">${opts.used} de ${opts.included} minutos</strong> del ciclo. Si tus empleados agotan el resto antes del ${opts.resetDate}, dejarán de recibir y hacer llamadas hasta el próximo ciclo. Puedes comprar minutos adicionales o ampliar tu plan.`;
 
   return shell(`
-    ${badge(isPaused ? 'Agente pausado' : `${Math.round(opts.pct)}% de minutos usados`, alertColor)}
+    ${badge(isPaused ? 'Oficina pausada' : `${Math.round(opts.pct)}% de minutos usados`, alertColor)}
     ${heading(opts.businessName)}
-    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">${bodyText}</p>
+    ${infoCard(`
+      ${sectionLabel('Consumo del plan')}
+      ${progressBar(opts.pct, alertColor)}
+      <p style="color:${C.sub};font-size:13px;margin:10px 0 0"><strong style="color:${C.text}">${opts.used}</strong> de ${opts.included} min <span style="color:${alertColor};font-weight:700">· ${Math.round(opts.pct)}%</span></p>
+      <p style="color:${C.mute};font-size:12px;margin:6px 0 0">Se renueva el ${opts.resetDate}</p>
+    `, true)}
+    <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:20px 0 24px">${bodyText}</p>
     ${btn('Comprar más minutos →', `${opts.portalUrl}?tab=cuenta`)}
     ${btn('Ampliar mi plan →', `${opts.portalUrl}?tab=cuenta#suscripcion`, false)}
   `);
@@ -389,12 +505,12 @@ export function minutesAlertHtml(opts: {
 
 export function agentPausedHtml(businessName: string) {
   return shell(`
-    ${badge('Agente pausado', '#F87171')}
+    ${badge('Oficina pausada', '#F87171')}
     ${heading(businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0">
       El período de gracia de 3 días venció sin recibir el pago de tu suscripción Centinelia.
-      Tu agente de voz ha sido <strong style="color:${C.text}">pausado</strong>.
-      Para reactivarlo, actualiza tu método de pago o contáctanos a
+      <strong style="color:${C.text}">Tu oficina fue pausada</strong> y tus empleados no pueden recibir llamadas ni completar tareas hasta que el pago se regularice.
+      Actualiza tu método de pago desde el portal o escríbenos a
       <a href="mailto:hola@centinelia.mx" style="color:${C.accent};text-decoration:none">hola@centinelia.mx</a>.
     </p>
   `);
@@ -408,7 +524,7 @@ export function paymentFailedHtml(businessName: string) {
     ${heading(businessName)}
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0">
       No pudimos procesar el pago de tu suscripción Centinelia.<br><br>
-      Tienes <strong style="color:${C.text}">3 días</strong> para actualizar tu método de pago antes de que el agente de voz sea pausado automáticamente.
+      Tienes <strong style="color:${C.text}">3 días</strong> para actualizar tu método de pago antes de que tu oficina se pause automáticamente y tus empleados dejen de trabajar.
     </p>
   `);
 }
@@ -608,7 +724,7 @@ export function reauthRequiredHtml(opts: {
       Google y Microsoft retiran el acceso periodicamente por razones de seguridad. No significa que hiciste algo mal, simplemente hay que volver a autorizar.
     </p>
     <p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 24px">
-      Hasta que reconectes <strong style="color:${C.text}">${opts.email}</strong>, tu agente no puede acceder a los correos.
+      Hasta que reconectes <strong style="color:${C.text}">${opts.email}</strong>, tu empleado no puede acceder a los correos.
     </p>
     ${btn(`Reconectar ${providerLabel} →`, `${opts.portalUrl}?tab=integraciones`)}
     <p style="color:${C.mute};font-size:12px;text-align:center;margin:24px 0 0;line-height:1.6">
@@ -745,7 +861,7 @@ export function accountSuspendedHtml(opts: {
 }): string {
   const durationLine = opts.until
     ? `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">La suspensión es <strong style="color:${C.text}">temporal</strong> y se levantará automáticamente el <strong style="color:${C.text}">${opts.until}</strong>.</p>`
-    : `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">La suspensión es <strong style="color:#ef4444}">indefinida</strong> hasta que el equipo de Centinelia la levante.</p>`;
+    : `<p style="color:${C.sub};font-size:14px;line-height:1.7;margin:0 0 16px">La suspensión es <strong style="color:#ef4444">indefinida</strong> hasta que el equipo de Centinelia la levante.</p>`;
 
   return shell(
     badge('Cuenta suspendida', '#DC2626') +

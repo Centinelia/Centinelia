@@ -8,7 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail } from '@/lib/email/send';
+import { sendEmail, shell, badge, heading, infoCard, btn } from '@/lib/email/send';
+import { resolveMeerkatFromAgent } from '@/lib/email/meerkat-identity';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ interface AgentInfo {
   portal_token:   string;
   client_email:   string | null;
   approval_email: string | null;
+  features:       Record<string, unknown> | null;
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -94,7 +96,7 @@ export async function GET(req: NextRequest) {
   // 4. Resolver info de agentes
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, business_name, portal_token, client_email, approval_email')
+    .select('id, agent_name, business_name, portal_token, client_email, approval_email, features')
     .in('id', Array.from(byAgent.keys()));
 
   const agentMap = new Map<string, AgentInfo>(
@@ -116,10 +118,8 @@ export async function GET(req: NextRequest) {
     }
 
     const html = digestHtml({
-      agentName:    agent.agent_name,
-      businessName: agent.business_name,
-      portalToken:  agent.portal_token,
-      items:        agentItems,
+      agent,
+      items: agentItems,
     });
 
     try {
@@ -150,41 +150,36 @@ export async function GET(req: NextRequest) {
 }
 
 function digestHtml(args: {
-  agentName:    string;
-  businessName: string;
-  portalToken:  string;
-  items:        SuspiciousSpam[];
+  agent: AgentInfo;
+  items: SuspiciousSpam[];
 }): string {
-  const portalUrl = `${BASE_URL}/portal/${args.portalToken}/oficina/bandeja?tab=spam`;
+  const meerkat = resolveMeerkatFromAgent({
+    agent_name:    args.agent.agent_name,
+    business_name: args.agent.business_name,
+    features:      args.agent.features,
+  });
+  const portalUrl = `${BASE_URL}/portal/${args.agent.portal_token}/oficina/bandeja?tab=spam`;
+  const n = args.items.length;
 
-  const itemsHtml = args.items.map(it => `
-    <tr>
-      <td style="padding:12px 0;border-bottom:1px solid rgba(26,10,59,0.08)">
-        <div style="color:#1A0A3B;font-size:14px;font-weight:600;margin-bottom:4px">${escapeHtml(it.email_subject || '(sin asunto)')}</div>
-        <div style="color:rgba(26,10,59,0.6);font-size:12px;margin-bottom:6px">De: ${escapeHtml(it.email_from)}</div>
-        ${it.ai_summary ? `<div style="color:rgba(26,10,59,0.7);font-size:13px;line-height:1.5">${escapeHtml(it.ai_summary)}</div>` : ''}
-      </td>
-    </tr>`).join('');
+  const itemsHtml = args.items.map(it => infoCard(`
+    <p style="color:#F1EEFF;font-size:14px;font-weight:600;margin:0 0 4px;line-height:1.35">${escapeHtml(it.email_subject || '(sin asunto)')}</p>
+    <p style="color:#8C7FB8;font-size:12px;margin:0 0 8px">De: ${escapeHtml(it.email_from)}</p>
+    ${it.ai_summary ? `<p style="color:#C8BEE8;font-size:13px;line-height:1.6;margin:0">${escapeHtml(it.ai_summary)}</p>` : ''}
+  `)).join('');
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#FAFBFF;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:600px;margin:0 auto;padding:32px 16px">
-    <div style="background:#fff;border:1px solid rgba(108,59,255,0.12);border-radius:12px;padding:28px">
-      <h1 style="color:#1A0A3B;font-size:20px;font-weight:700;margin:0 0 8px">Correos marcados spam para revisión</h1>
-      <p style="color:rgba(26,10,59,0.6);font-size:14px;margin:0 0 20px">
-        ${escapeHtml(args.agentName)} marcó estos ${args.items.length} correo${args.items.length === 1 ? '' : 's'} como spam en las últimas 24 horas, pero tienen contenido sustancial que sugiere podrían ser leads reales o correos legítimos. Revisa si alguno era real y en ese caso rescátalo desde el portal.
-      </p>
-      <table style="width:100%;border-collapse:collapse">${itemsHtml}</table>
-      <div style="text-align:center;margin-top:24px">
-        <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#6C3BFF,#9B6DFF);color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 28px;border-radius:10px">Ver tab Spam en la bandeja</a>
-      </div>
-      <p style="color:rgba(26,10,59,0.4);font-size:11px;line-height:1.5;margin:20px 0 0;text-align:center">Filtro aplicado: correos con cuerpo mayor a ${MIN_BODY_LENGTH} caracteres. Los promocionales cortos ya se descartaron.</p>
-    </div>
-  </div>
-</body>
-</html>`;
+  return shell(
+    `${badge('Revisar por si acaso', meerkat.color)}
+    ${heading(`${n} correo${n === 1 ? '' : 's'} sospechoso${n === 1 ? '' : 's'}`, args.agent.business_name)}
+    <p style="color:#C8BEE8;font-size:14px;line-height:1.7;margin:0 0 20px;text-align:center">
+      Marqué estos como spam pero podrían ser leads reales o correos legítimos. Rescátalos desde la bandeja si me equivoqué.
+    </p>
+    ${itemsHtml}
+    ${btn('Ver bandeja de spam →', portalUrl, { color: meerkat.color })}
+    <p style="color:#8C7FB8;font-size:11px;line-height:1.5;margin:20px 0 0;text-align:center">
+      Filtro: solo correos con más de ${MIN_BODY_LENGTH} caracteres. Los promocionales cortos ya se descartaron.
+    </p>`,
+    { meerkat, preheader: `${n} correos marcados spam para revisión` },
+  );
 }
 
 function escapeHtml(s: string): string {
