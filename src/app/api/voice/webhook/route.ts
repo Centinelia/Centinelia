@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceAgent } from '@/types/agent';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail, minutesAlertHtml, newLeadHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
+import { consumePoolMinutes } from '@/lib/annual-contracts/pool-consume';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { executeAutoRefill } from '@/lib/billing/auto-refill';
@@ -276,22 +277,35 @@ export async function POST(req: NextRequest) {
         .single();
       const agent = _agent as VoiceAgent | null;
 
-      // 4. Increment minutes — account-level if portal_email, per-agent for demo/standalone
+      // 4. Increment minutes — 3 paths:
+      //    (a) annual_prepaid: pool compartido en organizations (no pausa, tracks overage)
+      //    (b) stripe con portal_email: account_minutes shared
+      //    (c) stripe standalone (demo/legacy): per-agent
       let used         = 0;
       let included     = 0;
       let resetDateStr = '';
+      let poolConsumed = false;   // annual → skip auto-pause + minutes-alert emails
 
       if (agent?.portal_email) {
-        await supabase.rpc('increment_account_minutes_used', { p_portal_email: agent.portal_email, minutes });
-        const { data: acct } = await supabase
-          .from('account_minutes')
-          .select('minutes_used, minutes_included, minutes_reset_date')
-          .eq('portal_email', agent.portal_email)
-          .single();
-        used     = acct?.minutes_used     ?? 0;
-        included = acct?.minutes_included ?? 0;
-        if (acct?.minutes_reset_date) {
-          resetDateStr = new Date(acct.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+        const pool = await consumePoolMinutes(agent.portal_email, minutes);
+        if (pool.consumed) {
+          poolConsumed = true;
+          used     = pool.minutes_used_after;
+          included = pool.minutes_pool;
+          // resetDateStr se resuelve del organizations.pool_reset_date en E-mails
+          // internos; el cliente annual no recibe minutesAlertHtml.
+        } else {
+          await supabase.rpc('increment_account_minutes_used', { p_portal_email: agent.portal_email, minutes });
+          const { data: acct } = await supabase
+            .from('account_minutes')
+            .select('minutes_used, minutes_included, minutes_reset_date')
+            .eq('portal_email', agent.portal_email)
+            .single();
+          used     = acct?.minutes_used     ?? 0;
+          included = acct?.minutes_included ?? 0;
+          if (acct?.minutes_reset_date) {
+            resetDateStr = new Date(acct.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+          }
         }
       } else {
         await supabase.rpc('increment_minutes_used', { agent_id: resolvedAgentId, minutes });
@@ -306,7 +320,9 @@ export async function POST(req: NextRequest) {
       let includedAfterRefill = included;
       let refillAttemptFailed = false;
       let refillFailError: string | null = null;
-      if (agent?.auto_refill_enabled && agent?.stripe_customer_id && included > 0) {
+      // Guard: annual_prepaid no usa Stripe auto-refill (los minutos extra se
+      // negocian con Centinelia como addendum al contrato).
+      if (!poolConsumed && agent?.auto_refill_enabled && agent?.stripe_customer_id && included > 0) {
         const threshold     = agent.auto_refill_threshold ?? 50;
         const remaining     = included - used;
         const prevRemaining = remaining + minutes;
@@ -331,8 +347,10 @@ export async function POST(req: NextRequest) {
       // account_minutes) la comparación `used=0 >= included=0` era TRUE y
       // desactivaba el agente después de cada llamada. Fix del bug detectado
       // en Nia Monterrey pre-piloto.
+      // Guard: annual_prepaid nunca pausa por consumo (empleados no paran, overage
+      // se cobra en renovación). Ver docs/superpowers/specs/2026-08-02-annual-contracts-design.md §5.4.
       let agentWasPaused = false;
-      if (agent?.active && includedAfterRefill > 0 && used >= includedAfterRefill) {
+      if (!poolConsumed && agent?.active && includedAfterRefill > 0 && used >= includedAfterRefill) {
         agentWasPaused = true;
         if (agent.portal_email) {
           const { data: accountAgents } = await supabase
@@ -417,9 +435,9 @@ export async function POST(req: NextRequest) {
           await sendWhatsApp(agent.transfer_whatsapp, msg).catch(console.error);
         }
 
-        // C. 80% usage warning
+        // C. 80% usage warning — solo para Stripe. Annual usa E4 (interno a Nazre) al 100/120%.
         const pctBefore = includedAfterRefill > 0 ? ((used - minutes) / includedAfterRefill) * 100 : 0;
-        if (agent?.active && pct >= 80 && pctBefore < 80) {
+        if (!poolConsumed && agent?.active && pct >= 80 && pctBefore < 80) {
           const warnMsg = `📊 *Aviso de minutos, ${agent.business_name}*\n\nHas usado el *${Math.round(pct)}%* de tus ${includedAfterRefill} minutos incluidos (${used} usados).\n\nContacta a tu asesor de Centinelia si necesitas ampliar tu plan antes de que el agente se pause automáticamente.`;
           if (agent.transfer_whatsapp) await sendWhatsApp(agent.transfer_whatsapp, warnMsg).catch(console.error);
           if (agent.client_email) {

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
+import { consumePoolOps } from '@/lib/annual-contracts/pool-consume';
 
 export interface OpsResult {
   ok:    boolean;
@@ -8,11 +9,29 @@ export interface OpsResult {
 }
 
 // Atomically checks and consumes AI ops from the account pool.
-// Delegates to the consume_ai_ops Postgres function which holds a FOR UPDATE
-// lock on all sibling agent rows, preventing concurrent over-consumption.
+// 3 paths:
+//   (a) annual_prepaid: descuenta del pool en organizations (nunca falla, tracks overage).
+//   (b) stripe con portal_email: consume_ai_ops RPC con FOR UPDATE lock.
+//   (c) stripe standalone: mismo RPC, account_email=null.
 export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult> {
   const supabase = createAdminClient();
 
+  // Path (a): pool anual. Resolve org email primero, luego branch.
+  const { data: agentRow } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agentId)
+    .maybeSingle();
+  const portalEmail = (agentRow?.portal_email as string | null) ?? null;
+
+  if (portalEmail) {
+    const pool = await consumePoolOps(portalEmail, count, supabase);
+    if (pool.consumed) {
+      return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
+    }
+  }
+
+  // Path (b) y (c): Stripe legacy.
   const { data, error } = await supabase
     .rpc('consume_ai_ops', { p_agent_id: agentId, p_count: count })
     .single();

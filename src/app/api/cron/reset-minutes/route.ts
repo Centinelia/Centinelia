@@ -24,8 +24,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: acctErr.message }, { status: 500 });
   }
 
+  // Skip annual_prepaid / expired orgs — su pool se resetea via annual-contracts-lifecycle
+  const staleEmails = (staleAccounts ?? []).map(a => a.portal_email as string);
+  const { data: nonStripeOrgs } = staleEmails.length
+    ? await supabase.from('organizations').select('portal_email').in('portal_email', staleEmails).neq('billing_model', 'stripe')
+    : { data: [] as { portal_email: string }[] };
+  const nonStripeSet = new Set((nonStripeOrgs ?? []).map(o => o.portal_email));
+
   let acctReset = 0;
   for (const acct of staleAccounts ?? []) {
+    if (nonStripeSet.has(acct.portal_email as string)) continue;
     await supabase
       .from('account_minutes')
       .update({ minutes_used: 0, minutes_reset_date: nextDate, updated_at: new Date().toISOString() })

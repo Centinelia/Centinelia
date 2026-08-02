@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: agents, error } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_email, transfer_whatsapp, phone_number')
+    .select('id, business_name, client_email, transfer_whatsapp, phone_number, portal_email')
     .eq('billing_status', 'pago_fallido')
     .lte('grace_period_ends_at', now)
     .eq('active', true);
@@ -25,9 +25,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Skip annual_prepaid / expired orgs — no operan con Stripe billing_status.
+  const portalEmails = (agents ?? []).map(a => a.portal_email as string | null).filter(Boolean) as string[];
+  const { data: nonStripeOrgs } = portalEmails.length
+    ? await supabase.from('organizations').select('portal_email').in('portal_email', portalEmails).neq('billing_model', 'stripe')
+    : { data: [] as { portal_email: string }[] };
+  const nonStripeSet = new Set((nonStripeOrgs ?? []).map(o => o.portal_email));
+
   const paused: string[] = [];
 
   for (const agent of agents ?? []) {
+    if (agent.portal_email && nonStripeSet.has(agent.portal_email)) continue;
     await supabase.from('voice_agents').update({ active: false }).eq('id', agent.id);
 
     if (agent.phone_number) await pauseVapiAgent(agent.phone_number);
