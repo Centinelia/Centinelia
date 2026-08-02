@@ -13,7 +13,7 @@ const links = [
   { href: '/admin/agentes',      icon: Bot,             label: 'Empleados' },
   { href: '/admin/llamadas',     icon: Phone,           label: 'Llamadas' },
   { href: '/admin/analytics',    icon: BarChart3,       label: 'Analytics' },
-  { href: '/admin/billing',      icon: CreditCard,      label: 'Facturación' },
+  { href: '/admin/facturacion',  icon: CreditCard,      label: 'Facturación' },
   { href: '/admin/contratos',    icon: FileText,        label: 'Contratos' },
   { href: '/admin/conversacional', icon: Sparkles,      label: 'Estilo conv.' },
   { href: '/admin/dashboard',    icon: Server,          label: 'Infra' },
