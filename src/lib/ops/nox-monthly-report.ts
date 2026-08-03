@@ -12,7 +12,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendEmail } from '@/lib/email/send';
+import { sendEmail, mdToEmailHtml } from '@/lib/email/send';
 import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 
 export interface MonthlyMetrics {
@@ -167,12 +167,21 @@ Datos del mes:
 - Documentos generados: ${metrics.documents.total} (${JSON.stringify(metrics.documents.by_kind)}).
 - Correos entrantes: ${metrics.emails.total_inbound} (auto-respuesta: ${metrics.emails.auto_replied}, escalados a humano: ${metrics.emails.escalated}).
 
-Escribe en español mexicano, tono directo y profesional (como tú hablas). Máximo 250 palabras total, estructurado en 3 bloques:
-1. "El mes en una línea" — la conclusión de un solo enunciado.
-2. "Lo que sí funcionó" — 2-3 bullets con datos concretos.
-3. "Lo que hay que atacar" — 2-3 bullets con acciones concretas (basadas en fallos, tareas pendientes, correos escalados, llamadas sin contestar).
+Escribe en español mexicano, tono directo y profesional (como tú hablas). Máximo 250 palabras total, estructurado en 3 bloques con estos títulos exactos como h2:
 
-Si no hubo actividad relevante en algún bloque, dilo explícitamente en vez de rellenar. No inventes datos.`;
+## El mes en una línea
+Una sola oración con la conclusión.
+
+## Lo que sí funcionó
+2-3 bullets con datos concretos.
+
+## Lo que hay que atacar
+2-3 bullets con acciones concretas (basadas en fallos, tareas pendientes, correos escalados, llamadas sin contestar).
+
+Reglas del formato:
+- El correo que va a envolver esto ya trae header con "Reporte mensual", nombre del negocio y tu firma. NO repitas esa metadata (no pongas "De:", "Para:", "Fecha:", ni un h1 con "Resumen Ejecutivo").
+- Empieza directo con el primer "## El mes en una línea". Sin líneas horizontales ni frontmatter.
+- Si no hubo actividad relevante en algún bloque, dilo explícitamente en vez de rellenar. No inventes datos.`;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const resp = await client.messages.create({
@@ -184,7 +193,7 @@ Si no hubo actividad relevante en algún bloque, dilo explícitamente en vez de 
   return block?.type === 'text' ? block.text.trim() : '';
 }
 
-function renderEmailHtml(args: {
+export function renderMonthlyEmailHtml(args: {
   noxName:      string;
   businessName: string;
   monthLabel:   string;
@@ -192,10 +201,10 @@ function renderEmailHtml(args: {
   summary:      string;
 }): string {
   const { noxName, businessName, monthLabel, metrics, summary } = args;
-  const summaryHtml = summary
-    .split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 12px 0;line-height:1.6;color:#1a0a3b">${p.replace(/\n/g, '<br>')}</p>`)
-    .join('');
+  // El summary viene en markdown (Sonnet lo escribe así por default). Pasamos
+  // por mdToEmailHtml para que los headings/bullets/negritas se rendericen
+  // con estilos inline en vez de aparecer como ## y ** literales.
+  const summaryHtml = mdToEmailHtml(summary);
   return `<!doctype html><html><body style="margin:0;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:560px;margin:32px auto;padding:32px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
     <div style="margin-bottom:24px">
@@ -304,7 +313,7 @@ export async function runNoxMonthlyReport(now = new Date()): Promise<MonthlyRunR
       await sendEmail({
         to:      recipient,
         subject: `Reporte de ${nox.agent_name ?? 'Nox'} — ${monthLabel}`,
-        html:    renderEmailHtml({
+        html:    renderMonthlyEmailHtml({
           noxName:      nox.agent_name ?? 'Nox',
           businessName: businessName ?? portalEmail,
           monthLabel,
