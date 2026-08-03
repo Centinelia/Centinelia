@@ -195,16 +195,30 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
 // ─── Voice tool distribution by meerkat role ─────────────────────────────────
 
 export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
-  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'solicitar_factura', 'consultar_factura', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar'],
-  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'search_leads', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'consultar_agente', 'reportar_falla'],
+  // Sofia (Nia) — recepcionista: 1er contacto, delega para tareas de fondo.
+  // Puede buscar docs para saber si algo ya existe antes de generar duplicado.
+  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'solicitar_factura', 'consultar_factura', 'buscar_documento_oficina', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar'],
+  // Noah — ventas: cierra leads, agenda cotizaciones. Sin crear_documento por
+  // diseño (delega a Nico/Niva para propuestas formales), pero puede buscar y
+  // reenviar cotizaciones previas.
+  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'search_leads', 'solicitar_factura', 'consultar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'consultar_agente', 'reportar_falla'],
+  // Nico — cobranza: sigue facturas + reenvía comprobantes.
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'reportar_falla'],
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'consultar_agente', 'reportar_falla'],
+  // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
+  // y ver insights de voz del cliente para responder mejor.
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla'],
+  // Neo — helpdesk IT: sin cambios, no maneja docs comerciales.
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
-  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
+  // Nara — municipal: ahora puede aplicar encuestas de satisfacción también.
+  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
+  // Naia — onboarding.
   naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla'],
-  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'extraer_voz_del_cliente', 'reportar_falla'],
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_registrar_pago', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'reportar_falla'],
+  // Nova — recuperación / retención.
+  nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
+  // Nox — coordinador director. Ahora también consulta estado de facturas.
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'extraer_voz_del_cliente', 'reportar_falla'],
+  // Niva — directora general con visibilidad amplia.
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;

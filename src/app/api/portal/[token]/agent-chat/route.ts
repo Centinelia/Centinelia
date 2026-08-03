@@ -949,6 +949,9 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   qb_registrar_pago:         'qb_registrar_pago',
   qb_reporte_ingresos:       'qb_reporte_ingresos',
   qb_crear_factura:          'qb_crear_factura',
+  solicitar_factura:         'solicitar_factura',
+  consultar_factura:         'consultar_factura',
+  marcar_no_llamar:          null,  // voice-only (no aplica a chat)
 };
 
 // Chat tool name → Anthropic.Tool object

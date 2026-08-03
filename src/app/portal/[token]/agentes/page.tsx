@@ -12,160 +12,81 @@ import MeerkatPicker                   from './MeerkatPicker';
 import AnnualContractCallout           from '../AnnualContractCallout';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
+import { MEERKAT_VOICE_DISTRIBUTION }  from '@/lib/vapi/sync';
 
 interface ToolChip { label: string; color: string }
 
-const MEERKAT_TOOL_DISTRIBUTION: Record<string, ToolChip[]> = {
-  nia: [
-    { label: 'crear_lead',              color: '#22c55e' },
-    { label: 'agendar_cita',            color: '#3b82f6' },
-    { label: 'registrar_pedido',        color: '#f59e0b' },
-    { label: 'buscar_cliente',          color: '#9B6DFF' },
-    { label: 'notificar_transferencia', color: '#6C3BFF' },
-    { label: 'transferir_llamada',      color: '#6C3BFF' },
-    { label: 'registrar_encuesta',      color: '#a855f7' },
-    { label: 'consultar_agente',        color: '#0d9488' },
-    { label: 'delegar_tarea',           color: '#0d9488' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
-  noah: [
-    { label: 'crear_lead',                color: '#22c55e' },
-    { label: 'registrar_pedido',          color: '#f59e0b' },
-    { label: 'notificar_transferencia',   color: '#6C3BFF' },
-    { label: 'transferir_llamada',        color: '#6C3BFF' },
-    { label: 'llamar_a',                  color: '#06b6d4' },
-    { label: 'buscar_en_web',             color: '#3b82f6' },
-    { label: 'search_leads',              color: '#22c55e' },
-    { label: 'analizar_publicaciones_ml', color: '#f59e0b' },
-    { label: 'crear_publicacion_ml',      color: '#f59e0b' },
-    { label: 'actualizar_publicacion_ml', color: '#f59e0b' },
-    { label: 'ver_metricas_ml',           color: '#f59e0b' },
-    { label: 'consultar_agente',          color: '#0d9488' },
-    { label: 'reportar_falla',            color: '#6b7280' },
-  ],
-  nico: [
-    { label: 'buscar_cliente',          color: '#9B6DFF' },
-    { label: 'notificar_transferencia', color: '#6C3BFF' },
-    { label: 'transferir_llamada',      color: '#6C3BFF' },
-    { label: 'llamar_a',                color: '#06b6d4' },
-    { label: 'enviar_correo',           color: '#06b6d4' },
-    { label: 'crear_documento',         color: '#06b6d4' },
-    { label: 'qb_consultar_facturas',   color: '#22c55e' },
-    { label: 'qb_buscar_cliente',       color: '#22c55e' },
-    { label: 'qb_registrar_pago',       color: '#22c55e' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
-  nelia: [
-    { label: 'buscar_cliente',          color: '#9B6DFF' },
-    { label: 'notificar_transferencia', color: '#6C3BFF' },
-    { label: 'transferir_llamada',      color: '#6C3BFF' },
-    { label: 'registrar_encuesta',      color: '#a855f7' },
-    { label: 'enviar_correo',           color: '#06b6d4' },
-    { label: 'buscar_archivo',          color: '#06b6d4' },
-    { label: 'consultar_agente',        color: '#0d9488' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
-  neo: [
-    { label: 'crear_ticket',         color: '#ef4444' },
-    { label: 'consultar_incidentes', color: '#ef4444' },
-    { label: 'buscar_directorio',    color: '#ef4444' },
-    { label: 'buscar_archivo',       color: '#06b6d4' },
-    { label: 'leer_archivo',         color: '#06b6d4' },
-    { label: 'delegar_tarea',        color: '#0d9488' },
-    { label: 'consultar_agente',     color: '#0d9488' },
-    { label: 'reportar_falla',       color: '#6b7280' },
-  ],
-  nara: [
-    { label: 'create_civic_report',     color: '#3b82f6' },
-    { label: 'lookup_civic_report',     color: '#3b82f6' },
-    { label: 'update_civic_report',     color: '#3b82f6' },
-    { label: 'buscar_cliente',          color: '#9B6DFF' },
-    { label: 'notificar_transferencia', color: '#6C3BFF' },
-    { label: 'transferir_llamada',      color: '#6C3BFF' },
-    { label: 'delegar_tarea',           color: '#0d9488' },
-    { label: 'consultar_agente',        color: '#0d9488' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
-  naia: [
-    { label: 'agendar_cita',           color: '#3b82f6' },
-    { label: 'buscar_cliente',         color: '#9B6DFF' },
-    { label: 'registrar_encuesta',     color: '#a855f7' },
-    { label: 'enviar_correo',          color: '#06b6d4' },
-    { label: 'crear_documento',        color: '#06b6d4' },
-    { label: 'list_calendar_events',   color: '#3b82f6' },
-    { label: 'create_calendar_event',  color: '#3b82f6' },
-    { label: 'delete_calendar_event',  color: '#3b82f6' },
-    { label: 'buscar_archivo',         color: '#06b6d4' },
-    { label: 'leer_archivo',           color: '#06b6d4' },
-    { label: 'reportar_falla',         color: '#6b7280' },
-  ],
-  nova: [
-    { label: 'buscar_cliente',          color: '#9B6DFF' },
-    { label: 'notificar_transferencia', color: '#6C3BFF' },
-    { label: 'transferir_llamada',      color: '#6C3BFF' },
-    { label: 'llamar_a',                color: '#06b6d4' },
-    { label: 'crear_ticket',            color: '#ef4444' },
-    { label: 'crear_documento',         color: '#06b6d4' },
-    { label: 'delegar_tarea',           color: '#0d9488' },
-    { label: 'consultar_agente',        color: '#0d9488' },
-    { label: 'buscar_en_web',           color: '#3b82f6' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
-  nox: [
-    { label: 'consultar_agente',       color: '#0d9488' },
-    { label: 'delegar_tarea',          color: '#0d9488' },
-    { label: 'enviar_correo',          color: '#06b6d4' },
-    { label: 'llamar_a',               color: '#06b6d4' },
-    { label: 'crear_documento',        color: '#06b6d4' },
-    { label: 'create_file',            color: '#06b6d4' },
-    { label: 'create_contract_draft',  color: '#06b6d4' },
-    { label: 'buscar_archivo',         color: '#06b6d4' },
-    { label: 'leer_archivo',           color: '#06b6d4' },
-    { label: 'save_to_drive',          color: '#06b6d4' },
-    { label: 'organize_files',         color: '#06b6d4' },
-    { label: 'list_calendar_events',   color: '#3b82f6' },
-    { label: 'create_calendar_event',  color: '#3b82f6' },
-    { label: 'delete_calendar_event',  color: '#3b82f6' },
-    { label: 'qb_consultar_facturas',  color: '#22c55e' },
-    { label: 'reportar_falla',         color: '#6b7280' },
-  ],
-  niva: [
-    { label: 'consultar_agente',        color: '#0d9488' },
-    { label: 'delegar_tarea',           color: '#0d9488' },
-    { label: 'enviar_correo',           color: '#06b6d4' },
-    { label: 'llamar_a',                color: '#06b6d4' },
-    { label: 'crear_documento',         color: '#06b6d4' },
-    { label: 'create_file',             color: '#06b6d4' },
-    { label: 'save_to_drive',           color: '#06b6d4' },
-    { label: 'buscar_en_web',           color: '#3b82f6' },
-    { label: 'read_url',                color: '#3b82f6' },
-    { label: 'search_leads',            color: '#22c55e' },
-    { label: 'list_calendar_events',    color: '#3b82f6' },
-    { label: 'create_calendar_event',   color: '#3b82f6' },
-    { label: 'qb_consultar_facturas',   color: '#22c55e' },
-    { label: 'qb_buscar_cliente',       color: '#22c55e' },
-    { label: 'qb_reporte_ingresos',     color: '#22c55e' },
-    { label: 'qb_crear_factura',        color: '#22c55e' },
-    { label: 'qb_registrar_pago',       color: '#22c55e' },
-    { label: 'analizar_publicaciones_ml', color: '#f59e0b' },
-    { label: 'ver_metricas_ml',         color: '#f59e0b' },
-    { label: 'reportar_falla',          color: '#6b7280' },
-  ],
+// Color por tool para los chips de la tabla. Se agrupa por categoría de trabajo
+// (verde=captura leads, azul=agenda, cyan=comunicación, etc.) para que el dueño
+// escanee rápido las capacidades del empleado.
+const TOOL_COLOR: Record<string, string> = {
+  // Captura de clientes / leads
+  crear_lead: '#22c55e', search_leads: '#22c55e', registrar_pedido: '#f59e0b',
+  buscar_cliente: '#9B6DFF', registrar_encuesta: '#a855f7',
+  // Agenda / calendario
+  agendar_cita: '#3b82f6', list_calendar_events: '#3b82f6',
+  create_calendar_event: '#3b82f6', delete_calendar_event: '#3b82f6',
+  // Transferencia de llamada
+  notificar_transferencia: '#6C3BFF', transferir_llamada: '#6C3BFF',
+  // Comunicación saliente
+  llamar_a: '#06b6d4', enviar_correo: '#06b6d4',
+  // Documentos
+  crear_documento: '#06b6d4', create_file: '#06b6d4', create_contract_draft: '#06b6d4',
+  buscar_documento_oficina: '#06b6d4', enviar_documento_oficina: '#06b6d4',
+  // Drive / archivos externos
+  buscar_archivo: '#0891b2', leer_archivo: '#0891b2',
+  save_to_drive: '#0891b2', organize_files: '#0891b2',
+  // Web e investigación
+  buscar_en_web: '#3b82f6', read_url: '#3b82f6',
+  // Trabajo en equipo
+  consultar_agente: '#0d9488', delegar_tarea: '#0d9488',
+  // MercadoLibre
+  analizar_publicaciones_ml: '#f59e0b', crear_publicacion_ml: '#f59e0b',
+  actualizar_publicacion_ml: '#f59e0b', ver_metricas_ml: '#f59e0b',
+  // QuickBooks + fiscal
+  qb_consultar_facturas: '#22c55e', qb_buscar_cliente: '#22c55e',
+  qb_registrar_pago: '#22c55e', qb_reporte_ingresos: '#22c55e',
+  qb_crear_factura: '#22c55e',
+  solicitar_factura: '#eab308', consultar_factura: '#eab308',
+  // Helpdesk IT
+  crear_ticket: '#ef4444', consultar_incidentes: '#ef4444', buscar_directorio: '#ef4444',
+  // Municipal
+  create_civic_report: '#3b82f6', lookup_civic_report: '#3b82f6', update_civic_report: '#3b82f6',
+  // Onboarding
+  iniciar_onboarding: '#a855f7',
+  // Marca / insights
+  extraer_voz_del_cliente: '#c084fc', extraer_tono_de_marca: '#c084fc',
+  // Cumplimiento / meta
+  reportar_falla: '#6b7280', marcar_no_llamar: '#6b7280',
 };
+
+// Derivar la tabla del portal desde la única fuente de verdad
+// (MEERKAT_VOICE_DISTRIBUTION en sync.ts). Antes había dos listas paralelas
+// que se desincronizaban cada vez que se agregaba una tool nueva.
+const MEERKAT_TOOL_DISTRIBUTION: Record<string, ToolChip[]> = Object.fromEntries(
+  Object.entries(MEERKAT_VOICE_DISTRIBUTION).map(([role, tools]) => [
+    role,
+    tools.map(name => ({ label: name, color: TOOL_COLOR[name] ?? '#6b7280' })),
+  ]),
+);
+
 
 const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Atiende clientes',      color: '#22c55e', tools: ['crear_lead', 'buscar_cliente', 'registrar_encuesta', 'registrar_pedido'] },
   { label: 'Agenda y citas',        color: '#3b82f6', tools: ['agendar_cita', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event'] },
   { label: 'Transfiere llamadas',   color: '#6C3BFF', tools: ['notificar_transferencia', 'transferir_llamada'] },
   { label: 'Llama saliente',        color: '#06b6d4', tools: ['llamar_a'] },
-  { label: 'Correo y documentos',   color: '#06b6d4', tools: ['enviar_correo', 'crear_documento', 'create_file', 'create_contract_draft'] },
-  { label: 'Archivos y Drive',      color: '#06b6d4', tools: ['buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files'] },
+  { label: 'Correo y documentos',   color: '#06b6d4', tools: ['enviar_correo', 'crear_documento', 'create_file', 'create_contract_draft', 'buscar_documento_oficina', 'enviar_documento_oficina'] },
+  { label: 'Archivos y Drive',      color: '#0891b2', tools: ['buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files'] },
   { label: 'Web e investigación',   color: '#3b82f6', tools: ['buscar_en_web', 'read_url', 'search_leads'] },
   { label: 'Trabajo en equipo',     color: '#0d9488', tools: ['consultar_agente', 'delegar_tarea'] },
   { label: 'MercadoLibre',          color: '#f59e0b', tools: ['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'] },
   { label: 'QuickBooks',            color: '#22c55e', tools: ['qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_reporte_ingresos', 'qb_crear_factura'] },
+  { label: 'Facturación fiscal',    color: '#eab308', tools: ['solicitar_factura', 'consultar_factura'] },
   { label: 'Helpdesk IT',           color: '#ef4444', tools: ['crear_ticket', 'consultar_incidentes', 'buscar_directorio'] },
   { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
+  { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
+  { label: 'Insights de marca',     color: '#c084fc', tools: ['extraer_voz_del_cliente', 'extraer_tono_de_marca'] },
 ];
 
 const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean; tools: { key: string; label: string }[] }[] = [
