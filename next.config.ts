@@ -23,7 +23,7 @@ const CSP = [
   ].join(" "),
   "media-src 'self' blob: https:",
   "worker-src 'self' blob:",
-  "frame-src https://js.stripe.com https://checkout.stripe.com",
+  "frame-src https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "object-src 'none'",

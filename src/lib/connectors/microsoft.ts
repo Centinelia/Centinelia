@@ -1,4 +1,5 @@
 import type { Connector, EmailConnector, FilesConnector, CalendarConnector, CalendarEvent, CreateEventInput, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+import { parseFileToText } from './parse';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 
@@ -105,12 +106,13 @@ class MicrosoftFiles implements FilesConnector {
     }));
   }
 
-  async read(fileId: string): Promise<string> {
+  async read(fileId: string, mimeType: string): Promise<string> {
     const res = await fetch(`${GRAPH}/me/drive/items/${fileId}/content`, { headers: this.h() });
     if (!res.ok) return '';
-    const contentType = res.headers.get('content-type') ?? '';
-    if (contentType.includes('text') || contentType.includes('json')) return res.text();
-    return '[Archivo binario — no se puede leer como texto]';
+    const contentType = mimeType || res.headers.get('content-type') || '';
+    if (contentType.startsWith('text/') || contentType.includes('json')) return res.text();
+    const buf = Buffer.from(await res.arrayBuffer());
+    return parseFileToText(buf, contentType);
   }
 
   async download(fileId: string, mimeType: string): Promise<{ buffer: Buffer; contentType: string } | null> {

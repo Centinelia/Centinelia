@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText, Download, Trash2, Clock, FileCheck,
-  BookmarkPlus, AlertTriangle, MessageSquare,
+  BookmarkPlus, AlertTriangle, MessageSquare, Eye, X,
 } from 'lucide-react';
 import OpsContractsSection from '../../OpsContractsSection';
 
@@ -96,6 +96,8 @@ export default function DocumentosPage() {
   const [downloading,    setDownloading]    = useState<string | null>(null);
   const [conserving,     setConserving]     = useState<string | null>(null);
   const [deleting,       setDeleting]       = useState<string | null>(null);
+  const [previewing,     setPreviewing]     = useState<string | null>(null);
+  const [preview,        setPreview]        = useState<{ url: string; doc: Doc } | null>(null);
   const [downloadError,  setDownloadError]  = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -114,6 +116,38 @@ export default function DocumentosPage() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [preview]);
+
+  async function handlePreview(doc: Doc) {
+    setPreviewing(doc.id);
+    setDownloadError(null);
+    try {
+      const res  = await fetch(`/api/portal/${token}/ops-documents/${doc.id}`);
+      const data = await res.json();
+      if (data.url) {
+        setPreview({ url: data.url, doc });
+        const newExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, expires_at: newExp, last_accessed_at: new Date().toISOString() } : d));
+      } else {
+        setDownloadError(data.error ?? 'No se pudo generar la vista previa.');
+        setTimeout(() => setDownloadError(null), 4000);
+      }
+    } catch {
+      setDownloadError('Error de conexion. Intenta de nuevo.');
+      setTimeout(() => setDownloadError(null), 4000);
+    } finally { setPreviewing(null); }
+  }
 
   async function handleDownload(doc: Doc) {
     setDownloading(doc.id);
@@ -280,6 +314,7 @@ export default function DocumentosPage() {
             const isDown  = downloading === doc.id;
             const isCons  = conserving  === doc.id;
             const isDel   = deleting    === doc.id;
+            const isPrev  = previewing  === doc.id;
 
             return (
               <div key={doc.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
@@ -301,6 +336,13 @@ export default function DocumentosPage() {
                       {expiryLabel(days)}
                     </span>
                     <div className="flex items-center gap-1.5">
+                      <button onClick={() => handlePreview(doc)} disabled={isPrev} title="Vista previa"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
+                        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                        {isPrev
+                          ? <div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--c-text-3)', borderTopColor: 'transparent' }} />
+                          : <Eye size={12} />}
+                      </button>
                       <button onClick={() => handleConservar(doc)} disabled={isCons} title="Conservar 30 días más"
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
                         style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
@@ -339,6 +381,48 @@ export default function DocumentosPage() {
           Para enviar un documento a un cliente, pidele a {employeeName} en{' '}
           <strong style={{ color: 'var(--c-text-3)' }}>Consultar agente</strong> que lo envie por correo.
         </p>
+      )}
+
+      {/* Preview modal */}
+      {preview && (
+        <div
+          onClick={() => setPreview(null)}
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6" style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{preview.doc.title}</p>
+              <p className="text-xs truncate" style={{ color: 'var(--c-text-4)' }}>{preview.doc.filename}</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDownload(preview.doc); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ background: '#6C3BFF', color: '#fff' }}
+              >
+                <Download size={11} />
+                Descargar
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPreview(null); }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg transition-opacity hover:opacity-80"
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}
+                title="Cerrar (Esc)"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0" onClick={(e) => e.stopPropagation()}>
+            <iframe
+              src={preview.url}
+              title={preview.doc.title}
+              className="w-full h-full"
+              style={{ border: 'none', background: '#525659' }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

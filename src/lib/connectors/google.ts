@@ -1,4 +1,5 @@
 import type { Connector, EmailConnector, FilesConnector, ContactsConnector, CalendarConnector, CalendarEvent, CreateEventInput, ContactResult, EmailMessage, FileItem, Attachment, UploadResult, FolderResult, ReplyParams } from './types';
+import { parseFileToText } from './parse';
 
 const GMAIL     = 'https://www.googleapis.com/gmail/v1/users/me';
 const DRIVE     = 'https://www.googleapis.com/drive/v3';
@@ -154,9 +155,11 @@ class GoogleFiles implements FilesConnector {
   }
 
   async search(query: string): Promise<FileItem[]> {
-    const q = encodeURIComponent(`name contains '${query.replace(/'/g, "\\'")}'`);
+    const safe = query.replace(/'/g, "\\'");
+    // Search both filename and full-text content, exclude trashed files. Drive returns dedupe.
+    const q = encodeURIComponent(`(name contains '${safe}' or fullText contains '${safe}') and trashed = false`);
     const res = await fetch(
-      `${DRIVE}/files?q=${q}&fields=files(id,name,mimeType)&pageSize=10`,
+      `${DRIVE}/files?q=${q}&fields=files(id,name,mimeType)&pageSize=15&orderBy=modifiedTime desc`,
       { headers: this.h() },
     );
     if (!res.ok) return [];
@@ -170,19 +173,20 @@ class GoogleFiles implements FilesConnector {
   }
 
   async read(fileId: string, mimeType: string): Promise<string> {
-    let url: string;
-    if (mimeType === 'application/vnd.google-apps.document') {
-      url = `${DRIVE}/files/${fileId}/export?mimeType=text/plain`;
-    } else if (mimeType === 'application/vnd.google-apps.spreadsheet') {
-      url = `${DRIVE}/files/${fileId}/export?mimeType=text/csv`;
-    } else if (mimeType === 'application/vnd.google-apps.presentation') {
-      url = `${DRIVE}/files/${fileId}/export?mimeType=text/plain`;
-    } else {
-      url = `${DRIVE}/files/${fileId}?alt=media`;
+    // Native Google formats: use Drive export → plaintext
+    if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'application/vnd.google-apps.presentation') {
+      const res = await fetch(`${DRIVE}/files/${fileId}/export?mimeType=text/plain`, { headers: this.h() });
+      return res.ok ? res.text() : '';
     }
-    const res = await fetch(url, { headers: this.h() });
+    if (mimeType === 'application/vnd.google-apps.spreadsheet') {
+      const res = await fetch(`${DRIVE}/files/${fileId}/export?mimeType=text/csv`, { headers: this.h() });
+      return res.ok ? res.text() : '';
+    }
+    // Uploaded files (.docx/.xlsx/.pdf/etc): download bytes and parse locally
+    const res = await fetch(`${DRIVE}/files/${fileId}?alt=media`, { headers: this.h() });
     if (!res.ok) return '';
-    return res.text();
+    const buf = Buffer.from(await res.arrayBuffer());
+    return parseFileToText(buf, mimeType);
   }
 
   async download(fileId: string, mimeType: string): Promise<{ buffer: Buffer; contentType: string } | null> {
