@@ -5,6 +5,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import mammoth from 'mammoth';
 import PizZip from 'pizzip';
 import { scanPlaceholders, TEMPLATE_SPECS } from '@/lib/documents/template-spec';
+import { autoTemplatize, type DocType } from '@/lib/documents/auto-templatize';
+import { generatePreviewPdf } from '@/lib/documents/template-preview';
+
+const AUTO_TEMPLATIZE_DOCTYPES: Set<string> = new Set(['factura', 'orden', 'cotizacion', 'nota_venta']);
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -117,27 +121,65 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   if (file.size > MAX_BYTES) return NextResponse.json({ error: 'El archivo no puede superar 10 MB' }, { status: 400 });
 
-  const ext    = 'docx';
-  const path   = `plantillas/${agent.id}/${docType}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const ext          = 'docx';
+  const samplePath   = `plantillas/${agent.id}/${docType}_sample.${ext}`;
+  const templatePath = `plantillas/${agent.id}/${docType}.${ext}`;
+  const buffer       = Buffer.from(await file.arrayBuffer());
+
+  // Check if the user already added their own {{placeholders}} — skip auto-templatize if so.
+  const rawScan = scanPlaceholders(docxToPlainXml(buffer));
+  const userAlreadyTemplated = rawScan.simple.length > 0 || rawScan.loops.length > 0;
+
+  // Decide path:
+  //   A. User pre-templated → save as-is at templatePath, skip auto-templatize.
+  //   B. User uploaded a raw sample AND docType is auto-templatize-able → run LLM + save both.
+  //   C. Contrato/otros → save as-is (contrato tiene su propio flujo con cláusulas).
+  const canAutoTemplatize = !userAlreadyTemplated && AUTO_TEMPLATIZE_DOCTYPES.has(docType);
+
+  let finalBuffer         = buffer;
+  let autoResult:         Awaited<ReturnType<typeof autoTemplatize>> | null = null;
+  let previewPdfUrl:      string | null = null;
+
+  if (canAutoTemplatize) {
+    // Save raw sample first (para poder ver el original si Nazre lo pide)
+    await supabase.storage.from('agent-documents').upload(samplePath, buffer, { upsert: true, contentType: file.type });
+
+    // Run auto-templatize
+    autoResult = await autoTemplatize(buffer, docType as DocType);
+    if (autoResult.ok) {
+      finalBuffer = Buffer.from(autoResult.docxBuffer);
+
+      // Generate a preview PDF with dummy data (best-effort — no bloqueamos si falla)
+      try {
+        const pdfBuf = await generatePreviewPdf(finalBuffer, docType as DocType);
+        const previewPath = `plantillas/${agent.id}/${docType}_preview.pdf`;
+        await supabase.storage.from('agent-documents').upload(previewPath, pdfBuf, { upsert: true, contentType: 'application/pdf' });
+        const { data: previewSigned } = await supabase.storage.from('agent-documents').createSignedUrl(previewPath, 3600);
+        previewPdfUrl = previewSigned?.signedUrl ?? null;
+      } catch (err) {
+        console.error('[template-upload] preview PDF failed:', err);
+      }
+    } else {
+      console.warn('[template-upload] auto-templatize failed, falling back to raw upload:', autoResult.error);
+    }
+  }
 
   const { error: uploadErr } = await supabase.storage
     .from('agent-documents')
-    .upload(path, buffer, { upsert: true, contentType: file.type });
-
+    .upload(templatePath, finalBuffer, { upsert: true, contentType: file.type });
   if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 });
 
-  // Scan for placeholders — only relevant for factura/orden which use docxtemplater
-  const spec         = TEMPLATE_SPECS[docType];
-  const xml          = docxToPlainXml(buffer);
-  const found        = scanPlaceholders(xml);
-  const foundSet     = new Set([...found.simple, ...found.loops]);
-  const validation   = spec ? {
-    all_placeholders:     spec.placeholders.map(p => p.key),
+  // Scan final buffer for placeholders (después de auto-templatize)
+  const spec       = TEMPLATE_SPECS[docType];
+  const finalXml   = docxToPlainXml(finalBuffer);
+  const found      = scanPlaceholders(finalXml);
+  const foundSet   = new Set([...found.simple, ...found.loops]);
+  const validation = spec ? {
+    all_placeholders:      spec.placeholders.map(p => p.key),
     required_placeholders: spec.placeholders.filter(p => p.required).map(p => p.key),
-    found_placeholders:   Array.from(foundSet),
-    missing_required:     spec.placeholders.filter(p => p.required && !foundSet.has(p.key)).map(p => p.key),
-    missing_loop_fields:  spec.placeholders
+    found_placeholders:    Array.from(foundSet),
+    missing_required:      spec.placeholders.filter(p => p.required && !foundSet.has(p.key)).map(p => p.key),
+    missing_loop_fields:   spec.placeholders
       .filter(p => p.isLoop && foundSet.has(p.key) && p.loopFields)
       .flatMap(p => (p.loopFields ?? []).filter(sub => sub.required && !foundSet.has(sub.key)).map(sub => `${p.key}.${sub.key}`)),
   } : null;
@@ -150,10 +192,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     ...existing,
     [configKey]: {
       ...prevCfg,
-      template_path: path,
-      template_name: file.name,
-      template_ext:  ext,
+      template_path:       templatePath,
+      template_sample_path: canAutoTemplatize ? samplePath : null,
+      template_name:       file.name,
+      template_ext:        ext,
       template_validation: validation,
+      auto_templatized:    canAutoTemplatize && autoResult?.ok === true,
     },
   };
 
@@ -161,11 +205,24 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { data: signed } = await supabase.storage
     .from('agent-documents')
-    .createSignedUrl(path, 3600);
+    .createSignedUrl(templatePath, 3600);
 
+  // Legacy extract (RFC/dirección/etc) — sigue útil para autofill del form config
   const extracted = await extractFields(buffer, docType);
 
-  return NextResponse.json({ ok: true, path, name: file.name, ext, url: signed?.signedUrl ?? null, extracted, validation });
+  return NextResponse.json({
+    ok:            true,
+    path:          templatePath,
+    name:          file.name,
+    ext,
+    url:           signed?.signedUrl ?? null,
+    extracted,
+    validation,
+    auto_templatized: canAutoTemplatize && autoResult?.ok === true,
+    preview_pdf_url: previewPdfUrl,
+    identified_fields: autoResult?.identifiedFields ?? null,
+    auto_templatize_error: autoResult && !autoResult.ok ? autoResult.error : null,
+  });
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {

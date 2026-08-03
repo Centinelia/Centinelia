@@ -282,6 +282,19 @@ function TemplateValidationBadge({ validation, color }: { validation: TemplateVa
 
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
+interface IdentifiedField { key: string; value: string; method: string; applied: boolean }
+interface AutoTemplatizeResponse {
+  ok:              boolean;
+  name:            string;
+  path?:           string;
+  validation?:     TemplateValidation | null;
+  extracted?:      Record<string, unknown>;
+  auto_templatized?: boolean;
+  preview_pdf_url?: string | null;
+  identified_fields?: IdentifiedField[] | null;
+  auto_templatize_error?: string | null;
+}
+
 function UploadZone({ token, docType, templateName, templatePath, validation, onUploaded, onDeleted, onExtracted, color }: {
   token: string; docType: 'factura' | 'orden' | 'contrato' | 'cotizacion' | 'nota_venta'; templateName?: string;
   templatePath?: string;
@@ -296,6 +309,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
   const [deleting, setDeleting]   = useState(false);
   const [drag, setDrag]           = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<AutoTemplatizeResponse | null>(null);
 
   async function upload(file: File) {
     if (uploading) return;
@@ -305,20 +319,47 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
       const fd = new FormData();
       fd.append('file', file); fd.append('doc_type', docType);
       const res  = await fetch(`/api/portal/${token}/template-upload`, { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data.ok) {
-        onUploaded({ name: data.name, path: data.path, validation: data.validation ?? null });
-        if (data.extracted && Object.keys(data.extracted as object).length > 0) {
-          onExtracted?.(data.extracted as Record<string, unknown>);
-        }
-      } else {
+      const data: AutoTemplatizeResponse & { error?: string } = await res.json();
+      if (!data.ok) {
         setUploadError(data.error ?? 'No se pudo subir el archivo');
+        return;
+      }
+      // Si hubo auto-templatize exitoso con preview, mostrar modal para confirmación.
+      // Si no (contrato, o auto-templatize falló), aplicar directo (comportamiento viejo).
+      if (data.auto_templatized && data.preview_pdf_url) {
+        setPreviewData(data);
+      } else {
+        onUploaded({ name: data.name, path: data.path, validation: data.validation ?? null });
+        if (data.extracted && Object.keys(data.extracted).length > 0) {
+          onExtracted?.(data.extracted);
+        }
       }
     } catch {
       setUploadError('Error de conexion. Intenta de nuevo.');
     } finally {
       setUploading(false);
     }
+  }
+
+  function confirmPreview() {
+    if (!previewData) return;
+    onUploaded({ name: previewData.name, path: previewData.path, validation: previewData.validation ?? null });
+    if (previewData.extracted && Object.keys(previewData.extracted).length > 0) {
+      onExtracted?.(previewData.extracted);
+    }
+    setPreviewData(null);
+  }
+
+  async function rejectPreview() {
+    if (!previewData) return;
+    // Delete the templatized version so user can start over
+    await fetch(`/api/portal/${token}/template-upload`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_type: docType }),
+    });
+    setPreviewData(null);
+    setUploadError('Descartada. Sube otro archivo o edita el mismo en Word y súbelo de nuevo.');
+    setTimeout(() => setUploadError(null), 6000);
   }
 
   async function openTemplate() {
@@ -377,25 +418,155 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
   return (
     <>
       <div
-        onClick={() => inputRef.current?.click()}
-        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDragOver={e => { if (uploading) return; e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
-        onDrop={e => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
-        className="flex flex-col items-center justify-center gap-2 rounded-xl py-7 cursor-pointer transition-all"
-        style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : 'transparent' }}
+        onDrop={e => { if (uploading) return; e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) upload(f); }}
+        className={`flex flex-col items-center justify-center gap-2 rounded-xl py-7 transition-all ${uploading ? 'cursor-wait' : 'cursor-pointer'}`}
+        style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : uploading ? `${color}04` : 'transparent' }}
       >
         <input ref={inputRef} type="file" accept=".docx" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
-        <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
-        <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
-          {uploading ? 'Subiendo...' : 'Arrastra tu plantilla Word aqui o haz clic para seleccionarla'}
-        </p>
-        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Solo .docx · Máx 10 MB</p>
+        {uploading ? (
+          <>
+            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: `${color}44`, borderTopColor: color }} />
+            <p className="text-sm font-semibold" style={{ color }}>Analizando tu plantilla...</p>
+            <p className="text-xs text-center max-w-sm" style={{ color: 'var(--c-text-3)' }}>
+              Detectando qué texto corresponde a cada campo dinámico. Tarda ~30 segundos.
+            </p>
+          </>
+        ) : (
+          <>
+            <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
+            <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
+              Arrastra tu plantilla Word aqui o haz clic para seleccionarla
+            </p>
+            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+              Solo .docx · Máx 10 MB · Detectamos automáticamente los marcadores
+            </p>
+          </>
+        )}
       </div>
       {uploadError && (
         <p className="text-xs px-1 mt-1" style={{ color: '#f87171' }}>{uploadError}</p>
       )}
+
+      {previewData && (
+        <AutoTemplatizePreviewModal
+          data={previewData}
+          color={color}
+          docType={docType}
+          onConfirm={confirmPreview}
+          onReject={rejectPreview}
+        />
+      )}
     </>
+  );
+}
+
+// ─── Auto-templatize preview modal ────────────────────────────────────────────
+
+function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject }: {
+  data: AutoTemplatizeResponse;
+  color: string;
+  docType: string;
+  onConfirm: () => void;
+  onReject: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onReject(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onReject]);
+
+  const appliedFields   = (data.identified_fields ?? []).filter(f => f.applied);
+  const notAppliedFields = (data.identified_fields ?? []).filter(f => !f.applied);
+  const docTypeLabel = docType === 'factura' ? 'Factura' :
+                       docType === 'orden'   ? 'Orden de compra' :
+                       docType === 'cotizacion' ? 'Cotización' :
+                       docType === 'nota_venta' ? 'Nota de venta' : docType;
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+      onClick={onReject}>
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6" style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>
+        <div className="flex-1 min-w-0 mr-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color }}>Previa · {docTypeLabel}</p>
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
+            Detectamos {appliedFields.length} campo{appliedFields.length !== 1 ? 's' : ''} en tu plantilla
+          </p>
+          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+            Se ve como esperabas? Confirma para guardar. Si algo salió mal, descarta y súbela con {'{{marcadores}}'} manuales.
+          </p>
+        </div>
+        <button onClick={(e) => { e.stopPropagation(); onReject(); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+          <X size={12} /> Descartar
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex-1 min-h-0" style={{ background: '#525659' }}>
+          {data.preview_pdf_url ? (
+            <iframe src={data.preview_pdf_url} title="Preview" className="w-full h-full" style={{ border: 'none', minHeight: '60vh' }} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-white text-sm">Sin preview disponible</div>
+          )}
+        </div>
+
+        <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto p-4 flex flex-col gap-3" style={{ background: 'var(--c-surface)', borderLeft: '1px solid var(--c-border)' }}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+              Campos detectados ({appliedFields.length})
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {appliedFields.map((f, i) => (
+                <span key={i} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-mono"
+                  style={{ background: `${color}12`, color, border: `1px solid ${color}30` }} title={`Valor original: ${f.value}`}>
+                  <Check size={9} /> {f.key}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {notAppliedFields.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+                No aplicados ({notAppliedFields.length})
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {notAppliedFields.map((f, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md"
+                    style={{ background: 'rgba(245,158,11,0.08)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}
+                    title={`Valor: ${f.value}`}>
+                    {f.key}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs mt-2" style={{ color: 'var(--c-text-4)' }}>
+                Estos campos los identificamos pero no pudimos reemplazarlos. Comúnmente son valores muy fragmentados en el docx.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-auto pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <button onClick={onConfirm}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: color, color: '#fff' }}>
+              <Check size={13} /> Confirmar y guardar
+            </button>
+            <button onClick={onReject}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+              <X size={11} /> Descartar y volver a subir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
