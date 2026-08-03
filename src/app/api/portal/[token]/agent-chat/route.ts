@@ -168,6 +168,36 @@ const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   },
 };
 
+const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
+  name: 'buscar_documento_oficina',
+  description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, cliente y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      query:   { type: 'string', description: 'Texto para buscar en título, filename o nombre del cliente. Opcional.' },
+      kind:    { type: 'string', description: 'Filtro por tipo exacto: factura, cotizacion, orden_compra, proposal, letter, general, nota_venta, excel, word, powerpoint.' },
+      cliente: { type: 'string', description: 'Filtro por nombre del cliente (fuzzy).' },
+      limit:   { type: 'number', description: 'Máximo de resultados. Default 10, máximo 50.' },
+    },
+    required: [],
+  },
+};
+
+const ENVIAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
+  name: 'enviar_documento_oficina',
+  description: 'Adjunta un documento ya existente de la Oficina a un correo saliente. Requiere document_id previamente obtenido de buscar_documento_oficina. Úsala cuando el cliente pida reenviar algo ("mándame de nuevo la cotización de la semana pasada") en lugar de generar uno nuevo.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      document_id: { type: 'string', description: 'ID del documento devuelto por buscar_documento_oficina (uuid).' },
+      to:          { type: 'string', description: 'Correo del destinatario.' },
+      subject:     { type: 'string', description: 'Asunto del correo.' },
+      body:        { type: 'string', description: 'Cuerpo del correo. Texto plano — se convierte a HTML.' },
+    },
+    required: ['document_id', 'to', 'subject', 'body'],
+  },
+};
+
 const SOLICITAR_FACTURA_TOOL: Anthropic.Tool = {
   name: 'solicitar_factura',
   description: 'Regístra una solicitud de factura CFDI cuando el cliente pide su comprobante fiscal. Recolecta primero TODOS los datos por voz/chat, confirma con el cliente, y luego invoca esta herramienta. El equipo de facturación humano emitirá el CFDI en el sistema fiscal del negocio (Solución Factible, CONTPAQ, Aspel, etc.) — NO lo timbramos aquí. NO uses create_document con template_type=factura para esto: eso genera un PDF sin validez fiscal.',
@@ -873,6 +903,8 @@ const ALL_TOOLS = [
 const VOICE_TO_CHAT: Record<string, string | null> = {
   enviar_correo:             'send_email',
   crear_documento:           'create_document',
+  buscar_documento_oficina:  'buscar_documento_oficina',
+  enviar_documento_oficina:  'enviar_documento_oficina',
   llamar_a:                  'trigger_outbound_call',
   buscar_archivo:            'search_files',
   leer_archivo:              'read_file',
@@ -926,6 +958,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   create_contract_draft:     CREATE_CONTRACT_DRAFT_TOOL,
   send_email:                SEND_EMAIL_TOOL,
   create_document:           CREATE_DOCUMENT_TOOL,
+  buscar_documento_oficina:  BUSCAR_DOCUMENTO_OFICINA_TOOL,
+  enviar_documento_oficina:  ENVIAR_DOCUMENTO_OFICINA_TOOL,
   solicitar_factura:         SOLICITAR_FACTURA_TOOL,
   consultar_factura:         CONSULTAR_FACTURA_TOOL,
   create_file:               CREATE_FILE_TOOL,

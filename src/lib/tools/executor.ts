@@ -891,6 +891,37 @@ export async function executeAgentTool(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // buscar_documento_oficina — reutilizar documentos ya generados
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'buscar_documento_oficina') {
+    const { searchOfficeDocuments, formatDocsForAgent } = await import('@/lib/documents/ops-docs-search');
+    const args = toolInput as { query?: string; kind?: string; cliente?: string; limit?: number };
+    const docs = await searchOfficeDocuments({
+      supabase, portalEmail,
+      query: args.query ?? null, kind: args.kind ?? null,
+      clientName: args.cliente ?? null, limit: args.limit ?? 10,
+    });
+    return { ok: true, message: formatDocsForAgent(docs), count: docs.length, docs };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // enviar_documento_oficina — adjuntar doc existente a un correo
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'enviar_documento_oficina') {
+    const { sendOfficeDocumentByEmail } = await import('@/lib/documents/ops-docs-search');
+    const args = toolInput as { document_id?: string; to?: string; subject?: string; body?: string };
+    if (!args.document_id || !args.to || !args.subject || !args.body) {
+      return { ok: false, error: 'Necesito document_id, destinatario, asunto y cuerpo.' };
+    }
+    const res = await sendOfficeDocumentByEmail({
+      supabase, portalEmail, agentId,
+      documentId: args.document_id, to: args.to,
+      subject: args.subject, body: args.body,
+    });
+    return res.ok ? { ok: true, message: res.message ?? 'Correo enviado.' } : { ok: false, error: res.error };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // crear_lead
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'crear_lead') {
