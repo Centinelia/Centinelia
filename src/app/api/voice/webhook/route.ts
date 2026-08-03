@@ -456,18 +456,42 @@ export async function POST(req: NextRequest) {
 
         // D. Owner notification email
         // Skip cuando el caller ES el dueño/equipo — no tiene sentido notificarle
-        // que "un cliente hizo X" cuando fue él mismo quien llamó. Este check
-        // usa la misma lógica que inbound/route.ts.
+        // que "un cliente hizo X" cuando fue él mismo quien llamó.
+        // Dos señales de "internal caller":
+        //   (a) su número coincide con transfer_number / transfer_whatsapp /
+        //       team_numbers (verificación por identidad de número).
+        //   (b) usó la passphrase durante la llamada (verificación por conocimiento
+        //       compartido — funciona incluso si llama desde cualquier número).
+        //       Se detecta por presencia fuzzy del passphrase en el transcript.
         const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
         const normCallerD  = (callerNumber ?? '').replace(/\D/g, '').slice(-10);
         const teamNumbersD = (agent?.team_numbers ?? []) as Array<{ number: string; is_owner?: boolean; name?: string }>;
         const normTransferD = (agent?.transfer_number   ?? '').replace(/\D/g, '').slice(-10);
         const normWaD       = (agent?.transfer_whatsapp ?? '').replace(/\D/g, '').slice(-10);
-        const callerIsInternal = normCallerD.length >= 7 && (
+        const callerNumberIsInternal = normCallerD.length >= 7 && (
           (normTransferD && normCallerD === normTransferD) ||
           (normWaD       && normCallerD === normWaD)       ||
           teamNumbersD.some(t => (t.number ?? '').replace(/\D/g, '').slice(-10) === normCallerD)
         );
+
+        // Passphrase detection en transcript — el que la sabe es interno,
+        // sin importar el número. Owner_passphrase vive en organizations.
+        let passphraseUsed = false;
+        if (transcript && agent?.portal_email) {
+          const { data: orgRow } = await supabase
+            .from('organizations')
+            .select('owner_passphrase')
+            .eq('portal_email', agent.portal_email)
+            .maybeSingle();
+          const phrase = (orgRow?.owner_passphrase as string | null)?.trim().toLowerCase();
+          if (phrase && phrase.length >= 3) {
+            // Fuzzy: strip puntuación y acentos, compara substring.
+            const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ');
+            passphraseUsed = norm(String(transcript)).includes(norm(phrase));
+          }
+        }
+
+        const callerIsInternal = callerNumberIsInternal || passphraseUsed;
 
         if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome) && !callerIsInternal) {
           const portalUrl = `${appUrl}/portal/${agent.portal_token}`;
