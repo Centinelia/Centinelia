@@ -1,19 +1,20 @@
 /**
  * Fill a .docx template with user data via docxtemplater, then convert the
- * result to PDF using the agent's own Google Drive or OneDrive OAuth connection.
+ * result to PDF using the CloudConvert API (Word Online engine).
  *
- * Uses the user's Drive as a "conversion engine" — no external services,
- * no additional cost. Temp file is deleted after conversion.
+ * Why CloudConvert and not Google Drive?
+ * Google Drive's docx→PDF converter is conservative and misrenders docx files
+ * exported by fiscal systems (Solución Factible, CONTPAQ, Aspel), CRMs, or
+ * legacy Word — collapsing lines to vertical, breaking table layouts. Users
+ * expect "sube tu plantilla y sale igual" so we route through CloudConvert
+ * which uses the real Word Online engine for perfect fidelity.
+ *
+ * Cost: CloudConvert free tier = 25 min/day (~150-300 conversions).
+ * See centinelia.dev@gmail.com account for billing / paid plans.
  */
 
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import type { createAdminClient } from '@/lib/supabase/admin';
-import { getConnector, type IntegrationRow } from '@/lib/connectors';
-
-type SupabaseClient = ReturnType<typeof createAdminClient>;
-
-const TEMP_FILE_PREFIX = 'centinelia-temp-';
 
 /** Fill a .docx template buffer using docxtemplater. Returns filled .docx buffer. */
 export function fillDocxTemplate(
@@ -26,149 +27,118 @@ export function fillDocxTemplate(
     linebreaks:    true,
     delimiters:    { start: '{{', end: '}}' },
     errorLogging:  false,
+    nullGetter:    () => '', // never fail on missing keys — render empty instead
   });
   doc.render(data);
   return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
-interface DriveIntegration {
-  provider:      'gmail' | 'outlook';
-  access_token:  string;
-  refresh_token: string;
-  token_expires_at: string;
+const CC_BASE = 'https://api.cloudconvert.com/v2';
+const CC_POLL_INTERVAL_MS = 1000;
+const CC_POLL_MAX_TRIES   = 90; // 90s cap — CloudConvert usually finishes in 2-10s
+
+interface CCJobResponse {
+  data: {
+    id: string;
+    tasks: CCTaskResponse[];
+  };
+}
+interface CCTaskResponse {
+  id:        string;
+  name:      string;
+  operation: string;
+  status:    'waiting' | 'processing' | 'finished' | 'error';
+  message?:  string;
+  result?: {
+    form?:  { url: string; parameters: Record<string, string> };
+    files?: Array<{ filename: string; url: string; size: number }>;
+  };
+}
+
+async function ccApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const key = process.env.CLOUDCONVERT_API_KEY;
+  if (!key) throw new Error('CLOUDCONVERT_API_KEY no está configurada. Sin ella no puedo generar documentos desde tu plantilla Word.');
+  const res = await fetch(`${CC_BASE}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`CloudConvert ${res.status}: ${body.slice(0, 400)}`);
+  }
+  return res.json();
 }
 
 /**
- * Convert a filled .docx buffer to PDF using the agent's connected Drive.
- * Google: upload as Google Doc (auto-conversion) → export PDF → delete.
- * Microsoft: upload → GET content?format=pdf → delete.
- * Throws if the agent has no email_integrations row.
+ * Convert a filled .docx buffer to PDF via CloudConvert (Word Online engine).
+ * Signature preserved (agentId + supabase kept for backwards-compat but unused).
  */
 export async function convertDocxToPdf(
   docxBuffer: Buffer,
-  agentId:    string,
-  supabase:   SupabaseClient,
+  _agentId:    string,
+  _supabase:   unknown,
 ): Promise<Buffer> {
-  const { data } = await supabase
-    .from('email_integrations')
-    .select('*')
-    .eq('agent_id', agentId)
-    .single();
-
-  if (!data) {
-    throw new Error('Sin Google Drive u OneDrive conectado. Conecta uno desde Portal → Integraciones → Correo para poder generar documentos desde tu plantilla.');
-  }
-
-  // Ensure token is fresh (getConnector performs refresh if needed)
-  await getConnector(data as IntegrationRow, supabase);
-
-  // Re-read after possible refresh
-  const { data: fresh } = await supabase
-    .from('email_integrations')
-    .select('provider, access_token, refresh_token, token_expires_at')
-    .eq('agent_id', agentId)
-    .single();
-  const integration = fresh as DriveIntegration;
-
-  return integration.provider === 'gmail'
-    ? convertViaGoogleDrive(docxBuffer, integration.access_token)
-    : convertViaOneDrive(docxBuffer, integration.access_token);
-}
-
-async function convertViaGoogleDrive(docxBuffer: Buffer, accessToken: string): Promise<Buffer> {
-  const tempName = `${TEMP_FILE_PREFIX}${Date.now()}`;
-  const boundary = `docx_convert_${Date.now()}`;
-  const metadata = {
-    name:     tempName,
-    mimeType: 'application/vnd.google-apps.document', // auto-convert on upload
-  };
-
-  const body = Buffer.concat([
-    Buffer.from(
-      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-      JSON.stringify(metadata) +
-      `\r\n--${boundary}\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n`,
-    ),
-    docxBuffer,
-    Buffer.from(`\r\n--${boundary}--`),
-  ]);
-
-  // 1. Upload .docx with target mimeType = Google Doc → Drive converts automatically
-  const uploadRes = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    {
-      method:  'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': `multipart/related; boundary="${boundary}"`,
+  // 1. Create a job with import → convert → export chain
+  const job = await ccApi<CCJobResponse>('/jobs', {
+    method: 'POST',
+    body: JSON.stringify({
+      tasks: {
+        'import-1': { operation: 'import/upload' },
+        'convert-1': {
+          operation:     'convert',
+          input:         'import-1',
+          input_format:  'docx',
+          output_format: 'pdf',
+          engine:        'office', // Word Online — highest fidelity
+        },
+        'export-1': { operation: 'export/url', input: 'convert-1' },
       },
-      body,
-    },
-  );
+    }),
+  });
 
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text();
-    throw new Error(`Google Drive conversion upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
+  // 2. Upload docx to import task
+  const importTask = job.data.tasks.find(t => t.name === 'import-1')!;
+  let form = importTask.result?.form;
+  // Poll briefly if the form URL isn't ready immediately
+  for (let i = 0; !form && i < 10; i++) {
+    await new Promise(r => setTimeout(r, 300));
+    const t = await ccApi<{ data: CCTaskResponse }>(`/tasks/${importTask.id}`);
+    form = t.data.result?.form;
   }
-  const { id: fileId } = await uploadRes.json() as { id: string };
+  if (!form) throw new Error('CloudConvert import/upload no devolvió URL para subir el docx.');
 
-  try {
-    // 2. Export as PDF
-    const exportRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=application/pdf`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!exportRes.ok) {
-      const err = await exportRes.text();
-      throw new Error(`Google Drive PDF export failed (${exportRes.status}): ${err.slice(0, 300)}`);
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(form.parameters)) fd.append(k, v);
+  fd.append('file', new Blob([docxBuffer as unknown as BlobPart]), 'template.docx');
+  const upRes = await fetch(form.url, { method: 'POST', body: fd });
+  if (!upRes.ok) {
+    throw new Error(`CloudConvert upload falló (${upRes.status}): ${(await upRes.text()).slice(0, 300)}`);
+  }
+
+  // 3. Poll job until all tasks finished or errored
+  let finalTasks: CCTaskResponse[] | null = null;
+  for (let i = 0; i < CC_POLL_MAX_TRIES; i++) {
+    await new Promise(r => setTimeout(r, CC_POLL_INTERVAL_MS));
+    const j = await ccApi<CCJobResponse>(`/jobs/${job.data.id}`);
+    if (j.data.tasks.every(t => t.status === 'finished' || t.status === 'error')) {
+      finalTasks = j.data.tasks;
+      break;
     }
-    return Buffer.from(await exportRes.arrayBuffer());
-  } finally {
-    // 3. Always delete temp file, even if export failed
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-      method:  'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }).catch(() => { /* best effort */ });
   }
-}
+  if (!finalTasks) throw new Error(`CloudConvert timeout tras ${CC_POLL_MAX_TRIES}s.`);
 
-async function convertViaOneDrive(docxBuffer: Buffer, accessToken: string): Promise<Buffer> {
-  const tempName = `${TEMP_FILE_PREFIX}${Date.now()}.docx`;
+  const errored = finalTasks.find(t => t.status === 'error');
+  if (errored) throw new Error(`CloudConvert task ${errored.name} falló: ${errored.message ?? 'sin mensaje'}`);
 
-  // 1. Upload .docx to OneDrive root
-  const uploadRes = await fetch(
-    `https://graph.microsoft.com/v1.0/me/drive/root:/${encodeURIComponent(tempName)}:/content?@microsoft.graph.conflictBehavior=rename`,
-    {
-      method:  'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      },
-      body: docxBuffer as unknown as BodyInit,
-    },
-  );
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text();
-    throw new Error(`OneDrive upload failed (${uploadRes.status}): ${err.slice(0, 300)}`);
-  }
-  const { id: itemId } = await uploadRes.json() as { id: string };
-
-  try {
-    // 2. Convert to PDF (Graph returns 302 to the PDF download URL by default)
-    const convertRes = await fetch(
-      `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/content?format=pdf`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!convertRes.ok) {
-      const err = await convertRes.text();
-      throw new Error(`OneDrive PDF conversion failed (${convertRes.status}): ${err.slice(0, 300)}`);
-    }
-    return Buffer.from(await convertRes.arrayBuffer());
-  } finally {
-    await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`, {
-      method:  'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }).catch(() => { /* best effort */ });
-  }
+  // 4. Download exported PDF
+  const exportTask = finalTasks.find(t => t.name === 'export-1');
+  const fileUrl    = exportTask?.result?.files?.[0]?.url;
+  if (!fileUrl) throw new Error('CloudConvert export/url no devolvió URL de descarga.');
+  const pdfRes = await fetch(fileUrl);
+  if (!pdfRes.ok) throw new Error(`CloudConvert PDF download falló (${pdfRes.status})`);
+  return Buffer.from(await pdfRes.arrayBuffer());
 }
