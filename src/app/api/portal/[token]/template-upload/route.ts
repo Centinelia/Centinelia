@@ -3,11 +3,28 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import Anthropic from '@anthropic-ai/sdk';
 import mammoth from 'mammoth';
+import PizZip from 'pizzip';
+import { scanPlaceholders, TEMPLATE_SPECS } from '@/lib/documents/template-spec';
 
 interface Params { params: Promise<{ token: string }> }
 
-const ALLOWED_TYPES = new Set(['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/** Extract raw text from all XML parts of a .docx so scanPlaceholders sees tokens inside tables/headers. */
+function docxToPlainXml(buffer: Buffer): string {
+  try {
+    const zip = new PizZip(buffer);
+    const parts: string[] = [];
+    for (const name of Object.keys(zip.files)) {
+      if (!name.endsWith('.xml')) continue;
+      const file = zip.files[name];
+      if (file.dir) continue;
+      parts.push(file.asText());
+    }
+    return parts.join('\n');
+  } catch { return ''; }
+}
 
 const EXTRACT_PROMPTS: Record<string, string> = {
   factura: `Extrae del documento los datos del emisor de la factura:
@@ -34,23 +51,14 @@ Responde SOLO con JSON valido, sin texto adicional.
 Ejemplo: {"condiciones_pago":"Pago mensual"}`,
 };
 
-async function extractFields(buffer: Buffer, ext: string, docType: string): Promise<Record<string, unknown>> {
+async function extractFields(buffer: Buffer, docType: string): Promise<Record<string, unknown>> {
   if (!process.env.ANTHROPIC_API_KEY) return {};
   const prompt = EXTRACT_PROMPTS[docType] ?? EXTRACT_PROMPTS.factura;
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    let content: Anthropic.MessageParam['content'];
-    if (ext === 'docx') {
-      const { value: text } = await mammoth.extractRawText({ buffer });
-      content = `DOCUMENTO:\n${text.slice(0, 6000)}\n\n${prompt}`;
-    } else {
-      content = [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: buffer.toString('base64') } } as never,
-        { type: 'text', text: prompt },
-      ];
-    }
+    const { value: text } = await mammoth.extractRawText({ buffer });
+    const content = `DOCUMENTO:\n${text.slice(0, 6000)}\n\n${prompt}`;
 
     const res = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
@@ -87,10 +95,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const docType   = (formData.get('doc_type') as string | null) ?? 'factura';
 
   if (!file) return NextResponse.json({ error: 'No se recibio archivo' }, { status: 400 });
-  if (!ALLOWED_TYPES.has(file.type)) return NextResponse.json({ error: 'Solo PDF o DOCX' }, { status: 400 });
+  if (file.type !== DOCX_MIME) {
+    return NextResponse.json({
+      error: 'Solo aceptamos archivos .docx (Word). Los archivos .pdf ya no se soportan porque no podemos rellenar los placeholders. Abre tu plantilla en Word, agrega los marcadores como {{cliente_nombre}}, y guarda como .docx.',
+    }, { status: 400 });
+  }
   if (file.size > MAX_BYTES) return NextResponse.json({ error: 'El archivo no puede superar 10 MB' }, { status: 400 });
 
-  const ext    = file.type === 'application/pdf' ? 'pdf' : 'docx';
+  const ext    = 'docx';
   const path   = `plantillas/${agent.id}/${docType}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
@@ -100,13 +112,34 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 });
 
+  // Scan for placeholders — only relevant for factura/orden which use docxtemplater
+  const spec         = TEMPLATE_SPECS[docType];
+  const xml          = docxToPlainXml(buffer);
+  const found        = scanPlaceholders(xml);
+  const foundSet     = new Set([...found.simple, ...found.loops]);
+  const validation   = spec ? {
+    all_placeholders:     spec.placeholders.map(p => p.key),
+    required_placeholders: spec.placeholders.filter(p => p.required).map(p => p.key),
+    found_placeholders:   Array.from(foundSet),
+    missing_required:     spec.placeholders.filter(p => p.required && !foundSet.has(p.key)).map(p => p.key),
+    missing_loop_fields:  spec.placeholders
+      .filter(p => p.isLoop && foundSet.has(p.key) && p.loopFields)
+      .flatMap(p => (p.loopFields ?? []).filter(sub => sub.required && !foundSet.has(sub.key)).map(sub => `${p.key}.${sub.key}`)),
+  } : null;
+
   // Store reference in features
   const existing  = (agent.features as Record<string, unknown>) ?? {};
   const configKey = `${docType}_config`;
   const prevCfg   = (existing[configKey] as Record<string, unknown>) ?? {};
   const merged    = {
     ...existing,
-    [configKey]: { ...prevCfg, template_path: path, template_name: file.name, template_ext: ext },
+    [configKey]: {
+      ...prevCfg,
+      template_path: path,
+      template_name: file.name,
+      template_ext:  ext,
+      template_validation: validation,
+    },
   };
 
   await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
@@ -115,9 +148,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     .from('agent-documents')
     .createSignedUrl(path, 3600);
 
-  const extracted = await extractFields(buffer, ext, docType);
+  const extracted = await extractFields(buffer, docType);
 
-  return NextResponse.json({ ok: true, path, name: file.name, ext, url: signed?.signedUrl ?? null, extracted });
+  return NextResponse.json({ ok: true, path, name: file.name, ext, url: signed?.signedUrl ?? null, extracted, validation });
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {

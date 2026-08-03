@@ -7,27 +7,39 @@ import {
   FileText, ShoppingCart, Upload, Trash2, Save, CheckCircle,
   FileCheck, ChevronDown, ChevronRight, MessageSquare, Wand2,
   Plus, Check, Edit2, GripVertical, ToggleLeft, ToggleRight, X,
+  Copy, AlertTriangle, ExternalLink,
 } from 'lucide-react';
+import { TEMPLATE_SPECS, type PlaceholderSpec } from '@/lib/documents/template-spec';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface TemplateValidation {
+  all_placeholders:      string[];
+  required_placeholders: string[];
+  found_placeholders:    string[];
+  missing_required:      string[];
+  missing_loop_fields:   string[];
+}
+
 interface FacturaConfig {
-  rfc?:              string;
-  direccion?:        string;
-  condiciones_pago?: string;
-  folio_prefix?:     string;
-  incluir_iva?:      boolean;
-  template_path?:    string;
-  template_name?:    string;
+  rfc?:                 string;
+  direccion?:           string;
+  condiciones_pago?:    string;
+  folio_prefix?:        string;
+  incluir_iva?:         boolean;
+  template_path?:       string;
+  template_name?:       string;
+  template_validation?: TemplateValidation | null;
 }
 
 interface OrdenConfig {
-  condiciones_pago?: string;
-  terminos_entrega?: string;
-  folio_prefix?:     string;
-  incluir_iva?:      boolean;
-  template_path?:    string;
-  template_name?:    string;
+  condiciones_pago?:    string;
+  terminos_entrega?:    string;
+  folio_prefix?:        string;
+  incluir_iva?:         boolean;
+  template_path?:       string;
+  template_name?:       string;
+  template_validation?: TemplateValidation | null;
 }
 
 interface TemplateStats {
@@ -143,11 +155,119 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
+// ─── Placeholder guide ────────────────────────────────────────────────────────
+
+function PlaceholderChip({ text, color }: { text: string; color: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  }
+  return (
+    <button onClick={copy} title="Copiar"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono transition-colors"
+      style={{ background: copied ? `${color}22` : 'var(--c-surface-2)', color: copied ? color : 'var(--c-text-2)', border: `1px solid ${copied ? color + '55' : 'var(--c-border)'}` }}>
+      {text}
+      {copied ? <Check size={10} /> : <Copy size={10} style={{ opacity: 0.6 }} />}
+    </button>
+  );
+}
+
+function PlaceholderGuide({ docType, color }: { docType: 'factura' | 'orden'; color: string }) {
+  const [open, setOpen] = useState(false);
+  const spec = TEMPLATE_SPECS[docType];
+  if (!spec) return null;
+
+  const simple = spec.placeholders.filter(p => !p.isLoop);
+  const loops  = spec.placeholders.filter(p => p.isLoop);
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:opacity-80">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}12` }}>
+          <FileText size={12} style={{ color }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Marcadores soportados</p>
+          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Copia y pega estos en tu documento Word donde quieras que aparezcan los datos.</p>
+        </div>
+        <ChevronDown size={14} style={{ color: 'var(--c-text-4)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>Campos simples</p>
+            <div className="flex flex-wrap gap-1.5">
+              {simple.map(p => (
+                <PlaceholderChip key={p.key} text={`{{${p.key}}}`} color={color} />
+              ))}
+            </div>
+          </div>
+          {loops.map(loop => (
+            <div key={loop.key}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>
+                Tabla de partidas (bloque repetible)
+              </p>
+              <p className="text-xs mb-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                Envuelve la fila de tu tabla con <span className="font-mono" style={{ color }}>{'{{#'+loop.key+'}}'}</span> al inicio y <span className="font-mono" style={{ color }}>{'{{/'+loop.key+'}}'}</span> al final. Dentro puedes usar:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(loop.loopFields ?? []).map(sub => (
+                  <PlaceholderChip key={sub.key} text={`{{${sub.key}}}`} color={color} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TemplateValidationBadge({ validation, color }: { validation: TemplateValidation; color: string }) {
+  const ok = validation.missing_required.length === 0 && validation.missing_loop_fields.length === 0;
+  if (ok) {
+    return (
+      <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+        style={{ background: `${color}08`, color, border: `1px solid ${color}25` }}>
+        <CheckCircle size={12} />
+        Detecté todos los marcadores requeridos ({validation.found_placeholders.length}).
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg"
+      style={{ background: 'rgba(245,158,11,0.06)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>
+      <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
+      <div className="flex-1">
+        <p className="font-semibold">Faltan marcadores en tu plantilla:</p>
+        <p className="mt-1 font-mono">
+          {validation.missing_required.map(k => `{{${k}}}`).join(', ')}
+          {validation.missing_loop_fields.length > 0 && (
+            <>
+              {validation.missing_required.length > 0 ? ', ' : ''}
+              {validation.missing_loop_fields.map(k => `{{${k.split('.')[1]}}} (dentro del loop)`).join(', ')}
+            </>
+          )}
+        </p>
+        <p className="mt-1.5" style={{ color: 'var(--c-text-3)' }}>Agrégalos en Word y vuelve a subir para que los documentos generen bien.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
-function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExtracted, color }: {
+function UploadZone({ token, docType, templateName, templatePath, validation, onUploaded, onDeleted, onExtracted, color }: {
   token: string; docType: 'factura' | 'orden' | 'contrato'; templateName?: string;
-  onUploaded: (name: string) => void; onDeleted: () => void;
+  templatePath?: string;
+  validation?: TemplateValidation | null;
+  onUploaded: (data: { name: string; path?: string; validation?: TemplateValidation | null }) => void;
+  onDeleted: () => void;
   onExtracted?: (data: Record<string, unknown>) => void;
   color: string;
 }) {
@@ -167,7 +287,7 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExt
       const res  = await fetch(`/api/portal/${token}/template-upload`, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.ok) {
-        onUploaded(data.name);
+        onUploaded({ name: data.name, path: data.path, validation: data.validation ?? null });
         if (data.extracted && Object.keys(data.extracted as object).length > 0) {
           onExtracted?.(data.extracted as Record<string, unknown>);
         }
@@ -179,6 +299,15 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExt
     } finally {
       setUploading(false);
     }
+  }
+
+  async function openTemplate() {
+    if (!templatePath) return;
+    try {
+      const res  = await fetch(`/api/portal/${token}/template-download?path=${encodeURIComponent(templatePath)}`);
+      const data = await res.json();
+      if (data.url) window.open(data.url, '_blank');
+    } catch { /* ignore */ }
   }
 
   async function handleDelete() {
@@ -195,17 +324,32 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExt
 
   if (templateName) {
     return (
-      <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: `${color}08`, border: `1px solid ${color}25` }}>
-        <FileCheck size={15} style={{ color, flexShrink: 0 }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{templateName}</p>
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Formato de referencia cargado</p>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: `${color}08`, border: `1px solid ${color}25` }}>
+          <FileCheck size={15} style={{ color, flexShrink: 0 }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{templateName}</p>
+            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Plantilla Word cargada</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {templatePath && (
+              <button onClick={openTemplate}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70"
+                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+                title="Descargar y ver tu plantilla">
+                <ExternalLink size={11} /> Ver
+              </button>
+            )}
+            <button onClick={handleDelete} disabled={deleting}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
+              style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171' }}>
+              <Trash2 size={11} /> {deleting ? 'Eliminando...' : 'Quitar'}
+            </button>
+          </div>
         </div>
-        <button onClick={handleDelete} disabled={deleting}
-          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
-          style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171' }}>
-          <Trash2 size={11} /> {deleting ? 'Eliminando...' : 'Quitar'}
-        </button>
+        {validation && (docType === 'factura' || docType === 'orden') && (
+          <TemplateValidationBadge validation={validation} color={color} />
+        )}
       </div>
     );
   }
@@ -220,13 +364,13 @@ function UploadZone({ token, docType, templateName, onUploaded, onDeleted, onExt
         className="flex flex-col items-center justify-center gap-2 rounded-xl py-7 cursor-pointer transition-all"
         style={{ border: `2px dashed ${drag ? color : 'var(--c-border)'}`, background: drag ? `${color}06` : 'transparent' }}
       >
-        <input ref={inputRef} type="file" accept=".pdf,.docx" className="hidden"
+        <input ref={inputRef} type="file" accept=".docx" className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }} />
         <Upload size={18} style={{ color: drag ? color : 'var(--c-text-4)', opacity: drag ? 1 : 0.5 }} />
         <p className="text-sm font-medium" style={{ color: 'var(--c-text-3)' }}>
-          {uploading ? 'Subiendo...' : 'Arrastra tu formato aqui o haz clic para seleccionarlo'}
+          {uploading ? 'Subiendo...' : 'Arrastra tu plantilla Word aqui o haz clic para seleccionarla'}
         </p>
-        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>PDF o Word · Max 10 MB</p>
+        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Solo .docx · Máx 10 MB</p>
       </div>
       {uploadError && (
         <p className="text-xs px-1 mt-1" style={{ color: '#f87171' }}>{uploadError}</p>
@@ -340,10 +484,15 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
 
   return (
     <>
+      <PlaceholderGuide docType="factura" color="#f59e0b" />
       <UploadZone
-        token={token} docType="factura" templateName={cfg.template_name} color="#f59e0b"
-        onUploaded={name => setCfg(prev => ({ ...prev, template_name: name }))}
-        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, ...r } = prev; return r; })}
+        token={token} docType="factura"
+        templateName={cfg.template_name}
+        templatePath={cfg.template_path}
+        validation={cfg.template_validation}
+        color="#f59e0b"
+        onUploaded={data => setCfg(prev => ({ ...prev, template_name: data.name, template_path: data.path, template_validation: data.validation }))}
+        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, template_validation: ___, ...r } = prev; return r; })}
         onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
       />
       {autoFilled && (
@@ -402,10 +551,15 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
 
   return (
     <>
+      <PlaceholderGuide docType="orden" color="#3b82f6" />
       <UploadZone
-        token={token} docType="orden" templateName={cfg.template_name} color="#3b82f6"
-        onUploaded={name => setCfg(prev => ({ ...prev, template_name: name }))}
-        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, ...r } = prev; return r; })}
+        token={token} docType="orden"
+        templateName={cfg.template_name}
+        templatePath={cfg.template_path}
+        validation={cfg.template_validation}
+        color="#3b82f6"
+        onUploaded={data => setCfg(prev => ({ ...prev, template_name: data.name, template_path: data.path, template_validation: data.validation }))}
+        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, template_validation: ___, ...r } = prev; return r; })}
         onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
       />
       {autoFilled && (
@@ -504,7 +658,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
     <div className="flex flex-col gap-4">
       <UploadZone
         token={token} docType="contrato" templateName={templateName} color="#8b5cf6"
-        onUploaded={name => setTemplateName(name)}
+        onUploaded={data => setTemplateName(data.name)}
         onDeleted={() => setTemplateName(undefined)}
       />
 
@@ -691,9 +845,9 @@ export default function PlantillasPage() {
       {/* How it works */}
       <div className="flex flex-col sm:flex-row gap-3">
         {[
-          { n: '1', t: 'Sube tu formato', d: 'PDF o Word con el diseño que ya usas en tu negocio.' },
-          { n: '2', t: 'Configura los datos fijos', d: 'RFC, direccion, condiciones de pago. Solo una vez.' },
-          { n: '3', t: 'El empleado produce', d: 'Pidele "genera una factura para..." y el formato siempre sera el mismo.' },
+          { n: '1', t: 'Prepara tu plantilla Word', d: 'Toma tu documento actual, agrega marcadores como {{cliente_nombre}} donde deben aparecer los datos.' },
+          { n: '2', t: 'Sube el .docx', d: 'Solo Word. Detectamos qué marcadores usaste y avisamos si falta alguno.' },
+          { n: '3', t: 'El empleado produce', d: 'Pídele "genera una factura para..." y sale con tu diseño exacto en PDF.' },
         ].map(s => (
           <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1" style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.1)' }}>
             <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"

@@ -30,6 +30,7 @@ import { getQBClient } from '@/lib/qb/client';
 import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
 import { generateWord } from '@/lib/documents/word';
 import { generateSlides, type Slide } from '@/lib/documents/slides';
+import { fillDocxTemplate, convertDocxToPdf } from '@/lib/documents/template-fill';
 import { sendEmail, bugReportHtml } from '@/lib/email/send';
 import { sendOnboardingWelcome } from '@/lib/ops/onboarding-mailer';
 import { randomUUID } from 'crypto';
@@ -241,23 +242,89 @@ export async function executeAgentTool(
         }
       }
 
-      let pdfEl: React.ReactElement;
+      const mxn = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      const fechaHoy = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
-      if (templateType === 'proposal') {
-        pdfEl = createElement(ProposalPDF, { brand, title, content, clientName: toolInput.client_name as string | undefined, clientEmail: toolInput.client_email as string | undefined, totalPrice: toolInput.total_price as string | undefined, validityDays: toolInput.validity_days as number | undefined });
-      } else if (templateType === 'letter') {
-        pdfEl = createElement(LetterPDF, { brand, content, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
-      } else if (templateType === 'factura') {
-        const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number }> | undefined) ?? [];
-        pdfEl = createElement(FacturaPdf, { brand, data: { clienteNombre: (toolInput.client_name as string | null) ?? 'Cliente', clienteRFC: toolInput.client_rfc as string | undefined, clienteEmail: toolInput.client_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? true, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (featCfg.condiciones_pago as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, folioNum: facturaFolioNum, notas: content || null } });
-      } else if (templateType === 'orden_compra') {
-        const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number; unidad?: string }> | undefined) ?? [];
-        pdfEl = createElement(OrdenCompraPdf, { brand, data: { proveedorNombre: (toolInput.vendor_name as string | null) ?? 'Proveedor', proveedorRFC: toolInput.vendor_rfc as string | undefined, proveedorEmail: toolInput.vendor_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario, unidad: i.unidad })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? (ordenCfg.incluir_iva as boolean | undefined) ?? false, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (ordenCfg.condiciones_pago as string | undefined) ?? null, terminosEntrega: (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, notas: content || null } });
+      // ── User template path (docxtemplater + Drive conversion) ──────────────
+      const cfgForType = templateType === 'factura' ? featCfg : templateType === 'orden_compra' ? ordenCfg : null;
+      const userTemplatePath = cfgForType?.template_path as string | undefined;
+      const useUserTemplate = !!userTemplatePath && userTemplatePath.toLowerCase().endsWith('.docx');
+
+      let buf: Buffer;
+
+      if (useUserTemplate && (templateType === 'factura' || templateType === 'orden_compra')) {
+        const { data: tplBlob, error: tplErr } = await supabase.storage.from('agent-documents').download(userTemplatePath!);
+        if (tplErr || !tplBlob) return { ok: false, error: `No pude leer tu plantilla en Portal → Plantillas. Verifica que sigue subida.` };
+        const tplBuffer = Buffer.from(await tplBlob.arrayBuffer());
+
+        // Build data payload matching src/lib/documents/template-spec.ts
+        const items = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number; unidad?: string }> | undefined) ?? [];
+        const itemRows = items.map(i => ({
+          descripcion:     i.descripcion,
+          cantidad:        String(i.cantidad),
+          unidad:          i.unidad ?? '',
+          precio_unitario: mxn(i.precio_unitario),
+          importe:         mxn(i.cantidad * i.precio_unitario),
+        }));
+        const subtotalNum = items.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0);
+        const incluirIVA  = templateType === 'factura'
+          ? (toolInput.include_iva as boolean | undefined) ?? true
+          : (toolInput.include_iva as boolean | undefined) ?? (ordenCfg.incluir_iva as boolean | undefined) ?? false;
+        const ivaNum   = incluirIVA ? subtotalNum * 0.16 : 0;
+        const totalNum = subtotalNum + ivaNum;
+
+        const commonData: Record<string, unknown> = {
+          folio:             (templateType === 'factura' ? facturaFolioNum : toolInput.folio_num as string | undefined) ?? '',
+          fecha:             fechaHoy,
+          items:             itemRows,
+          subtotal:          mxn(subtotalNum),
+          iva:               mxn(ivaNum),
+          total:             mxn(totalNum),
+          condiciones_pago:  (toolInput.payment_terms as string | undefined) ?? (cfgForType!.condiciones_pago as string | undefined) ?? '',
+          notas:             content || '',
+          emisor_nombre:     businessName,
+          emisor_rfc:        (cfgForType!.rfc as string | undefined) ?? '',
+          emisor_direccion:  (cfgForType!.direccion as string | undefined) ?? '',
+          emisor_telefono:   (agent.transfer_number as string | undefined) ?? '',
+          emisor_email:      portalEmail,
+        };
+
+        if (templateType === 'factura') {
+          commonData.cliente_nombre = (toolInput.client_name as string | null) ?? 'Cliente';
+          commonData.cliente_rfc    = (toolInput.client_rfc  as string | undefined) ?? '';
+          commonData.cliente_email  = (toolInput.client_email as string | undefined) ?? '';
+        } else {
+          commonData.proveedor_nombre = (toolInput.vendor_name  as string | null) ?? 'Proveedor';
+          commonData.proveedor_rfc    = (toolInput.vendor_rfc   as string | undefined) ?? '';
+          commonData.proveedor_email  = (toolInput.vendor_email as string | undefined) ?? '';
+          commonData.terminos_entrega = (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? '';
+        }
+
+        try {
+          const filled = fillDocxTemplate(tplBuffer, commonData);
+          buf = await convertDocxToPdf(filled, agentId, supabase);
+        } catch (err) {
+          return { ok: false, error: `No pude generar el documento con tu plantilla: ${err instanceof Error ? err.message : String(err)}` };
+        }
       } else {
-        pdfEl = createElement(GenericDocPDF, { brand, title, content });
-      }
+        let pdfEl: React.ReactElement;
 
-      const buf = await renderToBuffer(pdfEl as any);
+        if (templateType === 'proposal') {
+          pdfEl = createElement(ProposalPDF, { brand, title, content, clientName: toolInput.client_name as string | undefined, clientEmail: toolInput.client_email as string | undefined, totalPrice: toolInput.total_price as string | undefined, validityDays: toolInput.validity_days as number | undefined });
+        } else if (templateType === 'letter') {
+          pdfEl = createElement(LetterPDF, { brand, content, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
+        } else if (templateType === 'factura') {
+          const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number }> | undefined) ?? [];
+          pdfEl = createElement(FacturaPdf, { brand, data: { clienteNombre: (toolInput.client_name as string | null) ?? 'Cliente', clienteRFC: toolInput.client_rfc as string | undefined, clienteEmail: toolInput.client_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? true, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (featCfg.condiciones_pago as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, folioNum: facturaFolioNum, notas: content || null } });
+        } else if (templateType === 'orden_compra') {
+          const ri = (toolInput.items as Array<{ descripcion: string; cantidad: number; precio_unitario: number; unidad?: string }> | undefined) ?? [];
+          pdfEl = createElement(OrdenCompraPdf, { brand, data: { proveedorNombre: (toolInput.vendor_name as string | null) ?? 'Proveedor', proveedorRFC: toolInput.vendor_rfc as string | undefined, proveedorEmail: toolInput.vendor_email as string | undefined, items: ri.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precio_unitario, unidad: i.unidad })), incluirIVA: (toolInput.include_iva as boolean | undefined) ?? (ordenCfg.incluir_iva as boolean | undefined) ?? false, condicionesPago: (toolInput.payment_terms as string | undefined) ?? (ordenCfg.condiciones_pago as string | undefined) ?? null, terminosEntrega: (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? null, emisorRFC: featCfg.rfc as string | undefined, emisorDireccion: featCfg.direccion as string | undefined, notas: content || null } });
+        } else {
+          pdfEl = createElement(GenericDocPDF, { brand, title, content });
+        }
+
+        buf = await renderToBuffer(pdfEl as any);
+      }
       const { error: upErr } = await supabase.storage.from('agent-documents').upload(path, buf, { contentType: 'application/pdf', upsert: true });
       if (upErr) return { ok: false, error: `Error al subir: ${upErr.message}` };
       const { data: signed } = await supabase.storage.from('agent-documents').createSignedUrl(path, 3600);
@@ -430,6 +497,37 @@ export async function executeAgentTool(
     if (notes !== undefined) updates.notes = notes;
     const { error } = await supabase.from('civic_reports').update(updates).eq('agent_id', agentId).eq('folio', folio.toUpperCase());
     return error ? { ok: false, error: 'No se pudo actualizar.' } : { ok: true, message: `Reporte ${folio} actualizado.` };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // extraer_tono_de_marca — brand voice guide extraction desde muestras
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'extraer_tono_de_marca') {
+    const { extractBrandVoice } = await import('@/lib/brand/voice-guide');
+    const raw = (toolInput.muestras as unknown) ?? (toolInput.samples as unknown) ?? [];
+    const samples = Array.isArray(raw) ? (raw as unknown[]).map(s => String(s)) : [];
+    const result = await extractBrandVoice({ portalEmail, samples, supabase });
+    if (!result.ok) return { ok: false, error: result.error, message: result.error };
+    return {
+      ok: true,
+      guide: result.guide,
+      message: `Guía de tono guardada. Los empleados hablarán con este estilo desde ahora.\n\n${result.guide?.slice(0, 800) ?? ''}${(result.guide?.length ?? 0) > 800 ? '\n…' : ''}`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // extraer_voz_del_cliente — VoC extraction desde llamadas/correos/tickets
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'extraer_voz_del_cliente') {
+    const { extractVoiceOfCustomer, formatVoCForAgent } = await import('@/lib/voc/extract');
+    const source     = (toolInput.fuente        as 'calls'|'emails'|'tickets'|'all' | undefined) ?? 'all';
+    const days       = Math.min(Math.max(Number(toolInput.dias) || 30, 7), 180);
+    const minSamples = Math.min(Math.max(Number(toolInput.min_muestras) || 20, 5), 100);
+    const result = await extractVoiceOfCustomer({
+      portalEmail, source, days, minSamples, supabase,
+      requestedBy: agentId || null,
+    });
+    return { ...result, message: formatVoCForAgent(result) };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
