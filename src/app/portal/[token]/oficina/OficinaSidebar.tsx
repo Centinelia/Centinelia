@@ -8,7 +8,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
   ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
-  Inbox, FileSignature,
+  Inbox, FileSignature, Receipt,
 } from 'lucide-react';
 import { uColor } from '@/lib/portal/utils';
 
@@ -49,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'OPERACIÓN',
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'           },
+      { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas por emitir', icon: Receipt,        badgeKey: 'facturas',       opsHint: '',                 pulseId: 'of-facturas'             },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '',               opsHint: '',                 pulseId: 'of-contratos'            },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'           },
       { href: '/tareas-programadas',   moduleId: 'of_tareas_programadas',   label: 'Tareas programadas',  icon: CalendarClock,  badgeKey: '',               opsHint: '',                 pulseId: 'of-tareas-programadas'   },

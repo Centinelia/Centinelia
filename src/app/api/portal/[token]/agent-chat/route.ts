@@ -168,6 +168,55 @@ const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   },
 };
 
+const SOLICITAR_FACTURA_TOOL: Anthropic.Tool = {
+  name: 'solicitar_factura',
+  description: 'Regístra una solicitud de factura CFDI cuando el cliente pide su comprobante fiscal. Recolecta primero TODOS los datos por voz/chat, confirma con el cliente, y luego invoca esta herramienta. El equipo de facturación humano emitirá el CFDI en el sistema fiscal del negocio (Solución Factible, CONTPAQ, Aspel, etc.) — NO lo timbramos aquí. NO uses create_document con template_type=factura para esto: eso genera un PDF sin validez fiscal.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      cliente_nombre:    { type: 'string', description: 'Razón social o nombre completo tal como aparece en la constancia de situación fiscal.' },
+      cliente_rfc:       { type: 'string', description: 'RFC del receptor. Formato: 12 chars persona moral (ej. ABC010101ABC) o 13 chars persona física.' },
+      cliente_email:     { type: 'string', description: 'Correo donde el cliente quiere recibir el CFDI. CRÍTICO: confirma con el cliente antes de guardar.' },
+      cliente_telefono:  { type: 'string', description: 'Teléfono del cliente para seguimiento (opcional).' },
+      cliente_direccion: { type: 'string', description: 'Domicilio fiscal (opcional, algunos PACs lo piden).' },
+      uso_cfdi:          { type: 'string', description: 'Uso CFDI del receptor. Ejemplos: G03 Gastos en general, G01 Adquisición de mercancías, D01 Honorarios médicos, P01 Por definir, S01 Sin efectos fiscales. PREGUNTA al cliente cuál usar — no adivines.' },
+      forma_pago:        { type: 'string', description: 'Forma de pago SAT. Códigos comunes: 01 Efectivo, 02 Cheque, 03 Transferencia, 04 Tarjeta crédito, 28 Tarjeta débito, 99 Por definir. PREGUNTA al cliente cómo pagó.' },
+      metodo_pago:       { type: 'string', enum: ['PUE', 'PPD'], description: 'PUE = pago en una sola exhibición (contado). PPD = pago en parcialidades o diferido (crédito). PREGUNTA al cliente cuál aplica.' },
+      condiciones_pago:  { type: 'string', description: 'Condiciones textuales opcionales. Ej: "Crédito 30 días".' },
+      items: {
+        type: 'array',
+        description: 'Conceptos a facturar. Cada uno con descripcion, cantidad y precio_unitario en MXN (sin IVA).',
+        items: {
+          type: 'object',
+          properties: {
+            descripcion:     { type: 'string' },
+            cantidad:        { type: 'number' },
+            precio_unitario: { type: 'number' },
+            unidad:          { type: 'string', description: 'Unidad de medida (pieza, servicio, hora). Opcional.' },
+          },
+          required: ['descripcion', 'cantidad', 'precio_unitario'],
+        },
+      },
+      incluir_iva: { type: 'boolean', description: 'Incluir IVA 16%. Default true.' },
+      notes:       { type: 'string', description: 'Notas internas para el equipo de facturación (contexto de la venta, etc.). No aparecen en el CFDI.' },
+    },
+    required: ['cliente_nombre', 'cliente_rfc', 'cliente_email', 'uso_cfdi', 'forma_pago', 'metodo_pago', 'items'],
+  },
+};
+
+const CONSULTAR_FACTURA_TOOL: Anthropic.Tool = {
+  name: 'consultar_factura',
+  description: 'Consulta el estado de una solicitud de factura. Úsala cuando un cliente pregunta "¿ya me emitieron mi factura?" o cuando quieres verificar si una solicitud está pendiente / emitida. Devuelve las últimas solicitudes que coincidan con el RFC o nombre del cliente.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      cliente_rfc:    { type: 'string', description: 'RFC exacto del cliente (recomendado).' },
+      cliente_nombre: { type: 'string', description: 'Nombre parcial del cliente si no tienes RFC.' },
+      request_id:     { type: 'string', description: 'ID exacto de la solicitud si lo tienes.' },
+    },
+  },
+};
+
 const TRIGGER_CALL_TOOL: Anthropic.Tool = {
   name: 'trigger_outbound_call',
   description: 'Realiza una llamada telefónica saliente a un número específico usando el agente de voz. Úsala cuando el dueño pida llamar a alguien.',
@@ -786,6 +835,8 @@ const ALL_TOOLS = [
   CREATE_CONTRACT_DRAFT_TOOL,
   SEND_EMAIL_TOOL,
   CREATE_DOCUMENT_TOOL,
+  SOLICITAR_FACTURA_TOOL,
+  CONSULTAR_FACTURA_TOOL,
   CREATE_FILE_TOOL,
   SAVE_TO_DRIVE_TOOL,
   ORGANIZE_FILES_TOOL,
@@ -875,6 +926,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   create_contract_draft:     CREATE_CONTRACT_DRAFT_TOOL,
   send_email:                SEND_EMAIL_TOOL,
   create_document:           CREATE_DOCUMENT_TOOL,
+  solicitar_factura:         SOLICITAR_FACTURA_TOOL,
+  consultar_factura:         CONSULTAR_FACTURA_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,
   organize_files:            ORGANIZE_FILES_TOOL,

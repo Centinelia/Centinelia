@@ -33,6 +33,7 @@ import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
 import ContractSection              from '../ContractSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
+import InvoicingEmailEditor         from '../InvoicingEmailEditor';
 import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
@@ -516,6 +517,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />
                   </div>
                   <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
+                </div>
+
+                <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Responsable de facturación</h3>
+                    <InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />
+                  </div>
+                  <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
                 </div>
               </div>
             </div>
