@@ -55,10 +55,18 @@ CREATE INDEX IF NOT EXISTS idx_annual_contracts_end_date
 
 ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS billing_model        text NOT NULL DEFAULT 'stripe',
-  ADD COLUMN IF NOT EXISTS active_contract_id   uuid REFERENCES annual_contracts(id),
+  ADD COLUMN IF NOT EXISTS active_contract_id   uuid REFERENCES annual_contracts(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS monthly_minutes_used int  NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS monthly_ops_used     int  NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS pool_reset_date      date;
+
+-- Si el schema ya se creó sin ON DELETE SET NULL, reemplaza el constraint.
+-- Idempotente: si ya está bien, la operación es un no-op efectivo.
+ALTER TABLE organizations
+  DROP CONSTRAINT IF EXISTS organizations_active_contract_id_fkey;
+ALTER TABLE organizations
+  ADD CONSTRAINT organizations_active_contract_id_fkey
+  FOREIGN KEY (active_contract_id) REFERENCES annual_contracts(id) ON DELETE SET NULL;
 
 ALTER TABLE organizations
   DROP CONSTRAINT IF EXISTS organizations_billing_model_check;
