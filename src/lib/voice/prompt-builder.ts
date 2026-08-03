@@ -111,22 +111,28 @@ TONO Y ESTILO DE VOZ:
     if (section) blocks.push(section);
   }
 
-  // ── Brand voice guide (per-org, extraída de muestras del negocio) ────────
-  // Solo aplica a empleados que hablan con clientes externos; los coordinadores
-  // internos usan tono operativo directo.
-  if (!isCoordinator && orgId && supabase) {
-    const { data: orgVoice } = await supabase
+  // ── Per-org fields (brand voice + owner passphrase) ──────────────────────
+  // Ambos se movieron de voice_agents a organizations en e372013.
+  // Los agrupamos en un solo SELECT para no gastar dos roundtrips.
+  // NOTA: el parámetro se llama orgId por historia, pero es el portal_email
+  // — organizations no tiene columna id, su PK es portal_email.
+  let orgBrandVoice:  string | null = null;
+  let orgPassphrase:  string | null = null;
+  if (orgId && supabase) {
+    const { data: orgRow } = await supabase
       .from('organizations')
-      .select('brand_voice_guide')
-      .eq('id', orgId)
+      .select('brand_voice_guide, owner_passphrase')
+      .eq('portal_email', orgId)
       .maybeSingle();
-    const guide = (orgVoice?.brand_voice_guide as string | null)?.trim();
-    if (guide) {
-      blocks.push(`TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:
-${guide}
+    orgBrandVoice = (orgRow?.brand_voice_guide as string | null) ?? null;
+    orgPassphrase = (orgRow?.owner_passphrase as string | null) ?? null;
+  }
+
+  if (!isCoordinator && orgBrandVoice?.trim()) {
+    blocks.push(`TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:
+${orgBrandVoice.trim()}
 
 Aplica este tono en cada frase, sin mencionarlo. Si el bloque de estilo de voz genérico y este entran en conflicto, esta guía gana.`);
-    }
   }
 
   // ── Owner profile (User File) ─────────────────────────────────────────────
@@ -190,9 +196,11 @@ Repórtale el resultado al responsable por los canales configurados.`);
   }
 
   // ── Owner/team passphrase — only for voice agents, not coordinators ──────
-  if (!isCoordinator && agent.owner_passphrase?.trim()) {
+  // Vive en organizations (movida en e372013). orgPassphrase se cargó arriba
+  // junto con brand_voice_guide en el mismo SELECT.
+  if (!isCoordinator && orgPassphrase?.trim()) {
     blocks.push(`VERIFICACIÓN INTERNA — EQUIPO Y DUEÑO:
-Si en cualquier momento el llamante dice exactamente "${agent.owner_passphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
+Si en cualquier momento el llamante dice exactamente "${orgPassphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
 Una vez verificado:
 - Puedes responder preguntas operativas internas: estatus de clientes, pendientes, resúmenes e información del negocio.
 - Trata al llamante como equipo interno, no como cliente externo.
