@@ -830,7 +830,10 @@ export async function executeAgentTool(
     const qb = await getQBClient(portalEmail, supabase);
     if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
     try {
-      const { cliente_nombre, descripcion, monto, fecha_vencimiento } = toolInput as { cliente_nombre: string; descripcion: string; monto: number; fecha_vencimiento?: string };
+      const { cliente_nombre, descripcion, monto, fecha_vencimiento } = toolInput as { cliente_nombre?: string; descripcion?: string; monto?: number; fecha_vencimiento?: string };
+      if (!cliente_nombre?.trim()) return { ok: false, error: 'cliente_nombre es requerido para crear factura.' };
+      if (!descripcion?.trim())    return { ok: false, error: 'descripcion es requerida.' };
+      if (typeof monto !== 'number' || monto <= 0) return { ok: false, error: 'monto (número > 0) es requerido.' };
       const safe     = cliente_nombre.replace(/'/g, '');
       const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
       const customer = custData?.QueryResponse?.Customer?.[0];
@@ -853,7 +856,9 @@ export async function executeAgentTool(
     const qb = await getQBClient(portalEmail, supabase);
     if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
     try {
-      const { cliente_nombre, monto, factura_numero } = toolInput as { cliente_nombre: string; monto: number; factura_numero?: string };
+      const { cliente_nombre, monto, factura_numero } = toolInput as { cliente_nombre?: string; monto?: number; factura_numero?: string };
+      if (!cliente_nombre?.trim()) return { ok: false, error: 'cliente_nombre es requerido para registrar pago.' };
+      if (typeof monto !== 'number' || monto <= 0) return { ok: false, error: 'monto (número > 0) es requerido.' };
       const safe     = cliente_nombre.replace(/'/g, '');
       const custData = await qb.query(`SELECT Id, DisplayName FROM Customer WHERE DisplayName LIKE '%${safe}%' MAXRESULTS 1`);
       const customer = custData?.QueryResponse?.Customer?.[0];
