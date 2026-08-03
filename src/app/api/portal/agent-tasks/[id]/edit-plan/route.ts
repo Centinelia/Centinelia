@@ -124,7 +124,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!token || !id) return invalidPage('Falta token de aprobación.');
 
   const res = await fetchTask(id, token);
-  if ('err' in res) return invalidPage(res.err);
+  if ('err' in res && res.err) return invalidPage(res.err);
+  if (!('task' in res)) return invalidPage('Estado inesperado.');
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -150,7 +151,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!token || !id) return invalidPage('Falta token de aprobación.');
 
   const res = await fetchTask(id, token);
-  if ('err' in res) return invalidPage(res.err);
+  if ('err' in res && res.err) return invalidPage(res.err);
+  if (!('task' in res)) return invalidPage('Estado inesperado.');
 
   const form = await req.formData();
   const notes = String(form.get('owner_notes') ?? '').trim().slice(0, 3000);

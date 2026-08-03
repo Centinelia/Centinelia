@@ -18,6 +18,7 @@ type SiblingAgent = {
   transfer_whatsapp: string | null;
   portal_email: string;
   portal_token: string | null;
+  features:    Record<string, unknown> | null;
 };
 
 const MAX_TOOL_ITER  = 6;       // max tool calls per attempt
@@ -285,7 +286,7 @@ export async function POST(req: NextRequest) {
   // a organizations), lo hidratamos aparte abajo.
   const { data: siblings, error: siblingsErr } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, role_knowledge_base, transfer_whatsapp, portal_email, portal_token')
+    .select('id, agent_name, role, role_knowledge_base, transfer_whatsapp, portal_email, portal_token, features')
     .eq('portal_email', caller.portal_email)
     .eq('active', true)
     .neq('id', agentId);
@@ -358,21 +359,30 @@ export async function POST(req: NextRequest) {
 
     const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
     const approveUrl = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}`;
+    const editUrl    = `${appUrl}/api/portal/agent-tasks/${pendingId}/edit-plan?token=${approvalToken}`;
     const rejectUrl  = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}&reject=1`;
 
     if (ownerEmail) {
       try {
+        const { resolveMeerkatFromAgent } = await import('@/lib/email/meerkat-identity');
+        const targetMeerkat = resolveMeerkatFromAgent({
+          agent_name:    target.agent_name,
+          business_name: caller.business_name,
+          features:      target.features as Record<string, unknown> | null,
+        });
         await sendEmail({
           to:      ownerEmail,
-          subject: `Aprueba el plan de ${target.agent_name ?? 'tu empleado'}: ${tarea.slice(0, 80)}`,
+          subject: `${target.agent_name ?? 'Tu empleado'} pide tu aprobación: ${tarea.slice(0, 60)}`,
           html:    planApprovalEmailHtml({
-            businessName: caller.business_name ?? '',
-            targetAgent:  target.agent_name ?? 'Empleado',
-            callerAgent:  caller.agent_name,
+            businessName:  caller.business_name ?? '',
+            targetAgent:   target.agent_name ?? 'Empleado',
+            targetMeerkat,
+            callerAgent:   caller.agent_name,
             plan,
             approveUrl,
+            editUrl,
             rejectUrl,
-            taskTitle:    tarea,
+            taskTitle:     tarea,
           }),
         });
       } catch (err) {

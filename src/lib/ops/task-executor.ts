@@ -280,8 +280,9 @@ export async function executeTask(params: {
     .select('plan, success_criteria, plan_approved_at')
     .eq('id', taskId)
     .maybeSingle();
-  const approvedPlan     = (taskRow?.plan as { steps?: { n?: number; description?: string }[]; summary?: string; success_metric?: string } | null) ?? null;
+  const approvedPlan     = (taskRow?.plan as { steps?: { n?: number; description?: string }[]; summary?: string; success_metric?: string; owner_notes?: string | null } | null) ?? null;
   const successCriteria  = (taskRow?.success_criteria as string | null) ?? null;
+  const ownerNotes       = approvedPlan?.owner_notes?.trim() || null;
 
   const promptLines = [
     `Eres ${targetAgent.agent_name || 'un empleado especializado'} del equipo de ${targetAgent.business_name || 'la empresa'}.`,
@@ -304,6 +305,12 @@ export async function executeTask(params: {
   if (approvedPlan?.steps?.length) {
     const stepsList = approvedPlan.steps.map(s => `- ${s.description ?? ''}`).filter(l => l !== '- ').join('\n');
     promptLines.push('', '## Plan aprobado por el dueño (síguelo)', approvedPlan.summary ?? '', stepsList);
+  }
+  // Owner notes/correcciones tienen prioridad sobre el plan — el dueño las
+  // agregó al aprobar via /edit-plan sabiendo qué cambiaba respecto al plan
+  // original. Van con emphasis fuerte y arriba del plan en render.
+  if (ownerNotes) {
+    promptLines.push('', '## ⚠️ CORRECCIONES DEL DUEÑO (obligatorias — pasan sobre el plan original)', ownerNotes);
   }
   if (successCriteria) {
     promptLines.push('', '## Criterio de éxito', `La tarea se considera completada cuando: ${successCriteria}`);
