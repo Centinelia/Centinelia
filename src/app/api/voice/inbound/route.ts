@@ -408,15 +408,19 @@ export async function POST(req: NextRequest) {
         },
       },
       analysisPlan: {
-        summaryPrompt: 'Resume esta llamada en 2-3 oraciones en texto plano, sin markdown, sin encabezados, sin negritas: qué quería el cliente y cómo terminó la llamada.',
-        successEvaluationPrompt: '¿Se resolvió la solicitud del cliente satisfactoriamente?',
+        // "Llamante" (neutro) en vez de "cliente" — el llamante puede ser dueño
+        // o miembro del equipo interno (identificado por passphrase o
+        // team_numbers), o cliente externo. "Cliente" en el resumen suena
+        // fuera de lugar cuando fue el dueño quien llamó pidiendo info interna.
+        summaryPrompt: 'Resume esta llamada en 2-3 oraciones en texto plano, sin markdown, sin encabezados, sin negritas: qué quería el llamante y cómo terminó la llamada. Si el llamante se identificó como dueño o miembro del equipo (por passphrase o número reconocido), dilo explícitamente y no lo llames "cliente".',
+        successEvaluationPrompt: '¿Se resolvió la solicitud del llamante satisfactoriamente?',
         successEvaluationRubric: 'DescriptiveScale',
-        structuredDataPrompt: 'Extrae la información recopilada en esta llamada. Solo incluye campos que el cliente mencionó explícitamente.',
+        structuredDataPrompt: 'Extrae la información recopilada en esta llamada. Solo incluye campos que el llamante mencionó explícitamente.',
         structuredDataSchema: {
           type: 'object',
           properties: {
-            nombre:        { type: 'string', description: 'Nombre completo del cliente' },
-            negocio:       { type: 'string', description: 'Nombre del negocio del cliente' },
+            nombre:        { type: 'string', description: 'Nombre completo del llamante' },
+            negocio:       { type: 'string', description: 'Nombre del negocio del llamante (si aplica)' },
             giro:          { type: 'string', description: 'Giro o industria del negocio' },
             servicio:      { type: 'string', description: 'Servicio o producto que necesita' },
             presupuesto:   { type: 'string', description: 'Presupuesto mencionado' },
