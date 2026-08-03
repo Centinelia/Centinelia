@@ -119,6 +119,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Memory graph recall — facts previamente extraídos de llamadas anteriores.
+  // Se acumula tras callerContext (no lo reemplaza). Nunca bloquea si falla.
+  let memoryContext = '';
+  if (phoneNumber) {
+    const { recallForCaller } = await import('@/lib/memory/recall');
+    const recall = await recallForCaller({
+      agentId:      typedAgent.id,
+      callerNumber: phoneNumber,
+      limit:        10,
+    });
+    if (recall.block) {
+      memoryContext = `\n\n${recall.block}`;
+      if (!callerName && recall.callerName) callerName = recall.callerName;
+    }
+  }
+
   // Team member identification
   const normCaller   = phoneNumber.replace(/\D/g, '').slice(-10);
   const teamNumbers  = typedAgent.team_numbers ?? [];
@@ -318,7 +334,7 @@ export async function POST(req: NextRequest) {
     qbConnected = !!qbRow?.realm_id;
   }
 
-  const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + surveyPrompt +
+  const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + memoryContext + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
   const tools = buildTools(typedAgent, qbConnected);
 
@@ -773,14 +789,14 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     type: 'function',
     function: {
       name: 'crear_documento',
-      description: 'Genera un documento PDF con el logo y colores del negocio y lo envía al correo del dueño. Usa template_type="proposal" para propuestas (incluye cliente y precio), "letter" para cartas formales, "factura" para facturas, "orden_compra" para órdenes de compra, "general" para cualquier otro documento.',
+      description: 'Genera un documento PDF con el logo y colores del negocio y lo envía al correo del dueño. Usa template_type="cotizacion" para cotizaciones al cliente (pre-venta), "nota_venta" para recibo simple (NO es factura fiscal), "factura" para facturas fiscales, "orden_compra" para órdenes de compra a proveedores, "proposal" para propuestas largas, "letter" para cartas, "general" para cualquier otro documento.',
       parameters: {
         type: 'object',
         properties: {
           title:          { type: 'string', description: 'Título del documento' },
           content:        { type: 'string', description: 'Contenido. Usa # para secciones y ## para subsecciones.' },
           filename:       { type: 'string', description: 'Nombre del archivo sin extensión' },
-          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra'], description: 'Tipo de plantilla' },
+          template_type:  { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra', 'cotizacion', 'nota_venta'], description: 'Tipo de plantilla' },
           client_name:    { type: 'string', description: 'Nombre del cliente (proposal, factura)' },
           client_email:   { type: 'string', description: 'Correo del cliente (proposal, factura)' },
           client_rfc:     { type: 'string', description: 'RFC del receptor (factura)' },

@@ -42,6 +42,26 @@ interface OrdenConfig {
   template_validation?: TemplateValidation | null;
 }
 
+interface CotizacionConfig {
+  folio_prefix?:        string;
+  vigencia_dias?:       string;
+  condiciones_pago?:    string;
+  incluir_iva?:         boolean;
+  template_path?:       string;
+  template_name?:       string;
+  template_validation?: TemplateValidation | null;
+}
+
+interface NotaVentaConfig {
+  folio_prefix?:        string;
+  forma_pago?:          string;
+  incluir_iva?:         boolean;
+  legal_notice?:        string;
+  template_path?:       string;
+  template_name?:       string;
+  template_validation?: TemplateValidation | null;
+}
+
 interface TemplateStats {
   count: number;
   lastUsed: string | null;
@@ -176,7 +196,7 @@ function PlaceholderChip({ text, color }: { text: string; color: string }) {
   );
 }
 
-function PlaceholderGuide({ docType, color }: { docType: 'factura' | 'orden'; color: string }) {
+function PlaceholderGuide({ docType, color }: { docType: 'factura' | 'orden' | 'cotizacion' | 'nota_venta'; color: string }) {
   const [open, setOpen] = useState(false);
   const spec = TEMPLATE_SPECS[docType];
   if (!spec) return null;
@@ -263,7 +283,7 @@ function TemplateValidationBadge({ validation, color }: { validation: TemplateVa
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
 function UploadZone({ token, docType, templateName, templatePath, validation, onUploaded, onDeleted, onExtracted, color }: {
-  token: string; docType: 'factura' | 'orden' | 'contrato'; templateName?: string;
+  token: string; docType: 'factura' | 'orden' | 'contrato' | 'cotizacion' | 'nota_venta'; templateName?: string;
   templatePath?: string;
   validation?: TemplateValidation | null;
   onUploaded: (data: { name: string; path?: string; validation?: TemplateValidation | null }) => void;
@@ -347,7 +367,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
             </button>
           </div>
         </div>
-        {validation && (docType === 'factura' || docType === 'orden') && (
+        {validation && (docType === 'factura' || docType === 'orden' || docType === 'cotizacion' || docType === 'nota_venta') && (
           <TemplateValidationBadge validation={validation} color={color} />
         )}
       </div>
@@ -582,6 +602,141 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
   );
 }
 
+// ─── Cotización config ────────────────────────────────────────────────────────
+
+function CotizacionConfigSection({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg: CotizacionConfig) => void }) {
+  const [cfg, setCfg]         = useState<CotizacionConfig>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/portal/${token}/cotizacion-config`).then(r => r.json()).then(d => {
+      setCfg(d.config ?? {});
+      onStatsLoad?.(d.config ?? {});
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [token, onStatsLoad]);
+
+  const upd = (key: keyof CotizacionConfig) => (v: string | boolean) =>
+    setCfg(prev => ({ ...prev, [key]: v }));
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fetch(`/api/portal/${token}/cotizacion-config`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  }
+
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+
+  return (
+    <>
+      <PlaceholderGuide docType="cotizacion" color="#10b981" />
+      <UploadZone
+        token={token} docType="cotizacion"
+        templateName={cfg.template_name}
+        templatePath={cfg.template_path}
+        validation={cfg.template_validation}
+        color="#10b981"
+        onUploaded={data => setCfg(prev => ({ ...prev, template_name: data.name, template_path: data.path, template_validation: data.validation }))}
+        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, template_validation: ___, ...r } = prev; return r; })}
+        onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
+      />
+      {autoFilled && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }}>
+          <Wand2 size={11} /> Campos detectados automaticamente del documento
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Prefijo de folio" hint="COT genera folios COT-20260803-5892."
+          value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="COT" />
+        <Field label="Vigencia (días) por defecto" hint="El cliente tiene N días para aceptar la cotización."
+          value={cfg.vigencia_dias ?? ''} onChange={upd('vigencia_dias') as (v: string) => void} placeholder="15" />
+      </div>
+      <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
+      <Toggle checked={cfg.incluir_iva !== false} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
+        label="Incluir IVA 16%" hint="Se calcula automaticamente sobre el subtotal" />
+      <SaveRow saving={saving} saved={saved} onClick={save} />
+    </>
+  );
+}
+
+// ─── Nota de venta config ─────────────────────────────────────────────────────
+
+function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg: NotaVentaConfig) => void }) {
+  const [cfg, setCfg]         = useState<NotaVentaConfig>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/portal/${token}/nota-venta-config`).then(r => r.json()).then(d => {
+      setCfg(d.config ?? {});
+      onStatsLoad?.(d.config ?? {});
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [token, onStatsLoad]);
+
+  const upd = (key: keyof NotaVentaConfig) => (v: string | boolean) =>
+    setCfg(prev => ({ ...prev, [key]: v }));
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fetch(`/api/portal/${token}/nota-venta-config`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } finally { setSaving(false); }
+  }
+
+  if (loading) return <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>;
+
+  return (
+    <>
+      <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: 'rgba(245,158,11,0.06)', color: '#92400e', border: '1px solid rgba(245,158,11,0.2)' }}>
+        <span>La nota de venta <strong>no sustituye una factura fiscal (CFDI)</strong>. Si tu cliente necesita comprobante fiscal, deberá pedir su factura por los canales normales de tu negocio.</span>
+      </div>
+      <PlaceholderGuide docType="nota_venta" color="#ec4899" />
+      <UploadZone
+        token={token} docType="nota_venta"
+        templateName={cfg.template_name}
+        templatePath={cfg.template_path}
+        validation={cfg.template_validation}
+        color="#ec4899"
+        onUploaded={data => setCfg(prev => ({ ...prev, template_name: data.name, template_path: data.path, template_validation: data.validation }))}
+        onDeleted={() => setCfg(prev => { const { template_name: _, template_path: __, template_validation: ___, ...r } = prev; return r; })}
+        onExtracted={fields => { setCfg(prev => ({ ...prev, ...fields })); setAutoFilled(true); setTimeout(() => setAutoFilled(false), 5000); }}
+      />
+      {autoFilled && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'rgba(236,72,153,0.08)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.15)' }}>
+          <Wand2 size={11} /> Campos detectados automaticamente del documento
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Prefijo de folio" hint="NV genera folios NV-20260803-1234."
+          value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="NV" />
+        <Field label="Forma de pago sugerida" hint="Se mostrará por default en cada nota."
+          value={cfg.forma_pago ?? ''} onChange={upd('forma_pago') as (v: string) => void} placeholder="Efectivo" />
+        <Field label="Aviso legal (opcional)" as="textarea"
+          value={cfg.legal_notice ?? ''} onChange={upd('legal_notice') as (v: string) => void}
+          placeholder="Este documento no es una factura fiscal. Solicite su CFDI a facturacion@..." />
+      </div>
+      <Toggle checked={cfg.incluir_iva === true} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
+        label="Mostrar desglose de IVA" hint="Activa solo si tu negocio maneja IVA en las ventas al público." />
+      <SaveRow saving={saving} saved={saved} onClick={save} />
+    </>
+  );
+}
+
 function SaveRow({ saving, saved, onClick }: { saving: boolean; saved: boolean; onClick: () => void }) {
   return (
     <div className="flex items-center gap-3">
@@ -793,9 +948,13 @@ export default function PlantillasPage() {
 
   const [facturaStats,    setFacturaStats]    = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [ordenStats,      setOrdenStats]      = useState<TemplateStats>({ count: 0, lastUsed: null });
+  const [cotizacionStats, setCotizacionStats] = useState<TemplateStats>({ count: 0, lastUsed: null });
+  const [notaVentaStats,  setNotaVentaStats]  = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [contratoStats,   setContratoStats]   = useState<TemplateStats>({ count: 0, lastUsed: null });
   const [facturaCfg,      setFacturaCfg]      = useState<FacturaConfig>({});
   const [ordenCfg,        setOrdenCfg]        = useState<OrdenConfig>({});
+  const [cotizacionCfg,   setCotizacionCfg]   = useState<CotizacionConfig>({});
+  const [notaVentaCfg,    setNotaVentaCfg]    = useState<NotaVentaConfig>({});
   const [contratoConfigured, setContratoConfigured] = useState(false);
 
   useEffect(() => {
@@ -804,16 +963,22 @@ export default function PlantillasPage() {
       fetch(`/api/portal/${token}/contract-drafts`).then(r => r.json()),
       fetch(`/api/portal/${token}/factura-config`).then(r => r.json()),
       fetch(`/api/portal/${token}/orden-config`).then(r => r.json()),
+      fetch(`/api/portal/${token}/cotizacion-config`).then(r => r.json()).catch(() => ({ config: {} })),
+      fetch(`/api/portal/${token}/nota-venta-config`).then(r => r.json()).catch(() => ({ config: {} })),
       fetch(`/api/portal/${token}/contract-template`).then(r => r.json()),
-    ]).then(([{ documents = [] }, { drafts = [] }, { config: fCfg }, { config: oCfg }, { isConfigured: contrIsConfigured }]) => {
+    ]).then(([{ documents = [] }, { drafts = [] }, { config: fCfg }, { config: oCfg }, { config: cCfg }, { config: nCfg }, { isConfigured: contrIsConfigured }]) => {
       const byType = (type: string) => (documents as Array<{ template_type: string; created_at: string }>)
         .filter(d => d.template_type === type)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
       const factDocs = byType('factura');
       const ordDocs  = byType('orden_compra');
+      const cotDocs  = byType('cotizacion');
+      const nvDocs   = byType('nota_venta');
       setFacturaStats({ count: factDocs.length, lastUsed: factDocs[0]?.created_at ?? null });
       setOrdenStats({ count: ordDocs.length,    lastUsed: ordDocs[0]?.created_at  ?? null });
+      setCotizacionStats({ count: cotDocs.length, lastUsed: cotDocs[0]?.created_at ?? null });
+      setNotaVentaStats({ count: nvDocs.length,  lastUsed: nvDocs[0]?.created_at  ?? null });
 
       const sorted = (drafts as Array<{ created_at: string }>)
         .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -821,6 +986,8 @@ export default function PlantillasPage() {
 
       if (fCfg) setFacturaCfg(fCfg);
       if (oCfg) setOrdenCfg(oCfg);
+      if (cCfg) setCotizacionCfg(cCfg);
+      if (nCfg) setNotaVentaCfg(nCfg);
       setContratoConfigured(contrIsConfigured === true);
     }).catch(() => {});
   }, [token]);
@@ -876,6 +1043,24 @@ export default function PlantillasPage() {
         color="#3b82f6" stats={ordenStats} configured={isConfigured(ordenCfg)} token={token}
       >
         <OrdenConfig token={token} onStatsLoad={setOrdenCfg} />
+      </TemplateCard>
+
+      {/* Cotización */}
+      <TemplateCard
+        id="cotizacion" icon={FileText} title="Cotización"
+        subtitle="Propuesta de precio al cliente antes de vender (no es factura fiscal)"
+        color="#10b981" stats={cotizacionStats} configured={isConfigured(cotizacionCfg as unknown as FacturaConfig)} token={token}
+      >
+        <CotizacionConfigSection token={token} onStatsLoad={setCotizacionCfg} />
+      </TemplateCard>
+
+      {/* Nota de venta */}
+      <TemplateCard
+        id="nota-venta" icon={FileText} title="Nota de venta"
+        subtitle="Comprobante simple post-venta (NO sustituye una factura fiscal)"
+        color="#ec4899" stats={notaVentaStats} configured={isConfigured(notaVentaCfg as unknown as FacturaConfig)} token={token}
+      >
+        <NotaVentaConfigSection token={token} onStatsLoad={setNotaVentaCfg} />
       </TemplateCard>
 
       {/* Contrato */}

@@ -44,6 +44,21 @@ Ejemplo: {"rfc":"ABC123456789","direccion":"Av. Ejemplo 123, Monterrey, NL","con
 Responde SOLO con JSON valido, sin texto adicional. Omite campos que no encuentres.
 Ejemplo: {"condiciones_pago":"30 dias netos","terminos_entrega":"5 dias habiles","folio_prefix":"OC"}`,
 
+  cotizacion: `Extrae del documento los siguientes datos:
+- folio_prefix: prefijo del numero de cotizacion (ej. "COT", "Q", "PROP")
+- vigencia_dias: dias de vigencia por defecto (ej. "15", "30")
+- condiciones_pago: condiciones o esquema de pago sugerido
+
+Responde SOLO con JSON valido, sin texto adicional. Omite campos que no encuentres.
+Ejemplo: {"folio_prefix":"COT","vigencia_dias":"15","condiciones_pago":"50% anticipo"}`,
+
+  nota_venta: `Extrae del documento los siguientes datos:
+- folio_prefix: prefijo del numero de nota de venta (ej. "NV", "RC", "VTA")
+- forma_pago: forma de pago comun (ej. "Efectivo", "Transferencia", "Tarjeta")
+
+Responde SOLO con JSON valido, sin texto adicional. Omite campos que no encuentres.
+Ejemplo: {"folio_prefix":"NV","forma_pago":"Efectivo"}`,
+
   contrato: `Extrae del documento:
 - condiciones_pago: condiciones o terminos de pago si aparecen
 

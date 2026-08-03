@@ -134,7 +134,7 @@ const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
       title:         { type: 'string', description: 'Título del documento (aparece en el encabezado)' },
       content:       { type: 'string', description: 'Contenido completo. Usa # para secciones y ## para subsecciones. Para factura/orden_compra: notas adicionales (puede quedar vacío).' },
       filename:      { type: 'string', description: 'Nombre del archivo sin extensión. Usa guiones, sin espacios.' },
-      template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra'], description: '"proposal" para propuestas. "letter" para cartas formales. "factura" para facturas (emisor → receptor, IVA). "orden_compra" para órdenes de compra (comprador → proveedor). "general" para todo lo demás.' },
+      template_type: { type: 'string', enum: ['general', 'proposal', 'letter', 'factura', 'orden_compra', 'cotizacion', 'nota_venta'], description: '"cotizacion" para cotizaciones al cliente (pre-venta). "nota_venta" para recibo simple (post-venta, NO es factura fiscal). "factura" para facturas fiscales (con IVA). "orden_compra" para órdenes de compra a proveedores. "proposal" para propuestas comerciales largas. "letter" para cartas formales. "general" para todo lo demás.' },
       client_name:   { type: 'string', description: 'Nombre del cliente o receptor (para proposal y factura)' },
       client_email:  { type: 'string', description: 'Correo del cliente (para proposal y factura)' },
       client_rfc:    { type: 'string', description: 'RFC del receptor (solo para factura)' },
