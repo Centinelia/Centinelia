@@ -5,6 +5,7 @@
     { "path": "/api/cron/contracts-check",             "schedule": "0 8 * * *"    },
     { "path": "/api/cron/cleanup-team-history",        "schedule": "0 3 * * 0"    },
     { "path": "/api/cron/nox-monitor",                 "schedule": "0 9 * * *"    },
+    { "path": "/api/cron/nox-monthly-report",          "schedule": "0 10 1 * *"   },
     { "path": "/api/cron/email-sync",                  "schedule": "*/15 * * * *" },
     { "path": "/api/cron/appointment-reminders",       "schedule": "0 15 * * *"   },
     { "path": "/api/cron/weekly-summary",              "schedule": "0 14 * * 1"   },

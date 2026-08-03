@@ -11,7 +11,6 @@ interface NoxAgent {
   agent_name:         string | null;
   transfer_whatsapp:  string | null;
   client_email:       string | null;
-  knowledge_base:     string | null;
   portal_email:       string;
 }
 
@@ -27,9 +26,11 @@ interface SiblingInfo {
 
 export async function findNoxAgent(portalEmail: string): Promise<NoxAgent | null> {
   const supabase = createAdminClient();
+  // knowledge_base was dropped from voice_agents in e372013 (moved to organizations);
+  // requesting it here made PostgREST silently return zero rows.
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, transfer_whatsapp, client_email, knowledge_base, portal_email, features')
+    .select('id, agent_name, transfer_whatsapp, client_email, portal_email, features')
     .eq('portal_email', portalEmail)
     .eq('active', true);
 
