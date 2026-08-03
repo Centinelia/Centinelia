@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import TareasProgramadasSection from './TareasProgramadasSection';
+import PlanApprovalsSection    from './PlanApprovalsSection';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -33,6 +34,7 @@ export default async function TareasProgramadasPage({ params }: Props) {
 
   return (
     <div id="of-tareas-programadas">
+      <PlanApprovalsSection token={token} />
       <TareasProgramadasSection token={token} agents={agents} />
     </div>
   );

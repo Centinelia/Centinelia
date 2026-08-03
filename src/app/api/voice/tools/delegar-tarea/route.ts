@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import {
+  requiresPlanApproval, generateTaskPlan, generatePlanApprovalToken, orgAutoApprovesPlans,
+} from '@/lib/ops/task-plan';
+import { planApprovalEmailHtml } from '@/lib/ops/task-plan-email';
+import { sendEmail } from '@/lib/email/send';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,6 +134,19 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name:        'extraer_voz_del_cliente',
+    description: 'Analiza conversaciones reales de esta organización y extrae lenguaje del cliente, objeciones frecuentes y candidatos de titular. Útil cuando la tarea pide entender qué dicen los clientes o preparar copy con sus palabras.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fuente:       { type: 'string', enum: ['calls','emails','tickets','all'], description: 'Canal a analizar. Default "all".' },
+        dias:         { type: 'number', description: 'Días hacia atrás. Default 30.' },
+        min_muestras: { type: 'number', description: 'Mínimo de muestras. Default 20.' },
+      },
+      required: [],
+    },
+  },
+  {
     name:        'tarea_completada',
     description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado TODAS las acciones necesarias.',
     input_schema: {
@@ -149,13 +167,14 @@ async function executeToolOnAgent(
   targetAgentId: string,
 ): Promise<string> {
   const routeMap: Record<string, string> = {
-    buscar_archivo:  'buscar-archivo',
-    leer_archivo:    'leer-archivo',
-    buscar_en_web:   'buscar-en-web',
-    enviar_correo:   'enviar-correo',
-    llamar_a:        'llamar-a',
-    crear_ticket:    'crear-ticket',
-    crear_documento: 'crear-documento',
+    buscar_archivo:            'buscar-archivo',
+    leer_archivo:              'leer-archivo',
+    buscar_en_web:             'buscar-en-web',
+    enviar_correo:             'enviar-correo',
+    llamar_a:                  'llamar-a',
+    crear_ticket:              'crear-ticket',
+    crear_documento:           'crear-documento',
+    extraer_voz_del_cliente:   'extraer-voz-del-cliente',
   };
 
   const routePath = routeMap[toolName];
@@ -280,13 +299,94 @@ export async function POST(req: NextRequest) {
   const target = [...siblings]
     .sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0] as SiblingAgent;
 
-  // Hidrata knowledge_base org-level
+  // Hidrata knowledge_base org-level. client_email vive en voice_agents;
+  // usamos el portal_email como fallback confiable para el correo del dueño.
   const { data: orgRow } = await supabase
     .from('organizations')
     .select('knowledge_base')
     .eq('portal_email', caller.portal_email)
     .maybeSingle();
-  const orgKb = (orgRow?.knowledge_base as string | null) ?? null;
+  const orgKb    = (orgRow?.knowledge_base as string | null) ?? null;
+  const ownerEmail = caller.portal_email;
+
+  // ── Plan-then-approve gate ────────────────────────────────────────────────
+  // Si la tarea es grande y la org no auto-aprueba, generamos plan y esperamos
+  // aprobación humana por magic link antes de ejecutar.
+  const needsApproval = requiresPlanApproval({ tarea, success_criteria, max_iterations }) &&
+    !(await orgAutoApprovesPlans(caller.portal_email, supabase));
+
+  if (needsApproval) {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    let plan;
+    try {
+      plan = await generateTaskPlan({
+        client,
+        tarea,
+        contexto,
+        success_criteria,
+        businessName:    caller.business_name ?? 'la organización',
+        targetAgentName: target.agent_name ?? 'el especialista',
+        targetRole:      target.role,
+      });
+    } catch (err) {
+      console.error('delegar-tarea: plan generation failed', err);
+      return fail('No pude generar el plan para aprobación. Intenta de nuevo o simplifica la tarea.');
+    }
+
+    const approvalToken = generatePlanApprovalToken();
+    const { data: pendingTask } = await supabase
+      .from('agent_tasks')
+      .insert({
+        portal_email:        caller.portal_email,
+        created_by:          agentId || null,
+        assigned_to:         target.id,
+        title:               tarea.slice(0, 200),
+        description:         contexto?.trim() || null,
+        status:              'awaiting_plan_approval',
+        trigger_type:        'delegation',
+        source_context:      contexto?.trim() || null,
+        success_criteria:    success_criteria || null,
+        max_iterations:      goalIter,
+        plan,
+        plan_approval_token: approvalToken,
+      })
+      .select('id')
+      .single();
+
+    const pendingId = pendingTask?.id as string | undefined;
+    if (!pendingId) return fail('No se pudo guardar el plan.');
+
+    const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+    const approveUrl = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}`;
+    const rejectUrl  = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}&reject=1`;
+
+    if (ownerEmail) {
+      try {
+        await sendEmail({
+          to:      ownerEmail,
+          subject: `Aprueba el plan de ${target.agent_name ?? 'tu empleado'}: ${tarea.slice(0, 80)}`,
+          html:    planApprovalEmailHtml({
+            businessName: caller.business_name ?? '',
+            targetAgent:  target.agent_name ?? 'Empleado',
+            callerAgent:  caller.agent_name,
+            plan,
+            approveUrl,
+            rejectUrl,
+            taskTitle:    tarea,
+          }),
+        });
+      } catch (err) {
+        console.error('delegar-tarea: approval email send failed', err);
+      }
+    }
+
+    return NextResponse.json({
+      results: [{
+        toolCallId,
+        result: `[${target.agent_name ?? agente}] Le mandé el plan al dueño para que lo apruebe. En cuanto lo apruebe empiezo a ejecutar. Puedes seguirlo en el portal.`,
+      }],
+    });
+  }
 
   // Build target agent system prompt
   const promptLines = [
@@ -302,6 +402,7 @@ export async function POST(req: NextRequest) {
     '- Si la tarea incluye llamar de vuelta al cliente, usa llamar_a DESPUÉS de tener la información lista.',
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen de lo que hiciste.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
+    '- AUDITORÍA ANTES DE COMPLETAR: Antes de llamar tarea_completada, revisa el resultado contra el brief original y el criterio de éxito si existe. Confirma que cumples lo pedido con datos verificados. Si algo quedó incierto o asumiste, dilo explícitamente en el resumen en vez de presentarlo como resuelto.',
   ];
 
   if (success_criteria) {

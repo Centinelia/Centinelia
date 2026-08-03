@@ -124,6 +124,8 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   create_civic_report:  'registrar reportes ciudadanos',
   analizar_publicaciones_ml: 'analizar MercadoLibre',
   crear_publicacion_ml: 'crear publicaciones en MercadoLibre',
+  extraer_voz_del_cliente: 'extraer la voz del cliente desde conversaciones reales',
+  extraer_tono_de_marca:   'extraer el tono de marca del negocio',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -195,10 +197,10 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'consultar_agente', 'reportar_falla'],
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
   nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'reportar_falla'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla'],
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'reportar_falla'],
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_registrar_pago', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'reportar_falla'],
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'extraer_voz_del_cliente', 'reportar_falla'],
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_registrar_pago', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;
@@ -255,6 +257,10 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'buscar_directorio': return { type: 'function', function: { name: 'buscar_directorio', description: 'Busca en el directorio interno quién atiende un tipo de problema específico. Úsala para referir al usuario con el técnico o área correcta.', parameters: { type: 'object', properties: { tipo_problema: { type: 'string', description: 'Tipo de problema o área que se busca (ej: red, VPN, impresoras, SAP)' } }, required: ['tipo_problema'] } }, server: server('buscar-directorio') };
 
     case 'buscar_en_web': return { type: 'function', function: { name: 'buscar_en_web', description: 'Busca información actualizada en internet sobre un tema, empresa, producto o persona.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Término de búsqueda o pregunta a investigar' } }, required: ['query'] } }, server: server('buscar-en-web') };
+
+    case 'extraer_voz_del_cliente': return { type: 'function', function: { name: 'extraer_voz_del_cliente', description: 'Analiza conversaciones reales de esta organización (llamadas, correos o tickets) y extrae el lenguaje literal del cliente, sus objeciones más frecuentes y candidatos de titular. Úsala cuando el dueño pida entender qué dicen sus clientes o preparar copy con sus palabras. Requiere mínimo de muestras para producir análisis útil.', parameters: { type: 'object', properties: { fuente: { type: 'string', enum: ['calls','emails','tickets','all'], description: 'Canal a analizar. Default "all".' }, dias: { type: 'number', description: 'Días hacia atrás. Default 30.' }, min_muestras: { type: 'number', description: 'Mínimo de muestras exigidas. Default 20.' } }, required: [] } }, server: server('extraer-voz-del-cliente') };
+
+    case 'extraer_tono_de_marca': return { type: 'function', function: { name: 'extraer_tono_de_marca', description: 'Analiza muestras reales del negocio (correos previos, copy del sitio, pitch) y extrae una guía de tono que se inyecta en el system prompt de todos los empleados. Después de esto los empleados hablan como esta marca en vez de con tono genérico.', parameters: { type: 'object', properties: { muestras: { type: 'array', items: { type: 'string' }, description: 'Lista de 2 a 6 textos reales del negocio.' } }, required: ['muestras'] } }, server: server('extraer-tono-de-marca') };
 
     case 'read_url': return { type: 'function', function: { name: 'read_url', description: 'Lee y extrae el contenido de texto de una URL pública. Úsala para obtener información de páginas web específicas.', parameters: { type: 'object', properties: { url: { type: 'string', description: 'URL completa a leer (ej: https://example.com/page)' } }, required: ['url'] } }, server: server('read-url') };
 

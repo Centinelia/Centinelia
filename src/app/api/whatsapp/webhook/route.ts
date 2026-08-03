@@ -283,7 +283,18 @@ export async function POST(req: NextRequest) {
     tools.push(LEAD_TOOL);
   }
 
-  const systemPrompt = buildWASystemPrompt(agent);
+  // Brand voice guide (per-org). Se inyecta en el prompt para que el bot
+  // hable como este negocio, no con tono genérico.
+  let brandVoiceGuide: string | null = null;
+  if (agent.portal_email) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('brand_voice_guide')
+      .eq('portal_email', agent.portal_email)
+      .maybeSingle();
+    brandVoiceGuide = (org?.brand_voice_guide as string | null) ?? null;
+  }
+  const systemPrompt = buildWASystemPrompt(agent, brandVoiceGuide);
 
   let claudeReply = '';
   let capturedLead: WACapturedLead | null = null;

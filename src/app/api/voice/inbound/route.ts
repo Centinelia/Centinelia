@@ -730,6 +730,25 @@ function buildTools(agent: VoiceAgent, qbConnected = false) {
     },
   });
 
+  // Available to all agents: extract voice of customer from real interactions
+  tools.push({
+    type: 'function',
+    function: {
+      name: 'extraer_voz_del_cliente',
+      description: 'Analiza conversaciones reales (llamadas, correos o tickets) de esta organización y extrae el lenguaje literal del cliente, sus objeciones más frecuentes y candidatos de titular basados en sus palabras. Úsala cuando el dueño te pida entender qué dicen sus clientes, cuando prepares copy o cuando revises patrones. Requiere una ventana mínima de muestras para producir análisis útil.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fuente:   { type: 'string', enum: ['calls','emails','tickets','all'], description: 'Qué canal analizar. Por defecto "all".' },
+          dias:     { type: 'number', description: 'Cuántos días hacia atrás analizar. Por defecto 30.' },
+          min_muestras: { type: 'number', description: 'Mínimo de muestras exigidas para producir análisis. Por defecto 20.' },
+        },
+        required: [],
+      },
+      serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/extraer-voz-del-cliente?agent_id=${agent.id}`,
+    },
+  });
+
   // Available to all agents: report a technical failure
   tools.push({
     type: 'function',

@@ -24,6 +24,7 @@ import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
+import BrandVoiceEditor              from '../BrandVoiceEditor';
 import GoalsSection                  from '../GoalsSection';
 import GuardrailsEditor              from '../GuardrailsEditor';
 import HeartbeatEditor               from '../HeartbeatEditor';
@@ -87,9 +88,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     : null;
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase = orgRow?.owner_passphrase ?? '';
+  const brandVoiceGuide = (orgRow as { brand_voice_guide?: string | null } | null)?.brand_voice_guide ?? '';
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -131,6 +133,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
       ? [{ id: 'voz',        label: 'Voz',                   group: 'Configuración' }] : []),
     { id: 'rol',             label: 'Responsabilidades',      group: 'Entrenamiento' },
     { id: 'dod',             label: 'Definición de listo',    group: 'Entrenamiento' },
+    ...(!isCoordinator
+      ? [{ id: 'tono-de-marca', label: 'Tono de marca',        group: 'Entrenamiento' }] : []),
     { id: 'metas',           label: 'Metas',                  group: 'Entrenamiento' },
     { id: 'limites',         label: 'Límites de autoridad',   group: 'Entrenamiento' },
     { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Entrenamiento' },
@@ -291,6 +295,18 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
               </div>
             </div>
+
+            {!isCoordinator && (
+              <div id="tono-de-marca" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tono de marca</h2>
+                    <InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />
+                  </div>
+                  <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
+                </div>
+              </div>
+            )}
 
             <div id="metas" style={SCROLL_STYLE}>
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>

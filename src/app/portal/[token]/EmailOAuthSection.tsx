@@ -148,14 +148,25 @@ export default function EmailOAuthSection({ token, only, workspacePanel }: { tok
                   </button>
                 )}
                 {!connected && (
-                  <a
-                    href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}`}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                    style={{ background: provider.color, color: '#fff', textDecoration: 'none' }}
-                  >
-                    <Mail size={12} />
-                    Conectar
-                  </a>
+                  integrations.length > 0 && integrations[0].provider !== provider.id ? (
+                    <span
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-not-allowed whitespace-nowrap"
+                      style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}
+                      title={`Desconecta ${integrations[0].provider === 'gmail' ? 'Gmail' : 'Outlook'} primero para conectar ${provider.label}`}
+                    >
+                      <Mail size={12} />
+                      Desconecta {integrations[0].provider === 'gmail' ? 'Gmail' : 'Outlook'} primero
+                    </span>
+                  ) : (
+                    <a
+                      href={`/api/portal/${token}/email-oauth/connect?provider=${provider.id}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                      style={{ background: provider.color, color: '#fff', textDecoration: 'none' }}
+                    >
+                      <Mail size={12} />
+                      Conectar
+                    </a>
+                  )
                 )}
               </div>
             </div>

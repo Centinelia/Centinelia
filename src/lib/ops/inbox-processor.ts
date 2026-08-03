@@ -104,6 +104,11 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     input_schema: { type: 'object' as const, properties: { query: { type: 'string' } }, required: ['query'] },
   },
   {
+    name:        'extraer_voz_del_cliente',
+    description: 'Analiza conversaciones reales de la organización (llamadas, correos o tickets) y extrae lenguaje literal del cliente, objeciones frecuentes y candidatos de titular. Úsala cuando el correo pida entender qué dicen los clientes, preparar copy o revisar patrones.',
+    input_schema: { type: 'object' as const, properties: { fuente: { type: 'string', enum: ['calls','emails','tickets','all'] }, dias: { type: 'number' }, min_muestras: { type: 'number' } }, required: [] },
+  },
+  {
     name:        'read_url',
     description: 'Lee el contenido de una URL específica (no redes sociales). Úsala para leer sitios web o documentos en línea mencionados en el email.',
     input_schema: { type: 'object' as const, properties: { url: { type: 'string' }, purpose: { type: 'string' } }, required: ['url'] },
@@ -623,6 +628,16 @@ REGLA DE ORO — NO NEGOCIABLE:
 - Si dudas entre "escalar al equipo" o "pedir al remitente": ¿la info que necesito la tiene el remitente mismo? Sí → needs_info + request_to_sender. No → pedir_a_humano.
 
 Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false y llena "draft".
+
+=== AUDITORÍA FINAL DEL DRAFT — ANTES DE EMITIR ===
+
+Antes de producir el JSON, revisa el draft contra el correo original una vez más. Verifica:
+1. ¿Respondes cada punto que el remitente preguntó, o dejaste algo sin atender?
+2. ¿Todo dato específico (fecha, precio, política, referencia) viene de una herramienta que llamaste, no de una suposición?
+3. ¿El tono y trato al cliente coinciden con lo que el negocio pediría, no genéricos?
+4. ¿Hay algo asumido que debería ir como pregunta (needs_info) o escalación (pedir_a_humano) en vez de darse por resuelto?
+
+Si algún punto falla, corrige el draft o cambia a needs_info / pedir_a_humano antes de emitir. Mejor un correo honesto y verificado que uno completo pero inventado.
 
 Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, sin markdown, sin texto adicional.`;
 

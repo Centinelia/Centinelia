@@ -273,6 +273,16 @@ export async function executeTask(params: {
   const { taskId, targetAgent, callerAgent, tarea, contexto } = params;
   const supabase = createAdminClient();
 
+  // Si la tarea vino de plan-then-approve, cargamos el plan aprobado y lo
+  // inyectamos como guía. success_criteria también se pasa como criterio.
+  const { data: taskRow } = await supabase
+    .from('agent_tasks')
+    .select('plan, success_criteria, plan_approved_at')
+    .eq('id', taskId)
+    .maybeSingle();
+  const approvedPlan     = (taskRow?.plan as { steps?: { n?: number; description?: string }[]; summary?: string; success_metric?: string } | null) ?? null;
+  const successCriteria  = (taskRow?.success_criteria as string | null) ?? null;
+
   const promptLines = [
     `Eres ${targetAgent.agent_name || 'un empleado especializado'} del equipo de ${targetAgent.business_name || 'la empresa'}.`,
     targetAgent.role ? `Tu especialidad: ${targetAgent.role}.` : '',
@@ -288,7 +298,16 @@ export async function executeTask(params: {
     '- Si la tarea incluye enviar correo Y llamar de vuelta, haz ambas acciones antes de llamar a tarea_completada.',
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen claro.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
+    '- AUDITORÍA ANTES DE COMPLETAR: Antes de llamar tarea_completada, revisa contra el brief y el plan aprobado si existe. Confirma que cumples lo pedido con datos verificados. Si algo quedó incierto, dilo explícitamente en el resumen.',
   ];
+
+  if (approvedPlan?.steps?.length) {
+    const stepsList = approvedPlan.steps.map(s => `- ${s.description ?? ''}`).filter(l => l !== '- ').join('\n');
+    promptLines.push('', '## Plan aprobado por el dueño (síguelo)', approvedPlan.summary ?? '', stepsList);
+  }
+  if (successCriteria) {
+    promptLines.push('', '## Criterio de éxito', `La tarea se considera completada cuando: ${successCriteria}`);
+  }
 
   if (targetAgent.knowledge_base?.trim())
     promptLines.push('', '## Base de conocimiento', targetAgent.knowledge_base.trim());

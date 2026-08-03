@@ -1,6 +1,6 @@
 import type { VoiceAgent, BusinessHours } from '@/types/agent';
 
-export function buildWASystemPrompt(agent: VoiceAgent): string {
+export function buildWASystemPrompt(agent: VoiceAgent, brandVoiceGuide?: string | null): string {
   const agentName = agent.agent_name?.trim() || agent.business_name;
 
   const now = new Date().toLocaleString('es-MX', {
@@ -71,6 +71,16 @@ SOLO ACTÚA SOBRE LO QUE EL CLIENTE PIDE EXPLÍCITAMENTE. No asumas necesidades 
   if (dod?.trim()) {
     blocks.push(`DEFINICIÓN DE ÉXITO — TU BRÚJULA:\n${dod.trim()}\nEsta es la condición que define que hiciste bien tu trabajo. Cada acción que tomes debe orientarse a cumplir esto.`);
   }
+
+  if (brandVoiceGuide?.trim()) {
+    blocks.push(`TONO DE MARCA — HABLA COMO ESTE NEGOCIO, NO GENÉRICO:
+${brandVoiceGuide.trim()}
+
+Aplica este tono en cada mensaje sin mencionarlo. Si el estilo genérico y esta guía entran en conflicto, esta guía gana.`);
+  }
+
+  blocks.push(`AUDITORÍA ANTES DE ENVIAR:
+Antes de mandar cualquier respuesta al cliente, revísala contra lo que originalmente te pidió. Confirma que cumples su solicitud específica y usaste datos verificados donde correspondía. Si algo quedó incierto o asumiste algo, dilo con honestidad en tu mensaje en vez de presentarlo como resuelto.`);
 
   blocks.push(`FECHA Y HORA ACTUAL: ${now}`);
 

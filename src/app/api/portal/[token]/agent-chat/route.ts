@@ -436,6 +436,36 @@ const WEB_SEARCH_TOOL: Anthropic.Tool = {
   },
 };
 
+const EXTRAER_TONO_TOOL: Anthropic.Tool = {
+  name: 'extraer_tono_de_marca',
+  description: 'Analiza muestras reales del negocio (correos previos, copy del sitio, pitch) y extrae una guía de tono que se inyecta en el system prompt de todos los empleados. Después de esto los empleados hablan como esta marca en vez de con tono genérico. Úsala cuando el dueño te comparta muestras de cómo escribe o cuando le pidas explícitamente que te las mande.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      muestras: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Lista de 2 a 6 textos reales del negocio: correos previos, párrafos de landing, pitch escrito, etc. Cada uno mínimo 40 caracteres.',
+      },
+    },
+    required: ['muestras'],
+  },
+};
+
+const EXTRAER_VOZ_TOOL: Anthropic.Tool = {
+  name: 'extraer_voz_del_cliente',
+  description: 'Analiza conversaciones reales de esta organización (llamadas, correos o tickets) y extrae el lenguaje literal del cliente, sus objeciones más frecuentes y candidatos de titular. Úsala cuando el dueño pida entender qué dicen sus clientes, preparar copy o revisar patrones. Requiere mínimo de muestras para producir análisis confiable.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      fuente:       { type: 'string', enum: ['calls','emails','tickets','all'], description: 'Canal a analizar. Default "all".' },
+      dias:         { type: 'number', description: 'Días hacia atrás. Default 30.' },
+      min_muestras: { type: 'number', description: 'Mínimo de muestras. Default 20.' },
+    },
+    required: [],
+  },
+};
+
 const ML_ANALIZAR_PUBLICACIONES_TOOL: Anthropic.Tool = {
   name: 'analizar_publicaciones_ml',
   description: 'Obtiene las publicaciones activas del vendedor en Mercado Libre (títulos, precios, stock, estado, links). Úsala cuando el dueño quiera revisar su catálogo, comparar precios, identificar productos sin stock o analizar su presencia en el marketplace.',
@@ -771,6 +801,8 @@ const ALL_TOOLS = [
   LOOKUP_CIVIC_REPORT_TOOL,
   UPDATE_CIVIC_REPORT_TOOL,
   WEB_SEARCH_TOOL,
+  EXTRAER_VOZ_TOOL,
+  EXTRAER_TONO_TOOL,
   REPORT_ISSUE_TOOL,
   ML_ANALIZAR_PUBLICACIONES_TOOL,
   ML_CREAR_PUBLICACION_TOOL,
@@ -814,6 +846,8 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   save_to_drive:             'save_to_drive',
   organize_files:            'organize_files',
   buscar_en_web:             'buscar_en_web',
+  extraer_voz_del_cliente:   'extraer_voz_del_cliente',
+  extraer_tono_de_marca:     'extraer_tono_de_marca',
   read_url:                  'read_url',
   search_leads:              'search_leads',
   list_calendar_events:      'list_calendar_events',
@@ -856,6 +890,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   lookup_civic_report:       LOOKUP_CIVIC_REPORT_TOOL,
   update_civic_report:       UPDATE_CIVIC_REPORT_TOOL,
   buscar_en_web:             WEB_SEARCH_TOOL,
+  extraer_voz_del_cliente:   EXTRAER_VOZ_TOOL,
+  extraer_tono_de_marca:     EXTRAER_TONO_TOOL,
   reportar_falla:            REPORT_ISSUE_TOOL,
   crear_lead:                CREAR_LEAD_TOOL,
   agendar_cita:              AGENDAR_CITA_TOOL,

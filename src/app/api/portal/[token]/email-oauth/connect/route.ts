@@ -15,18 +15,33 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // IDOR check
+  const provider = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
+  if (provider !== 'gmail' && provider !== 'outlook') {
+    return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
+  }
+
+  // IDOR check + mutual exclusion (Gmail xor Outlook, never both)
   {
     const { createAdminClient } = await import('@/lib/supabase/admin');
     const supabase = createAdminClient();
     const { data: ag } = await supabase.from('voice_agents').select('portal_email').eq('portal_token', token).single();
     if (session.portalEmail && ag?.portal_email && session.portalEmail !== ag.portal_email)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  }
 
-  const provider = req.nextUrl.searchParams.get('provider') as 'gmail' | 'outlook' | null;
-  if (provider !== 'gmail' && provider !== 'outlook') {
-    return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
+    const other = provider === 'gmail' ? 'outlook' : 'gmail';
+    if (ag?.portal_email) {
+      const { data: existing } = await supabase
+        .from('integration_accounts')
+        .select('id')
+        .eq('portal_email', ag.portal_email)
+        .eq('capability', 'email')
+        .eq('provider', other)
+        .neq('status', 'disconnected')
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.redirect(new URL(`/portal/${token}?oauth_error=email_provider_conflict`, req.url));
+      }
+    }
   }
 
   // scope=agent → per-agent connect from configurar page; encodes in state so callback knows

@@ -31,9 +31,11 @@ export async function GET(req: NextRequest) {
     if (t.created_by)  agentIds.add(t.created_by);
   }
 
+  // knowledge_base lives on `organizations` now (dropped from voice_agents in e372013).
+  // We stub it as null here; task-executor re-hydrates it org-wide when it runs.
   const { data: agentRows } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, knowledge_base, role_knowledge_base, business_name, portal_email')
+    .select('id, agent_name, role, role_knowledge_base, business_name, portal_email')
     .in('id', [...agentIds]);
 
   const agentMap = new Map<string, AgentInfo>();
