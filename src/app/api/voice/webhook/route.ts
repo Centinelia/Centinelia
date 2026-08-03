@@ -455,8 +455,21 @@ export async function POST(req: NextRequest) {
         }
 
         // D. Owner notification email
+        // Skip cuando el caller ES el dueño/equipo — no tiene sentido notificarle
+        // que "un cliente hizo X" cuando fue él mismo quien llamó. Este check
+        // usa la misma lógica que inbound/route.ts.
         const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
-        if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome)) {
+        const normCallerD  = (callerNumber ?? '').replace(/\D/g, '').slice(-10);
+        const teamNumbersD = (agent?.team_numbers ?? []) as Array<{ number: string; is_owner?: boolean; name?: string }>;
+        const normTransferD = (agent?.transfer_number   ?? '').replace(/\D/g, '').slice(-10);
+        const normWaD       = (agent?.transfer_whatsapp ?? '').replace(/\D/g, '').slice(-10);
+        const callerIsInternal = normCallerD.length >= 7 && (
+          (normTransferD && normCallerD === normTransferD) ||
+          (normWaD       && normCallerD === normWaD)       ||
+          teamNumbersD.some(t => (t.number ?? '').replace(/\D/g, '').slice(-10) === normCallerD)
+        );
+
+        if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome) && !callerIsInternal) {
           const portalUrl = `${appUrl}/portal/${agent.portal_token}`;
           const outcomeSubjects: Record<string, string> = {
             lead_created:       '🎯 Nuevo lead capturado',
@@ -600,8 +613,9 @@ export async function POST(req: NextRequest) {
           }).catch(err => console.error('[webhook] memory-ingest failed:', err));
         }
 
-        // K. Team feed message (AI)
-        if (agent?.portal_email && !['unanswered', 'other'].includes(outcome)) {
+        // K. Team feed message (AI) — skip cuando el caller es dueño/equipo
+        // (no tiene sentido feed "Un cliente preguntó..." si fue él mismo llamando).
+        if (agent?.portal_email && !['unanswered', 'other'].includes(outcome) && !callerIsInternal) {
           await generateTeamMessage({
             portalEmail:   agent.portal_email,
             fromAgentId:   resolvedAgentId,

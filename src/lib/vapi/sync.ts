@@ -537,14 +537,16 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     // y Vapi cortaba a mitad de conversación. Ver call 019f...e0e88.
     endCallPhrases: [
       'hasta luego', 'hasta pronto', 'hasta la próxima',
-      // Con pronombre (usted / tú) y sin pronombre — LLM a veces omite el "le/te"
-      'que le vaya bien', 'que le vaya muy bien', 'que te vaya bien', 'que te vaya muy bien',
-      'que vaya bien', 'que vaya muy bien',
+      // Solo variantes CON pronombre. Las cortas sin pronombre ("que vaya
+      // bien", "fue un placer") disparaban false positives — el LLM las
+      // usa a mitad de conversación durante disculpas o cambios de tema.
+      // El prompt refuerza que las despedidas SIEMPRE lleven pronombre.
+      'que le vaya bien', 'que le vaya muy bien',
+      'que te vaya bien', 'que te vaya muy bien',
       'que tenga buen día', 'que tenga un excelente día', 'que tenga buena tarde', 'que tenga buena noche',
       'que tengas buen día', 'que tengas un excelente día', 'que tengas buena tarde', 'que tengas buena noche',
       'nos vemos', 'nos hablamos', 'estamos en contacto',
-      'adiós',
-      'fue un placer atenderle', 'fue un placer atenderte', 'fue un placer',
+      'fue un placer atenderle', 'fue un placer atenderte',
     ],
     transcriber: (() => {
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
