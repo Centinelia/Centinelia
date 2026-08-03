@@ -8,11 +8,18 @@ export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const agent_id = searchParams.get('agent_id');
 
-  const body = await req.json();
-  const { nombre, motivo, resumen } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const body = await req.json() as Record<string, unknown>;
+  const call = (((body.message as Record<string, unknown> | undefined)?.toolCallList ?? body.toolCallList) as Array<Record<string, unknown>> | undefined)?.[0];
+  const rawArgs = (call?.function as Record<string, unknown> | undefined)?.arguments ?? body;
+  const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, string>;
+  const toolCallId: string = (call?.id as string) ?? 'call_1';
 
-  if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
+  const reply = (m: string, extra: Record<string, unknown> = {}) =>
+    NextResponse.json({ results: [{ toolCallId, result: m, ...extra }] });
 
+  if (!agent_id) return reply('Error de configuración: falta agent_id.');
+
+  const { nombre, motivo, resumen } = args;
   const supabase = createAdminClient();
 
   const { data: agent } = await supabase
@@ -33,9 +40,8 @@ export async function POST(req: NextRequest) {
     await sendWhatsApp(agent.transfer_whatsapp, msg);
   }
 
-  return NextResponse.json({
-    result: 'Notificación enviada. Le transfiero ahora.',
-    transfer_number: agent?.transfer_number ?? null,
-  });
-
+  return reply(
+    'Notificación enviada. Le transfiero ahora.',
+    { transfer_number: agent?.transfer_number ?? null },
+  );
 }
