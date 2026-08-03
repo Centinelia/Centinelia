@@ -33,20 +33,30 @@ export async function getAgentForPdf(token: string): Promise<{
   if (!auth) return null;
 
   const supabase = createAdminClient();
+  // Los campos de branding (color, secondary, footer, website, address) viven en
+  // `organizations` desde e372013. Solo logo_url y phone_number siguen en voice_agents.
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, portal_email, business_name, phone_number, logo_url, email_logo_url, email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+    .select('id, portal_email, business_name, phone_number, logo_url, email_logo_url')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return null;
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email) return null;
 
+  const { data: org } = agent.portal_email
+    ? await supabase
+        .from('organizations')
+        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
+    : { data: null };
+
   const rawLogoUrl = (agent.logo_url as string | null) ?? (agent.email_logo_url as string | null) ?? null;
   const logoDataUri = await logoToDataUri(rawLogoUrl);
 
   const brand: BrandKit = {
-    ...brandKitFromAgent(agent as Record<string, unknown>),
+    ...brandKitFromAgent(agent as Record<string, unknown>, org as Record<string, unknown> | null),
     logoUrl: logoDataUri,
   };
 

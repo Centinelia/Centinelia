@@ -44,6 +44,8 @@ import { getTramiteById } from '@/lib/tramites/config';
 import { fetchCatalogo } from '@/lib/tramites/catalog';
 import { fetchLookup } from '@/lib/tramites/lookup';
 import { submitTramite } from '@/lib/tramites/submit';
+import { solicitarFactura, type SolicitarFacturaItem } from '@/lib/fiscal/request-factura';
+import { lookupFacturas } from '@/lib/fiscal/lookup-factura';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -191,7 +193,14 @@ export async function executeAgentTool(
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'create_document') {
     try {
-      const brand        = brandKitFromAgent(agent);
+      // Los campos brand (color, footer, website, address) viven en organizations
+      // desde e372013. Sin este fetch todos los PDFs salen en morado default.
+      const { data: orgBrand } = await supabase
+        .from('organizations')
+        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const brand        = brandKitFromAgent(agent, orgBrand as Record<string, unknown> | null);
       const title        = toolInput.title as string;
       const templateType = (toolInput.template_type as string | undefined) ?? 'general';
       const slug         = ((toolInput.filename as string | null) ?? title)
@@ -357,8 +366,13 @@ export async function executeAgentTool(
       const fileTitle = toolInput.title    as string;
       const slug      = ((toolInput.filename as string | null) ?? fileTitle)
         .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40);
-      const brand     = brandKitFromAgent(agent);
-      const accent    = (brand as any).primaryColor ?? '#6C3BFF';
+      const { data: orgBrand2 } = await supabase
+        .from('organizations')
+        .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const brand     = brandKitFromAgent(agent, orgBrand2 as Record<string, unknown> | null);
+      const accent    = brand.color;
       const uInst     = ctx.userContext ?? '';
       const bCtx      = [agent.knowledge_base, agent.role_knowledge_base].filter(Boolean).join('\n').slice(0, 1200) as string;
       let buf: Buffer; let ext: string; let mime: string; let label: string;
@@ -700,6 +714,58 @@ export async function executeAgentTool(
       const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
       return { ok: true, ...product, precio_formateado: fmt(product.precio) };
     } catch (err) { return { ok: false, error: String(err) }; }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Fiscal: solicitar_factura + consultar_factura
+  // Sofia recolecta datos de un cliente que pide su CFDI y delega la emisión
+  // al equipo humano (Martha en AC). No timbramos desde Centinelia.
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'solicitar_factura') {
+    const invoicingEmail = ((agent.features as Record<string, unknown> | undefined)?.invoicing_email as string | undefined)
+      ?? (agent.client_email as string | undefined)
+      ?? portalEmail;
+    const res = await solicitarFactura({
+      cliente_nombre:    toolInput.cliente_nombre    as string,
+      cliente_rfc:       toolInput.cliente_rfc       as string,
+      cliente_email:     toolInput.cliente_email     as string,
+      cliente_telefono:  toolInput.cliente_telefono  as string | undefined,
+      cliente_direccion: toolInput.cliente_direccion as string | undefined,
+      uso_cfdi:          toolInput.uso_cfdi          as string,
+      forma_pago:        toolInput.forma_pago        as string,
+      metodo_pago:       toolInput.metodo_pago       as string,
+      condiciones_pago:  toolInput.condiciones_pago  as string | undefined,
+      items:             (toolInput.items as SolicitarFacturaItem[] | undefined) ?? [],
+      incluir_iva:       (toolInput.incluir_iva      as boolean | undefined) ?? true,
+      notes:             toolInput.notes             as string | undefined,
+    }, {
+      agentId,
+      portalEmail,
+      businessName,
+      supabase,
+      channel:       ctx.channel,
+      sourceCallId:  ctx.sourceCallId,
+      sourceInboxId: ctx.sourceInboxId,
+      sourceContext: ctx.userContext,
+      invoicingEmail,
+    });
+    if (!res.ok) return { ok: false, error: res.error };
+    const totalStr = res.total!.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    return {
+      ok:      true,
+      request_id: res.request_id,
+      message: `Solicitud de factura registrada por ${totalStr}. Le avisé al equipo de facturación (${res.target_email}) que emita la factura al RFC ${toolInput.cliente_rfc}. El cliente la recibirá en su correo (${toolInput.cliente_email}) en las próximas 24 horas hábiles.`,
+    };
+  }
+
+  if (toolName === 'consultar_factura') {
+    const res = await lookupFacturas({
+      cliente_rfc:    toolInput.cliente_rfc    as string | undefined,
+      cliente_nombre: toolInput.cliente_nombre as string | undefined,
+      request_id:     toolInput.request_id     as string | undefined,
+    }, agentId, supabase);
+    if (!res.ok) return { ok: false, error: res.message };
+    return { ok: true, count: res.results.length, results: res.results, message: res.message };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

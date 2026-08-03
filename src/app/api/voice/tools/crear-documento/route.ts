@@ -37,7 +37,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const brand = brandKitFromAgent(agent as Record<string, unknown>);
+    const { data: orgBrand } = agent.portal_email
+      ? await supabase
+          .from('organizations')
+          .select('email_brand_color, brand_color_secondary, email_footer_text, brand_website, brand_address')
+          .eq('portal_email', agent.portal_email)
+          .maybeSingle()
+      : { data: null };
+    const brand = brandKitFromAgent(agent as Record<string, unknown>, orgBrand as Record<string, unknown> | null);
     const slug = ((filename ?? title)
       .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').slice(0, 40));
     const docFilename = `${slug}-${Date.now()}.pdf`;
