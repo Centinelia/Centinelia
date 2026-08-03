@@ -52,16 +52,17 @@ export async function lookupFacturas(
   }
 
   const lines = rows.map(r => {
-    const when = new Date(r.requested_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    const when   = new Date(r.requested_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+    const money  = `$${r.total.toLocaleString('es-MX')}`;
+    const prefix = `• Solicitud del ${when} — ${money} para ${r.cliente_nombre}:`;
     if (r.status === 'issued') {
       const emitted = r.resolved_at ? new Date(r.resolved_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '?';
-      const uuid = r.issued_uuid ? ` (UUID ${r.issued_uuid.slice(0, 8)}...)` : '';
-      return `• Solicitud del ${when} — $${r.total.toLocaleString('es-MX')} para ${r.cliente_nombre}: ✅ EMITIDA el ${emitted}${uuid}`;
+      const uuid    = r.issued_uuid ? ` (UUID ${r.issued_uuid.slice(0, 8)}...)` : '';
+      return `${prefix} ✅ EMITIDA el ${emitted}${uuid}`;
     }
-    if (r.status === 'cancelled') {
-      return `• Solicitud del ${when} — $${r.total.toLocaleString('es-MX')} para ${r.cliente_nombre}: CANCELADA`;
-    }
-    return `• Solicitud del ${when} — $${r.total.toLocaleString('es-MX')} para ${r.cliente_nombre}: PENDIENTE de emisión (${usoCfdiLabel(r.uso_cfdi)})`;
+    if (r.status === 'cancelled') return `${prefix} CANCELADA`;
+    if (r.status === 'in_progress') return `${prefix} EN PROCESO de emisión — el equipo de facturación ya la está trabajando (Uso ${usoCfdiLabel(r.uso_cfdi)})`;
+    return `${prefix} PENDIENTE de captura — aún no la ha empezado a emitir el equipo de facturación (Uso ${usoCfdiLabel(r.uso_cfdi)})`;
   }).join('\n');
 
   return { ok: true, message: `Encontré ${rows.length} solicitud(es):\n${lines}`, results: rows };

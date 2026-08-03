@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Copy, Check, ExternalLink } from 'lucide-react';
 
 interface Item {
@@ -63,7 +63,9 @@ function timeAgo(iso: string): string {
 }
 
 export default function FacturasPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token }    = useParams<{ token: string }>();
+  const searchParams = useSearchParams();
+  const router       = useRouter();
   const [rows,       setRows]       = useState<FacturaRequest[]>([]);
   const [agentNames, setAgentNames] = useState<Record<string, string | null>>({});
   const [loading,    setLoading]    = useState(true);
@@ -81,6 +83,16 @@ export default function FacturasPage() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Deep link: ?open=<request_id> abre el modal automáticamente al cargar
+  const openId = searchParams.get('open');
+  useEffect(() => {
+    if (!openId || loading) return;
+    openDetail(openId);
+    // Limpiar el query param para que refrescar no re-abra el modal
+    router.replace(`/portal/${token}/oficina/facturas`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, loading]);
 
   async function openDetail(id: string) {
     const res = await fetch(`/api/portal/${token}/factura-requests/${id}`);

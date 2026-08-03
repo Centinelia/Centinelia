@@ -126,9 +126,20 @@ export async function solicitarFactura(
   // Notification email (fire and forget, don't block user)
   const targetEmail = ctx.invoicingEmail ?? ctx.portalEmail;
   if (targetEmail) {
+    // Resolve portal_token for the deep link. Any agent under the same
+    // portal_email will do (sub-users login with any of them and see the same
+    // account-wide list); we prefer the agent that originated the request.
+    const { data: tokenRow } = await ctx.supabase
+      .from('voice_agents')
+      .select('portal_token')
+      .eq('id', ctx.agentId)
+      .single();
+    const portalToken = (tokenRow?.portal_token as string | undefined) ?? '';
+
     void sendFacturaRequestEmail({
       to:            targetEmail,
       requestId:     row.id,
+      portalToken,
       businessName:  ctx.businessName,
       cliente:       { nombre: args.cliente_nombre, rfc, email: args.cliente_email, telefono: args.cliente_telefono, direccion: args.cliente_direccion },
       fiscal:        { usoCfdi, formaPago, metodoPago, condiciones: args.condiciones_pago },
@@ -147,6 +158,7 @@ function mxn(n: number): string   { return n.toLocaleString('es-MX', { style: 'c
 interface FacturaEmailArgs {
   to:           string;
   requestId:    string;
+  portalToken:  string;
   businessName: string;
   cliente:      { nombre: string; rfc: string; email: string; telefono?: string; direccion?: string };
   fiscal:       { usoCfdi: string; formaPago: string; metodoPago: string; condiciones?: string };
@@ -224,12 +236,30 @@ async function sendFacturaRequestEmail(a: FacturaEmailArgs): Promise<void> {
     <p style="margin:0;font-size:13px;color:#374151;line-height:1.5">${escapeHtml(a.notes)}</p>
   </td></tr>` : ''}
 
+  <tr><td style="padding:20px 28px;background:#fff8e6;border-top:1px solid #ffe8b3">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td style="vertical-align:top;width:24px;padding-top:2px">
+          <div style="width:20px;height:20px;border-radius:50%;background:#f59e0b;color:#fff;font-weight:800;font-size:12px;line-height:20px;text-align:center">!</div>
+        </td>
+        <td style="padding-left:10px">
+          <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#92400e">Siguiente paso: timbrar y marcar como emitida</p>
+          <p style="margin:0;font-size:13px;color:#78350f;line-height:1.55">
+            1. Copia los datos de arriba a tu PAC (Solución Factible, CONTPAQ, Aspel, etc.) y timbra el CFDI.
+            <br/>
+            2. Regresa al portal y márcala como <a href="${base}/portal/${encodeURIComponent(a.portalToken)}/oficina/facturas?open=${encodeURIComponent(a.requestId)}" style="color:#6C3BFF;font-weight:700;text-decoration:underline">emitida</a>.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
   <tr><td style="padding:16px 28px 28px;text-align:center;background:#fafafa">
-    <a href="${base}/portal/facturas/${a.requestId}" style="display:inline-block;padding:12px 24px;background:#6C3BFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:8px">
-      Abrir en el portal
+    <a href="${base}/portal/${encodeURIComponent(a.portalToken)}/oficina/facturas?open=${encodeURIComponent(a.requestId)}" style="display:inline-block;padding:12px 24px;background:#6C3BFF;color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:8px">
+      Abrir esta solicitud en el portal
     </a>
     <p style="margin:12px 0 0;font-size:12px;color:#6b7280">
-      Cuando termines de timbrar en tu PAC, marca la solicitud como emitida.
+      Solo tú (con acceso al portal de ${escapeHtml(a.businessName)}) puedes marcarla.
     </p>
   </td></tr>
 </table>
