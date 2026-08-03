@@ -53,7 +53,12 @@ export async function POST(req: NextRequest) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  const attachUrl = `${appUrl}/r/${folio}/adjuntar`;
+  const statusUrl = `${appUrl}/reporte/${folio}`;
   return NextResponse.json({
-    result: `Su reporte ha sido registrado exitosamente. Su folio es ${folio}. Puede consultar el estatus en cualquier momento en ${appUrl}/reporte/${folio}${tipo_tramite ? `. El área de ${area_responsable ?? tipo_tramite} le contactará cuando su expediente avance` : ''}.`,
+    result: `Su reporte ha sido registrado exitosamente. Su folio es ${folio}. Puede consultar el estatus en ${statusUrl}. Si tiene fotos del problema, puede subirlas en ${attachUrl}${tipo_tramite ? `. El área de ${area_responsable ?? tipo_tramite} le contactará cuando su expediente avance` : ''}.`,
+    attach_url: attachUrl,
+    status_url: statusUrl,
+    folio,
   });
 }

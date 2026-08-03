@@ -36,6 +36,10 @@ export const limiters = {
 
   // Bug reports: 5 per hour per IP
   bugReport: makeRatelimit(Ratelimit.slidingWindow(5, '1 h'), 'rl:bug-report'),
+
+  // Public civic-report attachments: 10 per 10 min per IP
+  // (Ciudadano sube 3-5 fotos por reporte, cap por folio = 5 se hace en app.)
+  civicUpload: makeRatelimit(Ratelimit.slidingWindow(10, '10 m'), 'rl:civic-upload'),
 };
 
 function getIp(req: NextRequest): string {

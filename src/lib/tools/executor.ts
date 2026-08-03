@@ -218,8 +218,10 @@ export async function executeAgentTool(
         }
       }
 
-      const featCfg  = ((agent.features as Record<string, unknown>)?.factura_config ?? {}) as Record<string, unknown>;
-      const ordenCfg = ((agent.features as Record<string, unknown>)?.orden_config   ?? {}) as Record<string, unknown>;
+      const featCfg      = ((agent.features as Record<string, unknown>)?.factura_config    ?? {}) as Record<string, unknown>;
+      const ordenCfg     = ((agent.features as Record<string, unknown>)?.orden_config      ?? {}) as Record<string, unknown>;
+      const cotizacionCfg= ((agent.features as Record<string, unknown>)?.cotizacion_config ?? {}) as Record<string, unknown>;
+      const notaVentaCfg = ((agent.features as Record<string, unknown>)?.nota_venta_config ?? {}) as Record<string, unknown>;
 
       // Resolve folio for factura: explicit input → QB last+1 → configured-prefix random
       let facturaFolioNum: string | undefined = toolInput.folio_num as string | undefined;
@@ -245,14 +247,19 @@ export async function executeAgentTool(
       const mxn = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
       const fechaHoy = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
-      // ── User template path (docxtemplater + Drive conversion) ──────────────
-      const cfgForType = templateType === 'factura' ? featCfg : templateType === 'orden_compra' ? ordenCfg : null;
+      // ── User template path (docxtemplater + CloudConvert) ─────────────────
+      const cfgForType =
+        templateType === 'factura'      ? featCfg :
+        templateType === 'orden_compra' ? ordenCfg :
+        templateType === 'cotizacion'   ? cotizacionCfg :
+        templateType === 'nota_venta'   ? notaVentaCfg :
+        null;
       const userTemplatePath = cfgForType?.template_path as string | undefined;
       const useUserTemplate = !!userTemplatePath && userTemplatePath.toLowerCase().endsWith('.docx');
 
       let buf: Buffer;
 
-      if (useUserTemplate && (templateType === 'factura' || templateType === 'orden_compra')) {
+      if (useUserTemplate && (templateType === 'factura' || templateType === 'orden_compra' || templateType === 'cotizacion' || templateType === 'nota_venta')) {
         const { data: tplBlob, error: tplErr } = await supabase.storage.from('agent-documents').download(userTemplatePath!);
         if (tplErr || !tplBlob) return { ok: false, error: `No pude leer tu plantilla en Portal → Plantillas. Verifica que sigue subida.` };
         const tplBuffer = Buffer.from(await tplBlob.arrayBuffer());
@@ -289,15 +296,23 @@ export async function executeAgentTool(
           emisor_email:      portalEmail,
         };
 
-        if (templateType === 'factura') {
-          commonData.cliente_nombre = (toolInput.client_name as string | null) ?? 'Cliente';
-          commonData.cliente_rfc    = (toolInput.client_rfc  as string | undefined) ?? '';
-          commonData.cliente_email  = (toolInput.client_email as string | undefined) ?? '';
-        } else {
+        if (templateType === 'orden_compra') {
           commonData.proveedor_nombre = (toolInput.vendor_name  as string | null) ?? 'Proveedor';
           commonData.proveedor_rfc    = (toolInput.vendor_rfc   as string | undefined) ?? '';
           commonData.proveedor_email  = (toolInput.vendor_email as string | undefined) ?? '';
           commonData.terminos_entrega = (toolInput.delivery_terms as string | undefined) ?? (ordenCfg.terminos_entrega as string | undefined) ?? '';
+        } else {
+          // factura, cotizacion, nota_venta: todos apuntan a un CLIENTE
+          commonData.cliente_nombre    = (toolInput.client_name as string | null) ?? 'Cliente';
+          commonData.cliente_rfc       = (toolInput.client_rfc  as string | undefined) ?? '';
+          commonData.cliente_email     = (toolInput.client_email as string | undefined) ?? '';
+          commonData.cliente_direccion = (toolInput.client_address as string | undefined) ?? '';
+          if (templateType === 'cotizacion') {
+            commonData.vigencia_dias = String((toolInput.validity_days as number | undefined) ?? 15);
+          }
+          if (templateType === 'nota_venta') {
+            commonData.forma_pago = (toolInput.payment_method as string | undefined) ?? 'Efectivo';
+          }
         }
 
         try {
@@ -309,7 +324,7 @@ export async function executeAgentTool(
       } else {
         let pdfEl: React.ReactElement;
 
-        if (templateType === 'proposal') {
+        if (templateType === 'proposal' || templateType === 'cotizacion') {
           pdfEl = createElement(ProposalPDF, { brand, title, content, clientName: toolInput.client_name as string | undefined, clientEmail: toolInput.client_email as string | undefined, totalPrice: toolInput.total_price as string | undefined, validityDays: toolInput.validity_days as number | undefined });
         } else if (templateType === 'letter') {
           pdfEl = createElement(LetterPDF, { brand, content, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
@@ -474,7 +489,10 @@ export async function executeAgentTool(
     const { category, description, location_text, caller_name, caller_number } = toolInput as Record<string, string | undefined>;
     const folio = await generateFolio(agentId, supabase);
     const { error } = await supabase.from('civic_reports').insert({ agent_id: agentId, folio, category: category ?? 'otro', description: description ?? null, location_text: location_text ?? null, caller_name: caller_name ?? null, caller_number: caller_number ?? null, status: 'abierto' });
-    return error ? { ok: false, error: 'No se pudo registrar el reporte.' } : { ok: true, folio, message: `Reporte registrado con folio ${folio}.` };
+    if (error) return { ok: false, error: 'No se pudo registrar el reporte.' };
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+    const attachUrl = `${appUrl}/r/${folio}/adjuntar`;
+    return { ok: true, folio, attach_url: attachUrl, message: `Reporte registrado con folio ${folio}. Si tiene fotos, puede subirlas aquí: ${attachUrl}` };
   }
 
   if (toolName === 'lookup_civic_report') {
