@@ -14,23 +14,36 @@ function safeEq(a: string, b: string) {
 }
 
 function htmlResponse(status: 'ok' | 'rejected' | 'invalid' | 'expired', message: string) {
-  const color = status === 'ok' ? '#22c55e' : status === 'rejected' ? '#6c3bff' : '#ef4444';
-  const title = status === 'ok'
-    ? 'Plan aprobado'
-    : status === 'rejected'
-      ? 'Plan rechazado'
-      : status === 'expired'
-        ? 'Enlace expirado'
-        : 'Enlace inválido';
+  const palette = {
+    ok:       { color: '#4ade80', tint: 'rgba(34,197,94,0.15)',   border: 'rgba(34,197,94,0.4)',   icon: '✓' },
+    rejected: { color: '#9B6DFF', tint: 'rgba(155,109,255,0.15)', border: 'rgba(155,109,255,0.4)', icon: '✕' },
+    expired:  { color: '#F87171', tint: 'rgba(248,113,113,0.15)', border: 'rgba(248,113,113,0.4)', icon: '!' },
+    invalid:  { color: '#F87171', tint: 'rgba(248,113,113,0.15)', border: 'rgba(248,113,113,0.4)', icon: '!' },
+  }[status];
+  const title = status === 'ok' ? 'Plan aprobado' : status === 'rejected' ? 'Plan rechazado' : status === 'expired' ? 'Enlace expirado' : 'Enlace inválido';
   return new NextResponse(
-    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
-    <body style="margin:0;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <div style="max-width:480px;margin:80px auto;padding:32px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;">
-        <div style="width:56px;height:56px;border-radius:50%;background:${color}20;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">
-          <span style="font-size:28px;color:${color};">${status === 'ok' ? '✓' : status === 'rejected' ? '✕' : '!'}</span>
-        </div>
-        <h1 style="margin:0 0 12px;font-size:22px;color:#1a0a3b;">${title}</h1>
-        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5;">${message}</p>
+    `<!doctype html><html lang="es"><head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta name="color-scheme" content="dark">
+      <title>${title}</title>
+      <style>
+        body { margin: 0; padding: 32px 16px; background: #120726; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; }
+        .card { max-width: 480px; margin: 60px auto 0; padding: 40px 32px; background: #1D1141; border: 1px solid #3D2E6A; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.25); text-align: center; }
+        .icon { width: 64px; height: 64px; border-radius: 50%; background: ${palette.tint}; border: 2px solid ${palette.border}; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
+        .icon span { font-size: 32px; color: ${palette.color}; line-height: 1; }
+        h1 { margin: 0 0 12px; font-size: 24px; font-weight: 700; color: #F1EEFF; line-height: 1.3; }
+        p { margin: 0; font-size: 14px; color: #C8BEE8; line-height: 1.6; }
+        .footer { margin-top: 20px; font-size: 11px; color: #6b5b8f; }
+        .footer a { color: #9B6DFF; text-decoration: none; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="icon"><span>${palette.icon}</span></div>
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <p class="footer" style="margin-top:20px"><a href="https://www.centinelia.mx">centinelia.mx</a></p>
       </div>
     </body></html>`,
     { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } },

@@ -27,16 +27,27 @@ function pageResponse(html: string, status = 200) {
 }
 
 function invalidPage(msg: string) {
-  return pageResponse(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Enlace inválido</title></head>
-    <body style="margin:0;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-      <div style="max-width:480px;margin:80px auto;padding:32px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center">
-        <div style="width:56px;height:56px;border-radius:50%;background:#ef444420;margin:0 auto 20px;display:flex;align-items:center;justify-content:center">
-          <span style="font-size:28px;color:#ef4444">!</span>
-        </div>
-        <h1 style="margin:0 0 12px;font-size:22px;color:#1a0a3b">Enlace inválido</h1>
-        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5">${msg}</p>
-      </div>
-    </body></html>`);
+  return pageResponse(`<!doctype html><html lang="es"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Enlace inválido</title>
+    <style>
+      body { margin: 0; padding: 32px 16px; background: #120726; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; }
+      .card { max-width: 480px; margin: 60px auto 0; padding: 40px 32px; background: #1D1141; border: 1px solid #3D2E6A; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.25); text-align: center; }
+      .icon { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, rgba(248,113,113,0.15), rgba(248,113,113,0.25)); border: 2px solid rgba(248,113,113,0.4); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
+      .icon span { font-size: 32px; color: #F87171; line-height: 1; }
+      h1 { margin: 0 0 12px; font-size: 22px; font-weight: 700; color: #F1EEFF; }
+      p { margin: 0; font-size: 14px; color: #C8BEE8; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon"><span>!</span></div>
+      <h1>Enlace inválido</h1>
+      <p>${msg}</p>
+    </div>
+  </body></html>`);
 }
 
 function escape(s: string): string {
@@ -53,53 +64,97 @@ function formPage(args: {
 }) {
   const { id, token, taskTitle, targetAgent, plan, priorNotes } = args;
   const stepsHtml = ((plan?.steps ?? []) as Array<{ n?: number; description?: string; tool_hint?: string }>)
-    .map(s => `<li style="margin:0 0 8px;color:#1a0a3b;line-height:1.5">
-      <strong style="color:#6c3bff">${s.n ?? ''}.</strong> ${escape(s.description ?? '')}
-      ${s.tool_hint ? `<div style="font-size:12px;color:#9ca3af;margin-top:2px">↳ ${escape(s.tool_hint)}</div>` : ''}
+    .map(s => `<li style="margin:0 0 12px;color:#F1EEFF;line-height:1.55;padding-left:0;list-style:none">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="flex-shrink:0;display:inline-block;min-width:22px;height:22px;line-height:22px;text-align:center;background:rgba(155,109,255,0.15);color:#C8B6FF;border-radius:6px;font-size:12px;font-weight:700">${s.n ?? ''}</span>
+        <div style="flex:1">
+          <div style="color:#F1EEFF;font-size:14px">${escape(s.description ?? '')}</div>
+          ${s.tool_hint ? `<div style="font-size:11px;color:#8C7FB8;margin-top:3px;font-style:italic">usará: ${escape(s.tool_hint)}</div>` : ''}
+        </div>
+      </div>
     </li>`)
     .join('');
 
   return pageResponse(`<!doctype html><html lang="es"><head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Editar plan — ${escape(taskTitle)}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Editar plan — ${escape(targetAgent)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px 16px; background: #120726; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #F1EEFF; min-height: 100vh; }
+      .container { max-width: 640px; margin: 0 auto; }
+      .card { background: #1D1141; border-radius: 16px; padding: 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.25); border: 1px solid #3D2E6A; }
+      .header-logo { text-align: center; margin-bottom: 24px; }
+      .header-logo img { width: 140px; height: auto; opacity: 0.9; }
+      .kicker { font-size: 11px; font-weight: 700; color: #9B6DFF; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+      h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #F1EEFF; line-height: 1.25; letter-spacing: -0.01em; }
+      .sub { margin: 0 0 28px; color: #C8BEE8; font-size: 14px; line-height: 1.5; }
+      .task-box { background: #2A1B5C; border-left: 3px solid #9B6DFF; padding: 14px 16px; border-radius: 8px; margin-bottom: 24px; }
+      .task-box .label { font-size: 10px; font-weight: 700; color: #9B6DFF; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+      .task-box .value { font-size: 14px; color: #F1EEFF; line-height: 1.5; }
+      .section-label { font-size: 10px; font-weight: 700; color: #8C7FB8; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 10px; }
+      .plan-summary { color: #C8BEE8; font-style: italic; font-size: 13px; line-height: 1.6; margin: 0 0 14px; padding: 12px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid #3D2E6A; }
+      .steps { margin: 0 0 28px; padding: 0; }
+      .field-label { display: block; font-size: 11px; font-weight: 700; color: #C8B6FF; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; }
+      textarea { width: 100%; padding: 14px; background: #120726; border: 1.5px solid #3D2E6A; border-radius: 10px; font-size: 14px; font-family: inherit; color: #F1EEFF; line-height: 1.6; resize: vertical; transition: border-color 0.15s, box-shadow 0.15s; }
+      textarea:focus { outline: none; border-color: #9B6DFF; box-shadow: 0 0 0 3px rgba(155,109,255,0.15); }
+      textarea::placeholder { color: #6b5b8f; }
+      .hint { margin: 8px 0 24px; font-size: 12px; color: #8C7FB8; line-height: 1.5; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .btn-primary { flex: 1; min-width: 200px; padding: 15px 28px; background: linear-gradient(135deg, #9B6DFF, #C8A2FF); color: #FFFFFF; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: 0.02em; box-shadow: 0 4px 16px rgba(155,109,255,0.3); transition: transform 0.1s, box-shadow 0.15s; }
+      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(155,109,255,0.4); }
+      .btn-reject { padding: 15px 24px; color: #F87171; text-decoration: none; font-size: 14px; font-weight: 500; text-align: center; border-radius: 12px; border: 1.5px solid rgba(248,113,113,0.3); background: transparent; transition: background 0.15s; }
+      .btn-reject:hover { background: rgba(248,113,113,0.08); }
+      .footer { margin: 24px 0 0; text-align: center; font-size: 11px; color: #6b5b8f; line-height: 1.6; }
+      .footer a { color: #9B6DFF; text-decoration: none; }
+      @media (max-width: 480px) {
+        body { padding: 16px 12px; }
+        .card { padding: 24px 20px; }
+        h1 { font-size: 20px; }
+        .actions { flex-direction: column; }
+        .btn-primary, .btn-reject { min-width: 0; width: 100%; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:24px 12px;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-    <form method="POST" action="/api/portal/agent-tasks/${id}/edit-plan?token=${encodeURIComponent(token)}" style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);padding:32px">
-      <div style="font-size:11px;font-weight:600;color:#6c3bff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Editar plan</div>
-      <h1 style="margin:0 0 6px;font-size:22px;color:#1a0a3b">Plan de ${escape(targetAgent)}</h1>
-      <p style="margin:0 0 20px;color:#6b7280;font-size:14px">Agrega correcciones o notas. ${escape(targetAgent)} las tendrá como override al ejecutar la tarea.</p>
+  <body>
+    <div class="container">
+      <div class="card">
+        <div class="kicker">Editar plan de tarea</div>
+        <h1>Plan de ${escape(targetAgent)}</h1>
+        <p class="sub">Agrega correcciones o notas específicas. ${escape(targetAgent)} las va a tomar como override al ejecutar la tarea — pasan sobre el plan original.</p>
 
-      <div style="background:#f5f3ff;border-left:3px solid #6c3bff;padding:12px 14px;border-radius:4px;margin-bottom:20px">
-        <div style="font-size:11px;font-weight:600;color:#6c3bff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Tarea</div>
-        <div style="font-size:14px;color:#1a0a3b;line-height:1.5">${escape(taskTitle)}</div>
+        <div class="task-box">
+          <div class="label">Tarea</div>
+          <div class="value">${escape(taskTitle)}</div>
+        </div>
+
+        <div class="section-label">Plan actual</div>
+        ${plan?.summary ? `<div class="plan-summary">${escape(plan.summary)}</div>` : ''}
+        <ol class="steps">${stepsHtml}</ol>
+
+        <form method="POST" action="/api/portal/agent-tasks/${id}/edit-plan?token=${encodeURIComponent(token)}" style="margin:0">
+          <label class="field-label" for="owner_notes">Tus correcciones / notas para ${escape(targetAgent)}</label>
+          <textarea
+            id="owner_notes"
+            name="owner_notes"
+            rows="6"
+            placeholder="Ej: usa el correo backup del cliente (backup@cliente.mx). No envíes el jueves porque está de vacaciones. Revisa la plantilla V2 antes de mandar."
+          >${escape(priorNotes)}</textarea>
+          <p class="hint">Tus notas se inyectan al inicio del prompt de ${escape(targetAgent)} con prioridad máxima. Déjalo vacío si el plan está bien tal cual y solo quieres aprobar.</p>
+
+          <div class="actions">
+            <button type="submit" class="btn-primary">✓ Guardar y aprobar</button>
+            <a href="/api/portal/agent-tasks/${id}/approve-plan?token=${encodeURIComponent(token)}&reject=1" class="btn-reject">Rechazar tarea</a>
+          </div>
+        </form>
+
+        <p class="footer">
+          Este enlace es de un solo uso — expira al aprobar, editar o rechazar.<br>
+          <a href="https://www.centinelia.mx">centinelia.mx</a>
+        </p>
       </div>
-
-      <div style="margin-bottom:24px">
-        <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Plan actual</div>
-        <p style="color:#374151;font-style:italic;font-size:13px;line-height:1.5;margin:0 0 12px">${escape(plan?.summary ?? '')}</p>
-        <ol style="margin:0;padding-left:0;list-style:none">${stepsHtml}</ol>
-      </div>
-
-      <label for="owner_notes" style="display:block;font-size:11px;font-weight:600;color:#6c3bff;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Tus correcciones / notas para ${escape(targetAgent)}</label>
-      <textarea
-        id="owner_notes"
-        name="owner_notes"
-        rows="6"
-        placeholder="Ej: usar el correo backup del cliente (backup@cliente.mx), no enviar el jueves porque está de vacaciones, revisar plantilla V2 antes de mandar…"
-        style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;color:#1a0a3b;line-height:1.5;box-sizing:border-box;resize:vertical"
-      >${escape(priorNotes)}</textarea>
-
-      <p style="margin:8px 0 20px;font-size:12px;color:#9ca3af">Tus notas se inyectan como instrucciones al inicio del prompt de ${escape(targetAgent)}. Puedes dejar el campo vacío si el plan está bien tal cual.</p>
-
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button type="submit" style="flex:1;min-width:180px;padding:14px 24px;background:#6c3bff;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">
-          Guardar y aprobar
-        </button>
-        <a href="/api/portal/agent-tasks/${id}/approve-plan?token=${encodeURIComponent(token)}&reject=1" style="padding:14px 24px;background:#fff;color:#6b7280;text-decoration:none;border:1px solid #e5e7eb;border-radius:8px;font-size:15px;font-weight:500;text-align:center">
-          Rechazar
-        </a>
-      </div>
-    </form>
+    </div>
   </body></html>`);
 }
 
@@ -168,14 +223,28 @@ export async function POST(req: NextRequest, { params }: Params) {
     })
     .eq('id', id);
 
-  return pageResponse(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plan aprobado</title></head>
-    <body style="margin:0;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-      <div style="max-width:480px;margin:80px auto;padding:32px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center">
-        <div style="width:56px;height:56px;border-radius:50%;background:#22c55e20;margin:0 auto 20px;display:flex;align-items:center;justify-content:center">
-          <span style="font-size:28px;color:#22c55e">✓</span>
-        </div>
-        <h1 style="margin:0 0 12px;font-size:22px;color:#1a0a3b">Plan aprobado ${notes ? 'con tus correcciones' : ''}</h1>
-        <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.5">Tu empleado empieza en los próximos minutos. ${notes ? 'Va a seguir tus notas como override sobre el plan original.' : ''}</p>
-      </div>
-    </body></html>`);
+  return pageResponse(`<!doctype html><html lang="es"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Plan aprobado</title>
+    <style>
+      body { margin: 0; padding: 32px 16px; background: #120726; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; }
+      .card { max-width: 480px; margin: 60px auto 0; padding: 40px 32px; background: #1D1141; border: 1px solid #3D2E6A; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.25); text-align: center; }
+      .icon { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.25)); border: 2px solid rgba(34,197,94,0.4); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; }
+      .icon span { font-size: 32px; color: #4ade80; line-height: 1; }
+      h1 { margin: 0 0 12px; font-size: 24px; font-weight: 700; color: #F1EEFF; line-height: 1.3; }
+      p { margin: 0; font-size: 14px; color: #C8BEE8; line-height: 1.6; }
+      .footer { margin-top: 20px; font-size: 11px; color: #6b5b8f; }
+      .footer a { color: #9B6DFF; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon"><span>✓</span></div>
+      <h1>Plan aprobado${notes ? ' con tus correcciones' : ''}</h1>
+      <p>Tu empleado empieza en los próximos minutos.${notes ? ' Va a seguir tus notas con prioridad sobre el plan original.' : ''}</p>
+      <p class="footer" style="margin-top:20px"><a href="https://www.centinelia.mx">centinelia.mx</a></p>
+    </div>
+  </body></html>`);
 }

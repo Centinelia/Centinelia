@@ -4,7 +4,40 @@
  * heartbeat, weekly-insights, Nox check-in) + identidad meerkat del target.
  */
 import type { TaskPlan } from './task-plan';
-import { shell, badge, heading, infoCard, sectionLabel, btn, mdToEmailHtml, type MeerkatIdentity } from '@/lib/email/send';
+import { shell, badge, heading, infoCard, sectionLabel, mdToEmailHtml, type MeerkatIdentity } from '@/lib/email/send';
+
+/**
+ * Bloque de 3 CTAs con jerarquía visual clara:
+ *   - PRIMARY:   Aprobar (verde, sólido, grande)
+ *   - SECONDARY: Editar (borde violeta, medio)
+ *   - TERTIARY:  Rechazar (link rojo, chico, sin borde)
+ * Layout responsive vía tabla (aguanta Gmail/Outlook/mobile).
+ */
+function actionButtons(approveUrl: string, editUrl: string, rejectUrl: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:24px 0 8px">
+    <tr>
+      <td align="center" style="padding:0 0 12px">
+        <a href="${approveUrl}" style="display:inline-block;background:linear-gradient(135deg,#22c55e,#4ade80);background-color:#22c55e;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;box-shadow:0 4px 12px rgba(34,197,94,0.25);letter-spacing:0.02em">
+          ✓ Aprobar y ejecutar
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0 0 12px">
+        <a href="${editUrl}" style="display:inline-block;background:rgba(155,109,255,0.10);background-color:#2A1B5C;color:#C8B6FF;font-size:14px;font-weight:600;text-decoration:none;padding:13px 32px;border-radius:10px;border:1.5px solid #9B6DFF">
+          ✎ Editar o mandar correcciones
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0">
+        <a href="${rejectUrl}" style="display:inline-block;color:#F87171;font-size:13px;font-weight:500;text-decoration:none;padding:8px 16px;letter-spacing:0.02em">
+          Rechazar tarea
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
 
 export function planApprovalEmailHtml(args: {
   businessName:  string;
@@ -61,14 +94,10 @@ export function planApprovalEmailHtml(args: {
 
     ${risksBlock}
 
-    ${btn('Aprobar y ejecutar', approveUrl, { primary: true, color: '#22c55e' })}
-    ${btn('Editar / mandar correcciones', editUrl, { primary: false })}
-    ${btn('Rechazar', rejectUrl, { primary: false })}
+    ${actionButtons(approveUrl, editUrl, rejectUrl)}
 
-    <p style="color:#8C7FB8;font-size:12px;line-height:1.6;margin:20px 0 0;text-align:center">
-      Si apruebas, ${escape(targetAgent)} empieza en los próximos minutos.<br>
-      Si editas, puedes agregar notas o correcciones antes de que ejecute.<br>
-      Si rechazas, la tarea queda cancelada.
+    <p style="color:#8C7FB8;font-size:12px;line-height:1.6;margin:16px 0 0;text-align:center">
+      Al aprobar, ${escape(targetAgent)} arranca en los próximos minutos.
     </p>
   `;
 
