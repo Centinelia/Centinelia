@@ -545,8 +545,13 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       'que te vaya bien', 'que te vaya muy bien',
       'que tenga buen día', 'que tenga un excelente día', 'que tenga buena tarde', 'que tenga buena noche',
       'que tengas buen día', 'que tengas un excelente día', 'que tengas buena tarde', 'que tengas buena noche',
-      'nos vemos', 'nos hablamos', 'estamos en contacto',
+      'nos vemos', 'nos hablamos', 'estamos en contacto', 'quedamos en contacto',
       'fue un placer atenderle', 'fue un placer atenderte',
+      // Cierres casuales mexicanos que el LLM usa en llamadas informales.
+      // Son inherentemente frases de despedida — no aparecen a mitad de conversación.
+      'cualquier cosa me escribes', 'cualquier cosa me avisas',
+      'cualquier cosa nos escribes', 'cualquier cosa nos avisas',
+      'aquí estamos para lo que necesites', 'aquí estamos para lo que necesite',
     ],
     transcriber: (() => {
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
