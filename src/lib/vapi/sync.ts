@@ -552,6 +552,11 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
       'cualquier cosa me escribes', 'cualquier cosa me avisas',
       'cualquier cosa nos escribes', 'cualquier cosa nos avisas',
       'aquí estamos para lo que necesites', 'aquí estamos para lo que necesite',
+      // Frases que Sofia usa en la práctica (observadas en transcripts reales).
+      'gracias por la llamada', 'gracias por su llamada', 'gracias por tu llamada',
+      'cuídese mucho', 'cuídate mucho', 'que esté bien', 'que estés bien',
+      // En inglés — Sofia a veces cambia si el llamante lo hace.
+      'take care', 'have a nice day', 'have a good day', 'goodbye',
     ],
     transcriber: (() => {
       const tier        = MEERKAT_PROMPT_TIER[meerkatId ?? ''] ?? 'full';
@@ -571,7 +576,12 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     backgroundSound: 'office',
     backchannelingEnabled: true,
     backgroundDenoisingEnabled: true,
-    silenceTimeoutSeconds: 30,
+    // 15s: si no hay audio (ni del asistente ni del llamante) durante este
+    // tiempo, Vapi corta la llamada. Es la red de seguridad cuando el LLM
+    // dice una despedida no canónica que endCallPhrases no matchea
+    // ("cualquier cosa me escribes", "take care", "gracias por la llamada").
+    // Antes 30s → daba tiempo a Sofia a reiniciar con "¿todavía estás ahí?".
+    silenceTimeoutSeconds: 15,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
     artifactPlan: {
