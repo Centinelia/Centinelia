@@ -253,8 +253,26 @@ export async function executeAgentTool(
         }
       }
 
+      // Auto-folio para orden/cotizacion/nota_venta si no vino explícito.
+      // Formato corto (PREFIX-NNNN) para que quepa en celdas apretadas de
+      // plantillas de usuarios. Para trazabilidad completa, el request_id + fecha
+      // quedan en la DB.
+      const autoFolio = (prefixDefault: string, cfg: Record<string, unknown>): string => {
+        const prefix = (cfg.folio_prefix as string | undefined) ?? prefixDefault;
+        return `${prefix}-${Math.floor(Math.random()*9000)+1000}`;
+      };
+      const nonFacturaFolio =
+        (toolInput.folio_num as string | undefined) ??
+        (templateType === 'orden_compra' ? autoFolio('OC',  ordenCfg) :
+         templateType === 'cotizacion'   ? autoFolio('COT', cotizacionCfg) :
+         templateType === 'nota_venta'   ? autoFolio('NV',  notaVentaCfg) :
+         undefined);
+
       const mxn = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-      const fechaHoy = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+      // Fecha en formato dd/mm/yyyy (más compacto para tablas)
+      const _now = new Date();
+      const _pad = (n: number) => String(n).padStart(2, '0');
+      const fechaHoy = `${_pad(_now.getDate())}/${_pad(_now.getMonth()+1)}/${_now.getFullYear()}`;
 
       // ── User template path (docxtemplater + CloudConvert) ─────────────────
       const cfgForType =
@@ -290,7 +308,7 @@ export async function executeAgentTool(
         const totalNum = subtotalNum + ivaNum;
 
         const commonData: Record<string, unknown> = {
-          folio:             (templateType === 'factura' ? facturaFolioNum : toolInput.folio_num as string | undefined) ?? '',
+          folio:             (templateType === 'factura' ? facturaFolioNum : nonFacturaFolio) ?? '',
           fecha:             fechaHoy,
           items:             itemRows,
           subtotal:          mxn(subtotalNum),
