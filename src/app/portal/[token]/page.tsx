@@ -65,7 +65,7 @@ type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negoci
 
 interface Props {
   params:       Promise<{ token: string }>;
-  searchParams: Promise<{ tab?: string; period?: string; debug?: string }>;
+  searchParams: Promise<{ tab?: string; period?: string }>;
 }
 
 
@@ -88,7 +88,7 @@ const FEED_TYPE_CFG: Record<string, { label: string; color: string; bg: string }
 
 export default async function ClientPortalPage({ params, searchParams }: Props) {
   const { token }          = await params;
-  const { tab: tabParam, period, debug } = await searchParams;
+  const { tab: tabParam, period } = await searchParams;
   const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
 
@@ -124,13 +124,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // All agents for this client (same portal_email)
   // In dev the middleware bypasses auth so session is null — fall back to the agent's own email
   const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
-  const clientAgentsRes = lookupEmail
+  const { data: clientAgents } = lookupEmail
     ? await supabase
         .from('voice_agents')
-        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, outbound_role, role, stripe_customer_id')
+        .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, role, stripe_customer_id')
         .eq('portal_email', lookupEmail)
-    : { data: [], error: null };
-  const { data: clientAgents, error: clientAgentsError } = clientAgentsRes as { data: any[] | null; error: any };
+    : { data: [] };
   const allClientAgents = clientAgents ?? [];
 
   // Org-level settings — single source of truth for the Negocio tab
@@ -358,23 +357,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const hasNox      = (allClientAgents as any[]).some(
     (a: any) => (a.features as any)?.meerkat_role_id === 'nox' && a.active,
   );
-
-  // TEMP DEBUG — remover cuando se resuelva el issue del brief card no montando
-  if (debug === 'briefcard') {
-    console.log('[brief-debug] portal_token:', token);
-    console.log('[brief-debug] lookupEmail:', lookupEmail);
-    console.log('[brief-debug] allClientAgents count:', allClientAgents.length);
-    console.log('[brief-debug] agents:', allClientAgents.map((a: any) => ({
-      id:      a.id,
-      name:    a.agent_name,
-      active:  a.active,
-      role:    (a.features as any)?.meerkat_role_id,
-      hasFeatures: !!a.features,
-      featuresKeys: a.features ? Object.keys(a.features) : null,
-    })));
-    console.log('[brief-debug] hasNox:', hasNox);
-  }
-  const forceCard = debug === 'briefcard';
 
   // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
   const agentContextCards = allClientAgents.map(a => {
@@ -621,24 +603,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               {/* Brief del día — solo cuando hay Nox activo en el equipo */}
-              {(hasNox || forceCard) && (
-                <>
-                  {forceCard && (
-                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid #ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                      DEBUG:
-                      {'\n'}token (URL): {token}
-                      {'\n'}agent.portal_email: {String((agent as any).portal_email)}
-                      {'\n'}session?.portalEmail: {String(session?.portalEmail)}
-                      {'\n'}lookupEmail: {String(lookupEmail)}
-                      {'\n'}allClientAgents.length: {allClientAgents.length}
-                      {'\n'}hasNox: {String(hasNox)}
-                      {'\n'}roles: {JSON.stringify(allClientAgents.map((a: any) => ({ n: a.agent_name, r: (a.features as any)?.meerkat_role_id, a: a.active })))}
-                      {'\n'}clientAgentsError: {clientAgentsError ? JSON.stringify(clientAgentsError) : 'null'}
-                    </div>
-                  )}
-                  <BriefDelDiaCard />
-                </>
-              )}
+              {hasNox && <BriefDelDiaCard />}
 
               {/* Two-column layout from KPIs down */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
