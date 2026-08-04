@@ -1492,12 +1492,14 @@ export async function executeAgentTool(
     'generar_cotizacion',
     'generar_one_pager',
     'generar_correo_estructurado',
+    'generar_pitch_deck',
+    'generar_reporte_metricas_excel',
   ]);
 
   if (CREATIVITY_TOOLS.has(toolName)) {
     const { meerkatCanUse } = await import('@/lib/creativity/meerkat-gates');
     const meerkatId = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
-    const toolKey = toolName as 'generar_propuesta_comercial' | 'generar_cotizacion' | 'generar_one_pager' | 'generar_correo_estructurado';
+    const toolKey = toolName as 'generar_propuesta_comercial' | 'generar_cotizacion' | 'generar_one_pager' | 'generar_correo_estructurado' | 'generar_pitch_deck' | 'generar_reporte_metricas_excel';
 
     if (!meerkatCanUse(meerkatId, toolKey)) {
       return { ok: false, error: `${agentName} no puede usar ${toolName}. Delega a un compañero autorizado usando delegar_tarea.` };
@@ -1507,10 +1509,42 @@ export async function executeAgentTool(
     const opsCost = toolName === 'generar_propuesta_comercial' ? 5
                   : toolName === 'generar_cotizacion' ? 4
                   : toolName === 'generar_one_pager' ? 3
+                  : toolName === 'generar_pitch_deck' ? 6
+                  : toolName === 'generar_reporte_metricas_excel' ? 4
                   : 2;
     const opsResult = await consumeAiOp(agentId, opsCost);
     if (!opsResult.ok) {
       return { ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' };
+    }
+
+    // ── pitch deck ──────────────────────────────────────────────────────────
+    if (toolName === 'generar_pitch_deck') {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('knowledge_base, business_description')
+        .eq('portal_email', portalEmail)
+        .maybeSingle();
+      const servicesKb = (((org?.knowledge_base as string | null) ?? '') + '\n' + ((org?.business_description as string | null) ?? '')).trim() || null;
+      const { buildDeck } = await import('@/lib/creativity/deck-builder');
+      const result = await buildDeck({
+        agentId, agentName, businessName, portalEmail,
+        clientName:   (toolInput.client_name as string | null) ?? null,
+        clientNeed:   (toolInput.client_need as string | null) ?? null,
+        servicesKb,
+        extraContext: (toolInput.extra_context as string | null) ?? null,
+      }, supabase);
+      if (!result.ok) return result;
+      return { ...result, message: `Pitch deck generado: ${result.filename}. Descarga: ${result.url} (válido 1 hora).` };
+    }
+
+    // ── reporte métricas Excel ───────────────────────────────────────────────
+    if (toolName === 'generar_reporte_metricas_excel') {
+      const rawWindow = toolInput.window_days as number | string | undefined;
+      const windowDays: 7 | 30 = rawWindow === 30 || rawWindow === '30' ? 30 : 7;
+      const { buildReport } = await import('@/lib/creativity/report-builder');
+      const result = await buildReport(meerkatId as 'noah' | 'nara' | 'nelia', windowDays, { id: agentId, agentName, portalEmail }, supabase);
+      if (!result.ok) return result;
+      return { ...result, message: `Reporte generado con hojas: ${result.sheets.join(', ')}. Descarga: ${result.url} (válido 1 hora).` };
     }
 
     // Fetch org KB + descripcion para contexto de contenido

@@ -3,7 +3,7 @@
  * Vapi calls: POST /api/voice/tools/creativity?agent_id=<id>&tool=<toolName>
  *
  * Dispatches to executeAgentTool with channel='voice'.
- * Whitelist: generar_propuesta_comercial | generar_cotizacion | generar_one_pager | generar_correo_estructurado
+ * Whitelist: generar_propuesta_comercial | generar_cotizacion | generar_one_pager | generar_correo_estructurado | generar_pitch_deck | generar_reporte_metricas_excel
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -18,6 +18,8 @@ const ALLOWED_TOOLS = new Set([
   'generar_cotizacion',
   'generar_one_pager',
   'generar_correo_estructurado',
+  'generar_pitch_deck',
+  'generar_reporte_metricas_excel',
 ]);
 
 export async function POST(req: NextRequest) {

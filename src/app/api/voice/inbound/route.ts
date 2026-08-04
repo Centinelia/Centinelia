@@ -1342,6 +1342,38 @@ NO la uses para:
           serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_correo_estructurado`,
         },
       },
+      generar_pitch_deck: {
+        type: 'function',
+        function: {
+          name: 'generar_pitch_deck',
+          description: 'Genera pitch deck PowerPoint editable para un cliente.',
+          parameters: {
+            type: 'object',
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente.' },
+              client_need:   { type: 'string', description: 'Qué necesita.' },
+              extra_context: { type: 'string', description: 'Contexto opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_pitch_deck`,
+        },
+      },
+      generar_reporte_metricas_excel: {
+        type: 'function',
+        function: {
+          name: 'generar_reporte_metricas_excel',
+          description: 'Genera reporte Excel con métricas del período.',
+          parameters: {
+            type: 'object',
+            properties: {
+              window_days: { type: 'number', description: 'Ventana en días (7 o 30). Default 7.' },
+            },
+            required: [],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_reporte_metricas_excel`,
+        },
+      },
     };
 
     for (const [toolName, allowed] of Object.entries(MEERKAT_TOOL_ACCESS)) {
