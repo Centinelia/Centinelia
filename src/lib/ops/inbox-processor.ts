@@ -812,6 +812,30 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
             required: ['client_name', 'client_need'],
           },
         },
+        generar_pitch_deck: {
+          name: 'generar_pitch_deck',
+          description: 'Genera un pitch deck de PowerPoint editable (8-10 slides) para presentar propuesta a un cliente.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente destinatario.' },
+              client_need:   { type: 'string', description: 'Qué está buscando el cliente.' },
+              extra_context: { type: 'string', description: 'Contexto extra opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+        },
+        generar_reporte_metricas_excel: {
+          name: 'generar_reporte_metricas_excel',
+          description: 'Genera un reporte Excel con métricas del período. Contenido depende del rol del empleado.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              window_days: { type: 'number', enum: [7, 30], description: 'Ventana en días. 7 o 30. Default 7.' },
+            },
+            required: [],
+          },
+        },
       };
 
       for (const [toolName, allowed] of Object.entries(MEERKAT_TOOL_ACCESS)) {
