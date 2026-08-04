@@ -472,7 +472,13 @@ export async function POST(req: NextRequest) {
     '- ADJUNTAR ARCHIVOS: Si el brief menciona un archivo, plantilla, documento o file_id que debes enviar, ES OBLIGATORIO adjuntarlo. Flujo correcto:',
     '   1. Si tienes el file_id explícito en el brief, úsalo directo en enviar_correo con attachment_file_id + attachment_file_name + attachment_mime_type.',
     '   2. Si el brief solo dice "envía la plantilla X" sin file_id, PRIMERO invoca buscar_archivo para localizar el archivo real, LUEGO envía el correo con los 3 campos de attachment.',
-    '   3. NUNCA envíes un correo diciendo "adjunto el archivo" sin haber puesto los campos de attachment — es engañoso al destinatario.',
+    '   3. NUNCA envíes un correo diciendo "adjunto el archivo" sin haber puesto los campos de attachment — es engañoso al destinatario y el servidor rechazará el envío.',
+    '   4. PROHIBIDO ABSOLUTO: NO uses emojis de clip (📎), documento (📄), o carpeta (📁) en el body como sustituto de un adjunto real. NO escribas líneas como "📎 nombre_archivo.pdf" pretendiendo simular un adjunto. Esas líneas ENGAÑAN al destinatario y el servidor rechazará el correo. Los adjuntos reales van SOLO en los 3 campos de attachment del schema, nunca en el body.',
+    '   5. Ejemplos INCORRECTOS que el servidor rechazará:',
+    '      • body: "Le envío adjunto el contrato." + sin attachment_file_id → RECHAZADO',
+    '      • body: "📎 Contrato.pdf\\n\\nSaludos" + sin attachment_file_id → RECHAZADO',
+    '      • body: "Anexo el documento solicitado." + sin attachment_file_id → RECHAZADO',
+    '   6. Ejemplo CORRECTO: primero buscar_archivo("contrato alianza") → devuelve file_id, file_name, mime_type. Luego enviar_correo con to, subject, body ("Estimado, le envío el contrato solicitado. Saludos.") Y attachment_file_id + attachment_file_name + attachment_mime_type del resultado anterior.',
   ];
 
   if (success_criteria) {
