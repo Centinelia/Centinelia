@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, FileText, Download, Zap } from 'lucide-react';
+import { Send, Loader2, FileText, Download, Zap, Wrench } from 'lucide-react';
 
 const FILE_URL_RE = /https?:\/\/[^\s]+\.(?:pdf|docx?|xlsx?|pptx?|png|jpe?g|gif|zip|txt|csv|mp3|mp4|webm|wav|ogg)(?:\?[^\s]*)?/gi;
 
@@ -42,7 +42,42 @@ export interface AgentOption {
   role_color?:   string | null;
 }
 
-type Message = { role: 'user' | 'assistant'; content: string };
+type Message = { role: 'user' | 'assistant'; content: string; tools?: string[] };
+
+// Nombres legibles para los tools cuando aparecen en el chat
+const TOOL_LABELS: Record<string, string> = {
+  buscar_documento_oficina:       'Buscando documentos previos',
+  enviar_documento_oficina:       'Enviando documento por correo',
+  generar_propuesta_comercial:    'Generando propuesta comercial',
+  generar_cotizacion:             'Generando cotización',
+  generar_one_pager:              'Generando one-pager',
+  generar_correo_estructurado:    'Redactando correo',
+  generar_pitch_deck:             'Generando pitch deck',
+  generar_reporte_metricas_excel: 'Generando reporte Excel',
+  create_document:                'Generando documento',
+  create_file:                    'Generando archivo',
+  send_email:                     'Enviando correo',
+  buscar_en_web:                  'Buscando en la web',
+  read_url:                       'Leyendo página web',
+  search_leads:                   'Investigando prospectos',
+  crear_lead:                     'Registrando lead',
+  agendar_cita:                   'Agendando cita',
+  registrar_pedido:               'Registrando pedido',
+  buscar_cliente:                 'Buscando cliente',
+  delegate_task:                  'Delegando tarea',
+  consult_agent:                  'Consultando compañero',
+  create_contract_draft:          'Creando borrador de contrato',
+  list_calendar_events:           'Consultando agenda',
+  create_calendar_event:          'Agendando en calendario',
+  reportar_falla:                 'Reportando falla al equipo',
+  preparar_brief_del_dia:         'Preparando brief del día',
+  revisar_desempeno_equipo:       'Revisando desempeño del equipo',
+  aprobar_gasto:                  'Procesando aprobación de gasto',
+};
+
+function toolLabel(name: string): string {
+  return TOOL_LABELS[name] ?? `Usando ${name.replace(/_/g, ' ')}`;
+}
 
 function welcomeMsg(agent: AgentOption, isOwner: boolean): Message {
   const name = agent.agent_name?.trim() || 'Centinelia';
@@ -134,15 +169,30 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit, i
           const payload = line.slice(6);
           if (payload === '[DONE]') break;
           try {
-            const { text: chunk } = JSON.parse(payload);
-            if (chunk) {
+            const parsed = JSON.parse(payload) as { text?: string; tool?: string };
+            if (parsed.text) {
+              const chunk = parsed.text;
               setChatHistory(prev => {
                 const hist = prev[selectedId] ?? [];
                 const last = hist[hist.length - 1];
                 if (last?.role === 'assistant') {
                   return {
                     ...prev,
-                    [selectedId]: [...hist.slice(0, -1), { role: 'assistant', content: last.content + chunk }],
+                    [selectedId]: [...hist.slice(0, -1), { ...last, content: last.content + chunk }],
+                  };
+                }
+                return prev;
+              });
+            } else if (parsed.tool) {
+              const toolName = parsed.tool;
+              setChatHistory(prev => {
+                const hist = prev[selectedId] ?? [];
+                const last = hist[hist.length - 1];
+                if (last?.role === 'assistant') {
+                  const tools = [...(last.tools ?? []), toolName];
+                  return {
+                    ...prev,
+                    [selectedId]: [...hist.slice(0, -1), { ...last, tools }],
                   };
                 }
                 return prev;
@@ -287,6 +337,20 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit, i
                       }
                 }
               >
+                {msg.role === 'assistant' && msg.tools && msg.tools.length > 0 && (
+                  <div className="flex flex-col gap-1 mb-2">
+                    {msg.tools.map((t, ti) => (
+                      <div
+                        key={ti}
+                        className="inline-flex items-center gap-1.5 text-xs italic self-start"
+                        style={{ color: 'var(--c-text-3)' }}
+                      >
+                        <Wrench size={10} />
+                        <span>{toolLabel(t)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {!msg.content
                   ? (
                     <span className="flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>

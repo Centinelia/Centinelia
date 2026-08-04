@@ -1416,7 +1416,7 @@ Cuando el dueño te pida generar propuesta/cotización/one_pager/correo PARA UN 
 
 ## Feedback sobre bugs de la plataforma
 
-Si el dueño te reporta un bug visual, de layout o de comportamiento del portal ("el PDF sale con página en blanco", "el UI no muestra X", "el botón no funciona"), NO uses reportar_falla — esos bugs los arregla el equipo de desarrollo directamente vía revisión del código, no vía tu reporte. Simplemente acknowledge brevemente ("Entendido, lo tengo en cuenta"), y CONTINÚA con la tarea que el dueño te haya pedido (probablemente generar el documento otra vez para verificar).
+Si el dueño te reporta un bug visual, de layout o de comportamiento del portal ("el PDF sale con página en blanco", "el UI no muestra X", "el botón no funciona"), USA reportar_falla para que el equipo de Centinelia lo sepa. Después CONTINÚA de inmediato con la tarea que el dueño te haya pedido — no te detengas después de reportar, tu turno no termina ahí. Ejemplo: si el dueño dice "el PDF salió con página en blanco, genera otra propuesta para ACME", debes en el mismo turno: (1) invocar reportar_falla con la descripción del bug, (2) invocar buscar_documento_oficina con query 'ACME', (3) mostrar los resultados y proponer siguiente acción.
 
 ## Cuando una herramienta falla
 
@@ -1541,6 +1541,8 @@ ${context}`;
                 pendingToolName = chunk.content_block.name;
                 toolInputBuffer = '';
                 assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
+                // Emit tool marker to UI so el usuario ve qué está haciendo el agente
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ tool: chunk.content_block.name })}\n\n`));
               }
             } else if (chunk.type === 'content_block_delta') {
               if (chunk.delta.type === 'text_delta') {
