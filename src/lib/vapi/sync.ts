@@ -655,7 +655,11 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
     // dice una despedida no canónica que endCallPhrases no matchea
     // ("cualquier cosa me escribes", "take care", "gracias por la llamada").
     // Antes 30s → daba tiempo a Sofia a reiniciar con "¿todavía estás ahí?".
-    silenceTimeoutSeconds: 15,
+    // Antes 15s → Sofia se colgaba cuando encadenaba consultar_agente
+    // (p50 7s) + delegar_tarea (p50 16s) porque el silencio acumulado
+    // durante los tool calls consecutivos superaba el timeout. Ver
+    // /admin/observabilidad/tools para latencias reales.
+    silenceTimeoutSeconds: 25,
     maxDurationSeconds: VAPI_MAX_CALL_SECONDS,
     serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/webhook?secret=${process.env.VAPI_SERVER_SECRET ?? ''}`,
     artifactPlan: {
