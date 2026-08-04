@@ -3,6 +3,7 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF, ProposalPDF } from '@/lib/pdf/doc';
+import { CotizacionPdf } from '@/lib/pdf/cotizacion';
 import type { StructuredContent } from './content-generator';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -94,8 +95,33 @@ export async function buildDocument(
       date:          new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }),
     });
     pdfBuffer = await convertDocxToPdf(docxBuffer, agent.id, supabase);
+  } else if (kind === 'cotizacion' && content.items && content.items.length > 0) {
+    // Path B1: cotización con desglose de items → CotizacionPdf con tabla real
+    const notesText = content.sections
+      .filter(s => !/precio|costo|inversi[óo]n|total/i.test(s.heading))
+      .map(s => `${s.heading}: ${s.body}`)
+      .join('\n');
+    const cotEl = createElement(CotizacionPdf, {
+      brand,
+      data: {
+        clientName:  (content.title.match(/para\s+([^-–:]+)/i)?.[1] ?? '').trim() || null,
+        phone:       null,
+        email:       null,
+        servicio:    null,
+        presupuesto: null,
+        notas:       (notesText.trim() || content.closing) ?? null,
+        items:       content.items.map(it => ({
+          descripcion:    it.descripcion,
+          cantidad:       it.cantidad,
+          precioUnitario: it.precio_unitario,
+          unidad:         it.unidad,
+        })),
+        incluirIVA:  content.incluir_iva ?? false,
+      },
+    });
+    pdfBuffer = await renderToBuffer(cotEl as any);
   } else {
-    // Path B: built-in React PDF
+    // Path B: built-in React PDF (propuesta / cotización sin items / one_pager)
     const contentText = renderContentText(content);
     const props = { title: content.title, content: contentText, brand };
     const Component = kind === 'propuesta' || kind === 'cotizacion' ? ProposalPDF : GenericDocPDF;
