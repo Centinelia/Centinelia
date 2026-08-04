@@ -124,12 +124,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // All agents for this client (same portal_email)
   // In dev the middleware bypasses auth so session is null — fall back to the agent's own email
   const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
-  const { data: clientAgents } = lookupEmail
+  const clientAgentsRes = lookupEmail
     ? await supabase
         .from('voice_agents')
         .select('id, business_name, agent_name, portal_token, active, client_paused, billing_status, plan, phone_number, logo_url, features, outbound_role, role, stripe_customer_id')
         .eq('portal_email', lookupEmail)
-    : { data: [] };
+    : { data: [], error: null };
+  const { data: clientAgents, error: clientAgentsError } = clientAgentsRes as { data: any[] | null; error: any };
   const allClientAgents = clientAgents ?? [];
 
   // Org-level settings — single source of truth for the Negocio tab
@@ -632,6 +633,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       {'\n'}allClientAgents.length: {allClientAgents.length}
                       {'\n'}hasNox: {String(hasNox)}
                       {'\n'}roles: {JSON.stringify(allClientAgents.map((a: any) => ({ n: a.agent_name, r: (a.features as any)?.meerkat_role_id, a: a.active })))}
+                      {'\n'}clientAgentsError: {clientAgentsError ? JSON.stringify(clientAgentsError) : 'null'}
                     </div>
                   )}
                   <BriefDelDiaCard />
