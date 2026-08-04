@@ -4,6 +4,7 @@ import { buildSystemPrompt } from '@/lib/voice/prompt-builder';
 import { isWithinBusinessHours, nextOpenTime } from '@/lib/voice/business-hours';
 import type { VoiceAgent } from '@/types/agent';
 import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
+import { MEERKAT_TOOL_ACCESS } from '@/lib/creativity/meerkat-gates';
 
 // Vapi calls this endpoint when a call comes in on an assigned phone number.
 // We respond with the agent configuration (system prompt + tools) for this caller.
@@ -1266,6 +1267,88 @@ NO la uses para:
         serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec/pedir_a_humano?agent_id=${agent.id}`,
       },
     });
+  }
+
+  // Pilar 2 Creatividad — tools condicionales por meerkat_role_id (voz)
+  {
+    const voiceMeerkatId = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+
+    const CREATIVITY_VOICE_DECLS: Record<string, object> = {
+      generar_propuesta_comercial: {
+        type: 'function',
+        function: {
+          name: 'generar_propuesta_comercial',
+          description: 'Genera propuesta comercial PDF para un cliente calificado.',
+          parameters: {
+            type: 'object',
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente.' },
+              client_need:   { type: 'string', description: 'Qué necesita.' },
+              extra_context: { type: 'string', description: 'Contexto adicional opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_propuesta_comercial`,
+        },
+      },
+      generar_cotizacion: {
+        type: 'function',
+        function: {
+          name: 'generar_cotizacion',
+          description: 'Genera cotización PDF con precios.',
+          parameters: {
+            type: 'object',
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente.' },
+              client_need:   { type: 'string', description: 'Servicio cotizado.' },
+              extra_context: { type: 'string', description: 'Contexto adicional opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_cotizacion`,
+        },
+      },
+      generar_one_pager: {
+        type: 'function',
+        function: {
+          name: 'generar_one_pager',
+          description: 'Genera one-pager informativo (PDF corto).',
+          parameters: {
+            type: 'object',
+            properties: {
+              client_name:   { type: 'string', description: 'Cliente destinatario.' },
+              client_need:   { type: 'string', description: 'Servicio a describir.' },
+              extra_context: { type: 'string', description: 'Contexto adicional opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_one_pager`,
+        },
+      },
+      generar_correo_estructurado: {
+        type: 'function',
+        function: {
+          name: 'generar_correo_estructurado',
+          description: 'Genera borrador de correo estructurado (subject + body). No envía.',
+          parameters: {
+            type: 'object',
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del destinatario.' },
+              client_need:   { type: 'string', description: 'Tema del correo.' },
+              extra_context: { type: 'string', description: 'Contexto adicional opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+          serverUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/creativity?agent_id=${agent.id}&tool=generar_correo_estructurado`,
+        },
+      },
+    };
+
+    for (const [toolName, allowed] of Object.entries(MEERKAT_TOOL_ACCESS)) {
+      if (voiceMeerkatId && (allowed as string[]).includes(voiceMeerkatId) && CREATIVITY_VOICE_DECLS[toolName]) {
+        tools.push(CREATIVITY_VOICE_DECLS[toolName]);
+      }
+    }
   }
 
   // Vapi requires serverUrl at tool top level, not inside the function object
