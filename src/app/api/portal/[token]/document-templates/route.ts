@@ -113,8 +113,13 @@ export async function DELETE(req: NextRequest) {
 
   const storagePath = `${agentId}/templates/${tipo}.docx`;
 
-  await g.supabase.storage.from('agent-documents').remove([storagePath]);
-  await g.supabase.from('document_templates').delete().eq('agent_id', agentId).eq('tipo', tipo);
+  const { error: rmErr } = await g.supabase.storage.from('agent-documents').remove([storagePath]);
+  if (rmErr && !/not found|no rows/i.test(rmErr.message)) {
+    return NextResponse.json({ error: rmErr.message }, { status: 500 });
+  }
+
+  const { error: dbErr } = await g.supabase.from('document_templates').delete().eq('agent_id', agentId).eq('tipo', tipo);
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

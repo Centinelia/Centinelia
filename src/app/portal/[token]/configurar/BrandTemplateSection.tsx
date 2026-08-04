@@ -19,7 +19,7 @@ interface TemplateRow {
 
 const TIPO_LABEL: Record<TipoDocumento, string> = {
   propuesta:  'Propuesta comercial',
-  cotizacion: 'Cotizacion',
+  cotizacion: 'Cotización',
   one_pager:  'One-pager',
   correo:     'Correo estructurado',
 };
