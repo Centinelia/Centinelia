@@ -24,6 +24,7 @@ export interface OfficeDocSummary {
   kind:          string | null;         // template_type: factura / cotizacion / etc.
   created_at:    string;
   expires_at:    string | null;
+  folio:         string | null;         // folio del documento cuando aplica (COT-000042)
 }
 
 export interface SearchArgs {
@@ -55,7 +56,7 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
 
   let q = supabase
     .from('ops_documents')
-    .select('id, title, filename, template_type, created_at, expires_at')
+    .select('id, title, filename, template_type, created_at, expires_at, folio')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -66,10 +67,10 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
     q = q.or(`expires_at.is.null,expires_at.gt.${nowIso}`);
   }
 
-  // Búsqueda fuzzy: title + filename. clientName cae al mismo filtro por ahora.
+  // Búsqueda fuzzy: title + filename + folio. clientName cae al mismo filtro por ahora.
   const searchTerm = (args.query ?? args.clientName ?? '').trim().replace(/[%_]/g, '');
   if (searchTerm) {
-    q = q.or(`title.ilike.%${searchTerm}%,filename.ilike.%${searchTerm}%`);
+    q = q.or(`title.ilike.%${searchTerm}%,filename.ilike.%${searchTerm}%,folio.ilike.%${searchTerm}%`);
   }
 
   const { data, error } = await q;
@@ -81,6 +82,7 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
     kind:       (r.template_type as string | null) ?? null,
     created_at: String(r.created_at),
     expires_at: (r.expires_at as string | null) ?? null,
+    folio:      (r.folio as string | null) ?? null,
   }));
 }
 
@@ -89,7 +91,7 @@ export function formatDocsForAgent(docs: OfficeDocSummary[]): string {
   if (!docs.length) return 'No encontré documentos que coincidan.';
   return docs.map((d, i) => {
     const parts = [
-      `${i + 1}. "${d.title}" (id: ${d.id.slice(0, 8)}…)`,
+      `${i + 1}. "${d.title}"${d.folio ? ` (folio ${d.folio})` : ` (id: ${d.id.slice(0, 8)}…)`}`,
       d.kind ? `tipo: ${d.kind}` : null,
       `creado: ${new Date(d.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`,
       d.expires_at ? `vence: ${new Date(d.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : null,

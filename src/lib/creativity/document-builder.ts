@@ -78,6 +78,7 @@ export async function buildDocument(
     .maybeSingle();
 
   let pdfBuffer: Buffer;
+  let assignedFolio: string | null = null;
 
   if (customTpl?.storage_path) {
     // Path A: custom .docx template via docxtemplater + CloudConvert
@@ -100,12 +101,15 @@ export async function buildDocument(
     // Filtrar secciones que duplicarían info ya presente en el PDF:
     // - precio/inversión/total: ya en la tabla + bloque de totales
     // - condiciones/vigencia: ya en el bloque hardcoded de Condiciones de CotizacionPdf
+    const { nextFolio } = await import('@/lib/pdf/folio-service');
+    assignedFolio = await nextFolio('COT', agent.portal_email, supabase);
     const notesText = content.sections
       .filter(s => !/precio|costo|inversi[óo]n|total|condici[óo]n|vigencia/i.test(s.heading))
       .map(s => `${s.heading}: ${s.body}`)
       .join('\n');
     const cotEl = createElement(CotizacionPdf, {
       brand,
+      folioNum:    assignedFolio,
       data: {
         clientName:  (content.title.match(/para\s+([^-–:]+)/i)?.[1] ?? '').trim() || null,
         phone:       null,
@@ -157,6 +161,7 @@ export async function buildDocument(
       storage_path:  storagePath,
       template_type: kind,
       expires_at:    expiresAt,
+      ...(assignedFolio ? { folio: assignedFolio } : {}),
     })
     .select('id')
     .single();
