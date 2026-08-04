@@ -7,6 +7,7 @@ import {
 } from '@/lib/ops/task-plan';
 import { planApprovalEmailHtml } from '@/lib/ops/task-plan-email';
 import { sendEmail } from '@/lib/email/send';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export const dynamic = 'force-dynamic';
 
@@ -265,8 +266,14 @@ export async function POST(req: NextRequest) {
     max_iterations?:   number;
   };
 
-  const fail = (msg: string) =>
-    NextResponse.json({ results: [{ toolCallId, result: msg }] });
+  const startedAt = Date.now();
+  const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
+  const traceInput = { agente, tarea, contexto, success_criteria, max_iterations };
+
+  const fail = (msg: string) => {
+    traceVoiceCall({ toolName: 'delegar_tarea', agentId, sessionId, input: traceInput, result: { ok: false, error: msg }, startedAt });
+    return NextResponse.json({ results: [{ toolCallId, result: msg }] });
+  };
 
   if (!agente || !tarea) return fail('Parámetros insuficientes para delegar la tarea.');
 
@@ -390,6 +397,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    traceVoiceCall({
+      toolName: 'delegar_tarea', agentId, sessionId, input: traceInput,
+      result:   { ok: true, awaiting_approval: true, pending_task_id: pendingId },
+      startedAt,
+      meta:     { target_agent: target.agent_name, target_id: target.id, stage: 'plan_awaiting_approval' },
+    });
     return NextResponse.json({
       results: [{
         toolCallId,
@@ -568,6 +581,12 @@ export async function POST(req: NextRequest) {
     ? (goalMet ? ' [Criterio cumplido]' : ' [Criterio no cumplido]')
     : '';
 
+  traceVoiceCall({
+    toolName: 'delegar_tarea', agentId, sessionId, input: traceInput,
+    result:   { ok: true, goal_met: goalMet, result: finalResult, target: agentLabel },
+    startedAt,
+    meta:     { target_agent: target.agent_name, target_id: target.id, task_id: taskId, iterations: goalIter, success_criteria: success_criteria ?? null },
+  });
   return NextResponse.json({
     results: [{
       toolCallId,

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { executeSearchFiles, executeReadFile } from '@/lib/services/connector-tools';
 import { searchWeb } from '@/lib/search/web';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,9 +80,14 @@ export async function POST(req: NextRequest) {
   const toolCallId = (call?.id as string) ?? 'call_1';
 
   const { rol, tarea, contexto } = args as { rol: string; tarea: string; contexto?: string };
+  const startedAt = Date.now();
+  const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
+  const traceInput = { rol, tarea, contexto };
 
-  const fail = (msg: string) =>
-    NextResponse.json({ results: [{ toolCallId, result: msg }] });
+  const fail = (msg: string) => {
+    traceVoiceCall({ toolName: 'consultar_agente', agentId, sessionId, input: traceInput, result: { ok: false, error: msg }, startedAt });
+    return NextResponse.json({ results: [{ toolCallId, result: msg }] });
+  };
 
   if (!rol || !tarea) return fail('Parámetros insuficientes para consultar al agente.');
 
@@ -181,9 +187,14 @@ export async function POST(req: NextRequest) {
           .map(b => b.text)
           .join('')
           .trim();
-        return NextResponse.json({
-          results: [{ toolCallId, result: `[${target.agent_name || rol}]: ${text}` }],
+        const finalMsg = `[${target.agent_name || rol}]: ${text}`;
+        traceVoiceCall({
+          toolName: 'consultar_agente', agentId, sessionId, input: traceInput,
+          result:   { ok: true, target: target.agent_name || rol, answer: text },
+          startedAt,
+          meta:     { target_id: target.id, turn: turn + 1 },
         });
+        return NextResponse.json({ results: [{ toolCallId, result: finalMsg }] });
       }
 
       // Agent wants to use a tool
