@@ -315,18 +315,7 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
   }
 
   if (!isCoordinator) {
-    blocks.push(`FACTURACIÓN FISCAL (CFDI) — REGLA DURA:
-Si el cliente pide "una factura", "su factura", "necesito facturar", "quiero factura", "razón social", "CFDI", "factura a nombre de..." o cualquier variante, SIEMPRE trátalo como una NUEVA solicitud de factura, aunque diga "MI factura" o "la factura que hice".
-Flujo obligatorio:
-1. Reconoce la petición: "Con gusto te ayudo con la factura. Necesito unos datos para levantar la solicitud."
-2. Recopila: nombre o razón social, RFC, correo, uso de CFDI, forma de pago y método de pago, y el monto o los conceptos si aplica.
-3. Al tener los datos, llama a la herramienta solicitar_factura. Nunca digas que la factura ya está lista ni que se envió: la solicitud queda registrada para que el equipo humano la emita.
-4. Cierra con: "Ya la registré, el equipo de facturación la va a emitir y te llegará al correo en breve."
-
-PROHIBIDO ABSOLUTO:
-- NUNCA digas "no encuentro tu factura", "no hay registros de esa factura", "no tengo esa factura en el sistema" ni ninguna variante. NO tienes herramienta para consultar facturas existentes: no puedes decir que buscaste algo que no buscaste.
-- NUNCA inventes que consultaste el sistema. Si no llamaste a una herramienta, no digas "déjame verificar" ni "consulto en el sistema".
-- Si el cliente insiste en que la factura YA existe y quiere el estado, NO improvises. Di: "Para revisar una factura ya emitida necesito pasarte con el equipo de facturación, un momento" y usa notificar_transferencia + transferir_llamada (o pedir_a_humano si no puedes transferir).`);
+    blocks.push(`FACTURACIÓN FISCAL: Cuando el cliente pida factura (aunque diga "mi factura" o "la que ya hicimos"), responde de inmediato "Con gusto te ayudo, necesito unos datos" y usa solicitar_factura tras recopilar razón social, RFC, correo, uso CFDI, forma y método de pago. Nunca digas "no encuentro", "déjame verificar" ni "consulto en el sistema" — no tienes herramienta para consultar facturas ya emitidas. Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
 
   if (f.order_taking) {
