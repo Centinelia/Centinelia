@@ -10,8 +10,8 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 const LEGAL_ABBREV_RULE = `PRONUNCIACIÓN DE SIGLAS EN RAZONES SOCIALES: Al leer o repetir una razón social con siglas legales, deletrea letra por letra con pausas — NUNCA la digas corrida. Ejemplos: "S.A. de C.V." → "ese, a, de ce, ve" (no "sadv"). "S. de R.L." → "ese, de erre, ele". "S.A.P.I. de C.V." → "ese, a, pe, i, de ce, ve". Al confirmar la razón social, léela lentamente con pausas entre cada sigla.`;
 
-const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS (RFC, CURP, folios, placas, IMEI, cuentas):
-Antes de que el cliente diga el código, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: X de Xilófono, A de Amor, cero, uno..." No lo pidas después — pídelo primero.
+const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS Y CORREOS ELECTRÓNICOS (RFC, CURP, folios, placas, IMEI, cuentas, EMAILS):
+Antes de que el cliente diga el código o correo, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: X de Xilófono, A de Amor, cero, uno..." No lo pidas después — pídelo primero.
 
 Al REPETIRLO de regreso al cliente para confirmar:
 - Escribe cada carácter SEPARADO POR COMA Y ESPACIO en tu respuesta, así el TTS hace la pausa. Nunca pegues letras y números en una misma palabra.
@@ -20,7 +20,14 @@ Al REPETIRLO de regreso al cliente para confirmar:
 - Nunca concatenes el nombre del código con el código en sí ("RFC" pegado a las letras).
 - Después de deletrearlo pregunta: "¿Está correcto así?" Solo cuando el cliente diga que sí, das por bueno el dato.
 
-Si a la primera lectura te equivocas o el cliente te corrige, PIDE que te lo repita despacio letra por letra en vez de adivinar. No inventes letras que no oíste claras.`;
+Si a la primera lectura te equivocas o el cliente te corrige, PIDE que te lo repita despacio letra por letra en vez de adivinar. No inventes letras que no oíste claras.
+
+CORREOS ELECTRÓNICOS — REGLA ESPECÍFICA (transcripción falla con nombres inusuales/marcas):
+1. NUNCA aceptes un correo tras UNA sola lectura. Siempre exige deletreo con alfabeto fonético desde el primer intento: "Para asegurarme, ¿me lo puede deletrear con nombres? Por ejemplo, C de Casa, E de Elefante..."
+2. Los nombres de marcas o palabras raras (Centinelia, Pneuma, Xolotl, etc.) SIEMPRE los oye mal el transcriptor. NO ADIVINES si no estás segura — di: "No logré escuchar el nombre completo, ¿me lo puede deletrear letra por letra?"
+3. Cuando el cliente te CORRIJA una vez, ese es el momento de pedir deletreo completo, NO de intentar reescribir por tu cuenta. Prohibido inventar letras nuevas (agregar P al inicio, cambiar S por D, etc.) — cada corrección tuya que no coincida palabra por palabra con lo que el cliente dijo es un ERROR grave.
+4. Si el cliente se frustra ("no, no", "de dónde sacaste eso", "inútil"): PARA de reescribir. Di: "Tiene razón, mejor recíbamelo letra por letra a mi paso. Dígame la primera letra." Luego confirma esa letra sola. Después la segunda. Una por una hasta armar el correo completo.
+5. Al confirmar la versión final, dila SEPARADA con comas: "ce, e, ene, te, i, ene, e, ele, i, a, punto, de, e, ve, arroba, ge, eme, a, i, ele, punto, ce, o, eme". No la pegues como palabra.`;
 
 export async function buildSystemPrompt(
   agent: VoiceAgent,
@@ -263,16 +270,13 @@ UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido)
     blocks.push(`PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas un correo en voz alta, usa términos en español: @ = "arroba", . = "punto", ".com" = "punto com". Nunca uses "at" ni "dot".
 ${LEGAL_ABBREV_RULE}
 ${ALFANUMERIC_DICTATION_RULE}`);
-    blocks.push(`EJECUCIÓN ASÍNCRONA — REGLA DURA:
-NO invoques consultar_agente ni delegar_tarea mientras el llamante espera en línea si la petición requiere buscar archivos, generar documentos, revisar contratos, cotizaciones o cualquier trabajo que tome más de 5 segundos. Esos tools son LENTOS (10-25s cada uno) y el llamante se queda en silencio.
-En su lugar, para peticiones complejas sigue este flujo asíncrono:
-1. Recolecta datos que necesitas: correo, WhatsApp del cliente, detalles de lo que pide.
-2. Dile con claridad: "Perfecto, se lo hago llegar a su correo en unos minutos. Le confirmo cuando esté listo."
-3. Cierra la llamada amablemente (agradece, despedida).
-4. DESPUÉS de despedirte, invoca delegar_tarea con toda la info incluyendo el correo/WhatsApp del cliente. Vapi seguirá con la ejecución en background aunque el llamante ya colgó.
-Peticiones que DEBEN ir asíncronas: enviar plantilla/contrato/cotización/factura/reporte, generar propuesta, buscar y enviar archivo del Drive, coordinar tarea entre varios empleados, cualquier chain de 2+ tools.
-Peticiones que SÍ puedes resolver en línea (rápidas, <3s): responder horarios/precios/servicios que ya tienes en KB, crear_lead, agendar_cita, registrar_pedido, transferir_llamada, buscar_cliente (solo verificación).
-NUNCA digas "un momento" y te pongas a esperar tool calls largos. Si ya dijiste "un momento" y ves que va a tomar tiempo, di al cliente: "Le voy a hacer llegar la información por correo, ¿me lo confirma?" y sigue el flujo asíncrono.`);
+    blocks.push(`TAREAS COMPLEJAS QUE REQUIEREN COMPAÑEROS:
+Cuando aceptes una tarea que requiere invocar consultar_agente o delegar_tarea (ej. buscar archivo en Drive + enviar por correo), sigue este flujo:
+1. Recolecta TODA la información antes de invocar: correo del cliente, qué archivo/tema exactamente. Confirma cada dato letra por letra.
+2. Di al cliente: "Un momento por favor, estoy coordinando con mi compañero." — Vapi mantiene el silencio con audio de fondo mientras procesa.
+3. INVOCA delegar_tarea con toda la info (correo, tema, motivo). Los tools tardan 10-25s por su naturaleza (búsqueda Drive + Sonnet + envío).
+4. Cuando el tool devuelva, confirma al cliente: "Listo, ya se lo envié a tu correo. ¿Algo más?"
+Regla CRÍTICA: NUNCA prometas al cliente que algo se le va a enviar SIN haber invocado el tool durante la misma llamada. Si dices "te llega en unos minutos" sin invocar, estás mintiendo — Vapi cierra la sesión al colgar y nada se ejecuta después. Prefiere hacer esperar 20s al cliente antes que mentirle.`);
   }
 
   // ── Feature blocks — all tiers ────────────────────────────────────────────
