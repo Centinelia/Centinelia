@@ -38,9 +38,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     .single();
   if (!doc) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
 
+  // download: false → Content-Disposition: inline → PDF se ve en iframe (preview)
+  // en vez de forzar descarga. El endpoint de descarga en el UI usa <a download>
+  // que fuerza descarga client-side, así que este cambio no rompe download.
   const { data: signed } = await supabase.storage
     .from('agent-documents')
-    .createSignedUrl(doc.storage_path as string, 3600);
+    .createSignedUrl(doc.storage_path as string, 3600, { download: false });
 
   if (!signed?.signedUrl) {
     return NextResponse.json({ error: 'Could not generate download URL' }, { status: 500 });
