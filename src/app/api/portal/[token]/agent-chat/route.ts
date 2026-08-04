@@ -1517,6 +1517,22 @@ ${context}`;
         // si ya emitimos texto para saber cuándo insertar separadores visuales.
         let hasEmittedText = false;
 
+        // Anti-hallucination: si el usuario claramente pide "generar X",
+        // forzamos tool_choice=buscar_documento_oficina en la primera llamada
+        // al LLM para que NO pueda saltarse la búsqueda de documentos previos.
+        // Instrucciones del prompt no bastan — Sonnet las ignora regularmente.
+        const lastUserMsg = [...conversationMessages].reverse().find(m => m.role === 'user');
+        const lastUserTextForIntent = typeof lastUserMsg?.content === 'string'
+          ? lastUserMsg.content
+          : Array.isArray(lastUserMsg?.content)
+            ? (lastUserMsg.content as Array<{ type: string; text?: string }>)
+                .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
+            : '';
+        const GENERATE_INTENT_RE = /\b(?:genera(?:r|me)?|crear|creame|has|hazme|redacta|prepara)\s+(?:una?\s+)?(?:propuesta|cotizaci[óo]n|one[\s-]?pager|correo|carta|pitch|deck|reporte|documento)/i;
+        const wantsGenerate  = GENERATE_INTENT_RE.test(lastUserTextForIntent);
+        const hasSearchTool  = sessionTools.some((t: { name?: string }) => t.name === 'buscar_documento_oficina');
+        const forceSearchTool = wantsGenerate && hasSearchTool;
+
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)
           if (callCount > 0) {
@@ -1531,6 +1547,12 @@ ${context}`;
             max_tokens: 2048,
             system:     callCount === 1 ? systemWithAlert : system,
             tools:      sessionTools,
+            // Fuerza buscar_documento_oficina en la primera call cuando detectamos
+            // intent de "generar X". Elimina la posibilidad de que el LLM narre
+            // "reviso si hay previo" sin invocar la tool.
+            ...(callCount === 1 && forceSearchTool
+              ? { tool_choice: { type: 'tool' as const, name: 'buscar_documento_oficina' } }
+              : {}),
             messages:   conversationMessages,
           });
 
