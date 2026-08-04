@@ -1508,6 +1508,10 @@ ${context}`;
         const readUrlCountRef: ReadUrlCounter = { value: 0 };
         let callCount    = 0;
         const MAX_CALLS  = 6;
+        // Flag persistente entre iteraciones del loop agéntico. assistantBlocks se
+        // resetea por iteración, así que necesitamos rastrear a nivel turno-completo
+        // si ya emitimos texto para saber cuándo insertar separadores visuales.
+        let hasEmittedText = false;
 
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)
@@ -1535,11 +1539,11 @@ ${context}`;
           for await (const chunk of stream) {
             if (chunk.type === 'content_block_start') {
               if (chunk.content_block.type === 'text') {
-                // Si ya hay algo emitido (texto o tool previo), separar visualmente
-                // el nuevo párrafo con un doble salto de línea. Evita que "…ahora."
-                // se pegue directo con "Lista la propuesta…" cuando el LLM escribe,
-                // invoca tool, y vuelve a escribir en el mismo turno.
-                if (assistantBlocks.length > 0) {
+                // Si ya emitimos texto en ESTA sesión (esta iteración o previa),
+                // separar visualmente el nuevo párrafo con doble salto de línea.
+                // Sin esto: "…ahora.Lista la propuesta…" se pega directo cuando
+                // el LLM escribe, invoca tool, y vuelve a escribir.
+                if (hasEmittedText) {
                   send('\n\n');
                 }
                 assistantBlocks.push({ type: 'text', text: '' });
@@ -1554,6 +1558,7 @@ ${context}`;
             } else if (chunk.type === 'content_block_delta') {
               if (chunk.delta.type === 'text_delta') {
                 send(chunk.delta.text);
+                if (chunk.delta.text.trim()) hasEmittedText = true;
                 const last = assistantBlocks.at(-1);
                 if (last?.type === 'text') last.text += chunk.delta.text;
               } else if (chunk.delta.type === 'input_json_delta') {
