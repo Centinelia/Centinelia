@@ -65,7 +65,7 @@ type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negoci
 
 interface Props {
   params:       Promise<{ token: string }>;
-  searchParams: Promise<{ tab?: string; period?: string }>;
+  searchParams: Promise<{ tab?: string; period?: string; debug?: string }>;
 }
 
 
@@ -88,7 +88,7 @@ const FEED_TYPE_CFG: Record<string, { label: string; color: string; bg: string }
 
 export default async function ClientPortalPage({ params, searchParams }: Props) {
   const { token }          = await params;
-  const { tab: tabParam, period } = await searchParams;
+  const { tab: tabParam, period, debug } = await searchParams;
   const tab: Tab           = (tabParam as Tab) ?? 'inicio';
   const days               = period ? parseInt(period) : undefined;
 
@@ -358,6 +358,23 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     (a: any) => (a.features as any)?.meerkat_role_id === 'nox' && a.active,
   );
 
+  // TEMP DEBUG — remover cuando se resuelva el issue del brief card no montando
+  if (debug === 'briefcard') {
+    console.log('[brief-debug] portal_token:', token);
+    console.log('[brief-debug] lookupEmail:', lookupEmail);
+    console.log('[brief-debug] allClientAgents count:', allClientAgents.length);
+    console.log('[brief-debug] agents:', allClientAgents.map((a: any) => ({
+      id:      a.id,
+      name:    a.agent_name,
+      active:  a.active,
+      role:    (a.features as any)?.meerkat_role_id,
+      hasFeatures: !!a.features,
+      featuresKeys: a.features ? Object.keys(a.features) : null,
+    })));
+    console.log('[brief-debug] hasNox:', hasNox);
+  }
+  const forceCard = debug === 'briefcard';
+
   // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
   const agentContextCards = allClientAgents.map(a => {
     const kb   = ((a as any).knowledge_base         as string | null) ?? '';
@@ -603,7 +620,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               </div>
 
               {/* Brief del día — solo cuando hay Nox activo en el equipo */}
-              {hasNox && <BriefDelDiaCard />}
+              {(hasNox || forceCard) && (
+                <>
+                  {forceCard && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid #ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '12px' }}>
+                      DEBUG: forceCard=true, hasNox={String(hasNox)}, agents={allClientAgents.length}, roles={JSON.stringify(allClientAgents.map((a: any) => ({ n: a.agent_name, r: (a.features as any)?.meerkat_role_id, a: a.active })))}
+                    </div>
+                  )}
+                  <BriefDelDiaCard />
+                </>
+              )}
 
               {/* Two-column layout from KPIs down */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
