@@ -43,11 +43,18 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const url = `${publicUrl}?t=${Date.now()}`;
 
-  // Sync logo across all agents of the same business for this client
+  // Escribir en organizations.logo_url (fuente de verdad por cuenta).
+  // También sincronizamos voice_agents.logo_url para retrocompat, hasta que
+  // se drope esa columna (ver issue-logo-url-por-agente).
+  await supabase
+    .from('organizations')
+    .upsert(
+      { portal_email: session.portalEmail, logo_url: url },
+      { onConflict: 'portal_email' },
+    );
   await supabase
     .from('voice_agents')
     .update({ logo_url: url })
-    .eq('business_name', agent.business_name)
     .eq('portal_email', session.portalEmail);
 
   return NextResponse.json({ url });
@@ -74,11 +81,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     `${agent.id}/logo.png`, `${agent.id}/logo.jpg`,
     `${agent.id}/logo.webp`, `${agent.id}/logo.svg`,
   ]);
-  // Clear logo on all agents of this business
+  // Limpiar en organizations (fuente de verdad) + voice_agents (retrocompat).
+  await supabase
+    .from('organizations')
+    .update({ logo_url: null })
+    .eq('portal_email', session.portalEmail);
   await supabase
     .from('voice_agents')
     .update({ logo_url: null })
-    .eq('business_name', agent.business_name)
     .eq('portal_email', session.portalEmail);
 
   return NextResponse.json({ ok: true });

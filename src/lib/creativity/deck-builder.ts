@@ -61,7 +61,7 @@ export async function buildDeck(ctx: DeckCtx, supabase: SupabaseClient): Promise
     .maybeSingle();
   const { data: orgRow } = await (supabase as any)
     .from('organizations')
-    .select('email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+    .select('logo_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
     .eq('portal_email', ctx.portalEmail)
     .maybeSingle();
 

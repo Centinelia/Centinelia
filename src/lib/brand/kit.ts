@@ -30,11 +30,13 @@ export function brandKitFromAgent(
   const orgWebsite = org?.brand_website as string | null | undefined;
   const orgAddress = org?.brand_address as string | null | undefined;
   const orgFooter = org?.email_footer_text as string | null | undefined;
+  const orgLogoUrl = org?.logo_url as string | null | undefined;
 
   return {
     businessName:   (agent.business_name          as string)      ?? '',
-    // logo_url vive en voice_agents (por agente) — email_logo_url también existe como override.
-    logoUrl:        (agent.logo_url               as string|null) ?? (agent.email_logo_url as string|null) ?? null,
+    // logo_url ahora vive en organizations (single source of truth).
+    // Fallback a voice_agents.logo_url (legacy) + email_logo_url override.
+    logoUrl:        (orgLogoUrl                   ?? null) ?? (agent.logo_url as string|null) ?? (agent.email_logo_url as string|null) ?? null,
     color:          (orgColor      ?? null) ?? '#6C3BFF',
     colorSecondary: (orgSecondary  ?? null) ?? null,
     phone:          (agent.phone_number            as string|null) ?? null,
