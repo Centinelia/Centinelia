@@ -39,6 +39,7 @@ import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
+import { BriefDelDiaSection } from './BriefDelDiaSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -145,6 +146,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
       ? [{ id: 'desvio',    label: 'Desvío de llamadas',     group: 'Operación'     }] : []),
     { id: 'autonomia',       label: 'Nivel de autonomía',     group: 'Operación'     },
     { id: 'checkin',         label: 'Check-in automático',    group: 'Operación'     },
+    ...(meerkatId === 'nox'
+      ? [{ id: 'brief-del-dia', label: 'Brief del día',          group: 'Operación'     }] : []),
     { id: 'automatizaciones', label: 'Automatizaciones',      group: 'Operación'     },
     ...(!isCoordinator
       ? [{ id: 'notificaciones', label: 'Notificaciones',     group: 'Operación'     }] : []),
@@ -401,6 +404,18 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 />
               </div>
             </div>
+
+            {meerkatId === 'nox' && (
+              <div id="brief-del-dia" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Brief del día</h2>
+                    <InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />
+                  </div>
+                  <BriefDelDiaSection agentId={agent.id} />
+                </div>
+              </div>
+            )}
 
             <div id="automatizaciones" style={SCROLL_STYLE}>
               <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
