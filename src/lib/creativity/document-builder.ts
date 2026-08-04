@@ -46,16 +46,23 @@ export async function buildDocument(
   agent: { id: string; agent_name: string | null; portal_email: string },
   supabase: SupabaseClient,
 ): Promise<DocumentBuildResult | DocumentBuildError> {
-  // brandKitFromAgent takes (agentObject, orgObject?) — build from agent param.
-  // Org branding (colors, footer) is best-effort: try to fetch from organizations,
-  // but fall back gracefully if the chain isn't available (e.g. in tests).
-  const agentObj: Record<string, unknown> = {
-    business_name: agent.agent_name ?? '',
-    logo_url:      null,
-    phone_number:  null,
-  };
+  // Fetch agent logo/phone from voice_agents + org branding from organizations.
+  // Sin el org, brand kit cae a defaults Centinelia (morado #6C3BFF, sin logo).
+  const { data: agentRow } = await (supabase as any)
+    .from('voice_agents')
+    .select('business_name, logo_url, email_logo_url, phone_number')
+    .eq('id', agent.id)
+    .maybeSingle();
+  const { data: orgRow } = await (supabase as any)
+    .from('organizations')
+    .select('email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+    .eq('portal_email', agent.portal_email)
+    .maybeSingle();
 
-  const brand = brandKitFromAgent(agentObj, null);
+  const brand = brandKitFromAgent(
+    (agentRow as Record<string, unknown>) ?? { business_name: agent.agent_name ?? '' },
+    orgRow as Record<string, unknown> | null,
+  );
 
   const timestamp = Date.now();
   const filename  = `${slugify(kind)}-${slugify(content.title || 'documento')}-${timestamp}.pdf`;

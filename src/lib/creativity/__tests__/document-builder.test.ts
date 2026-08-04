@@ -31,6 +31,7 @@ function mockSupabase() {
           eq: () => ({
             maybeSingle: async () => ({ data: null, error: null }),  // no custom template
           }),
+          maybeSingle: async () => ({ data: null, error: null }),    // voice_agents/organizations lookup
         }),
       }),
       insert: (row: any) => {

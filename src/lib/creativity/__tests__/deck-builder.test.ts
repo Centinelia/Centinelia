@@ -25,6 +25,11 @@ function mockSupabase() {
       }),
     },
     from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: null, error: null }),
+        }),
+      }),
       insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'doc-1' }, error: null }) }) }),
     }),
   } as any;

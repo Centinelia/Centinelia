@@ -67,12 +67,9 @@ export function BrandedDoc({ brand, docType, subtitle, children, filename }: {
 
         {/* ── Footer ── */}
         <View style={[S.footer, { borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 8 }]}>
-          <View style={S.spaceBetween}>
-            <Text style={{ fontSize: 8, color: '#9ca3af' }}>
-              {footerParts.join('  ·  ')}
-            </Text>
-            <Text style={{ fontSize: 8, color: '#d1d5db' }}>Generado por Centinelia</Text>
-          </View>
+          <Text style={{ fontSize: 8, color: '#9ca3af' }}>
+            {footerParts.join('  ·  ')}
+          </Text>
         </View>
 
       </Page>

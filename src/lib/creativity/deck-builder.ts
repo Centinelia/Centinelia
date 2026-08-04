@@ -53,11 +53,22 @@ function bulletsToContent(bullets: string[]): string {
 }
 
 export async function buildDeck(ctx: DeckCtx, supabase: SupabaseClient): Promise<DeckBuildResult | DeckBuildError> {
-  const brand = brandKitFromAgent({
-    id:            ctx.agentId,
-    agent_name:    ctx.agentName,
-    business_name: ctx.businessName,
-  } as Record<string, unknown>, null);
+  // Fetch agent logo + org brand para que el deck salga con el branding real.
+  const { data: agentRow } = await (supabase as any)
+    .from('voice_agents')
+    .select('business_name, logo_url, email_logo_url, phone_number')
+    .eq('id', ctx.agentId)
+    .maybeSingle();
+  const { data: orgRow } = await (supabase as any)
+    .from('organizations')
+    .select('email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+    .eq('portal_email', ctx.portalEmail)
+    .maybeSingle();
+
+  const brand = brandKitFromAgent(
+    (agentRow as Record<string, unknown>) ?? { business_name: ctx.businessName, agent_name: ctx.agentName },
+    orgRow as Record<string, unknown> | null,
+  );
 
   const userPrompt = `NEGOCIO: ${ctx.businessName}
 REDACTA COMO: ${ctx.agentName ?? 'Noah'}
