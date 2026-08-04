@@ -156,8 +156,8 @@ export function CotizacionPdf({ brand, data, folioNum }: {
         </View>
       )}
 
-      {/* Conditions */}
-      <View style={[S.section, { backgroundColor: '#f9fafb', borderRadius: 6, padding: 12 }]}>
+      {/* Conditions — wrap={false} evita que el título se separe de los bullets al saltar de página */}
+      <View wrap={false} style={[S.section, { backgroundColor: '#f9fafb', borderRadius: 6, padding: 12 }]}>
         <SectionTitle title="Condiciones" />
         <Text style={[S.muted, { lineHeight: 1.8 }]}>
           {'• Esta cotización es válida por 30 días naturales a partir de la fecha de emisión.\n'}
@@ -166,8 +166,8 @@ export function CotizacionPdf({ brand, data, folioNum }: {
         </Text>
       </View>
 
-      {/* Signatures */}
-      <View style={[S.row, { marginTop: 32, gap: 40 }]}>
+      {/* Signatures — wrap={false} las mantiene juntas si saltan de página */}
+      <View wrap={false} style={[S.row, { marginTop: 32, gap: 40 }]}>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <View style={{ borderTopWidth: 1, borderTopColor: '#1A0A3B', width: '100%', paddingTop: 6 }}>
             <Text style={S.muted}>Firma del prestador</Text>
