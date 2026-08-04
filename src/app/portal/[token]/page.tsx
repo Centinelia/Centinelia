@@ -623,8 +623,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               {(hasNox || forceCard) && (
                 <>
                   {forceCard && (
-                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid #ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '12px' }}>
-                      DEBUG: forceCard=true, hasNox={String(hasNox)}, agents={allClientAgents.length}, roles={JSON.stringify(allClientAgents.map((a: any) => ({ n: a.agent_name, r: (a.features as any)?.meerkat_role_id, a: a.active })))}
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid #ef4444', color: '#ef4444', padding: '12px', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                      DEBUG:
+                      {'\n'}token (URL): {token}
+                      {'\n'}agent.portal_email: {String((agent as any).portal_email)}
+                      {'\n'}session?.portalEmail: {String(session?.portalEmail)}
+                      {'\n'}lookupEmail: {String(lookupEmail)}
+                      {'\n'}allClientAgents.length: {allClientAgents.length}
+                      {'\n'}hasNox: {String(hasNox)}
+                      {'\n'}roles: {JSON.stringify(allClientAgents.map((a: any) => ({ n: a.agent_name, r: (a.features as any)?.meerkat_role_id, a: a.active })))}
                     </div>
                   )}
                   <BriefDelDiaCard />
