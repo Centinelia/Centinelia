@@ -8,6 +8,10 @@ import { renderTramitesSection } from '@/lib/tramites/prompt';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
+const LEGAL_ABBREV_RULE = `PRONUNCIACIÓN DE SIGLAS EN RAZONES SOCIALES: Al leer o repetir una razón social con siglas legales, deletrea letra por letra con pausas — NUNCA la digas corrida. Ejemplos: "S.A. de C.V." → "ese, a, de ce, ve" (no "sadv"). "S. de R.L." → "ese, de erre, ele". "S.A.P.I. de C.V." → "ese, a, pe, i, de ce, ve". Al confirmar la razón social, léela lentamente con pausas entre cada sigla.`;
+
+const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS (RFC, CURP, folios, placas): Cuando el cliente te dicte un código, pídele que lo deletree con alfabeto fonético ("A de Amor, B de Bueno..."). Al repetirlo de regreso, hazlo LETRA POR LETRA con pausa entre cada carácter — no lo digas corrido. Ejemplo de RFC "FET010101ABC": "efe, e, te, cero, uno, cero, uno, cero, uno, a, be, ce". Pregunta "¿es correcto?" al final.`;
+
 export async function buildSystemPrompt(
   agent: VoiceAgent,
   learnings?: { general?: string | null; micro?: string | null } | null,
@@ -239,16 +243,10 @@ Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo e
 Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo idioma.
 IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
     } else if (promptTier !== 'lite') {
-      blocks.push(`IDIOMA: Responde siempre en español.
+      blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés). Si detectas que ibas a escribir algo así, pide al cliente que repita en español.
 PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.
-PRONUNCIACIÓN DE ABREVIATURAS LEGALES Y SIGLAS EN RAZONES SOCIALES: Cuando leas o repitas una razón social o nombre fiscal que incluya siglas legales, NO las pronuncies como una palabra corrida. Deletréalas letra por letra separadas por pausa. Ejemplos obligatorios:
-- "S.A. de C.V." se dice "ese, a, de ce, ve" (no "sadv" ni "sadeceve").
-- "S. de R.L." se dice "ese, de erre, ele".
-- "S.A.P.I. de C.V." se dice "ese, a, pe, i, de ce, ve".
-- "S.C." se dice "ese, ce".
-- Siglas comerciales como "SA", "SL", "CV" dentro de un nombre también se deletrean letra por letra.
-Cuando confirmes una razón social con el cliente, léela lentamente y con pausas entre las siglas para que él pueda corregirte.
-DICTADO DE CÓDIGOS ALFANUMÉRICOS: Cuando el cliente te dicte un código que mezcla letras y números (placa de vehículo, RFC, CURP, número de folio, número de serie u otro código similar), pídele que lo deletree usando el alfabeto fonético: "¿Me lo podría deletrear letra por letra? Por ejemplo: A de Amor, B de Bueno, C de Casa..." Así evitas errores de transcripción. Una vez que lo hayas capturado, repítelo completo para que el cliente lo confirme antes de continuar: "Entonces es [código], ¿correcto?"`);
+${LEGAL_ABBREV_RULE}
+${ALFANUMERIC_DICTATION_RULE}`);
       blocks.push(`INVESTIGACIÓN ASÍNCRONA:
 Si el cliente solicita información que requiere buscar en archivos, consultar a un compañero o hacer una búsqueda en internet, NO te pongas a investigar en tiempo real mientras el cliente espera en línea.
 En su lugar, ofrécele elegir cómo prefiere recibir la información:
@@ -261,7 +259,9 @@ Una vez terminada la llamada, usa enviar_correo o delegar_tarea para cumplir con
 Ejemplos de solicitudes que deben manejarse así: cotizaciones detalladas, revisión de contratos o documentos, consultas técnicas que requieren investigar, información que no tienes de memoria.
 No dejes al cliente esperando en silencio. Sé proactivo desde el inicio de la solicitud.`);
     } else {
-      blocks.push('IDIOMA: Responde siempre en español.');
+      blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés). Si detectas que ibas a escribir algo así, pide al cliente que repita en español.
+${LEGAL_ABBREV_RULE}
+${ALFANUMERIC_DICTATION_RULE}`);
     }
   }
 
