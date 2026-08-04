@@ -91,6 +91,9 @@ export function BriefDelDiaCard() {
               <RefreshCw className={`w-4 h-4 ${preparing ? 'animate-spin' : ''}`} />
               {preparing ? 'Preparando...' : 'Preparar ahora'}
             </button>
+            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+              Cuesta 5 tareas de tu plan.
+            </p>
             {error && (
               <div className="flex items-center gap-1.5 text-xs" style={{ color: '#ef4444' }}>
                 <AlertCircle className="w-4 h-4 shrink-0" />
@@ -143,7 +146,7 @@ export function BriefDelDiaCard() {
                 style={{ color: 'var(--c-text-3)' }}
               >
                 <RefreshCw className={`w-3 h-3 ${preparing ? 'animate-spin' : ''}`} />
-                {preparing ? 'Actualizando...' : 'Actualizar'}
+                {preparing ? 'Actualizando...' : 'Actualizar (5 tareas)'}
               </button>
               {error && (
                 <div className="flex items-center gap-1.5 text-xs" style={{ color: '#ef4444' }}>

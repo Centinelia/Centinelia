@@ -94,6 +94,10 @@ export function BriefDelDiaSection({ agentId }: Props) {
         </span>
       </label>
 
+      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        Cada brief consume 5 tareas de tu plan. Si se activa automático, se ejecuta una vez al día a la hora que elijas.
+      </p>
+
       {/* Configuración adicional — solo visible cuando está activado */}
       {config.enabled && (
         <div className="flex flex-col gap-4 pl-7">
