@@ -197,12 +197,16 @@ const APROBAR_GASTO_TOOL: Anthropic.Tool = {
 
 const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
   name: 'buscar_documento_oficina',
-  description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, cliente y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo.',
+  description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, one-pagers, pitch decks, reportes Excel, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, folio y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo. IMPORTANTE: si no estás seguro del tipo exacto, OMITE el parámetro kind y busca solo por query — así verás todos los tipos que matchean.',
   input_schema: {
     type: 'object' as const,
     properties: {
-      query:   { type: 'string', description: 'Texto para buscar en título, filename o nombre del cliente. Opcional.' },
-      kind:    { type: 'string', description: 'Filtro por tipo exacto: factura, cotizacion, orden_compra, proposal, letter, general, nota_venta, excel, word, powerpoint.' },
+      query:   { type: 'string', description: 'Texto para buscar en título, filename o folio. Opcional. Ejemplos: "CRM", "ACME", "onboarding".' },
+      kind:    {
+        type: 'string',
+        enum: ['propuesta', 'cotizacion', 'one_pager', 'pitch_deck', 'report_excel', 'correo', 'factura', 'orden_compra', 'proposal', 'letter', 'general', 'nota_venta', 'excel', 'word', 'powerpoint'],
+        description: 'Filtro por tipo EXACTO. Valores válidos (usa el que aplique): "propuesta" (propuestas comerciales), "cotizacion" (cotizaciones con folio COT-XXXXXX), "one_pager" (one-pagers ejecutivos), "pitch_deck" (pitch decks PowerPoint), "report_excel" (reportes Excel), "correo" (correos estructurados), "factura", "orden_compra", "letter" (cartas), "general" (notas y otros). Si no estás seguro, OMITE este parámetro.',
+      },
       cliente: { type: 'string', description: 'Filtro por nombre del cliente (fuzzy).' },
       limit:   { type: 'number', description: 'Máximo de resultados. Default 10, máximo 50.' },
     },
@@ -1657,6 +1661,24 @@ ${context}`;
               ? { error: String((toolResult as { error?: unknown })?.error ?? '') }
               : {}),
           });
+
+          // Debug SSE: qué le regresamos al LLM. Útil para diagnosticar cuando
+          // el agente dice "no encontré" pero la tool sí devolvió filas.
+          try {
+            const dbgResult = toolResult as { ok?: boolean; count?: number; message?: string; error?: string };
+            const preview   = typeof dbgResult?.message === 'string' ? dbgResult.message.slice(0, 200) : null;
+            controller.enqueue(enc.encode(`data: ${JSON.stringify({
+              debug: {
+                source:     'agent-chat/tool-result',
+                tool:       pendingToolName,
+                input:      toolInput,
+                ok:         dbgResult?.ok !== false,
+                count:      dbgResult?.count ?? null,
+                messagePreview: preview,
+                error:      dbgResult?.error ?? null,
+              },
+            })}\n\n`));
+          } catch { /* debug best-effort */ }
 
           // Extend conversation with this tool turn
           conversationMessages = [
