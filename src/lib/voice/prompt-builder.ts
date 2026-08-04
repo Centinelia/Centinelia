@@ -239,14 +239,14 @@ Tienes acceso a información del negocio, sus clientes y sus operaciones. Todo e
 
   if (!isCoordinator) {
     if (f.multilingual) {
-      blocks.push(`IDIOMA:
-Detecta el idioma del cliente en sus primeras palabras y responde en ese mismo idioma.
-IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin excepción. Si el cliente mezcla palabras del otro idioma, tú sigue en el idioma original. Solo cambia de idioma si el cliente explícitamente te lo pide.`);
-    } else if (promptTier !== 'lite') {
-      blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés). Si detectas que ibas a escribir algo así, pide al cliente que repita en español.
-PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.
+      blocks.push(`IDIOMA: Detecta si el cliente habla español o inglés y responde en ese mismo idioma. Estos son los ÚNICOS dos idiomas permitidos. NUNCA respondas en hindi, chino, árabe, japonés, coreano, tailandés, ruso ni ningún otro idioma — aunque el sistema de transcripción capture texto en otro alfabeto (puede ser ruido mal interpretado). Si dudas del idioma, asume español. Una vez establecido el idioma, mantenlo toda la llamada; solo cambia si el cliente lo pide explícitamente.`);
+    } else {
+      blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés) — si el transcriptor te muestra algo así, ignóralo y pide al cliente que repita en español.`);
+    }
+    blocks.push(`PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas un correo en voz alta, usa términos en español: @ = "arroba", . = "punto", ".com" = "punto com". Nunca uses "at" ni "dot".
 ${LEGAL_ABBREV_RULE}
 ${ALFANUMERIC_DICTATION_RULE}`);
+    if (promptTier !== 'lite') {
       blocks.push(`INVESTIGACIÓN ASÍNCRONA:
 Si el cliente solicita información que requiere buscar en archivos, consultar a un compañero o hacer una búsqueda en internet, NO te pongas a investigar en tiempo real mientras el cliente espera en línea.
 En su lugar, ofrécele elegir cómo prefiere recibir la información:
@@ -258,10 +258,6 @@ Según lo que elija, recopila su correo, su número de devolución de llamada, o
 Una vez terminada la llamada, usa enviar_correo o delegar_tarea para cumplir con lo prometido de manera asíncrona.
 Ejemplos de solicitudes que deben manejarse así: cotizaciones detalladas, revisión de contratos o documentos, consultas técnicas que requieren investigar, información que no tienes de memoria.
 No dejes al cliente esperando en silencio. Sé proactivo desde el inicio de la solicitud.`);
-    } else {
-      blocks.push(`IDIOMA: Responde SIEMPRE en español. NUNCA emitas texto en otro alfabeto (hindi, chino, árabe, cirílico, japonés, coreano, tailandés). Si detectas que ibas a escribir algo así, pide al cliente que repita en español.
-${LEGAL_ABBREV_RULE}
-${ALFANUMERIC_DICTATION_RULE}`);
     }
   }
 
