@@ -27,7 +27,8 @@ CREATE INDEX IF NOT EXISTS tool_call_log_session_idx    ON tool_call_log (sessio
 CREATE INDEX IF NOT EXISTS tool_call_log_tool_idx       ON tool_call_log (tool_name, created_at DESC);
 CREATE INDEX IF NOT EXISTS tool_call_log_channel_idx    ON tool_call_log (channel, created_at DESC);
 CREATE INDEX IF NOT EXISTS tool_call_log_loop_idx       ON tool_call_log (loop_id) WHERE loop_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS tool_call_log_portal_day_idx ON tool_call_log (portal_email, date_trunc('day', created_at));
+-- Cast a date UTC para que el índice sea IMMUTABLE (date_trunc sobre timestamptz no lo es).
+CREATE INDEX IF NOT EXISTS tool_call_log_portal_day_idx ON tool_call_log (portal_email, ((created_at AT TIME ZONE 'UTC')::date));
 
 -- Retention: 90d de detalle. Aggregates viven en analytics tables aparte.
 -- Nazre puede correr manual:  DELETE FROM tool_call_log WHERE created_at < NOW() - INTERVAL '90 days';
