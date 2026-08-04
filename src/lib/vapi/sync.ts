@@ -210,7 +210,13 @@ async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
 export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Sofia (Nia) — recepcionista: 1er contacto, delega para tareas de fondo.
   // Puede buscar docs para saber si algo ya existe antes de generar duplicado.
-  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'solicitar_factura', 'buscar_documento_oficina', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar'],
+  // solicitar_factura REMOVIDA por bug de Haiku 4.5 halucinando tool calls
+  // en flujos fiscales críticos (call 22:35 del 2026-08-04). Nia SIEMPRE
+  // delega la factura vía delegar_tarea a un peer con Sonnet (Noah, Nico, Nox).
+  // El goal-loop de delegar_tarea corre en Sonnet y ejecuta solicitar_factura
+  // confiablemente. Si la org no tiene peer fiscal, Sofia hace fallback a
+  // crear_lead con datos capturados + escalación manual.
+  nia:   ['crear_lead', 'agendar_cita', 'registrar_pedido', 'buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'buscar_documento_oficina', 'consultar_agente', 'delegar_tarea', 'reportar_falla', 'marcar_no_llamar'],
   // Noah — ventas: vendedor oficial. Sin crear_documento por diseño (delega
   // a Nico/Niva para propuestas formales), pero puede buscar y reenviar
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca

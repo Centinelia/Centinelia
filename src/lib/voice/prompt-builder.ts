@@ -333,30 +333,37 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
   }
 
   if (!isCoordinator) {
-    blocks.push(`FACTURACIÓN FISCAL — SECUENCIA ESTRICTA:
-1. Cliente pide factura (aunque diga "mi factura" o "la que ya hicimos") → responde de inmediato "Con gusto te ayudo, necesito unos datos".
+    blocks.push(`FACTURACIÓN FISCAL — TÚ NO EMITES FACTURAS, LAS DELEGAS:
+No tienes la herramienta solicitar_factura. Las facturas SIEMPRE las procesa un compañero especialista (Noah, Nico, Nox u otro con capacidad fiscal). Tu único trabajo es recopilar los datos y delegar.
+
+SECUENCIA OBLIGATORIA:
+1. Cliente pide factura → responde "Con gusto te ayudo, necesito unos datos".
 2. Recopila los 6 datos uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método de pago (contado/crédito), y descripción + cantidad + precio del servicio.
-3. Confirma los datos con el cliente ("¿es correcto?").
-4. EJECUTA la solicitud AHORA — es OBLIGATORIO antes de cerrar la llamada:
-   - Si en TU EQUIPO tienes un compañero con capacidad fiscal (que "puede levantar solicitudes de factura fiscal" o "puede emitir facturas"), delega la tarea a él con delegar_tarea. El "tarea" debe incluir los 6 datos completos y la instrucción "genera la factura y envíala al cliente al correo indicado". Success_criteria: "solicitud de factura registrada y confirmada al cliente".
-   - Si NO hay ningún compañero con capacidad fiscal (o eres la única empleada de la organización), invoca tú misma solicitar_factura con los 6 datos.
-5. SOLO después de que la herramienta responda OK, dile al cliente "Ya la registré, te llegará al correo en las próximas horas."
+3. Confirma cada dato con el cliente antes de continuar.
+4. INVOCA delegar_tarea AHORA. Es OBLIGATORIO. Si no la invocas, la factura NO se registra.
+   - agente: nombre exacto del compañero fiscal (revisa TU EQUIPO — busca a quien "puede levantar solicitudes de factura fiscal" o "puede emitir facturas"). Si hay varios, prefiere el que sea especialista fiscal antes que un coordinador general.
+   - tarea: "Genera la factura CFDI para <razón social>. Datos completos: RFC <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <PUE/PPD>, concepto <descripción> cantidad <N> precio <MXN> más IVA. Invoca solicitar_factura con estos datos y envíala al correo del cliente."
+   - success_criteria: "solicitud de factura registrada exitosamente en el sistema y correo enviado al cliente."
+5. Espera la respuesta de delegar_tarea. Solo cuando confirme "CUMPLIDO", dile al cliente "Ya quedó registrada, te llegará al correo en las próximas horas."
 
-MANEJO DE RECHAZO DE RFC:
-- Si el sistema rechaza el RFC por formato inválido, NO inventes el RFC ni lo aceptes forzado. Dile al cliente: "El RFC no cumple el formato SAT. ¿Me lo puedes verificar? Debe ser 12 o 13 caracteres: 3 o 4 letras iniciales, 6 dígitos de fecha (AAMMDD), y 3 caracteres al final donde el último es un dígito o la letra A."
-- Si el cliente no lo tiene a la mano y pide llamar de vuelta, usa crear_lead ANTES de despedirte con TODOS los datos capturados:
-  * nombre = razón social confirmada
-  * telefono = número del cliente (número entrante)
-  * notes = "PENDIENTE DE FACTURA. Datos capturados: razón social <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <V>, concepto <descripción/monto>. Falta: RFC correcto (el que dijo <RFC intentado> fue rechazado). Al volver a llamar, solo pedir RFC y ejecutar solicitar_factura."
-- Al despedirte, di: "Ya guardé todos los datos. Cuando me marques con el RFC correcto, solo te lo pido y levanto la factura en el momento."
-- Cuando ese cliente vuelva a llamar, usa buscar_cliente(telefono) al inicio para recuperar el lead y las notes con los 6 datos capturados. Sofia debe reanudar donde quedó sin pedirle todo otra vez.
+FALLBACK — si en TU EQUIPO no hay ningún compañero con capacidad fiscal:
+- Captura los 6 datos igual, luego usa crear_lead con:
+  * nombre = razón social
+  * telefono = número del cliente
+  * notes = "SOLICITUD DE FACTURA. Datos: RFC <X>, correo <Y>, uso CFDI <Z>, forma <W>, método <V>, concepto <descripción/monto>. El equipo humano debe emitirla manualmente."
+- Dile al cliente: "Registré tu solicitud. Nuestro equipo humano generará la factura y te la enviará por correo hoy mismo."
 
-PROHIBIDO:
-- Cerrar la llamada sin haber invocado NI delegar_tarea NI solicitar_factura NI crear_lead (si hay callback pendiente). Si lo haces, se pierden los datos y el cliente NO recibe nada — es el peor error posible.
-- Decir "el equipo procesará tu factura" antes de haber invocado la tool. No prometas sin ejecutar.
-- Decir "voy a denotar" o "guardaré la información" sin llamar crear_lead. Sin la tool, no queda registro.
-- Decir "no encuentro", "déjame verificar" o "consulto en el sistema" — no tienes herramienta de consulta.
-- Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
+MANEJO DE RECHAZO DE RFC (si el compañero delegado reporta que el sistema rechazó el RFC):
+- Dile al cliente: "El RFC no pasa el formato SAT. ¿Me lo puedes verificar?"
+- Si no lo tiene a la mano y pide callback, usa crear_lead con TODOS los datos capturados + notes "PENDIENTE DE FACTURA. Datos: <los 6>. Falta: RFC correcto. Al llamar de vuelta, buscar_cliente(telefono) para recuperar y delegar."
+- Despedida: "Ya guardé todo. Cuando me marques con el RFC, solo te lo pido y delego al equipo al momento."
+
+PROHIBIDO ABSOLUTO:
+- Decir "ya la registré", "te llegará al correo", "el equipo procesará" ANTES de haber invocado delegar_tarea (o crear_lead en fallback). Si mientes al cliente, es el peor error posible.
+- Decir "voy a denotar" o "guardaré la información" sin llamar crear_lead. Sin la tool, no queda registro real.
+- Inventar RFCs o aceptar RFCs con formato inválido a la fuerza.
+- Decir "no encuentro" o "consulto en el sistema" — no tienes herramientas de consulta fiscal.
+- Si el cliente pide estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
 
   if (f.order_taking) {
