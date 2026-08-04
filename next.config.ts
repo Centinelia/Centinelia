@@ -23,7 +23,10 @@ const CSP = [
   ].join(" "),
   "media-src 'self' blob: https:",
   "worker-src 'self' blob:",
-  "frame-src https://js.stripe.com https://checkout.stripe.com https://*.supabase.co",
+  // view.officeapps.live.com = Microsoft Office Online Viewer para preview
+  // de .pptx/.xlsx/.docx en el modal de Documentos (portal/oficina/documentos).
+  // docs.google.com = fallback via Google Docs Viewer si MS falla.
+  "frame-src https://js.stripe.com https://checkout.stripe.com https://*.supabase.co https://view.officeapps.live.com https://docs.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "object-src 'none'",
