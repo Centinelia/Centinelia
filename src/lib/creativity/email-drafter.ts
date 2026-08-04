@@ -14,8 +14,18 @@ export interface EmailDraftResult {
 
 export interface EmailDraftError { ok: false; error: string }
 
+const GREETING_RE = /^(hola|buenos\s+d[íi]as|buenas\s+tardes|buenas\s+noches|estimad[ao])/i;
+
+function hasGreeting(content: StructuredContent): boolean {
+  const firstSection = content.sections[0];
+  if (!firstSection) return false;
+  const firstText = (firstSection.body ?? firstSection.heading ?? '').trimStart();
+  return GREETING_RE.test(firstText);
+}
+
 function toMarkdown(content: StructuredContent): string {
   const parts: string[] = [];
+  if (!hasGreeting(content)) parts.push('Hola,\n');
   for (const s of content.sections) {
     if (s.heading) parts.push(`### ${s.heading}`);
     if (s.body)    parts.push(s.body);
@@ -28,6 +38,7 @@ function toMarkdown(content: StructuredContent): string {
 
 function toPlain(content: StructuredContent): string {
   const parts: string[] = [];
+  if (!hasGreeting(content)) parts.push('Hola,\n');
   for (const s of content.sections) {
     if (s.heading) parts.push(s.heading.toUpperCase());
     if (s.body)    parts.push(s.body);
