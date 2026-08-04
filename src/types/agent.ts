@@ -57,7 +57,7 @@ export interface AgentFeatures {
 
 // ─── Automations ──────────────────────────────────────────────────────────────
 
-export type AutomationName = 'heartbeat' | 'weekly_insights' | 'learn';
+export type AutomationName = 'heartbeat' | 'weekly_insights' | 'learn' | 'brief_del_dia';
 
 export interface AutomationConfig {
   enabled: boolean;

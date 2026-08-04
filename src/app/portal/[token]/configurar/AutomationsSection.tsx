@@ -28,6 +28,12 @@ const META: Record<AutomationName, { title: string; desc: string; Icon: typeof B
     desc: 'Cada 15 días tu empleado aprende reglas de tu negocio observando correos, llamadas, documentos y tareas de las últimas 2 semanas.',
     Icon: Brain,
   },
+  // brief_del_dia se configura via brief_del_dia_config (solo Nox), no aparece en la UI de Automations
+  brief_del_dia: {
+    title: 'Brief del dia',
+    desc:  'Nox prepara cada manana un resumen ejecutivo con correos urgentes, agenda, tareas y escalaciones pendientes.',
+    Icon:  Bell,
+  },
 };
 
 const AUTOMATION_ORDER: AutomationName[] = ['heartbeat', 'weekly_insights', 'learn'];

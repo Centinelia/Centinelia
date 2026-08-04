@@ -6,6 +6,7 @@ const LABELS: Record<AutomationName, string> = {
   heartbeat:       'el reporte diario',
   weekly_insights: 'las recomendaciones semanales',
   learn:           'el aprendizaje quincenal',
+  brief_del_dia:   'el brief del dia',
 };
 
 const RATE_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
