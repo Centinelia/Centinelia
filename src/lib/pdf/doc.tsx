@@ -52,9 +52,6 @@ export function BrandedDoc({ brand, docType, subtitle, children, filename }: {
               ? <Image src={brand.logoUrl} style={{ height: 42, maxWidth: 160, objectFit: 'contain' } as any} />
               : <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold' }}>{brand.businessName}</Text>
             }
-            {brand.logoUrl && (
-              <Text style={{ fontSize: 9, color: '#6b7280', marginTop: 4 }}>{brand.businessName}</Text>
-            )}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={{ fontSize: 15, fontFamily: 'Helvetica-Bold', color: accent }}>{docType}</Text>
