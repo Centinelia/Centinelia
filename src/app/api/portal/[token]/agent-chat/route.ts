@@ -1528,10 +1528,18 @@ ${context}`;
             ? (lastUserMsg.content as Array<{ type: string; text?: string }>)
                 .filter(b => b.type === 'text').map(b => b.text ?? '').join(' ')
             : '';
-        const GENERATE_INTENT_RE = /\b(?:genera(?:r|me)?|crear|creame|has|hazme|redacta|prepara)\s+(?:una?\s+)?(?:propuesta|cotizaci[óo]n|one[\s-]?pager|correo|carta|pitch|deck|reporte|documento)/i;
+        // Regex más amplia — captura verbos comunes + tipos de doc + variantes
+        const GENERATE_INTENT_RE = /\b(?:genera(?:r|me)?|crear?|creame|hac(?:er|eme|elo|elo)|has|hazme|hazlo|redacta|prepara|necesito|quiero|dame|arma|manda|env[íi]a)[a-z\s]{0,30}?(?:propuesta|cotizaci[óo]n|one[\s-]?pager|onepager|correo|carta|pitch|deck|slide|reporte|documento|pdf|excel|powerpoint)/i;
         const wantsGenerate  = GENERATE_INTENT_RE.test(lastUserTextForIntent);
         const hasSearchTool  = sessionTools.some((t: { name?: string }) => t.name === 'buscar_documento_oficina');
         const forceSearchTool = wantsGenerate && hasSearchTool;
+        console.log('[agent-chat/force-search]', {
+          lastUserText: lastUserTextForIntent.slice(0, 200),
+          wantsGenerate,
+          hasSearchTool,
+          forceSearchTool,
+          toolCount: sessionTools.length,
+        });
 
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)
