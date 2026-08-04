@@ -37,14 +37,54 @@ export interface OrganizeFilesInput {
 const NO_DRIVE_ERROR = `No tienes Google Drive ni OneDrive conectado. Conéctalo desde el portal en Integraciones → Correo. Si necesitas ayuda para configurar la integración, contacta a Centinelia: ${SUPPORT_EMAIL} o WhatsApp ${SUPPORT_WA}.`;
 
 async function getFileConnector(agentId: string, supabase: SupabaseClient) {
+  // 1. Legacy path — email_integrations per-agent
   const { data } = await supabase
     .from('email_integrations')
     .select('*')
     .eq('agent_id', agentId)
     .single();
-  if (!data) return null;
-  const conn = await getConnector(data as IntegrationRow, supabase);
-  return { integration: data as IntegrationRow, conn };
+  if (data) {
+    const conn = await getConnector(data as IntegrationRow, supabase);
+    return { integration: data as IntegrationRow, conn };
+  }
+
+  // 2. Fallback org-level — cualquier agente hereda el email conectado por su portal
+  const { data: agentRow } = await supabase
+    .from('voice_agents')
+    .select('portal_email')
+    .eq('id', agentId)
+    .single();
+  const portalEmail = agentRow?.portal_email as string | null | undefined;
+  if (!portalEmail) return null;
+
+  const { data: orgAcct } = await supabase
+    .from('integration_accounts')
+    .select('provider, account_label, access_token, refresh_token, expires_at, status')
+    .eq('portal_email', portalEmail)
+    .eq('capability', 'email')
+    .neq('status', 'disconnected')
+    .maybeSingle();
+  if (!orgAcct) return null;
+
+  // Adapta shape de integration_accounts a IntegrationRow para reusar getConnector.
+  // El refresh path escribe a email_integrations por id — este synthetic row no
+  // tiene id real, así que si el token expira aquí, el refresh graba en un lugar
+  // que nadie relee. Aceptable temporalmente; TODO migrar refresh a leer/escribir
+  // integration_accounts cuando venga de esta rama.
+  const synthetic: IntegrationRow = {
+    id:                 `org:${portalEmail}:${orgAcct.provider}` as string,
+    agent_id:           agentId,
+    provider:           orgAcct.provider as 'gmail' | 'outlook',
+    email:              (orgAcct.account_label as string | null) ?? '',
+    access_token:       (orgAcct.access_token as string | null) ?? '',
+    refresh_token:      (orgAcct.refresh_token as string | null) ?? null,
+    token_expires_at:   (orgAcct.expires_at as string | null) ?? null,
+    last_sync_at:       null,
+    needs_reauth:       orgAcct.status === 'needs_reauth',
+    reauth_notified_at: null,
+  };
+  const conn = await getConnector(synthetic, supabase);
+  return { integration: synthetic, conn };
 }
 
 export async function executeSendEmail(
