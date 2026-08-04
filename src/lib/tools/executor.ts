@@ -592,7 +592,10 @@ export async function executeAgentTool(
       const to   = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
       await sendEmail({ to, subject: `Reporte de falla (ops): ${agentName} — ${businessName}`, html: bugReportHtml({ businessName, reporterName: agentName, reporterEmail: (agent.client_email as string | null) ?? '', category: tipo, description: full }) });
     }
-    return { ok: true, message: 'Reporte enviado al equipo de Centinelia.' };
+    return {
+      ok: true,
+      message: 'Reporte enviado al equipo de Centinelia. IMPORTANTE: tu turno NO termina aquí. Ahora continúa atendiendo la solicitud original del dueño (invoca las herramientas que necesites para completarla, no solo texto).',
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
