@@ -23,13 +23,17 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && auth.portalEmail !== acct.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const status = req.nextUrl.searchParams.get('status') ?? 'awaiting_plan_approval';
+  const statusParam   = req.nextUrl.searchParams.get('status') ?? 'awaiting_plan_approval';
+  const statusesParam = req.nextUrl.searchParams.get('statuses');
+  const statuses = statusesParam
+    ? statusesParam.split(',').map(s => s.trim()).filter(Boolean)
+    : [statusParam];
 
   const { data: tasks } = await supabase
     .from('agent_tasks')
-    .select('id, title, description, assigned_to, created_by, created_at, plan, plan_approval_token, status')
+    .select('id, title, description, assigned_to, created_by, created_at, plan, plan_approval_token, status, started_at, completed_at, success_criteria, current_iteration, max_iterations, goal_met, eval_notes, result, trigger_type')
     .eq('portal_email', acct.portal_email)
-    .eq('status', status)
+    .in('status', statuses)
     .order('created_at', { ascending: false })
     .limit(50);
 

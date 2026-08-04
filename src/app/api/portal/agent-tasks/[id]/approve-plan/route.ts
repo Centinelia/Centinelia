@@ -85,7 +85,7 @@ async function handle(req: NextRequest, id: string) {
     return htmlResponse('rejected', 'La tarea quedó cancelada. Puedes pedirle a tu empleado que la reintente con instrucciones diferentes.');
   }
 
-  // Aprobar: dejamos la tarea lista para el cron process-tasks.
+  // Aprobar: marcar pending Y disparar ejecución inmediata (no esperar cron).
   await supabase
     .from('agent_tasks')
     .update({
@@ -95,9 +95,19 @@ async function handle(req: NextRequest, id: string) {
     })
     .eq('id', id);
 
+  // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el
+  // cron secret existe llamamos al endpoint, si no cae al tick horario normal.
+  const cronSecret = process.env.CRON_SECRET;
+  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  if (cronSecret) {
+    void fetch(`${appUrl}/api/cron/process-tasks`, {
+      headers: { Authorization: `Bearer ${cronSecret}` },
+    }).catch(err => console.error('[approve-plan] trigger process-tasks failed:', err));
+  }
+
   return htmlResponse(
     'ok',
-    'Plan aprobado. Tu empleado empieza a ejecutarlo en los próximos minutos. Puedes seguirlo en el portal, sección de tareas.',
+    'Plan aprobado. Tu empleado ya lo está ejecutando. Puedes seguirlo en el portal, sección Tareas.',
   );
 }
 
