@@ -69,12 +69,24 @@ async function fetchCalendarEvents(
   }
 }
 
+const EMPTY_BRIEF: BriefData = {
+  urgentEmails:          { items: [], truncated: false },
+  upcomingEvents:        { items: [], truncated: false },
+  pendingTasks:          { items: [], truncated: false },
+  unresolvedEscalations: { items: [], truncated: false },
+  pendingContractDrafts: { items: [], truncated: false },
+};
+
 export async function collectBriefData(
   orgAgentIds: string[],
   _portalEmail: string,
   tz: string,
   supabase: SupabaseClient,
 ): Promise<BriefData> {
+  // Guard: empty orgAgentIds would produce invalid SQL (.in('col', [])).
+  // Return an empty brief immediately without any DB calls.
+  if (orgAgentIds.length === 0) return EMPTY_BRIEF;
+
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const [emailsRes, tasksRes, escalRes, draftsRes, events] = await Promise.all([

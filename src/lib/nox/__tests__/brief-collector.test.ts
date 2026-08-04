@@ -27,6 +27,32 @@ function mockSupabase(rows: Record<string, any[]>) {
   return { from: (table: string) => chain(table) } as any;
 }
 
+function mockSupabaseTracked() {
+  const calls: string[] = [];
+  const from = (table: string) => {
+    calls.push(table);
+    return {
+      select: () => ({
+        in: () => ({
+          eq: () => ({
+            in: () => ({
+              gte: () => ({
+                order: () => ({ limit: async () => ({ data: [], error: null }) }),
+              }),
+              order: () => ({ limit: async () => ({ data: [], error: null }) }),
+            }),
+            gte: () => ({
+              order: () => ({ limit: async () => ({ data: [], error: null }) }),
+            }),
+            order: () => ({ limit: async () => ({ data: [], error: null }) }),
+          }),
+        }),
+      }),
+    };
+  };
+  return { client: { from } as any, calls };
+}
+
 describe('collectBriefData', () => {
   it('devuelve las 5 fuentes con truncated=false cuando hay pocos items', async () => {
     const supabase = mockSupabase({
@@ -49,5 +75,25 @@ describe('collectBriefData', () => {
     const data = await collectBriefData(['a1'], 'test@x.com', 'America/Monterrey', supabase);
     expect(data.urgentEmails.items).toHaveLength(15);
     expect(data.urgentEmails.truncated).toBe(true);
+  });
+
+  it('devuelve BriefData vacía sin llamar a Supabase cuando orgAgentIds está vacío', async () => {
+    const { client, calls } = mockSupabaseTracked();
+    const data = await collectBriefData([], 'test@x.com', 'America/Monterrey', client);
+
+    // All sources empty, no truncation
+    expect(data.urgentEmails.items).toHaveLength(0);
+    expect(data.urgentEmails.truncated).toBe(false);
+    expect(data.upcomingEvents.items).toHaveLength(0);
+    expect(data.upcomingEvents.truncated).toBe(false);
+    expect(data.pendingTasks.items).toHaveLength(0);
+    expect(data.pendingTasks.truncated).toBe(false);
+    expect(data.unresolvedEscalations.items).toHaveLength(0);
+    expect(data.unresolvedEscalations.truncated).toBe(false);
+    expect(data.pendingContractDrafts.items).toHaveLength(0);
+    expect(data.pendingContractDrafts.truncated).toBe(false);
+
+    // No DB calls should have been made
+    expect(calls).toHaveLength(0);
   });
 });
