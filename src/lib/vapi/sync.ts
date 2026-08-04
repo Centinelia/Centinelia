@@ -203,8 +203,9 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Noah — ventas: vendedor oficial. Sin crear_documento por diseño (delega
   // a Nico/Niva para propuestas formales), pero puede buscar y reenviar
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
-  // para hablar como la empresa y con el lenguaje real del cliente.
-  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'search_leads', 'solicitar_factura', 'consultar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla'],
+  // para hablar como la empresa y con el lenguaje real del cliente. Exclusiva:
+  // read_url — investiga sitios de prospectos a fondo antes de llamar.
+  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'consultar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla'],
   // Nico — cobranza y fiscal: sigue facturas + emite CFDIs + reenvía comprobantes
   // + reportes de ingresos (P&L).
   nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla'],
@@ -224,7 +225,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'reportar_falla'],
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;
