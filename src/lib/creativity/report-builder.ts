@@ -66,6 +66,8 @@ async function buildNoahSheets(
       .limit(200),
   ]);
 
+  if (leadsRes.error) console.error('[buildNoahSheets] leads query failed:', leadsRes.error);
+  if (apptsRes.error) console.error('[buildNoahSheets] appts query failed:', apptsRes.error);
   const leadRows = (leadsRes.data ?? []) as Record<string, unknown>[];
   const apptRows = (apptsRes.data ?? []) as Record<string, unknown>[];
 
@@ -123,7 +125,7 @@ async function buildNaraSheets(
   sinceISO: string,
   supabase: SupabaseClient,
 ): Promise<ExcelSheet[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('agent_tasks')
     .select('id, title, status, assigned_to, created_at, completed_at')
     .in('assigned_to', orgAgentIds)
@@ -131,6 +133,7 @@ async function buildNaraSheets(
     .order('created_at', { ascending: false })
     .limit(500);
 
+  if (error) console.error('[buildNaraSheets] agent_tasks query failed:', error);
   const rows = (data ?? []) as Record<string, unknown>[];
 
   const tareasSheet: ExcelSheet = {
@@ -175,16 +178,20 @@ async function buildNeliaSheets(
       .gte('created_at', sinceISO)
       .order('created_at', { ascending: false })
       .limit(300),
-    // human_requests puede no tener resolved_at — se incluye con fallback vacío
+    // Escalaciones humanas — columna real es responded_at (y cancelled_at
+    // para las que se cancelaron). resolved_at NO existe en el schema.
+    // Bug hermano del que rompió Noah (contact_lead inexistente).
     supabase
       .from('human_requests')
-      .select('id, title, urgency, status, created_at, resolved_at')
+      .select('id, title, urgency, status, created_at, responded_at, cancelled_at')
       .in('agent_id', orgAgentIds)
       .gte('created_at', sinceISO)
       .order('created_at', { ascending: false })
       .limit(200),
   ]);
 
+  if (inboxRes.error) console.error('[buildNeliaSheets] ops_inbox query failed:', inboxRes.error);
+  if (escalRes.error) console.error('[buildNeliaSheets] human_requests query failed:', escalRes.error);
   const inboxRows = (inboxRes.data ?? []) as Record<string, unknown>[];
   const escalRows = (escalRes.data ?? []) as Record<string, unknown>[];
 
@@ -202,14 +209,18 @@ async function buildNeliaSheets(
 
   const escalSheet: ExcelSheet = {
     name:    'Escalaciones',
-    headers: ['Creada', 'Título', 'Urgencia', 'Estado', 'Resuelta'],
-    rows:    escalRows.map(e => [
-      fmtDate(e.created_at as string),
-      (e.title   as string) ?? '',
-      (e.urgency as string) ?? '',
-      (e.status  as string) ?? '',
-      e.resolved_at ? fmtDate(e.resolved_at as string) : '',
-    ]),
+    headers: ['Creada', 'Título', 'Urgencia', 'Estado', 'Cerrada'],
+    rows:    escalRows.map(e => {
+      // "Cerrada" = respondida O cancelada, lo que haya ocurrido.
+      const closedAt = (e.responded_at as string | null) ?? (e.cancelled_at as string | null);
+      return [
+        fmtDate(e.created_at as string),
+        (e.title   as string) ?? '',
+        (e.urgency as string) ?? '',
+        (e.status  as string) ?? '',
+        closedAt ? fmtDate(closedAt) : '',
+      ];
+    }),
   };
 
   return [ticketsSheet, escalSheet];
