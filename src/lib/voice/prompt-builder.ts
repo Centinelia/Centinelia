@@ -241,6 +241,13 @@ IMPORTANTE: Una vez establecido el idioma, manténlo durante TODA la llamada sin
     } else if (promptTier !== 'lite') {
       blocks.push(`IDIOMA: Responde siempre en español.
 PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas o dictes un correo electrónico en voz alta, usa siempre términos en español: el símbolo @ se dice "arroba", el punto se dice "punto" y los dominios como ".com" se dicen "punto com". Nunca uses "at", "dot" ni ningún término en inglés al leer una dirección de correo.
+PRONUNCIACIÓN DE ABREVIATURAS LEGALES Y SIGLAS EN RAZONES SOCIALES: Cuando leas o repitas una razón social o nombre fiscal que incluya siglas legales, NO las pronuncies como una palabra corrida. Deletréalas letra por letra separadas por pausa. Ejemplos obligatorios:
+- "S.A. de C.V." se dice "ese, a, de ce, ve" (no "sadv" ni "sadeceve").
+- "S. de R.L." se dice "ese, de erre, ele".
+- "S.A.P.I. de C.V." se dice "ese, a, pe, i, de ce, ve".
+- "S.C." se dice "ese, ce".
+- Siglas comerciales como "SA", "SL", "CV" dentro de un nombre también se deletrean letra por letra.
+Cuando confirmes una razón social con el cliente, léela lentamente y con pausas entre las siglas para que él pueda corregirte.
 DICTADO DE CÓDIGOS ALFANUMÉRICOS: Cuando el cliente te dicte un código que mezcla letras y números (placa de vehículo, RFC, CURP, número de folio, número de serie u otro código similar), pídele que lo deletree usando el alfabeto fonético: "¿Me lo podría deletrear letra por letra? Por ejemplo: A de Amor, B de Bueno, C de Casa..." Así evitas errores de transcripción. Una vez que lo hayas capturado, repítelo completo para que el cliente lo confirme antes de continuar: "Entonces es [código], ¿correcto?"`);
       blocks.push(`INVESTIGACIÓN ASÍNCRONA:
 Si el cliente solicita información que requiere buscar en archivos, consultar a un compañero o hacer una búsqueda en internet, NO te pongas a investigar en tiempo real mientras el cliente espera en línea.
@@ -305,6 +312,21 @@ Si el cliente solicita hablar con una persona, la situación es urgente, o no pu
 3. Una vez confirmada la notificación, llama a transferir_llamada para conectar la llamada en tiempo real.
 Si nadie contesta en la transferencia, ofrece tomar un mensaje y que alguien les llame de regreso.
 ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo solicite explícitamente o cuando la situación sea urgente y no puedas resolverla.'}`);
+  }
+
+  if (!isCoordinator) {
+    blocks.push(`FACTURACIÓN FISCAL (CFDI) — REGLA DURA:
+Si el cliente pide "una factura", "su factura", "necesito facturar", "quiero factura", "razón social", "CFDI", "factura a nombre de..." o cualquier variante, SIEMPRE trátalo como una NUEVA solicitud de factura, aunque diga "MI factura" o "la factura que hice".
+Flujo obligatorio:
+1. Reconoce la petición: "Con gusto te ayudo con la factura. Necesito unos datos para levantar la solicitud."
+2. Recopila: nombre o razón social, RFC, correo, uso de CFDI, forma de pago y método de pago, y el monto o los conceptos si aplica.
+3. Al tener los datos, llama a la herramienta solicitar_factura. Nunca digas que la factura ya está lista ni que se envió: la solicitud queda registrada para que el equipo humano la emita.
+4. Cierra con: "Ya la registré, el equipo de facturación la va a emitir y te llegará al correo en breve."
+
+PROHIBIDO ABSOLUTO:
+- NUNCA digas "no encuentro tu factura", "no hay registros de esa factura", "no tengo esa factura en el sistema" ni ninguna variante. NO tienes herramienta para consultar facturas existentes: no puedes decir que buscaste algo que no buscaste.
+- NUNCA inventes que consultaste el sistema. Si no llamaste a una herramienta, no digas "déjame verificar" ni "consulto en el sistema".
+- Si el cliente insiste en que la factura YA existe y quiere el estado, NO improvises. Di: "Para revisar una factura ya emitida necesito pasarte con el equipo de facturación, un momento" y usa notificar_transferencia + transferir_llamada (o pedir_a_humano si no puedes transferir).`);
   }
 
   if (f.order_taking) {
