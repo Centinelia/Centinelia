@@ -55,9 +55,9 @@ export async function deliverBrief(
       await sendEmail({
         to:      agent.client_email,
         from:    agentBrandedFrom(agent.agent_name),
-        subject: `Brief del dia · ${dateStr}`,
+        subject: `Brief del día · ${dateStr}`,
         html: shell(
-          heading('Brief del dia', `${agent.agent_name ?? 'Nox'} · ${dateStr}`) +
+          heading('Brief del día', `${agent.agent_name ?? 'Nox'} · ${dateStr}`) +
           infoCard(mdToEmailHtml(brief.markdown))
         ),
       });
@@ -71,7 +71,7 @@ export async function deliverBrief(
   // WhatsApp
   if (channels.whatsapp && agent.transfer_whatsapp) {
     try {
-      const waBody = `[Brief del dia] · ${dateStr}\n\n${markdownToWa(brief.markdown)}\n\nVer detalles en tu portal.`;
+      const waBody = `*Brief del día · ${dateStr}*\n\n${markdownToWa(brief.markdown)}\n\nVer detalles en tu portal.`;
       const ok = await sendWhatsApp(agent.transfer_whatsapp, waBody);
       status.wa = ok ? 'sent' : 'error';
     } catch (err) {
