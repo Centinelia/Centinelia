@@ -9,6 +9,12 @@ export interface ContentContext {
   clientNeed:   string | null;
   servicesKb:   string | null;
   extraContext: string | null;
+  /** Datos reales de contacto del negocio (viene de organizations).
+   * Si el LLM necesita mencionar email/dominio/teléfono, DEBE usar estos y NO inventar.
+   * Opcionales para retrocompatibilidad — si no se pasan, el prompt le dice "no menciones datos". */
+  contactWebsite?: string | null;
+  contactEmail?:   string | null;
+  contactPhone?:   string | null;
 }
 
 export interface QuotationItem {
@@ -37,6 +43,8 @@ Reglas:
 - Body de cada sección en 2-4 oraciones directas.
 - Bullets solo cuando aporten claridad (listas de entregables, requisitos, etc.).
 - Cierre profesional y cálido, sin em-dashes.
+- USA ÚNICAMENTE los datos de contacto reales que se te dieron. NUNCA inventes dominios (.com vs .mx), emails ni teléfonos.
+- Español con acentos correctos.
 - Sin emojis. Sin "IA" en el copy.
 - Devuelve SOLO JSON válido: {title, sections:[{heading, body, bullets?}], closing}.`,
 
@@ -76,19 +84,31 @@ Otras reglas (ambos modos):
 - En MODO A, NO metas una sección llamada "Condiciones" — el PDF ya trae condiciones estándar hardcoded. Solo usa sections para notas/contexto extra.
 - Devuelve SOLO JSON válido.`,
 
-  one_pager: `Eres el redactor comercial. Genera un one-pager informativo sobre un servicio.
-Reglas:
-- Título del servicio.
-- 2-4 secciones cortas: Qué es, Cómo funciona, Beneficios, Cómo empezar.
+  one_pager: `Eres el redactor comercial. Genera un one-pager ejecutivo sobre un servicio.
+
+Estructura obligatoria:
+- Título: nombre corto del servicio (máx 8 palabras, sin "con [empresa]" al final — ya viene el nombre en el header del PDF).
+- Sections en este orden exacto:
+  1. "El problema que resuelve" — describe el dolor del cliente en 2-3 oraciones.
+  2. "Qué incluye" — 3-5 bullets concretos.
+  3. "Beneficios clave" — 3-5 bullets con resultados tangibles.
+  4. "Cómo empezar" — 1-2 oraciones + CTA claro en el closing.
+- Closing: CTA accionable con datos REALES de contacto. Menciona el NOMBRE DEL NEGOCIO (no el nombre del empleado que lo genera) porque el one-pager se envía a prospectos que no conocen al empleado individual. Ejemplo bueno: "Escríbenos a contacto@empresa.com o visita empresa.com para agendar". Ejemplo malo: "Agenda tu sesión con Noah".
+
+Reglas duras:
+- USA ÚNICAMENTE los datos de contacto que se te dieron (website/email/teléfono). NUNCA inventes dominios (.com vs .mx), emails ni teléfonos. Si no hay datos, omite el CTA.
 - Body directo, ≤3 oraciones por sección.
 - Sin em-dashes, sin emojis, sin "IA".
+- Español con acentos correctos (día, más, sesión, información, etc.).
 - Devuelve SOLO JSON: {title, sections:[{heading, body, bullets?}], closing}.`,
 
   correo: `Eres el redactor comercial. Genera un correo estructurado para el cliente.
 Reglas:
 - Título = asunto del correo (claro y accionable, <60 caracteres).
 - Secciones = párrafos del cuerpo del correo (heading opcional o vacío).
-- Cierre = despedida + firma.
+- Cierre = despedida + firma. Puedes firmar con el nombre del empleado que redacta seguido del nombre del negocio.
+- USA ÚNICAMENTE los datos de contacto reales que se te dieron. NUNCA inventes dominios, emails ni teléfonos.
+- Español con acentos correctos.
 - Tono cálido pero profesional, sin em-dashes, sin emojis, sin "IA".
 - Devuelve SOLO JSON: {title, sections:[{heading, body, bullets?}], closing}.`,
 };
@@ -101,6 +121,18 @@ function buildUserPrompt(ctx: ContentContext): string {
   if (ctx.clientNeed)   parts.push(`NECESIDAD DEL CLIENTE: ${ctx.clientNeed}`);
   if (ctx.servicesKb)   parts.push(`\nSERVICIOS/PRODUCTOS DEL NEGOCIO:\n${ctx.servicesKb}`);
   if (ctx.extraContext) parts.push(`\nCONTEXTO ADICIONAL:\n${ctx.extraContext}`);
+
+  // Datos reales de contacto — el LLM DEBE usar estos, no inventar variantes.
+  const contactLines: string[] = [];
+  if (ctx.contactWebsite) contactLines.push(`- Sitio web: ${ctx.contactWebsite}`);
+  if (ctx.contactEmail)   contactLines.push(`- Correo: ${ctx.contactEmail}`);
+  if (ctx.contactPhone)   contactLines.push(`- Teléfono: ${ctx.contactPhone}`);
+  if (contactLines.length > 0) {
+    parts.push(`\nDATOS DE CONTACTO REALES DEL NEGOCIO (usa EXACTAMENTE estos si mencionas contacto en el doc, NO inventes emails ni dominios):\n${contactLines.join('\n')}`);
+  } else {
+    parts.push(`\nDATOS DE CONTACTO: NO tienes datos reales de contacto configurados. NO menciones emails, dominios ni teléfonos en el documento — omite el CTA de contacto o pon un placeholder [pendiente].`);
+  }
+
   return parts.join('\n');
 }
 

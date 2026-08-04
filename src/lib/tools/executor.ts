@@ -1524,7 +1524,7 @@ export async function executeAgentTool(
     if (toolName === 'generar_pitch_deck') {
       const { data: org } = await supabase
         .from('organizations')
-        .select('knowledge_base, business_description')
+        .select('knowledge_base, business_description, brand_website, invoicing_email')
         .eq('portal_email', portalEmail)
         .maybeSingle();
       const servicesKb = (((org?.knowledge_base as string | null) ?? '') + '\n' + ((org?.business_description as string | null) ?? '')).trim() || null;
@@ -1535,6 +1535,9 @@ export async function executeAgentTool(
         clientNeed:   (toolInput.client_need as string | null) ?? null,
         servicesKb,
         extraContext: (toolInput.extra_context as string | null) ?? null,
+        contactWebsite: (org?.brand_website as string | null) ?? null,
+        contactEmail:   (org?.invoicing_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail,
+        contactPhone:   (agent.transfer_whatsapp as string | null) ?? (agent.phone_number as string | null) ?? null,
       }, supabase);
       if (!result.ok) return result;
       return { ...result, message: `Pitch deck generado: ${result.filename}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
@@ -1550,14 +1553,20 @@ export async function executeAgentTool(
       return { ...result, message: `Reporte generado con hojas: ${result.sheets.join(', ')}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
 
-    // Fetch org KB + descripcion para contexto de contenido
+    // Fetch org: KB + descripción + datos de contacto reales (evita que el LLM
+    // invente dominios/emails/teléfonos en el CTA de los documentos).
     const { data: org } = await supabase
       .from('organizations')
-      .select('knowledge_base, business_description')
+      .select('knowledge_base, business_description, brand_website, brand_address, invoicing_email')
       .eq('portal_email', portalEmail)
       .maybeSingle();
 
     const servicesKb = (((org?.knowledge_base as string | null) ?? '') + '\n' + ((org?.business_description as string | null) ?? '')).trim();
+
+    // agent.transfer_whatsapp o client_email son los canales de contacto reales del org
+    const contactWebsite = (org?.brand_website as string | null) ?? null;
+    const contactEmail   = (org?.invoicing_email as string | null) ?? (agent.client_email as string | null) ?? portalEmail;
+    const contactPhone   = (agent.transfer_whatsapp as string | null) ?? (agent.phone_number as string | null) ?? null;
 
     const { generateStructuredContent } = await import('@/lib/creativity/content-generator');
     const kind = toolName === 'generar_propuesta_comercial' ? 'propuesta'
@@ -1568,10 +1577,13 @@ export async function executeAgentTool(
     const content = await generateStructuredContent(kind as 'propuesta' | 'cotizacion' | 'one_pager' | 'correo', {
       agentName,
       businessName,
-      clientName:   (toolInput.client_name as string | null) ?? null,
-      clientNeed:   (toolInput.client_need as string | null) ?? null,
-      servicesKb:   servicesKb || null,
-      extraContext: (toolInput.extra_context as string | null) ?? null,
+      clientName:     (toolInput.client_name as string | null) ?? null,
+      clientNeed:     (toolInput.client_need as string | null) ?? null,
+      servicesKb:     servicesKb || null,
+      extraContext:   (toolInput.extra_context as string | null) ?? null,
+      contactWebsite,
+      contactEmail,
+      contactPhone,
     });
 
     if (toolName === 'generar_correo_estructurado') {

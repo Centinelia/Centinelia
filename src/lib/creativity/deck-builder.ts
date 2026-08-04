@@ -17,14 +17,17 @@ export interface DeckBuildResult {
 export interface DeckBuildError { ok: false; error: string }
 
 interface DeckCtx {
-  agentId:      string;
-  agentName:    string | null;
-  businessName: string;
-  portalEmail:  string;
-  clientName:   string | null;
-  clientNeed:   string | null;
-  servicesKb:   string | null;
-  extraContext: string | null;
+  agentId:        string;
+  agentName:      string | null;
+  businessName:   string;
+  portalEmail:    string;
+  clientName:     string | null;
+  clientNeed:     string | null;
+  servicesKb:     string | null;
+  extraContext:   string | null;
+  contactWebsite?: string | null;
+  contactEmail?:   string | null;
+  contactPhone?:   string | null;
 }
 
 interface SlidePlan { title: string; bullets: string[] }
@@ -35,6 +38,8 @@ Reglas:
 - Estructura estándar: Portada, El cliente (contexto), El problema, La propuesta, Alcance, Tiempos, Inversión, Siguientes pasos, Contacto.
 - Cada slide tiene título corto (máx 6 palabras) y 3 a 5 bullets (máx 15 palabras cada uno).
 - Portada solo tiene 1 bullet: nombre del cliente + fecha.
+- El slide de Contacto DEBE usar los datos de contacto reales del negocio (website, email, teléfono) que se te dan al final del prompt. NUNCA inventes emails ni dominios.
+- Español con acentos correctos.
 - Sin em-dashes, sin emojis, sin "IA".
 - Devuelve SOLO JSON: {"title": "string", "slides": [{"title": "string", "bullets": ["string"]}]}.`;
 
@@ -70,11 +75,21 @@ export async function buildDeck(ctx: DeckCtx, supabase: SupabaseClient): Promise
     orgRow as Record<string, unknown> | null,
   );
 
+  const contactBlock = (ctx.contactWebsite || ctx.contactEmail || ctx.contactPhone)
+    ? [
+        '\nDATOS DE CONTACTO REALES DEL NEGOCIO (USA EXACTAMENTE ESTOS en el slide de Contacto, NO INVENTES):',
+        ctx.contactWebsite ? `- Sitio: ${ctx.contactWebsite}` : null,
+        ctx.contactEmail   ? `- Correo: ${ctx.contactEmail}` : null,
+        ctx.contactPhone   ? `- Teléfono: ${ctx.contactPhone}` : null,
+      ].filter(Boolean).join('\n')
+    : '\nDATOS DE CONTACTO: NO tienes datos configurados. Omite datos específicos en el slide de Contacto o usa [pendiente].';
+
   const userPrompt = `NEGOCIO: ${ctx.businessName}
 REDACTA COMO: ${ctx.agentName ?? 'Noah'}
 CLIENTE: ${ctx.clientName ?? 'sin especificar'}
 NECESIDAD: ${ctx.clientNeed ?? 'sin especificar'}
-${ctx.servicesKb ? `\nSERVICIOS DEL NEGOCIO:\n${ctx.servicesKb}\n` : ''}${ctx.extraContext ? `\nCONTEXTO ADICIONAL:\n${ctx.extraContext}\n` : ''}
+${ctx.servicesKb ? `\nSERVICIOS DEL NEGOCIO:\n${ctx.servicesKb}\n` : ''}${ctx.extraContext ? `\nCONTEXTO ADICIONAL:\n${ctx.extraContext}\n` : ''}${contactBlock}
+
 Genera el plan de slides.`;
 
   const anthropic = new Anthropic();

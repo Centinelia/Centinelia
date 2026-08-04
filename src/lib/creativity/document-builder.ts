@@ -4,6 +4,7 @@ import type { createAdminClient } from '@/lib/supabase/admin';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { GenericDocPDF, ProposalPDF } from '@/lib/pdf/doc';
 import { CotizacionPdf } from '@/lib/pdf/cotizacion';
+import { OnePagerPdf } from '@/lib/pdf/one-pager';
 import type { StructuredContent } from './content-generator';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
@@ -127,8 +128,17 @@ export async function buildDocument(
       },
     });
     pdfBuffer = await renderToBuffer(cotEl as any);
+  } else if (kind === 'one_pager') {
+    // Path B2: one-pager con layout ejecutivo (cajas de color + CTA destacado)
+    const opEl = createElement(OnePagerPdf, {
+      brand,
+      title:    content.title,
+      sections: content.sections,
+      cta:      content.closing,
+    });
+    pdfBuffer = await renderToBuffer(opEl as any);
   } else {
-    // Path B: built-in React PDF (propuesta / cotización sin items / one_pager)
+    // Path B: built-in React PDF (propuesta / cotización sin items)
     const contentText = renderContentText(content);
     const props = { title: content.title, content: contentText, brand };
     const Component = kind === 'propuesta' || kind === 'cotizacion' ? ProposalPDF : GenericDocPDF;
