@@ -109,6 +109,69 @@ export async function executeAgentTool(
   toolInput: Record<string, unknown>,
   ctx:       AgentToolContext,
 ): Promise<unknown> {
+  // H1 + L2 — trace unificado + retry/timeout policy declarativa.
+  const { traceToolCall }             = await import('@/lib/observability/tool-trace');
+  const { policyFor, looksTransient } = await import('@/lib/tools/policies');
+  const policy = policyFor(toolName);
+
+  const runOnce = () => withToolTimeout(
+    () => executeAgentToolInner(toolName, toolInput, ctx),
+    policy.timeoutMs,
+    toolName,
+  );
+
+  return traceToolCall(
+    toolName,
+    toolInput,
+    {
+      agentId:     ctx.agentId,
+      portalEmail: ctx.portalEmail,
+      channel:     ctx.channel ?? 'chat',
+      sessionId:   ctx.sourceCallId ?? ctx.sourceInboxId ?? null,
+    },
+    async () => {
+      let lastErr: unknown;
+      let lastResult: unknown;
+      for (let attempt = 1; attempt <= policy.maxAttempts; attempt++) {
+        try {
+          lastResult = await runOnce();
+          const failed = lastResult && typeof lastResult === 'object' && (lastResult as { ok?: unknown }).ok === false;
+          if (!failed) return lastResult;
+          const errMsg = (lastResult as { error?: unknown }).error;
+          if (!policy.retryOnlyTransient || !looksTransient(errMsg)) return lastResult;
+          lastErr = errMsg;
+        } catch (err) {
+          lastErr = err;
+          if (policy.retryOnlyTransient && !looksTransient(err)) throw err;
+        }
+        if (attempt < policy.maxAttempts && policy.backoffMs > 0) {
+          await new Promise(res => setTimeout(res, policy.backoffMs * attempt));
+        }
+      }
+      if (lastResult !== undefined) return lastResult;
+      throw lastErr instanceof Error ? lastErr : new Error(String(lastErr ?? 'tool failed'));
+    },
+    (result) => ({
+      tool_policy_attempts: policy.maxAttempts,
+      tool_policy_timeout:  policy.timeoutMs,
+      verify_strategy:      policy.verifyStrategy,
+      final_ok:             result && typeof result === 'object' ? (result as { ok?: unknown }).ok !== false : true,
+    }),
+  );
+}
+
+function withToolTimeout<T>(fn: () => Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timeout after ${ms}ms in ${label}`)), ms);
+    fn().then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+
+async function executeAgentToolInner(
+  toolName:  string,
+  toolInput: Record<string, unknown>,
+  ctx:       AgentToolContext,
+): Promise<unknown> {
   const { agentId, portalEmail, agentName, businessName, portalToken, agent, supabase } = ctx;
 
   // ── Policy gate ───────────────────────────────────────────────────────────
