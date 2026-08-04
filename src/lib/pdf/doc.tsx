@@ -65,8 +65,8 @@ export function BrandedDoc({ brand, docType, subtitle, children, filename }: {
         {/* ── Content ── */}
         {children}
 
-        {/* ── Footer ── */}
-        <View style={[S.footer, { borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 8 }]}>
+        {/* ── Footer ── renders on every page at bottom */}
+        <View fixed style={[S.footer, { borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 8 }]}>
           <Text style={{ fontSize: 8, color: '#9ca3af' }}>
             {footerParts.join('  ·  ')}
           </Text>
