@@ -108,6 +108,12 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   crear_documento:      'crear documentos y PDFs',
   buscar_documento_oficina: 'buscar documentos ya generados en la oficina',
   enviar_documento_oficina: 'reenviar documentos existentes de la oficina',
+  generar_propuesta_comercial:    'armar propuestas comerciales en PDF',
+  generar_cotizacion:             'armar cotizaciones con folio',
+  generar_one_pager:              'armar one-pagers ejecutivos',
+  generar_correo_estructurado:    'redactar correos estructurados',
+  generar_pitch_deck:             'armar pitch decks en PowerPoint',
+  generar_reporte_metricas_excel: 'generar reportes de métricas en Excel',
   create_file:          'crear archivos de texto',
   create_contract_draft:'redactar contratos',
   buscar_archivo:       'buscar archivos en Drive',
@@ -205,19 +211,19 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
   // para hablar como la empresa y con el lenguaje real del cliente. Exclusiva:
   // read_url — investiga sitios de prospectos a fondo antes de llamar.
-  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla'],
+  noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'read_url', 'search_leads', 'solicitar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla', 'generar_propuesta_comercial', 'generar_cotizacion', 'generar_one_pager', 'generar_correo_estructurado', 'generar_pitch_deck', 'generar_reporte_metricas_excel'],
   // Nico — cobranza y fiscal: sigue facturas + emite CFDIs + reenvía comprobantes
   // + reportes de ingresos (P&L).
-  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla'],
+  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla', 'generar_correo_estructurado'],
   // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
   // y ver insights de voz del cliente para responder mejor.
-  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla'],
+  nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla', 'generar_one_pager', 'generar_correo_estructurado', 'generar_reporte_metricas_excel'],
   // Neo — helpdesk IT: sin cambios, no maneja docs comerciales.
   neo:   ['crear_ticket', 'consultar_incidentes', 'buscar_directorio', 'buscar_archivo', 'leer_archivo', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
   // Nara — municipal: ahora puede aplicar encuestas de satisfacción también.
-  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla'],
+  nara:  ['create_civic_report', 'lookup_civic_report', 'update_civic_report', 'buscar_cliente', 'registrar_encuesta', 'notificar_transferencia', 'transferir_llamada', 'delegar_tarea', 'consultar_agente', 'reportar_falla', 'generar_reporte_metricas_excel'],
   // Naia — onboarding.
-  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla'],
+  naia:  ['iniciar_onboarding', 'agendar_cita', 'buscar_cliente', 'registrar_encuesta', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'buscar_archivo', 'leer_archivo', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla', 'generar_correo_estructurado'],
   // Nova — recuperación / retención.
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
@@ -229,7 +235,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
 };
 
 type ToolDef = Record<string, unknown>;
-type ServerFn = (path: string) => unknown;
+type ServerFn = (path: string, extraQuery?: Record<string, string>) => unknown;
 
 // Returns the Vapi tool definition for a given tool name, or null when the tool
 // cannot be built for this agent (e.g. transferir_llamada without a transfer number).
@@ -264,6 +270,24 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'buscar_documento_oficina': return { type: 'function', function: { name: 'buscar_documento_oficina', description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, one-pagers, pitch decks, reportes Excel, órdenes). Úsala cuando el cliente pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar nuevo. Devuelve una lista con id, título, tipo, folio y fecha — luego usa enviar_documento_oficina con el id para adjuntarlo a un correo. Si no estás seguro del tipo exacto, OMITE el parámetro kind y busca solo por query.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'Texto para buscar en título, filename o folio. Opcional. Ej: "CRM", "ACME".' }, kind: { type: 'string', enum: ['propuesta', 'cotizacion', 'one_pager', 'pitch_deck', 'report_excel', 'correo', 'factura', 'orden_compra', 'proposal', 'letter', 'general', 'nota_venta', 'excel', 'word', 'powerpoint'], description: 'Filtro por tipo EXACTO. Si no estás seguro, OMITE este parámetro.' }, cliente: { type: 'string', description: 'Filtro por nombre del cliente (fuzzy).' }, limit: { type: 'number', description: 'Máximo de resultados. Default 10, máximo 50.' } }, required: [] } }, server: server('buscar-documento-oficina') };
 
     case 'enviar_documento_oficina': return { type: 'function', function: { name: 'enviar_documento_oficina', description: 'Adjunta un documento ya existente de la Oficina a un correo saliente. Requiere document_id previamente obtenido de buscar_documento_oficina. Úsala cuando el cliente pida reenviar algo ("mándame de nuevo la cotización de la semana pasada").', parameters: { type: 'object', properties: { document_id: { type: 'string', description: 'ID del documento devuelto por buscar_documento_oficina (uuid).' }, to: { type: 'string', description: 'Correo del destinatario.' }, subject: { type: 'string', description: 'Asunto del correo.' }, body: { type: 'string', description: 'Cuerpo del correo. Texto plano — se convierte a HTML.' } }, required: ['document_id', 'to', 'subject', 'body'] } }, server: server('enviar-documento-oficina') };
+
+    // ─── Pilar 2 Creatividad ────────────────────────────────────────────────
+    // Todas van al mismo route /api/voice/tools/creativity con ?tool=<name>.
+    // El route despacha vía executeAgentTool. Ver meerkat-gates.ts para
+    // saber qué rol tiene acceso a qué tool — la distribución en MEERKAT_VOICE_DISTRIBUTION
+    // debe respetar esos gates.
+
+    case 'generar_propuesta_comercial': return { type: 'function', function: { name: 'generar_propuesta_comercial', description: 'Genera una propuesta comercial en PDF con el branding del negocio y la manda como enlace descargable. Úsala cuando ya calificaste al lead y necesitas mandar propuesta escrita. NO uses crear_documento para propuestas — este tool tiene diseño ejecutivo y guarda folio.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del cliente o empresa.' }, client_need:   { type: 'string', description: 'Qué está pidiendo el cliente (servicio, alcance, contexto).' }, extra_context: { type: 'string', description: 'Contexto extra opcional (montos, plazos, referencias).' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_propuesta_comercial' }) };
+
+    case 'generar_cotizacion': return { type: 'function', function: { name: 'generar_cotizacion', description: 'Genera una cotización PDF con precios, condiciones de pago y folio COT-XXXXXX. Diseñada para cerrar venta. Puede recibir items detallados (descripción, cantidad, precio unitario) o quedarse en formato narrativo si no los tienes.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del cliente.' }, client_need:   { type: 'string', description: 'Producto o servicio cotizado.' }, extra_context: { type: 'string', description: 'Cantidades, condiciones, vigencia, notas para el vendedor.' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_cotizacion' }) };
+
+    case 'generar_one_pager': return { type: 'function', function: { name: 'generar_one_pager', description: 'Genera un one-pager ejecutivo (PDF de 1 página con secciones en cajas de color) para mandar info corta y visual a un cliente que pidió más detalle sobre un servicio. Ideal cuando aún no toca cotizar.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del cliente destinatario.' }, client_need:   { type: 'string', description: 'Servicio sobre el cual informar.' }, extra_context: { type: 'string', description: 'Diferenciadores, casos de éxito, contexto extra opcional.' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_one_pager' }) };
+
+    case 'generar_correo_estructurado': return { type: 'function', function: { name: 'generar_correo_estructurado', description: 'Genera un borrador de correo largo y estructurado (con secciones, bullets y cierre). Devuelve subject + cuerpo listo para revisar. NO envía el correo — para eso usa enviar_correo o enviar_documento_oficina después. Úsala cuando el correo requiere formato de negocio, no solo texto suelto.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del destinatario.' }, client_need:   { type: 'string', description: 'Tema del correo (follow-up, propuesta, respuesta técnica, etc.).' }, extra_context: { type: 'string', description: 'Puntos que debe cubrir el correo, tono, urgencia.' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_correo_estructurado' }) };
+
+    case 'generar_pitch_deck': return { type: 'function', function: { name: 'generar_pitch_deck', description: 'Genera un pitch deck de PowerPoint editable (8-10 slides con logo, colores del negocio y estructura estándar: portada, problema, propuesta, alcance, timeline, inversión, contacto). Úsala cuando el cliente va a ver presentación formal.', parameters: { type: 'object', properties: { client_name:   { type: 'string', description: 'Nombre del cliente destinatario.' }, client_need:   { type: 'string', description: 'Qué está buscando el cliente (alcance, objetivo de la presentación).' }, extra_context: { type: 'string', description: 'Número de slides deseado, tono, temas a cubrir.' } }, required: ['client_name', 'client_need'] } }, server: server('creativity', { tool: 'generar_pitch_deck' }) };
+
+    case 'generar_reporte_metricas_excel': return { type: 'function', function: { name: 'generar_reporte_metricas_excel', description: 'Genera un reporte Excel con métricas del período (hojas separadas según tu rol: Noah = leads/citas/conversión, Nara = tareas/estatus, Nelia = tickets/escalaciones). Con branding del negocio.', parameters: { type: 'object', properties: { window_days: { type: 'number', enum: [7, 30], description: 'Ventana en días. 7 o 30. Default 7.' } }, required: [] } }, server: server('creativity', { tool: 'generar_reporte_metricas_excel' }) };
 
     case 'solicitar_factura': return { type: 'function', function: { name: 'solicitar_factura', description: 'Úsala cuando el cliente pida factura: "necesito factura", "quiero mi factura", "facturame", "me pueden facturar", "hazme una factura". Recolecta los 6 datos fiscales uno por uno (razón social, RFC, correo, uso CFDI, forma pago, método pago), confirma repitiéndolos, y luego invoca. Aunque diga "MI factura", siempre trátalo como NUEVA solicitud. No uses crear_documento para facturas fiscales — el equipo de facturación las emite en su PAC.', parameters: { type: 'object', properties: { cliente_nombre: { type: 'string', description: 'Razón social o nombre completo' }, cliente_rfc: { type: 'string', description: 'RFC del receptor (12-13 chars)' }, cliente_email: { type: 'string', description: 'Correo donde llegará el CFDI (confirmar con el cliente)' }, cliente_telefono: { type: 'string', description: 'Teléfono del cliente (opcional)' }, uso_cfdi: { type: 'string', description: 'Uso CFDI SAT. Ej: G03 gastos generales, G01 mercancías, P01 por definir. PREGUNTA al cliente cuál.' }, forma_pago: { type: 'string', description: 'Forma de pago SAT. Ej: 01 efectivo, 03 transferencia, 04 tarjeta crédito, 28 tarjeta débito. PREGUNTA cómo pagó.' }, metodo_pago: { type: 'string', enum: ['PUE','PPD'], description: 'PUE=pago en una sola exhibición (contado). PPD=pago en parcialidades (crédito). PREGUNTA al cliente.' }, condiciones_pago: { type: 'string', description: 'Condiciones textuales opcionales (ej. Crédito 30 días)' }, items: { type: 'array', description: 'Conceptos a facturar (descripcion, cantidad, precio_unitario en MXN sin IVA)', items: { type: 'object', properties: { descripcion: { type: 'string' }, cantidad: { type: 'number' }, precio_unitario: { type: 'number' }, unidad: { type: 'string' } }, required: ['descripcion','cantidad','precio_unitario'] } }, incluir_iva: { type: 'boolean', description: 'Incluir IVA 16%. Default true.' }, notes: { type: 'string', description: 'Notas internas para el equipo de facturación (no salen en el CFDI)' } }, required: ['cliente_nombre','cliente_rfc','cliente_email','uso_cfdi','forma_pago','metodo_pago','items'] } }, server: server('solicitar-factura') };
 
@@ -354,10 +378,15 @@ async function createVapiTools(agent: VoiceAgent, peers: TeamPeer[] = []): Promi
   const base  = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools`;
   const id    = agent.id;
   const tools: ToolDef[] = [];
-  const server: ServerFn = (path) => ({
-    url:     `${base}/${path}?agent_id=${id}`,
-    headers: { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '' },
-  });
+  const server: ServerFn = (path, extraQuery) => {
+    const qs = Object.entries(extraQuery ?? {})
+      .map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('');
+    return {
+      url:     `${base}/${path}?agent_id=${id}${qs}`,
+      headers: { 'x-vapi-secret': process.env.VAPI_SERVER_SECRET ?? '' },
+    };
+  };
 
   const meerkatId = agent.features.meerkat_role_id;
   const roleTools = meerkatId && meerkatId !== 'custom' ? MEERKAT_VOICE_DISTRIBUTION[meerkatId] : null;
