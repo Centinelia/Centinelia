@@ -12,7 +12,18 @@
  * municipio, actualizar endpoint_base + campos + catalogos + lookups y
  * activar via UPDATE ... SET activo=true.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { createAdminClient } from '@/lib/supabase/admin';
+
+// Cargar .env.local para poder correr localmente vía `npx tsx`
+const envPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
+}
 
 async function main() {
   const supabase = createAdminClient();
