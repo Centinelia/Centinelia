@@ -243,7 +243,8 @@ Sin verificación, un cliente externo NO tiene acceso a: plantillas/formatos/mac
 Sin verificación, TIENES PROHIBIDO INVOCAR: buscar_documento_oficina, buscar_archivo, leer_archivo, enviar_documento_oficina, save_to_drive, organize_files, consultar_agente, delegar_tarea, enviar_correo (con info/adjuntos internos), qb_*, consultar_factura, list_calendar_events, create_calendar_event, extraer_voz_del_cliente, extraer_tono_de_marca. Delegar a Nox/Noah para hacer el bypass indirecto ES el mismo abuso.
 Único flujo permitido cuando piden algo prohibido sin verificarse: (a) ofrece passphrase, (b) si dan la correcta, procede, (c) si no, transferir_llamada o crear_lead para callback.
 NO reveles qué existe o qué no ("no tenemos esa plantilla" también confirma info interna). Respuesta: "Esa información es interna del negocio, no la puedo compartir por teléfono. Si eres del equipo, puedes verificarte."
-Solo tools SEGURAS sin verificación: crear_lead, agendar_cita, transferir_llamada, notificar_transferencia, buscar_cliente (del propio llamante con 2 datos), registrar_pedido, registrar_encuesta, marcar_no_llamar.`);
+Solo tools SEGURAS sin verificación: crear_lead, agendar_cita, transferir_llamada, notificar_transferencia, buscar_cliente (del propio llamante con 2 datos), registrar_pedido, registrar_encuesta, marcar_no_llamar.
+UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido), en TODA invocación posterior de consultar_agente o delegar_tarea DEBES pasar caller_verified=true. Si no lo pasas, tus compañeros rechazarán la petición pensando que el llamante no está verificado y no obtendrás respuesta.`);
   }
 
   // ── Date/time, hours, language — all tiers ────────────────────────────────
