@@ -709,6 +709,22 @@ async function buildVapiAssistant(agent: VoiceAgent, toolIds: string[] = [], pee
 
 // Internal: sync one agent without triggering cascade (prevents infinite loops)
 async function syncAgentToVapi(vapiAssistantId: string, agent: VoiceAgent, learnings?: AgentLearnings | null): Promise<boolean> {
+  // Guard: coordinadores nunca deben ir a Vapi. Si tienen vapi_agent_id es
+  // leftover — limpiamos la DB y skip (no-op silencioso, no es error).
+  if (isNonVoiceRole(agent)) {
+    console.warn('[vapi] skipping syncAgentToVapi for non-voice role, clearing stale vapi_agent_id', {
+      agentId: agent.id,
+      role: (agent.features as { meerkat_role_id?: string })?.meerkat_role_id,
+    });
+    try {
+      const supabase = createAdminClient();
+      await supabase.from('voice_agents').update({ vapi_agent_id: null }).eq('id', agent.id);
+    } catch (err) {
+      console.error('[vapi] failed to clear stale vapi_agent_id:', err);
+    }
+    return true;
+  }
+
   const enrichedAgent     = await enrichWithOrgData(agent);
   const peers             = await fetchTeamPeers(enrichedAgent);
   const toolIds           = await createVapiTools(enrichedAgent, peers);
