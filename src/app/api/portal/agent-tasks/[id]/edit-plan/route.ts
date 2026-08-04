@@ -223,6 +223,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     })
     .eq('id', id);
 
+  // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el
+  // cron secret existe llamamos al endpoint, si no cae al tick horario normal.
+  const cronSecret = process.env.CRON_SECRET;
+  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
+  if (cronSecret) {
+    void fetch(`${appUrl}/api/cron/process-tasks`, {
+      headers: { Authorization: `Bearer ${cronSecret}` },
+    }).catch(err => console.error('[edit-plan] trigger process-tasks failed:', err));
+  }
+
   return pageResponse(`<!doctype html><html lang="es"><head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -243,7 +253,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     <div class="card">
       <div class="icon"><span>✓</span></div>
       <h1>Plan aprobado${notes ? ' con tus correcciones' : ''}</h1>
-      <p>Tu empleado empieza en los próximos minutos.${notes ? ' Va a seguir tus notas con prioridad sobre el plan original.' : ''}</p>
+      <p>Tu empleado ya lo está ejecutando.${notes ? ' Va a seguir tus notas con prioridad sobre el plan original.' : ''}</p>
       <p class="footer" style="margin-top:20px"><a href="https://www.centinelia.mx">centinelia.mx</a></p>
     </div>
   </body></html>`);

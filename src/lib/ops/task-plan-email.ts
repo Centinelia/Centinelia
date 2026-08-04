@@ -97,7 +97,7 @@ export function planApprovalEmailHtml(args: {
     ${actionButtons(approveUrl, editUrl, rejectUrl)}
 
     <p style="color:#8C7FB8;font-size:12px;line-height:1.6;margin:16px 0 0;text-align:center">
-      Al aprobar, ${escape(targetAgent)} arranca en los próximos minutos.
+      Al aprobar, ${escape(targetAgent)} arranca de inmediato.
     </p>
   `;
 
