@@ -55,18 +55,18 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
   const agentIds = (agents ?? []).map(a => a.id as string);
   if (!agentIds.length) return [];
 
+  // NOTA: usamos SOLO UN .or() en la query porque supabase-js tiene bug con
+  // chained .or() — el segundo sobrescribe al primero. Combinamos search en
+  // el .or() y filtramos expiry en JS post-fetch. Fetcheamos un poco más
+  // (limit * 3) para compensar posibles docs expirados que se filtran después.
   let q = supabase
     .from('ops_documents')
     .select('id, title, filename, storage_path, template_type, created_at, expires_at, folio')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .limit(limit * 3);
 
   if (args.kind?.trim()) q = q.eq('template_type', args.kind.trim());
-  if (!args.includeExpired) {
-    const nowIso = new Date().toISOString();
-    q = q.or(`expires_at.is.null,expires_at.gt.${nowIso}`);
-  }
 
   // Búsqueda fuzzy: title + filename + folio. clientName cae al mismo filtro por ahora.
   const searchTerm = (args.query ?? args.clientName ?? '').trim().replace(/[%_]/g, '');
@@ -77,7 +77,16 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
   const { data, error } = await q;
   if (error) { console.error('[searchOfficeDocuments] query error:', error); return []; }
 
-  const rows = data ?? [];
+  // Filtrar expirados en JS (evita el bug del chained .or()).
+  const nowMs = Date.now();
+  const allRows = data ?? [];
+  const rows = (args.includeExpired
+    ? allRows
+    : allRows.filter(r => {
+        const exp = r.expires_at as string | null;
+        return exp === null || new Date(exp).getTime() > nowMs;
+      })
+  ).slice(0, limit);
   // Generar signed URLs (1h) para cada doc en paralelo. Sin esto el LLM tiene
   // que fabricar el URL a mano y falla con "signature verification failed".
   const signedUrls = await Promise.all(rows.map(async r => {
