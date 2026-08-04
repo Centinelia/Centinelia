@@ -460,7 +460,7 @@ async function executeAgentToolInner(
 
       if (format === 'excel') {
         const sheets = (toolInput.sheets as ExcelSheet[] | null) ?? [{ name: fileTitle.slice(0, 31), headers: ['Sin datos'], rows: [['El agente no proporcionó datos.']] }];
-        buf = generateExcel(sheets); ext = 'xlsx'; mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; label = 'Excel';
+        buf = await generateExcel(sheets); ext = 'xlsx'; mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; label = 'Excel';
       } else if (format === 'word') {
         const tpl = (toolInput.template_type as 'general' | 'proposal' | 'letter' | undefined) ?? 'general';
         let wc    = (toolInput.content as string | null) ?? '';
