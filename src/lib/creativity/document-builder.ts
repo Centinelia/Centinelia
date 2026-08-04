@@ -97,8 +97,11 @@ export async function buildDocument(
     pdfBuffer = await convertDocxToPdf(docxBuffer, agent.id, supabase);
   } else if (kind === 'cotizacion' && content.items && content.items.length > 0) {
     // Path B1: cotización con desglose de items → CotizacionPdf con tabla real
+    // Filtrar secciones que duplicarían info ya presente en el PDF:
+    // - precio/inversión/total: ya en la tabla + bloque de totales
+    // - condiciones/vigencia: ya en el bloque hardcoded de Condiciones de CotizacionPdf
     const notesText = content.sections
-      .filter(s => !/precio|costo|inversi[óo]n|total/i.test(s.heading))
+      .filter(s => !/precio|costo|inversi[óo]n|total|condici[óo]n|vigencia/i.test(s.heading))
       .map(s => `${s.heading}: ${s.body}`)
       .join('\n');
     const cotEl = createElement(CotizacionPdf, {

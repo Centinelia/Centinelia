@@ -71,7 +71,9 @@ Prefiere MODO A siempre que puedas identificar items separables. Usa MODO B solo
 
 Otras reglas (ambos modos):
 - Precios en MXN.
+- **Español CORRECTO con acentos**: escribe "Capacitación", "técnico", "días", "Facturación", "sesión", "términos", "duración", "número". NUNCA los strippees. Los caracteres UTF-8 se ven bien en el PDF final.
 - Sin em-dashes, sin emojis, sin "IA" en copy.
+- En MODO A, NO metas una sección llamada "Condiciones" — el PDF ya trae condiciones estándar hardcoded. Solo usa sections para notas/contexto extra.
 - Devuelve SOLO JSON válido.`,
 
   one_pager: `Eres el redactor comercial. Genera un one-pager informativo sobre un servicio.
