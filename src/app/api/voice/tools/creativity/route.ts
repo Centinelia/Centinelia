@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, portal_email, agent_name, business_name, portal_token')
+    .select('id, portal_email, agent_name, business_name, portal_token, features')
     .eq('id', agentId)
     .single();
 

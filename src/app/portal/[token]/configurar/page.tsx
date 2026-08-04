@@ -420,20 +420,18 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               </div>
             )}
 
-            {['noah', 'nico', 'naia', 'nelia'].includes(meerkatId ?? '') && (
+            {['noah', 'nelia'].includes(meerkatId ?? '') && (
               <div id="plantillas" style={SCROLL_STYLE}>
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
                   <div className="flex items-center gap-1.5 mb-4">
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantillas de documentos</h2>
-                    <InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usara en lugar del formato por defecto al generar propuestas, cotizaciones o correos." />
+                    <InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usara en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />
                   </div>
                   <BrandTemplateSection
                     agentId={agent.id}
                     availableTipos={
-                      meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager', 'correo'] :
-                      meerkatId === 'nelia' ? ['one_pager', 'correo'] :
-                      meerkatId === 'nico'  ? ['correo'] :
-                      meerkatId === 'naia'  ? ['correo'] :
+                      meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager'] :
+                      meerkatId === 'nelia' ? ['one_pager'] :
                       []
                     }
                   />

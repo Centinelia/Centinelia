@@ -1510,7 +1510,7 @@ export async function executeAgentTool(
                   : 2;
     const opsResult = await consumeAiOp(agentId, opsCost);
     if (!opsResult.ok) {
-      return { ok: false, error: 'Sin operaciones disponibles este mes. Compra mas o espera al ciclo siguiente.' };
+      return { ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' };
     }
 
     // Fetch org KB + descripcion para contexto de contenido
