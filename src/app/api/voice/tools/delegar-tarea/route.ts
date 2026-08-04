@@ -152,6 +152,40 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name:        'solicitar_factura',
+    description: 'Levanta una solicitud de factura fiscal (CFDI) para el equipo humano. Genera fila en factura_requests y notifica por correo al equipo de facturación. Usa esta herramienta cuando la delegación incluye "generar factura" o "facturar" con los datos fiscales completos del cliente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        cliente_nombre:   { type: 'string', description: 'Razón social o nombre completo del receptor.' },
+        cliente_rfc:      { type: 'string', description: 'RFC del receptor (12-13 caracteres).' },
+        cliente_email:    { type: 'string', description: 'Correo donde llegará el CFDI.' },
+        cliente_telefono: { type: 'string', description: 'Teléfono del cliente (opcional).' },
+        uso_cfdi:         { type: 'string', description: 'Uso CFDI SAT (ej: G03 gastos generales, G01 mercancías, P01 por definir).' },
+        forma_pago:       { type: 'string', description: 'Forma de pago SAT (ej: 01 efectivo, 03 transferencia, 04 tarjeta crédito).' },
+        metodo_pago:      { type: 'string', enum: ['PUE','PPD'], description: 'PUE=contado, PPD=parcialidades/crédito.' },
+        condiciones_pago: { type: 'string', description: 'Condiciones textuales opcionales (ej. Crédito 30 días).' },
+        items: {
+          type: 'array',
+          description: 'Conceptos a facturar (descripcion, cantidad, precio_unitario en MXN sin IVA).',
+          items: {
+            type: 'object',
+            properties: {
+              descripcion:     { type: 'string' },
+              cantidad:        { type: 'number' },
+              precio_unitario: { type: 'number' },
+              unidad:          { type: 'string' },
+            },
+            required: ['descripcion','cantidad','precio_unitario'],
+          },
+        },
+        incluir_iva: { type: 'boolean', description: 'Incluir IVA 16%. Default true.' },
+        notes:       { type: 'string', description: 'Notas internas para el equipo de facturación.' },
+      },
+      required: ['cliente_nombre','cliente_rfc','cliente_email','uso_cfdi','forma_pago','metodo_pago','items'],
+    },
+  },
+  {
     name:        'tarea_completada',
     description: 'Señala que la tarea fue completada. Llama a esta herramienta cuando hayas terminado TODAS las acciones necesarias.',
     input_schema: {
@@ -180,6 +214,7 @@ async function executeToolOnAgent(
     crear_ticket:              'crear-ticket',
     crear_documento:           'crear-documento',
     extraer_voz_del_cliente:   'extraer-voz-del-cliente',
+    solicitar_factura:         'solicitar-factura',
   };
 
   const routePath = routeMap[toolName];

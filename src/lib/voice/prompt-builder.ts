@@ -337,11 +337,14 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
 1. Cliente pide factura (aunque diga "mi factura" o "la que ya hicimos") → responde de inmediato "Con gusto te ayudo, necesito unos datos".
 2. Recopila los 6 datos uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método de pago (contado/crédito), y descripción + cantidad + precio del servicio.
 3. Confirma los datos con el cliente ("¿es correcto?").
-4. **INVOCA solicitar_factura EN ESTE MOMENTO — es OBLIGATORIO.** No cierres la llamada, no digas "el equipo procesará", no confirmes que se enviará el correo, hasta que hayas llamado la herramienta y recibido su respuesta.
+4. EJECUTA la solicitud AHORA — es OBLIGATORIO antes de cerrar la llamada:
+   - Si en TU EQUIPO tienes un compañero con capacidad fiscal (que "puede levantar solicitudes de factura fiscal" o "puede emitir facturas"), delega la tarea a él con delegar_tarea. El "tarea" debe incluir los 6 datos completos y la instrucción "genera la factura y envíala al cliente al correo indicado". Success_criteria: "solicitud de factura registrada y confirmada al cliente".
+   - Si NO hay ningún compañero con capacidad fiscal (o eres la única empleada de la organización), invoca tú misma solicitar_factura con los 6 datos.
 5. SOLO después de que la herramienta responda OK, dile al cliente "Ya la registré, te llegará al correo en las próximas horas."
 
 PROHIBIDO:
-- Cerrar la llamada sin invocar solicitar_factura. Si lo haces, la factura NO se registra y el cliente NO recibe nada.
+- Cerrar la llamada sin haber invocado NI delegar_tarea NI solicitar_factura. Si lo haces, la factura NO se registra y el cliente NO recibe nada — es el peor error posible.
+- Decir "el equipo procesará tu factura" antes de haber invocado la tool. No prometas sin ejecutar.
 - Decir "no encuentro", "déjame verificar" o "consulto en el sistema" — no tienes herramienta de consulta.
 - Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
