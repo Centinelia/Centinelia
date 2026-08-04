@@ -80,7 +80,7 @@ Genera el plan de slides.`;
   try {
     parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
   } catch {
-    return { ok: false, error: 'El modelo no devolvio un plan de slides valido.' };
+    return { ok: false, error: 'El modelo no devolvió un plan de slides válido.' };
   }
 
   const title = typeof parsed.title === 'string' && parsed.title.trim()
@@ -96,7 +96,7 @@ Genera el plan de slides.`;
         }))
     : [];
 
-  if (slides.length === 0) return { ok: false, error: 'El plan de slides quedo vacio.' };
+  if (slides.length === 0) return { ok: false, error: 'El plan de slides quedó vacío.' };
 
   const pptxBuffer = await generateSlides({
     title,
