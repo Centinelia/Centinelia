@@ -193,10 +193,26 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const billingPaused = !agent.active && agent.billing_status === 'pago_fallido';
 
   const features      = agent.features ?? {};
-  const showLeads     = !!features.lead_qualification;
-  const showOrders    = !!features.order_taking;
-  const showAppts     = !!features.appointment_booking;
-  const showOutbound  = !!features.outbound_calls;
+  // Flags de layout de Inicio: agregar features de TODOS los empleados de la
+  // cuenta (org-scoped), no solo del agente cuyo token está en la URL. Antes:
+  // el layout cambiaba al alternar entre Sofia/Nox aunque la cuenta fuera la
+  // misma. Ver [[issue-inicio-layout-agent-scoped]].
+  const orgFeatureFlags = (allClientAgents as Array<{ features?: Record<string, unknown> | null }>).reduce(
+    (acc, a) => {
+      const f = a.features ?? {};
+      return {
+        lead_qualification:  acc.lead_qualification  || !!f.lead_qualification,
+        order_taking:        acc.order_taking        || !!f.order_taking,
+        appointment_booking: acc.appointment_booking || !!f.appointment_booking,
+        outbound_calls:      acc.outbound_calls      || !!f.outbound_calls,
+      };
+    },
+    { lead_qualification: false, order_taking: false, appointment_booking: false, outbound_calls: false },
+  );
+  const showLeads     = orgFeatureFlags.lead_qualification;
+  const showOrders    = orgFeatureFlags.order_taking;
+  const showAppts     = orgFeatureFlags.appointment_booking;
+  const showOutbound  = orgFeatureFlags.outbound_calls;
   const hasStripe     = !!agent.stripe_customer_id;
   const agentName  = agent.agent_name?.trim() || 'Centinelia';
 
