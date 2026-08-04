@@ -38,6 +38,7 @@ import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
 import SpamFolderToggle      from '../SpamFolderToggle';
+import MultilingualToggle    from '../MultilingualToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
@@ -91,10 +92,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     : null;
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide, multilingual').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase = orgRow?.owner_passphrase ?? '';
   const brandVoiceGuide = (orgRow as { brand_voice_guide?: string | null } | null)?.brand_voice_guide ?? '';
+  const orgMultilingual = (orgRow as { multilingual?: boolean | null } | null)?.multilingual ?? false;
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -134,6 +136,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const sidebarSections: SidebarSection[] = [
     ...(hasVoice
       ? [{ id: 'voz',        label: 'Voz',                   group: 'Configuración' }] : []),
+    ...(isOwner && !isCoordinator
+      ? [{ id: 'idioma',     label: 'Idioma',                group: 'Configuración' }] : []),
     { id: 'rol',             label: 'Responsabilidades',      group: 'Entrenamiento' },
     { id: 'dod',             label: 'Definición de listo',    group: 'Entrenamiento' },
     ...(!isCoordinator
@@ -270,6 +274,18 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />
                   </div>
                   <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
+                </div>
+              </div>
+            )}
+
+            {isOwner && !isCoordinator && (
+              <div id="idioma" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Idioma</h2>
+                    <InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />
+                  </div>
+                  <MultilingualToggle token={token} initial={orgMultilingual} />
                 </div>
               </div>
             )}

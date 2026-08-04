@@ -31,24 +31,25 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, plan, logo_url, created_at')
+    .select('name, plan, logo_url, multilingual, created_at')
     .eq('portal_email', portalEmail)
     .single();
 
   return NextResponse.json({ org: org ?? null });
 }
 
-// PATCH — update org name and/or logo_url
+// PATCH — update org name, logo_url, or multilingual
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
   const session = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { name?: string; logo_url?: string };
+  const body = await req.json() as { name?: string; logo_url?: string; multilingual?: boolean };
   const patch: Record<string, unknown> = {};
-  if (typeof body.name     === 'string') patch.name     = body.name.trim().slice(0, 100);
-  if (typeof body.logo_url === 'string') patch.logo_url = body.logo_url;
+  if (typeof body.name         === 'string')  patch.name         = body.name.trim().slice(0, 100);
+  if (typeof body.logo_url     === 'string')  patch.logo_url     = body.logo_url;
+  if (typeof body.multilingual === 'boolean') patch.multilingual = body.multilingual;
   if (!Object.keys(patch).length)
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 
