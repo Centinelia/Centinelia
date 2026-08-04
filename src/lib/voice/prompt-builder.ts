@@ -11,12 +11,12 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 const LEGAL_ABBREV_RULE = `PRONUNCIACIÓN DE SIGLAS EN RAZONES SOCIALES: Al leer o repetir una razón social con siglas legales, deletrea letra por letra con pausas — NUNCA la digas corrida. Ejemplos: "S.A. de C.V." → "ese, a, de ce, ve" (no "sadv"). "S. de R.L." → "ese, de erre, ele". "S.A.P.I. de C.V." → "ese, a, pe, i, de ce, ve". Al confirmar la razón social, léela lentamente con pausas entre cada sigla.`;
 
 const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS (RFC, CURP, folios, placas, IMEI, cuentas):
-Antes de que el cliente diga el código, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: F de Familia, cero, cero, cero..." No lo pidas después — pídelo primero.
+Antes de que el cliente diga el código, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: X de Xilófono, A de Amor, cero, uno..." No lo pidas después — pídelo primero.
 
 Al REPETIRLO de regreso al cliente para confirmar:
 - Escribe cada carácter SEPARADO POR COMA Y ESPACIO en tu respuesta, así el TTS hace la pausa. Nunca pegues letras y números en una misma palabra.
-- Ejemplo CORRECTO para "FET010101ABC": "efe, e, te, cero, uno, cero, uno, cero, uno, a, be, ce".
-- Ejemplo INCORRECTO (no lo hagas nunca): "FET010101ABC", "FETO uno cero uno cero uno ABC", "EFETZ 1 0 1", "RFCF cero uno".
+- Ejemplo CORRECTO para "XAXX010101000": "equis, a, equis, equis, cero, uno, cero, uno, cero, uno, cero, cero, cero".
+- Ejemplo INCORRECTO (no lo hagas nunca): "XAXX010101000" pegado, "EQUIS-AXX 010101 000", "RFCXA cero cero cero" (pegado con nombre del código), "XA equis equis uno cero uno cero uno cero cero cero" (repetido/adivinando).
 - Nunca concatenes el nombre del código con el código en sí ("RFC" pegado a las letras).
 - Después de deletrearlo pregunta: "¿Está correcto así?" Solo cuando el cliente diga que sí, das por bueno el dato.
 
@@ -342,9 +342,19 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
    - Si NO hay ningún compañero con capacidad fiscal (o eres la única empleada de la organización), invoca tú misma solicitar_factura con los 6 datos.
 5. SOLO después de que la herramienta responda OK, dile al cliente "Ya la registré, te llegará al correo en las próximas horas."
 
+MANEJO DE RECHAZO DE RFC:
+- Si el sistema rechaza el RFC por formato inválido, NO inventes el RFC ni lo aceptes forzado. Dile al cliente: "El RFC no cumple el formato SAT. ¿Me lo puedes verificar? Debe ser 12 o 13 caracteres: 3 o 4 letras iniciales, 6 dígitos de fecha (AAMMDD), y 3 caracteres al final donde el último es un dígito o la letra A."
+- Si el cliente no lo tiene a la mano y pide llamar de vuelta, usa crear_lead ANTES de despedirte con TODOS los datos capturados:
+  * nombre = razón social confirmada
+  * telefono = número del cliente (número entrante)
+  * notes = "PENDIENTE DE FACTURA. Datos capturados: razón social <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <V>, concepto <descripción/monto>. Falta: RFC correcto (el que dijo <RFC intentado> fue rechazado). Al volver a llamar, solo pedir RFC y ejecutar solicitar_factura."
+- Al despedirte, di: "Ya guardé todos los datos. Cuando me marques con el RFC correcto, solo te lo pido y levanto la factura en el momento."
+- Cuando ese cliente vuelva a llamar, usa buscar_cliente(telefono) al inicio para recuperar el lead y las notes con los 6 datos capturados. Sofia debe reanudar donde quedó sin pedirle todo otra vez.
+
 PROHIBIDO:
-- Cerrar la llamada sin haber invocado NI delegar_tarea NI solicitar_factura. Si lo haces, la factura NO se registra y el cliente NO recibe nada — es el peor error posible.
+- Cerrar la llamada sin haber invocado NI delegar_tarea NI solicitar_factura NI crear_lead (si hay callback pendiente). Si lo haces, se pierden los datos y el cliente NO recibe nada — es el peor error posible.
 - Decir "el equipo procesará tu factura" antes de haber invocado la tool. No prometas sin ejecutar.
+- Decir "voy a denotar" o "guardaré la información" sin llamar crear_lead. Sin la tool, no queda registro.
 - Decir "no encuentro", "déjame verificar" o "consulto en el sistema" — no tienes herramienta de consulta.
 - Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
