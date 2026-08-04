@@ -10,7 +10,17 @@ type SupabaseClient = ReturnType<typeof createAdminClient>;
 
 const LEGAL_ABBREV_RULE = `PRONUNCIACIÓN DE SIGLAS EN RAZONES SOCIALES: Al leer o repetir una razón social con siglas legales, deletrea letra por letra con pausas — NUNCA la digas corrida. Ejemplos: "S.A. de C.V." → "ese, a, de ce, ve" (no "sadv"). "S. de R.L." → "ese, de erre, ele". "S.A.P.I. de C.V." → "ese, a, pe, i, de ce, ve". Al confirmar la razón social, léela lentamente con pausas entre cada sigla.`;
 
-const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS (RFC, CURP, folios, placas): Cuando el cliente te dicte un código, pídele que lo deletree con alfabeto fonético ("A de Amor, B de Bueno..."). Al repetirlo de regreso, hazlo LETRA POR LETRA con pausa entre cada carácter — no lo digas corrido. Ejemplo de RFC "FET010101ABC": "efe, e, te, cero, uno, cero, uno, cero, uno, a, be, ce". Pregunta "¿es correcto?" al final.`;
+const ALFANUMERIC_DICTATION_RULE = `DICTADO DE CÓDIGOS ALFANUMÉRICOS (RFC, CURP, folios, placas, IMEI, cuentas):
+Antes de que el cliente diga el código, PÍDELE QUE LO DELETREE con alfabeto fonético: "Para no equivocarme, ¿me lo puede deletrear con nombres? Por ejemplo: F de Familia, cero, cero, cero..." No lo pidas después — pídelo primero.
+
+Al REPETIRLO de regreso al cliente para confirmar:
+- Escribe cada carácter SEPARADO POR COMA Y ESPACIO en tu respuesta, así el TTS hace la pausa. Nunca pegues letras y números en una misma palabra.
+- Ejemplo CORRECTO para "FET010101ABC": "efe, e, te, cero, uno, cero, uno, cero, uno, a, be, ce".
+- Ejemplo INCORRECTO (no lo hagas nunca): "FET010101ABC", "FETO uno cero uno cero uno ABC", "EFETZ 1 0 1", "RFCF cero uno".
+- Nunca concatenes el nombre del código con el código en sí ("RFC" pegado a las letras).
+- Después de deletrearlo pregunta: "¿Está correcto así?" Solo cuando el cliente diga que sí, das por bueno el dato.
+
+Si a la primera lectura te equivocas o el cliente te corrige, PIDE que te lo repita despacio letra por letra en vez de adivinar. No inventes letras que no oíste claras.`;
 
 export async function buildSystemPrompt(
   agent: VoiceAgent,
@@ -323,7 +333,17 @@ ${agent.transfer_rules?.trim() ? '' : 'Transfiere solo cuando el cliente lo soli
   }
 
   if (!isCoordinator) {
-    blocks.push(`FACTURACIÓN FISCAL: Cuando el cliente pida factura (aunque diga "mi factura" o "la que ya hicimos"), responde de inmediato "Con gusto te ayudo, necesito unos datos" y usa solicitar_factura tras recopilar razón social, RFC, correo, uso CFDI, forma y método de pago. Nunca digas "no encuentro", "déjame verificar" ni "consulto en el sistema" — no tienes herramienta para consultar facturas ya emitidas. Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
+    blocks.push(`FACTURACIÓN FISCAL — SECUENCIA ESTRICTA:
+1. Cliente pide factura (aunque diga "mi factura" o "la que ya hicimos") → responde de inmediato "Con gusto te ayudo, necesito unos datos".
+2. Recopila los 6 datos uno por uno: razón social, RFC, correo, uso CFDI, forma de pago, método de pago (contado/crédito), y descripción + cantidad + precio del servicio.
+3. Confirma los datos con el cliente ("¿es correcto?").
+4. **INVOCA solicitar_factura EN ESTE MOMENTO — es OBLIGATORIO.** No cierres la llamada, no digas "el equipo procesará", no confirmes que se enviará el correo, hasta que hayas llamado la herramienta y recibido su respuesta.
+5. SOLO después de que la herramienta responda OK, dile al cliente "Ya la registré, te llegará al correo en las próximas horas."
+
+PROHIBIDO:
+- Cerrar la llamada sin invocar solicitar_factura. Si lo haces, la factura NO se registra y el cliente NO recibe nada.
+- Decir "no encuentro", "déjame verificar" o "consulto en el sistema" — no tienes herramienta de consulta.
+- Si el cliente insiste en el estado de una factura previa, transfiere con notificar_transferencia + transferir_llamada.`);
   }
 
   if (f.order_taking) {
