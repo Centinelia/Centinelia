@@ -407,32 +407,37 @@ export async function POST(req: NextRequest) {
     const editUrl    = `${appUrl}/api/portal/agent-tasks/${pendingId}/edit-plan?token=${approvalToken}`;
     const rejectUrl  = `${appUrl}/api/portal/agent-tasks/${pendingId}/approve-plan?token=${approvalToken}&reject=1`;
 
+    // Email de aprobación en fire-and-forget para no bloquear el return a Vapi
+    // (evita timeouts de 30s en el tool call). Si el email falla, la tarea sigue
+    // visible en el portal en Tareas → aprobaciones pendientes.
     if (ownerEmail) {
-      try {
-        const { resolveMeerkatFromAgent } = await import('@/lib/email/meerkat-identity');
-        const targetMeerkat = resolveMeerkatFromAgent({
-          agent_name:    target.agent_name,
-          business_name: caller.business_name,
-          features:      target.features as Record<string, unknown> | null,
-        });
-        await sendEmail({
-          to:      ownerEmail,
-          subject: `${target.agent_name ?? 'Tu empleado'} pide tu aprobación: ${tarea.slice(0, 60)}`,
-          html:    planApprovalEmailHtml({
-            businessName:  caller.business_name ?? '',
-            targetAgent:   target.agent_name ?? 'Empleado',
-            targetMeerkat,
-            callerAgent:   caller.agent_name,
-            plan,
-            approveUrl,
-            editUrl,
-            rejectUrl,
-            taskTitle:     tarea,
-          }),
-        });
-      } catch (err) {
-        console.error('delegar-tarea: approval email send failed', err);
-      }
+      void (async () => {
+        try {
+          const { resolveMeerkatFromAgent } = await import('@/lib/email/meerkat-identity');
+          const targetMeerkat = resolveMeerkatFromAgent({
+            agent_name:    target.agent_name,
+            business_name: caller.business_name,
+            features:      target.features as Record<string, unknown> | null,
+          });
+          await sendEmail({
+            to:      ownerEmail,
+            subject: `${target.agent_name ?? 'Tu empleado'} pide tu aprobación: ${tarea.slice(0, 60)}`,
+            html:    planApprovalEmailHtml({
+              businessName:  caller.business_name ?? '',
+              targetAgent:   target.agent_name ?? 'Empleado',
+              targetMeerkat,
+              callerAgent:   caller.agent_name,
+              plan,
+              approveUrl,
+              editUrl,
+              rejectUrl,
+              taskTitle:     tarea,
+            }),
+          });
+        } catch (err) {
+          console.error('delegar-tarea: approval email send failed', err);
+        }
+      })();
     }
 
     traceVoiceCall({
