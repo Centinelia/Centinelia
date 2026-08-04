@@ -359,6 +359,8 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit, i
                   )
                   : msg.role === 'user'
                   ? <span className="whitespace-pre-wrap">{msg.content}</span>
+                  : streaming && i === messages.length - 1
+                  ? <span className="whitespace-pre-wrap">{msg.content}</span>
                   : (
                     <div className="flex flex-col gap-2">
                       {parseContent(msg.content).map((part, pi) =>
