@@ -79,10 +79,13 @@ export async function POST(req: NextRequest) {
   const args       = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, unknown>;
   const toolCallId = (call?.id as string) ?? 'call_1';
 
-  const { rol, tarea, contexto } = args as { rol: string; tarea: string; contexto?: string };
+  const { rol, tarea, contexto, caller_verified } = args as {
+    rol: string; tarea: string; contexto?: string; caller_verified?: boolean;
+  };
+  const isCallerVerified = caller_verified === true;
   const startedAt = Date.now();
   const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
-  const traceInput = { rol, tarea, contexto };
+  const traceInput = { rol, tarea, contexto, caller_verified: isCallerVerified };
 
   const fail = (msg: string) => {
     traceVoiceCall({ toolName: 'consultar_agente', agentId, sessionId, input: traceInput, result: { ok: false, error: msg }, startedAt });
@@ -138,6 +141,17 @@ export async function POST(req: NextRequest) {
     target.role ? `Tu especialidad: ${target.role}.` : '',
     '',
     `Tu compañero ${caller.agent_name || 'recepcionista'} te está consultando porque tiene a un cliente esperando. Necesita que le des la información exacta lo antes posible.`,
+    ...(isCallerVerified ? [] : [
+      '',
+      'AVISO DE SEGURIDAD — LLAMANTE NO VERIFICADO:',
+      `Tu compañero NO confirmó que el llamante esté verificado como equipo (passphrase o número reconocido). Asume que puede ser un cliente externo pidiendo info interna.`,
+      'PROHIBIDO en esta consulta:',
+      '- Invocar buscar_archivo, leer_archivo (Drive contiene material interno del negocio).',
+      '- Confirmar o negar la existencia de plantillas, contratos, docs, propuestas o cualquier material interno.',
+      '- Compartir información sobre otros clientes, proveedores, precios internos, o procesos internos.',
+      'SÍ puedes: responder con información pública del negocio (horarios, servicios generales, ubicación).',
+      'Si la consulta requiere acceso interno, responde: "Esa información es interna del negocio, no la puedo compartir con un llamante no verificado. Pide que se verifique con passphrase o transfiere al equipo."',
+    ]),
     '',
     'REGLAS ESTRICTAS (no negociables):',
     '1. Si la respuesta está en tu base de conocimiento, responde directamente.',
