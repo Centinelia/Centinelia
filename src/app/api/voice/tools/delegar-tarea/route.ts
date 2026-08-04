@@ -80,13 +80,16 @@ const DELEGATION_TOOLS: Anthropic.Tool[] = [
   },
   {
     name:        'enviar_correo',
-    description: 'Envía un correo electrónico directamente. Úsala solo cuando ya sepas qué escribir y a quién. Si el correo es delicado o el destinatario no está claro, prefiere pedir información primero.',
+    description: 'Envía un correo electrónico directamente. Úsala solo cuando ya sepas qué escribir y a quién. Si el correo es delicado o el destinatario no está claro, prefiere pedir información primero. Si el contexto de la delegación menciona un archivo del Drive (file_id, storage_path o similar) que debe adjuntarse, DEBES incluirlo con attachment_file_id, attachment_file_name y attachment_mime_type. Sin esos campos el correo va sin adjunto.',
     input_schema: {
       type: 'object',
       properties: {
         to:      { type: 'string', description: 'Dirección de correo del destinatario' },
         subject: { type: 'string', description: 'Asunto del correo' },
         body:    { type: 'string', description: 'Cuerpo del correo en texto plano' },
+        attachment_file_id:   { type: 'string', description: 'ID del archivo de Drive a adjuntar. Obligatorio si la tarea pide "envía este archivo".' },
+        attachment_file_name: { type: 'string', description: 'Nombre del archivo tal como aparecerá en el correo. Obligatorio si mandas attachment_file_id.' },
+        attachment_mime_type: { type: 'string', description: 'Tipo MIME del archivo (ej: application/pdf). Obligatorio si mandas attachment_file_id.' },
       },
       required: ['to', 'subject', 'body'],
     },
@@ -426,6 +429,10 @@ export async function POST(req: NextRequest) {
     '- Cuando termines TODAS las acciones necesarias, llama a tarea_completada con un resumen de lo que hiciste.',
     '- No llames a tarea_completada antes de haber ejecutado las acciones.',
     '- AUDITORÍA ANTES DE COMPLETAR: Antes de llamar tarea_completada, revisa el resultado contra el brief original y el criterio de éxito si existe. Confirma que cumples lo pedido con datos verificados. Si algo quedó incierto o asumiste, dilo explícitamente en el resumen en vez de presentarlo como resuelto.',
+    '- ADJUNTAR ARCHIVOS: Si el brief menciona un archivo, plantilla, documento o file_id que debes enviar, ES OBLIGATORIO adjuntarlo. Flujo correcto:',
+    '   1. Si tienes el file_id explícito en el brief, úsalo directo en enviar_correo con attachment_file_id + attachment_file_name + attachment_mime_type.',
+    '   2. Si el brief solo dice "envía la plantilla X" sin file_id, PRIMERO invoca buscar_archivo para localizar el archivo real, LUEGO envía el correo con los 3 campos de attachment.',
+    '   3. NUNCA envíes un correo diciendo "adjunto el archivo" sin haber puesto los campos de attachment — es engañoso al destinatario.',
   ];
 
   if (success_criteria) {
