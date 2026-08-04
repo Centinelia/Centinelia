@@ -34,6 +34,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!nox) return NextResponse.json({ error: 'no_nox_agent' }, { status: 404 });
 
+  const { consumeAiOp } = await import('@/lib/ai/ops-guard');
+  const opsResult = await consumeAiOp(nox.id, 5);
+  if (!opsResult.ok) {
+    return NextResponse.json({ ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' }, { status: 429 });
+  }
+
   const result = await executeAgentTool('preparar_brief_del_dia', {}, {
     agentId:      nox.id as string,
     portalEmail:  acct.portal_email,

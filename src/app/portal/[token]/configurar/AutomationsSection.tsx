@@ -30,8 +30,8 @@ const META: Record<AutomationName, { title: string; desc: string; Icon: typeof B
   },
   // brief_del_dia se configura via brief_del_dia_config (solo Nox), no aparece en la UI de Automations
   brief_del_dia: {
-    title: 'Brief del dia',
-    desc:  'Nox prepara cada manana un resumen ejecutivo con correos urgentes, agenda, tareas y escalaciones pendientes.',
+    title: 'Brief del día',
+    desc:  'Nox prepara cada mañana un resumen ejecutivo con correos urgentes, agenda, tareas y escalaciones pendientes.',
     Icon:  Bell,
   },
 };
