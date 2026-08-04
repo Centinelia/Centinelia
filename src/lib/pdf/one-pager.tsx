@@ -21,35 +21,35 @@ export function OnePagerPdf({ brand, title, sections, cta }: {
   return (
     <BrandedDoc brand={brand} docType={title} subtitle={today}>
 
-      {/* Secciones en cajas de color sutil */}
+      {/* Secciones en cajas de color sutil — compactas para caber en 1 página */}
       {sections.map((section, i) => (
         <View key={i} wrap={false} style={{
           backgroundColor: accentBg,
-          borderRadius:    8,
-          padding:         14,
-          marginBottom:    12,
-          borderLeftWidth: 3,
+          borderRadius:    6,
+          padding:         10,
+          marginBottom:    7,
+          borderLeftWidth: 2,
           borderLeftColor: accent,
         }}>
           <Text style={{
-            fontSize:      13,
+            fontSize:      12,
             fontFamily:    'Helvetica-Bold',
             color:         accent,
-            marginBottom:  6,
+            marginBottom:  4,
           }}>
             {section.heading}
           </Text>
           {section.body && (
-            <Text style={{ fontSize: 10, color: '#1A0A3B', lineHeight: 1.5, marginBottom: section.bullets?.length ? 8 : 0 }}>
+            <Text style={{ fontSize: 9.5, color: '#1A0A3B', lineHeight: 1.4, marginBottom: section.bullets?.length ? 5 : 0 }}>
               {section.body}
             </Text>
           )}
           {section.bullets && section.bullets.length > 0 && (
             <View>
               {section.bullets.map((bullet, bi) => (
-                <View key={bi} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                  <Text style={{ width: 12, color: accent, fontFamily: 'Helvetica-Bold' }}>•</Text>
-                  <Text style={{ flex: 1, fontSize: 10, color: '#1A0A3B', lineHeight: 1.5 }}>
+                <View key={bi} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                  <Text style={{ width: 10, color: accent, fontFamily: 'Helvetica-Bold', fontSize: 9.5 }}>•</Text>
+                  <Text style={{ flex: 1, fontSize: 9.5, color: '#1A0A3B', lineHeight: 1.4 }}>
                     {bullet}
                   </Text>
                 </View>
@@ -59,15 +59,15 @@ export function OnePagerPdf({ brand, title, sections, cta }: {
         </View>
       ))}
 
-      {/* CTA destacado al final */}
+      {/* CTA destacado al final — compacto */}
       {cta && (
         <View wrap={false} style={{
           backgroundColor: accent,
-          borderRadius:    8,
-          padding:         16,
-          marginTop:       8,
+          borderRadius:    6,
+          padding:         11,
+          marginTop:       4,
         }}>
-          <Text style={{ fontSize: 11, color: '#fff', lineHeight: 1.5, fontFamily: 'Helvetica-Bold' }}>
+          <Text style={{ fontSize: 10.5, color: '#fff', lineHeight: 1.4, fontFamily: 'Helvetica-Bold' }}>
             {cta}
           </Text>
         </View>
