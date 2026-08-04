@@ -21,6 +21,7 @@ const ESTIMATED_TAREAS_MO: Record<AutomationName, string> = {
   heartbeat:       'aprox. 20-150 tareas/mes',
   weekly_insights: 'aprox. 0-12 tareas/mes',
   learn:           'aprox. 80 tareas/mes',
+  brief_del_dia:   'aprox. 25 tareas/mes',
 };
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────

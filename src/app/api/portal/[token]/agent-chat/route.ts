@@ -1125,6 +1125,28 @@ export async function POST(req: NextRequest, { params }: Params) {
   const meerkatId               = (agentFeatures.meerkat_role_id  as string | null) ?? null;
   const notionProductsConnected = !!(agent.notion_access_token && agentFeatures.notion_products_db_id);
   const sessionTools            = getToolsForRole(meerkatId, qbConnected, notionProductsConnected);
+
+  // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
+  // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).
+  if (meerkatId === 'nox') {
+    sessionTools.push({
+      name: 'preparar_brief_del_dia',
+      description: 'Prepara el brief del día del dueño con 3 buckets (acción hoy / preparación / al tanto). Lee correos urgentes, agenda, tareas pendientes, escalaciones y borradores de contrato. Devuelve el brief en markdown. Opcionalmente, envía copia por correo o WhatsApp si el dueño lo pide.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          channels: {
+            type: 'object',
+            properties: {
+              email:    { type: 'boolean', description: 'Enviar copia por correo al dueño' },
+              whatsapp: { type: 'boolean', description: 'Enviar copia por WhatsApp al dueño' },
+            },
+          },
+        },
+      },
+    });
+  }
+
   const toolsListText = sessionTools.length
     ? 'Herramientas disponibles:\n' + sessionTools.map(t => `- ${t.name}: ${t.description}`).join('\n')
     : '';

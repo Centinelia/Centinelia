@@ -36,6 +36,7 @@
     { "path": "/api/cron/retry-failed-handoffs",       "schedule": "*/15 * * * *" },
     { "path": "/api/cron/annual-contracts-lifecycle",             "schedule": "0 4 * * *"  },
     { "path": "/api/cron/annual-contracts-payment-check",         "schedule": "0 16 * * 1" },
-    { "path": "/api/cron/annual-contracts-weekly-overage-digest", "schedule": "0 15 * * 1" }
+    { "path": "/api/cron/annual-contracts-weekly-overage-digest", "schedule": "0 15 * * 1" },
+    { "path": "/api/cron/nox-brief",                              "schedule": "0 * * * *"  }
   ]
 }
