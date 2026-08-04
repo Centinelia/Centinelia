@@ -183,8 +183,7 @@ export interface VoiceAgent {
   client_paused?: boolean | null;
   // Extended email branding
   brand_color_secondary?: string | null;
-  // Outbound role
-  outbound_role?: string | null;
+  // Outbound role vive en features.outbound_role (JSONB), no como columna
   // WhatsApp capabilities (Fase 2)
   wa_phone_number?: string;        // número Twilio asignado para WhatsApp
   capture_leads: boolean;          // capturar prospectos por WA

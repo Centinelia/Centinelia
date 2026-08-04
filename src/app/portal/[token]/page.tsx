@@ -173,7 +173,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     .map(a => ({
       token: a.portal_token,
       name:  (a.agent_name?.trim() || 'Centinelia'),
-      role:  (a as any).outbound_role ?? undefined,
+      role:  ((a as any).features as any)?.outbound_role ?? undefined,
     }));
 
   // Group agents by business
@@ -602,9 +602,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
-              {/* Brief del día — solo cuando hay Nox activo en el equipo */}
-              {hasNox && <BriefDelDiaCard />}
-
               {/* Two-column layout from KPIs down */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
 
@@ -630,6 +627,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     {' '}de las solicitudes sin intervención humana.
                   </p>
                 )}
+
+                {/* Brief del día — solo cuando hay Nox activo en el equipo */}
+                {hasNox && <BriefDelDiaCard />}
 
                 {/* Tu equipo hoy */}
                 {teamToday.length > 0 && (

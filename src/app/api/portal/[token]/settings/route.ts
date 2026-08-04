@@ -26,14 +26,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
   // Keys stored inside the features JSONB column — merge instead of flat update
-  const featureJsonKeys = ['outbound_calls', 'role_color', 'avatar', 'check_spam_folder', 'invoicing_email'];
+  const featureJsonKeys = ['outbound_calls', 'outbound_role', 'role_color', 'avatar', 'check_spam_folder', 'invoicing_email'];
   const featureJsonUpdate = Object.fromEntries(Object.entries(body).filter(([k]) => featureJsonKeys.includes(k)));
   if (Object.keys(featureJsonUpdate).length > 0) {
     const merged = { ...(agent.features as Record<string, unknown> ?? {}), ...featureJsonUpdate };
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'outbound_role', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'directorio_interno', 'owner_passphrase', 'allow_bug_reports', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email'];
+  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'directorio_interno', 'owner_passphrase', 'allow_bug_reports', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   // heartbeat_config.enabled is owned by /automations endpoint (D9). If the
