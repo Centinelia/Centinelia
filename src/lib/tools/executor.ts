@@ -1534,7 +1534,7 @@ export async function executeAgentTool(
         extraContext: (toolInput.extra_context as string | null) ?? null,
       }, supabase);
       if (!result.ok) return result;
-      return { ...result, message: `Pitch deck generado: ${result.filename}. Descarga: ${result.url} (válido 1 hora).` };
+      return { ...result, message: `Pitch deck generado: ${result.filename}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
 
     // ── reporte métricas Excel ───────────────────────────────────────────────
@@ -1544,7 +1544,7 @@ export async function executeAgentTool(
       const { buildReport } = await import('@/lib/creativity/report-builder');
       const result = await buildReport(meerkatId as 'noah' | 'nara' | 'nelia', windowDays, { id: agentId, agentName, portalEmail }, supabase);
       if (!result.ok) return result;
-      return { ...result, message: `Reporte generado con hojas: ${result.sheets.join(', ')}. Descarga: ${result.url} (válido 1 hora).` };
+      return { ...result, message: `Reporte generado con hojas: ${result.sheets.join(', ')}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
 
     // Fetch org KB + descripcion para contexto de contenido
@@ -1578,7 +1578,7 @@ export async function executeAgentTool(
       const { buildDocument } = await import('@/lib/creativity/document-builder');
       const result = await buildDocument(kind as 'propuesta' | 'cotizacion' | 'one_pager', content, { id: agentId, agent_name: agentName, portal_email: portalEmail }, supabase);
       if (!result.ok) return result;
-      return { ...result, message: `Documento generado: ${content.title}. Descarga: ${result.url} (valido 1 hora).` };
+      return { ...result, message: `Documento generado: ${content.title}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
   }
 
