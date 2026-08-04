@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AlertTriangle, Clock, Info, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Clock, Info, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Brief {
   id:           string;
@@ -17,6 +17,7 @@ export function BriefDelDiaCard() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded]   = useState(true);
   const [preparing, setPreparing] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
 
   async function fetchLatest() {
     setLoading(true);
@@ -64,10 +65,25 @@ export function BriefDelDiaCard() {
             <button
               disabled={preparing}
               onClick={async () => {
+                setError(null);
                 setPreparing(true);
-                await fetch(`/api/portal/${token}/nox/prepare-brief`, { method: 'POST' });
-                await fetchLatest();
-                setPreparing(false);
+                try {
+                  const res = await fetch(`/api/portal/${token}/nox/prepare-brief`, { method: 'POST' });
+                  if (!res.ok) {
+                    let msg = 'No se pudo preparar el brief. Intenta de nuevo en unos momentos.';
+                    try {
+                      const body = await res.json();
+                      if (body?.error) msg = body.error;
+                    } catch { /* ignore parse errors */ }
+                    setError(msg);
+                  } else {
+                    await fetchLatest();
+                  }
+                } catch {
+                  setError('No se pudo preparar el brief. Intenta de nuevo en unos momentos.');
+                } finally {
+                  setPreparing(false);
+                }
               }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
               style={{ background: 'var(--c-accent, #6C3BFF)', color: '#fff' }}
@@ -75,6 +91,12 @@ export function BriefDelDiaCard() {
               <RefreshCw className={`w-4 h-4 ${preparing ? 'animate-spin' : ''}`} />
               {preparing ? 'Preparando...' : 'Preparar ahora'}
             </button>
+            {error && (
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: '#ef4444' }}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -93,14 +115,29 @@ export function BriefDelDiaCard() {
               title="Al tanto"
               items={brief.buckets_json.fyi}
             />
-            <div className="flex justify-end pt-1">
+            <div className="flex flex-col items-end gap-1.5 pt-1">
               <button
                 disabled={preparing}
                 onClick={async () => {
+                  setError(null);
                   setPreparing(true);
-                  await fetch(`/api/portal/${token}/nox/prepare-brief`, { method: 'POST' });
-                  await fetchLatest();
-                  setPreparing(false);
+                  try {
+                    const res = await fetch(`/api/portal/${token}/nox/prepare-brief`, { method: 'POST' });
+                    if (!res.ok) {
+                      let msg = 'No se pudo preparar el brief. Intenta de nuevo en unos momentos.';
+                      try {
+                        const body = await res.json();
+                        if (body?.error) msg = body.error;
+                      } catch { /* ignore parse errors */ }
+                      setError(msg);
+                    } else {
+                      await fetchLatest();
+                    }
+                  } catch {
+                    setError('No se pudo preparar el brief. Intenta de nuevo en unos momentos.');
+                  } finally {
+                    setPreparing(false);
+                  }
                 }}
                 className="inline-flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ color: 'var(--c-text-3)' }}
@@ -108,6 +145,12 @@ export function BriefDelDiaCard() {
                 <RefreshCw className={`w-3 h-3 ${preparing ? 'animate-spin' : ''}`} />
                 {preparing ? 'Actualizando...' : 'Actualizar'}
               </button>
+              {error && (
+                <div className="flex items-center gap-1.5 text-xs" style={{ color: '#ef4444' }}>
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
             </div>
           </div>
         )
