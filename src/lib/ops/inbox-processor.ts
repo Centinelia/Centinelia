@@ -733,6 +733,28 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       ...(qbConnected ? QB_EMAIL_TOOLS : []),
     ];
 
+    // preparar_brief_del_dia — Nox exclusivo. Canal voz ausente de forma intencional
+    // (Nox nunca tiene vapi_agent_id; ver NON_VOICE_ROLES en sync.ts).
+    const inboxMeerkatId = ((agentRow?.features as { meerkat_role_id?: string } | undefined) ?? {}).meerkat_role_id;
+    if (inboxMeerkatId === 'nox') {
+      tools.push({
+        name: 'preparar_brief_del_dia',
+        description: 'Prepara el brief del día del dueño con 3 buckets (acción hoy / preparación / al tanto). Lee correos urgentes, agenda, tareas pendientes, escalaciones y borradores de contrato. Devuelve el brief en markdown. Opcionalmente, envía copia por correo o WhatsApp si el dueño lo pide.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            channels: {
+              type: 'object',
+              properties: {
+                email:    { type: 'boolean', description: 'Enviar copia por correo al dueño' },
+                whatsapp: { type: 'boolean', description: 'Enviar copia por WhatsApp al dueño' },
+              },
+            },
+          },
+        },
+      });
+    }
+
     const execCtx = {
       agentId,
       portalEmail,

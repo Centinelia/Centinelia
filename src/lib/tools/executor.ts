@@ -1434,5 +1434,55 @@ export async function executeAgentTool(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // preparar_brief_del_dia (Nox exclusivo — sin canal voz, solo chat + email)
+  // Canal voz ausente de forma INTENCIONAL: Nox/Niva nunca tienen vapi_agent_id
+  // según la regla de coordinadores sin voz (NON_VOICE_ROLES en sync.ts).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'preparar_brief_del_dia') {
+    const meerkatId = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+    if (meerkatId !== 'nox') {
+      return { ok: false, error: 'Solo Nox puede preparar el brief del día. Consúltalo con Nox usando consultar_agente.' };
+    }
+
+    const { collectBriefData } = await import('@/lib/nox/brief-collector');
+    const { renderBrief }      = await import('@/lib/nox/brief-renderer');
+    const { deliverBrief }     = await import('@/lib/nox/brief-deliverer');
+
+    const tz = (agent.timezone as string | undefined) ?? 'America/Monterrey';
+
+    const { data: orgAgents } = await supabase
+      .from('voice_agents')
+      .select('id')
+      .eq('portal_email', portalEmail);
+    const orgAgentIds = (orgAgents ?? []).map(a => a.id);
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('knowledge_base, owner_name')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+
+    const data = await collectBriefData(orgAgentIds, portalEmail, tz, supabase);
+    const brief = await renderBrief(data, {
+      agentName:    agentName,
+      businessName: businessName,
+      tz,
+      ownerName:    (org?.owner_name as string | null) ?? null,
+      kbSnippet:    ((org?.knowledge_base as string | null) ?? '').slice(0, 800) || null,
+    });
+
+    const reqChannels = (toolInput.channels as { email?: boolean; whatsapp?: boolean } | undefined) ?? {};
+    const status = await deliverBrief(
+      brief,
+      { id: agentId, agent_name: agentName, business_name: businessName, client_email: (agent.client_email as string | null) ?? null, transfer_whatsapp: (agent.transfer_whatsapp as string | null) ?? null, portal_email: portalEmail, timezone: tz },
+      { email: reqChannels.email ?? false, whatsapp: reqChannels.whatsapp ?? false, portal: true },
+      'reactive',
+      supabase,
+    );
+
+    return { ok: true, brief_md: brief.markdown, buckets: brief.buckets, brief_id: status.brief_id, delivery: status };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }
