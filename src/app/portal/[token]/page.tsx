@@ -56,6 +56,7 @@ import ContractTrackerSection   from './ContractTrackerSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import InsightsSection          from './InsightsSection';
+import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
 import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
@@ -353,6 +354,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const lastCampaignRunAt       = showOutbound ? ((outboundCampaigns as any[]).find((c: any) => c.last_run_at)?.last_run_at ?? null) : null;
 
   const hasOpsAgent = (allClientAgents as any[]).some((a: any) => a.role) || !!(agent as any).role;
+  const hasNox      = (allClientAgents as any[]).some(
+    (a: any) => (a.features as any)?.meerkat_role_id === 'nox' && a.active,
+  );
 
   // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
   const agentContextCards = allClientAgents.map(a => {
@@ -597,6 +601,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   })}
                 </div>
               </div>
+
+              {/* Brief del día — solo cuando hay Nox activo en el equipo */}
+              {hasNox && <BriefDelDiaCard />}
 
               {/* Two-column layout from KPIs down */}
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
