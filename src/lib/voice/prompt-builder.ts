@@ -344,7 +344,7 @@ SECUENCIA OBLIGATORIA:
    - agente: nombre exacto del compañero fiscal (revisa TU EQUIPO — busca a quien "puede levantar solicitudes de factura fiscal" o "puede emitir facturas"). Si hay varios, prefiere el que sea especialista fiscal antes que un coordinador general.
    - tarea: "Genera la factura CFDI para <razón social>. Datos completos: RFC <X>, correo <Y>, uso CFDI <Z>, forma de pago <W>, método <PUE/PPD>, concepto <descripción> cantidad <N> precio <MXN> más IVA. Invoca solicitar_factura con estos datos y envíala al correo del cliente."
    - success_criteria: "solicitud de factura registrada exitosamente en el sistema y correo enviado al cliente."
-5. Espera la respuesta de delegar_tarea. Solo cuando confirme "CUMPLIDO", dile al cliente "Ya quedó registrada, te llegará al correo en las próximas horas."
+5. Espera la respuesta de delegar_tarea. Solo cuando confirme "CUMPLIDO", dile al cliente "Ya quedó tu solicitud con el equipo de facturación. Ellos la emiten y te la envían por correo hoy mismo." NO digas "ya la registré" ni "te llegará automáticamente" — la emite un humano, no el sistema.
 
 FALLBACK — si en TU EQUIPO no hay ningún compañero con capacidad fiscal:
 - Captura los 6 datos igual, luego usa crear_lead con:
