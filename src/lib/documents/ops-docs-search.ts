@@ -22,29 +22,32 @@ export interface OfficeDocSummary {
   title:         string;
   filename:      string;
   kind:          string | null;         // template_type: factura / cotizacion / etc.
-  client_name:   string | null;
-  total_amount:  number | null;
   created_at:    string;
-  expiry_date:   string | null;
-  size_bytes:    number | null;
+  expires_at:    string | null;
 }
 
 export interface SearchArgs {
   supabase:     SupabaseClient;
   portalEmail:  string;
-  query?:       string | null;         // fuzzy sobre title / filename / client_name
+  query?:       string | null;         // fuzzy sobre title / filename
   kind?:        string | null;         // filtro exacto por template_type
-  clientName?:  string | null;         // filtro fuzzy por cliente
+  clientName?:  string | null;         // (deprecated — client_name no está en schema)
   limit?:       number;
   includeExpired?: boolean;
 }
 
-/** Devuelve los ops_documents que matchean el filtro, más recientes primero. */
+/** Devuelve los ops_documents que matchean el filtro, más recientes primero.
+ *
+ *  Schema real (verificado): id, agent_id, title, filename, storage_path,
+ *  template_type, created_at, last_accessed_at, expires_at. No hay client_name
+ *  ni total_amount ni size_bytes — si en el futuro se agregan columnas, extender
+ *  el SELECT + interface. Búsqueda por cliente se hace via title/filename
+ *  (fallback) hasta que exista client_name en el schema.
+ */
 export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDocSummary[]> {
   const { supabase, portalEmail } = args;
   const limit = Math.min(args.limit ?? 15, 50);
 
-  // Resolver ids de agentes de la cuenta — ops_documents se indexa por agent_id.
   const { data: agents } = await supabase
     .from('voice_agents').select('id').eq('portal_email', portalEmail);
   const agentIds = (agents ?? []).map(a => a.id as string);
@@ -52,7 +55,7 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
 
   let q = supabase
     .from('ops_documents')
-    .select('id, title, filename, template_type, client_name, total_amount, created_at, expiry_date, size_bytes')
+    .select('id, title, filename, template_type, created_at, expires_at')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -60,29 +63,24 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
   if (args.kind?.trim()) q = q.eq('template_type', args.kind.trim());
   if (!args.includeExpired) {
     const nowIso = new Date().toISOString();
-    q = q.or(`expiry_date.is.null,expiry_date.gt.${nowIso}`);
+    q = q.or(`expires_at.is.null,expires_at.gt.${nowIso}`);
   }
 
-  if (args.query?.trim()) {
-    const term = args.query.trim().replace(/[%_]/g, ''); // strip wildcards
-    q = q.or(`title.ilike.%${term}%,filename.ilike.%${term}%,client_name.ilike.%${term}%`);
-  }
-  if (args.clientName?.trim() && !args.query?.trim()) {
-    const term = args.clientName.trim().replace(/[%_]/g, '');
-    q = q.ilike('client_name', `%${term}%`);
+  // Búsqueda fuzzy: title + filename. clientName cae al mismo filtro por ahora.
+  const searchTerm = (args.query ?? args.clientName ?? '').trim().replace(/[%_]/g, '');
+  if (searchTerm) {
+    q = q.or(`title.ilike.%${searchTerm}%,filename.ilike.%${searchTerm}%`);
   }
 
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) { console.error('[searchOfficeDocuments] query error:', error); return []; }
   return (data ?? []).map(r => ({
-    id:           r.id as string,
-    title:        (r.title as string | null) ?? '(sin título)',
-    filename:     (r.filename as string | null) ?? '',
-    kind:         (r.template_type as string | null) ?? null,
-    client_name:  (r.client_name as string | null) ?? null,
-    total_amount: (r.total_amount as number | null) ?? null,
-    created_at:   String(r.created_at),
-    expiry_date:  (r.expiry_date as string | null) ?? null,
-    size_bytes:   (r.size_bytes as number | null) ?? null,
+    id:         r.id as string,
+    title:      (r.title as string | null) ?? '(sin título)',
+    filename:   (r.filename as string | null) ?? '',
+    kind:       (r.template_type as string | null) ?? null,
+    created_at: String(r.created_at),
+    expires_at: (r.expires_at as string | null) ?? null,
   }));
 }
 
@@ -93,10 +91,8 @@ export function formatDocsForAgent(docs: OfficeDocSummary[]): string {
     const parts = [
       `${i + 1}. "${d.title}" (id: ${d.id.slice(0, 8)}…)`,
       d.kind ? `tipo: ${d.kind}` : null,
-      d.client_name ? `cliente: ${d.client_name}` : null,
-      d.total_amount != null ? `monto: $${d.total_amount.toLocaleString('es-MX')}` : null,
       `creado: ${new Date(d.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`,
-      d.expiry_date ? `vence: ${new Date(d.expiry_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : null,
+      d.expires_at ? `vence: ${new Date(d.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : null,
     ].filter(Boolean);
     return parts.join(' · ');
   }).join('\n');
