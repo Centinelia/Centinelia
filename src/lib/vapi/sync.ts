@@ -153,7 +153,7 @@ function peerToolCapabilities(peer: TeamPeer): string[] {
 // Org fields are stored in `organizations` (single source of truth).
 // Before building any Vapi assistant, merge them over the per-agent row.
 
-const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text';
+const ORG_SELECT = 'knowledge_base, owner_profile, owner_passphrase, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, multilingual';
 
 async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
   if (!agent.portal_email) return agent;
@@ -165,7 +165,12 @@ async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
       .eq('portal_email', agent.portal_email)
       .single();
     if (!org) return agent;
-    return { ...agent, ...org } as VoiceAgent;
+    // multilingual vive en org (single source of truth). Sobrescribe el flag
+    // de agent.features con el valor de la org — el toggle de portal lo controla.
+    const orgMultilingual = (org as { multilingual?: boolean | null }).multilingual ?? false;
+    const merged = { ...agent, ...org } as VoiceAgent;
+    merged.features = { ...merged.features, multilingual: orgMultilingual };
+    return merged;
   } catch {
     return agent;
   }

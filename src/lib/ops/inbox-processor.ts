@@ -688,6 +688,9 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     requestToSender:    null,
   };
 
+  // L3 — verifier: tools que completaron OK durante el tool loop; se lee en la etapa auto_replied.
+  const toolsInvokedOk: string[] = [];
+
   const supabase  = createAdminClient();
 
   // Observador (Trust Stage 1): triage-only. Sin borrador, sin tools, sin classifier.
@@ -901,6 +904,8 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
           const b = toolBlocks[ti];
           const r = parallel[ti];
           const output: unknown = r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) };
+          const okShape = output && typeof output === 'object' && (output as { ok?: unknown }).ok !== false;
+          if (okShape) toolsInvokedOk.push(b.name);
           toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(output) });
         }
 
@@ -963,7 +968,19 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     finalDraft  = null;
   } else if (autoMode === 'always' && sendReplyFn) {
     // Bright-line: always bypasses classifier
-    finalStatus = 'auto_replied';
+    // L3 — evidence check antes de auto-enviar: si el draft claims acciones sin tool → pending.
+    const { verifyGoalResponse } = await import('@/lib/tools/goal-verifier');
+    const check = await verifyGoalResponse({
+      userIntent:    effectiveBody,
+      agentResponse: result.draft ?? '',
+      toolsInvoked:  toolsInvokedOk,
+    });
+    if (!check.met) {
+      console.warn('[inbox-processor] auto_replied bloqueado por verifier:', check.concern);
+      finalStatus = 'pending';
+    } else {
+      finalStatus = 'auto_replied';
+    }
     finalDraft  = result.draft;
   } else if (autoMode === 'auto' && sendReplyFn) {
     autoModeVerdict = await classifyEmailDraft({
@@ -979,7 +996,19 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     });
 
     if (autoModeVerdict.decision === 'send') {
-      finalStatus = 'auto_replied';
+      // L3 — evidence check antes del auto-send del classifier
+      const { verifyGoalResponse } = await import('@/lib/tools/goal-verifier');
+      const check = await verifyGoalResponse({
+        userIntent:    effectiveBody,
+        agentResponse: result.draft ?? '',
+        toolsInvoked:  toolsInvokedOk,
+      });
+      if (!check.met) {
+        console.warn('[inbox-processor] auto_replied (auto-mode) bloqueado por verifier:', check.concern);
+        finalStatus = 'pending';
+      } else {
+        finalStatus = 'auto_replied';
+      }
       finalDraft  = result.draft;
     } else if (autoModeVerdict.decision === 'block') {
       finalStatus = 'pending';
