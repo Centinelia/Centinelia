@@ -41,6 +41,24 @@ describe('generateStructuredContent', () => {
     expect(result.closing).toBe('Quedamos atentos a cualquier duda.');
   });
 
+  it('filtra secciones con heading o body vacíos', async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: 'text', text: JSON.stringify({
+        title: 'Doc',
+        sections: [
+          { heading: 'Válida', body: 'Body válido' },
+          { heading: '', body: 'sin heading' },
+          { heading: 'sin body', body: '' },
+          { heading: '   ', body: '   ' },
+        ],
+        closing: null,
+      }) }],
+    });
+    const result = await generateStructuredContent('propuesta', CTX_BASE);
+    expect(result.sections).toHaveLength(1);
+    expect(result.sections[0].heading).toBe('Válida');
+  });
+
   it('devuelve estructura mínima cuando LLM retorna JSON inválido', async () => {
     mockCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: 'no soy JSON' }],

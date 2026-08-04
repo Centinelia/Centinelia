@@ -87,7 +87,7 @@ export async function generateStructuredContent(
 
   return {
     title:    typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : fallbackTitle,
-    sections: Array.isArray(parsed.sections) ? parsed.sections.filter(s => s && typeof s.heading === 'string' && typeof s.body === 'string') : [],
+    sections: Array.isArray(parsed.sections) ? parsed.sections.filter(s => s && typeof s.heading === 'string' && s.heading.trim() && typeof s.body === 'string' && s.body.trim()) : [],
     closing:  typeof parsed.closing === 'string' ? parsed.closing : null,
   };
 }
