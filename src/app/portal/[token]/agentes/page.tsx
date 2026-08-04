@@ -56,6 +56,8 @@ const TOOL_COLOR: Record<string, string> = {
   iniciar_onboarding: '#a855f7',
   // Marca / insights
   extraer_voz_del_cliente: '#c084fc', extraer_tono_de_marca: '#c084fc',
+  // Dirección general (exclusivas de coordinadores directores)
+  revisar_desempeno_equipo: '#8b5cf6', aprobar_gasto: '#8b5cf6',
   // Cumplimiento / meta
   reportar_falla: '#6b7280', marcar_no_llamar: '#6b7280',
 };
@@ -87,6 +89,7 @@ const CAPABILITY_GROUPS: { label: string; color: string; tools: string[] }[] = [
   { label: 'Servicios municipales', color: '#3b82f6', tools: ['create_civic_report', 'lookup_civic_report', 'update_civic_report'] },
   { label: 'Onboarding y bienvenida', color: '#a855f7', tools: ['iniciar_onboarding'] },
   { label: 'Insights de marca',     color: '#c084fc', tools: ['extraer_voz_del_cliente', 'extraer_tono_de_marca'] },
+  { label: 'Dirección general',     color: '#8b5cf6', tools: ['revisar_desempeno_equipo', 'aprobar_gasto'] },
 ];
 
 const BUSINESS_CATEGORIES: { label: string; color: string; specialized?: boolean; tools: { key: string; label: string }[] }[] = [

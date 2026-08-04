@@ -168,6 +168,33 @@ const CREATE_DOCUMENT_TOOL: Anthropic.Tool = {
   },
 };
 
+const REVISAR_DESEMPENO_EQUIPO_TOOL: Anthropic.Tool = {
+  name: 'revisar_desempeno_equipo',
+  description: 'Devuelve un resumen del desempeño del equipo: llamadas, tareas completadas/fallidas, documentos, correos, ops usadas, desglosado por cada empleado. Exclusiva de directores (Niva). Úsala cuando el dueño pregunte "¿cómo va el equipo?", "resumen del mes", "quién está haciendo qué", etc.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      periodo: { type: 'string', enum: ['hoy', 'esta_semana', 'este_mes', 'ultima_semana', 'ultimo_mes', 'ultimos_30_dias'], description: 'Ventana temporal. Default esta_semana.' },
+    },
+    required: [],
+  },
+};
+
+const APROBAR_GASTO_TOOL: Anthropic.Tool = {
+  name: 'aprobar_gasto',
+  description: 'Registra la aprobación (o rechazo) de un gasto operativo. Deja audit trail. Exclusiva de directores (Niva). Úsala cuando el dueño diga "aprueba X gasto de $Y" o similar.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      concepto:      { type: 'string', description: 'Concepto del gasto.' },
+      monto:         { type: 'number', description: 'Monto en MXN.' },
+      justificacion: { type: 'string', description: 'Razón de la aprobación o rechazo (opcional).' },
+      status:        { type: 'string', enum: ['approved', 'rejected'], description: 'approved (default) o rejected.' },
+    },
+    required: ['concepto', 'monto'],
+  },
+};
+
 const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
   name: 'buscar_documento_oficina',
   description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, cliente y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo.',
@@ -951,6 +978,8 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   qb_crear_factura:          'qb_crear_factura',
   solicitar_factura:         'solicitar_factura',
   consultar_factura:         'consultar_factura',
+  revisar_desempeno_equipo:  'revisar_desempeno_equipo',
+  aprobar_gasto:             'aprobar_gasto',
   marcar_no_llamar:          null,  // voice-only (no aplica a chat)
 };
 
@@ -965,6 +994,8 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   enviar_documento_oficina:  ENVIAR_DOCUMENTO_OFICINA_TOOL,
   solicitar_factura:         SOLICITAR_FACTURA_TOOL,
   consultar_factura:         CONSULTAR_FACTURA_TOOL,
+  revisar_desempeno_equipo:  REVISAR_DESEMPENO_EQUIPO_TOOL,
+  aprobar_gasto:             APROBAR_GASTO_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,
   organize_files:            ORGANIZE_FILES_TOOL,

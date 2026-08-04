@@ -130,6 +130,8 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   crear_publicacion_ml: 'crear publicaciones en MercadoLibre',
   extraer_voz_del_cliente: 'extraer la voz del cliente desde conversaciones reales',
   extraer_tono_de_marca:   'extraer el tono de marca del negocio',
+  revisar_desempeno_equipo: 'revisar el desempeño del equipo (solo directores)',
+  aprobar_gasto:            'aprobar gastos operativos (solo directores)',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -203,8 +205,9 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // cotizaciones previas. Tiene extraer_voz_del_cliente + extraer_tono_de_marca
   // para hablar como la empresa y con el lenguaje real del cliente.
   noah:  ['crear_lead', 'registrar_pedido', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'buscar_en_web', 'search_leads', 'solicitar_factura', 'consultar_factura', 'buscar_documento_oficina', 'enviar_documento_oficina', 'analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'consultar_agente', 'reportar_falla'],
-  // Nico — cobranza: sigue facturas + reenvía comprobantes.
-  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'reportar_falla'],
+  // Nico — cobranza y fiscal: sigue facturas + emite CFDIs + reenvía comprobantes
+  // + reportes de ingresos (P&L).
+  nico:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'enviar_correo', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'solicitar_factura', 'consultar_factura', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'qb_crear_factura', 'qb_reporte_ingresos', 'reportar_falla'],
   // Nelia — servicio al cliente: postventa. Ahora puede reenviar docs previos
   // y ver insights de voz del cliente para responder mejor.
   nelia: ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'registrar_encuesta', 'enviar_correo', 'buscar_archivo', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'consultar_agente', 'reportar_falla'],
@@ -218,8 +221,10 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
   nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'extraer_voz_del_cliente', 'reportar_falla'],
-  // Niva — directora general con visibilidad amplia.
-  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_reporte_ingresos', 'qb_crear_factura', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'reportar_falla'],
+  // Niva — directora general. Visión estratégica: desempeño del equipo,
+  // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
+  // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
+  niva:  ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'save_to_drive', 'buscar_en_web', 'read_url', 'search_leads', 'list_calendar_events', 'create_calendar_event', 'qb_consultar_facturas', 'qb_buscar_cliente', 'qb_registrar_pago', 'solicitar_factura', 'consultar_factura', 'analizar_publicaciones_ml', 'ver_metricas_ml', 'extraer_voz_del_cliente', 'extraer_tono_de_marca', 'revisar_desempeno_equipo', 'aprobar_gasto', 'reportar_falla'],
 };
 
 type ToolDef = Record<string, unknown>;
@@ -288,6 +293,10 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'extraer_voz_del_cliente': return { type: 'function', function: { name: 'extraer_voz_del_cliente', description: 'Analiza conversaciones reales de esta organización (llamadas, correos o tickets) y extrae el lenguaje literal del cliente, sus objeciones más frecuentes y candidatos de titular. Úsala cuando el dueño pida entender qué dicen sus clientes o preparar copy con sus palabras. Requiere mínimo de muestras para producir análisis útil.', parameters: { type: 'object', properties: { fuente: { type: 'string', enum: ['calls','emails','tickets','all'], description: 'Canal a analizar. Default "all".' }, dias: { type: 'number', description: 'Días hacia atrás. Default 30.' }, min_muestras: { type: 'number', description: 'Mínimo de muestras exigidas. Default 20.' } }, required: [] } }, server: server('extraer-voz-del-cliente') };
 
     case 'extraer_tono_de_marca': return { type: 'function', function: { name: 'extraer_tono_de_marca', description: 'Analiza muestras reales del negocio (correos previos, copy del sitio, pitch) y extrae una guía de tono que se inyecta en el system prompt de todos los empleados. Después de esto los empleados hablan como esta marca en vez de con tono genérico.', parameters: { type: 'object', properties: { muestras: { type: 'array', items: { type: 'string' }, description: 'Lista de 2 a 6 textos reales del negocio.' } }, required: ['muestras'] } }, server: server('extraer-tono-de-marca') };
+
+    case 'revisar_desempeno_equipo': return { type: 'function', function: { name: 'revisar_desempeno_equipo', description: 'Devuelve un resumen del desempeño del equipo: llamadas, tareas completadas/fallidas, documentos generados, correos gestionados, ops usadas — desglosado por cada empleado. Exclusiva de directores (Niva). Úsala cuando el dueño pregunte "¿cómo va el equipo esta semana?" o similar.', parameters: { type: 'object', properties: { periodo: { type: 'string', enum: ['hoy', 'esta_semana', 'este_mes', 'ultima_semana', 'ultimo_mes', 'ultimos_30_dias'], description: 'Ventana temporal. Default esta_semana.' } }, required: [] } }, server: server('exec/revisar_desempeno_equipo') };
+
+    case 'aprobar_gasto': return { type: 'function', function: { name: 'aprobar_gasto', description: 'Registra la aprobación (o rechazo) de un gasto operativo propuesto por el equipo. Deja audit trail: quién aprobó, concepto, monto, justificación. Exclusiva de directores (Niva).', parameters: { type: 'object', properties: { concepto: { type: 'string', description: 'Concepto del gasto. Ej: "Publicidad Facebook oct 2026", "Renovación licencia software X".' }, monto: { type: 'number', description: 'Monto en MXN. Solo dígitos, sin símbolo de moneda.' }, justificacion: { type: 'string', description: 'Razón de la aprobación o rechazo (opcional).' }, status: { type: 'string', enum: ['approved', 'rejected'], description: 'approved (default) o rejected.' } }, required: ['concepto', 'monto'] } }, server: server('exec/aprobar_gasto') };
 
     case 'read_url': return { type: 'function', function: { name: 'read_url', description: 'Lee y extrae el contenido de texto de una URL pública. Úsala para obtener información de páginas web específicas.', parameters: { type: 'object', properties: { url: { type: 'string', description: 'URL completa a leer (ej: https://example.com/page)' } }, required: ['url'] } }, server: server('read-url') };
 

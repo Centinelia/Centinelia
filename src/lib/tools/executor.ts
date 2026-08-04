@@ -891,6 +891,34 @@ export async function executeAgentTool(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // revisar_desempeno_equipo — exclusiva de Niva (directora general)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'revisar_desempeno_equipo') {
+    const { reviewTeamPerformance } = await import('@/lib/ops/director-tools');
+    const args = toolInput as { periodo?: 'hoy' | 'esta_semana' | 'este_mes' | 'ultima_semana' | 'ultimo_mes' | 'ultimos_30_dias' };
+    const res = await reviewTeamPerformance({ supabase, portalEmail, periodo: args.periodo });
+    return { ok: res.ok, message: res.summary, rows: res.rows, totals: res.totals };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // aprobar_gasto — exclusiva de Niva (directora general)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'aprobar_gasto') {
+    const { recordExpenseApproval } = await import('@/lib/ops/director-tools');
+    const args = toolInput as { concepto?: string; monto?: number; justificacion?: string; status?: 'approved' | 'rejected' };
+    if (!args.concepto || typeof args.monto !== 'number') {
+      return { ok: false, error: 'Necesito concepto y monto (número) para registrar la aprobación.' };
+    }
+    const res = await recordExpenseApproval({
+      supabase, portalEmail, approvedBy: agentId,
+      concept: args.concepto, amountMxn: args.monto,
+      justification: args.justificacion ?? null,
+      status: args.status ?? 'approved',
+    });
+    return res.ok ? { ok: true, message: res.message, id: res.id } : { ok: false, error: res.error };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // buscar_documento_oficina — reutilizar documentos ya generados
   // ─────────────────────────────────────────────────────────────────────────
   if (toolName === 'buscar_documento_oficina') {
