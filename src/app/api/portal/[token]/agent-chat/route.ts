@@ -1535,6 +1535,13 @@ ${context}`;
           for await (const chunk of stream) {
             if (chunk.type === 'content_block_start') {
               if (chunk.content_block.type === 'text') {
+                // Si ya hay algo emitido (texto o tool previo), separar visualmente
+                // el nuevo párrafo con un doble salto de línea. Evita que "…ahora."
+                // se pegue directo con "Lista la propuesta…" cuando el LLM escribe,
+                // invoca tool, y vuelve a escribir en el mismo turno.
+                if (assistantBlocks.length > 0) {
+                  send('\n\n');
+                }
                 assistantBlocks.push({ type: 'text', text: '' });
               } else if (chunk.content_block.type === 'tool_use') {
                 pendingToolId   = chunk.content_block.id;
