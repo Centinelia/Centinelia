@@ -1533,13 +1533,20 @@ ${context}`;
         const wantsGenerate  = GENERATE_INTENT_RE.test(lastUserTextForIntent);
         const hasSearchTool  = sessionTools.some((t: { name?: string }) => t.name === 'buscar_documento_oficina');
         const forceSearchTool = wantsGenerate && hasSearchTool;
-        console.log('[agent-chat/force-search]', {
-          lastUserText: lastUserTextForIntent.slice(0, 200),
-          wantsGenerate,
-          hasSearchTool,
-          forceSearchTool,
-          toolCount: sessionTools.length,
-        });
+        // Debug: emitir el estado al frontend para inspección en DevTools Console
+        // (Vercel Request Logs no muestra console.log — solo Warnings/Errors).
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({
+          debug: {
+            source:       'agent-chat/force-search',
+            lastUserText: lastUserTextForIntent.slice(0, 200),
+            wantsGenerate,
+            hasSearchTool,
+            forceSearchTool,
+            toolCount:    sessionTools.length,
+            regexTested:  GENERATE_INTENT_RE.source,
+          },
+        })}\n\n`));
+        console.warn('[agent-chat/force-search]', { wantsGenerate, hasSearchTool, forceSearchTool });
 
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)

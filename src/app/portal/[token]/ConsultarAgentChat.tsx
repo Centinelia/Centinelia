@@ -169,7 +169,12 @@ export default function ConsultarAgentChat({ token, agents, opsUsed, opsLimit, i
           const payload = line.slice(6);
           if (payload === '[DONE]') break;
           try {
-            const parsed = JSON.parse(payload) as { text?: string; tool?: string };
+            const parsed = JSON.parse(payload) as { text?: string; tool?: string; debug?: unknown };
+            if (parsed.debug) {
+              // eslint-disable-next-line no-console
+              console.log('[chat-debug]', parsed.debug);
+              continue;
+            }
             if (parsed.text) {
               const chunk = parsed.text;
               setChatHistory(prev => {
