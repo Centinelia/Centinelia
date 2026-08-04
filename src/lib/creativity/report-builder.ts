@@ -1,5 +1,6 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
-import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
+import { generateExcel, type ExcelSheet, type ExcelBrand } from '@/lib/documents/excel';
+import { brandKitFromAgent } from '@/lib/brand/kit';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -45,17 +46,20 @@ async function buildNoahSheets(
   sinceISO: string,
   supabase: SupabaseClient,
 ): Promise<ExcelSheet[]> {
+  // Leads viven en voice_calls (outcome='lead_created') — no existe tabla contact_lead.
+  // Citas viven en appointments_voice con status en español ('confirmada', 'cancelada').
   const [leadsRes, apptsRes] = await Promise.all([
     supabase
-      .from('contact_lead')
-      .select('id, nombre, negocio, servicio, created_at')
+      .from('voice_calls')
+      .select('id, caller_number, summary, nivel_interes, duration_seconds, created_at')
       .in('agent_id', orgAgentIds)
+      .eq('outcome', 'lead_created')
       .gte('created_at', sinceISO)
       .order('created_at', { ascending: false })
       .limit(200),
     supabase
       .from('appointments_voice')
-      .select('id, nombre, servicio, fecha, hora, status, created_at')
+      .select('id, nombre, telefono, servicio, fecha, hora, status, created_at')
       .in('agent_id', orgAgentIds)
       .gte('created_at', sinceISO)
       .order('created_at', { ascending: false })
@@ -67,21 +71,23 @@ async function buildNoahSheets(
 
   const leadsSheet: ExcelSheet = {
     name:    'Leads',
-    headers: ['Fecha', 'Nombre', 'Negocio', 'Servicio'],
+    headers: ['Fecha', 'Teléfono', 'Duración (min)', 'Interés', 'Resumen'],
     rows:    leadRows.map(l => [
       fmtDate(l.created_at as string),
-      (l.nombre   as string) ?? '',
-      (l.negocio  as string) ?? '',
-      (l.servicio as string) ?? '',
+      (l.caller_number     as string) ?? '',
+      Math.round(((l.duration_seconds as number | null) ?? 0) / 60 * 10) / 10,
+      (l.nivel_interes     as string) ?? '',
+      (l.summary           as string) ?? '',
     ]),
   };
 
   const citasSheet: ExcelSheet = {
     name:    'Citas',
-    headers: ['Creada', 'Cliente', 'Servicio', 'Fecha cita', 'Hora', 'Estado'],
+    headers: ['Creada', 'Cliente', 'Teléfono', 'Servicio', 'Fecha cita', 'Hora', 'Estado'],
     rows:    apptRows.map(a => [
       fmtDate(a.created_at as string),
       (a.nombre   as string) ?? '',
+      (a.telefono as string) ?? '',
       (a.servicio as string) ?? '',
       (a.fecha    as string) ?? '',
       (a.hora     as string) ?? '',
@@ -89,7 +95,11 @@ async function buildNoahSheets(
     ]),
   };
 
-  const confirmed  = apptRows.filter(a => a.status === 'confirmed').length;
+  // Status en español en la DB — 'confirmada', 'cancelada'. Aceptamos ambos por si algún dato viejo usa inglés.
+  const confirmed = apptRows.filter(a => {
+    const s = ((a.status as string) ?? '').toLowerCase();
+    return s === 'confirmada' || s === 'confirmed';
+  }).length;
   const conversion = leadRows.length > 0
     ? Math.round((apptRows.length / leadRows.length) * 100)
     : 0;
@@ -98,10 +108,10 @@ async function buildNoahSheets(
     name:    'Conversión',
     headers: ['Métrica', 'Valor'],
     rows:    [
-      ['Leads capturados',   leadRows.length],
-      ['Citas agendadas',    apptRows.length],
-      ['Citas confirmadas',  confirmed],
-      ['Tasa lead a cita (%)', conversion],
+      ['Leads capturados',      leadRows.length],
+      ['Citas agendadas',       apptRows.length],
+      ['Citas confirmadas',     confirmed],
+      ['Tasa lead a cita (%)',  conversion],
     ],
   };
 
@@ -229,7 +239,28 @@ export async function buildReport(
     return { ok: false, error: 'Rol no soportado para reporte.' };
   }
 
-  const xlsxBuffer = generateExcel(sheets);
+  // Brand kit para header + logo. organizations = source of truth para logo/colores.
+  const [agentRow, orgRow] = await Promise.all([
+    (supabase as any).from('voice_agents')
+      .select('business_name, logo_url, email_logo_url, phone_number')
+      .eq('id', agent.id).maybeSingle(),
+    (supabase as any).from('organizations')
+      .select('logo_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text')
+      .eq('portal_email', agent.portalEmail).maybeSingle(),
+  ]);
+  const brandKit = brandKitFromAgent(
+    (agentRow.data as Record<string, unknown>) ?? {},
+    orgRow.data as Record<string, unknown> | null,
+  );
+
+  const roleLabel = role === 'noah' ? 'Comercial' : role === 'nara' ? 'Operaciones' : 'Servicio';
+  const brand: ExcelBrand = {
+    businessName: brandKit.businessName || 'Reporte',
+    accentColor:  brandKit.color,
+    title:        `Reporte ${roleLabel} · Últimos ${windowDays} días`,
+  };
+
+  const xlsxBuffer = await generateExcel(sheets, brand);
 
   const timestamp   = Date.now();
   const filename    = `reporte-${role}-${windowDays}d-${timestamp}.xlsx`;

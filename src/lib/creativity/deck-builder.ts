@@ -1,10 +1,39 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { imageSize } from 'image-size';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { brandKitFromAgent } from '@/lib/brand/kit';
-import { generateSlides, type Slide } from '@/lib/documents/slides';
+import { generateSlides, type Slide, type LogoAsset } from '@/lib/documents/slides';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 const MODEL = 'claude-sonnet-4-6' as const;
+
+// Descarga logo, mide dimensiones (para preservar aspect ratio en slides) y
+// devuelve un LogoAsset. Sin las dimensiones reales pptxgenjs deforma el logo
+// al forzar w/h manuales.
+async function loadLogoAsset(logoUrl: string | null): Promise<LogoAsset | null> {
+  if (!logoUrl) return null;
+  try {
+    const res = await fetch(logoUrl);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') ?? '';
+    const mime = contentType.includes('png') ? 'png' : contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpeg' : null;
+    if (!mime) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    let width = 0, height = 0;
+    try {
+      const dim = imageSize(buf);
+      width  = dim.width  ?? 0;
+      height = dim.height ?? 0;
+    } catch { /* si falla, aspect=1 default */ }
+    return {
+      dataUrl:      `data:image/${mime};base64,${buf.toString('base64')}`,
+      widthPx:      width  || 1,
+      heightPx:     height || 1,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export interface DeckBuildResult {
   ok:          true;
@@ -124,11 +153,15 @@ Genera el plan de slides.`;
 
   if (slides.length === 0) return { ok: false, error: 'El plan de slides quedó vacío.' };
 
+  const logo = await loadLogoAsset(brand.logoUrl);
+
   const pptxBuffer = await generateSlides({
     title,
     slides,
-    businessName: brand.businessName || ctx.businessName,
-    accentColor:  brand.color,
+    businessName:    brand.businessName || ctx.businessName,
+    accentColor:     brand.color,
+    accentSecondary: brand.colorSecondary,
+    logo,
   });
 
   const timestamp  = Date.now();
