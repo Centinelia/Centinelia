@@ -1484,5 +1484,70 @@ export async function executeAgentTool(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Pilar 2 Creatividad — 4 tools distribuidas por rol
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const CREATIVITY_TOOLS = new Set([
+    'generar_propuesta_comercial',
+    'generar_cotizacion',
+    'generar_one_pager',
+    'generar_correo_estructurado',
+  ]);
+
+  if (CREATIVITY_TOOLS.has(toolName)) {
+    const { meerkatCanUse } = await import('@/lib/creativity/meerkat-gates');
+    const meerkatId = (agent.features as { meerkat_role_id?: string } | undefined)?.meerkat_role_id;
+    const toolKey = toolName as 'generar_propuesta_comercial' | 'generar_cotizacion' | 'generar_one_pager' | 'generar_correo_estructurado';
+
+    if (!meerkatCanUse(meerkatId, toolKey)) {
+      return { ok: false, error: `${agentName} no puede usar ${toolName}. Delega a un compañero autorizado usando delegar_tarea.` };
+    }
+
+    // Ops charge (ANTES del LLM call)
+    const opsCost = toolName === 'generar_propuesta_comercial' ? 5
+                  : toolName === 'generar_cotizacion' ? 4
+                  : toolName === 'generar_one_pager' ? 3
+                  : 2;
+    const opsResult = await consumeAiOp(agentId, opsCost);
+    if (!opsResult.ok) {
+      return { ok: false, error: 'Sin operaciones disponibles este mes. Compra mas o espera al ciclo siguiente.' };
+    }
+
+    // Fetch org KB + descripcion para contexto de contenido
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('knowledge_base, business_description')
+      .eq('portal_email', portalEmail)
+      .maybeSingle();
+
+    const servicesKb = (((org?.knowledge_base as string | null) ?? '') + '\n' + ((org?.business_description as string | null) ?? '')).trim();
+
+    const { generateStructuredContent } = await import('@/lib/creativity/content-generator');
+    const kind = toolName === 'generar_propuesta_comercial' ? 'propuesta'
+               : toolName === 'generar_cotizacion' ? 'cotizacion'
+               : toolName === 'generar_one_pager' ? 'one_pager'
+               : 'correo';
+
+    const content = await generateStructuredContent(kind as 'propuesta' | 'cotizacion' | 'one_pager' | 'correo', {
+      agentName,
+      businessName,
+      clientName:   (toolInput.client_name as string | null) ?? null,
+      clientNeed:   (toolInput.client_need as string | null) ?? null,
+      servicesKb:   servicesKb || null,
+      extraContext: (toolInput.extra_context as string | null) ?? null,
+    });
+
+    if (toolName === 'generar_correo_estructurado') {
+      const { draftEmail } = await import('@/lib/creativity/email-drafter');
+      return await draftEmail(content, { id: agentId, agent_name: agentName }, supabase);
+    } else {
+      const { buildDocument } = await import('@/lib/creativity/document-builder');
+      const result = await buildDocument(kind as 'propuesta' | 'cotizacion' | 'one_pager', content, { id: agentId, agent_name: agentName, portal_email: portalEmail }, supabase);
+      if (!result.ok) return result;
+      return { ...result, message: `Documento generado: ${content.title}. Descarga: ${result.url} (valido 1 hora).` };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }
