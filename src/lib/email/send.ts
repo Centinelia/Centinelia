@@ -608,9 +608,6 @@ function clientShell(branding: EmailBranding, body: string) {
     </div>
     <div style="text-align:center;padding:16px 0 0">
       ${footerLines.join('\n      ')}
-      <p style="color:rgba(26,10,59,0.22);font-size:10px;margin:0;line-height:1.7">
-        Enviado a través de <a href="https://www.centinelia.mx" style="color:rgba(26,10,59,0.3);text-decoration:none">Centinelia</a>
-      </p>
     </div>
   </div>
 </body>

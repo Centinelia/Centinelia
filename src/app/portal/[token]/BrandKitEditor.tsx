@@ -287,13 +287,10 @@ function EmailPreview({ logoUrl, businessName, agentName, color, color2, address
         <div style={{ padding: '10px 24px', textAlign: 'center' }}>
           {footer && <p style={{ color: 'rgba(26,10,59,0.4)', fontSize: 10, margin: '0 0 2px', lineHeight: 1.6 }}>{footer}</p>}
           {(address || website) && (
-            <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 10, margin: '0 0 2px', lineHeight: 1.6 }}>
+            <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 10, margin: 0, lineHeight: 1.6 }}>
               {[address, website].filter(Boolean).join(' · ')}
             </p>
           )}
-          <p style={{ color: 'rgba(26,10,59,0.25)', fontSize: 10, margin: 0 }}>
-            Enviado a través de <span style={{ color: 'rgba(26,10,59,0.35)' }}>Centinelia</span>
-          </p>
         </div>
 
       </div>
