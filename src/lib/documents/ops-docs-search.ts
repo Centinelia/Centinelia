@@ -25,6 +25,7 @@ export interface OfficeDocSummary {
   created_at:    string;
   expires_at:    string | null;
   folio:         string | null;         // folio del documento cuando aplica (COT-000042)
+  signed_url:    string | null;         // URL de descarga firmada (1h de vigencia). Null si falló.
 }
 
 export interface SearchArgs {
@@ -56,7 +57,7 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
 
   let q = supabase
     .from('ops_documents')
-    .select('id, title, filename, template_type, created_at, expires_at, folio')
+    .select('id, title, filename, storage_path, template_type, created_at, expires_at, folio')
     .in('agent_id', agentIds)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -75,7 +76,23 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
 
   const { data, error } = await q;
   if (error) { console.error('[searchOfficeDocuments] query error:', error); return []; }
-  return (data ?? []).map(r => ({
+
+  const rows = data ?? [];
+  // Generar signed URLs (1h) para cada doc en paralelo. Sin esto el LLM tiene
+  // que fabricar el URL a mano y falla con "signature verification failed".
+  const signedUrls = await Promise.all(rows.map(async r => {
+    const path = r.storage_path as string | null;
+    if (!path) return null;
+    try {
+      const { data: signed } = await supabase.storage.from(OPS_DOCS_BUCKET).createSignedUrl(path, 3600);
+      return (signed as { signedUrl: string } | null)?.signedUrl ?? null;
+    } catch (err) {
+      console.error('[searchOfficeDocuments] signed URL failed for', path, err);
+      return null;
+    }
+  }));
+
+  return rows.map((r, i) => ({
     id:         r.id as string,
     title:      (r.title as string | null) ?? '(sin título)',
     filename:   (r.filename as string | null) ?? '',
@@ -83,6 +100,7 @@ export async function searchOfficeDocuments(args: SearchArgs): Promise<OfficeDoc
     created_at: String(r.created_at),
     expires_at: (r.expires_at as string | null) ?? null,
     folio:      (r.folio as string | null) ?? null,
+    signed_url: signedUrls[i],
   }));
 }
 
@@ -95,9 +113,10 @@ export function formatDocsForAgent(docs: OfficeDocSummary[]): string {
       d.kind ? `tipo: ${d.kind}` : null,
       `creado: ${new Date(d.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`,
       d.expires_at ? `vence: ${new Date(d.expires_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` : null,
+      d.signed_url ? `enlace de descarga (válido 1h): ${d.signed_url}` : null,
     ].filter(Boolean);
-    return parts.join(' · ');
-  }).join('\n');
+    return parts.join('\n   ');
+  }).join('\n\n');
 }
 
 export interface SendArgs {
