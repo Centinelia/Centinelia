@@ -755,6 +755,72 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       });
     }
 
+    // Pilar 2 Creatividad — tools condicionales por meerkat_role_id (email)
+    {
+      const { MEERKAT_TOOL_ACCESS } = await import('@/lib/creativity/meerkat-gates');
+
+      const CREATIVITY_DECLARATIONS: Record<string, Anthropic.Tool> = {
+        generar_propuesta_comercial: {
+          name: 'generar_propuesta_comercial',
+          description: 'Genera una propuesta comercial en PDF para un cliente. Usa cuando calificaste un lead y necesitas mandar propuesta escrita.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente o empresa.' },
+              client_need:   { type: 'string', description: 'Qué está pidiendo el cliente.' },
+              extra_context: { type: 'string', description: 'Contexto extra opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+        },
+        generar_cotizacion: {
+          name: 'generar_cotizacion',
+          description: 'Genera una cotización PDF con precios y condiciones de pago.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente.' },
+              client_need:   { type: 'string', description: 'Producto o servicio cotizado.' },
+              extra_context: { type: 'string', description: 'Contexto extra (cantidad, condiciones, etc.).' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+        },
+        generar_one_pager: {
+          name: 'generar_one_pager',
+          description: 'Genera un one-pager informativo (PDF corto) sobre un servicio para mandar a un cliente que pidió info.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del cliente destinatario.' },
+              client_need:   { type: 'string', description: 'Servicio sobre el cual informar.' },
+              extra_context: { type: 'string', description: 'Contexto extra opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+        },
+        generar_correo_estructurado: {
+          name: 'generar_correo_estructurado',
+          description: 'Genera un borrador de correo largo y estructurado. Devuelve subject + HTML body listo para revisar. NO envía el correo.',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              client_name:   { type: 'string', description: 'Nombre del destinatario.' },
+              client_need:   { type: 'string', description: 'Tema del correo.' },
+              extra_context: { type: 'string', description: 'Contexto extra opcional.' },
+            },
+            required: ['client_name', 'client_need'],
+          },
+        },
+      };
+
+      for (const [toolName, allowed] of Object.entries(MEERKAT_TOOL_ACCESS)) {
+        if (inboxMeerkatId && (allowed as string[]).includes(inboxMeerkatId) && CREATIVITY_DECLARATIONS[toolName]) {
+          tools.push(CREATIVITY_DECLARATIONS[toolName]);
+        }
+      }
+    }
+
     const execCtx = {
       agentId,
       portalEmail,

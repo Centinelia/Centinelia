@@ -40,6 +40,7 @@ import SendAsEmailEditor     from '../SendAsEmailEditor';
 import SpamFolderToggle      from '../SpamFolderToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
+import { BrandTemplateSection } from './BrandTemplateSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -148,6 +149,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     { id: 'checkin',         label: 'Check-in automático',    group: 'Operación'     },
     ...(meerkatId === 'nox'
       ? [{ id: 'brief-del-dia', label: 'Brief del día',          group: 'Operación'     }] : []),
+    ...(['noah', 'nico', 'naia', 'nelia'].includes(meerkatId ?? '')
+      ? [{ id: 'plantillas',   label: 'Plantillas de documentos', group: 'Operación'    }] : []),
     { id: 'automatizaciones', label: 'Automatizaciones',      group: 'Operación'     },
     ...(!isCoordinator
       ? [{ id: 'notificaciones', label: 'Notificaciones',     group: 'Operación'     }] : []),
@@ -413,6 +416,25 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />
                   </div>
                   <BriefDelDiaSection agentId={agent.id} />
+                </div>
+              </div>
+            )}
+
+            {['noah', 'nelia'].includes(meerkatId ?? '') && (
+              <div id="plantillas" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5 mb-4">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantillas de documentos</h2>
+                    <InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usara en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />
+                  </div>
+                  <BrandTemplateSection
+                    agentId={agent.id}
+                    availableTipos={
+                      meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager'] :
+                      meerkatId === 'nelia' ? ['one_pager'] :
+                      []
+                    }
+                  />
                 </div>
               </div>
             )}
