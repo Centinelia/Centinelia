@@ -263,19 +263,16 @@ UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido)
     blocks.push(`PRONUNCIACIÓN DE CORREOS ELECTRÓNICOS: Cuando repitas un correo en voz alta, usa términos en español: @ = "arroba", . = "punto", ".com" = "punto com". Nunca uses "at" ni "dot".
 ${LEGAL_ABBREV_RULE}
 ${ALFANUMERIC_DICTATION_RULE}`);
-    if (promptTier !== 'lite') {
-      blocks.push(`INVESTIGACIÓN ASÍNCRONA:
-Si el cliente solicita información que requiere buscar en archivos, consultar a un compañero o hacer una búsqueda en internet, NO te pongas a investigar en tiempo real mientras el cliente espera en línea.
-En su lugar, ofrécele elegir cómo prefiere recibir la información:
-- Por correo: le envías la información a su email en cuanto la tengas lista.
-- Por llamada: le marcamos de regreso cuando ya tengamos la respuesta preparada.
-- Ambas: le enviamos el correo y además le llamamos para confirmar que lo recibió.
-Pregunta de forma natural: "¿Prefiere que le enviemos la información por correo, que le llamemos de regreso cuando la tengamos lista, o ambas opciones?"
-Según lo que elija, recopila su correo, su número de devolución de llamada, o ambos. Luego cierra la llamada de forma amable.
-Una vez terminada la llamada, usa enviar_correo o delegar_tarea para cumplir con lo prometido de manera asíncrona.
-Ejemplos de solicitudes que deben manejarse así: cotizaciones detalladas, revisión de contratos o documentos, consultas técnicas que requieren investigar, información que no tienes de memoria.
-No dejes al cliente esperando en silencio. Sé proactivo desde el inicio de la solicitud.`);
-    }
+    blocks.push(`EJECUCIÓN ASÍNCRONA — REGLA DURA:
+NO invoques consultar_agente ni delegar_tarea mientras el llamante espera en línea si la petición requiere buscar archivos, generar documentos, revisar contratos, cotizaciones o cualquier trabajo que tome más de 5 segundos. Esos tools son LENTOS (10-25s cada uno) y el llamante se queda en silencio.
+En su lugar, para peticiones complejas sigue este flujo asíncrono:
+1. Recolecta datos que necesitas: correo, WhatsApp del cliente, detalles de lo que pide.
+2. Dile con claridad: "Perfecto, se lo hago llegar a su correo en unos minutos. Le confirmo cuando esté listo."
+3. Cierra la llamada amablemente (agradece, despedida).
+4. DESPUÉS de despedirte, invoca delegar_tarea con toda la info incluyendo el correo/WhatsApp del cliente. Vapi seguirá con la ejecución en background aunque el llamante ya colgó.
+Peticiones que DEBEN ir asíncronas: enviar plantilla/contrato/cotización/factura/reporte, generar propuesta, buscar y enviar archivo del Drive, coordinar tarea entre varios empleados, cualquier chain de 2+ tools.
+Peticiones que SÍ puedes resolver en línea (rápidas, <3s): responder horarios/precios/servicios que ya tienes en KB, crear_lead, agendar_cita, registrar_pedido, transferir_llamada, buscar_cliente (solo verificación).
+NUNCA digas "un momento" y te pongas a esperar tool calls largos. Si ya dijiste "un momento" y ves que va a tomar tiempo, di al cliente: "Le voy a hacer llegar la información por correo, ¿me lo confirma?" y sigue el flujo asíncrono.`);
   }
 
   // ── Feature blocks — all tiers ────────────────────────────────────────────
