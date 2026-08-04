@@ -86,6 +86,21 @@ function Metric({ value, label, color }: { value: number | string; label: string
   );
 }
 
+/**
+ * Devuelve el src correcto para el iframe del preview según el tipo de archivo.
+ * PDF → URL directo (browser tiene viewer nativo).
+ * Office (.docx/.xlsx/.pptx) → wrappear en Microsoft Office Online Viewer.
+ * Otros → URL directo (browser decide, típicamente descarga).
+ */
+function previewSrc(url: string, filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop() ?? '';
+  const OFFICE_EXTS = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+  if (OFFICE_EXTS.has(ext)) {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 export default function DocumentosPage() {
   const { token } = useParams<{ token: string }>();
   const [docs,       setDocs]       = useState<Doc[]>([]);
@@ -416,7 +431,7 @@ export default function DocumentosPage() {
           </div>
           <div className="flex-1 min-h-0" onClick={(e) => e.stopPropagation()}>
             <iframe
-              src={preview.url}
+              src={previewSrc(preview.url, preview.doc.filename)}
               title={preview.doc.title}
               className="w-full h-full"
               style={{ border: 'none', background: '#525659' }}
