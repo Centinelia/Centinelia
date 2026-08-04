@@ -1,6 +1,12 @@
-import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import type { BrandKit } from '@/lib/brand/kit';
 import { renderMarkdown } from './markdown';
+
+// Desactiva la hyphenation automática de react-pdf. Por default parte palabras
+// largas al final de línea con guión ("agen-\nda"), lo cual se ve feo en español
+// y confunde en emails/dominios. Devolver [word] hace que la palabra completa
+// caiga a la siguiente línea sin dividirse.
+Font.registerHyphenationCallback((word: string) => [word]);
 
 export type { BrandKit as PdfBrand };
 
