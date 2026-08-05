@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb } from 'lucide-react';
+import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb, Clock } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
@@ -264,7 +264,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // Action counts — últimos 30d (mismo cutoff que sidebar de /oficina)
   const actionCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes, opsInboxCountRes, humanReqCountRes, learningsCountRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes, opsInboxCountRes, humanReqCountRes, learningsCountRes, nextTaskRes] = await Promise.all([
     // Calls — account-level for Inicio activity and Llamadas
     since
       ? supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -292,6 +292,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           .eq('portal_email', agent.portal_email)
           .eq('status', 'pending')
       : Promise.resolve({ count: 0 }),
+    // Próxima tarea programada
+    agent.portal_email
+      ? supabase.from('scheduled_agent_tasks')
+          .select('id, name, next_run_at, voice_agents!agent_id(agent_name)')
+          .eq('portal_email', agent.portal_email)
+          .eq('active', true)
+          .not('next_run_at', 'is', null)
+          .order('next_run_at', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const calls             = (callsRes.data           ?? []) as VoiceCall[];
@@ -308,6 +319,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const bandejaCount   = ((opsInboxCountRes as any).count ?? 0) + ((humanReqCountRes as any).count ?? 0);
   const learningsCount = (learningsCountRes as any).count ?? 0;
   const actionTotal    = bandejaCount + learningsCount + reauthAlerts.length;
+
+  // Próxima tarea programada (para widget al pie de /inicio)
+  const nextTaskRaw = (nextTaskRes as any).data as {
+    id: string; name: string; next_run_at: string;
+    voice_agents?: { agent_name?: string | null } | null;
+  } | null;
+  const nextTask = nextTaskRaw ? {
+    id:        nextTaskRaw.id,
+    name:      nextTaskRaw.name,
+    nextRunAt: nextTaskRaw.next_run_at,
+    agentName: nextTaskRaw.voice_agents?.agent_name ?? 'tu equipo',
+  } : null;
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -753,6 +776,30 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </h2>
                     <PeakHoursChart hourCounts={hourCounts} />
                   </div>
+                )}
+
+                {/* Próxima tarea automática — footer discreto */}
+                {nextTask && (
+                  <Link href={`/portal/${token}/oficina/tareas?tab=programadas`}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(108,59,255,0.1)' }}>
+                      <Clock size={14} style={{ color: '#6C3BFF' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                        Próxima tarea automática
+                      </p>
+                      <p className="text-sm font-medium truncate mt-0.5" style={{ color: 'var(--c-text)' }}>
+                        {nextTask.name}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>
+                        {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
+                      </p>
+                    </div>
+                    <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                  </Link>
                 )}
 
                 {/* Reporte mensual — visible en mobile al final de la columna principal */}
@@ -1384,6 +1431,30 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </Card>
                   </PageSection>
 
+                  {/* Próxima tarea automática — footer discreto */}
+                  {nextTask && (
+                    <Link href={`/portal/${token}/oficina/tareas?tab=programadas`}
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-80"
+                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(108,59,255,0.1)' }}>
+                        <Clock size={14} style={{ color: '#6C3BFF' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                          Próxima tarea automática
+                        </p>
+                        <p className="text-sm font-medium truncate mt-0.5" style={{ color: 'var(--c-text)' }}>
+                          {nextTask.name}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>
+                          {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
+                        </p>
+                      </div>
+                      <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                    </Link>
+                  )}
+
               </div>{/* end single-column layout */}
             </div>
           </PageContainer>
@@ -1784,6 +1855,21 @@ function fmtRelative(iso: string): string {
   if (days === 1) return 'ayer';
   if (days < 7)  return `hace ${days} días`;
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+}
+
+function fmtFuture(iso: string): string {
+  const target = new Date(iso);
+  const diff   = target.getTime() - Date.now();
+  if (diff <= 0) return 'ahora';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `en ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  const time = target.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+  if (hrs < 24)  return `hoy a las ${time}`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return `mañana a las ${time}`;
+  if (days < 7)  return `en ${days} días`;
+  return target.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
 function callOutcomeDesc(outcome: string): string {
