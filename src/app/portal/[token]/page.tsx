@@ -1587,20 +1587,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <ContractTrackerSection token={token} />
                     </Card>
                   </PageSection>
+                </div>
 
-                  {/* Reporte mensual — moved from /inicio right column */}
-                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
-                    <Card id="reporte-mensual" padding="md">
-                      <div className="flex items-center gap-1.5 mb-4">
-                        <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
-                      </div>
+                {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
+                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  {/* Reporte mensual compacto — arriba del historial */}
+                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" right={<InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />} />}>
+                    <Card id="reporte-mensual" padding="sm">
                       <MonthReportPicker token={token} />
                     </Card>
                   </PageSection>
-                </div>
 
-                {/* ── Col 2: Historial de minutos + Consumo promedio (colapsado) ── */}
-                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
                     <Card id="historial" padding="md">
                       {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
