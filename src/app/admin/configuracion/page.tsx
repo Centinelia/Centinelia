@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { BookOpen, Save, Check } from 'lucide-react';
+import { BookOpen, Save, Check, Sparkles, ChevronRight } from 'lucide-react';
 
 type Tab = 'sales' | 'portal';
 
@@ -54,27 +55,45 @@ export default function ConfiguracionPage() {
   const currentKey = tab === 'sales' ? 'kb_sales' : 'kb_portal';
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
+    <div className="p-8 max-w-3xl mx-auto space-y-8">
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Configuración</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
-          Ajustes globales de la plataforma
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Configuración</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          Ajustes globales de la plataforma.
         </p>
       </div>
+
+      {/* Link a Estilo conversacional (movido de sidebar) */}
+      <Link
+        href="/admin/conversacional"
+        className="flex items-center gap-3 rounded-xl bg-white px-5 py-4 transition-colors hover:bg-gray-50"
+        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      >
+        <div className="flex-shrink-0 p-2 rounded-lg" style={{ background: '#F3F0FF' }}>
+          <Sparkles size={16} style={{ color: '#7C3AED' }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-semibold" style={{ color: '#111827' }}>Estilo conversacional</p>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
+            Ajusta tono y muletillas de los empleados en voz.
+          </p>
+        </div>
+        <ChevronRight size={16} style={{ color: '#9CA3AF' }} />
+      </Link>
 
       {/* ── Sección: Base de conocimiento ── */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <BookOpen size={15} style={{ color: '#9B6DFF' }} />
-          <h2 className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          <BookOpen size={15} style={{ color: '#7C3AED' }} />
+          <h2 className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9CA3AF' }}>
             Base de conocimiento
           </h2>
         </div>
 
-        <div className="rounded-2xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
-            Información extra que los bots de chat de la landing y el portal del cliente usan para responder mejor. El bot base ya tiene la información general de Centinelia — escribe aquí solo lo adicional: promociones temporales, casos de éxito, FAQs específicas.
+        <div className="rounded-xl p-5 bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+          <p className="text-[12px] mb-4" style={{ color: '#6B7280' }}>
+            Información extra que los bots de chat de la landing y el portal del cliente usan para responder mejor. El bot base ya tiene la información general de Centinelia; escribe aquí solo lo adicional: promociones temporales, casos de éxito, FAQs específicas.
           </p>
 
           {/* Sub-tabs */}
@@ -83,11 +102,11 @@ export default function ConfiguracionPage() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
                 style={{
-                  background: tab === t ? '#6C3BFF' : 'var(--c-surface-2)',
-                  color:      tab === t ? '#fff'     : 'var(--c-text-3)',
-                  border:     `1px solid ${tab === t ? '#6C3BFF' : 'var(--c-border)'}`,
+                  background: tab === t ? '#6C3BFF' : '#FFFFFF',
+                  color:      tab === t ? '#FAFBFF'  : '#374151',
+                  border:     `1px solid ${tab === t ? '#6C3BFF' : '#E5E7EB'}`,
                 }}
               >
                 {TAB_LABELS[t]}
@@ -96,18 +115,18 @@ export default function ConfiguracionPage() {
           </div>
 
           {loading ? (
-            <div className="h-48 rounded-xl animate-pulse" style={{ background: 'var(--c-input-bg)' }} />
+            <div className="h-48 rounded-xl animate-pulse" style={{ background: '#F3F4F6' }} />
           ) : (
             <textarea
               value={values[currentKey as keyof typeof values]}
               onChange={e => setValues(prev => ({ ...prev, [currentKey]: e.target.value }))}
               placeholder={PLACEHOLDERS[tab]}
               rows={12}
-              className="w-full rounded-xl p-3 text-sm resize-y focus:outline-none"
+              className="w-full rounded-lg p-3 text-[13px] resize-y focus:outline-none"
               style={{
-                background: 'var(--c-input-bg)',
-                border:     '1px solid var(--c-border)',
-                color:      'var(--c-text)',
+                background: '#FFFFFF',
+                border:     '1px solid #E5E7EB',
+                color:      '#111827',
                 fontFamily: 'inherit',
                 lineHeight: 1.6,
               }}
@@ -115,22 +134,22 @@ export default function ConfiguracionPage() {
           )}
 
           <div className="flex items-center justify-between mt-3">
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
               {values[currentKey as keyof typeof values]?.length ?? 0} caracteres
             </p>
             <button
               onClick={() => handleSave(tab)}
               disabled={saving || loading}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
               style={{
-                background: saved === tab ? 'rgba(34,197,94,0.15)' : '#6C3BFF',
-                color:      saved === tab ? '#22c55e'               : '#fff',
-                border:     saved === tab ? '1px solid rgba(34,197,94,0.3)' : 'none',
+                background: saved === tab ? '#ECFDF5' : '#6C3BFF',
+                color:      saved === tab ? '#047857'  : '#FAFBFF',
+                border:     saved === tab ? '1px solid #A7F3D0' : 'none',
               }}
             >
               {saved === tab
                 ? <><Check size={14} /> Guardado</>
-                : <><Save size={14} /> {saving ? 'Guardando…' : 'Guardar'}</>
+                : <><Save size={14} /> {saving ? 'Guardando' : 'Guardar'}</>
               }
             </button>
           </div>
