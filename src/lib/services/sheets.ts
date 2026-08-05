@@ -94,3 +94,58 @@ export async function refreshHeaders(
 
   return { ok: true, data: { headers } };
 }
+
+/**
+ * Appends a data row to the mapped spreadsheet tab, mapping object keys to
+ * the stored header order. Unknown keys cause an early headers_mismatch error.
+ *
+ * Never throws — all error paths return { ok: false, reason, detail? }.
+ */
+export async function appendRow(
+  mappingId: string,
+  data: Record<string, unknown>,
+): Promise<ToolResult<{ row_number: number }>> {
+  const sb = createAdminClient();
+  const { data: mapping } = await sb
+    .from('sheets_mappings')
+    .select('*')
+    .eq('id', mappingId)
+    .single();
+
+  if (!mapping) return { ok: false, reason: 'mapping_not_found' };
+
+  const headers: string[] = mapping.headers ?? [];
+  const dataKeys = Object.keys(data);
+  const unknownKeys = dataKeys.filter(k => !headers.includes(k));
+  if (unknownKeys.length > 0) {
+    return {
+      ok: false,
+      reason: 'headers_mismatch',
+      detail: `Keys not in sheet headers: ${unknownKeys.join(', ')}. Headers: ${headers.join(', ')}`,
+    };
+  }
+
+  const row = headers.map(h => {
+    const v = data[h];
+    return v === undefined || v === null ? '' : String(v);
+  });
+
+  try {
+    const client = await getSheetsClient(mapping.portal_email);
+    const res = await client.spreadsheets.values.append({
+      spreadsheetId: mapping.spreadsheet_id,
+      range: `${mapping.tab_name}!A:A`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] },
+    });
+
+    const updatedRange: string = res.data.updates?.updatedRange || '';
+    const match = updatedRange.match(/!\D+(\d+):/);
+    const rowNumber = match ? parseInt(match[1], 10) : -1;
+
+    return { ok: true, data: { row_number: rowNumber } };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: 'sheets_api_error', detail };
+  }
+}
