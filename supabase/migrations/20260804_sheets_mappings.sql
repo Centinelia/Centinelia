@@ -2,7 +2,7 @@
 
 CREATE TABLE sheets_mappings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  portal_email TEXT NOT NULL REFERENCES organizations(portal_email) ON DELETE CASCADE,
   purpose TEXT NOT NULL CHECK (purpose IN (
     'clientes','leads','bitacoras','oc','cajas_chicas','custom'
   )),
@@ -19,15 +19,15 @@ CREATE TABLE sheets_mappings (
   )
 );
 
-CREATE UNIQUE INDEX sheets_mappings_org_purpose_reserved
-  ON sheets_mappings (org_id, purpose)
+CREATE UNIQUE INDEX sheets_mappings_pe_purpose_reserved
+  ON sheets_mappings (portal_email, purpose)
   WHERE purpose != 'custom';
 
-CREATE UNIQUE INDEX sheets_mappings_org_custom_label
-  ON sheets_mappings (org_id, custom_purpose_label)
+CREATE UNIQUE INDEX sheets_mappings_pe_custom_label
+  ON sheets_mappings (portal_email, custom_purpose_label)
   WHERE purpose = 'custom';
 
-CREATE INDEX sheets_mappings_org_id ON sheets_mappings (org_id);
+CREATE INDEX sheets_mappings_portal_email ON sheets_mappings (portal_email);
 
 ALTER TABLE voice_agents
   ADD COLUMN sync_leads_to_sheets BOOLEAN NOT NULL DEFAULT false;
