@@ -64,6 +64,7 @@ export default function Avatar({
           width={px}
           height={px}
           className="h-full w-full rounded-full object-cover"
+          style={{ objectPosition: 'center 3%' }}
         />
       ) : (
         <span aria-hidden>{initialUpper}</span>

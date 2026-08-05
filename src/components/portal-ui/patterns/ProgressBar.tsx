@@ -1,4 +1,4 @@
-import { uColor } from '@/lib/portal/utils';
+import { uColorVar } from '@/lib/portal/utils';
 
 /**
  * ProgressBar — barra de progreso con color automático por porcentaje
@@ -33,7 +33,7 @@ export default function ProgressBar({
   className,
 }: ProgressBarProps) {
   const clamped = Math.max(0, Math.min(100, value));
-  const fillColor = color ?? uColor(clamped);
+  const fillColor = color ?? uColorVar(clamped);
 
   return (
     <div
