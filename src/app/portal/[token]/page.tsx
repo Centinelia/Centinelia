@@ -447,7 +447,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           <PortalHeader
             businessName={agent.business_name}
             logoUrl={(agent as any).logo_url ?? null}
-          />
+          >
+            {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
+            <NotificationBell token={token} />
+            <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+            <PortalLogout />
+          </PortalHeader>
         )}
 
         {/* V1 header (BusinessSwitcher + controls) — hidden when V2 is active */}

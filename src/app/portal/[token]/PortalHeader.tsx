@@ -5,9 +5,10 @@ import Image from 'next/image';
 export interface PortalHeaderProps {
   businessName: string;
   logoUrl?: string | null;
+  children?: React.ReactNode;
 }
 
-export default function PortalHeader({ businessName, logoUrl }: PortalHeaderProps) {
+export default function PortalHeader({ businessName, logoUrl, children }: PortalHeaderProps) {
   return (
     <header
       role="banner"
@@ -47,8 +48,12 @@ export default function PortalHeader({ businessName, logoUrl }: PortalHeaderProp
         </span>
       </div>
 
-      {/* Espaciador para acciones futuras (búsqueda, notificaciones, avatar) */}
-      <div className="ml-auto" aria-hidden />
+      {/* Right slot: user controls injected by the parent page */}
+      {children && (
+        <div className="ml-auto flex items-center gap-2">
+          {children}
+        </div>
+      )}
     </header>
   );
 }
