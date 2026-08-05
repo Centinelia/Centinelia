@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot,
+  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot, AlertTriangle,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
@@ -223,6 +223,7 @@ export default function ClientesClient({
           const open        = expanded.has(client.key);
           const activeCount = client.agents.filter(a => a.active).length;
           const pausedCount = client.agents.length - activeCount;
+          const failedCount = client.agents.filter(a => a.billing_status === 'pago_fallido').length;
           const initials    = client.client_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
           const acctUsed     = client.acct_minutes_used;
@@ -250,7 +251,7 @@ export default function ClientesClient({
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
-                  {/* Línea 1: nombre del contacto + serial */}
+                  {/* Línea 1: nombre del contacto + serial + alerta pago fallido */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[14px] font-semibold" style={{ color: '#111827' }}>
                       {client.client_name}
@@ -262,6 +263,16 @@ export default function ClientesClient({
                         title="Número de serie de la cuenta"
                       >
                         {client.serial}
+                      </span>
+                    )}
+                    {failedCount > 0 && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-semibold"
+                        style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
+                        title={`${failedCount} empleado${failedCount > 1 ? 's' : ''} con pago fallido`}
+                      >
+                        <AlertTriangle size={10} />
+                        {failedCount} pago fallido
                       </span>
                     )}
                   </div>
@@ -286,10 +297,18 @@ export default function ClientesClient({
                         </span>
                       </>
                     )}
+                    {failedCount > 0 && (
+                      <>
+                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span className="tabular-nums" style={{ color: '#B91C1C' }}>
+                          {failedCount} pago fallido
+                        </span>
+                      </>
+                    )}
                     {pausedCount > 0 && (
                       <>
                         <span style={{ color: '#D1D5DB' }}>·</span>
-                        <span className="tabular-nums" style={{ color: '#EF4444' }}>
+                        <span className="tabular-nums" style={{ color: '#6B7280' }}>
                           {pausedCount} pausado{pausedCount > 1 ? 's' : ''}
                         </span>
                       </>
