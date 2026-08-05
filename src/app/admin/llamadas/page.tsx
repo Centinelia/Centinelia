@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceCall } from '@/types/agent';
 import LlamadasClient from './LlamadasClient';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 interface Props {
   searchParams: Promise<{ page?: string; agentId?: string; outcome?: string; search?: string }>;
