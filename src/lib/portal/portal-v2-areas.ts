@@ -116,7 +116,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
             { label: 'Hoy en la oficina', href: `/portal/${t}/oficina` },
             { label: 'Bandeja',           href: `/portal/${t}/oficina/bandeja` },
             { label: 'Llamadas',          href: `/portal/${t}/oficina/llamadas` },
-            { label: 'Mesa de ayuda',     href: `/portal/${t}/oficina/helpdesk` },
+            { label: 'Mesa de ayuda',     href: `/portal/${t}/oficina/bandeja?tipo=helpdesk` },
           ],
         },
         {
