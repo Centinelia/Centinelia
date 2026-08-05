@@ -11,6 +11,7 @@ import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
 import DailyCapEditor from '../agentes/[id]/DailyCapEditor';
 import { Pagination } from '@/components/admin/Pagination';
+import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ type AgentRow = {
   id: string;
   agent_name: string | null;
   business_name: string;
+  meerkat_role_id: string | null;
   plan: string;
   active: boolean;
   billing_status: string | null;
@@ -455,11 +457,24 @@ export default function ClientesClient({
                             <Bot size={11} style={{ color: '#7C3AED' }} />
                             {agent.agent_name?.trim() || agent.business_name}
                           </span>
-                          {agent.agent_name?.trim() && agent.business_name && agent.agent_name.trim() !== agent.business_name && (
-                            <span className="text-[12px]" style={{ color: '#6B7280' }}>
-                              {agent.business_name}
-                            </span>
-                          )}
+                          {(() => {
+                            const role = agent.meerkat_role_id
+                              ? MEERKAT_MAP[agent.meerkat_role_id as MeerkatRoleId]
+                              : null;
+                            if (!role) return null;
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                                style={{
+                                  background: `${role.color}14`,
+                                  color:      role.color,
+                                  border:     `1px solid ${role.color}30`,
+                                }}
+                              >
+                                {role.rol}
+                              </span>
+                            );
+                          })()}
                           {agent.billing_status === 'pago_fallido' && (
                             <span
                               className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
