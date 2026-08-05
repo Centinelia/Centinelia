@@ -115,7 +115,8 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
           items: [
             { label: 'Hoy en la oficina', href: `/portal/${t}/oficina` },
             { label: 'Bandeja',           href: `/portal/${t}/oficina/bandeja` },
-            { label: 'Llamadas',          href: `/portal/${t}/oficina/llamadas` },
+            { label: 'Llamadas',          href: `/portal/${t}/oficina/llamadas?filtro=entrantes` },
+            { label: 'Salientes',         href: `/portal/${t}/oficina/llamadas?filtro=salientes` },
             { label: 'Mesa de ayuda',     href: `/portal/${t}/oficina/bandeja?tipo=helpdesk` },
           ],
         },
@@ -171,8 +172,8 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
         label: 'Salientes',
         items: [
           { label: 'Permisos',  anchor: 'llamadas-sal' },
-          { label: 'Campañas',  href: `/portal/${t}/llamadas/salientes?view=campanas` },
-          { label: 'Contactos', href: `/portal/${t}/llamadas/salientes?view=contactos` },
+          { label: 'Campañas',  href: `/portal/${t}/oficina/llamadas?filtro=campanas` },
+          { label: 'Contactos', href: `/portal/${t}/oficina/llamadas?filtro=salientes` },
         ],
       });
     }
@@ -182,7 +183,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       label: 'Llamadas',
       iconName: 'Phone',
       moduleId: 'llamadas',
-      directHref: `/portal/${t}/llamadas/entrantes`,
+      directHref: `/portal/${t}/oficina/llamadas?filtro=entrantes`,
       subGroups: llamadasSubGroups,
     });
   }

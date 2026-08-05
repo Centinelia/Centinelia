@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { PhoneCall, PhoneOutgoing } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useMemo } from 'react';
+import { PhoneCall, PhoneOutgoing, Megaphone, PhoneMissed } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Card, SectionHeader } from '@/components/portal-ui';
 import type { VoiceCall } from '@/types/agent';
+import type { LlamadasFiltro } from './page';
 import CallsSearch      from '../../CallsSearch';
 import DownloadCallsCSV from '../../DownloadCallsCSV';
 import LeadsTabsSection from '../../llamadas/entrantes/LeadsTabsSection';
 import OutboundToggles  from '../../OutboundToggles';
 import OutboundSection  from '../../OutboundSection';
 
-type Tab = 'entrantes' | 'salientes';
-
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
 interface Props {
   token:             string;
+  filtro:            LlamadasFiltro;
   isPro:             boolean;
   businessName:      string;
   agentName?:        string;
@@ -37,20 +38,41 @@ interface Props {
   agentNameById?:    Record<string, string>;
 }
 
+type PillDef = {
+  id:       LlamadasFiltro;
+  label:    string;
+  icon:     React.ElementType;
+  visible:  boolean;
+  color:    string; // active bg color
+};
+
 export default function LlamadasTabs({
-  token, isPro, businessName, agentName,
+  token, filtro,
+  isPro, businessName, agentName,
   calls, leads, orders, appts,
   showLeads, showOrders, showAppts,
   showOutbound, initOutbound, initMissedCall,
   contactOutbound, outboundCampaigns, outboundAgents,
   callerNames, agentNameById,
 }: Props) {
-  const [tab, setTab] = useState<Tab>('entrantes');
+  const router   = useRouter();
+  const pathname = usePathname();
+
+  const setFiltro = (f: LlamadasFiltro) => {
+    router.push(`${pathname}?filtro=${f}`);
+  };
+
+  const pills: PillDef[] = ([
+    { id: 'entrantes' as LlamadasFiltro, label: 'Entrantes', icon: PhoneCall,     visible: true,           color: '#6C3BFF' },
+    { id: 'salientes' as LlamadasFiltro, label: 'Salientes', icon: PhoneOutgoing, visible: showOutbound,   color: '#a855f7' },
+    { id: 'campanas'  as LlamadasFiltro, label: 'Campañas',  icon: Megaphone,     visible: showOutbound,   color: '#a855f7' },
+    { id: 'recovery'  as LlamadasFiltro, label: 'Recovery',  icon: PhoneMissed,   visible: initMissedCall, color: '#f59e0b' },
+  ] as PillDef[]).filter(p => p.visible);
 
   const pulseText = useMemo(() => {
     if (!calls.length || !agentName) return null;
-    const recent   = calls[0];
-    const minsAgo  = Math.floor((Date.now() - new Date(recent.created_at).getTime()) / 60000);
+    const recent  = calls[0];
+    const minsAgo = Math.floor((Date.now() - new Date(recent.created_at).getTime()) / 60000);
     if (minsAgo > 120) return null;
     if (minsAgo < 2)   return `${agentName} está atendiendo una llamada`;
     if (minsAgo < 60)  return `${agentName} atendió su última llamada hace ${minsAgo} min`;
@@ -60,38 +82,36 @@ export default function LlamadasTabs({
   return (
     <div className="flex flex-col gap-5">
 
-      {/* Tab selector */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setTab('entrantes')}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-          style={tab === 'entrantes'
-            ? { background: '#6C3BFF', color: '#fff', border: 'none' }
-            : { background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)', cursor: 'pointer' }}
-        >
-          <PhoneCall size={14} />
-          Entrantes
-          {calls.length > 0 && (
-            <span className="text-xs tabular-nums" style={{ opacity: 0.8 }}>{calls.length >= 200 ? '200+' : calls.length}</span>
-          )}
-        </button>
-
-        {showOutbound && (
-          <button
-            onClick={() => setTab('salientes')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-            style={tab === 'salientes'
-              ? { background: '#a855f7', color: '#fff', border: 'none' }
-              : { background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)', cursor: 'pointer' }}
-          >
-            <PhoneOutgoing size={14} />
-            Salientes
-          </button>
-        )}
-      </div>
+      {/* Top-level pill filter */}
+      {pills.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {pills.map(pill => {
+            const Icon    = pill.icon;
+            const active  = filtro === pill.id;
+            return (
+              <button
+                key={pill.id}
+                onClick={() => setFiltro(pill.id)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={active
+                  ? { background: pill.color, color: '#fff', border: 'none' }
+                  : { background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)', cursor: 'pointer' }}
+              >
+                <Icon size={14} />
+                {pill.label}
+                {pill.id === 'entrantes' && calls.length > 0 && (
+                  <span className="text-xs tabular-nums" style={{ opacity: 0.8 }}>
+                    {calls.length >= 200 ? '200+' : calls.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Entrantes */}
-      {tab === 'entrantes' && (
+      {filtro === 'entrantes' && (
         <>
           {/* Live pulse */}
           {pulseText && (
@@ -148,7 +168,7 @@ export default function LlamadasTabs({
       )}
 
       {/* Salientes */}
-      {tab === 'salientes' && showOutbound && (
+      {filtro === 'salientes' && showOutbound && (
         <>
           <div id="llamadas-sal">
             <OutboundToggles
@@ -167,6 +187,39 @@ export default function LlamadasTabs({
             />
           )}
         </>
+      )}
+
+      {/* Campañas */}
+      {filtro === 'campanas' && showOutbound && (
+        <>
+          <div id="llamadas-sal">
+            <OutboundToggles
+              token={token}
+              initOutbound={initOutbound}
+              initMissedCallRecovery={initMissedCall}
+            />
+          </div>
+          {initOutbound && (
+            <OutboundSection
+              token={token}
+              initialContacts={contactOutbound}
+              initialCampaigns={outboundCampaigns}
+              agents={outboundAgents}
+              initialTab="campanas"
+            />
+          )}
+        </>
+      )}
+
+      {/* Recovery */}
+      {filtro === 'recovery' && initMissedCall && (
+        <div id="llamadas-sal">
+          <OutboundToggles
+            token={token}
+            initOutbound={initOutbound}
+            initMissedCallRecovery={initMissedCall}
+          />
+        </div>
       )}
 
     </div>

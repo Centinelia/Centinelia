@@ -5,10 +5,22 @@ import { notFound }          from 'next/navigation';
 import type { VoiceCall }    from '@/types/agent';
 import LlamadasTabs          from './LlamadasTabs';
 
-interface Props { params: Promise<{ token: string }> }
+export type LlamadasFiltro = 'entrantes' | 'salientes' | 'campanas' | 'recovery';
 
-export default async function OficinaLlamadasPage({ params }: Props) {
-  const { token } = await params;
+interface Props {
+  params:       Promise<{ token: string }>;
+  searchParams: Promise<{ filtro?: string }>;
+}
+
+export default async function OficinaLlamadasPage({ params, searchParams }: Props) {
+  const { token }  = await params;
+  const { filtro: filtroRaw } = await searchParams;
+
+  const filtro: LlamadasFiltro =
+    filtroRaw === 'salientes' || filtroRaw === 'campanas' || filtroRaw === 'recovery'
+      ? (filtroRaw as LlamadasFiltro)
+      : 'entrantes';
+
   const supabase  = createAdminClient();
 
   const { data: agent } = await supabase
@@ -33,13 +45,30 @@ export default async function OficinaLlamadasPage({ params }: Props) {
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
 
+  // Fetch data conditionally based on active filter tab to avoid unnecessary queries
+  const needsInbound  = filtro === 'entrantes';
+  const needsOutbound = filtro === 'salientes' || filtro === 'campanas';
+
   const [callsRes, leadsRes, ordersRes, apptsRes, contactsRes, campaignsRes] = await Promise.all([
-    supabase.from('voice_calls').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(200),
-    showLeads    ? supabase.from('leads_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })        : Promise.resolve({ data: [] }),
-    showOrders   ? supabase.from('orders_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })       : Promise.resolve({ data: [] }),
-    showAppts    ? supabase.from('appointments_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-    showOutbound ? supabase.from('outbound_contacts').select('id,nombre,telefono,motivo,source,status,fail_count,created_at').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [] }),
-    showOutbound ? supabase.from('outbound_campaigns').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+    // Always fetch calls for entrantes (default); skip for outbound-only tabs
+    needsInbound
+      ? supabase.from('voice_calls').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(200)
+      : Promise.resolve({ data: [] }),
+    showLeads && needsInbound
+      ? supabase.from('leads_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showOrders && needsInbound
+      ? supabase.from('orders_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showAppts && needsInbound
+      ? supabase.from('appointments_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showOutbound && needsOutbound
+      ? supabase.from('outbound_contacts').select('id,nombre,telefono,motivo,source,status,fail_count,created_at').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(500)
+      : Promise.resolve({ data: [] }),
+    showOutbound && needsOutbound
+      ? supabase.from('outbound_campaigns').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
   ]);
 
   const calls    = (callsRes.data  ?? []) as VoiceCall[];
@@ -81,6 +110,7 @@ export default async function OficinaLlamadasPage({ params }: Props) {
     <div id="of-llamadas" className="flex flex-col gap-5 p-4 md:p-6">
       <LlamadasTabs
         token={token}
+        filtro={filtro}
         isPro={agent.plan === 'pro'}
         businessName={agent.business_name}
         agentName={(agent as any).agent_name ?? agent.business_name}
