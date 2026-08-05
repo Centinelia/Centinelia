@@ -15,7 +15,7 @@ const DEMO_EMAILS = ['demo@centinelia.mx', 'centinelia.dev@gmail.com'];
 
 // ── Modelo de costos (todo en USD, convertimos al final) ────────────────────
 // Voz por minuto incluye Vapi + Twilio + ElevenLabs + Deepgram (aprox).
-// Estos números son estimaciones — ajusta VOICE_COST_USD_PER_MIN si la
+// Estos números son estimaciones. Ajusta VOICE_COST_USD_PER_MIN si la
 // realidad de tu factura Vapi/Twilio difiere mucho.
 const VOICE_COST_USD_PER_MIN = 0.13;
 const CLAUDE_COST_USD_PER_OP = 0.0024;

@@ -39,7 +39,7 @@ const STATUS_OPTS = [
 
 const SORT_OPTS = [
   { value: 'recent', label: 'Más recientes' },
-  { value: 'name',   label: 'A–Z'           },
+  { value: 'name',   label: 'A-Z'           },
 ];
 
 // ── URL helper ────────────────────────────────────────────────────────────────
@@ -61,34 +61,34 @@ function AgentRowItem({ agent }: { agent: AgentRow }) {
   return (
     <Link
       href={`/admin/agentes/${agent.id}`}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:border-[rgba(108,59,255,0.35)]"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white transition-colors hover:bg-gray-50"
+      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
     >
       {/* Active indicator */}
       <div className="flex-shrink-0">
         {agent.active
-          ? <CheckCircle2 size={14} style={{ color: '#22c55e' }} />
-          : <XCircle      size={14} style={{ color: '#6b7280' }} />}
+          ? <CheckCircle2 size={14} style={{ color: '#10B981' }} />
+          : <XCircle      size={14} style={{ color: '#6B7280' }} />}
       </div>
 
       {/* Business + client */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
+          <span className="text-[13px] font-semibold truncate" style={{ color: '#111827' }}>
             {agent.business_name}
           </span>
           {agent.billing_status === 'pago_fallido' && (
             <span title="Pago fallido" className="flex-shrink-0">
-              <AlertTriangle size={11} style={{ color: '#ef4444' }} />
+              <AlertTriangle size={11} style={{ color: '#EF4444' }} />
             </span>
           )}
         </div>
-        <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+        <div className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>
           {agent.client_name}{agent.phone_number ? ` · ${agent.phone_number}` : ''}
         </div>
       </div>
 
-      <ArrowRight size={12} className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }} />
+      <ArrowRight size={12} className="flex-shrink-0" style={{ color: '#9CA3AF' }} />
     </Link>
   );
 }
@@ -144,17 +144,20 @@ export default function AgentesClient({
         {/* Row 1: search + sort */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: 'var(--c-text-3)' }} />
+            <Search
+              size={13}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: '#9CA3AF' }}
+            />
             <input
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && commitSearch()}
               onBlur={commitSearch}
-              placeholder="Buscar por negocio, cliente o número… (Enter)"
+              placeholder="Buscar por negocio, cliente o número... (Enter)"
               disabled={pending}
-              className="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm outline-none"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+              className="w-full pl-8 pr-3 py-2 rounded-lg text-[13px] outline-none"
+              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
             />
           </div>
 
@@ -162,8 +165,8 @@ export default function AgentesClient({
             value={currentFilters.sort}
             onChange={e => navigate({ sort: e.target.value })}
             disabled={pending}
-            className="px-3 py-2.5 rounded-xl text-sm outline-none cursor-pointer"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', colorScheme: 'dark' }}
+            className="px-2.5 py-1.5 rounded-lg text-[13px] outline-none cursor-pointer"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
           >
             {SORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -171,23 +174,34 @@ export default function AgentesClient({
 
         {/* Row 2: status pills — desktop */}
         <div className="hidden sm:flex items-center gap-2 flex-wrap">
-          <div className="flex gap-1 p-1 rounded-xl"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          <div
+            className="inline-flex gap-1 p-1 rounded-lg"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
+          >
             {STATUS_OPTS.map(o => {
               const active = currentFilters.status === o.value;
               return (
-                <button key={o.value} onClick={() => navigate({ status: o.value })} disabled={pending}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
+                <button
+                  key={o.value}
+                  onClick={() => navigate({ status: o.value })}
+                  disabled={pending}
+                  className="px-3 py-1 rounded-md text-[12px] font-medium transition-colors"
+                  style={{
+                    background: active ? '#6C3BFF' : 'transparent',
+                    color: active ? '#FFFFFF' : '#374151',
+                  }}
+                >
                   {o.label}
                 </button>
               );
             })}
           </div>
           {hasFilters && (
-            <button onClick={clearAll}
-              className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-              style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+            <button
+              onClick={clearAll}
+              className="inline-flex items-center gap-1 ml-auto text-[12px] font-medium px-2.5 py-1 rounded-lg transition-colors hover:bg-gray-50"
+              style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+            >
               <X size={11} /> Limpiar filtros
             </button>
           )}
@@ -198,26 +212,32 @@ export default function AgentesClient({
           <div className="relative">
             <button
               onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium"
               style={{
-                background: 'var(--c-surface)',
-                border: `1px solid ${currentFilters.status ? '#6C3BFF' : 'var(--c-border)'}`,
-                color: currentFilters.status ? '#9B6DFF' : 'var(--c-text-2)',
-              }}>
+                background: '#FFFFFF',
+                border: `1px solid ${currentFilters.status ? '#6C3BFF' : '#E5E7EB'}`,
+                color: currentFilters.status ? '#6C3BFF' : '#374151',
+              }}
+            >
               Estatus: {STATUS_OPTS.find(o => o.value === currentFilters.status)?.label ?? 'Todos'}
               <ChevronDown size={11} />
             </button>
             {openDropdown === 'status' && (
-              <div className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-50 min-w-[130px]"
-                style={{ background: '#1e0d45', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+              <div
+                className="absolute top-full left-0 mt-1 rounded-lg overflow-hidden z-50 min-w-[140px] bg-white"
+                style={{ border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08)' }}
+              >
                 {STATUS_OPTS.map(o => (
-                  <button key={o.value}
+                  <button
+                    key={o.value}
                     onClick={() => { navigate({ status: o.value }); setOpenDropdown(null); }}
-                    className="w-full text-left px-4 py-2.5 text-xs transition-colors"
+                    className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-gray-50"
                     style={{
-                      color: currentFilters.status === o.value ? '#9B6DFF' : 'rgba(255,255,255,0.7)',
-                      background: currentFilters.status === o.value ? 'rgba(108,59,255,0.15)' : 'transparent',
-                    }}>
+                      color: currentFilters.status === o.value ? '#6C3BFF' : '#374151',
+                      background: currentFilters.status === o.value ? '#F5F0FF' : 'transparent',
+                      fontWeight: currentFilters.status === o.value ? 500 : 400,
+                    }}
+                  >
                     {o.label}
                   </button>
                 ))}
@@ -226,16 +246,18 @@ export default function AgentesClient({
           </div>
 
           {hasFilters && (
-            <button onClick={clearAll}
-              className="flex items-center gap-1 ml-auto text-xs px-2.5 py-1 rounded-lg"
-              style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+            <button
+              onClick={clearAll}
+              className="inline-flex items-center gap-1 ml-auto text-[12px] font-medium px-2.5 py-1 rounded-lg"
+              style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+            >
               <X size={11} /> Limpiar
             </button>
           )}
         </div>
 
         {/* Result count */}
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[12px]" style={{ color: '#6B7280' }}>
           {hasFilters
             ? `${totalCount.toLocaleString('es-MX')} resultado${totalCount !== 1 ? 's' : ''}`
             : `${totalCount.toLocaleString('es-MX')} empleado${totalCount !== 1 ? 's' : ''} en total`}
@@ -245,9 +267,11 @@ export default function AgentesClient({
 
       {/* ── Agent list ── */}
       {agents.length === 0 ? (
-        <div className="p-12 rounded-xl text-center"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+        <div
+          className="p-12 rounded-xl text-center bg-white"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        >
+          <p className="text-[13px]" style={{ color: '#6B7280' }}>
             {hasFilters ? 'Sin resultados para los filtros aplicados' : 'Sin empleados configurados'}
           </p>
         </div>
@@ -259,26 +283,25 @@ export default function AgentesClient({
 
       {/* ── Pagination ── */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-5 pt-4"
-          style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="flex items-center justify-between mt-5 pt-4" style={{ borderTop: '1px solid #E5E7EB' }}>
           <button
             onClick={() => navigate({ page: page - 1 })}
             disabled={page <= 1 || pending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             <ChevronLeft size={13} /> Anterior
           </button>
 
-          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+          <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
             {page} / {totalPages}
           </span>
 
           <button
             onClick={() => navigate({ page: page + 1 })}
             disabled={page >= totalPages || pending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             Siguiente <ChevronRight size={13} />
           </button>

@@ -24,103 +24,105 @@ export function VersionesTable({ rows }: { rows: Row[] }) {
   return (
     <>
       <div
-        className="rounded-lg overflow-hidden border"
-        style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface)' }}
+        className="rounded-xl overflow-hidden bg-white"
+        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
       >
-        <table className="w-full text-sm">
-          <thead
-            className="text-xs uppercase tracking-wide"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}
-          >
+        <table className="w-full text-[13px]">
+          <thead style={{ background: '#F9FAFB' }}>
             <tr>
-              <th className="text-left px-4 py-3">Meerkat</th>
-              <th className="text-left px-4 py-3">Rollout activo</th>
-              <th className="text-left px-4 py-3">Fallback</th>
-              <th className="text-left px-4 py-3">Última activación</th>
-              <th className="text-left px-4 py-3">Agentes</th>
-              <th className="text-left px-4 py-3">Disponibles</th>
-              <th className="text-right px-4 py-3">Acciones</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Meerkat</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Rollout activo</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Fallback</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Última activación</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Agentes</th>
+              <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Disponibles</th>
+              <th className="text-right px-4 py-3 text-[11px] uppercase tracking-wider font-medium" style={{ color: '#6B7280' }}>Acciones</th>
             </tr>
           </thead>
-          <tbody style={{ color: 'var(--c-text)' }}>
-            {rows.map(r => (
-              <tr key={r.meerkat_id} className="border-t" style={{ borderColor: 'var(--c-divider)' }}>
-                <td className="px-4 py-3 font-medium" style={{ color: 'var(--c-text)' }}>{r.meerkat_id}</td>
-                <td className="px-4 py-3 text-xs">
+          <tbody>
+            {rows.map((r, i) => (
+              <tr
+                key={r.meerkat_id}
+                className="transition-colors hover:bg-gray-50"
+                style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+              >
+                <td className="px-4 py-2.5 font-medium" style={{ color: '#111827' }}>{r.meerkat_id}</td>
+                <td className="px-4 py-2.5">
                   {r.rollouts.length === 0 ? (
-                    <span style={{ color: 'var(--c-text-4)' }}>sin flags</span>
+                    <span className="text-[12px]" style={{ color: '#9CA3AF' }}>sin flags</span>
                   ) : (
                     <span className="inline-flex flex-wrap gap-1">
-                      {r.rollouts.map(ro => (
-                        <a
-                          key={ro.version}
-                          href={`/admin/flags/${encodeURIComponent(`meerkat.${r.meerkat_id}.v${ro.version}`)}`}
-                          className="inline-block px-1.5 py-0.5 rounded font-mono"
-                          style={
-                            ro.killed
-                              ? { background: 'rgba(220,38,38,0.15)', color: '#DC2626', textDecoration: 'line-through' }
-                              : ro.pct === 100
-                                ? { background: 'rgba(16,185,129,0.15)', color: '#34d399' }
-                                : ro.pct > 0
-                                  ? { background: 'rgba(108,59,255,0.15)', color: '#9B6DFF' }
-                                  : { background: 'var(--c-surface-2)', color: 'var(--c-text-4)' }
-                          }
-                        >
-                          v{ro.version}:{ro.pct}%
-                        </a>
-                      ))}
+                      {r.rollouts.map(ro => {
+                        const style = ro.killed
+                          ? { background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA', textDecoration: 'line-through' as const }
+                          : ro.pct === 100
+                            ? { background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                            : ro.pct > 0
+                              ? { background: '#F3F0FF', color: '#6C3BFF', border: '1px solid #DDD6FE' }
+                              : { background: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' };
+                        return (
+                          <a
+                            key={ro.version}
+                            href={`/admin/flags/${encodeURIComponent(`meerkat.${r.meerkat_id}.v${ro.version}`)}`}
+                            className="inline-block px-2 py-0.5 rounded-md font-mono text-[11px] font-medium"
+                            style={style}
+                          >
+                            v{ro.version}:{ro.pct}%
+                          </a>
+                        );
+                      })}
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-2.5">
                   <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-medium"
-                    style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"
+                    style={{ background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB' }}
                   >
                     <GitBranch className="w-3 h-3" /> v{r.active_version}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
+                <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B7280' }}>
                   {new Date(r.activated_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
-                  {r.activated_by && <span style={{ color: 'var(--c-text-4)' }}> · {r.activated_by}</span>}
+                  {r.activated_by && <span style={{ color: '#9CA3AF' }}> · {r.activated_by}</span>}
                 </td>
-                <td className="px-4 py-3" style={{ color: 'var(--c-text-2)' }}>
+                <td className="px-4 py-2.5 tabular-nums" style={{ color: '#111827' }}>
                   {r.agent_count}
                   {r.pinned_count > 0 && (
-                    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}> ({r.agent_count - r.pinned_count} latest, {r.pinned_count} pinned)</span>
+                    <span className="text-[12px]" style={{ color: '#9CA3AF' }}> ({r.agent_count - r.pinned_count} latest, {r.pinned_count} pinned)</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
+                <td className="px-4 py-2.5 text-[12px]">
                   {r.available_versions.map(v => (
                     <span
                       key={v}
-                      className="inline-block px-1.5 py-0.5 mr-1 rounded"
+                      className="inline-block px-1.5 py-0.5 mr-1 rounded-md font-mono font-medium"
                       style={
                         v === r.active_version
-                          ? { background: 'rgba(16,185,129,0.15)', color: '#34d399' }
-                          : { background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }
+                          ? { background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                          : { background: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }
                       }
                     >
                       v{v}
                     </span>
                   ))}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-2.5 text-right whitespace-nowrap">
                   {r.available_versions.length > 1 && (
                     <button
                       onClick={() => setModalRow(r)}
-                      className="text-xs px-2 py-1 rounded mr-1 hover:opacity-80 transition-opacity"
-                      style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                      className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-lg mr-1 transition-colors hover:bg-gray-100"
+                      style={{ border: '1px solid #E5E7EB', color: '#374151', background: '#FFFFFF' }}
                     >
-                      Cambiar versión <ArrowRight className="inline w-3 h-3" />
+                      Cambiar versión <ArrowRight className="w-3 h-3" />
                     </button>
                   )}
                   <button
                     onClick={() => setHistoryMeerkat(r.meerkat_id)}
-                    className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
-                    style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                    className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-lg transition-colors hover:bg-gray-100"
+                    style={{ border: '1px solid #E5E7EB', color: '#374151', background: '#FFFFFF' }}
                   >
-                    <History className="inline w-3 h-3" /> Historial
+                    <History className="w-3 h-3" /> Historial
                   </button>
                 </td>
               </tr>

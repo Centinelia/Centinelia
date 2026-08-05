@@ -45,10 +45,10 @@ export default async function LlamadasPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Llamadas</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Llamadas</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
           {totalCount.toLocaleString('es-MX')} llamada{totalCount !== 1 ? 's' : ''} en total
         </p>
       </div>
