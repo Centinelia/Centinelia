@@ -15,14 +15,19 @@ type TypeFilter   = 'todos' | 'automatico' | 'personalizado';
 type PlanFilter   = 'todos' | 'pro';
 
 export interface ContratoRow {
+  /** ID del agente ancla (primer agente creado del cliente, o el que tiene contract_text custom). */
   id: string;
   business_name: string;
   client_name: string;
   plan: string;
   portal_token: string | null;
+  /** Email de portal = clave del cliente. Null solo para demos/standalone legacy. */
+  portal_email: string | null;
   has_custom: boolean;
   contract_accepted_at: string | null;
   active: boolean;
+  /** Cantidad de empleados en la cuenta (voice_agents con este portal_email). */
+  employee_count: number;
 }
 
 interface Props {
@@ -202,6 +207,9 @@ export default function ContratosClient({ list, signedCount, pendingCount, custo
                 </div>
                 <div className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
                   {agent.client_name}
+                  {agent.employee_count > 1 && (
+                    <span> · {agent.employee_count} empleados</span>
+                  )}
                   {signedDate && <span style={{ color: '#10B981' }}> · Firmado {signedDate}</span>}
                   {!signed && <span style={{ color: '#F59E0B' }}> · Pendiente de firma</span>}
                 </div>

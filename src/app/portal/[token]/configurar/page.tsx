@@ -29,7 +29,6 @@ import HeartbeatEditor               from '../HeartbeatEditor';
 import TrustStageSelector           from '../TrustStageSelector';
 import RoleEmailLearningSection     from '../RoleEmailLearningSection';
 import JornadaSection               from '../JornadaSection';
-import ContractSection              from '../ContractSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import InvoicingEmailEditor         from '../InvoicingEmailEditor';
 import CallForwardingSection from '../CallForwardingSection';
@@ -721,16 +720,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             </div>
 
             {/* ── Tab 4: Marca y ajustes ────────────────────────────────── */}
+            {/* El contrato de servicios ya no vive aqui: es per-cliente y se
+                gestiona en /portal/[token]?tab=cuenta#contrato. Ver
+                [[contract-at-organization-level]]. */}
             <div className="flex flex-col gap-5">
-
-              <div id="contrato" style={SCROLL_STYLE}>
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={(agent as any).contract_accepted_at ?? null}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
-              </div>
 
               <Card border elevated={false} padding="sm">
                 <ResyncButton token={token} />

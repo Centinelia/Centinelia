@@ -111,6 +111,25 @@ export async function POST(req: NextRequest) {
         .from('organizations')
         .upsert({ portal_email: inheritedPortalEmail, ...orgPatch }, { onConflict: 'portal_email' });
     }
+
+    // 1c. Contrato de servicios: si el cliente ya firmo (organizations.contract_accepted_at),
+    // heredarlo al nuevo empleado para que el codigo legacy que aun lee de
+    // voice_agents.contract_accepted_at no muestre "pendiente" incorrectamente.
+    // Ver [[contract-at-organization-level]].
+    const { data: orgContract } = await supabase
+      .from('organizations')
+      .select('contract_accepted_at, contract_ip')
+      .eq('portal_email', inheritedPortalEmail)
+      .maybeSingle();
+    if (orgContract?.contract_accepted_at) {
+      await supabase
+        .from('voice_agents')
+        .update({
+          contract_accepted_at: orgContract.contract_accepted_at,
+          contract_ip:          orgContract.contract_ip ?? null,
+        })
+        .eq('id', agent.id);
+    }
   }
 
   // 2. Create Vapi assistant — enrichWithOrgData in sync.ts will pull from organizations
