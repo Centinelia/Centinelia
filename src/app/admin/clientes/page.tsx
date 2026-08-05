@@ -11,6 +11,7 @@ interface Props {
 
 type AgentRow = {
   id: string;
+  agent_name: string | null;
   business_name: string;
   plan: string;
   active: boolean;
@@ -28,6 +29,8 @@ type ClientGroup = {
   agents: AgentRow[];
   acct_minutes_used: number | null;
   acct_minutes_included: number | null;
+  acct_ops_used: number;
+  acct_ops_limit: number;
 };
 
 export default async function ClientesPage({ searchParams }: Props) {
@@ -39,7 +42,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap')
+    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap, ai_ops_used, ai_ops_limit')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -66,10 +69,16 @@ export default async function ClientesPage({ searchParams }: Props) {
         agents:                [],
         acct_minutes_used:     null,
         acct_minutes_included: null,
+        acct_ops_used:         0,
+        acct_ops_limit:        0,
       });
     }
-    map.get(key)!.agents.push({
+    const group = map.get(key)!;
+    group.acct_ops_used  += ((agent as unknown as { ai_ops_used?:  number | null }).ai_ops_used  ?? 0);
+    group.acct_ops_limit += ((agent as unknown as { ai_ops_limit?: number | null }).ai_ops_limit ?? 0);
+    group.agents.push({
       id:                agent.id,
+      agent_name:        (agent as FetchedAgent & { agent_name?: string | null }).agent_name ?? null,
       business_name:     agent.business_name,
       plan:              agent.plan,
       active:            agent.active,

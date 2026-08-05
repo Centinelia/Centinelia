@@ -8,6 +8,7 @@ import {
   Eye, EyeOff, Check, X, Plus, Users,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
+import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
 import DailyCapEditor from '../agentes/[id]/DailyCapEditor';
 import { Pagination } from '@/components/admin/Pagination';
 
@@ -32,6 +33,8 @@ type ClientGroup = {
   agents: AgentRow[];
   acct_minutes_used: number | null;
   acct_minutes_included: number | null;
+  acct_ops_used: number;
+  acct_ops_limit: number;
 };
 
 type CredForm = {
@@ -441,18 +444,26 @@ export default function ClientesClient({
                     );
                   })}
 
-                  {/* Account minutes adjuster + daily cap */}
+                  {/* Pool de la cuenta: minutos + tareas en 2 columnas */}
                   {client.agents[0] && (
                     <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid #F3F4F6' }}>
                       <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
-                        Pool de minutos de la cuenta
+                        Pool de la cuenta
                       </p>
-                      <MinutesAdjuster
-                        agentId={client.agents[0].id}
-                        minutesUsed={client.acct_minutes_used ?? 0}
-                        minutesIncluded={client.acct_minutes_included ?? 0}
-                        isAccountPool={client.acct_minutes_included != null}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <MinutesAdjuster
+                          agentId={client.agents[0].id}
+                          minutesUsed={client.acct_minutes_used ?? 0}
+                          minutesIncluded={client.acct_minutes_included ?? 0}
+                          isAccountPool={client.acct_minutes_included != null}
+                        />
+                        <TasksAdjuster
+                          agentId={client.agents[0].id}
+                          opsUsed={client.acct_ops_used}
+                          opsLimit={client.acct_ops_limit}
+                          isAccountPool={!!client.portal_email}
+                        />
+                      </div>
                       <DailyCapEditor
                         agentId={client.agents[0].id}
                         initialCap={client.agents[0].daily_minutes_cap}
