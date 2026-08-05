@@ -67,7 +67,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   return (
     <nav
       aria-label="Navegación principal"
-      className="flex w-[260px] shrink-0 flex-col self-stretch border-r border-neutral-200/80 bg-[#FAFAFB]"
+      className="flex w-[260px] shrink-0 flex-col self-stretch border-r border-neutral-200/80 bg-[#FAFAFB] pb-20"
     >
       {/* Lista de áreas */}
       <ul className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
