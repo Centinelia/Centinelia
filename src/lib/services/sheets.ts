@@ -250,6 +250,58 @@ export async function hasAnyMapping(portalEmail: string): Promise<boolean> {
 }
 
 /**
+ * Fire-and-forget helper: syncs a newly-created lead to Google Sheets when
+ * the agent has `sync_leads_to_sheets = true` and a 'leads' mapping exists.
+ *
+ * Contract:
+ * - Never throws, never propagates a rejection — safe for `void syncLeadToSheets(...)`.
+ * - Does not block the caller; callers should fire with `void`.
+ * - A headers_mismatch (lowercase keys vs Title-Case headers) is caught and
+ *   logged — the customer is expected to configure their sheet headers to match.
+ */
+export async function syncLeadToSheets(
+  portalEmail: string,
+  agentId: string,
+  args: Record<string, string | undefined>,
+): Promise<void> {
+  try {
+    const sb = createAdminClient();
+
+    const { data: agent } = await sb
+      .from('voice_agents')
+      .select('sync_leads_to_sheets')
+      .eq('id', agentId)
+      .single();
+
+    if (!agent?.sync_leads_to_sheets) return;
+
+    const mapping = await getMapping(portalEmail, 'leads');
+    if (!mapping) return;
+
+    const result = await appendRow(mapping.id, {
+      nombre:   args.nombre   ?? '',
+      telefono: args.telefono ?? '',
+      email:    args.email    ?? '',
+      notas:    args.notas    ?? '',
+      fuente:   'voz',
+      fecha:    new Date().toISOString(),
+    });
+
+    if (!result.ok) {
+      // Log visibility without a schema dependency — agent_learnings is confirmed to exist.
+      await sb.from('agent_learnings').insert({
+        agent_id: agentId,
+        source:   'sheets_sync_fail',
+        content:  `crear_lead sync a Sheets fallo: ${result.reason}${result.detail ? ` — ${result.detail}` : ''}`,
+      });
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[sheets sync leads]', msg);
+  }
+}
+
+/**
  * Appends a data row to the mapped spreadsheet tab, mapping object keys to
  * the stored header order. Unknown keys cause an early headers_mismatch error.
  *

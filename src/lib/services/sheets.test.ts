@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMapping, refreshHeaders, appendRow, updateRow, readRange, searchInTab, hasAnyMapping } from './sheets';
+import { getMapping, refreshHeaders, appendRow, updateRow, readRange, searchInTab, hasAnyMapping, syncLeadToSheets } from './sheets';
 
 vi.mock('@/lib/connectors/sheets-client');
 vi.mock('@/lib/supabase/admin');
@@ -460,5 +460,148 @@ describe('updateRow', () => {
       expect(res.reason).toBe('sheets_api_error');
       expect(res.detail).toContain('Write permission denied');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// syncLeadToSheets
+// ---------------------------------------------------------------------------
+describe('syncLeadToSheets', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('calls appendRow when agent.sync_leads_to_sheets=true and mapping exists', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    // voice_agents query returns sync_leads_to_sheets=true
+    // sheets_mappings query (inside getMapping) returns a mapping
+    // appendRow's internal sheets_mappings query returns the mapping with headers
+    let callCount = 0;
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'voice_agents') {
+        return {
+          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: true } }) }) }),
+        };
+      }
+      if (table === 'sheets_mappings') {
+        callCount++;
+        if (callCount === 1) {
+          // getMapping call — returns mapping row
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: { id: 'm1', portal_email: 'org@example.com', spreadsheet_id: 's1', tab_name: 'Leads', headers: ['nombre', 'telefono', 'email', 'notas', 'fuente', 'fecha'] },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        // appendRow's internal mapping lookup
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({
+                data: { id: 'm1', portal_email: 'org@example.com', spreadsheet_id: 's1', tab_name: 'Leads', headers: ['nombre', 'telefono', 'email', 'notas', 'fuente', 'fecha'] },
+              }),
+            }),
+          }),
+        };
+      }
+      // agent_learnings — should not be called on success
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({ from: fromFn });
+
+    const appendFn = vi.fn().mockResolvedValue({
+      data: { updates: { updatedRange: 'Leads!A3:F3' } },
+    });
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      spreadsheets: { values: { append: appendFn } },
+    });
+
+    await syncLeadToSheets('org@example.com', 'agent-1', { nombre: 'X', telefono: '555' });
+
+    expect(appendFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: { values: [['X', '555', '', '', 'voz', expect.any(String)]] },
+      }),
+    );
+  });
+
+  it('does not call appendRow when sync_leads_to_sheets=false', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'voice_agents') {
+          return {
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: false } }) }) }),
+          };
+        }
+        return {};
+      }),
+    });
+    const appendFn = vi.fn();
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      spreadsheets: { values: { append: appendFn } },
+    });
+
+    await syncLeadToSheets('org@example.com', 'agent-1', { nombre: 'X' });
+
+    expect(appendFn).not.toHaveBeenCalled();
+  });
+
+  it('does not throw when appendRow throws (fail-safe)', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    let callCount = 0;
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'voice_agents') {
+          return {
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: true } }) }) }),
+          };
+        }
+        if (table === 'sheets_mappings') {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              select: () => ({
+                eq: () => ({
+                  eq: () => ({
+                    single: () => Promise.resolve({
+                      data: { id: 'm1', portal_email: 'org@example.com', spreadsheet_id: 's1', tab_name: 'Leads', headers: ['nombre'] },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          return {
+            select: () => ({
+              eq: () => ({
+                single: () => Promise.resolve({
+                  data: { id: 'm1', portal_email: 'org@example.com', spreadsheet_id: 's1', tab_name: 'Leads', headers: ['nombre'] },
+                }),
+              }),
+            }),
+          };
+        }
+        return { insert: vi.fn().mockResolvedValue({ error: null }) };
+      }),
+    });
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      spreadsheets: { values: { append: vi.fn().mockRejectedValue(new Error('Sheets API exploded')) } },
+    });
+
+    // Must resolve without throwing
+    await expect(syncLeadToSheets('org@example.com', 'agent-1', { nombre: 'X' })).resolves.toBeUndefined();
   });
 });

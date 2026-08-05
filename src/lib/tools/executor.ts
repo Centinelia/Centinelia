@@ -1039,9 +1039,10 @@ async function executeAgentToolInner(
       timeline: args.timeline ?? null, email: args.email ?? null, whatsapp: args.whatsapp ?? null,
       source: ctx.channel ?? 'chat',
     });
-    return error
-      ? { ok: false, error: 'No se pudo registrar el lead.' }
-      : { ok: true, message: `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.` };
+    if (error) return { ok: false, error: 'No se pudo registrar el lead.' };
+    // Fire-and-forget Sheets sync — never blocks, never propagates.
+    void sheetsService.syncLeadToSheets(portalEmail, agentId, args as Record<string, string | undefined>);
+    return { ok: true, message: `Lead de ${args.nombre ?? 'nuevo prospecto'} registrado. Visible en Llamadas.` };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
