@@ -99,17 +99,19 @@ export async function POST(req: NextRequest) {
   // Identify calling agent
   const { data: caller } = await supabase
     .from('voice_agents')
-    .select('portal_email, agent_name, business_name')
+    .select('portal_email, agent_name, business_name, features')
     .eq('id', agentId)
     .single();
 
   if (!caller?.portal_email) return fail('No se pudo identificar al agente consultante.');
 
+  const callerMeerkat = ((caller.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
+
   // Find sibling agents in the same account. knowledge_base es org-level
   // (commit e372013 lo movio a organizations), lo hidratamos aparte abajo.
   const { data: siblings, error: siblingsErr } = await supabase
     .from('voice_agents')
-    .select('id, agent_name, role, role_knowledge_base')
+    .select('id, agent_name, role, role_knowledge_base, features')
     .eq('portal_email', caller.portal_email)
     .eq('active', true)
     .neq('id', agentId);
@@ -134,6 +136,23 @@ export async function POST(req: NextRequest) {
   const target = siblings
     .map(s => ({ s, score: matchScore(rol, s) }))
     .sort((a, b) => b.score - a.score)[0].s;
+
+  const targetMeerkat = ((target.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
+
+  // Handoff DAG check: si Nazre deshabilitó explícitamente este edge, no permitimos.
+  const { isHandoffAllowed, recordMeerkatHandoff } = await import('@/lib/handoffs/dag');
+  const gate = await isHandoffAllowed({
+    supabase, fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+    tool: 'consultar_agente', portalEmail: caller.portal_email,
+  });
+  if (!gate.allowed) {
+    recordMeerkatHandoff({
+      supabase, portalEmail: caller.portal_email, fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+      tool: 'consultar_agente', fromAgentId: agentId, toAgentId: target.id, taskSummary: tarea,
+      outcome: 'rejected', metadata: { reason: gate.reason ?? 'edge_disabled' },
+    });
+    return fail(`Este canal de consulta está deshabilitado por configuración: ${gate.reason ?? 'edge disabled'}.`);
+  }
 
   // Build system prompt for the consulted agent
   const parts: string[] = [
@@ -207,6 +226,14 @@ export async function POST(req: NextRequest) {
           result:   { ok: true, target: target.agent_name || rol, answer: text },
           startedAt,
           meta:     { target_id: target.id, turn: turn + 1 },
+        });
+        recordMeerkatHandoff({
+          supabase, portalEmail: caller.portal_email,
+          fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+          tool: 'consultar_agente',
+          fromAgentId: agentId, toAgentId: target.id,
+          taskSummary: tarea, outcome: 'success',
+          metadata: { turns: turn + 1, session_id: sessionId },
         });
         return NextResponse.json({ results: [{ toolCallId, result: finalMsg }] });
       }

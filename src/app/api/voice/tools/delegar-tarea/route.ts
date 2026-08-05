@@ -332,11 +332,13 @@ export async function POST(req: NextRequest) {
   // Get calling agent
   const { data: caller } = await supabase
     .from('voice_agents')
-    .select('portal_email, agent_name, business_name')
+    .select('portal_email, agent_name, business_name, features')
     .eq('id', agentId)
     .single();
 
   if (!caller?.portal_email) return fail('No se pudo identificar al agente que delega.');
+
+  const callerMeerkat = ((caller.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
 
   // Find sibling agents. knowledge_base es org-level (commit e372013 lo movio
   // a organizations), lo hidratamos aparte abajo.
@@ -355,6 +357,25 @@ export async function POST(req: NextRequest) {
 
   const target = [...siblings]
     .sort((a, b) => matchScore(agente, b) - matchScore(agente, a))[0] as SiblingAgent;
+
+  const targetMeerkat = ((target.features as Record<string, unknown> | null)?.meerkat_role_id as string | null) ?? 'unknown';
+
+  // Handoff DAG check
+  const { isHandoffAllowed, recordMeerkatHandoff } = await import('@/lib/handoffs/dag');
+  const gate = await isHandoffAllowed({
+    supabase, fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+    tool: 'delegar_tarea', portalEmail: caller.portal_email,
+  });
+  if (!gate.allowed) {
+    recordMeerkatHandoff({
+      supabase, portalEmail: caller.portal_email,
+      fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+      tool: 'delegar_tarea', fromAgentId: agentId, toAgentId: target.id,
+      taskSummary: tarea, outcome: 'rejected',
+      metadata: { reason: gate.reason ?? 'edge_disabled' },
+    });
+    return fail(`Este canal de delegación está deshabilitado por configuración: ${gate.reason ?? 'edge disabled'}.`);
+  }
 
   // Hidrata knowledge_base org-level. client_email vive en voice_agents;
   // usamos el portal_email como fallback confiable para el correo del dueño.
@@ -458,6 +479,14 @@ export async function POST(req: NextRequest) {
       result:   { ok: true, awaiting_approval: true, pending_task_id: pendingId },
       startedAt,
       meta:     { target_agent: target.agent_name, target_id: target.id, stage: 'plan_awaiting_approval' },
+    });
+    recordMeerkatHandoff({
+      supabase, portalEmail: caller.portal_email,
+      fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+      tool: 'delegar_tarea', fromAgentId: agentId, toAgentId: target.id,
+      taskSummary: tarea, outcome: 'success',
+      agentTaskId: pendingId ?? null,
+      metadata: { stage: 'awaiting_approval', session_id: sessionId },
     });
     return NextResponse.json({
       results: [{
@@ -671,6 +700,14 @@ export async function POST(req: NextRequest) {
     result:   { ok: true, goal_met: goalMet, result: finalResult, target: agentLabel },
     startedAt,
     meta:     { target_agent: target.agent_name, target_id: target.id, task_id: taskId, iterations: goalIter, success_criteria: success_criteria ?? null },
+  });
+  recordMeerkatHandoff({
+    supabase, portalEmail: caller.portal_email,
+    fromMeerkat: callerMeerkat, toMeerkat: targetMeerkat,
+    tool: 'delegar_tarea', fromAgentId: agentId, toAgentId: target.id,
+    taskSummary: tarea, outcome: goalMet || finalResult ? 'success' : 'failed',
+    agentTaskId: taskId ?? null,
+    metadata: { stage: 'executed', goal_met: goalMet, iterations: goalIter, session_id: sessionId },
   });
   return NextResponse.json({
     results: [{
