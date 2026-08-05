@@ -1591,13 +1591,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  {/* Reporte mensual compacto — arriba del historial */}
-                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" right={<InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />} />}>
-                    <Card id="reporte-mensual" padding="sm">
-                      <MonthReportPicker token={token} />
-                    </Card>
-                  </PageSection>
-
                   <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
                     <Card id="historial" padding="md">
                       {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
@@ -1634,6 +1627,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
                           style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                       </div>
+                    </Card>
+                  </PageSection>
+
+                  {/* Reporte mensual compacto — abajo del historial */}
+                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" right={<InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />} />}>
+                    <Card id="reporte-mensual" padding="sm">
+                      <MonthReportPicker token={token} />
                     </Card>
                   </PageSection>
                 </div>
