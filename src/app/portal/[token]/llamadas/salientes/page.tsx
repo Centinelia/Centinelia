@@ -7,6 +7,7 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 import { PhoneOutgoing }               from 'lucide-react';
 import ThemeToggle                     from '@/components/ThemeToggle';
+import { PageContainer, PageSection, SectionHeader, Icon } from '@/components/portal-ui';
 
 import PortalLogout      from '../../PortalLogout';
 import PortalSidebar     from '../../PortalSidebar';
@@ -83,37 +84,61 @@ export default async function SalientesPage({ params, searchParams }: Props) {
     ? await isPortalV2Enabled((agent as any).portal_email)
     : false;
 
-  // Page body — shared between V1 and V2
-  const pageBody = (
+  // Shared inner children between V1 and V2
+  const outerContent = (
+    <>
+      <div id="llamadas-sal">
+        <OutboundToggles
+          token={token}
+          initOutbound={!!(features.outbound_calls)}
+          initMissedCallRecovery={!!(agent as any).missed_call_recovery}
+        />
+      </div>
+
+      {!!(features.outbound_calls) && (
+        <OutboundSection
+          token={token}
+          initialContacts={contactOutbound as any[]}
+          initialCampaigns={outboundCampaigns as any[]}
+          agents={allClientAgents
+            .filter(a => !!(a.features as any)?.outbound_calls)
+            .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+          initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
+        />
+      )}
+    </>
+  );
+
+  // V1 body — legacy inline styling
+  const pageBodyV1 = (
     <div className="flex-1 min-w-0 flex flex-col">
       <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
-
         <div className="flex items-center gap-2">
           <PhoneOutgoing size={15} style={{ color: '#a855f7' }} />
           <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
         </div>
-
-        <div id="llamadas-sal">
-          <OutboundToggles
-            token={token}
-            initOutbound={!!(features.outbound_calls)}
-            initMissedCallRecovery={!!(agent as any).missed_call_recovery}
-          />
-        </div>
-
-        {!!(features.outbound_calls) && (
-          <OutboundSection
-            token={token}
-            initialContacts={contactOutbound as any[]}
-            initialCampaigns={outboundCampaigns as any[]}
-            agents={allClientAgents
-              .filter(a => !!(a.features as any)?.outbound_calls)
-              .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
-            initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
-          />
-        )}
-
+        {outerContent}
       </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 body — design system
+  const pageBodyV2 = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <PageContainer>
+        <PageSection
+          heading={
+            <SectionHeader
+              as="h1"
+              title="Llamadas salientes"
+              right={<Icon icon={PhoneOutgoing} size={18} className="text-[var(--text-accent)]" />}
+            />
+          }
+        >
+          {outerContent}
+        </PageSection>
+      </PageContainer>
       <PortalFooter token={token} />
     </div>
   );
@@ -143,7 +168,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
                 <PortalLogout />
               </>
             }
-            main={pageBody}
+            main={pageBodyV2}
           />
         </div>
       </ThemeProvider>
@@ -181,7 +206,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-          {pageBody}
+          {pageBodyV1}
         </div>
       </div>
     </ThemeProvider>

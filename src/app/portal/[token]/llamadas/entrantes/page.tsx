@@ -6,7 +6,7 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 import { PhoneCall }      from 'lucide-react';
-import { EmptyState }     from '@/components/ui/empty-state';
+import { EmptyState, PageContainer, PageSection, SectionHeader, Card, Badge, Icon } from '@/components/portal-ui';
 import ThemeToggle        from '@/components/ThemeToggle';
 import type { VoiceCall } from '@/types/agent';
 
@@ -99,8 +99,8 @@ export default async function EntrantesPage({ params }: Props) {
     ? await isPortalV2Enabled((agent as any).portal_email)
     : false;
 
-  // Page body — shared between V1 and V2
-  const pageBody = (
+  // V1 body — legacy inline styling
+  const pageBodyV1 = (
     <div className="flex-1 min-w-0 flex flex-col">
       <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
 
@@ -149,6 +149,60 @@ export default async function EntrantesPage({ params }: Props) {
     </div>
   );
 
+  // V2 body — design system
+  const pageBodyV2 = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <PageContainer>
+        <PageSection
+          heading={
+            <SectionHeader
+              as="h1"
+              title="Llamadas entrantes"
+              right={
+                <span className="inline-flex items-center gap-2">
+                  <Icon icon={PhoneCall} size={18} className="text-[var(--text-accent)]" />
+                  <Badge variant="info" size="sm">{calls.length}</Badge>
+                </span>
+              }
+            />
+          }
+        >
+          <Card id="registro">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[var(--fs-xs)] font-semibold uppercase tracking-[var(--tracking-wide)] text-[var(--text-tertiary)]">
+                Registro de llamadas
+              </p>
+              <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+            </div>
+            {calls.length === 0 ? (
+              <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
+            ) : (
+              <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} agentName={(agent as any).agent_name ?? agent.business_name} />
+            )}
+          </Card>
+
+          {(showLeads || showOrders || showAppts) && (
+            <div className="flex flex-col gap-3">
+              <p className="text-[var(--fs-xs)] text-[var(--text-tertiary)]">Capturas desde el inicio</p>
+              <LeadsTabsSection
+                token={token}
+                isPro={agent.plan === 'pro'}
+                leads={leads as any}
+                orders={orders as any}
+                appts={appts as any}
+                showLeads={showLeads}
+                showOrders={showOrders}
+                showAppts={showAppts}
+                businessName={agent.business_name}
+              />
+            </div>
+          )}
+        </PageSection>
+      </PageContainer>
+      <PortalFooter token={token} />
+    </div>
+  );
+
   // V2 layout
   if (v2Enabled) {
     return (
@@ -174,7 +228,7 @@ export default async function EntrantesPage({ params }: Props) {
                 <PortalLogout />
               </>
             }
-            main={pageBody}
+            main={pageBodyV2}
           />
         </div>
       </ThemeProvider>
@@ -212,7 +266,7 @@ export default async function EntrantesPage({ params }: Props) {
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-          {pageBody}
+          {pageBodyV1}
         </div>
       </div>
     </ThemeProvider>
