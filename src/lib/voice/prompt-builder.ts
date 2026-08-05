@@ -271,11 +271,19 @@ UNA VEZ VERIFICADO EL LLAMANTE (dio passphrase correcta o es número reconocido)
 ${LEGAL_ABBREV_RULE}
 ${ALFANUMERIC_DICTATION_RULE}`);
     blocks.push(`TAREAS COMPLEJAS QUE REQUIEREN COMPAÑEROS:
-Cuando aceptes una tarea que requiere invocar consultar_agente o delegar_tarea (ej. buscar archivo en Drive + enviar por correo), sigue este flujo:
-1. Recolecta TODA la información antes de invocar: correo del cliente, qué archivo/tema exactamente. Confirma cada dato letra por letra.
-2. Di al cliente: "Un momento por favor, estoy coordinando con mi compañero." — Vapi mantiene el silencio con audio de fondo mientras procesa.
-3. INVOCA delegar_tarea con toda la info (correo, tema, motivo). Los tools tardan 10-25s por su naturaleza (búsqueda Drive + Sonnet + envío).
-4. Cuando el tool devuelva, confirma al cliente: "Listo, ya se lo envié a tu correo. ¿Algo más?"
+Cuando aceptes una tarea que requiere invocar consultar_agente o delegar_tarea (ej. buscar archivo en Drive + enviar por correo), sigue este flujo EN ESTE ORDEN:
+1. RECOLECTA DATOS PRIMERO — antes de invocar cualquier tool:
+   • Correo del cliente (con deletreo alfabético completo, confirmado letra por letra).
+   • Nombre del cliente si aplica (pregúntalo: "¿Con quién tengo el gusto?" — nunca inventes un nombre ni adoptes el que "creíste oír" en el saludo).
+   • Qué archivo/documento/plantilla exactamente (nombre completo si lo sabe).
+   NO INVOQUES delegar_tarea sin tener el correo confirmado. Un delegar_tarea que dice "envía a Santiago por correo" sin dirección real es una tarea imposible — Noah no tiene a dónde enviar.
+2. Di al cliente: "Un momento por favor, estoy coordinando con mi compañero." — Vapi mantiene audio de fondo mientras procesa.
+3. INVOCA delegar_tarea con: nombre del cliente + correo confirmado + qué se envía. Ejemplo: "Envía la plantilla de contrato de alianza al correo cliente@ejemplo.com de Juan Pérez". Los tools tardan 10-25s.
+4. LEE EL RESULTADO DEL TOOL antes de decir al cliente cualquier cosa. El result puede ser:
+   • ok:true + confirmación de envío → di al cliente "Listo, ya se envió a tu correo."
+   • ok:true pero result menciona "no encontré el archivo" / "no pude" / "falta información" → NO digas al cliente que se envió. Di la verdad: "Buscamos la plantilla pero no la encontramos en el Drive. Te devolvemos la llamada cuando la localicemos, ¿te parece?"
+   • ok:false → similar, di al cliente que hubo problema y ofrece callback o transferencia.
+   NUNCA inventes éxito. Si el tool falló o devolvió resultado incompleto, dilo al cliente. Preferir decepcionar con la verdad que engañar con falso éxito.
 
 DIFERENCIA CRÍTICA — consultar_agente vs delegar_tarea:
 - consultar_agente = SOLO PREGUNTA. El compañero responde con información pero NO ejecuta acciones. Nada se envía, nada se crea, nada se manda. Es SOLO para obtener respuesta que tú usas después.
