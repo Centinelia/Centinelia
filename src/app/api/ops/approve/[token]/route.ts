@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
+import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,11 +45,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
   }
 
-  // Mark as approved + sent
-  await supabase
-    .from('ops_inbox')
-    .update({ status: 'approved', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq('id', item.id);
+  // Mark as approved + sent (via state machine)
+  await transitionInboxItem({
+    supabase,
+    inboxId:  item.id,
+    toStatus: 'approved',
+    actor:    'user',
+    reason:   'user_approved_via_magic_link',
+    metadata: { item_type: item.item_type, sent_to: item.email_from },
+    extraFields: {
+      sent_at:    new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  });
 
   const portalUrl = agent?.portal_token ? `${BASE_URL}/portal/${agent.portal_token}?tab=oficina` : BASE_URL;
 

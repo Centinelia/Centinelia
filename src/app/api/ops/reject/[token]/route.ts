@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +25,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
     false,
   );
 
-  await supabase
-    .from('ops_inbox')
-    .update({ status: 'rejected', updated_at: new Date().toISOString() })
-    .eq('id', item.id);
+  await transitionInboxItem({
+    supabase,
+    inboxId:  item.id,
+    toStatus: 'rejected',
+    actor:    'user',
+    reason:   'user_rejected_via_magic_link',
+    extraFields: { updated_at: new Date().toISOString() },
+  });
 
   const { data: agent } = await supabase
     .from('voice_agents')

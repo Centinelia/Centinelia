@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap } from 'lucide-react';
+import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { InboxAgent } from './inbox/categories';
@@ -600,6 +600,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               </div>
             )}
 
+            {/* Timeline de estados del state machine */}
+            <InboxTransitionsTimeline inboxId={item.id} token={token} />
+
           </div>
         )}
       </div>
@@ -785,6 +788,78 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
         </>
       ) : (
         filteredItems.map(item => renderItem(item, false))
+      )}
+    </div>
+  );
+}
+
+interface InboxTransition {
+  id:              string;
+  from_status:     string | null;
+  to_status:       string;
+  actor:           string;
+  reason:          string | null;
+  metadata:        Record<string, unknown> | null;
+  transitioned_at: string;
+}
+
+function InboxTransitionsTimeline({ inboxId, token }: { inboxId: string; token: string }) {
+  const [open,   setOpen]   = useState(false);
+  const [items,  setItems]  = useState<InboxTransition[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (items || loading) return;
+    setLoading(true);
+    try {
+      const res  = await fetch(`/api/portal/${token}/ops-inbox/${inboxId}/transitions`);
+      const data = await res.json();
+      setItems(data.transitions ?? []);
+    } catch { setItems([]); } finally { setLoading(false); }
+  }, [inboxId, token, items, loading]);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) void load();
+  };
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80"
+        style={{ color: 'var(--c-text-4)' }}
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <GitBranch size={11} />
+        <span>Historial de estados</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 pl-4 border-l" style={{ borderColor: 'var(--c-border)' }}>
+          {loading && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando…</p>}
+          {!loading && items?.length === 0 && (
+            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin historial registrado (item previo al state machine).</p>
+          )}
+          {!loading && items && items.length > 0 && (
+            <ol className="space-y-1">
+              {items.map(t => (
+                <li key={t.id} className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                  <span className="font-mono" style={{ color: 'var(--c-text-4)' }}>{fmt(t.transitioned_at)}</span>
+                  {' · '}
+                  <span style={{ color: 'var(--c-text-2)' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
+                  {' · '}
+                  <span style={{ color: 'var(--c-text-4)' }}>{t.actor}</span>
+                  {t.reason && <span style={{ color: 'var(--c-text-4)' }}> · {t.reason}</span>}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       )}
     </div>
   );

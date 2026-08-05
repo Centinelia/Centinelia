@@ -8,6 +8,7 @@ import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
 import { getQBClient } from '@/lib/qb/client';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-classifier';
+import { recordInboxCreation, transitionInboxItem, type InboxStatus } from '@/lib/state-machines/inbox-item';
 
 const anthropic = new Anthropic();
 
@@ -1028,24 +1029,33 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   let item: InboxItem | null = null;
 
   if (existingInboxId) {
-    // Thread reply: update the existing info_requested record
-    const { data } = await supabase
-      .from('ops_inbox')
-      .update({
+    // Thread reply: update the existing info_requested record.
+    // Un thread_reply representa una transición: info_requested → pending/auto_replied/etc.
+    const targetStatus = (finalStatus === 'info_requested' ? 'pending' : finalStatus) as InboxStatus;
+    await transitionInboxItem({
+      supabase, inboxId: existingInboxId,
+      toStatus: targetStatus,
+      actor:    'thread_resume',
+      reason:   'customer_replied_to_info_request',
+      metadata: {
+        category:           result.category,
+        auto_mode_decision: autoModeVerdict?.decision ?? null,
+        original_final_status: finalStatus,
+      },
+      extraFields: {
         email_body:          effectiveBody.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
         ai_summary:          result.summary,
         ai_draft:            finalDraft,
-        status:              finalStatus === 'info_requested' ? 'pending' : finalStatus,
         invoice_data:        result.invoiceData,
         invoice_valid:       result.invoiceValid,
         invoice_discrepancy: result.invoiceDiscrepancy,
         auto_mode_decision:  autoModeVerdict?.decision ?? null,
         auto_mode_reason:    autoModeVerdict?.reason ?? null,
         auto_mode_signals:   autoModeVerdict?.signals ?? [],
-      })
-      .eq('id', existingInboxId)
-      .select('id, approval_token')
-      .single();
+      },
+      soft: true, // permitir transiciones desde estados terminales para no romper flujo legacy
+    });
+    const { data } = await supabase.from('ops_inbox').select('id, approval_token').eq('id', existingInboxId).single();
     item = data as unknown as InboxItem | null;
   } else {
     const { data } = await supabase
@@ -1075,6 +1085,29 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       .select('id, approval_token')
       .single();
     item = data as unknown as InboxItem | null;
+
+    // Registrar el estado inicial en el historial de transitions
+    if (item?.id) {
+      await recordInboxCreation({
+        supabase,
+        inboxId:       item.id,
+        initialStatus: finalStatus as InboxStatus,
+        actor:         'inbox_processor',
+        reason:        finalStatus === 'auto_replied'
+          ? 'classifier_send_approved'
+          : finalStatus === 'info_requested'
+            ? 'needs_more_info_from_sender'
+            : finalStatus === 'skipped'
+              ? 'spam_detected'
+              : 'needs_human_review',
+        metadata: {
+          category:           result.category,
+          source_folder:      finalSourceFolder,
+          auto_mode_decision: autoModeVerdict?.decision ?? null,
+          auto_mode_signals:  autoModeVerdict?.signals ?? [],
+        },
+      });
+    }
   }
 
   // Best-effort: unmark spam in provider after INSERT so we don't block on failure
