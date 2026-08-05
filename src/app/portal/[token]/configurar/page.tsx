@@ -15,7 +15,6 @@ import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import PortalFooter              from '../PortalFooter';
-import InfoTooltip               from '@/components/InfoTooltip';
 import { COORDINATOR_ROLE_IDS }  from '@/lib/portal/meerkat-roles';
 
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
@@ -241,8 +240,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Voz del empleado"
+                      tooltip="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra."
                       className="mb-4"
-                      right={<InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />}
                     />
                     <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
                   </Card>
@@ -255,8 +254,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Idioma"
+                      tooltip="Ajuste a nivel cuenta: aplica a todos tus empleados."
                       className="mb-4"
-                      right={<InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />}
                     />
                     <MultilingualToggle token={token} initial={orgMultilingual} />
                   </Card>
@@ -268,8 +267,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Responsabilidades, objetivos y conducta"
+                    tooltip="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario."
                     className="mb-4"
-                    right={<InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />}
                   />
                   <AgentKnowledgeBaseEditor
                     token={token}
@@ -289,8 +288,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Definición de listo"
+                    tooltip="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro."
                     className="mb-4"
-                    right={<InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />}
                   />
                   <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
                 </Card>
@@ -302,8 +301,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Tono de marca"
+                      tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico."
                       className="mb-4"
-                      right={<InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />}
                     />
                     <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
                   </Card>
@@ -316,8 +315,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Plantillas de documentos"
+                      tooltip="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers."
                       className="mb-4"
-                      right={<InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />}
                     />
                     <BrandTemplateSection
                       agentId={agent.id}
@@ -346,8 +345,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h3"
                       title="Aprendizaje de plataformas"
+                      tooltip="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae."
                       className="mb-4"
-                      right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
                     />
                     <RoleEmailLearningSection
                       token={token}
@@ -368,8 +367,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Correo"
+                      tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
                       className="mb-4"
-                      right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
                     />
                     {connectedEmail ? (
                       <div className="flex flex-col gap-4">
@@ -440,8 +439,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       <SectionHeader
                         as="h3"
                         title="Aprobador de borradores"
+                        tooltip="Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador."
                         className="mb-3"
-                        right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
                       />
                       <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
                     </div>
@@ -450,8 +449,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       <SectionHeader
                         as="h3"
                         title="Responsable de facturación"
+                        tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
                         className="mb-3"
-                        right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
                       />
                       <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
                     </div>
@@ -481,8 +480,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Frase de verificación interna"
+                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
                       className="mb-4"
-                      right={<InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />}
                     />
                     <PassphraseEditor token={token} initial={ownerPassphrase} />
                   </Card>
@@ -495,8 +494,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Notificaciones"
+                      tooltip="Elige cómo quieres recibir la información de cada llamada atendida por este empleado."
                       className="mb-4"
-                      right={<InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />}
                     />
                     <NotificationsToggle
                       token={token}
@@ -518,8 +517,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Llamadas entrantes"
+                      tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
                       className="mb-4"
-                      right={<InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />}
                     />
                     <AgentCustomization
                       token={token}
@@ -536,8 +535,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Desvío de llamadas"
+                      tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
                       className="mb-4"
-                      right={<InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />}
                     />
                     <CallForwardingSection
                       phoneNumber={(agent as any).phone_number as string}
@@ -552,8 +551,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Nivel de autonomía"
+                    tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
                     className="mb-4"
-                    right={<InfoTooltip text="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza." />}
                   />
                   <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
                 </Card>
@@ -564,8 +563,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Check-in automático"
+                    tooltip="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo."
                     className="mb-4"
-                    right={<InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />}
                   />
                   <HeartbeatEditor
                     token={token}
@@ -581,8 +580,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Brief del día"
+                      tooltip="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana."
                       className="mb-4"
-                      right={<InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />}
                     />
                     <BriefDelDiaSection agentId={agent.id} />
                   </Card>
@@ -595,8 +594,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Números del equipo"
+                      tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
                       className="mb-4"
-                      right={<InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />}
                     />
                     <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
                   </Card>
@@ -634,8 +633,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Metas"
+                    tooltip="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones."
                     className="mb-4"
-                    right={<InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />}
                   />
                   <GoalsSection token={token} roleColor={roleColor} />
                 </Card>
@@ -646,8 +645,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Límites de autoridad"
+                    tooltip="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores."
                     className="mb-4"
-                    right={<InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores." />}
                   />
                   <GuardrailsEditor
                     token={token}
@@ -662,8 +661,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <SectionHeader
                     as="h2"
                     title="Automatizaciones"
+                    tooltip="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual."
                     className="mb-4"
-                    right={<InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />}
                   />
                   <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
                 </Card>
@@ -676,8 +675,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <SectionHeader
                       as="h2"
                       title="Llamadas salientes"
+                      tooltip="Activa o desactiva las llamadas salientes y el recovery de llamadas perdidas para este empleado."
                       className="mb-4"
-                      right={<InfoTooltip text="Activa o desactiva las llamadas salientes y el recovery de llamadas perdidas para este empleado." />}
                     />
                     <OutboundToggles
                       token={token}
