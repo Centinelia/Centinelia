@@ -125,7 +125,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       .select('id, outcome, duration_seconds, created_at, agent_id')
       .gte('created_at', callsSince)
       .order('created_at', { ascending: false }),
-    supabase.from('voice_agents').select('id, business_name, minutes_used, minutes_plan, plan, active').neq('id', process.env.DEMO_AGENT_ID ?? '').order('created_at'),
+    supabase.from('voice_agents').select('id, agent_name, business_name, minutes_used, minutes_plan, plan, active, features').neq('id', process.env.DEMO_AGENT_ID ?? '').order('created_at'),
     supabase.from('leads_voice')
       .select('id, created_at, agent_id')
       .gte('created_at', leadsSince),
@@ -184,7 +184,20 @@ export default async function AnalyticsPage({ searchParams }: Props) {
     const stats  = agentCallMap[a.id] ?? { calls: 0, leads: 0, duration: 0 };
     const avgMin = stats.calls > 0 ? Math.round(stats.duration / stats.calls / 60) : 0;
     const mxn    = (a.plan && a.minutes_plan) ? (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0) : 0;
-    return { id: a.id, business_name: a.business_name, plan: a.plan, active: a.active, mxn, calls: stats.calls, leads: stats.leads, avgMin, minutesUsed: a.minutes_used };
+    const meerkatRoleId = ((a as unknown as { features?: Record<string, unknown> }).features?.meerkat_role_id as string | undefined) ?? null;
+    return {
+      id: a.id,
+      agent_name: (a as unknown as { agent_name?: string | null }).agent_name ?? null,
+      business_name: a.business_name,
+      meerkat_role_id: meerkatRoleId,
+      plan: a.plan,
+      active: a.active,
+      mxn,
+      calls: stats.calls,
+      leads: stats.leads,
+      avgMin,
+      minutesUsed: a.minutes_used,
+    };
   });
 
   const csvHref = `/api/admin/analytics/export${period ? `?period=${period}` : ''}`;
@@ -310,19 +323,19 @@ export default async function AnalyticsPage({ searchParams }: Props) {
               className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium"
               style={{ background: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE' }}
             >
-              Ops de oficina, tareas por mes
+              Tareas por mes
             </span>
           </div>
           {totalOps === 0 ? (
-            <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin ops registradas en el periodo. Activa empleados de oficina para acumular datos.</p>
+            <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin tareas registradas en el periodo. Activa empleados de oficina para acumular datos.</p>
           ) : (
             <>
               <p className="text-[13px] mb-3" style={{ color: '#374151' }}>
                 Promedio actual:{' '}
                 <strong style={{ color: '#111827' }}>
-                  {avgOpsPerDay < 1 ? avgOpsPerDay.toFixed(2) : avgOpsPerDay.toFixed(1)} ops/día
+                  {avgOpsPerDay < 1 ? avgOpsPerDay.toFixed(2) : avgOpsPerDay.toFixed(1)} tareas/día
                 </strong>
-                {' · '}{totalOps.toLocaleString('es-MX')} ops en {period ? `${period} días` : 'últimos 12 meses'}
+                {' · '}{totalOps.toLocaleString('es-MX')} tareas en {period ? `${period} días` : 'últimos 12 meses'}
               </p>
               <div className="grid grid-cols-3 gap-3">
                 {[

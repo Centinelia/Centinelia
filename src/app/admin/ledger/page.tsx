@@ -261,7 +261,7 @@ export default async function LedgerPage() {
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       <div style={{ color: '#374151' }} className="tabular-nums">{Math.round(r.minutesPct * 100)}% min</div>
-                      <div className="text-[11px] tabular-nums" style={{ color: '#9CA3AF' }}>{Math.round(r.opsPct * 100)}% ops</div>
+                      <div className="text-[11px] tabular-nums" style={{ color: '#9CA3AF' }}>{Math.round(r.opsPct * 100)}% tareas</div>
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#374151' }}>{fmtMxn(r.revenueMxn)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: '#6B7280' }}>{fmtMxn(r.totalCostMxn)}</td>
