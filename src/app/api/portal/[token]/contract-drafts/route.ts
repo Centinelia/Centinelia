@@ -142,9 +142,23 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const { id } = await req.json() as { id: string };
 
-  const { error } = await supabase
-    .from('contract_drafts').update({ status: 'cancelado' }).eq('id', id).in('agent_id', agentIds);
+  // Verify ownership antes de la transición
+  const { data: owned } = await supabase
+    .from('contract_drafts')
+    .select('id')
+    .eq('id', id)
+    .in('agent_id', agentIds)
+    .single();
+  if (!owned) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { transitionContract } = await import('@/lib/state-machines/contract-draft');
+  const result = await transitionContract({
+    supabase, contractId: id,
+    toStatus: 'cancelado',
+    actor:    'user',
+    reason:   'user_cancelled_from_portal',
+    soft:     true, // permitir cancelar desde borrador o enviado
+  });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

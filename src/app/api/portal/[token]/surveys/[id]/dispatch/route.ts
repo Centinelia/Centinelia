@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { createAgentTask } from '@/lib/state-machines/agent-task';
 
 export async function POST(
   req: NextRequest,
@@ -31,14 +32,18 @@ export async function POST(
 
   if (!survey) return NextResponse.json({ error: 'Encuesta no encontrada' }, { status: 404 });
 
-  await supabase.from('agent_tasks').insert({
-    portal_email: access.portalEmail,
-    created_by:   access.primaryId,
-    assigned_to:  access.primaryId,
-    title:        `Encuesta manual: llamar a ${phone.trim()}`,
-    description:  `Llama al número ${phone.trim()} y aplica la encuesta "${survey.nombre}" (survey_id: ${survey.id}). Registra las respuestas al terminar.`,
-    status:       'pending',
-    trigger_type: 'survey_manual',
+  await createAgentTask({
+    supabase,
+    portalEmail:   access.portalEmail,
+    createdBy:     access.primaryId,
+    assignedTo:    access.primaryId,
+    title:         `Encuesta manual: llamar a ${phone.trim()}`,
+    description:   `Llama al número ${phone.trim()} y aplica la encuesta "${survey.nombre}" (survey_id: ${survey.id}). Registra las respuestas al terminar.`,
+    triggerType:   'survey_manual',
+    sourceContext: null,
+    initialStatus: 'pending',
+    actor:         'user',
+    reason:        'survey_dispatch_from_portal',
   });
 
   return NextResponse.json({ ok: true });

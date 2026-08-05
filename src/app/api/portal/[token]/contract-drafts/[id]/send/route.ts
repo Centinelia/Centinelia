@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { sendEmail, contractToClientHtml, type EmailBranding } from '@/lib/email/send';
+import { transitionContract } from '@/lib/state-machines/contract-draft';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,9 +68,14 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!ok) return NextResponse.json({ error: 'Error al enviar el correo' }, { status: 500 });
 
-  await supabase.from('contract_drafts')
-    .update({ status: 'enviado', sent_at: new Date().toISOString() })
-    .eq('id', id);
+  await transitionContract({
+    supabase, contractId: id,
+    toStatus: 'enviado',
+    actor:    'user',
+    reason:   'contract_sent_to_client',
+    metadata: { sent_to: draft.client_email },
+    extraFields: { sent_at: new Date().toISOString() },
+  });
 
   return NextResponse.json({ ok: true });
 }

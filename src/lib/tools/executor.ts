@@ -218,7 +218,17 @@ async function executeAgentToolInner(
       source_ref:   (toolInput.source_ref   as string | null) ?? null,
       status: 'borrador',
     }).select('id').single();
-    return error ? { ok: false, error: error.message } : { ok: true, draft_id: draft!.id, message: `Borrador creado con ID ${draft!.id}. Visible en Oficina → Contratos.` };
+    if (error) return { ok: false, error: error.message };
+    // Registrar el estado inicial en el historial del state machine
+    const { recordContractCreation } = await import('@/lib/state-machines/contract-draft');
+    await recordContractCreation({
+      supabase,
+      contractId: draft!.id as string,
+      actor:      `agent:${agentId}`,
+      reason:     'contract_created_via_tool',
+      metadata:   { client_name: toolInput.client_name ?? null, source_type: toolInput.source_type ?? 'manual' },
+    });
+    return { ok: true, draft_id: draft!.id, message: `Borrador creado con ID ${draft!.id}. Visible en Oficina → Contratos.` };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
