@@ -46,6 +46,7 @@ import { fetchLookup } from '@/lib/tramites/lookup';
 import { submitTramite } from '@/lib/tramites/submit';
 import { solicitarFactura, type SolicitarFacturaItem } from '@/lib/fiscal/request-factura';
 import { lookupFacturas } from '@/lib/fiscal/lookup-factura';
+import * as sheetsService from '@/lib/services/sheets';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -1658,6 +1659,88 @@ async function executeAgentToolInner(
       if (!result.ok) return result;
       return { ...result, message: `Documento generado: ${content.title}.\n\nEnlace de descarga (válido 1 hora):\n${result.url}` };
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Google Sheets tools
+  // sheets_agregar_fila, sheets_actualizar_fila, sheets_leer, sheets_buscar
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'sheets_agregar_fila') {
+    const purpose     = toolInput.purpose           as sheetsService.SheetsMapping['purpose'];
+    const customLabel = toolInput.custom_purpose_label as string | undefined;
+    const data        = toolInput.data              as Record<string, unknown>;
+
+    let mapping: sheetsService.SheetsMapping | null = null;
+    try {
+      mapping = await sheetsService.getMapping(portalEmail, purpose, customLabel);
+    } catch (err) {
+      return { ok: false, reason: 'sheet_no_configurado', purpose, detail: err instanceof Error ? err.message : String(err) };
+    }
+    if (!mapping) return { ok: false, reason: 'sheet_no_configurado', purpose };
+
+    const res = await sheetsService.appendRow(mapping.id, data);
+    return res.ok
+      ? { ok: true, row_number: res.data.row_number }
+      : { ok: false, reason: res.reason, detail: res.detail };
+  }
+
+  if (toolName === 'sheets_actualizar_fila') {
+    const purpose     = toolInput.purpose            as sheetsService.SheetsMapping['purpose'];
+    const customLabel = toolInput.custom_purpose_label as string | undefined;
+    const matchBy     = toolInput.match_by           as string;
+    const matchValue  = toolInput.match_value        as string;
+    const data        = toolInput.data               as Record<string, unknown>;
+
+    let mapping: sheetsService.SheetsMapping | null = null;
+    try {
+      mapping = await sheetsService.getMapping(portalEmail, purpose, customLabel);
+    } catch (err) {
+      return { ok: false, reason: 'sheet_no_configurado', purpose, detail: err instanceof Error ? err.message : String(err) };
+    }
+    if (!mapping) return { ok: false, reason: 'sheet_no_configurado', purpose };
+
+    const res = await sheetsService.updateRow(mapping.id, matchBy, matchValue, data);
+    return res.ok
+      ? { ok: true, row_number: res.data.row_number }
+      : { ok: false, reason: res.reason, detail: res.detail };
+  }
+
+  if (toolName === 'sheets_leer') {
+    const purpose     = toolInput.purpose            as sheetsService.SheetsMapping['purpose'];
+    const customLabel = toolInput.custom_purpose_label as string | undefined;
+    const range       = toolInput.range              as string | undefined;
+
+    let mapping: sheetsService.SheetsMapping | null = null;
+    try {
+      mapping = await sheetsService.getMapping(portalEmail, purpose, customLabel);
+    } catch (err) {
+      return { ok: false, reason: 'sheet_no_configurado', purpose, detail: err instanceof Error ? err.message : String(err) };
+    }
+    if (!mapping) return { ok: false, reason: 'sheet_no_configurado', purpose };
+
+    const res = await sheetsService.readRange(mapping.id, range);
+    return res.ok
+      ? { ok: true, rows: res.data.rows }
+      : { ok: false, reason: res.reason, detail: res.detail };
+  }
+
+  if (toolName === 'sheets_buscar') {
+    const purpose     = toolInput.purpose            as sheetsService.SheetsMapping['purpose'];
+    const customLabel = toolInput.custom_purpose_label as string | undefined;
+    const query       = toolInput.query              as string;
+
+    let mapping: sheetsService.SheetsMapping | null = null;
+    try {
+      mapping = await sheetsService.getMapping(portalEmail, purpose, customLabel);
+    } catch (err) {
+      return { ok: false, reason: 'sheet_no_configurado', purpose, detail: err instanceof Error ? err.message : String(err) };
+    }
+    if (!mapping) return { ok: false, reason: 'sheet_no_configurado', purpose };
+
+    const res = await sheetsService.searchInTab(mapping.id, query);
+    return res.ok
+      ? { ok: true, rows: res.data.rows }
+      : { ok: false, reason: res.reason, detail: res.detail };
   }
 
   // ─────────────────────────────────────────────────────────────────────────

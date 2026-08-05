@@ -81,6 +81,12 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   // brand / voc
   { name: 'extraer_tono_de_marca',    description: 'Extrae guía de tono desde muestras',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
   { name: 'extraer_voz_del_cliente',  description: 'VoC desde llamadas/correos/tickets',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
+
+  // sheets
+  { name: 'sheets_agregar_fila',      description: 'Agrega fila al Google Sheet configurado para el propósito',    channels: ['chat', 'email'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_agregar_fila') },
+  { name: 'sheets_actualizar_fila',   description: 'Actualiza fila existente en el Google Sheet',                  channels: ['chat', 'email'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.write', policy: policyFor('sheets_actualizar_fila') },
+  { name: 'sheets_leer',              description: 'Lee el contenido del Google Sheet configurado',                 channels: ['chat', 'email'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_leer') },
+  { name: 'sheets_buscar',            description: 'Busca filas en el Google Sheet que contengan un texto',        channels: ['chat', 'email'], category: 'sheets', destructive: false, gatedByRole: null, gatedByFeature: 'google_sheets', capability: 'sheets.read',  policy: policyFor('sheets_buscar') },
 ];
 
 export function getToolByName(name: string): ToolEntry | undefined {
