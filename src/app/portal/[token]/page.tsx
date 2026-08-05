@@ -35,6 +35,7 @@ import PeakHoursChart          from './PeakHoursChart';
 import NotificationBell        from './NotificationBell';
 import PortalFooter            from './PortalFooter';
 
+import Tabs                    from '@/components/portal-ui/overlays/Tabs';
 import CallsSearch             from './CallsSearch';
 import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
@@ -1341,65 +1342,73 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {hasNox && <BriefDelDiaCard />}
 
 
-                  {/* Actividad reciente */}
-                  <PageSection heading={<SectionHeader eyebrow="FEED" title="Actividad reciente" as="h2" />}>
-                    <Card id="actividad" padding="md">
-                      {resumenFeed.length === 0 ? (
-                        <div className="flex flex-col items-center py-8 gap-0">
-                          <div className="relative" style={{ width: 96, height: 132 }}>
-                            <Image src="/agent-f2.png" alt="" fill sizes="96px"
-                              style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                          </div>
-                          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col">
-                          {resumenFeed.map((item, idx) => {
-                            const cfg = item.type === 'call'
-                              ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
-                              : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
-                            return (
-                              <div key={`${item.type}-${item.id}`}
-                                className="flex items-center gap-3 py-2.5"
-                                style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                                  style={{ background: cfg.bg, color: cfg.color }}>
-                                  {item.type === 'call'  && <Phone        size={12} />}
-                                  {item.type === 'lead'  && <Users        size={12} />}
-                                  {item.type === 'order' && <ShoppingBag  size={12} />}
-                                  {item.type === 'appt'  && <CalendarDays size={12} />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
-                                    {item.label}
-                                  </span>
-                                  {item.sub && (
-                                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
-                                  )}
-                                </div>
-                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                                  style={{ background: cfg.bg, color: cfg.color }}>
-                                  {cfg.label}
-                                </span>
-                                <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
-                                  {fmtRelative(item.created_at)}
-                                </span>
+                  {/* Actividad — reciente + horaria (fused with tabs) */}
+                  <PageSection heading={<SectionHeader eyebrow="ACTIVIDAD" title="Ver por..." as="h2" />}>
+                    <Card padding="md">
+                      <Tabs.Root defaultValue="recientes" variant="pill">
+                        <Tabs.List className="mb-4 flex-nowrap">
+                          <Tabs.Trigger value="recientes">Recientes</Tabs.Trigger>
+                          {calls.length > 0 && <Tabs.Trigger value="horaria">Horaria</Tabs.Trigger>}
+                        </Tabs.List>
+
+                        {/* Tab: Recientes */}
+                        <Tabs.Content value="recientes">
+                          {resumenFeed.length === 0 ? (
+                            <div className="flex flex-col items-center py-8 gap-0">
+                              <div className="relative" style={{ width: 96, height: 132 }}>
+                                <Image src="/agent-f2.png" alt="" fill sizes="96px"
+                                  style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col">
+                              {resumenFeed.map((item, idx) => {
+                                const cfg = item.type === 'call'
+                                  ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
+                                  : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
+                                return (
+                                  <div key={`${item.type}-${item.id}`}
+                                    className="flex items-center gap-3 py-2.5"
+                                    style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                      style={{ background: cfg.bg, color: cfg.color }}>
+                                      {item.type === 'call'  && <Phone        size={12} />}
+                                      {item.type === 'lead'  && <Users        size={12} />}
+                                      {item.type === 'order' && <ShoppingBag  size={12} />}
+                                      {item.type === 'appt'  && <CalendarDays size={12} />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
+                                        {item.label}
+                                      </span>
+                                      {item.sub && (
+                                        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                      style={{ background: cfg.bg, color: cfg.color }}>
+                                      {cfg.label}
+                                    </span>
+                                    <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
+                                      {fmtRelative(item.created_at)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </Tabs.Content>
+
+                        {/* Tab: Horaria */}
+                        {calls.length > 0 && (
+                          <Tabs.Content value="horaria">
+                            <PeakHoursChart hourCounts={hourCounts} />
+                          </Tabs.Content>
+                        )}
+                      </Tabs.Root>
                     </Card>
                   </PageSection>
-
-                  {/* Actividad horaria */}
-                  {calls.length > 0 && (
-                    <PageSection heading={<SectionHeader eyebrow="ANÁLISIS" title="Actividad de tu oficina" as="h2" />}>
-                      <Card id="horas-pico" padding="md">
-                        <PeakHoursChart hourCounts={hourCounts} />
-                      </Card>
-                    </PageSection>
-                  )}
 
                   {/* Reporte mensual — mobile only */}
                   <div className="lg:hidden">

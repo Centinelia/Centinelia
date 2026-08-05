@@ -332,126 +332,144 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             {/* ── Tab 1: Conocimiento y guardrails ──────────────────────── */}
             <div className="flex flex-col gap-5">
 
-              <div id="aprendizaje" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Aprendizaje de plataformas"
-                    className="mb-4"
-                    right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
-                  />
-                  <RoleEmailLearningSection
-                    token={token}
-                    connectedEmail={connectedEmail}
-                    agentRole={agentRole || agentName}
-                  />
-                </Card>
-              </div>
+              {/* Accordion: Aprendizaje */}
+              <details open>
+                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <span>▶</span> Aprendizaje
+                </summary>
+                <div id="aprendizaje" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h3"
+                      title="Aprendizaje de plataformas"
+                      className="mb-4"
+                      right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
+                    />
+                    <RoleEmailLearningSection
+                      token={token}
+                      connectedEmail={connectedEmail}
+                      agentRole={agentRole || agentName}
+                    />
+                  </Card>
+                </div>
+              </details>
 
-              <div id="correo" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Correo"
-                    className="mb-4"
-                    right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
-                  />
-                  {connectedEmail ? (
-                    <div className="flex flex-col gap-4">
+              {/* Accordion: Correo */}
+              <details open>
+                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <span>▶</span> Correo (email)
+                </summary>
+                <div id="correo" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Correo"
+                      className="mb-4"
+                      right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
+                    />
+                    {connectedEmail ? (
+                      <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                          style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                          {emailIntegration!.provider === 'gmail' ? (
+                            <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                              <rect x="4" y="8" width="40" height="32" rx="2" fill="#fff" stroke="#ddd" strokeWidth="1.5" />
+                              <path d="M4 8l20 14L44 8" stroke="#EA4335" strokeWidth="2.5" fill="none" />
+                            </svg>
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                              <rect width="48" height="48" rx="6" fill="#0078D4" />
+                              <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
+                              <circle cx="17" cy="24" r="6" fill="#0078D4" />
+                              <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
+                            </svg>
+                          )}
+                          <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+                          <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-text)' }}>
+                            {connectedEmail}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+                            style={{ color: 'var(--c-text-4)' }}>
+                            Correo para envíos propios
+                          </p>
+                          <p className="text-xs mb-2.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                            Para seguimientos y correos personales, el empleado envía desde esta dirección en lugar del correo del área.
+                          </p>
+                          <SendAsEmailEditor
+                            token={token}
+                            provider={emailIntegration!.provider as string}
+                            initialValue={(emailIntegration as any).send_as_email ?? ''}
+                          />
+                        </div>
+                      </div>
+                    ) : emailIntegration?.needs_reauth ? (
                       <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
-                        {emailIntegration!.provider === 'gmail' ? (
-                          <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
-                            <rect x="4" y="8" width="40" height="32" rx="2" fill="#fff" stroke="#ddd" strokeWidth="1.5" />
-                            <path d="M4 8l20 14L44 8" stroke="#EA4335" strokeWidth="2.5" fill="none" />
-                          </svg>
-                        ) : (
-                          <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
-                            <rect width="48" height="48" rx="6" fill="#0078D4" />
-                            <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
-                            <circle cx="17" cy="24" r="6" fill="#0078D4" />
-                            <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
-                          </svg>
-                        )}
-                        <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
-                        <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-text)' }}>
-                          {connectedEmail}
+                        style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                        <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                        <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                          La conexión de correo requiere reconexión. Ve a la sección de Integraciones en la Oficina.
                         </span>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-                          style={{ color: 'var(--c-text-4)' }}>
-                          Correo para envíos propios
-                        </p>
-                        <p className="text-xs mb-2.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                          Para seguimientos y correos personales, el empleado envía desde esta dirección en lugar del correo del área.
-                        </p>
-                        <SendAsEmailEditor
+                    ) : (
+                      <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                        <Mail size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                          Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
+                        </span>
+                      </div>
+                    )}
+
+                    {connectedEmail && (
+                      <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                        <SpamFolderToggle
                           token={token}
-                          provider={emailIntegration!.provider as string}
-                          initialValue={(emailIntegration as any).send_as_email ?? ''}
+                          initial={spamCheckEnabled}
+                          stats={spamStats.revisados > 0 ? spamStats : null}
                         />
                       </div>
-                    </div>
-                  ) : emailIntegration?.needs_reauth ? (
-                    <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                      style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                      <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                      <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                        La conexión de correo requiere reconexión. Ve a la sección de Integraciones en la Oficina.
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                      <Mail size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
-                      </span>
-                    </div>
-                  )}
+                    )}
 
-                  {connectedEmail && (
                     <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <SpamFolderToggle
-                        token={token}
-                        initial={spamCheckEnabled}
-                        stats={spamStats.revisados > 0 ? spamStats : null}
+                      <SectionHeader
+                        as="h3"
+                        title="Aprobador de borradores"
+                        className="mb-3"
+                        right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
                       />
+                      <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
                     </div>
-                  )}
 
-                  <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                    <SectionHeader
-                      as="h3"
-                      title="Aprobador de borradores"
-                      className="mb-3"
-                      right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
+                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                      <SectionHeader
+                        as="h3"
+                        title="Responsable de facturación"
+                        className="mb-3"
+                        right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
+                      />
+                      <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                    </div>
+                  </Card>
+                </div>
+              </details>
+
+              {/* Accordion: Integraciones externas */}
+              <details open>
+                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <span>▶</span> Integraciones externas
+                </summary>
+                <div id="sheets-del-negocio" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SheetsMappingsSection
+                      token={token}
+                      agentId={agent.id}
+                      initialSyncLeads={syncLeadsToSheets}
                     />
-                    <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
-                  </div>
-
-                  <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                    <SectionHeader
-                      as="h3"
-                      title="Responsable de facturación"
-                      className="mb-3"
-                      right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
-                    />
-                    <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
-                  </div>
-                </Card>
-              </div>
-
-              <div id="sheets-del-negocio" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SheetsMappingsSection
-                    token={token}
-                    agentId={agent.id}
-                    initialSyncLeads={syncLeadsToSheets}
-                  />
-                </Card>
-              </div>
+                  </Card>
+                </div>
+              </details>
 
               {isOwner && hasVoiceJornada && (
                 <div id="passphrase" style={SCROLL_STYLE}>
