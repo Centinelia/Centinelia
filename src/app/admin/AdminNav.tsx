@@ -95,7 +95,10 @@ export default function AdminNav() {
       {/* Configuración — fijo al fondo del nav */}
       <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         {(() => {
-          const active = path === '/admin/configuracion' || path.startsWith('/admin/configuracion/');
+          const active = path === '/admin/configuracion'
+            || path.startsWith('/admin/configuracion/')
+            || path === '/admin/conversacional'
+            || path.startsWith('/admin/conversacional/');
           return (
             <Link
               href="/admin/configuracion"
