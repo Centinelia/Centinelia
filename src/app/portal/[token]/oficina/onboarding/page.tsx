@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import OnboardingSection     from '../../OnboardingSection';
 import MeerkatPicker         from '../../agentes/MeerkatPicker';
+import { Card }              from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -32,8 +33,7 @@ export default async function OnboardingPage({ params }: Props) {
 
       {/* Banner — Naia present or not */}
       {hasNaia ? (
-        <div className="flex rounded-xl overflow-hidden"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+        <Card padding="none" border elevated={false} className="flex overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
           <img src="/meerkats/naia.png" alt="Naia"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
           <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center">
@@ -51,9 +51,9 @@ export default async function OnboardingPage({ params }: Props) {
               <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puede iniciar onboardings por teléfono, chat y correo</span>
             </div>
           </div>
-        </div>
+        </Card>
       ) : (
-        <div className="flex rounded-xl overflow-hidden"
+        <Card padding="none" border elevated={false} className="flex overflow-hidden"
           style={{ background: 'linear-gradient(to right, rgba(236,72,153,0.07), rgba(245,158,11,0.07))', border: '1px solid rgba(236,72,153,0.25)' }}>
           <img src="/meerkats/naia.png" alt="Naia"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
@@ -77,7 +77,7 @@ export default async function OnboardingPage({ params }: Props) {
               Sin Naia los onboardings se gestionan solo de forma manual. Naia puede iniciar y dar seguimiento al proceso de incorporación por teléfono, chat y correo.
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       <OnboardingSection token={token} />

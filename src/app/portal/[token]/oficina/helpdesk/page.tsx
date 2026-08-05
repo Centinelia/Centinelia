@@ -10,6 +10,7 @@ import IncidentesSection from './IncidentesSection';
 import DirectorioEditor  from './DirectorioEditor';
 import GuardiaEditor     from './GuardiaEditor';
 import MeerkatPicker     from '../../agentes/MeerkatPicker';
+import { Card }          from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -77,8 +78,7 @@ export default async function HelpdeskPage({ params }: Props) {
       {/* Header — unified: Neo present or not, sub-user or owner */}
       {isItSubUser ? (
         /* Sub-user: simple header with their initial */
-        <div className="flex items-center gap-3 rounded-xl px-4 py-3"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+        <Card padding="none" border elevated={false} className="flex items-center gap-3 px-4 py-3" style={{ border: '1px solid var(--c-border-2)' }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold"
             style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
             {subUserName?.charAt(0).toUpperCase() ?? session?.portalEmail?.charAt(0).toUpperCase() ?? 'U'}
@@ -94,11 +94,10 @@ export default async function HelpdeskPage({ params }: Props) {
               </span>
             </p>
           </div>
-        </div>
+        </Card>
       ) : hasNeo ? (
         /* Owner + Neo present */
-        <div className="flex rounded-xl overflow-hidden"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+        <Card padding="none" border elevated={false} className="flex overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
           <img src="/meerkats/neo.png" alt="Neo"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
           <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center">
@@ -119,10 +118,10 @@ export default async function HelpdeskPage({ params }: Props) {
               )}
             </div>
           </div>
-        </div>
+        </Card>
       ) : (
         /* Owner + NO Neo */
-        <div className="flex rounded-xl overflow-hidden"
+        <Card padding="none" border elevated={false} className="flex overflow-hidden"
           style={{ background: 'linear-gradient(to right, rgba(6,182,212,0.07), rgba(245,158,11,0.07))', border: '1px solid rgba(6,182,212,0.25)' }}>
           <img src="/meerkats/neo.png" alt="Neo"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
@@ -148,7 +147,7 @@ export default async function HelpdeskPage({ params }: Props) {
               Sin Neo los tickets se registran solo de forma manual. Neo recibe solicitudes por teléfono, las clasifica y las asigna al técnico de guardia.
             </p>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Incidents — owner only */}
