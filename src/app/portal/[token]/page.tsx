@@ -35,7 +35,7 @@ import PeakHoursChart          from './PeakHoursChart';
 import NotificationBell        from './NotificationBell';
 import PortalFooter            from './PortalFooter';
 
-import Tabs                    from '@/components/portal-ui/overlays/Tabs';
+import ActivityTabsCard        from './ActivityTabsCard';
 import CallsSearch             from './CallsSearch';
 import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
@@ -1345,15 +1345,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {/* Actividad — reciente + horaria (fused with tabs) */}
                   <PageSection heading={<SectionHeader eyebrow="ACTIVIDAD" title="Ver por..." as="h2" />}>
                     <Card padding="md">
-                      <Tabs.Root defaultValue="recientes" variant="pill">
-                        <Tabs.List className="mb-4 flex-nowrap">
-                          <Tabs.Trigger value="recientes">Recientes</Tabs.Trigger>
-                          {calls.length > 0 && <Tabs.Trigger value="horaria">Horaria</Tabs.Trigger>}
-                        </Tabs.List>
-
-                        {/* Tab: Recientes */}
-                        <Tabs.Content value="recientes">
-                          {resumenFeed.length === 0 ? (
+                      <ActivityTabsCard
+                        recientes={
+                          resumenFeed.length === 0 ? (
                             <div className="flex flex-col items-center py-8 gap-0">
                               <div className="relative" style={{ width: 96, height: 132 }}>
                                 <Image src="/agent-f2.png" alt="" fill sizes="96px"
@@ -1397,16 +1391,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 );
                               })}
                             </div>
-                          )}
-                        </Tabs.Content>
-
-                        {/* Tab: Horaria */}
-                        {calls.length > 0 && (
-                          <Tabs.Content value="horaria">
-                            <PeakHoursChart hourCounts={hourCounts} />
-                          </Tabs.Content>
-                        )}
-                      </Tabs.Root>
+                          )
+                        }
+                        horaria={calls.length > 0 ? <PeakHoursChart hourCounts={hourCounts} /> : undefined}
+                      />
                     </Card>
                   </PageSection>
 
