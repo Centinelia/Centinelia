@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Copy, Trash2, ChevronDown, Check, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SectionHeader, EmptyState } from '@/components/portal-ui';
 
 interface CabildoDoc {
   id:          string;
@@ -159,24 +160,22 @@ export default function CabildoSection({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Documentos de Cabildo</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {docs.length > 0 ? `${docs.length} documento${docs.length !== 1 ? 's' : ''} generado${docs.length !== 1 ? 's' : ''}` : 'Los documentos generados por el empleado aparecen aquí'}
-          </p>
-        </div>
-
-        <Select value={tipoF || '__all'} onValueChange={v => setTipoF(v === '__all' ? '' : v)}>
-          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Todos los tipos</SelectItem>
-            {Object.entries(TIPO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      <SectionHeader
+        as="h2"
+        title="Documentos de Cabildo"
+        description={docs.length > 0 ? `${docs.length} documento${docs.length !== 1 ? 's' : ''} generado${docs.length !== 1 ? 's' : ''}` : 'Los documentos generados por el empleado aparecen aquí'}
+        right={
+          <Select value={tipoF || '__all'} onValueChange={v => setTipoF(v === '__all' ? '' : v)}>
+            <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos los tipos</SelectItem>
+              {Object.entries(TIPO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -186,12 +185,10 @@ export default function CabildoSection({ token }: { token: string }) {
           ))}
         </div>
       ) : docs.length === 0 ? (
-        <div className="flex flex-col items-center py-12 gap-2">
-          <FileText size={28} style={{ color: 'var(--c-text-4)' }} />
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-            {tipoF ? 'Sin documentos de ese tipo' : 'Tu empleado aún no ha generado ningún documento'}
-          </p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={tipoF ? 'Sin documentos de ese tipo' : 'Tu empleado aún no ha generado ningún documento'}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {docs.map(d => (

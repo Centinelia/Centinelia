@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Copy, Check, ExternalLink } from 'lucide-react';
+import { SectionHeader, EmptyState as PortalEmptyState } from '@/components/portal-ui';
 
 interface Item {
   descripcion:     string;
@@ -139,13 +140,12 @@ export default function FacturasPage() {
 
   return (
     <div id="of-facturas" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Facturación</p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>Facturas por emitir</h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Solicitudes que tus empleados recolectaron. Cuando timbres cada una en tu sistema fiscal (Solución Factible u otro PAC), márcala como emitida aquí.
-        </p>
-      </div>
+      <SectionHeader
+        as="h2"
+        eyebrow="Facturación"
+        title="Facturas por emitir"
+        description="Solicitudes que tus empleados recolectaron. Cuando timbres cada una en tu sistema fiscal (Solución Factible u otro PAC), márcala como emitida aquí."
+      />
 
       {!loading && rows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -185,7 +185,11 @@ export default function FacturasPage() {
       {loading ? (
         <p className="text-xs py-10 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando solicitudes...</p>
       ) : filtered.length === 0 ? (
-        <EmptyState />
+        <PortalEmptyState
+          icon={FileText}
+          title="Sin solicitudes de factura"
+          description="Cuando tu empleado registre una solicitud de un cliente (por teléfono, chat o correo), aparecerá aquí lista para que la emitas en tu sistema fiscal."
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map(r => {
@@ -240,20 +244,6 @@ function Metric({ value, label, color }: { value: number; label: string; color?:
     <div className="flex flex-col items-center gap-0.5 px-4 py-3 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
       <span className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--c-text)' }}>{value}</span>
       <span className="text-[10px] uppercase tracking-widest font-semibold text-center" style={{ color: 'var(--c-text-4)' }}>{label}</span>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center rounded-2xl" style={{ background: 'var(--c-surface)', border: '1px dashed var(--c-border)' }}>
-      <FileText size={28} style={{ color: 'var(--c-text-4)', opacity: 0.5 }} />
-      <div>
-        <p className="text-sm font-semibold" style={{ color: 'var(--c-text-2)' }}>Sin solicitudes de factura</p>
-        <p className="text-xs mt-1 leading-relaxed max-w-sm" style={{ color: 'var(--c-text-3)' }}>
-          Cuando tu empleado registre una solicitud de un cliente (por teléfono, chat o correo), aparecerá aquí lista para que la emitas en tu sistema fiscal.
-        </p>
-      </div>
     </div>
   );
 }

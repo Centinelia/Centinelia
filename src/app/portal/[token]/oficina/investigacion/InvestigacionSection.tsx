@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, ExternalLink, Zap, Users, TrendingUp, BookOpen, Newspaper, RefreshCw, Globe, CheckCircle, Phone } from 'lucide-react';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import { SectionHeader, Card } from '@/components/portal-ui';
 
 type ResearchType = 'leads' | 'competidores' | 'mercado' | 'regulaciones' | 'noticias' | 'general';
 
@@ -130,32 +131,31 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
     <div className="flex flex-col gap-6">
 
       {/* Hero banner */}
-      <div style={{ background: 'var(--c-surface)', border: `1px solid ${acColor}28`, borderRadius: 14, overflow: 'hidden', display: 'flex' }}>
-        {meerkat?.imagen ? (
-          <img
-            src={meerkat.imagen}
-            alt={meerkat.nombre}
-            style={{ width: 90, height: 90, objectFit: 'contain', objectPosition: 'bottom center', flexShrink: 0, alignSelf: 'flex-end' }}
-          />
-        ) : (
-          <div style={{ width: 90, height: 90, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexShrink: 0, paddingBottom: 8 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: `${acColor}18`, border: `1px solid ${acColor}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Globe size={22} style={{ color: acColor }} />
+      <Card padding="none" border className="overflow-hidden" style={{ borderColor: `${acColor}28` }}>
+        <div style={{ display: 'flex' }}>
+          {meerkat?.imagen ? (
+            <img
+              src={meerkat.imagen}
+              alt={meerkat.nombre}
+              style={{ width: 90, height: 90, objectFit: 'contain', objectPosition: 'bottom center', flexShrink: 0, alignSelf: 'flex-end' }}
+            />
+          ) : (
+            <div style={{ width: 90, height: 90, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', flexShrink: 0, paddingBottom: 8 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${acColor}18`, border: `1px solid ${acColor}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Globe size={22} style={{ color: acColor }} />
+              </div>
             </div>
+          )}
+          <div style={{ flex: 1, padding: '16px 16px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <SectionHeader
+              as="h2"
+              eyebrow="Investigación"
+              title={`${employeeName} investiga en internet antes de que tomes una decisión.`}
+              description="Competidores, prospectos, regulaciones, mercado o cualquier tema."
+            />
           </div>
-        )}
-        <div style={{ flex: 1, padding: '16px 16px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <p style={{ color: 'var(--c-text-4)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
-            Investigación
-          </p>
-          <p style={{ color: 'var(--c-text)', fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
-            {employeeName} investiga en internet antes de que tomes una decisión.
-          </p>
-          <p style={{ color: 'var(--c-text-3)', fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
-            Competidores, prospectos, regulaciones, mercado o cualquier tema.
-          </p>
         </div>
-      </div>
+      </Card>
 
       {/* Step 1 — Type */}
       <div className="flex flex-col gap-3">

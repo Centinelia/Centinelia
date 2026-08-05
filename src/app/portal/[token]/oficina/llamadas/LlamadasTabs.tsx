@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { PhoneCall, PhoneOutgoing } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Card, SectionHeader } from '@/components/portal-ui';
 import type { VoiceCall } from '@/types/agent';
 import CallsSearch      from '../../CallsSearch';
 import DownloadCallsCSV from '../../DownloadCallsCSV';
@@ -101,16 +102,18 @@ export default function LlamadasTabs({
             </p>
           )}
 
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                Registro de llamadas
-              </h3>
-              <DownloadCallsCSV
-                calls={calls as any}
-                filename={`llamadas-${businessName.replace(/\s+/g, '-').toLowerCase()}.csv`}
-              />
-            </div>
+          <Card padding="sm">
+            <SectionHeader
+              as="h3"
+              title="Registro de llamadas"
+              right={
+                <DownloadCallsCSV
+                  calls={calls as any}
+                  filename={`llamadas-${businessName.replace(/\s+/g, '-').toLowerCase()}.csv`}
+                />
+              }
+              className="mb-4"
+            />
             {calls.length === 0 ? (
               <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
             ) : (
@@ -123,7 +126,7 @@ export default function LlamadasTabs({
                 agentNameById={agentNameById}
               />
             )}
-          </div>
+          </Card>
 
           {(showLeads || showOrders || showAppts) && (
             <div className="flex flex-col gap-3">

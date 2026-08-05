@@ -8,6 +8,7 @@ import {
   Pencil, ArrowLeft, Zap, Bell, PhoneCall, AlertTriangle, ClipboardList,
   Download, List, PlayCircle,
 } from 'lucide-react';
+import { SectionHeader, Card, EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import MeerkatPicker from '../../agentes/MeerkatPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -1532,17 +1533,12 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
       )}
 
       {/* Header */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-          Calidad
-        </p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
-          Cada llamada hace más inteligente a tu negocio.
-        </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Define una vez las preguntas y tus empleados las aplicarán automáticamente cuando corresponda. Mide satisfacción, calidad, entregas o cualquier proceso sin depender de que alguien recuerde preguntar.
-        </p>
-      </div>
+      <SectionHeader
+        as="h2"
+        eyebrow="Calidad"
+        title="Cada llamada hace más inteligente a tu negocio."
+        description="Define una vez las preguntas y tus empleados las aplicarán automáticamente cuando corresponda. Mide satisfacción, calidad, entregas o cualquier proceso sin depender de que alguien recuerde preguntar."
+      />
 
       {/* No survey agent banner */}
       {!hasSurveyAgent && (
@@ -1594,46 +1590,41 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
       <div className="flex flex-col gap-4">
 
         {/* Section header */}
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-            {activeSurveys.length > 0 ? `Activas · ${activeSurveys.length}` : 'Encuestas'}
-          </p>
-          <button
-            onClick={() => setShowWizard(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF', cursor: 'pointer' }}
-          >
-            <Plus size={12} /> Nueva encuesta
-          </button>
-        </div>
+        <SectionHeader
+          as="h3"
+          title={activeSurveys.length > 0 ? `Activas · ${activeSurveys.length}` : 'Encuestas'}
+          right={
+            <button
+              onClick={() => setShowWizard(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF', cursor: 'pointer' }}
+            >
+              <Plus size={12} /> Nueva encuesta
+            </button>
+          }
+        />
 
         {loading    && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
         {loadError  && <p className="text-xs" style={{ color: '#f87171' }}>No se pudieron cargar las encuestas.</p>}
 
         {/* Empty state */}
         {!loading && surveys.length === 0 && (
-          <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
-                <BarChart2 size={16} style={{ color: '#9B6DFF' }} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Aún no hay encuestas</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                  Crea una y actívala para que {employeeName} la aplique en cada llamada.
-                </p>
-              </div>
-            </div>
-            <div className="pl-12">
-              <button
-                onClick={() => setShowWizard(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF', cursor: 'pointer' }}
-              >
-                <Plus size={12} /> Crear primera encuesta
-              </button>
-            </div>
-          </div>
+          <Card padding="md">
+            <PortalEmptyState
+              icon={BarChart2}
+              title="Aún no hay encuestas"
+              description={`Crea una y actívala para que ${employeeName} la aplique en cada llamada.`}
+              action={
+                <button
+                  onClick={() => setShowWizard(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                  style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF', cursor: 'pointer' }}
+                >
+                  <Plus size={12} /> Crear primera encuesta
+                </button>
+              }
+            />
+          </Card>
         )}
 
         {/* Active surveys */}

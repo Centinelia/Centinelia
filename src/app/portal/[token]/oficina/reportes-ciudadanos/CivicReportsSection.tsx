@@ -8,6 +8,7 @@ import {
 } from '@/lib/civic/folio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SectionHeader } from '@/components/portal-ui';
 
 interface CivicReport {
   id:               string;
@@ -324,17 +325,18 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
     <div className="flex flex-col gap-5">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Reportes ciudadanos</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {openCount > 0 && `${openCount} abierto${openCount !== 1 ? 's' : ''}`}
-            {openCount > 0 && inProcessCount > 0 && ' · '}
-            {inProcessCount > 0 && `${inProcessCount} en proceso`}
-            {openCount === 0 && inProcessCount === 0 && 'Sin reportes pendientes'}
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        as="h2"
+        title="Reportes ciudadanos"
+        description={
+          openCount > 0 || inProcessCount > 0
+            ? [
+                openCount > 0 ? `${openCount} abierto${openCount !== 1 ? 's' : ''}` : '',
+                inProcessCount > 0 ? `${inProcessCount} en proceso` : '',
+              ].filter(Boolean).join(' · ')
+            : 'Sin reportes pendientes'
+        }
+      />
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
