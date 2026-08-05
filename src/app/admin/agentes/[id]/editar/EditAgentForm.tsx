@@ -67,18 +67,16 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
     e.preventDefault();
     setSaving(true);
     const fd = new FormData(e.currentTarget);
-    // Datos de cliente (contacto, vertical, timezone, horario, direccion,
-    // sitio web, calendar) se editan desde /admin/clientes/[key]/editar.
-    // Aqui solo los campos truly per-empleado.
+    // Datos del cliente/negocio (contacto, vertical, timezone, horario,
+    // direccion, sitio web, business_name, business_description,
+    // business_phone_display, calendar) se editan desde
+    // /admin/clientes/[key]/editar. Aqui solo los campos per-empleado.
     const body = {
-      business_name:          fd.get('business_name'),
-      business_description:   fd.get('business_description'),
       phone_number:           fd.get('phone_number'),
       knowledge_base:         fd.get('knowledge_base'),
       role_knowledge_base:    fd.get('role_knowledge_base'),
       agent_name:             fd.get('agent_name') || null,
       elevenlabs_voice_id:    voiceId ?? null,
-      business_phone_display: fd.get('business_phone_display'),
       transfer_number:        fd.get('transfer_number'),
       transfer_whatsapp:      fd.get('transfer_whatsapp'),
       role,
@@ -177,14 +175,11 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             </p>
           </div>
 
-          <Card title="Negocio" icon={<Building2 size={13} />}
-                subtitle="Datos especificos de esta empresa. Cada empleado puede representar una empresa distinta.">
-            <Field label="Nombre del negocio" name="business_name" required defaultValue={agent.business_name} />
-            <Field label="Descripcion" name="business_description" textarea defaultValue={agent.business_description} />
-
+          <Card title="Numero Vapi" icon={<Building2 size={13} />}
+                subtitle="Numero asignado en Vapi que recibe las llamadas entrantes de este empleado.">
             <Field label="Numero Centinelia (Vapi)" name="phone_number"
               defaultValue={agent.phone_number}
-              helper="Numero asignado en Vapi que recibe las llamadas entrantes." />
+              helper="El resto de la info del negocio (nombre, descripcion, telefono comercial, calendario) se administra desde el editor de cliente." />
           </Card>
         </div>
 
@@ -262,7 +257,6 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             </div>
 
             <div className="flex flex-col gap-3 pt-2">
-              <Field label="Número que menciona el empleado" name="business_phone_display" defaultValue={agent.business_phone_display} />
               <Field label="Número de transferencia a humano" name="transfer_number"
                 defaultValue={agent.transfer_number ?? ''}
                 helper="Si el llamante pide hablar con una persona, el empleado transfiere aquí." />

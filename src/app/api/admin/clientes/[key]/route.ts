@@ -26,6 +26,7 @@ import type { AgentFeatures } from '@/types/agent';
 const ORG_FIELDS = new Set([
   'business_hours',
   'business_website',
+  'business_description',
 ]);
 
 // Campos que viven en `voice_agents` a nivel bulk (mismo valor para todos los empleados).
@@ -34,6 +35,8 @@ const AGENT_BULK_FIELDS = new Set([
   'client_email',
   'timezone',
   'business_address',
+  'business_name',
+  'business_phone_display',
   'calendar_url',
 ]);
 
