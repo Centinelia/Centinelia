@@ -63,7 +63,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
 
       <div className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
         <div>
-          Rol: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
+          <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
           {' · '}Versión efectiva: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{effectiveVersion}</span>
           {pin != null && (
             <span
