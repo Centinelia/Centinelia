@@ -15,6 +15,7 @@ import { Pagination } from '@/components/admin/Pagination';
 
 type AgentRow = {
   id: string;
+  agent_name: string | null;
   business_name: string;
   plan: string;
   active: boolean;
@@ -144,11 +145,29 @@ export default function ClientesClient({
     <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ opacity: pending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
 
       {/* Header */}
-      <div>
-        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Clientes</h1>
-        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} empleado{totalAgents !== 1 ? 's' : ''} · {totalActive} activo{totalActive !== 1 ? 's' : ''}
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Clientes</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+            {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} empleado{totalAgents !== 1 ? 's' : ''} · {totalActive} activo{totalActive !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href="/admin/demo"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+          >
+            Demo
+          </Link>
+          <Link
+            href="/admin/demo-personalizado"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+          >
+            Demo personalizado
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -310,7 +329,14 @@ export default function ClientesClient({
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[13px] font-medium" style={{ color: '#111827' }}>{agent.business_name}</span>
+                              <span className="text-[13px] font-medium" style={{ color: '#111827' }}>
+                                {agent.agent_name?.trim() || agent.business_name}
+                              </span>
+                              {agent.agent_name?.trim() && (
+                                <span className="text-[12px]" style={{ color: '#6B7280' }}>
+                                  {agent.business_name}
+                                </span>
+                              )}
                               {agent.billing_status === 'pago_fallido' && (
                                 <span
                                   className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
@@ -334,11 +360,11 @@ export default function ClientesClient({
                               </Link>
                             )}
                             <Link
-                              href={`/admin/agentes/${agent.id}/editar`}
+                              href={`/admin/agentes/${agent.id}`}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
                               style={{ background: '#6C3BFF', color: '#FFFFFF' }}
                             >
-                              <Settings size={11} /><span className="hidden sm:inline"> Editar</span>
+                              <Settings size={11} /><span className="hidden sm:inline"> Configurar</span>
                             </Link>
                             <button
                               onClick={() => credIsOpen ? closeCred(agent.id) : openCred(agent.id, agent.portal_email)}

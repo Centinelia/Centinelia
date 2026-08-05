@@ -11,6 +11,7 @@ interface Props {
 
 type AgentRow = {
   id: string;
+  agent_name: string | null;
   business_name: string;
   plan: string;
   active: boolean;
@@ -39,7 +40,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap')
+    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -70,6 +71,7 @@ export default async function ClientesPage({ searchParams }: Props) {
     }
     map.get(key)!.agents.push({
       id:                agent.id,
+      agent_name:        (agent as FetchedAgent & { agent_name?: string | null }).agent_name ?? null,
       business_name:     agent.business_name,
       plan:              agent.plan,
       active:            agent.active,
