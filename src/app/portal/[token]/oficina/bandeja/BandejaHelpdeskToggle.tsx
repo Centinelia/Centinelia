@@ -56,6 +56,15 @@ export default function BandejaHelpdeskToggle({
     router.replace(qs ? `?${qs}` : '?', { scroll: false });
   };
 
+  // T4.3: If no Neo, don't render tabs at all — show only Bandeja content
+  if (!hasNeo) {
+    return (
+      <div className="flex flex-col gap-6">
+        <OpsInboxSection token={token} agents={agents} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* View switcher chips */}
