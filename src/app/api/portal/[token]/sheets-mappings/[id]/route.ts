@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { refreshHeaders } from '@/lib/services/sheets';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
@@ -113,6 +114,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   patch.updated_at = new Date().toISOString();
 
+  // M-2: if tab_name is changing, invalidate the cached headers so appendRow
+  // does not use stale column order from the old tab.
+  let shouldRefreshHeaders = false;
+  if ('tab_name' in body && typeof body.tab_name === 'string') {
+    const sb0 = createAdminClient();
+    const { data: current } = await sb0
+      .from('sheets_mappings')
+      .select('tab_name')
+      .eq('id', id)
+      .single();
+    if (current && current.tab_name !== body.tab_name) {
+      patch.headers = [];
+      patch.headers_synced_at = new Date().toISOString();
+      shouldRefreshHeaders = true;
+    }
+  }
+
   const sb = createAdminClient();
   const { error } = await sb
     .from('sheets_mappings')
@@ -120,6 +138,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fire header re-sync in the background (same pattern as POST)
+  if (shouldRefreshHeaders) void refreshHeaders(id);
+
   return NextResponse.json({ ok: true });
 }
 

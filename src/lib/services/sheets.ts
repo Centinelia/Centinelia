@@ -321,8 +321,27 @@ export async function appendRow(
 
     if (!mapping) return { ok: false, reason: 'mapping_not_found' };
 
-    const headers: string[] = mapping.headers ?? [];
+    let headers: string[] = mapping.headers ?? [];
     const dataKeys = Object.keys(data);
+
+    // I-2: if headers are empty but data is non-empty, auto-refresh once so a
+    // freshly-created mapping (where background refreshHeaders hasn't landed yet)
+    // can still append successfully on the first call.
+    if (headers.length === 0 && dataKeys.length > 0) {
+      const refreshResult = await refreshHeaders(mappingId);
+      if (refreshResult.ok) {
+        headers = refreshResult.data.headers;
+      }
+      // If refresh returned empty headers the sheet's row 1 is genuinely empty.
+      if (headers.length === 0) {
+        return {
+          ok: false,
+          reason: 'headers_not_synced',
+          detail: 'La hoja no tiene encabezados en la fila 1. Configúralos y vuelve a intentar.',
+        };
+      }
+    }
+
     const unknownKeys = dataKeys.filter(k => !headers.includes(k));
     if (unknownKeys.length > 0) {
       return {

@@ -213,6 +213,95 @@ describe('appendRow', () => {
       expect(res.detail).toContain('Quota exceeded');
     }
   });
+
+  // I-2: empty headers triggers auto-refresh, then appends with new headers
+  it('auto-refreshes headers when cached array is empty and appends successfully', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    // Sheets client: get (used by refreshHeaders) returns row 1 with headers;
+    // append (used by appendRow) returns a valid updated range.
+    const getValues = vi.fn().mockResolvedValue({ data: { values: [['Nombre', 'Telefono']] } });
+    const append = vi.fn().mockResolvedValue({
+      data: { updates: { updatedRange: 'Hoja1!A2:B2' } },
+    });
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      spreadsheets: { values: { get: getValues, append } },
+    });
+
+    // Supabase always returns the mapping with empty headers (appendRow reads it, then
+    // refreshHeaders reads it too). refreshHeaders will get the real headers from Sheets
+    // and return them — appendRow uses refreshResult.data.headers directly, not a re-fetch.
+    const mappingRow = { id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Hoja1', headers: [] };
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mappingRow }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }),
+    });
+
+    const res = await appendRow('m1', { Nombre: 'Ana', Telefono: '555' });
+    expect(res.ok).toBe(true);
+    expect(getValues).toHaveBeenCalled(); // refreshHeaders fired Sheets API
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({
+      requestBody: { values: [['Ana', '555']] },
+    }));
+  });
+
+  // I-2: truly empty sheet (row 1 genuinely empty) returns headers_not_synced
+  it('returns headers_not_synced when refresh returns empty headers (sheet row 1 is empty)', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    // Sheets returns no values in row 1
+    const getValues = vi.fn().mockResolvedValue({ data: { values: [] } });
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      spreadsheets: { values: { get: getValues } },
+    });
+
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Hoja1', headers: [] },
+            }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }),
+    });
+
+    const res = await appendRow('m1', { Nombre: 'Ana' });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('headers_not_synced');
+      expect(res.detail).toContain('encabezados');
+    }
+  });
+
+  // I-2: existing headers_mismatch case (headers non-empty, key not in them) still works
+  it('returns headers_mismatch when headers are present but data key is not among them', async () => {
+    await setupMock(
+      { id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Clientes', headers: ['Nombre'] },
+      'Clientes!A5:A5',
+    )();
+
+    const res = await appendRow('m1', { Nombre: 'X', InexistentField: 'y' });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('headers_mismatch');
+      expect(res.detail).toContain('InexistentField');
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
