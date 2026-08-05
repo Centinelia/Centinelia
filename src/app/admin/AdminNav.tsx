@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench } from 'lucide-react';
+import { LayoutDashboard, Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy } from 'lucide-react';
 
 const links = [
   { href: '/admin/inicio',       icon: Home,            label: 'Inicio' },
@@ -23,6 +23,7 @@ const links = [
   { href: '/admin/observabilidad', icon: Activity,        label: 'Observabilidad' },
   { href: '/admin/graph',        icon: GitBranch,       label: 'Graph (state machines)' },
   { href: '/admin/human-gates',  icon: ShieldCheck,     label: 'Human gates' },
+  { href: '/admin/recovery',     icon: LifeBuoy,        label: 'Recovery' },
   { href: '/admin/tools',        icon: Wrench,          label: 'Tools registry' },
   { href: '/admin/failed-handoffs', icon: AlertOctagon,   label: 'Handoffs fallidos' },
 ];
