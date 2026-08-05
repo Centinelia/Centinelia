@@ -153,9 +153,9 @@ export default async function UsuariosPage({ params }: Props) {
             hasStripe={hasStripe}
             headerActions={
               <>
-                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
-                <NotificationBell token={token} />
-                <PortalLogout />
+                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" onDark />}
+                <NotificationBell token={token} onDark />
+                <PortalLogout onDark />
               </>
             }
             main={pageBodyV2}

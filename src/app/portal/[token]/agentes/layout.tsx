@@ -130,8 +130,8 @@ export default async function AgentesLayout({
             modules={modules}
             headerActions={
               <>
-                <NotificationBell token={token} />
-                <PortalLogout />
+                <NotificationBell token={token} onDark />
+                <PortalLogout onDark />
               </>
             }
             main={mainColumn}

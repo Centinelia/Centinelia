@@ -1835,9 +1835,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             hasStripe={hasStripe}
             headerActions={
               <>
-                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
-                <NotificationBell token={token} />
-                <PortalLogout />
+                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" onDark />}
+                <NotificationBell token={token} onDark />
+                <PortalLogout onDark />
               </>
             }
             main={pageBodyV2}

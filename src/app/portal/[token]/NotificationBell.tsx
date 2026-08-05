@@ -47,7 +47,7 @@ function timeAgo(iso: string): string {
   return `Hace ${Math.floor(hr / 24)} d`;
 }
 
-export default function NotificationBell({ token }: { token: string }) {
+export default function NotificationBell({ token, onDark = false }: { token: string; onDark?: boolean }) {
   const lastSeen  = useRef<string>(new Date().toISOString());
   const panelRef  = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -147,10 +147,16 @@ export default function NotificationBell({ token }: { token: string }) {
           width:          34,
           height:         34,
           borderRadius:   10,
-          background:     open ? 'var(--c-surface)' : 'var(--c-surface-2)',
-          border:         open ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
+          background:     onDark
+                            ? (open ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)')
+                            : (open ? 'var(--c-surface)' : 'var(--c-surface-2)'),
+          border:         onDark
+                            ? (open ? '1px solid rgba(255,255,255,0.30)' : '1px solid rgba(255,255,255,0.14)')
+                            : (open ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)'),
           cursor:         'pointer',
-          color:          open ? '#9B6DFF' : 'var(--c-text-2)',
+          color:          onDark
+                            ? (open ? '#FFFFFF' : 'rgba(255,255,255,0.85)')
+                            : (open ? '#9B6DFF' : 'var(--c-text-2)'),
           flexShrink:     0,
           transition:     'background 0.15s, color 0.15s, border-color 0.15s',
         }}

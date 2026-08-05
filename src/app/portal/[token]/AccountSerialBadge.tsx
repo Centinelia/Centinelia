@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 
-export default function AccountSerialBadge({ serial, variant = 'header' }: {
+export default function AccountSerialBadge({ serial, variant = 'header', onDark = false }: {
   serial: string;
   variant?: 'header' | 'card';
+  onDark?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -22,9 +23,9 @@ export default function AccountSerialBadge({ serial, variant = 'header' }: {
         title="Copiar número de cuenta"
         className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all hover:opacity-80"
         style={{
-          background: 'rgba(108,59,255,0.08)',
-          border:     '1px solid rgba(108,59,255,0.2)',
-          color:      'var(--c-text-3)',
+          background: onDark ? 'rgba(255,255,255,0.08)' : 'rgba(108,59,255,0.08)',
+          border:     onDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(108,59,255,0.2)',
+          color:      onDark ? 'rgba(255,255,255,0.85)' : 'var(--c-text-3)',
           fontSize:   11,
           fontWeight: 600,
           fontFamily: 'monospace',

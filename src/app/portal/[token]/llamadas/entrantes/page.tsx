@@ -223,8 +223,8 @@ export default async function EntrantesPage({ params }: Props) {
             hasStripe={hasStripe}
             headerActions={
               <>
-                <NotificationBell token={token} />
-                <PortalLogout />
+                <NotificationBell token={token} onDark />
+                <PortalLogout onDark />
               </>
             }
             main={pageBodyV2}
