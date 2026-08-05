@@ -511,116 +511,146 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             {/* ── Tab 2: Herramientas e integraciones ───────────────────── */}
             <div className="flex flex-col gap-5">
 
+              {/* Accordion: Llamadas */}
               {!isCoordinator && (
-                <div id="llamadas" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Llamadas entrantes"
-                      tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
-                      className="mb-4"
-                    />
-                    <AgentCustomization
-                      token={token}
-                      initGreeting={(agent as any).first_message ?? ''}
-                      initTransferRules={(agent as any).transfer_rules ?? ''}
-                    />
-                  </Card>
-                </div>
+                <details open>
+                  <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                    <span>▶</span> Llamadas
+                  </summary>
+                  <div className="flex flex-col gap-5">
+                    <div id="llamadas" style={SCROLL_STYLE}>
+                      <Card border elevated={false} padding="sm">
+                        <SectionHeader
+                          as="h2"
+                          title="Llamadas entrantes"
+                          tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
+                          className="mb-4"
+                        />
+                        <AgentCustomization
+                          token={token}
+                          initGreeting={(agent as any).first_message ?? ''}
+                          initTransferRules={(agent as any).transfer_rules ?? ''}
+                        />
+                      </Card>
+                    </div>
+
+                    {hasVoiceJornada && !!(agent as any).phone_number && (
+                      <div id="desvio" style={SCROLL_STYLE}>
+                        <Card border elevated={false} padding="sm">
+                          <SectionHeader
+                            as="h2"
+                            title="Desvío de llamadas"
+                            tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
+                            className="mb-4"
+                          />
+                          <CallForwardingSection
+                            phoneNumber={(agent as any).phone_number as string}
+                            agentName={agentName}
+                          />
+                        </Card>
+                      </div>
+                    )}
+
+                    <div id="equipo" style={SCROLL_STYLE}>
+                      <Card border elevated={false} padding="sm">
+                        <SectionHeader
+                          as="h2"
+                          title="Números del equipo"
+                          tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
+                          className="mb-4"
+                        />
+                        <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
+                      </Card>
+                    </div>
+                  </div>
+                </details>
               )}
 
-              {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
-                <div id="desvio" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Desvío de llamadas"
-                      tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
-                      className="mb-4"
-                    />
-                    <CallForwardingSection
-                      phoneNumber={(agent as any).phone_number as string}
-                      agentName={agentName}
-                    />
-                  </Card>
+              {/* Accordion: Autonomía y aprobaciones */}
+              <details open>
+                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <span>▶</span> Autonomía y aprobaciones
+                </summary>
+                <div className="flex flex-col gap-5">
+                  <div id="autonomia" style={SCROLL_STYLE}>
+                    <Card border elevated={false} padding="sm">
+                      <SectionHeader
+                        as="h2"
+                        title="Nivel de autonomía"
+                        tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
+                        className="mb-4"
+                      />
+                      <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
+                    </Card>
+                  </div>
+
+                  {isOwner && (
+                    <div id="aprobaciones" style={SCROLL_STYLE}>
+                      <Card border elevated={false} padding="sm">
+                        <ApprovalSettingsSection token={token} roleColor={roleColor} />
+                      </Card>
+                    </div>
+                  )}
                 </div>
-              )}
+              </details>
 
-              <div id="autonomia" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Nivel de autonomía"
-                    tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
-                    className="mb-4"
-                  />
-                  <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
-                </Card>
-              </div>
+              {/* Accordion: Iniciativa proactiva */}
+              <details open>
+                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                  <span>▶</span> Iniciativa proactiva
+                </summary>
+                <div className="flex flex-col gap-5">
+                  <div id="checkin" style={SCROLL_STYLE}>
+                    <Card border elevated={false} padding="sm">
+                      <SectionHeader
+                        as="h2"
+                        title="Check-in automático"
+                        tooltip="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo."
+                        className="mb-4"
+                      />
+                      <HeartbeatEditor
+                        token={token}
+                        initConfig={(agent as any).heartbeat_config ?? null}
+                        isCoordinator={isCoordinator}
+                      />
+                    </Card>
+                  </div>
 
-              <div id="checkin" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Check-in automático"
-                    tooltip="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo."
-                    className="mb-4"
-                  />
-                  <HeartbeatEditor
-                    token={token}
-                    initConfig={(agent as any).heartbeat_config ?? null}
-                    isCoordinator={isCoordinator}
-                  />
-                </Card>
-              </div>
-
-              {meerkatId === 'nox' && (
-                <div id="brief-del-dia" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Brief del día"
-                      tooltip="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana."
-                      className="mb-4"
-                    />
-                    <BriefDelDiaSection agentId={agent.id} />
-                  </Card>
+                  {meerkatId === 'nox' && (
+                    <div id="brief-del-dia" style={SCROLL_STYLE}>
+                      <Card border elevated={false} padding="sm">
+                        <SectionHeader
+                          as="h2"
+                          title="Brief del día"
+                          tooltip="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana."
+                          className="mb-4"
+                        />
+                        <BriefDelDiaSection agentId={agent.id} />
+                      </Card>
+                    </div>
+                  )}
                 </div>
-              )}
+              </details>
 
-              {!isCoordinator && (
-                <div id="equipo" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Números del equipo"
-                      tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
-                      className="mb-4"
-                    />
-                    <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
-                  </Card>
-                </div>
-              )}
-
+              {/* Accordion: Diagnóstico */}
               {!isCoordinator && isOwner && (
-                <div id="reportes" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Reportes de fallas"
-                      className="mb-4"
-                    />
-                    <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
-                  </Card>
-                </div>
-              )}
-
-              {isOwner && (
-                <div id="aprobaciones" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <ApprovalSettingsSection token={token} roleColor={roleColor} />
-                  </Card>
-                </div>
+                <details open>
+                  <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
+                    <span>▶</span> Diagnóstico
+                  </summary>
+                  <div className="flex flex-col gap-5">
+                    <div id="reportes" style={SCROLL_STYLE}>
+                      <Card border elevated={false} padding="sm">
+                        <SectionHeader
+                          as="h2"
+                          title="Reportes de fallas"
+                          className="mb-4"
+                        />
+                        <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+                      </Card>
+                    </div>
+                  </div>
+                </details>
               )}
 
             </div>
