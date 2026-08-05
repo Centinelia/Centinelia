@@ -54,6 +54,12 @@ export type { RankRowProps, RankRowMetric, RankRowIndicator } from './patterns/R
 export type { ActivityEventCardProps, EventType }      from './patterns/ActivityEventCard';
 export type { DataTableProps, DataTableColumn, SortDirection } from './patterns/DataTable';
 
+// ─── Overlays (Fase 2B-3) ──────────────────────────────────────────────
+export { default as Dialog }  from './overlays/Dialog';
+export { default as Toaster, toast } from './overlays/Toast';
+
+export type { DialogProps, DialogSize } from './overlays/Dialog';
+
 // ─── Tokens JS ─────────────────────────────────────────────────────────
 export { EVENT_TYPE_COLORS, AVATAR_SIZES, ICON_SIZES } from './tokens';
 export type { IconSizeKey } from './tokens';
