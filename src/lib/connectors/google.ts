@@ -158,12 +158,16 @@ class GoogleFiles implements FilesConnector {
     const safe = query.replace(/'/g, "\\'");
     // Search both filename and full-text content, exclude trashed files. Drive returns dedupe.
     const q = encodeURIComponent(`(name contains '${safe}' or fullText contains '${safe}') and trashed = false`);
-    const res = await fetch(
-      `${DRIVE}/files?q=${q}&fields=files(id,name,mimeType)&pageSize=15&orderBy=modifiedTime desc`,
-      { headers: this.h() },
-    );
-    if (!res.ok) return [];
+    const url = `${DRIVE}/files?q=${q}&fields=files(id,name,mimeType)&pageSize=15&orderBy=modifiedTime desc`;
+    const res = await fetch(url, { headers: this.h() });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error('[drive.search] FAIL q="' + query + '" status=' + res.status + ' body=' + errText.slice(0, 300));
+      return [];
+    }
     const data = await res.json();
+    const count = (data.files ?? []).length;
+    console.log('[drive.search] q="' + query + '" ok status=' + res.status + ' files=' + count);
     return ((data.files ?? []) as { id: string; name: string; mimeType: string }[]).map(f => ({
       id:       f.id,
       name:     f.name,
