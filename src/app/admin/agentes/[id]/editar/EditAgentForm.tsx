@@ -112,7 +112,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const displayName = agent.agent_name || agent.business_name;
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto pb-32">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
 
       {/* Back link */}
       <div className="mb-3">
@@ -323,42 +323,40 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
         </div>
       </form>
 
-      {/* Sticky footer with Save/Cancel */}
+      {/* Footer al final del form (no sticky, no estorba al llenar campos abajo) */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-40"
-        style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', borderTop: '1px solid #E5E7EB' }}
+        className="mt-6 pt-4 flex items-center justify-end gap-2"
+        style={{ borderTop: '1px solid #E5E7EB' }}
       >
-        <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 flex items-center justify-end gap-2">
-          <Link
-            href={`/admin/agentes/${agent.id}`}
-            className="inline-flex items-center px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            Cancelar
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              const form = document.querySelector('form') as HTMLFormElement | null;
-              form?.requestSubmit();
-            }}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-opacity"
-            style={{ background: '#6C3BFF', color: '#FFFFFF', opacity: saving ? 0.6 : 1 }}
-          >
-            {saving ? (
-              <>
-                <RefreshCw size={13} className="animate-spin" />
-                Guardando…
-              </>
-            ) : (
-              <>
-                <Check size={13} />
-                Guardar cambios
-              </>
-            )}
-          </button>
-        </div>
+        <Link
+          href={`/admin/agentes/${agent.id}`}
+          className="inline-flex items-center px-4 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+          style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+        >
+          Cancelar
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            const form = document.querySelector('form') as HTMLFormElement | null;
+            form?.requestSubmit();
+          }}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-opacity"
+          style={{ background: '#6C3BFF', color: '#FFFFFF', opacity: saving ? 0.6 : 1 }}
+        >
+          {saving ? (
+            <>
+              <RefreshCw size={13} className="animate-spin" />
+              Guardando
+            </>
+          ) : (
+            <>
+              <Check size={13} />
+              Guardar cambios
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
