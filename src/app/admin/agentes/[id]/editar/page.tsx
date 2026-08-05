@@ -1,7 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin';
-import { notFound } from 'next/navigation';
-import EditAgentForm from './EditAgentForm';
-import type { VoiceAgent } from '@/types/agent';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +6,9 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default async function EditarAgentePage({ params }: Props) {
+// La edicion vive ahora inline en /admin/agentes/[id].
+// Esta ruta se conserva solo para redirigir enlaces viejos.
+export default async function EditarAgenteRedirect({ params }: Props) {
   const { id } = await params;
-  const supabase = createAdminClient();
-  const { data } = await supabase.from('voice_agents').select('*').eq('id', id).single();
-  if (!data) notFound();
-  return <EditAgentForm agent={data as VoiceAgent} />;
+  redirect(`/admin/agentes/${id}`);
 }
