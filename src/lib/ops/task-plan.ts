@@ -120,3 +120,20 @@ export async function orgAutoApprovesPlans(
     .maybeSingle();
   return !!(data?.auto_approve_task_plans);
 }
+
+/**
+ * True cuando la org quiere que TODA delegación pase por aprobación humana
+ * sin importar tamaño/keywords. Overrides thresholds de requiresPlanApproval.
+ * Precedence: auto_approve_task_plans (skip approval) > always_approve_delegations (force approval).
+ */
+export async function orgAlwaysRequiresApproval(
+  portalEmail: string,
+  supabase: SupabaseClient,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('organizations')
+    .select('always_approve_delegations')
+    .eq('portal_email', portalEmail)
+    .maybeSingle();
+  return !!(data?.always_approve_delegations);
+}

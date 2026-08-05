@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import {
-  requiresPlanApproval, generateTaskPlan, generatePlanApprovalToken, orgAutoApprovesPlans,
+  requiresPlanApproval, generateTaskPlan, generatePlanApprovalToken, orgAutoApprovesPlans, orgAlwaysRequiresApproval,
 } from '@/lib/ops/task-plan';
 import { planApprovalEmailHtml } from '@/lib/ops/task-plan-email';
 import { sendEmail } from '@/lib/email/send';
@@ -366,10 +366,13 @@ export async function POST(req: NextRequest) {
   const ownerEmail = caller.portal_email;
 
   // ── Plan-then-approve gate ────────────────────────────────────────────────
-  // Si la tarea es grande y la org no auto-aprueba, generamos plan y esperamos
-  // aprobación humana por magic link antes de ejecutar.
-  const needsApproval = requiresPlanApproval({ tarea, success_criteria, max_iterations }) &&
-    !(await orgAutoApprovesPlans(caller.portal_email, supabase));
+  // Precedence:
+  //   auto_approve_task_plans = true  → SIEMPRE skip approval (auto-ejecuta)
+  //   always_approve_delegations = true → SIEMPRE requiere approval (verdadero modo supervisado)
+  //   default → aplica thresholds de requiresPlanApproval (tamaño/keywords)
+  const orgAutoApproves = await orgAutoApprovesPlans(caller.portal_email, supabase);
+  const orgAlwaysNeeds  = await orgAlwaysRequiresApproval(caller.portal_email, supabase);
+  const needsApproval = !orgAutoApproves && (orgAlwaysNeeds || requiresPlanApproval({ tarea, success_criteria, max_iterations }));
 
   if (needsApproval) {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
