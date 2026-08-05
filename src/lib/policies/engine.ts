@@ -16,12 +16,33 @@ interface CheckParams {
 
 // capability → human-readable name for error messages
 const CAPABILITY_NAMES: Record<string, string> = {
-  email:    'correo',
-  files:    'archivos',
-  phone:    'llamadas salientes',
-  calendar: 'calendario',
-  crm:      'CRM',
+  email:          'correo',
+  files:          'archivos',
+  phone:          'llamadas salientes',
+  calendar:       'calendario',
+  crm:            'CRM',
+  'sheets.read':  'Google Sheets (lectura)',
+  'sheets.write': 'Google Sheets (escritura)',
 };
+
+// Default policy per capability when no agent_policies row exists.
+// 'allow' = enabled=true, requiresApproval=false
+// 'requires_approval' = enabled=true, requiresApproval=true
+// 'deny' = enabled=false
+const CAPABILITY_DEFAULTS: Record<string, 'allow' | 'requires_approval' | 'deny'> = {
+  email:          'allow',
+  files:          'allow',
+  phone:          'allow',
+  calendar:       'allow',
+  crm:            'allow',
+  'sheets.read':  'allow',
+  'sheets.write': 'requires_approval',
+};
+
+/** Returns the default policy for a capability when no org override exists. */
+export function getDefaultPolicy(capability: string): 'allow' | 'requires_approval' | 'deny' {
+  return CAPABILITY_DEFAULTS[capability] ?? 'allow';
+}
 
 export async function checkPolicy({
   agentId, capability, action, supabase, details = {},
@@ -67,10 +88,19 @@ export async function checkPolicy({
 
 // Map from tool name to capability string
 export const TOOL_CAPABILITIES: Record<string, string> = {
-  send_email:           'email',
-  search_files:         'files',
-  read_file:            'files',
-  save_to_drive:        'files',
-  organize_files:       'files',
-  trigger_outbound_call:'phone',
+  send_email:            'email',
+  search_files:          'files',
+  read_file:             'files',
+  save_to_drive:         'files',
+  organize_files:        'files',
+  trigger_outbound_call: 'phone',
+  sheets_agregar_fila:   'sheets.write',
+  sheets_actualizar_fila:'sheets.write',
+  sheets_leer:           'sheets.read',
+  sheets_buscar:         'sheets.read',
 };
+
+/** Returns the capability string for a tool name, or undefined if not registered. */
+export function getToolCapability(toolName: string): string | undefined {
+  return TOOL_CAPABILITIES[toolName];
+}
