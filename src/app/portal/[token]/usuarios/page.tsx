@@ -16,6 +16,7 @@ import SubUserManager                   from './SubUserManager';
 import AccountSerialBadge               from '../AccountSerialBadge';
 import { getOrCreateSerial }            from '@/lib/portal/serial';
 import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
+import { PageContainer, PageSection, SectionHeader, Card } from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -83,11 +84,19 @@ export default async function UsuariosPage({ params }: Props) {
     ? await isPortalV2Enabled(agent.portal_email)
     : false;
 
-  // Page body — shared between V1 and V2
-  const pageBody = (
+  const subUserManager = (
+    <SubUserManager
+      token={token}
+      initialUsers={(existingUsers ?? []) as any[]}
+      accountGiro={(agent as any).features?.vertical ?? undefined}
+      accountSerial={accountSerial ?? undefined}
+    />
+  );
+
+  // V1 body — legacy inline styling with --c-* tokens
+  const pageBodyV1 = (
     <div className="flex-1 min-w-0 flex flex-col">
       <div className="px-4 sm:px-6 py-6 flex-1">
-
         <div className="mb-6">
           <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--c-text)', fontFamily: 'var(--font-sora)' }}>
             Usuarios del portal
@@ -98,15 +107,29 @@ export default async function UsuariosPage({ params }: Props) {
         </div>
 
         <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <SubUserManager
-            token={token}
-            initialUsers={(existingUsers ?? []) as any[]}
-            accountGiro={(agent as any).features?.vertical ?? undefined}
-            accountSerial={accountSerial ?? undefined}
-          />
+          {subUserManager}
         </div>
-
       </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 body — design system (PageContainer + PageSection + SectionHeader + Card)
+  const pageBodyV2 = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <PageContainer>
+        <PageSection
+          heading={
+            <SectionHeader
+              as="h1"
+              title="Usuarios del portal"
+              description="Crea accesos para colaboradores con permisos específicos a secciones del portal."
+            />
+          }
+        >
+          <Card>{subUserManager}</Card>
+        </PageSection>
+      </PageContainer>
       <PortalFooter token={token} />
     </div>
   );
@@ -136,7 +159,7 @@ export default async function UsuariosPage({ params }: Props) {
                 <PortalLogout />
               </>
             }
-            main={pageBody}
+            main={pageBodyV2}
           />
         </div>
       </ThemeProvider>
@@ -179,7 +202,7 @@ export default async function UsuariosPage({ params }: Props) {
             aiOpsLimit={aiOpsLimit}
             isOwner={true}
           />
-          {pageBody}
+          {pageBodyV1}
         </div>
 
       </div>
