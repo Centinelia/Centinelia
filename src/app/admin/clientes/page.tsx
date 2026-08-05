@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getOrCreateSerial } from '@/lib/portal/serial';
 import ClientesClient from './ClientesClient';
 
 const PAGE_SIZE = 25; // grupos de clientes por página
@@ -26,6 +27,7 @@ type ClientGroup = {
   client_name: string;
   client_email: string | null;
   portal_email: string | null;
+  serial: string | null;
   agents: AgentRow[];
   acct_minutes_used: number | null;
   acct_minutes_included: number | null;
@@ -66,6 +68,7 @@ export default async function ClientesPage({ searchParams }: Props) {
         client_name:           agent.client_name,
         client_email:          agent.client_email ?? null,
         portal_email:          agent.portal_email ?? null,
+        serial:                null,
         agents:                [],
         acct_minutes_used:     null,
         acct_minutes_included: null,
@@ -93,7 +96,7 @@ export default async function ClientesPage({ searchParams }: Props) {
   const totalCount = allGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
-  // Fetch account-level minutes pool for visible page
+  // Fetch account-level minutes pool + serials para la página visible.
   const pageGroups    = allGroups.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
   const emailsOnPage  = pageGroups.map(g => g.portal_email).filter((e): e is string => !!e);
   const { data: acctMinsData } = emailsOnPage.length
@@ -101,10 +104,19 @@ export default async function ClientesPage({ searchParams }: Props) {
     : { data: [] };
   const acctMinsMap = new Map((acctMinsData ?? []).map(m => [m.portal_email, m]));
 
+  // Serial por cliente (getOrCreate, se cachea en account_serials).
+  const serialByEmail = new Map<string, string>();
+  await Promise.all(
+    emailsOnPage.map(async email => {
+      try { serialByEmail.set(email, await getOrCreateSerial(email)); } catch { /* ignore */ }
+    })
+  );
+
   const groups = pageGroups.map(g => ({
     ...g,
     acct_minutes_used:     g.portal_email ? (acctMinsMap.get(g.portal_email)?.minutes_used ?? null) : null,
     acct_minutes_included: g.portal_email ? (acctMinsMap.get(g.portal_email)?.minutes_included ?? null) : null,
+    serial:                g.portal_email ? (serialByEmail.get(g.portal_email) ?? null) : null,
   }));
 
   const totalAgents = agents.length;

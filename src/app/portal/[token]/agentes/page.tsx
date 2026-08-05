@@ -416,8 +416,8 @@ export default async function AgentesPage({ params }: Props) {
         const jornadaType  = ((a as any).jornada_type as string) ?? 'combinada';
         const JORNADA_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
           combinada: { label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></>, color: '#6C3BFF', bg: 'rgba(108,59,255,0.08)', border: 'rgba(108,59,255,0.2)' },
-          minutos:   { label: 'Solo minutos', icon: <Clock size={10} />,                       color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)'  },
-          tareas:    { label: 'Solo tareas',  icon: <Zap size={10} />,                         color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)'  },
+          minutos:   { label: 'Solo minutos', icon: <Clock size={10} />,                       color: '#0E7490', bg: 'rgba(6,182,212,0.10)',  border: 'rgba(6,182,212,0.30)'  },
+          tareas:    { label: 'Solo tareas',  icon: <Zap size={10} />,                         color: '#10B981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)'  },
         };
         const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
 

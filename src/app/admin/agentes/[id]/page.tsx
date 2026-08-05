@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getOrCreateSerial }  from '@/lib/portal/serial';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -72,10 +71,6 @@ export default async function AgentDetailPage({ params }: Props) {
 
   const calls = (callsData ?? []) as VoiceCall[];
 
-  const accountSerial = agent.portal_email
-    ? await getOrCreateSerial(agent.portal_email).catch(() => null)
-    : null;
-
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
 
   const meerkatId   = (agent.features as any)?.meerkat_role_id as string | null;
@@ -134,14 +129,6 @@ export default async function AgentDetailPage({ params }: Props) {
                 style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #E9E1FF' }}
               >
                 <Bot size={11} /> Meerkat: {meerkatLabel}
-              </span>
-            )}
-            {accountSerial && (
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold"
-                style={{ background: '#F3F0FF', color: '#6C3BFF', border: '1px solid #E9E1FF', letterSpacing: '0.08em' }}
-              >
-                {accountSerial}
               </span>
             )}
           </div>
@@ -445,13 +432,24 @@ function OpenPill({ open }: { open: boolean }) {
   );
 }
 
+// Paleta oficial de jornadas (fuente de verdad Nazre):
+//   tareas    → verde
+//   minutos   → celeste
+//   combinada → morado
+const JORNADA_COLORS: Record<string, { bg: string; fg: string; border: string; label: string }> = {
+  tareas:    { bg: '#ECFDF5', fg: '#047857', border: '#A7F3D0', label: 'Tareas'    },
+  minutos:   { bg: '#ECFEFF', fg: '#0E7490', border: '#A5F3FC', label: 'Minutos'   },
+  combinada: { bg: '#F3F0FF', fg: '#6C3BFF', border: '#DDD6FE', label: 'Combinada' },
+};
+
 function JornadaPill({ jornada }: { jornada: string }) {
+  const c = JORNADA_COLORS[jornada] ?? { bg: '#F3F4F6', fg: '#4B5563', border: '#E5E7EB', label: jornada };
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"
-      style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
+      style={{ background: c.bg, color: c.fg, border: `1px solid ${c.border}` }}
     >
-      Jornada: {jornada}
+      Jornada: {c.label}
     </span>
   );
 }

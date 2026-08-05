@@ -163,10 +163,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         {(() => {
           const avatarSrc = (features.avatar as string | null) || null;
           const initial   = (agentName?.trim() || (agent.business_name as string) || 'C').charAt(0).toUpperCase();
+          // Paleta oficial de jornadas: tareas verde, minutos celeste, combinada morado.
           const JORNADA_META: Record<string, { label: string; desc: string; icon: React.ReactNode; color: string }> = {
             combinada: { label: 'Combinada',    desc: 'Minutos de voz + tareas',  icon: <><Clock size={11}/><Zap size={11}/></>, color: '#6C3BFF' },
-            minutos:   { label: 'Solo minutos', desc: 'Canal de voz',              icon: <Clock size={11}/>,                       color: '#3b82f6' },
-            tareas:    { label: 'Solo tareas',  desc: 'Sin canal de voz',          icon: <Zap size={11}/>,                         color: '#10b981' },
+            minutos:   { label: 'Solo minutos', desc: 'Canal de voz',              icon: <Clock size={11}/>,                       color: '#0E7490' },
+            tareas:    { label: 'Solo tareas',  desc: 'Sin canal de voz',          icon: <Zap size={11}/>,                         color: '#10B981' },
           };
           const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
 

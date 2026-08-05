@@ -57,8 +57,8 @@ type JornadaId = 'combinada' | 'minutos' | 'tareas';
 
 const JORNADA_TABS: { id: JornadaId; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'combinada', label: 'Combinada',    icon: <><Clock size={11} /><Zap size={11} /></>, color: '#6C3BFF' },
-  { id: 'minutos',   label: 'Solo minutos', icon: <Phone size={11} />,                       color: '#3b82f6' },
-  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10b981' },
+  { id: 'minutos',   label: 'Solo minutos', icon: <Phone size={11} />,                       color: '#0E7490' },
+  { id: 'tareas',    label: 'Solo tareas',  icon: <Zap size={11} />,                         color: '#10B981' },
 ];
 
 const JORNADA_TIERS: Record<JornadaId, { id: string; label: string; subtitle: string; minutes: number; ops: number; price: number; callsPerDay?: number; popular?: boolean }[]> = {
