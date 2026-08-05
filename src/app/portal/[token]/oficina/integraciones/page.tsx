@@ -5,8 +5,9 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import IntegrationsHub from '../../IntegrationsHub';
+import EmailSettings   from '../../EmailSettings';
 import type { Plan }   from '@/types/agent';
-import { SectionHeader } from '@/components/portal-ui';
+import { SectionHeader, PageSection } from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -57,6 +58,10 @@ export default async function IntegracionesPage({ params }: Props) {
           hasNotion={hasNotion}
         />
       </div>
+
+      <PageSection heading={<SectionHeader eyebrow="CORREO" title="Notificaciones al cliente" as="h2" />}>
+        <EmailSettings token={token} />
+      </PageSection>
 
     </div>
   );

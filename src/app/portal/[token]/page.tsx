@@ -1529,7 +1529,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           <PageContainer>
             <div className="flex flex-col lg:flex-row gap-5 items-start">
 
-              {/* Main column */}
+              {/* Col 1 (main, flex-1) — Organización, Branding, Conocimiento, Perfil */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
                 <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil de tu negocio" as="h2" right={<InfoTooltip text="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />} />}>
                   <div id="organizacion">
@@ -1575,16 +1575,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </Card>
                 </PageSection>
 
-                <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
-                  <Card id="contratos-internos" padding="md">
-                    <ContractTrackerSection token={token} />
+              </div>
+
+              {/* Col 2 (side, ~360px) — Horario, Sitio web, Reseñas */}
+              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 360, flexShrink: 0 }}>
+                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" right={<InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />} />}>
+                  <Card id="horarios" padding="md">
+                    <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
                   </Card>
                 </PageSection>
 
-              </div>
-
-              {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
-              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
                 <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
                   <Card id="sitio" padding="md">
                     <div className="flex items-center gap-1.5 mb-4">
@@ -1598,21 +1598,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
                     </div>
                     <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
-                  </Card>
-                </PageSection>
-
-                <PageSection heading={<SectionHeader eyebrow="NOTIFICACIONES" title="Notificaciones automáticas al cliente" as="h2" right={<InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />} />}>
-                  <Card id="dominio-correo" padding="md">
-                    <EmailSettings token={token} />
-                  </Card>
-                </PageSection>
-              </div>
-
-              {/* Col 3 — Horario de atención */}
-              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
-                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" right={<InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />} />}>
-                  <Card id="horarios" padding="md">
-                    <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
                   </Card>
                 </PageSection>
               </div>
@@ -1643,7 +1628,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
-                {/* ── Col 1: Uso + Compras + Recarga (fused A6) ── */}
+                {/* ── Col 1: Uso + Compras + Recarga (fused A6) + Contratos ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Minutos · Tareas · Recarga" as="h2" />}>
                     <CuentaUsageTabsCard
@@ -1736,36 +1721,46 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       }
                     />
                   </PageSection>
+
+                  {/* ContractTrackerSection moved from /negocio */}
+                  <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
+                    <Card id="contratos-internos" padding="md">
+                      <ContractTrackerSection token={token} />
+                    </Card>
+                  </PageSection>
                 </div>
 
-                {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
+                {/* ── Col 2: Historial de minutos + Consumo promedio (colapsado) ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <PageSection heading={<SectionHeader eyebrow="ANÁLISIS" title="Consumo promedio" as="h2" />}>
-                      <Card id="consumo-promedio" padding="md">
-                        <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
-                          {allCalls.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                            </div>
-                          )}
-                          {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    </PageSection>
-                  )}
                   <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
                     <Card id="historial" padding="md">
+                      {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
+                        <details className="mb-4" style={{ color: 'var(--c-text-2)' }}>
+                          <summary className="text-xs font-semibold cursor-pointer select-none py-1"
+                            style={{ color: 'var(--c-text-3)', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10 }}>&#9654;</span>
+                            Ver promedios de consumo
+                          </summary>
+                          <div className={`mt-3 ${allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}`}>
+                            {allCalls.length > 0 && (
+                              <div className="flex flex-col gap-2">
+                                {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                                <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                                <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                                <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                              </div>
+                            )}
+                            {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                              <div className="flex flex-col gap-2">
+                                {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                                <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                                <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                                <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      )}
                       <div className="relative">
                         <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
                           <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
