@@ -40,6 +40,16 @@ const PROMPT_FLAGS: { key: keyof AgentFeatures; label: string; desc: string }[] 
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+// Fuente de verdad en sync.ts: NON_VOICE_ROLES = ['nox', 'niva'].
+// Coordinadores puros de oficina, no entran a Vapi. Sin voz.
+const NON_VOICE_ROLES = new Set(['nox', 'niva']);
+
+function isNonVoiceRole(agent: VoiceAgent): boolean {
+  const roleId = (agent.features as { meerkat_role_id?: string })?.meerkat_role_id;
+  const isCoord = !!(agent.features as { is_coordinator?: boolean })?.is_coordinator;
+  return isCoord || (!!roleId && NON_VOICE_ROLES.has(roleId));
+}
+
 type Tab = 'negocio' | 'empleado' | 'funciones';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'negocio',   label: 'Negocio'   },
@@ -76,7 +86,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
       knowledge_base:         fd.get('knowledge_base'),
       role_knowledge_base:    fd.get('role_knowledge_base'),
       agent_name:             fd.get('agent_name') || null,
-      elevenlabs_voice_id:    voiceId ?? null,
+      elevenlabs_voice_id:    isNonVoiceRole(agent) ? null : (voiceId ?? null),
       transfer_number:        fd.get('transfer_number'),
       transfer_whatsapp:      fd.get('transfer_whatsapp'),
       role,
@@ -192,10 +202,14 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               defaultValue={agent.agent_name ?? ''} />
           </Card>
 
-          <Card title="Voz" icon={<Mic size={13} />}
-                subtitle="Usa el ícono de reproducir para escuchar una muestra antes de seleccionar.">
-            <VoiceSelector selected={voiceId} onChange={setVoiceId} />
-          </Card>
+          {/* Nox y Niva son coordinadores puros de oficina (NON_VOICE_ROLES en sync.ts).
+              No entran a Vapi, no tienen voz. Ocultamos el selector. */}
+          {!isNonVoiceRole(agent) && (
+            <Card title="Voz" icon={<Mic size={13} />}
+                  subtitle="Usa el ícono de reproducir para escuchar una muestra antes de seleccionar.">
+              <VoiceSelector selected={voiceId} onChange={setVoiceId} />
+            </Card>
+          )}
 
           <Card title="Rol" icon={<Briefcase size={13} />}
                 subtitle="Define el segundo rol del empleado. La base de conocimiento del rol aparece abajo al escribirlo.">
