@@ -183,6 +183,10 @@ export default async function AnalyticsPage({ searchParams }: Props) {
   const agentRows: AgentRow[] = allAgents.map(a => {
     const stats  = agentCallMap[a.id] ?? { calls: 0, leads: 0, duration: 0 };
     const avgMin = stats.calls > 0 ? Math.round(stats.duration / stats.calls / 60) : 0;
+    // Minutos usados calculados desde la suma real de duration de las llamadas.
+    // NO usar a.minutes_used porque esa columna queda en 0 para cuentas con
+    // pool a nivel account_minutes (que es el modelo actual).
+    const minutesUsed = Math.round(stats.duration / 60);
     const mxn    = (a.plan && a.minutes_plan) ? (MONTHLY_CONFIG[a.plan as Plan]?.[a.minutes_plan as MinutesTier]?.mxn ?? 0) : 0;
     const meerkatRoleId = ((a as unknown as { features?: Record<string, unknown> }).features?.meerkat_role_id as string | undefined) ?? null;
     return {
@@ -196,7 +200,7 @@ export default async function AnalyticsPage({ searchParams }: Props) {
       calls: stats.calls,
       leads: stats.leads,
       avgMin,
-      minutesUsed: a.minutes_used,
+      minutesUsed,
     };
   });
 

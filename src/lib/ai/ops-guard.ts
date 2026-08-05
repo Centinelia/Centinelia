@@ -32,6 +32,12 @@ export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult
         crossed_100_threshold: pool.crossed_100_threshold,
         crossed_120_threshold: pool.crossed_120_threshold,
       });
+      // Audit log también en pool path (bug: antes solo se registraba en
+      // path Stripe legacy, admin/analytics subcontaba las tareas de
+      // clientes con pool anual).
+      void supabase
+        .from('ai_ops_log')
+        .insert({ agent_id: agentId, portal_email: portalEmail });
       return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
     }
   }
