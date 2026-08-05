@@ -34,7 +34,6 @@ import JornadaSection               from '../JornadaSection';
 import ContractSection              from '../ContractSection';
 import ApprovalEmailEditor          from '../ApprovalEmailEditor';
 import InvoicingEmailEditor         from '../InvoicingEmailEditor';
-import ConfigurarSidebar, { type SidebarSection } from './ConfigurarSidebar';
 import CallForwardingSection from '../CallForwardingSection';
 import SendAsEmailEditor     from '../SendAsEmailEditor';
 import SpamFolderToggle      from '../SpamFolderToggle';
@@ -44,6 +43,7 @@ import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
 import SheetsMappingsSection from './SheetsMappingsSection';
+import ConfigurarTabs from './ConfigurarTabs';
 import { Card, SectionHeader } from '@/components/portal-ui';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
@@ -136,45 +136,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ops_consumidas: Math.round(spamRevisados * 0.3),
   };
 
-  // Build sidebar sections list matching what's actually rendered
-  const sidebarSections: SidebarSection[] = [
-    ...(hasVoice
-      ? [{ id: 'voz',        label: 'Voz',                   group: 'Configuración' }] : []),
-    ...(isOwner && !isCoordinator
-      ? [{ id: 'idioma',     label: 'Idioma',                group: 'Configuración' }] : []),
-    { id: 'rol',             label: 'Responsabilidades',      group: 'Entrenamiento' },
-    { id: 'dod',             label: 'Definición de listo',    group: 'Entrenamiento' },
-    ...(!isCoordinator
-      ? [{ id: 'tono-de-marca', label: 'Tono de marca',        group: 'Entrenamiento' }] : []),
-    { id: 'metas',           label: 'Metas',                  group: 'Entrenamiento' },
-    { id: 'limites',         label: 'Límites de autoridad',   group: 'Entrenamiento' },
-    { id: 'aprendizaje',     label: 'Aprendizaje',            group: 'Entrenamiento' },
-    ...(!isCoordinator
-      ? [{ id: 'llamadas',   label: 'Llamadas entrantes',     group: 'Operación'     }] : []),
-    ...(!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number
-      ? [{ id: 'desvio',    label: 'Desvío de llamadas',     group: 'Operación'     }] : []),
-    { id: 'autonomia',       label: 'Nivel de autonomía',     group: 'Operación'     },
-    { id: 'checkin',         label: 'Check-in automático',    group: 'Operación'     },
-    ...(meerkatId === 'nox'
-      ? [{ id: 'brief-del-dia', label: 'Brief del día',          group: 'Operación'     }] : []),
-    ...(['noah', 'nico', 'naia', 'nelia'].includes(meerkatId ?? '')
-      ? [{ id: 'plantillas',   label: 'Plantillas de documentos', group: 'Operación'    }] : []),
-    { id: 'automatizaciones', label: 'Automatizaciones',      group: 'Operación'     },
-    ...(!isCoordinator
-      ? [{ id: 'notificaciones', label: 'Notificaciones',     group: 'Operación'     }] : []),
-    ...(!isCoordinator
-      ? [{ id: 'equipo',     label: 'Números del equipo',     group: 'Operación'     }] : []),
-    { id: 'correo',          label: 'Correo',                 group: 'Herramientas'  },
-    { id: 'sheets-del-negocio', label: 'Sheets del negocio', group: 'Herramientas'  },
-    ...(isOwner && hasVoiceJornada
-      ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
-    ...(!isCoordinator && isOwner
-      ? [{ id: 'reportes',   label: 'Reportes de fallas',     group: 'Seguridad'     }] : []),
-    ...(isOwner
-      ? [{ id: 'aprobaciones', label: 'Aprobación de tareas', group: 'Seguridad'     }] : []),
-    { id: 'contrato',        label: 'Contrato',               group: 'Seguridad'     },
-  ];
-
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
@@ -197,7 +158,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Agent identity header — premium */}
+        {/* Agent identity header */}
         {(() => {
           const avatarSrc = (features.avatar as string | null) || null;
           const initial   = (agentName?.trim() || (agent.business_name as string) || 'C').charAt(0).toUpperCase();
@@ -265,429 +226,450 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           );
         })()}
 
-        {/* 2-column layout */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex gap-8 items-start">
+        {/* Full-width content with 5-tab layout */}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <ConfigurarTabs roleColor={roleColor}>
 
-          <ConfigurarSidebar sections={sidebarSections} roleColor={roleColor} />
+            {/* ── Tab 0: Personalidad y voz ─────────────────────────────── */}
+            <div className="flex flex-col gap-5">
 
-          {/* Content */}
-          <div className="flex-1 min-w-0 flex flex-col gap-5">
+              {hasVoice && (
+                <div id="voz" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Voz del empleado"
+                      className="mb-4"
+                      right={<InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />}
+                    />
+                    <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
+                  </Card>
+                </div>
+              )}
 
-            {hasVoice && (
-              <div id="voz" style={SCROLL_STYLE}>
+              {isOwner && !isCoordinator && (
+                <div id="idioma" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Idioma"
+                      className="mb-4"
+                      right={<InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />}
+                    />
+                    <MultilingualToggle token={token} initial={orgMultilingual} />
+                  </Card>
+                </div>
+              )}
+
+              <div id="rol" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Voz del empleado"
+                    title="Responsabilidades, objetivos y conducta"
                     className="mb-4"
-                    right={<InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />}
+                    right={<InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />}
                   />
-                  <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
-                </Card>
-              </div>
-            )}
-
-            {isOwner && !isCoordinator && (
-              <div id="idioma" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Idioma"
-                    className="mb-4"
-                    right={<InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />}
-                  />
-                  <MultilingualToggle token={token} initial={orgMultilingual} />
-                </Card>
-              </div>
-            )}
-
-            <div id="rol" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Responsabilidades, objetivos y conducta"
-                  className="mb-4"
-                  right={<InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />}
-                />
-                <AgentKnowledgeBaseEditor
-                  token={token}
-                  initialRole={(agent as any).role ?? ''}
-                  initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
-                  initialRoleKb={(agent as any).role_knowledge_base ?? ''}
-                  initialLearnings={(agent as any).role_learnings ?? ''}
-                  websiteSynced={!!((agent as any).website_knowledge)}
-                  hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
-                  colorLocked={colorLocked}
-                />
-              </Card>
-            </div>
-
-            <div id="dod" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Definición de listo"
-                  className="mb-4"
-                  right={<InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />}
-                />
-                <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
-              </Card>
-            </div>
-
-            {!isCoordinator && (
-              <div id="tono-de-marca" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Tono de marca"
-                    className="mb-4"
-                    right={<InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />}
-                  />
-                  <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
-                </Card>
-              </div>
-            )}
-
-            <div id="metas" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Metas"
-                  className="mb-4"
-                  right={<InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />}
-                />
-                <GoalsSection token={token} roleColor={roleColor} />
-              </Card>
-            </div>
-
-            <div id="limites" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Límites de autoridad"
-                  className="mb-4"
-                  right={<InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores." />}
-                />
-                <GuardrailsEditor
-                  token={token}
-                  initialValue={(agent as any).agent_guardrails ?? ''}
-                  initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
-                />
-              </Card>
-            </div>
-
-            <div id="aprendizaje" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Aprendizaje de plataformas"
-                  className="mb-4"
-                  right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
-                />
-                <RoleEmailLearningSection
-                  token={token}
-                  connectedEmail={connectedEmail}
-                  agentRole={agentRole || agentName}
-                />
-              </Card>
-            </div>
-
-            {!isCoordinator && (
-              <div id="llamadas" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Llamadas entrantes"
-                    className="mb-4"
-                    right={<InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />}
-                  />
-                  <AgentCustomization
+                  <AgentKnowledgeBaseEditor
                     token={token}
-                    initGreeting={(agent as any).first_message ?? ''}
-                    initTransferRules={(agent as any).transfer_rules ?? ''}
+                    initialRole={(agent as any).role ?? ''}
+                    initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
+                    initialRoleKb={(agent as any).role_knowledge_base ?? ''}
+                    initialLearnings={(agent as any).role_learnings ?? ''}
+                    websiteSynced={!!((agent as any).website_knowledge)}
+                    hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
+                    colorLocked={colorLocked}
                   />
                 </Card>
               </div>
-            )}
 
-            {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
-              <div id="desvio" style={SCROLL_STYLE}>
+              <div id="dod" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Desvío de llamadas"
+                    title="Definición de listo"
                     className="mb-4"
-                    right={<InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />}
+                    right={<InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />}
                   />
-                  <CallForwardingSection
-                    phoneNumber={(agent as any).phone_number as string}
-                    agentName={agentName}
-                  />
+                  <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
                 </Card>
               </div>
-            )}
 
-            <div id="autonomia" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Nivel de autonomía"
-                  className="mb-4"
-                  right={<InfoTooltip text="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza." />}
-                />
-                <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
-              </Card>
+              {!isCoordinator && (
+                <div id="tono-de-marca" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Tono de marca"
+                      className="mb-4"
+                      right={<InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />}
+                    />
+                    <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
+                  </Card>
+                </div>
+              )}
+
+              {['noah', 'nelia'].includes(meerkatId ?? '') && (
+                <div id="plantillas" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Plantillas de documentos"
+                      className="mb-4"
+                      right={<InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />}
+                    />
+                    <BrandTemplateSection
+                      agentId={agent.id}
+                      availableTipos={
+                        meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager'] :
+                        meerkatId === 'nelia' ? ['one_pager'] :
+                        []
+                      }
+                    />
+                  </Card>
+                </div>
+              )}
+
             </div>
 
-            <div id="checkin" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Check-in automático"
-                  className="mb-4"
-                  right={<InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />}
-                />
-                <HeartbeatEditor
-                  token={token}
-                  initConfig={(agent as any).heartbeat_config ?? null}
-                  isCoordinator={isCoordinator}
-                />
-              </Card>
-            </div>
+            {/* ── Tab 1: Conocimiento y guardrails ──────────────────────── */}
+            <div className="flex flex-col gap-5">
 
-            {meerkatId === 'nox' && (
-              <div id="brief-del-dia" style={SCROLL_STYLE}>
+              <div id="aprendizaje" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Brief del día"
+                    title="Aprendizaje de plataformas"
                     className="mb-4"
-                    right={<InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />}
+                    right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
                   />
-                  <BriefDelDiaSection agentId={agent.id} />
-                </Card>
-              </div>
-            )}
-
-            {['noah', 'nelia'].includes(meerkatId ?? '') && (
-              <div id="plantillas" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Plantillas de documentos"
-                    className="mb-4"
-                    right={<InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />}
-                  />
-                  <BrandTemplateSection
-                    agentId={agent.id}
-                    availableTipos={
-                      meerkatId === 'noah'  ? ['propuesta', 'cotizacion', 'one_pager'] :
-                      meerkatId === 'nelia' ? ['one_pager'] :
-                      []
-                    }
-                  />
-                </Card>
-              </div>
-            )}
-
-            <div id="automatizaciones" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Automatizaciones"
-                  className="mb-4"
-                  right={<InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />}
-                />
-                <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
-              </Card>
-            </div>
-
-            {!isCoordinator && (
-              <div id="notificaciones" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Notificaciones"
-                    className="mb-4"
-                    right={<InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />}
-                  />
-                  <NotificationsToggle
+                  <RoleEmailLearningSection
                     token={token}
-                    initWhatsApp={(agent as any).notify_whatsapp ?? false}
-                    initEmail={(agent as any).notify_email ?? true}
+                    connectedEmail={connectedEmail}
+                    agentRole={agentRole || agentName}
                   />
                 </Card>
               </div>
-            )}
 
-            {!isCoordinator && (
-              <div id="equipo" style={SCROLL_STYLE}>
+              <div id="correo" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Números del equipo"
+                    title="Correo"
                     className="mb-4"
-                    right={<InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />}
+                    right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
                   />
-                  <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
-                </Card>
-              </div>
-            )}
-
-            <div id="correo" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SectionHeader
-                  as="h2"
-                  title="Correo"
-                  className="mb-4"
-                  right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
-                />
-                {connectedEmail ? (
-                  <div className="flex flex-col gap-4">
+                  {connectedEmail ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                        {emailIntegration!.provider === 'gmail' ? (
+                          <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                            <rect x="4" y="8" width="40" height="32" rx="2" fill="#fff" stroke="#ddd" strokeWidth="1.5" />
+                            <path d="M4 8l20 14L44 8" stroke="#EA4335" strokeWidth="2.5" fill="none" />
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                            <rect width="48" height="48" rx="6" fill="#0078D4" />
+                            <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
+                            <circle cx="17" cy="24" r="6" fill="#0078D4" />
+                            <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
+                          </svg>
+                        )}
+                        <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+                        <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-text)' }}>
+                          {connectedEmail}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+                          style={{ color: 'var(--c-text-4)' }}>
+                          Correo para envíos propios
+                        </p>
+                        <p className="text-xs mb-2.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                          Para seguimientos y correos personales, el empleado envía desde esta dirección en lugar del correo del área.
+                        </p>
+                        <SendAsEmailEditor
+                          token={token}
+                          provider={emailIntegration!.provider as string}
+                          initialValue={(emailIntegration as any).send_as_email ?? ''}
+                        />
+                      </div>
+                    </div>
+                  ) : emailIntegration?.needs_reauth ? (
                     <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                      style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
-                      {emailIntegration!.provider === 'gmail' ? (
-                        <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
-                          <rect x="4" y="8" width="40" height="32" rx="2" fill="#fff" stroke="#ddd" strokeWidth="1.5" />
-                          <path d="M4 8l20 14L44 8" stroke="#EA4335" strokeWidth="2.5" fill="none" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
-                          <rect width="48" height="48" rx="6" fill="#0078D4" />
-                          <rect x="8" y="12" width="18" height="24" fill="#fff" opacity=".9" />
-                          <circle cx="17" cy="24" r="6" fill="#0078D4" />
-                          <path d="M28 16h12v4H28zM28 22h12v4H28zM28 28h12v4H28z" fill="#fff" opacity=".8" />
-                        </svg>
-                      )}
-                      <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
-                      <span className="text-sm font-mono font-medium" style={{ color: 'var(--c-text)' }}>
-                        {connectedEmail}
+                      style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                      <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                      <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                        La conexión de correo requiere reconexión. Ve a la sección de Integraciones en la Oficina.
                       </span>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2"
-                        style={{ color: 'var(--c-text-4)' }}>
-                        Correo para envíos propios
-                      </p>
-                      <p className="text-xs mb-2.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                        Para seguimientos y correos personales, el empleado envía desde esta dirección en lugar del correo del área.
-                      </p>
-                      <SendAsEmailEditor
+                  ) : (
+                    <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
+                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                      <Mail size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                        Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
+                      </span>
+                    </div>
+                  )}
+
+                  {connectedEmail && (
+                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                      <SpamFolderToggle
                         token={token}
-                        provider={emailIntegration!.provider as string}
-                        initialValue={(emailIntegration as any).send_as_email ?? ''}
+                        initial={spamCheckEnabled}
+                        stats={spamStats.revisados > 0 ? spamStats : null}
                       />
                     </div>
-                  </div>
-                ) : emailIntegration?.needs_reauth ? (
-                  <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                    style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                    <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                      La conexión de correo requiere reconexión. Ve a la sección de Integraciones en la Oficina.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-                    <Mail size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                      Sin correo conectado. Configúralo en la sección de Integraciones en la Oficina.
-                    </span>
-                  </div>
-                )}
+                  )}
 
-                {connectedEmail && (
                   <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                    <SpamFolderToggle
-                      token={token}
-                      initial={spamCheckEnabled}
-                      stats={spamStats.revisados > 0 ? spamStats : null}
+                    <SectionHeader
+                      as="h3"
+                      title="Aprobador de borradores"
+                      className="mb-3"
+                      right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
                     />
+                    <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
                   </div>
-                )}
 
-                <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <SectionHeader
-                    as="h3"
-                    title="Aprobador de borradores"
-                    className="mb-3"
-                    right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
-                  />
-                  <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
-                </div>
+                  <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                    <SectionHeader
+                      as="h3"
+                      title="Responsable de facturación"
+                      className="mb-3"
+                      right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
+                    />
+                    <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                  </div>
+                </Card>
+              </div>
 
-                <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <SectionHeader
-                    as="h3"
-                    title="Responsable de facturación"
-                    className="mb-3"
-                    right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
+              <div id="sheets-del-negocio" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SheetsMappingsSection
+                    token={token}
+                    agentId={agent.id}
+                    initialSyncLeads={syncLeadsToSheets}
                   />
-                  <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                </Card>
+              </div>
+
+              {isOwner && hasVoiceJornada && (
+                <div id="passphrase" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Frase de verificación interna"
+                      className="mb-4"
+                      right={<InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />}
+                    />
+                    <PassphraseEditor token={token} initial={ownerPassphrase} />
+                  </Card>
                 </div>
-              </Card>
+              )}
+
+              {!isCoordinator && (
+                <div id="notificaciones" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Notificaciones"
+                      className="mb-4"
+                      right={<InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />}
+                    />
+                    <NotificationsToggle
+                      token={token}
+                      initWhatsApp={(agent as any).notify_whatsapp ?? false}
+                      initEmail={(agent as any).notify_email ?? true}
+                    />
+                  </Card>
+                </div>
+              )}
+
             </div>
 
-            <div id="sheets-del-negocio" style={SCROLL_STYLE}>
-              <Card border elevated={false} padding="sm">
-                <SheetsMappingsSection
+            {/* ── Tab 2: Herramientas e integraciones ───────────────────── */}
+            <div className="flex flex-col gap-5">
+
+              {!isCoordinator && (
+                <div id="llamadas" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Llamadas entrantes"
+                      className="mb-4"
+                      right={<InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />}
+                    />
+                    <AgentCustomization
+                      token={token}
+                      initGreeting={(agent as any).first_message ?? ''}
+                      initTransferRules={(agent as any).transfer_rules ?? ''}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
+                <div id="desvio" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Desvío de llamadas"
+                      className="mb-4"
+                      right={<InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />}
+                    />
+                    <CallForwardingSection
+                      phoneNumber={(agent as any).phone_number as string}
+                      agentName={agentName}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              <div id="autonomia" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Nivel de autonomía"
+                    className="mb-4"
+                    right={<InfoTooltip text="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza." />}
+                  />
+                  <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
+                </Card>
+              </div>
+
+              <div id="checkin" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Check-in automático"
+                    className="mb-4"
+                    right={<InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />}
+                  />
+                  <HeartbeatEditor
+                    token={token}
+                    initConfig={(agent as any).heartbeat_config ?? null}
+                    isCoordinator={isCoordinator}
+                  />
+                </Card>
+              </div>
+
+              {meerkatId === 'nox' && (
+                <div id="brief-del-dia" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Brief del día"
+                      className="mb-4"
+                      right={<InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />}
+                    />
+                    <BriefDelDiaSection agentId={agent.id} />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && (
+                <div id="equipo" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Números del equipo"
+                      className="mb-4"
+                      right={<InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />}
+                    />
+                    <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && isOwner && (
+                <div id="reportes" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Reportes de fallas"
+                      className="mb-4"
+                    />
+                    <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+                  </Card>
+                </div>
+              )}
+
+              {isOwner && (
+                <div id="aprobaciones" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <ApprovalSettingsSection token={token} roleColor={roleColor} />
+                  </Card>
+                </div>
+              )}
+
+            </div>
+
+            {/* ── Tab 3: Horarios y automatizaciones ────────────────────── */}
+            <div className="flex flex-col gap-5">
+
+              <div id="metas" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Metas"
+                    className="mb-4"
+                    right={<InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />}
+                  />
+                  <GoalsSection token={token} roleColor={roleColor} />
+                </Card>
+              </div>
+
+              <div id="limites" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Límites de autoridad"
+                    className="mb-4"
+                    right={<InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores." />}
+                  />
+                  <GuardrailsEditor
+                    token={token}
+                    initialValue={(agent as any).agent_guardrails ?? ''}
+                    initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
+                  />
+                </Card>
+              </div>
+
+              <div id="automatizaciones" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Automatizaciones"
+                    className="mb-4"
+                    right={<InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />}
+                  />
+                  <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
+                </Card>
+              </div>
+
+            </div>
+
+            {/* ── Tab 4: Marca y ajustes ────────────────────────────────── */}
+            <div className="flex flex-col gap-5">
+
+              <div id="contrato" style={SCROLL_STYLE}>
+                <ContractSection
                   token={token}
-                  agentId={agent.id}
-                  initialSyncLeads={syncLeadsToSheets}
+                  businessName={agent.business_name}
+                  signedAt={(agent as any).contract_accepted_at ?? null}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
                 />
+              </div>
+
+              <Card border elevated={false} padding="sm">
+                <ResyncButton token={token} />
               </Card>
+
             </div>
 
-            {isOwner && hasVoiceJornada && (
-              <div id="passphrase" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Frase de verificación interna"
-                    className="mb-4"
-                    right={<InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />}
-                  />
-                  <PassphraseEditor token={token} initial={ownerPassphrase} />
-                </Card>
-              </div>
-            )}
-
-            {!isCoordinator && isOwner && (
-              <div id="reportes" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Reportes de fallas"
-                    className="mb-4"
-                  />
-                  <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
-                </Card>
-              </div>
-            )}
-
-            {isOwner && (
-              <div id="aprobaciones" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <ApprovalSettingsSection token={token} roleColor={roleColor} />
-                </Card>
-              </div>
-            )}
-
-            <div id="contrato" style={SCROLL_STYLE}>
-              <ContractSection
-                token={token}
-                businessName={agent.business_name}
-                signedAt={(agent as any).contract_accepted_at ?? null}
-                contractPreviewUrl={`/portal/${token}/contrato`}
-              />
-            </div>
-
-            <Card border elevated={false} padding="sm">
-              <ResyncButton token={token} />
-            </Card>
-
-          </div>
+          </ConfigurarTabs>
         </div>
 
         <PortalFooter noSidebar token={token} />
