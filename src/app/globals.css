@@ -97,36 +97,18 @@
   --ease-spring:  cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Dark theme (default) ───────────────────────────────────────────────── */
+/* ── Tokens legacy (--c-*) — light only, se conservan por compatibilidad ── */
+/* Serán migrados a tokens semánticos en Fase 3+ conforme cada página se migra */
 :root {
-  --c-bg:           #120726;
-  --c-surface:      rgba(255,255,255,0.035);
-  --c-surface-2:    rgba(255,255,255,0.06);
-  --c-border:       rgba(255,255,255,0.09);
-  --c-border-2:     rgba(255,255,255,0.15);
-  --c-text:         #e2e8f0;
-  --c-text-2:       rgba(255,255,255,0.65);  /* era 0.47 → ratio ~8.5:1 sobre modal */
-  --c-text-3:       rgba(255,255,255,0.48);  /* era 0.28 → ratio ~5.3:1 sobre modal */
-  --c-text-4:       rgba(255,255,255,0.32);  /* era 0.15 → ratio ~3.6:1, decorativo */
-  --c-input-bg:     rgba(255,255,255,0.05);
-  --c-input-border: rgba(255,255,255,0.12);
-  --c-divider:      rgba(255,255,255,0.06);
-  --c-hover:        rgba(255,255,255,0.04);
-  --c-code-bg:      rgba(0,0,0,0.25);
-  --c-modal:        #1D0B3E;
-}
-
-/* ── Light theme ────────────────────────────────────────────────────────── */
-[data-theme="light"] {
   --c-bg:           #F2EEFF;
   --c-surface:      #ffffff;
   --c-surface-2:    rgba(108,59,255,0.045);
   --c-border:       rgba(108,59,255,0.13);
   --c-border-2:     rgba(108,59,255,0.22);
   --c-text:         #1A0A3B;
-  --c-text-2:       rgba(26,10,59,0.72);  /* era 0.52 → ratio ~7:1 sobre blanco */
-  --c-text-3:       rgba(26,10,59,0.60);  /* era 0.36 → ratio ~4.6:1 sobre blanco */
-  --c-text-4:       rgba(26,10,59,0.44);  /* era 0.20 → ratio ~3:1, decorativo */
+  --c-text-2:       rgba(26,10,59,0.72);
+  --c-text-3:       rgba(26,10,59,0.60);
+  --c-text-4:       rgba(26,10,59,0.44);
   --c-input-bg:     rgba(108,59,255,0.05);
   --c-input-border: rgba(108,59,255,0.18);
   --c-divider:      rgba(108,59,255,0.08);
@@ -151,11 +133,6 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-sora), Arial, Helvetica, sans-serif;
 }
 
-/* ── Tailwind text-white override for light mode ────────────────────────── */
-/* Sidebar stays white always; only main content area flips */
-[data-theme="light"] .themed-text-white {
-  color: var(--c-text) !important;
-}
 
 /* ── Nova — reduce scale on mobile in both team grid and empleados page ── */
 @media (max-width: 639px) {
@@ -457,12 +434,8 @@ input:focus, textarea:focus {
 }
 
 /* ── Select option colors (browser uses OS popup — must hardcode) ────────── */
-/* Without this, options inherit white CSS text on white OS background      */
+/* Light theme only; dark theme removed. Options inherit light values by default */
 select option {
-  background-color: #1D0B3E;
-  color: #e2e8f0;
-}
-[data-theme="light"] select option {
   background-color: #ffffff;
   color: #1A0A3B;
 }
