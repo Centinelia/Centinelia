@@ -1127,13 +1127,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       {(!agent.active || minutesPct > 80) && (
         <div className="px-4 sm:px-6 pt-4 flex flex-col gap-2 max-w-4xl w-full mx-auto md:mx-0">
           {billingPaused && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+            <a href={`/api/billing/portal-session?token=${token}`}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-90"
               style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
               <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
-              <p className="text-sm" style={{ color: 'var(--c-text)' }}>
-                Tu empleado está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
+              <p className="flex-1 text-sm" style={{ color: 'var(--c-text)' }}>
+                Este empleado está pausado por falta de pago. Al resolver, solo este empleado se reactiva.
               </p>
-            </div>
+              <span className="text-sm font-semibold whitespace-nowrap" style={{ color: '#f87171' }}>Resolver pago</span>
+              <ChevronRight size={14} style={{ color: '#f87171', flexShrink: 0 }} />
+            </a>
           )}
           {clientPaused && !billingPaused && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl"

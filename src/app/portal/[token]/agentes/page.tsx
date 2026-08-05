@@ -6,7 +6,7 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 import Link                             from 'next/link';
-import { Settings2, Bot, Zap, Clock } from 'lucide-react';
+import { Settings2, Bot, Zap, Clock, AlertTriangle } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
@@ -726,6 +726,52 @@ export default async function AgentesPage({ params }: Props) {
     </div>
   ) : null;
 
+  // Empleados con pago fallido — banner consolidado con reactivación granular
+  const pausedByBilling = agents.filter(a =>
+    !(a.active as boolean) && (a.billing_status as string) === 'pago_fallido'
+  );
+
+  const billingAlertBanner = pausedByBilling.length > 0 ? (
+    <div className="rounded-2xl p-5"
+      style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(239,68,68,0.12)' }}>
+          <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: '#dc2626' }}>
+            {pausedByBilling.length} {pausedByBilling.length === 1 ? 'empleado pausado' : 'empleados pausados'} por falta de pago
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>
+            Cada empleado tiene su propia suscripción. Al resolver el pago de uno, solo ese se reactiva; los demás siguen su ciclo normal.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {pausedByBilling.map(a => {
+          const name = ((a.agent_name as string | null)?.trim()) || 'Empleado';
+          const role = ((a.role as string | null)?.trim()) || null;
+          return (
+            <a key={a.id as string}
+              href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl no-underline transition-opacity hover:opacity-85"
+              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{name}</p>
+                {role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{role}</p>}
+              </div>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
+                style={{ background: 'rgba(239,68,68,0.1)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.25)' }}>
+                Resolver pago →
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   // ─── V1 body (unchanged legacy layout) ──────────────────────────────────────
   const pageBodyV1 = (
     <div className="flex flex-col gap-6">
@@ -756,6 +802,9 @@ export default async function AgentesPage({ params }: Props) {
           isExpired={annualContractInfo.isExpired}
         />
       )}
+
+      {/* Empleados pausados por pago — banner consolidado */}
+      {billingAlertBanner}
 
       {/* Empty state */}
       {agents.length === 0 && (
@@ -812,6 +861,9 @@ export default async function AgentesPage({ params }: Props) {
             isExpired={annualContractInfo.isExpired}
           />
         )}
+
+        {/* Empleados pausados por pago — banner consolidado */}
+        {billingAlertBanner}
 
         {/* Empty state */}
         {agents.length === 0 && (

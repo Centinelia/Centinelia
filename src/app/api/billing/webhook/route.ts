@@ -449,6 +449,7 @@ export async function POST(req: NextRequest) {
 
       let rollover = 0;
       if (renewalEmail) {
+        // Pool de minutos es shared por cuenta (portal_email) — se resetea/carga aquí.
         const { data: acctRenewal } = await supabase
           .from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', renewalEmail).single();
         const acctUnused = acctRenewal ? Math.max(0, acctRenewal.minutes_included - acctRenewal.minutes_used) : 0;
@@ -461,13 +462,14 @@ export async function POST(req: NextRequest) {
           minutes_reset_date: nextResetDate(),
           updated_at:        new Date().toISOString(),
         }, { onConflict: 'portal_email' });
-        // Reactivate all agents in this account
+        // Reactivar SOLO el agente cuya sub pagó (no todos los de la cuenta).
+        // Cada empleado tiene su propia subscription — reactivación granular.
         await supabase.from('voice_agents').update({
           minutes_plan:         minutesPlan,
           active:               true,
           billing_status:       'activo',
           grace_period_ends_at: null,
-        }).eq('portal_email', renewalEmail);
+        }).eq('id', agentId);
       } else {
         const unused = prevAgent ? Math.max(0, prevAgent.minutes_included - prevAgent.minutes_used) : 0;
         rollover     = Math.min(unused, minutesCfg.minutes);
@@ -500,22 +502,11 @@ export async function POST(req: NextRequest) {
       // Reset AI ops counter on monthly renewal
       if (renewalEmail) await resetAiOps(renewalEmail);
 
-      // Re-associate Vapi on renewal (in case agents were paused for overage)
-      if (renewalEmail) {
-        const { data: acctAgentsRenewal } = await supabase
-          .from('voice_agents').select('phone_number, vapi_agent_id')
-          .eq('portal_email', renewalEmail).not('phone_number', 'is', null);
-        if (acctAgentsRenewal) {
-          for (const a of acctAgentsRenewal) {
-            if (a.phone_number && a.vapi_agent_id) await resumeVapiAgent(a.phone_number, a.vapi_agent_id);
-          }
-        }
-      } else {
-        const { data: agentForResume } = await supabase
-          .from('voice_agents').select('phone_number, vapi_agent_id').eq('id', agentId).single();
-        if (agentForResume?.phone_number && agentForResume?.vapi_agent_id) {
-          await resumeVapiAgent(agentForResume.phone_number, agentForResume.vapi_agent_id);
-        }
+      // Re-associate Vapi solo para el agente cuya sub renovó (granularidad per-empleado).
+      const { data: agentForResume } = await supabase
+        .from('voice_agents').select('phone_number, vapi_agent_id').eq('id', agentId).single();
+      if (agentForResume?.phone_number && agentForResume?.vapi_agent_id) {
+        await resumeVapiAgent(agentForResume.phone_number, agentForResume.vapi_agent_id);
       }
 
       break;
