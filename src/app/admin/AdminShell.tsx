@@ -23,7 +23,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+    <div className="flex overflow-hidden" style={{ height: '100dvh', background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
       {/* Mobile backdrop */}
       {open && (
@@ -105,7 +105,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </aside>
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
 
         {/* Mobile top bar */}
         <div
@@ -137,7 +137,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </Link>
         </div>
 
-        <main className="flex-1 overflow-auto" style={{ background: 'var(--c-bg)' }}>
+        <main className="flex-1 overflow-y-auto min-h-0" style={{ background: 'var(--c-bg)' }}>
           {children}
         </main>
       </div>
