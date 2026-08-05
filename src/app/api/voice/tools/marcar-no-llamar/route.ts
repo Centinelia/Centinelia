@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 // Normaliza el teléfono a solo dígitos para hacer match tolerante contra
 // las variantes almacenadas ("+52 81 12345678", "5281..." "81..." etc).
@@ -17,8 +18,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const { telefono, motivo } = args as { telefono: string; motivo?: string };
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
+  const trace = (result: unknown, ok = true) => traceVoiceCall({
+    toolName: 'marcar_no_llamar', agentId: agent_id ?? '', sessionId, input: args, result, ok, startedAt,
+  });
 
   if (!agent_id || !telefono?.trim()) {
+    trace({ error: 'missing_telefono' }, false);
     return NextResponse.json({ result: 'No pude registrar la solicitud: falta el número de teléfono.' });
   }
 
@@ -70,7 +77,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    result: `Registrado. El número ${telefono} no recibirá más llamadas de este empleado. Actualicé ${marked} registro${marked === 1 ? '' : 's'} de contacto.`,
-  });
+  const msg = `Registrado. El número ${telefono} no recibirá más llamadas de este empleado. Actualicé ${marked} registro${marked === 1 ? '' : 's'} de contacto.`;
+  trace({ ok: true, telefono, marked, motivo: motivo ?? null });
+  return NextResponse.json({ result: msg });
 }

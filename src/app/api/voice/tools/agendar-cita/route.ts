@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeListCalendarEvents, executeCreateCalendarEvent } from '@/lib/services/connector-tools';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -10,20 +11,21 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  // Vapi envia { message: { toolCallList: [...] } } (formato nuevo) o
-  // { toolCallList: [...] } (formato viejo). Aceptamos ambos. Si toolCallId
-  // no matchea con el que Vapi espera, Vapi reporta "No result returned".
   const msg  = body.message ?? body;
   const call = msg.toolCallList?.[0] ?? body.toolCallList?.[0];
   const rawArgs = call?.function?.arguments ?? body;
   const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
   const toolCallId: string = call?.id ?? 'call_1';
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
 
-  // Helper para responder en el formato que Vapi espera actualmente:
-  // { results: [{ toolCallId, result }] }. El formato viejo { result } causa
-  // "No result returned" en Vapi y el modelo continua sin ver el resultado.
-  const reply = (msg: string, extra?: Record<string, unknown>) =>
-    NextResponse.json({ results: [{ toolCallId, result: msg, ...(extra ?? {}) }] });
+  const reply = (msg: string, extra?: Record<string, unknown>, traceOk = true) => {
+    traceVoiceCall({
+      toolName: 'agendar_cita', agentId: agent_id ?? '', sessionId, input: args,
+      result: { message: msg, ...(extra ?? {}) }, ok: traceOk, startedAt,
+    });
+    return NextResponse.json({ results: [{ toolCallId, result: msg, ...(extra ?? {}) }] });
+  };
 
   const accion:      string | undefined = args.accion;
   const nombre:      string | undefined = args.nombre;

@@ -5,6 +5,7 @@ import type { GuardiaSchedule, DirectorioContacto } from '@/lib/helpdesk/folio';
 import { sendEmail } from '@/lib/email/send';
 import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 const WA_URL = 'https://api.twilio.com/2010-04-01/Accounts';
 
@@ -14,12 +15,18 @@ export async function POST(req: NextRequest) {
   const body    = await req.json();
   const args    = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
   const toolId  = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.id ?? 'tool';
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
+  const trace = (result: unknown, ok = true) => traceVoiceCall({
+    toolName: 'crear_ticket', agentId, sessionId, input: args, result, ok, startedAt,
+  });
 
   const { titulo, categoria = 'otro', prioridad = 'normal', descripcion, caller_number } = args as {
     titulo?: string; categoria?: string; prioridad?: string; descripcion?: string; caller_number?: string;
   };
 
   if (!titulo) {
+    trace({ error: 'missing_titulo' }, false);
     return NextResponse.json({ results: [{ toolCallId: toolId, result: 'Título del ticket requerido.' }] });
   }
 
@@ -106,10 +113,9 @@ export async function POST(req: NextRequest) {
   }
 
   const assignMsg = asignadoA ? ` Lo asigné a ${asignadoA}.` : '';
+  const finalMsg = `Ticket creado con folio ${folio}.${assignMsg} El equipo de soporte lo atenderá pronto.`;
+  trace({ ok: true, folio, titulo, categoria, prioridad, asignado_a: asignadoA });
   return NextResponse.json({
-    results: [{
-      toolCallId: toolId,
-      result: `Ticket creado con folio ${folio}.${assignMsg} El equipo de soporte lo atenderá pronto.`,
-    }],
+    results: [{ toolCallId: toolId, result: finalMsg }],
   });
 }

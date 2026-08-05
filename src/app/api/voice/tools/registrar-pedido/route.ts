@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -9,8 +10,10 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const { nombre, telefono, items, tipo, direccion, notas } =
-    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { nombre, telefono, items, tipo, direccion, notas } = args;
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
@@ -48,7 +51,10 @@ export async function POST(req: NextRequest) {
   }
 
   const tipoLabel = tipo === 'entrega' ? 'entrega a domicilio' : 'recoger en sucursal';
-  return NextResponse.json({
-    result: `Su pedido ha sido registrado para ${tipoLabel}. Le confirmamos los detalles por teléfono pronto.`,
+  const msg = `Su pedido ha sido registrado para ${tipoLabel}. Le confirmamos los detalles por teléfono pronto.`;
+  traceVoiceCall({
+    toolName: 'registrar_pedido', agentId: agent_id, sessionId, input: args,
+    result: { ok: true, tipo, items, nombre, telefono }, startedAt,
   });
+  return NextResponse.json({ result: msg });
 }

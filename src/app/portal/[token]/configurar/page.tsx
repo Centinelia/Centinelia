@@ -42,6 +42,7 @@ import MultilingualToggle    from '../MultilingualToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
+import ApprovalSettingsSection from './ApprovalSettingsSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -165,6 +166,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
       ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
     ...(!isCoordinator && isOwner
       ? [{ id: 'reportes',   label: 'Reportes de fallas',     group: 'Seguridad'     }] : []),
+    ...(isOwner
+      ? [{ id: 'aprobaciones', label: 'Aprobación de tareas', group: 'Seguridad'     }] : []),
     { id: 'contrato',        label: 'Contrato',               group: 'Seguridad'     },
   ];
 
@@ -601,6 +604,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reportes de fallas</h2>
                   </div>
                   <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+                </div>
+              </div>
+            )}
+
+            {isOwner && (
+              <div id="aprobaciones" style={SCROLL_STYLE}>
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <ApprovalSettingsSection token={token} roleColor={roleColor} />
                 </div>
               </div>
             )}
