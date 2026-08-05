@@ -74,7 +74,7 @@ async function budgetReport(): Promise<ActionResult> {
   const lines = [
     `**Presupuesto — mes actual desde ${new Date(startMonth).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}**`,
     '',
-    `Ops usadas / límite: **${fmtN(opsUsed)} / ${fmtN(opsLimit)}**`,
+    `Tareas usadas / límite: **${fmtN(opsUsed)} / ${fmtN(opsLimit)}**`,
     `Claude estimado: **${fmt$(claudeCost)}** de ${fmt$(claudeBudget)} presupuesto (${claudePct}%)`,
     `Vapi balance: **${fmt$(vapiBalance)}**${vapiBalance != null && vapiBalance < 20 ? ' ⚠️ bajo' : ''}`,
     `Twilio balance: **${fmt$(twilioBalance)}**${twilioBalance != null && twilioBalance < 10 ? ' ⚠️ bajo' : ''}`,

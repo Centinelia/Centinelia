@@ -126,8 +126,8 @@ export async function grantOpsChecks(portalEmail: string, count: number): Promis
     name:   'within_daily_budget',
     passed: !wouldExceed,
     detail: wouldExceed
-      ? `Cap diario de ${DAILY_GRANT_CAP} ops rebasado (hoy: ${grantedToday} + este: ${count})`
-      : `${grantedToday} ops otorgadas hoy de cap ${DAILY_GRANT_CAP}`,
+      ? `Cap diario de ${DAILY_GRANT_CAP} tareas rebasado (hoy: ${grantedToday} + este: ${count})`
+      : `${grantedToday} tareas otorgadas hoy de cap ${DAILY_GRANT_CAP}`,
   });
 
   return checks;
@@ -250,7 +250,7 @@ export async function executeApproval(approval: Approval): Promise<ExecutionResu
         const failed = results.filter(r => r.status === 'rejected').length;
         result = {
           ok:      failed === 0,
-          message: `+${count} ops otorgadas a ${before.length - failed}/${before.length} agentes`,
+          message: `+${count} tareas otorgadas a ${before.length - failed}/${before.length} agentes`,
           data:    { granted: count, affected: before.length - failed },
         };
         break;

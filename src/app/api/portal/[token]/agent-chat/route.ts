@@ -1476,7 +1476,7 @@ ${context}`;
   const opsRemain = Math.max(0, opsResult.limit - opsResult.used);
   const opsLow    = opsResult.limit > 0 && opsRemain <= Math.max(20, opsResult.limit * 0.15);
   const systemWithAlert = opsLow
-    ? system + `\n\nAVISO INTERNO DE USO: Quedan solo ${opsRemain} ops disponibles este mes (de ${opsResult.limit}). AL INICIO DE ESTA RESPUESTA, antes de atender lo que pida el dueño, menciona brevemente en una sola frase que las ops están casi agotadas y que puede comprar más desde Cuenta → Minutos y uso. Luego responde normalmente.`
+    ? system + `\n\nAVISO INTERNO DE USO: Quedan solo ${opsRemain} tareas disponibles este mes (de ${opsResult.limit}). AL INICIO DE ESTA RESPUESTA, antes de atender lo que pida el dueño, menciona brevemente en una sola frase que las tareas están casi agotadas y que puede comprar más desde Cuenta → Minutos y uso. Luego responde normalmente.`
     : system;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

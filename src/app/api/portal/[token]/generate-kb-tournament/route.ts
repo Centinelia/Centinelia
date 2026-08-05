@@ -72,7 +72,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const ops = await consumeAiOp(agent.id, OPS_COST);
   if (!ops.ok)
     return NextResponse.json(
-      { error: `Sin ops disponibles (${ops.used}/${ops.limit} usadas)` },
+      { error: `Sin tareas disponibles (${ops.used}/${ops.limit} usadas)` },
       { status: 402 }
     );
 
