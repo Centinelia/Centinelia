@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap } from 'lucide-react';
+import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
@@ -261,7 +261,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     ? allClientAgents.map(a => a.id)
     : [agent.id];
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
+  // Action counts — últimos 30d (mismo cutoff que sidebar de /oficina)
+  const actionCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes, opsInboxCountRes, humanReqCountRes, learningsCountRes] = await Promise.all([
     // Calls — account-level for Inicio activity and Llamadas
     since
       ? supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -274,6 +277,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
     supabase.from('email_integrations').select('provider, email, needs_reauth').eq('agent_id', agent.id),
+    // Bandeja (ops_inbox) + human_requests pendientes — cuenta account-level
+    supabase.from('ops_inbox').select('id', { count: 'exact', head: true })
+      .in('agent_id', agentIdsForCalls)
+      .in('status', ['pending', 'escalated', 'info_requested'])
+      .gte('created_at', actionCutoff),
+    supabase.from('human_requests').select('id', { count: 'exact', head: true })
+      .in('agent_id', agentIdsForCalls)
+      .in('status', ['pending', 'escalated'])
+      .gte('created_at', actionCutoff),
+    // Aprendizajes pendientes de aprobar
+    agent.portal_email
+      ? supabase.from('agent_learnings').select('id', { count: 'exact', head: true })
+          .eq('portal_email', agent.portal_email)
+          .eq('status', 'pending')
+      : Promise.resolve({ count: 0 }),
   ]);
 
   const calls             = (callsRes.data           ?? []) as VoiceCall[];
@@ -285,6 +303,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const contactOutbound   = (contactOutboundRes.data ?? []) as ContactOutbound[];
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
   const reauthAlerts      = (emailIntsRes.data ?? []).filter((i: any) => i.needs_reauth) as { provider: 'gmail' | 'outlook'; email: string }[];
+
+  // Action items counts para el card "Requieren tu acción"
+  const bandejaCount   = ((opsInboxCountRes as any).count ?? 0) + ((humanReqCountRes as any).count ?? 0);
+  const learningsCount = (learningsCountRes as any).count ?? 0;
+  const actionTotal    = bandejaCount + learningsCount + reauthAlerts.length;
 
   // Build caller-number → client-name lookup from captured leads/appts/orders
   const normPhone = (p: string) => (p ?? '').replace(/\D/g, '');
@@ -520,24 +543,66 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </a>
               )}
 
-              {/* Reauth alerts — mobile strip */}
-              {reauthAlerts.length > 0 && (
-                <div className="flex flex-col gap-2 lg:hidden">
-                  {reauthAlerts.map(alert => (
-                    <Link key={alert.provider}
-                      href={`/portal/${token}/oficina/integraciones`}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                      <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
-                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexion
-                        </p>
-                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
-                      </div>
-                      <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                    </Link>
-                  ))}
+              {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
+              {actionTotal > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Requieren tu acción
+                  </h2>
+                  <div className="flex flex-col">
+                    {bandejaCount > 0 && (
+                      <Link href={`/portal/${token}/oficina/bandeja`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: (learningsCount > 0 || reauthAlerts.length > 0) ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(108,59,255,0.1)' }}>
+                          <Inbox size={14} style={{ color: '#6C3BFF' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {bandejaCount} {bandejaCount === 1 ? 'correo pendiente' : 'correos pendientes'} en la bandeja
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Revisa borradores, escalaciones y solicitudes.</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    )}
+                    {learningsCount > 0 && (
+                      <Link href={`/portal/${token}/oficina/aprendizajes`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: reauthAlerts.length > 0 ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(34,197,94,0.1)' }}>
+                          <Lightbulb size={14} style={{ color: '#22c55e' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu equipo propuso reglas nuevas para tu organización.</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    )}
+                    {reauthAlerts.map((alert, idx) => (
+                      <Link key={alert.provider}
+                        href={`/portal/${token}/oficina/integraciones`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: idx < reauthAlerts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(245,158,11,0.1)' }}>
+                          <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
+                          </p>
+                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -1115,24 +1180,66 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </a>
               )}
 
-              {/* Reauth alerts — mobile strip */}
-              {reauthAlerts.length > 0 && (
-                <div className="flex flex-col gap-2 lg:hidden">
-                  {reauthAlerts.map(alert => (
-                    <Link key={alert.provider}
-                      href={`/portal/${token}/oficina/integraciones`}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                      <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
-                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexion
-                        </p>
-                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
-                      </div>
-                      <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                    </Link>
-                  ))}
+              {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
+              {actionTotal > 0 && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Requieren tu acción
+                  </h2>
+                  <div className="flex flex-col">
+                    {bandejaCount > 0 && (
+                      <Link href={`/portal/${token}/oficina/bandeja`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: (learningsCount > 0 || reauthAlerts.length > 0) ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(108,59,255,0.1)' }}>
+                          <Inbox size={14} style={{ color: '#6C3BFF' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {bandejaCount} {bandejaCount === 1 ? 'correo pendiente' : 'correos pendientes'} en la bandeja
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Revisa borradores, escalaciones y solicitudes.</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    )}
+                    {learningsCount > 0 && (
+                      <Link href={`/portal/${token}/oficina/aprendizajes`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: reauthAlerts.length > 0 ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(34,197,94,0.1)' }}>
+                          <Lightbulb size={14} style={{ color: '#22c55e' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu equipo propuso reglas nuevas para tu organización.</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    )}
+                    {reauthAlerts.map((alert, idx) => (
+                      <Link key={alert.provider}
+                        href={`/portal/${token}/oficina/integraciones`}
+                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
+                        style={{ borderBottom: idx < reauthAlerts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(245,158,11,0.1)' }}>
+                          <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                            {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
+                          </p>
+                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
+                        </div>
+                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 
