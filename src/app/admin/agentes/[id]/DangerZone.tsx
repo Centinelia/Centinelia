@@ -36,7 +36,8 @@ export default function DangerZone({ agentId, displayName }: Props) {
     setError(err ?? 'Error al eliminar');
   };
 
-  const canDelete = password.length > 0 && nameCheck.trim() === displayName.trim();
+  const canDelete = password.length > 0
+    && nameCheck.trim().toLowerCase() === displayName.trim().toLowerCase();
 
   return (
     <div

@@ -156,12 +156,51 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       error: 'ADMIN_DELETE_PASSWORD no está configurado. Agrega la variable en Vercel para permitir eliminaciones.',
     }, { status: 500 });
   }
-  if (!body.password || !timingSafeCompareStrings(body.password, expected)) {
+
+  // Trim de ambos lados para tolerar espacios accidentales del env o del user.
+  const provided = (body.password ?? '').trim();
+  const expect   = expected.trim();
+  if (!provided || provided.length !== expect.length || !timingSafeCompareStrings(provided, expect)) {
+    console.warn('[admin/delete-agent] password mismatch. provided len=%d, expected len=%d', provided.length, expect.length);
     return NextResponse.json({ error: 'Contraseña incorrecta.' }, { status: 403 });
   }
 
   const supabase = createAdminClient();
+
+  // Best-effort: limpiar dependencias que pueden bloquear el DELETE por FK.
+  // Cada tabla tiene su propia FK (algunas cascade, otras no). Borramos
+  // manualmente las que sabemos que existen y son sensibles a FK restrict.
+  const dependencies = [
+    'voice_calls',
+    'leads',
+    'appointments',
+    'orders',
+    'agent_tasks',
+    'ops_inbox',
+    'ai_ops_log',
+    'minutes_ledger',
+    'meerkat_handoff_log',
+    'tool_call_log',
+    'external_tramite_requests',
+  ];
+  for (const table of dependencies) {
+    const { error: depErr } = await supabase.from(table).delete().eq('agent_id', id);
+    if (depErr) {
+      // La tabla puede no existir en esta instancia; loggeamos y seguimos.
+      console.warn(`[admin/delete-agent] cleanup ${table} failed:`, depErr.message);
+    }
+  }
+
   const { error } = await supabase.from('voice_agents').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[admin/delete-agent] final delete failed:', error);
+    // FK constraint típica de Postgres
+    if (error.code === '23503' || /foreign key/i.test(error.message)) {
+      return NextResponse.json({
+        error: `No se pudo eliminar: hay datos relacionados que aún referencian al empleado (${error.message}). Contacta a soporte para hacer una purga completa.`,
+      }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -318,7 +318,7 @@ export default function AgentDetailClient({
           {/* Zona peligrosa */}
           <DangerZone
             agentId={agent.id}
-            displayName={agent.agent_name || agent.business_name}
+            displayName={displayName}
           />
         </div>
 
