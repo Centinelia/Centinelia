@@ -36,7 +36,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-52 flex-shrink-0 flex flex-col overflow-hidden border-r transition-transform duration-200 ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-60 flex-shrink-0 flex flex-col overflow-hidden border-r transition-transform duration-200 ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#1A0A3B' }}
       >
         {/* Logo header */}

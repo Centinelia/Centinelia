@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, RefreshCw, Check, Phone, PhoneOutgoing,
-  Clock, ChevronDown, Puzzle, Settings2, Building2, User as UserIcon,
-  Bot, Mic, Briefcase, BookOpen,
+  Puzzle, Settings2, Building2,
+  Bot, Mic, Briefcase, BookOpen, Info,
 } from 'lucide-react';
 import VoiceSelector from '@/components/VoiceSelector';
 import { FEATURE_LABELS } from '@/types/agent';
-import type { AgentFeatures, VoiceAgent, BusinessHours, DaySchedule } from '@/types/agent';
+import type { AgentFeatures, VoiceAgent } from '@/types/agent';
 
 // ── Feature groups ────────────────────────────────────────────────────────────
 
@@ -40,37 +40,6 @@ const PROMPT_FLAGS: { key: keyof AgentFeatures; label: string; desc: string }[] 
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MEXICO_TIMEZONES = [
-  { value: 'America/Monterrey',   label: 'Monterrey / Noreste' },
-  { value: 'America/Mexico_City', label: 'Ciudad de México / Centro' },
-  { value: 'America/Tijuana',     label: 'Tijuana / Baja California' },
-  { value: 'America/Hermosillo',  label: 'Hermosillo / Sonora' },
-  { value: 'America/Chihuahua',   label: 'Chihuahua / Montaña' },
-  { value: 'America/Mazatlan',    label: 'Mazatlán / Sinaloa' },
-  { value: 'America/Merida',      label: 'Mérida / Sureste' },
-  { value: 'America/Cancun',      label: 'Cancún / Quintana Roo' },
-];
-
-const DAYS: { key: keyof BusinessHours; label: string }[] = [
-  { key: 'monday',    label: 'Lunes'     },
-  { key: 'tuesday',   label: 'Martes'    },
-  { key: 'wednesday', label: 'Miércoles' },
-  { key: 'thursday',  label: 'Jueves'    },
-  { key: 'friday',    label: 'Viernes'   },
-  { key: 'saturday',  label: 'Sábado'    },
-  { key: 'sunday',    label: 'Domingo'   },
-];
-
-const DEFAULT_HOURS: BusinessHours = {
-  monday:    { open: true,  from: '09:00', to: '18:00' },
-  tuesday:   { open: true,  from: '09:00', to: '18:00' },
-  wednesday: { open: true,  from: '09:00', to: '18:00' },
-  thursday:  { open: true,  from: '09:00', to: '18:00' },
-  friday:    { open: true,  from: '09:00', to: '18:00' },
-  saturday:  { open: false },
-  sunday:    { open: false },
-};
-
 type Tab = 'negocio' | 'empleado' | 'funciones';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'negocio',   label: 'Negocio'   },
@@ -86,52 +55,24 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
   const initialTab   = (searchParams.get('tab') as Tab | null) ?? 'negocio';
 
   const [saving,        setSaving]        = useState(false);
-  const [resyncing,     setResyncing]     = useState(false);
-  const [resyncOk,      setResyncOk]      = useState(false);
   const [voiceId,       setVoiceId]       = useState<string | null>(agent.elevenlabs_voice_id ?? null);
   const [tab,           setTab]           = useState<Tab>(initialTab);
   const [role,          setRole]          = useState(agent.role ?? '');
   const [features,      setFeatures]      = useState<AgentFeatures>(agent.features);
-  const [vertical,      setVertical]      = useState<'negocio' | 'gobierno'>(agent.features.vertical ?? 'negocio');
-  const [businessHours, setBusinessHours] = useState<BusinessHours>(agent.business_hours ?? DEFAULT_HOURS);
-  const [hoursEnabled,  setHoursEnabled]  = useState(!!agent.business_hours);
-  const [timezone,      setTimezone]      = useState(agent.timezone ?? 'America/Monterrey');
-  const [tzOpen,        setTzOpen]        = useState(false);
-  const tzRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (tzRef.current && !tzRef.current.contains(e.target as Node)) setTzOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const toggleFeature = (key: keyof AgentFeatures) =>
     setFeatures(prev => ({ ...prev, [key]: !prev[key] }));
-
-  const handleResyncWebsite = async () => {
-    setResyncing(true);
-    setResyncOk(false);
-    const res = await fetch(`/api/admin/agentes/${agent.id}/resync-website`, { method: 'POST' });
-    setResyncing(false);
-    if (res.ok) { setResyncOk(true); setTimeout(() => setResyncOk(false), 4000); }
-    else { const { error } = await res.json().catch(() => ({ error: 'Error' })); alert(error ?? 'No se pudo sincronizar'); }
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     const fd = new FormData(e.currentTarget);
+    // Datos de cliente (contacto, vertical, timezone, horario, direccion,
+    // sitio web, calendar) se editan desde /admin/clientes/[key]/editar.
+    // Aqui solo los campos truly per-empleado.
     const body = {
-      client_name:            fd.get('client_name'),
-      client_email:           fd.get('client_email')   || null,
-      portal_email:           fd.get('portal_email')   || null,
       business_name:          fd.get('business_name'),
       business_description:   fd.get('business_description'),
-      business_address:       fd.get('business_address'),
-      business_website:       fd.get('business_website') || null,
-      timezone:               fd.get('timezone') || 'America/Monterrey',
       phone_number:           fd.get('phone_number'),
       knowledge_base:         fd.get('knowledge_base'),
       role_knowledge_base:    fd.get('role_knowledge_base'),
@@ -140,10 +81,8 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
       business_phone_display: fd.get('business_phone_display'),
       transfer_number:        fd.get('transfer_number'),
       transfer_whatsapp:      fd.get('transfer_whatsapp'),
-      calendar_url:           fd.get('calendar_url'),
       role,
-      features: { ...features, vertical },
-      business_hours: hoursEnabled ? businessHours : null,
+      features,
     };
 
     const res = await fetch(`/api/admin/agentes/${agent.id}`, {
@@ -184,7 +123,7 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
           Editar empleado
         </h1>
         <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
-          Cambia identidad, negocio, funciones y horario.
+          Cambia identidad, negocio y funciones del empleado.
         </p>
       </div>
 
@@ -218,120 +157,34 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
         {/* ── Tab: Negocio ─────────────────────────────────────────────── */}
         <div className={tab !== 'negocio' ? 'hidden' : 'flex flex-col gap-6'}>
 
-          <Card title="Vertical" icon={<Briefcase size={13} />}
-                subtitle="Determina qué secciones de la Oficina se muestran en el portal del cliente.">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([
-                { value: 'negocio',  label: 'Negocio',  desc: 'Empresas, comercios, servicios'          },
-                { value: 'gobierno', label: 'Gobierno', desc: 'Municipios, dependencias, H. Cabildo'    },
-              ] as const).map(opt => {
-                const active = vertical === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setVertical(opt.value)}
-                    className="flex flex-col gap-0.5 px-4 py-3 rounded-lg text-left transition-all"
-                    style={{
-                      background: active ? '#F3F0FF' : '#FFFFFF',
-                      border:     active ? '1px solid #6C3BFF' : '1px solid #E5E7EB',
-                      color:      active ? '#4C1D95' : '#111827',
-                    }}
-                  >
-                    <span className="text-[13px] font-semibold">{opt.label}</span>
-                    <span className="text-[12px]" style={{ color: active ? '#7C3AED' : '#6B7280' }}>{opt.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
+          {/* Banner: datos de cliente viven en el editor de cliente */}
+          <div
+            className="rounded-lg px-4 py-3 flex items-start gap-2.5"
+            style={{ background: '#F3F0FF', border: '1px solid #E9E1FF' }}
+          >
+            <Info size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#6C3BFF' }} />
+            <p className="text-[12px]" style={{ color: '#4C1D95' }}>
+              Los datos del cliente (contacto, vertical, horario, ubicacion){' '}
+              se editan desde{' '}
+              <Link
+                href={`/admin/clientes/${encodeURIComponent(agent.portal_email ?? agent.client_name)}/editar`}
+                className="font-semibold underline hover:opacity-80"
+                style={{ color: '#6C3BFF' }}
+              >
+                Editar cliente
+              </Link>
+              .
+            </p>
+          </div>
 
-          <Card title="Cliente" icon={<UserIcon size={13} />}>
-            <Field label="Nombre del contacto" name="client_name" required defaultValue={agent.client_name} />
-            <Field label="Email del cliente" name="client_email" placeholder="cliente@email.com"
-              defaultValue={agent.client_email ?? ''} />
-            <Field label="Email del portal" name="portal_email" placeholder="acceso@negocio.com"
-              defaultValue={(agent as any).portal_email ?? ''}
-              helper="Correo con el que el cliente inicia sesión en su portal. Todos los empleados con el mismo email comparten pool de minutos y tareas." />
-          </Card>
-
-          <Card title="Negocio" icon={<Building2 size={13} />}>
+          <Card title="Negocio" icon={<Building2 size={13} />}
+                subtitle="Datos especificos de esta empresa. Cada empleado puede representar una empresa distinta.">
             <Field label="Nombre del negocio" name="business_name" required defaultValue={agent.business_name} />
-            <Field label="Descripción" name="business_description" textarea defaultValue={agent.business_description} />
-            <Field label="Dirección" name="business_address" defaultValue={agent.business_address ?? ''} />
+            <Field label="Descripcion" name="business_description" textarea defaultValue={agent.business_description} />
 
-            <div>
-              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>
-                Sitio web
-              </label>
-              <div className="flex gap-2">
-                <input
-                  name="business_website"
-                  placeholder="https://negocio.com"
-                  defaultValue={agent.business_website ?? ''}
-                  className="flex-1 text-[13px] px-3 py-2 outline-none transition-colors focus:border-[#6C3BFF]"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 8, color: '#111827' }}
-                />
-                <button
-                  type="button"
-                  onClick={handleResyncWebsite}
-                  disabled={resyncing}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap transition-opacity hover:opacity-80"
-                  style={{
-                    background: resyncOk ? '#ECFDF5' : '#F3F0FF',
-                    color:      resyncOk ? '#047857' : '#6C3BFF',
-                    border:     `1px solid ${resyncOk ? '#A7F3D0' : '#E9E1FF'}`,
-                    opacity:    resyncing ? 0.5 : 1,
-                  }}
-                >
-                  {resyncing ? <RefreshCw size={12} className="animate-spin" /> : resyncOk ? <Check size={12} /> : <RefreshCw size={12} />}
-                  {resyncing ? 'Sincronizando…' : resyncOk ? 'Listo' : 'Sincronizar'}
-                </button>
-              </div>
-            </div>
-
-            {/* Timezone */}
-            <div>
-              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>Zona horaria</label>
-              <input type="hidden" name="timezone" value={timezone} />
-              <div className="relative" ref={tzRef}>
-                <button
-                  type="button"
-                  onClick={() => setTzOpen(o => !o)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-colors focus:border-[#6C3BFF]"
-                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
-                >
-                  <span>{MEXICO_TIMEZONES.find(tz => tz.value === timezone)?.label ?? timezone}</span>
-                  <ChevronDown size={14} style={{ color: '#6B7280', flexShrink: 0 }} />
-                </button>
-                {tzOpen && (
-                  <div
-                    className="absolute top-full left-0 right-0 mt-1 rounded-lg overflow-hidden z-50"
-                    style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}
-                  >
-                    {MEXICO_TIMEZONES.map(tz => (
-                      <button
-                        key={tz.value}
-                        type="button"
-                        onClick={() => { setTimezone(tz.value); setTzOpen(false); }}
-                        className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-gray-50"
-                        style={{
-                          color:      timezone === tz.value ? '#6C3BFF' : '#374151',
-                          background: timezone === tz.value ? '#F3F0FF' : 'transparent',
-                          fontWeight: timezone === tz.value ? 500 : 400,
-                        }}
-                      >
-                        {tz.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Field label="Número Centinelia (Vapi)" name="phone_number"
+            <Field label="Numero Centinelia (Vapi)" name="phone_number"
               defaultValue={agent.phone_number}
-              helper="Número asignado en Vapi que recibe las llamadas entrantes." />
+              helper="Numero asignado en Vapi que recibe las llamadas entrantes." />
           </Card>
         </div>
 
@@ -416,9 +269,6 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
               <Field label="WhatsApp para notificaciones" name="transfer_whatsapp"
                 defaultValue={agent.transfer_whatsapp ?? ''}
                 helper="Recibe avisos de leads, citas y pedidos en este número." />
-              <Field label="Link de calendario" name="calendar_url"
-                defaultValue={agent.calendar_url ?? ''}
-                helper="Calendly, Google Cal u otro link para agendar citas." />
             </div>
           </Card>
 
@@ -462,75 +312,6 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             </div>
           </Card>
 
-          {/* Horarios */}
-          <Card title="Horarios de atención" icon={<Clock size={13} />}>
-            <div
-              className="flex items-center justify-between p-3 rounded-lg cursor-pointer select-none transition-colors hover:bg-gray-50"
-              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}
-              onClick={() => setHoursEnabled(v => !v)}
-            >
-              <div>
-                <p className="text-[13px] font-medium" style={{ color: '#111827' }}>Restringir horario</p>
-                <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>El empleado solo contesta en el horario configurado</p>
-              </div>
-              <Toggle on={hoursEnabled} />
-            </div>
-            {hoursEnabled && (
-              <div className="rounded-lg overflow-hidden mt-3" style={{ border: '1px solid #E5E7EB' }}>
-                {DAYS.map(({ key, label }, i) => {
-                  const s: DaySchedule = businessHours[key] ?? { open: false };
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                      style={{ background: '#FFFFFF', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
-                    >
-                      <div
-                        className="flex items-center gap-2 w-32 flex-shrink-0 cursor-pointer select-none"
-                        onClick={() => setBusinessHours(h => ({ ...h, [key]: { ...s, open: !s.open } }))}
-                      >
-                        <Toggle on={s.open} size="sm" />
-                        <span className="text-[13px]" style={{ color: s.open ? '#111827' : '#9CA3AF' }}>{label}</span>
-                      </div>
-                      {s.open ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            maxLength={5}
-                            placeholder="09:00"
-                            value={s.from ?? '09:00'}
-                            onChange={e => {
-                              let v = e.target.value.replace(/\D/g, '');
-                              if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
-                              setBusinessHours(h => ({ ...h, [key]: { ...s, from: v } }));
-                            }}
-                            className="rounded-md px-2 py-1 text-[13px] outline-none w-16 text-center tabular-nums"
-                            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
-                          />
-                          <span className="text-[13px]" style={{ color: '#9CA3AF' }}>:</span>
-                          <input
-                            type="text"
-                            maxLength={5}
-                            placeholder="18:00"
-                            value={s.to ?? '18:00'}
-                            onChange={e => {
-                              let v = e.target.value.replace(/\D/g, '');
-                              if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2, 4);
-                              setBusinessHours(h => ({ ...h, [key]: { ...s, to: v } }));
-                            }}
-                            className="rounded-md px-2 py-1 text-[13px] outline-none w-16 text-center tabular-nums"
-                            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-[12px]" style={{ color: '#9CA3AF' }}>Cerrado</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
         </div>
       </form>
 
