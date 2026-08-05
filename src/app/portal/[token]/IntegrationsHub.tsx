@@ -11,6 +11,7 @@ import TeamsSection         from './TeamsSection';
 import EmailOAuthSection    from './EmailOAuthSection';
 import MercadoLibreSection  from './MercadoLibreSection';
 import QuickBooksSection    from './QuickBooksSection';
+import GoogleWorkspaceCard  from './GoogleWorkspaceCard';
 
 /* ── types ─────────────────────────────────────────────────────────────── */
 
@@ -233,9 +234,11 @@ const SUITE_CAPABILITIES = {
   gmail: {
     name:  'Google Workspace',
     items: [
-      { label: 'Gmail',    icon: PIcons.gmail    },
-      { label: 'Drive',    icon: PIcons.drive    },
-      { label: 'Contactos', icon: PIcons.contacts },
+      { label: 'Gmail',                   icon: PIcons.gmail    },
+      { label: 'Drive',                   icon: PIcons.drive    },
+      { label: 'Hojas de calculo',        icon: PIcons.gcal     },
+      { label: 'Calendario',              icon: PIcons.gcal     },
+      { label: 'Contactos',               icon: PIcons.contacts },
     ],
   },
   outlook: {
@@ -481,7 +484,17 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
         >
           <EmailOAuthSection
             token={token}
-            workspacePanel={<WorkspaceCallout provider={emailConn?.provider ?? null} />}
+            workspacePanel={
+              emailConn?.provider === 'gmail' || !emailConn ? (
+                <GoogleWorkspaceCard
+                  token={token}
+                  connected={emailConn?.provider === 'gmail'}
+                  email={emailConn?.email ?? null}
+                />
+              ) : (
+                <WorkspaceCallout provider={emailConn.provider} />
+              )
+            }
           />
         </CapabilityRow>
 
