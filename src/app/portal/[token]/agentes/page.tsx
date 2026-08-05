@@ -4,6 +4,7 @@ import { createAdminClient }            from '@/lib/supabase/admin';
 import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 import Link                             from 'next/link';
 import { Settings2, Bot, Zap, Clock } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
@@ -13,6 +14,7 @@ import AnnualContractCallout           from '../AnnualContractCallout';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
 import { MEERKAT_VOICE_DISTRIBUTION }  from '@/lib/vapi/sync';
+import { PageContainer, PageSection, SectionHeader, Card, EmptyState } from '@/components/portal-ui';
 
 interface ToolChip { label: string; color: string }
 
@@ -390,7 +392,349 @@ export default async function AgentesPage({ params }: Props) {
         .filter((r): r is NonNullable<typeof r> => r !== null)
     : [];
 
-  return (
+  // V2 flag
+  const v2Enabled = baseAgent.portal_email
+    ? await isPortalV2Enabled(baseAgent.portal_email)
+    : false;
+
+  // ─── Shared inner content ────────────────────────────────────────────────────
+  // Agent cards grid + capability banner are rendered identically in V1 and V2.
+  // Only the outer wrapper (header section + container) differs.
+
+  const agentCardsGrid = (
+    <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {agents.map(a => {
+        const color           = agentColor(a.id);
+        const initial         = ((a.agent_name as string | null)?.trim() || (a.business_name as string)).charAt(0).toUpperCase();
+        const isBillingPaused = !(a.active as boolean) && (a.billing_status as string) === 'pago_fallido';
+        const isClientPaused  = !!(a.client_paused as boolean) && !isBillingPaused;
+        const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
+        const hasRole         = !!((a.role as string | null)?.trim());
+        const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
+        const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
+        const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
+        const avatarLocked    = !!meerkatId && meerkatId !== 'custom';
+        const isCoordinator   = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
+        const callCount       = callCountMap[a.id] ?? 0;
+
+        const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
+        const statusColor = isBillingPaused ? '#dc2626' : isClientPaused ? '#f59e0b' : isOnline ? '#16a34a' : '#6b7280';
+
+        const jornadaType  = ((a as any).jornada_type as string) ?? 'combinada';
+        const JORNADA_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
+          combinada: { label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></>, color: '#6C3BFF', bg: 'rgba(108,59,255,0.08)', border: 'rgba(108,59,255,0.2)' },
+          minutos:   { label: 'Solo minutos', icon: <Clock size={10} />,                       color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)'  },
+          tareas:    { label: 'Solo tareas',  icon: <Zap size={10} />,                         color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)'  },
+        };
+        const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
+
+        const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
+        const agentFeatures = (a.features as Record<string, unknown>) ?? {};
+        const tools         = getAgentTools(agentFeatures);
+        const capabilities  = getAgentCapabilities(tools);
+
+        return (
+          <div key={a.id}
+            className="rounded-2xl flex flex-col"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+
+            {/* Color bar */}
+            <div style={{ height: 3, borderRadius: '12px 12px 0 0', background: `linear-gradient(90deg, ${hasRole ? roleColor : color}, ${hasRole ? roleColor : color}55)` }} />
+
+            <div className="p-5 flex flex-col items-center gap-4 flex-1">
+
+              {/* Avatar — grande, centrado arriba */}
+              <div className="relative">
+                <AgentAvatarPicker
+                  token={a.portal_token as string}
+                  avatarSrc={avatarSrc}
+                  initial={initial}
+                  color={hasRole ? roleColor : color}
+                  size={120}
+                  locked={avatarLocked}
+                />
+                <span
+                  className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm whitespace-nowrap"
+                  style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color, backdropFilter: 'blur(4px)' }}>
+                  {jornada.icon}
+                  {jornada.label}
+                </span>
+              </div>
+
+              {/* Nombre + rol + estado */}
+              <div className="flex flex-col items-center gap-1 text-center w-full">
+                <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: 'var(--c-text)' }}>
+                  {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+                </span>
+                {hasRole && (
+                  <span className="text-sm font-medium" style={{ color: roleColor }}>
+                    {a.role as string}
+                  </span>
+                )}
+                <span className="flex items-center gap-1 text-xs mt-0.5" style={{ color: statusColor }}>
+                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
+                    style={{ background: 'currentColor' }} />
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Descripción + capacidades — siempre al fondo del cuerpo */}
+              <div className="flex flex-col gap-3 flex-1 justify-end w-full">
+              {meerkatDef?.descripcion && (
+                <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                  {meerkatDef.descripcion}
+                </p>
+              )}
+
+              {/* Capacidades — colapsadas por defecto */}
+              {capabilities.length > 0 && (
+                <details className="w-full group">
+                  <summary
+                    className="cursor-pointer list-none select-none flex items-center gap-1.5 w-fit"
+                    style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+                    <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
+                      Ver capacidades
+                    </span>
+                    <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                  </summary>
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {capabilities.map(c => (
+                      <span key={c.label}
+                        className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg"
+                        style={{
+                          background: `${c.color}10`,
+                          color:      c.color,
+                          border:     `1px solid ${c.color}25`,
+                        }}>
+                        {c.label}
+                      </span>
+                    ))}
+                    {isCoordinator && !hasPassphrase && (
+                      <p className="w-full text-[10px] mt-1 leading-relaxed" style={{ color: '#f59e0b' }}>
+                        Sin passphrase del dueño este director no puede actuar. Configura una en Empleados → Configurar.
+                      </p>
+                    )}
+                  </div>
+                </details>
+              )}
+              </div>{/* end description+capacidades wrapper */}
+
+              {/* Stats */}
+              <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
+                {!isCoordinator && (
+                  <span className="flex items-center gap-1 text-xs">
+                    <Bot size={12} />
+                    {callCount} llam. este mes
+                  </span>
+                )}
+                {hasRole && (
+                  <span className="flex items-center gap-1 text-xs">
+                    <Zap size={12} />
+                    {(a.ai_ops_used as number) ?? 0} tareas este mes
+                  </span>
+                )}
+              </div>
+
+            </div>
+
+            {/* Botones — abajo */}
+            <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="flex-1 flex justify-start min-w-0">
+                <Link
+                  href={`/portal/${a.portal_token as string}/configurar`}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
+                  style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
+                >
+                  <Settings2 size={11} />
+                  <span className="inline sm:hidden xl:inline">Configurar</span>
+                </Link>
+              </div>
+              <div className="flex-1 flex justify-end min-w-0">
+                {!isBillingPaused
+                  ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                  : (
+                    <a
+                      href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
+                      style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      <span className="inline sm:hidden xl:inline">Resolver pago</span>
+                      <span className="hidden sm:inline xl:hidden">→</span>
+                      <span className="inline sm:hidden xl:inline">→</span>
+                    </a>
+                  )
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const capabilityBanner = agents.length > 0 ? (
+    <div className="rounded-2xl p-5"
+      style={{
+        background: overallPct === 100 ? 'rgba(34,197,94,0.04)'        : 'rgba(108,59,255,0.04)',
+        border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
+      }}>
+
+      {/* Header row: tier name + % + progress bar */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: overallPct === 100 ? '#16a34a' : '#6C3BFF' }}>
+            {officeTier(overallPct)}
+          </p>
+          {overallPct < 100 && missingCats.length > 0 && (
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+              Incorpora:{' '}
+              {missingCats.length <= 3
+                ? missingCats.map(c => c.label).join(', ')
+                : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
+            </p>
+          )}
+          {overallPct === 100 && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              Tu equipo tiene todas las capacidades disponibles.
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <span className="text-sm font-bold px-2.5 py-1 rounded-lg"
+            style={{
+              background: overallPct === 100 ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
+              color:      overallPct === 100 ? '#16a34a' : '#6C3BFF',
+            }}>
+            {overallPct}%
+          </span>
+          <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+            <div className="h-1.5 rounded-full"
+              style={{ width: `${overallPct}%`, background: overallPct === 100 ? '#16a34a' : '#6C3BFF' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Core categories — 3 columnas */}
+      <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+        {coreStats.map(cat => (
+          <details key={cat.label}>
+            <summary
+              className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
+              style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
+              <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-2)' }}>
+                {cat.label}
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                  <div className="h-1 rounded-full" style={{ width: `${Math.round((cat.covered / cat.total) * 100)}%`, background: cat.covered === cat.total ? '#16a34a' : cat.color }} />
+                </div>
+                <span className="text-[10px] tabular-nums w-6 text-right" style={{ color: 'var(--c-text-4)' }}>
+                  {Math.round((cat.covered / cat.total) * 100)}%
+                </span>
+              </div>
+              <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+            </summary>
+            <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
+              {cat.tools.map(t => (
+                <div key={t.key} className="flex items-center gap-1 py-0.5">
+                  <span className="text-[10px] w-3 text-center flex-shrink-0"
+                    style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                    {t.covered ? '✓' : '○'}
+                  </span>
+                  <span className="group/cap relative text-[10px] leading-tight cursor-default"
+                    style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
+                    {t.label}
+                    {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                      <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
+                        <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                          style={{
+                            background: 'var(--c-surface-2, #1e1a2e)',
+                            border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                            color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                          }}>
+                          {t.covered
+                            ? t.agents.join(' · ')
+                            : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                        </span>
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {/* Módulos adicionales */}
+      <div className="pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--c-text-4)' }}>
+          Módulos adicionales
+        </p>
+        <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+          {specializedStats.map(cat => (
+            <details key={cat.label}>
+              <summary
+                className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
+                style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-60" style={{ background: cat.color }} />
+                <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-3)' }}>
+                  {cat.label}
+                </span>
+                <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
+                  {cat.covered}/{cat.total}
+                </span>
+                <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+              </summary>
+              <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
+                {cat.tools.map(t => (
+                  <div key={t.key} className="flex items-center gap-1 py-0.5">
+                    <span className="text-[10px] w-3 text-center flex-shrink-0"
+                      style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                      {t.covered ? '✓' : '○'}
+                    </span>
+                    <span className="group/cap relative text-[10px] leading-tight cursor-default"
+                      style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
+                      {t.label}
+                      {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
+                        <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
+                          <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
+                            style={{
+                              background: 'var(--c-surface-2, #1e1a2e)',
+                              border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
+                              color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                            }}>
+                            {t.covered
+                              ? t.agents.join(' · ')
+                              : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      {missingCats.length > 0 && !annualContractInfo && (
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <MeerkatPicker
+            token={token}
+            plan={(baseAgent.plan ?? 'pro') as 'pro'}
+            defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+            recommendations={meerkatRecs}
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  // ─── V1 body (unchanged legacy layout) ──────────────────────────────────────
+  const pageBodyV1 = (
     <div className="flex flex-col gap-6">
 
       {/* Page header */}
@@ -433,337 +777,66 @@ export default async function AgentesPage({ params }: Props) {
       )}
 
       {/* Agent cards */}
-      <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {agents.map(a => {
-          const color           = agentColor(a.id);
-          const initial         = ((a.agent_name as string | null)?.trim() || (a.business_name as string)).charAt(0).toUpperCase();
-          const isBillingPaused = !(a.active as boolean) && (a.billing_status as string) === 'pago_fallido';
-          const isClientPaused  = !!(a.client_paused as boolean) && !isBillingPaused;
-          const isOnline        = (a.active as boolean) && !isClientPaused && !isBillingPaused;
-          const hasRole         = !!((a.role as string | null)?.trim());
-          const roleColor       = ((a.features as any)?.role_color as string | null) || '#6C3BFF';
-          const avatarSrc       = ((a.features as any)?.avatar as string | null) || null;
-          const meerkatId       = ((a.features as any)?.meerkat_role_id as string | null) || null;
-          const avatarLocked    = !!meerkatId && meerkatId !== 'custom';
-          const isCoordinator   = !!meerkatId && (COORDINATOR_ROLE_IDS as readonly string[]).includes(meerkatId);
-          const callCount       = callCountMap[a.id] ?? 0;
+      {agentCardsGrid}
 
-          const statusLabel = isBillingPaused ? 'Pago pendiente' : isClientPaused ? 'Pausado' : isOnline ? 'Activo' : 'Inactivo';
-          const statusColor = isBillingPaused ? '#dc2626' : isClientPaused ? '#f59e0b' : isOnline ? '#16a34a' : '#6b7280';
-
-          const jornadaType  = ((a as any).jornada_type as string) ?? 'combinada';
-          const JORNADA_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string; border: string }> = {
-            combinada: { label: 'Combinada',    icon: <><Clock size={10} /><Zap size={10} /></>, color: '#6C3BFF', bg: 'rgba(108,59,255,0.08)', border: 'rgba(108,59,255,0.2)' },
-            minutos:   { label: 'Solo minutos', icon: <Clock size={10} />,                       color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.2)'  },
-            tareas:    { label: 'Solo tareas',  icon: <Zap size={10} />,                         color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)'  },
-          };
-          const jornada = JORNADA_META[jornadaType] ?? JORNADA_META['combinada'];
-
-          const meerkatDef    = meerkatId ? MEERKAT_MAP[meerkatId as MeerkatRoleId] ?? null : null;
-          const agentFeatures = (a.features as Record<string, unknown>) ?? {};
-          const tools         = getAgentTools(agentFeatures);
-          const capabilities  = getAgentCapabilities(tools);
-
-          return (
-            <div key={a.id}
-              className="rounded-2xl flex flex-col"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-
-              {/* Color bar */}
-              <div style={{ height: 3, borderRadius: '12px 12px 0 0', background: `linear-gradient(90deg, ${hasRole ? roleColor : color}, ${hasRole ? roleColor : color}55)` }} />
-
-              <div className="p-5 flex flex-col items-center gap-4 flex-1">
-
-                {/* Avatar — grande, centrado arriba */}
-                <div className="relative">
-                  <AgentAvatarPicker
-                    token={a.portal_token as string}
-                    avatarSrc={avatarSrc}
-                    initial={initial}
-                    color={hasRole ? roleColor : color}
-                    size={120}
-                    locked={avatarLocked}
-                  />
-                  <span
-                    className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm whitespace-nowrap"
-                    style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color, backdropFilter: 'blur(4px)' }}>
-                    {jornada.icon}
-                    {jornada.label}
-                  </span>
-                </div>
-
-                {/* Nombre + rol + estado */}
-                <div className="flex flex-col items-center gap-1 text-center w-full">
-                  <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: 'var(--c-text)' }}>
-                    {(a.agent_name as string | null)?.trim() || 'Centinelia'}
-                  </span>
-                  {hasRole && (
-                    <span className="text-sm font-medium" style={{ color: roleColor }}>
-                      {a.role as string}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1 text-xs mt-0.5" style={{ color: statusColor }}>
-                    <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
-                      style={{ background: 'currentColor' }} />
-                    {statusLabel}
-                  </span>
-                </div>
-
-                {/* Descripción + capacidades — siempre al fondo del cuerpo */}
-                <div className="flex flex-col gap-3 flex-1 justify-end w-full">
-                {meerkatDef?.descripcion && (
-                  <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                    {meerkatDef.descripcion}
-                  </p>
-                )}
-
-                {/* Capacidades — colapsadas por defecto */}
-                {capabilities.length > 0 && (
-                  <details className="w-full group">
-                    <summary
-                      className="cursor-pointer list-none select-none flex items-center gap-1.5 w-fit"
-                      style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
-                      <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
-                        Ver capacidades
-                      </span>
-                      <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>▸</span>
-                    </summary>
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {capabilities.map(c => (
-                        <span key={c.label}
-                          className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg"
-                          style={{
-                            background: `${c.color}10`,
-                            color:      c.color,
-                            border:     `1px solid ${c.color}25`,
-                          }}>
-                          {c.label}
-                        </span>
-                      ))}
-                      {isCoordinator && !hasPassphrase && (
-                        <p className="w-full text-[10px] mt-1 leading-relaxed" style={{ color: '#f59e0b' }}>
-                          Sin passphrase del dueño este director no puede actuar. Configura una en Empleados → Configurar.
-                        </p>
-                      )}
-                    </div>
-                  </details>
-                )}
-                </div>{/* end description+capacidades wrapper */}
-
-                {/* Stats */}
-                <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
-                  {!isCoordinator && (
-                    <span className="flex items-center gap-1 text-xs">
-                      <Bot size={12} />
-                      {callCount} llam. este mes
-                    </span>
-                  )}
-                  {hasRole && (
-                    <span className="flex items-center gap-1 text-xs">
-                      <Zap size={12} />
-                      {(a.ai_ops_used as number) ?? 0} tareas este mes
-                    </span>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Botones — abajo */}
-              <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <div className="flex-1 flex justify-start min-w-0">
-                  <Link
-                    href={`/portal/${a.portal_token as string}/configurar`}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
-                    style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
-                  >
-                    <Settings2 size={11} />
-                    <span className="inline sm:hidden xl:inline">Configurar</span>
-                  </Link>
-                </div>
-                <div className="flex-1 flex justify-end min-w-0">
-                  {!isBillingPaused
-                    ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                    : (
-                      <a
-                        href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
-                        style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                        <span className="inline sm:hidden xl:inline">Resolver pago</span>
-                        <span className="hidden sm:inline xl:hidden">→</span>
-                        <span className="inline sm:hidden xl:inline">→</span>
-                      </a>
-                    )
-                  }
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
       {/* Banner cobertura de capacidades */}
-      {agents.length > 0 && (
-        <div className="rounded-2xl p-5"
-          style={{
-            background: overallPct === 100 ? 'rgba(34,197,94,0.04)'        : 'rgba(108,59,255,0.04)',
-            border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
-          }}>
-
-          {/* Header row: tier name + % + progress bar */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: overallPct === 100 ? '#16a34a' : '#6C3BFF' }}>
-                {officeTier(overallPct)}
-              </p>
-              {overallPct < 100 && missingCats.length > 0 && (
-                <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
-                  Incorpora:{' '}
-                  {missingCats.length <= 3
-                    ? missingCats.map(c => c.label).join(', ')
-                    : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
-                </p>
-              )}
-              {overallPct === 100 && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                  Tu equipo tiene todas las capacidades disponibles.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-              <span className="text-sm font-bold px-2.5 py-1 rounded-lg"
-                style={{
-                  background: overallPct === 100 ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
-                  color:      overallPct === 100 ? '#16a34a' : '#6C3BFF',
-                }}>
-                {overallPct}%
-              </span>
-              <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                <div className="h-1.5 rounded-full"
-                  style={{ width: `${overallPct}%`, background: overallPct === 100 ? '#16a34a' : '#6C3BFF' }} />
-              </div>
-            </div>
-          </div>
-
-          {/* Core categories — 3 columnas */}
-          <div className="grid grid-cols-3 gap-x-3 gap-y-0">
-            {coreStats.map(cat => (
-              <details key={cat.label}>
-                <summary
-                  className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
-                  style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-                  <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-2)' }}>
-                    {cat.label}
-                  </span>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                      <div className="h-1 rounded-full" style={{ width: `${Math.round((cat.covered / cat.total) * 100)}%`, background: cat.covered === cat.total ? '#16a34a' : cat.color }} />
-                    </div>
-                    <span className="text-[10px] tabular-nums w-6 text-right" style={{ color: 'var(--c-text-4)' }}>
-                      {Math.round((cat.covered / cat.total) * 100)}%
-                    </span>
-                  </div>
-                  <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
-                </summary>
-                <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
-                  {cat.tools.map(t => (
-                    <div key={t.key} className="flex items-center gap-1 py-0.5">
-                      <span className="text-[10px] w-3 text-center flex-shrink-0"
-                        style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
-                        {t.covered ? '✓' : '○'}
-                      </span>
-                      <span className="group/cap relative text-[10px] leading-tight cursor-default"
-                        style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
-                        {t.label}
-                        {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
-                          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
-                            <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                              style={{
-                                background: 'var(--c-surface-2, #1e1a2e)',
-                                border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                                color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
-                              }}>
-                              {t.covered
-                                ? t.agents.join(' · ')
-                                : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
-                            </span>
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            ))}
-          </div>
-
-          {/* Módulos adicionales */}
-          <div className="pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
-            <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--c-text-4)' }}>
-              Módulos adicionales
-            </p>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-0">
-              {specializedStats.map(cat => (
-                <details key={cat.label}>
-                  <summary
-                    className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
-                    style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-60" style={{ background: cat.color }} />
-                    <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-3)' }}>
-                      {cat.label}
-                    </span>
-                    <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
-                      {cat.covered}/{cat.total}
-                    </span>
-                    <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
-                  </summary>
-                  <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
-                    {cat.tools.map(t => (
-                      <div key={t.key} className="flex items-center gap-1 py-0.5">
-                        <span className="text-[10px] w-3 text-center flex-shrink-0"
-                          style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
-                          {t.covered ? '✓' : '○'}
-                        </span>
-                        <span className="group/cap relative text-[10px] leading-tight cursor-default"
-                          style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
-                          {t.label}
-                          {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
-                            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
-                              <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
-                                style={{
-                                  background: 'var(--c-surface-2, #1e1a2e)',
-                                  border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                                  color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
-                                }}>
-                                {t.covered
-                                  ? t.agents.join(' · ')
-                                  : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
-                              </span>
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              ))}
-            </div>
-          </div>
-
-          {/* CTA */}
-          {missingCats.length > 0 && !annualContractInfo && (
-            <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
-              <MeerkatPicker
-                token={token}
-                plan={(baseAgent.plan ?? 'pro') as 'pro'}
-                defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
-                recommendations={meerkatRecs}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
+      {capabilityBanner}
 
     </div>
   );
+
+  // ─── V2 body (design system shell) ──────────────────────────────────────────
+  const pageBodyV2 = (
+    <PageContainer>
+      <PageSection
+        heading={
+          <SectionHeader
+            as="h1"
+            title="Mis Empleados"
+            description={`${agents.length} ${agents.length === 1 ? 'empleado' : 'empleados'} · ${baseAgent.business_name}`}
+            right={
+              !annualContractInfo ? (
+                <MeerkatPicker
+                  token={token}
+                  plan={(baseAgent.plan ?? 'pro') as 'pro'}
+                  defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
+                  recommendations={meerkatRecs}
+                />
+              ) : undefined
+            }
+          />
+        }
+      >
+        {annualContractInfo && (
+          <AnnualContractCallout
+            action="contratar_empleado"
+            folio={annualContractInfo.folio}
+            endDate={annualContractInfo.endDate}
+            isExpired={annualContractInfo.isExpired}
+          />
+        )}
+
+        {/* Empty state */}
+        {agents.length === 0 && (
+          <Card>
+            <EmptyState
+              icon={Bot}
+              title="Sin empleados en tu cuenta"
+              size="md"
+            />
+          </Card>
+        )}
+
+        {/* Agent cards */}
+        {agents.length > 0 && agentCardsGrid}
+
+        {/* Banner cobertura de capacidades */}
+        {capabilityBanner}
+
+      </PageSection>
+    </PageContainer>
+  );
+
+  if (v2Enabled) return pageBodyV2;
+  return pageBodyV1;
 }
