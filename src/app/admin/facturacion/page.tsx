@@ -5,13 +5,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import BillingClient from '../billing/BillingClient';
 import AnnualContractsTab from './AnnualContractsTab';
 import InvoicesTab from './InvoicesTab';
+import ContratosClient from '../contratos/ContratosClient';
 
-type TabKey = 'stripe' | 'contratos' | 'facturas';
+type TabKey = 'stripe' | 'contratos' | 'facturas' | 'clientes';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'stripe',    label: 'Stripe'             },
   { key: 'contratos', label: 'Contratos anuales' },
   { key: 'facturas',  label: 'Facturas emitidas' },
+  { key: 'clientes',  label: 'Contratos clientes' },
 ];
 
 interface Props {
@@ -20,7 +22,10 @@ interface Props {
 
 export default async function FacturacionPage({ searchParams }: Props) {
   const { tab: rawTab } = await searchParams;
-  const tab: TabKey = rawTab === 'contratos' || rawTab === 'facturas' ? rawTab : 'stripe';
+  const tab: TabKey =
+    rawTab === 'contratos' || rawTab === 'facturas' || rawTab === 'clientes'
+      ? rawTab
+      : 'stripe';
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -58,7 +63,32 @@ export default async function FacturacionPage({ searchParams }: Props) {
       {tab === 'stripe'    && <StripeTab />}
       {tab === 'contratos' && <AnnualContractsTab />}
       {tab === 'facturas'  && <InvoicesTab />}
+      {tab === 'clientes'  && <ClientesTab />}
     </div>
+  );
+}
+
+async function ClientesTab() {
+  const supabase = createAdminClient();
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, client_name, plan, portal_token, contract_accepted_at, active, contract_text')
+    .neq('id', process.env.DEMO_AGENT_ID ?? '')
+    .order('created_at', { ascending: false });
+
+  const raw          = agents ?? [];
+  const list         = raw.map(({ contract_text, ...rest }) => ({ ...rest, has_custom: !!contract_text }));
+  const signedCount  = list.filter(a => a.contract_accepted_at).length;
+  const pendingCount = list.filter(a => !a.contract_accepted_at).length;
+  const customCount  = list.filter(a => a.has_custom).length;
+
+  return (
+    <ContratosClient
+      list={list}
+      signedCount={signedCount}
+      pendingCount={pendingCount}
+      customCount={customCount}
+    />
   );
 }
 

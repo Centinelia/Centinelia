@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy, Network } from 'lucide-react';
+import { Bot, BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
@@ -26,18 +26,15 @@ const groups: NavGroup[] = [
       { href: '/admin/ledger',       icon: DollarSign,  label: 'Ledger' },
       { href: '/admin/aprobaciones', icon: ShieldCheck, label: 'Aprobaciones' },
       { href: '/admin/facturacion',  icon: CreditCard,  label: 'Facturación' },
-      { href: '/admin/contratos',    icon: FileText,    label: 'Contratos' },
     ],
   },
   {
     group: 'Sistema',
     items: [
-      { href: '/admin/conversacional',   icon: Sparkles,     label: 'Estilo conv.' },
-      { href: '/admin/dashboard',        icon: Server,       label: 'Infra' },
-      { href: '/admin/versiones',        icon: GitBranch,    label: 'Versiones' },
-      { href: '/admin/versiones/health', icon: FlaskConical, label: 'Golden tests' },
-      { href: '/admin/flags',            icon: Flag,         label: 'Feature flags' },
-      { href: '/admin/tools',            icon: Wrench,       label: 'Tools' },
+      { href: '/admin/dashboard', icon: Server,    label: 'Infra' },
+      { href: '/admin/versiones', icon: GitBranch, label: 'Versiones' },
+      { href: '/admin/flags',     icon: Flag,      label: 'Feature flags' },
+      { href: '/admin/tools',     icon: Wrench,    label: 'Tools' },
     ],
   },
   {
@@ -46,7 +43,6 @@ const groups: NavGroup[] = [
       { href: '/admin/observabilidad',  icon: Activity,     label: 'Observabilidad' },
       { href: '/admin/graph',           icon: GitBranch,    label: 'State machines' },
       { href: '/admin/human-gates',     icon: ShieldCheck,  label: 'Human gates' },
-      { href: '/admin/recovery',        icon: LifeBuoy,     label: 'Recovery' },
       { href: '/admin/handoffs',        icon: Network,      label: 'Flujos entre empleados' },
       { href: '/admin/failed-handoffs', icon: AlertOctagon, label: 'Cola de reintentos' },
     ],
