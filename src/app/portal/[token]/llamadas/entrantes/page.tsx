@@ -12,11 +12,14 @@ import type { VoiceCall } from '@/types/agent';
 
 import PortalLogout     from '../../PortalLogout';
 import PortalSidebar    from '../../PortalSidebar';
+import PortalShell      from '../../PortalShell';
 import PortalFooter     from '../../PortalFooter';
 import BusinessSwitcher from '../../BusinessSwitcher';
+import NotificationBell from '../../NotificationBell';
 import CallsSearch     from '../../CallsSearch';
 import DownloadCallsCSV from '../../DownloadCallsCSV';
 import LeadsTabsSection from './LeadsTabsSection';
+import { isPortalV2Enabled } from '@/lib/portal/portal-v2-flag';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -34,6 +37,9 @@ export default async function EntrantesPage({ params }: Props) {
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)
     redirect('/portal/login');
+
+  const isOwner = !session?.isSubUser;
+  const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
   const { data: clientAgents } = lookupEmail
@@ -88,7 +94,93 @@ export default async function EntrantesPage({ params }: Props) {
   for (const a of appts  as any[]) addName(a.telefono, a.nombre);
   for (const o of orders as any[]) addName(o.telefono, o.nombre);
 
+  // V2 flag
+  const v2Enabled = (agent as any).portal_email
+    ? await isPortalV2Enabled((agent as any).portal_email)
+    : false;
 
+  // Page body — shared between V1 and V2
+  const pageBody = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
+
+        <div className="flex items-center gap-2">
+          <PhoneCall size={15} style={{ color: '#6C3BFF' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas entrantes</h2>
+          <span className="text-xs px-1.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+            {calls.length}
+          </span>
+        </div>
+
+        <div id="registro" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Registro de llamadas
+            </h3>
+            <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
+          </div>
+          {calls.length === 0 ? (
+            <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
+          ) : (
+            <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} agentName={(agent as any).agent_name ?? agent.business_name} />
+          )}
+        </div>
+
+        {(showLeads || showOrders || showAppts) && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
+            <LeadsTabsSection
+              token={token}
+              isPro={agent.plan === 'pro'}
+              leads={leads as any}
+              orders={orders as any}
+              appts={appts as any}
+              showLeads={showLeads}
+              showOrders={showOrders}
+              showAppts={showAppts}
+              businessName={agent.business_name}
+            />
+          </div>
+        )}
+
+      </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 layout
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+          <PortalShell
+            orgId={(agent as any).portal_email ?? ''} // eslint-disable-line @typescript-eslint/no-explicit-any
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null} // eslint-disable-line @typescript-eslint/no-explicit-any
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+            isOwner={isOwner}
+            modules={modules}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            plan={agent.plan ?? null}
+            headerActions={
+              <>
+                <NotificationBell token={token} />
+                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+                <PortalLogout />
+              </>
+            }
+            main={pageBody}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // V1 layout
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
@@ -119,53 +211,7 @@ export default async function EntrantesPage({ params }: Props) {
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
-
-              <div className="flex items-center gap-2">
-                <PhoneCall size={15} style={{ color: '#6C3BFF' }} />
-                <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas entrantes</h2>
-                <span className="text-xs px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                  {calls.length}
-                </span>
-              </div>
-
-              <div id="registro" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Registro de llamadas
-                  </h3>
-                  <DownloadCallsCSV calls={calls} filename={`llamadas-${agent.business_name.replace(/\s+/g, '-').toLowerCase()}.csv`} />
-                </div>
-                {calls.length === 0 ? (
-                  <EmptyState icon={PhoneCall} title="Sin llamadas todavía" size="sm" />
-                ) : (
-                  <CallsSearch calls={calls as any} isPro={agent.plan === 'pro'} callerNames={callerNames} token={token} agentName={(agent as any).agent_name ?? agent.business_name} />
-                )}
-              </div>
-
-              {(showLeads || showOrders || showAppts) && (
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
-                  <LeadsTabsSection
-                    token={token}
-                    isPro={agent.plan === 'pro'}
-                    leads={leads as any}
-                    orders={orders as any}
-                    appts={appts as any}
-                    showLeads={showLeads}
-                    showOrders={showOrders}
-                    showAppts={showAppts}
-                    businessName={agent.business_name}
-                  />
-                </div>
-              )}
-
-            </div>
-            <PortalFooter token={token} />
-          </div>
+          {pageBody}
         </div>
       </div>
     </ThemeProvider>

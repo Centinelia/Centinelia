@@ -11,9 +11,11 @@ import PortalLogout                     from '../PortalLogout';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import PortalSidebar                    from '../PortalSidebar';
+import PortalShell                      from '../PortalShell';
 import SubUserManager                   from './SubUserManager';
 import AccountSerialBadge               from '../AccountSerialBadge';
 import { getOrCreateSerial }            from '@/lib/portal/serial';
+import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -76,6 +78,71 @@ export default async function UsuariosPage({ params }: Props) {
     ? await getOrCreateSerial(agent.portal_email).catch(() => null)
     : null;
 
+  // V2 flag
+  const v2Enabled = agent.portal_email
+    ? await isPortalV2Enabled(agent.portal_email)
+    : false;
+
+  // Page body — shared between V1 and V2
+  const pageBody = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="px-4 sm:px-6 py-6 flex-1">
+
+        <div className="mb-6">
+          <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--c-text)', fontFamily: 'var(--font-sora)' }}>
+            Usuarios del portal
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+            Crea accesos para colaboradores con permisos específicos a secciones del portal.
+          </p>
+        </div>
+
+        <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <SubUserManager
+            token={token}
+            initialUsers={(existingUsers ?? []) as any[]}
+            accountGiro={(agent as any).features?.vertical ?? undefined}
+            accountSerial={accountSerial ?? undefined}
+          />
+        </div>
+
+      </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 layout
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+          <PortalShell
+            orgId={agent.portal_email ?? ''}
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null}
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+            isOwner={true}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            plan={agent.plan ?? null}
+            headerActions={
+              <>
+                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
+                <NotificationBell token={token} />
+                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+                <PortalLogout />
+              </>
+            }
+            main={pageBody}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // V1 layout
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
@@ -111,31 +178,7 @@ export default async function UsuariosPage({ params }: Props) {
             aiOpsLimit={aiOpsLimit}
             isOwner={true}
           />
-
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 sm:px-6 py-6 flex-1">
-
-              <div className="mb-6">
-                <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--c-text)', fontFamily: 'var(--font-sora)' }}>
-                  Usuarios del portal
-                </h1>
-                <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-                  Crea accesos para colaboradores con permisos específicos a secciones del portal.
-                </p>
-              </div>
-
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <SubUserManager
-                  token={token}
-                  initialUsers={(existingUsers ?? []) as any[]}
-                  accountGiro={(agent as any).features?.vertical ?? undefined}
-                  accountSerial={accountSerial ?? undefined}
-                />
-              </div>
-
-            </div>
-            <PortalFooter token={token} />
-          </div>
+          {pageBody}
         </div>
 
       </div>

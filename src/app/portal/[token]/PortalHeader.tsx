@@ -16,14 +16,16 @@ export default function PortalHeader({ businessName, logoUrl, children }: Portal
     >
       {/* Logo (o placeholder) */}
       {logoUrl ? (
-        <Image
-          src={logoUrl}
-          alt=""
-          width={32}
-          height={32}
-          className="h-8 w-8 rounded-md object-cover ring-1 ring-white/10"
-          aria-hidden
-        />
+        <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-white/[0.04] ring-1 ring-white/10">
+          <Image
+            src={logoUrl}
+            alt=""
+            width={32}
+            height={32}
+            className="max-h-full max-w-full object-contain"
+            aria-hidden
+          />
+        </div>
       ) : (
         <div
           className="flex h-8 w-8 items-center justify-center rounded-md bg-white/[0.08] ring-1 ring-white/10"

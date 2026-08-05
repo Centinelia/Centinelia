@@ -10,10 +10,12 @@ import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 
 import PortalSidebar                    from '../PortalSidebar';
+import PortalShell                      from '../PortalShell';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
+import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 
 export default async function AgentesLayout({
   children,
@@ -75,6 +77,65 @@ export default async function AgentesLayout({
   const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
   const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
 
+  // V2 flag
+  const v2Enabled = agent.portal_email
+    ? await isPortalV2Enabled(agent.portal_email)
+    : false;
+
+  // Mobile breadcrumb — used in V1 layout only
+  const mobileBreadcrumb = (
+    <div className="md:hidden flex items-center gap-2 px-4 py-2.5"
+      style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)' }}>
+      <Link href={`/portal/${token}?tab=inicio`}
+        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
+        style={{ color: 'var(--c-text-3)' }}>
+        <ArrowLeft size={12} />
+        Portal
+      </Link>
+      <span style={{ color: 'var(--c-text-4)' }}>/</span>
+      <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Empleados</span>
+    </div>
+  );
+
+  // Main content column — shared between V1 and V2
+  const mainColumn = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="px-4 sm:px-6 py-6 flex-1">
+        {children}
+      </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 layout
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+          <PortalShell
+            orgId={agent.portal_email ?? ''}
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null}
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            headerActions={
+              <>
+                <NotificationBell token={token} />
+                <ThemeToggle />
+                <PortalLogout />
+              </>
+            }
+            main={mainColumn}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // V1 layout
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
@@ -96,17 +157,7 @@ export default async function AgentesLayout({
         </div>
 
         {/* Mobile breadcrumb */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-2.5"
-          style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)' }}>
-          <Link href={`/portal/${token}?tab=inicio`}
-            className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: 'var(--c-text-3)' }}>
-            <ArrowLeft size={12} />
-            Portal
-          </Link>
-          <span style={{ color: 'var(--c-text-4)' }}>/</span>
-          <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Empleados</span>
-        </div>
+        {mobileBreadcrumb}
 
         {/* Body: sidebar + content */}
         <div className="flex min-h-[calc(100vh-53px)]">
@@ -121,12 +172,7 @@ export default async function AgentesLayout({
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 sm:px-6 py-6 flex-1">
-              {children}
-            </div>
-            <PortalFooter token={token} />
-          </div>
+          {mainColumn}
         </div>
 
       </div>

@@ -10,11 +10,14 @@ import ThemeToggle                     from '@/components/ThemeToggle';
 
 import PortalLogout      from '../../PortalLogout';
 import PortalSidebar     from '../../PortalSidebar';
+import PortalShell       from '../../PortalShell';
 import PortalFooter      from '../../PortalFooter';
 import BusinessSwitcher  from '../../BusinessSwitcher';
+import NotificationBell  from '../../NotificationBell';
 import OutboundToggles  from '../../OutboundToggles';
 import OutboundSection  from '../../OutboundSection';
 import type { ContactOutbound } from '../../PortalContactsSection';
+import { isPortalV2Enabled } from '@/lib/portal/portal-v2-flag';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -36,6 +39,9 @@ export default async function SalientesPage({ params, searchParams }: Props) {
 
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)
     redirect('/portal/login');
+
+  const isOwner = !session?.isSubUser;
+  const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
   const { data: clientAgents } = lookupEmail
@@ -72,6 +78,78 @@ export default async function SalientesPage({ params, searchParams }: Props) {
   const contactOutbound   = (contactOutboundRes.data   ?? []) as ContactOutbound[];
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
 
+  // V2 flag
+  const v2Enabled = (agent as any).portal_email
+    ? await isPortalV2Enabled((agent as any).portal_email)
+    : false;
+
+  // Page body — shared between V1 and V2
+  const pageBody = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
+
+        <div className="flex items-center gap-2">
+          <PhoneOutgoing size={15} style={{ color: '#a855f7' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
+        </div>
+
+        <div id="llamadas-sal">
+          <OutboundToggles
+            token={token}
+            initOutbound={!!(features.outbound_calls)}
+            initMissedCallRecovery={!!(agent as any).missed_call_recovery}
+          />
+        </div>
+
+        {!!(features.outbound_calls) && (
+          <OutboundSection
+            token={token}
+            initialContacts={contactOutbound as any[]}
+            initialCampaigns={outboundCampaigns as any[]}
+            agents={allClientAgents
+              .filter(a => !!(a.features as any)?.outbound_calls)
+              .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
+            initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
+          />
+        )}
+
+      </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // V2 layout
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+          <PortalShell
+            orgId={(agent as any).portal_email ?? ''} // eslint-disable-line @typescript-eslint/no-explicit-any
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null} // eslint-disable-line @typescript-eslint/no-explicit-any
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+            isOwner={isOwner}
+            modules={modules}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            plan={agent.plan ?? null}
+            headerActions={
+              <>
+                <NotificationBell token={token} />
+                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+                <PortalLogout />
+              </>
+            }
+            main={pageBody}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // V1 layout
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
@@ -102,38 +180,7 @@ export default async function SalientesPage({ params, searchParams }: Props) {
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
           />
-
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 sm:px-6 py-6 flex flex-col gap-5 flex-1">
-
-              <div className="flex items-center gap-2">
-                <PhoneOutgoing size={15} style={{ color: '#a855f7' }} />
-                <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Llamadas salientes</h2>
-              </div>
-
-              <div id="llamadas-sal">
-                <OutboundToggles
-                  token={token}
-                  initOutbound={!!(features.outbound_calls)}
-                  initMissedCallRecovery={!!(agent as any).missed_call_recovery}
-                />
-              </div>
-
-              {!!(features.outbound_calls) && (
-                <OutboundSection
-                  token={token}
-                  initialContacts={contactOutbound as any[]}
-                  initialCampaigns={outboundCampaigns as any[]}
-                  agents={allClientAgents
-                    .filter(a => !!(a.features as any)?.outbound_calls)
-                    .map(a => ({ id: a.id, agent_name: a.agent_name ?? null, business_name: a.business_name }))}
-                  initialTab={view === 'campanas' ? 'campanas' : 'contactos'}
-                />
-              )}
-
-            </div>
-            <PortalFooter token={token} />
-          </div>
+          {pageBody}
         </div>
       </div>
     </ThemeProvider>
