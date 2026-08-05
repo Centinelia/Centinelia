@@ -33,13 +33,15 @@ export type InboxStatus =
   | 'skipped'
   | 'approved'
   | 'rejected'
-  | 'archived';
+  | 'archived'
+  | 'escalated';    // legacy: correo que fue escalado a humano en el flujo viejo
 
 export const INBOX_VALID_TRANSITIONS: Record<InboxStatus | 'null', InboxStatus[]> = {
-  null:            ['pending', 'auto_replied', 'info_requested', 'skipped'],
-  pending:         ['approved', 'rejected', 'archived', 'info_requested', 'auto_replied'],
-  info_requested:  ['pending', 'archived'],
+  null:            ['pending', 'auto_replied', 'info_requested', 'skipped', 'escalated'],
+  pending:         ['approved', 'rejected', 'archived', 'info_requested', 'auto_replied', 'escalated'],
+  info_requested:  ['pending', 'archived', 'escalated'],
   auto_replied:    ['rejected', 'archived'],
+  escalated:       ['approved', 'rejected', 'archived'],
   skipped:         [],
   approved:        [],
   rejected:        [],
