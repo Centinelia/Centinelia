@@ -1114,7 +1114,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         </div>
 
             <PortalFooter token={token} />
-          </div>{/* /main content column */}
+          </div> // /main content column
   );
 
   // V2 layout: PortalShell renders header + V2 sidebar, main column is passed as prop
