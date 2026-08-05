@@ -44,6 +44,7 @@ import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
 import SheetsMappingsSection from './SheetsMappingsSection';
+import { Card, SectionHeader } from '@/components/portal-ui';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -274,34 +275,40 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
             {hasVoice && (
               <div id="voz" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Voz del empleado</h2>
-                    <InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Voz del empleado"
+                    className="mb-4"
+                    right={<InfoTooltip text="Elige la voz con la que este empleado atenderá las llamadas. Usa el botón ▶ para escuchar una muestra." />}
+                  />
                   <PortalVoiceSelector token={token} currentVoiceId={(agent as any).elevenlabs_voice_id ?? null} />
-                </div>
+                </Card>
               </div>
             )}
 
             {isOwner && !isCoordinator && (
               <div id="idioma" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Idioma</h2>
-                    <InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Idioma"
+                    className="mb-4"
+                    right={<InfoTooltip text="Ajuste a nivel cuenta: aplica a todos tus empleados." />}
+                  />
                   <MultilingualToggle token={token} initial={orgMultilingual} />
-                </div>
+                </Card>
               </div>
             )}
 
             <div id="rol" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Responsabilidades, objetivos y conducta</h2>
-                  <InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Responsabilidades, objetivos y conducta"
+                  className="mb-4"
+                  right={<InfoTooltip text="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario." />}
+                />
                 <AgentKnowledgeBaseEditor
                   token={token}
                   initialRole={(agent as any).role ?? ''}
@@ -312,143 +319,165 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
                   colorLocked={colorLocked}
                 />
-              </div>
+              </Card>
             </div>
 
             <div id="dod" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Definición de listo</h2>
-                  <InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Definición de listo"
+                  className="mb-4"
+                  right={<InfoTooltip text="Tu empleado usará esto como brújula: sabe que hizo bien su trabajo cuando cumple exactamente esta condición. Sin esto, trabaja sin un target claro." />}
+                />
                 <DefinitionOfDoneEditor token={token} initDod={(agent as any).definition_of_done ?? ''} />
-              </div>
+              </Card>
             </div>
 
             {!isCoordinator && (
               <div id="tono-de-marca" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tono de marca</h2>
-                    <InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Tono de marca"
+                    className="mb-4"
+                    right={<InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico." />}
+                  />
                   <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
-                </div>
+                </Card>
               </div>
             )}
 
             <div id="metas" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Metas</h2>
-                  <InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Metas"
+                  className="mb-4"
+                  right={<InfoTooltip text="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones." />}
+                />
                 <GoalsSection token={token} roleColor={roleColor} />
-              </div>
+              </Card>
             </div>
 
             <div id="limites" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Límites de autoridad</h2>
-                  <InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina — y eso genera errores." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Límites de autoridad"
+                  className="mb-4"
+                  right={<InfoTooltip text="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores." />}
+                />
                 <GuardrailsEditor
                   token={token}
                   initialValue={(agent as any).agent_guardrails ?? ''}
                   initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
                 />
-              </div>
+              </Card>
             </div>
 
             <div id="aprendizaje" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprendizaje de plataformas</h2>
-                  <InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Aprendizaje de plataformas"
+                  className="mb-4"
+                  right={<InfoTooltip text="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae." />}
+                />
                 <RoleEmailLearningSection
                   token={token}
                   connectedEmail={connectedEmail}
                   agentRole={agentRole || agentName}
                 />
-              </div>
+              </Card>
             </div>
 
             {!isCoordinator && (
               <div id="llamadas" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Llamadas entrantes</h2>
-                    <InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Llamadas entrantes"
+                    className="mb-4"
+                    right={<InfoTooltip text="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes." />}
+                  />
                   <AgentCustomization
                     token={token}
                     initGreeting={(agent as any).first_message ?? ''}
                     initTransferRules={(agent as any).transfer_rules ?? ''}
                   />
-                </div>
+                </Card>
               </div>
             )}
 
             {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
               <div id="desvio" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Desvío de llamadas</h2>
-                    <InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Desvío de llamadas"
+                    className="mb-4"
+                    right={<InfoTooltip text="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente." />}
+                  />
                   <CallForwardingSection
                     phoneNumber={(agent as any).phone_number as string}
                     agentName={agentName}
                   />
-                </div>
+                </Card>
               </div>
             )}
 
             <div id="autonomia" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Nivel de autonomía</h2>
-                  <InfoTooltip text="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Nivel de autonomía"
+                  className="mb-4"
+                  right={<InfoTooltip text="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza." />}
+                />
                 <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
-              </div>
+              </Card>
             </div>
 
             <div id="checkin" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Check-in automático</h2>
-                  <InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Check-in automático"
+                  className="mb-4"
+                  right={<InfoTooltip text="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo." />}
+                />
                 <HeartbeatEditor
                   token={token}
                   initConfig={(agent as any).heartbeat_config ?? null}
                   isCoordinator={isCoordinator}
                 />
-              </div>
+              </Card>
             </div>
 
             {meerkatId === 'nox' && (
               <div id="brief-del-dia" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Brief del día</h2>
-                    <InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Brief del día"
+                    className="mb-4"
+                    right={<InfoTooltip text="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana." />}
+                  />
                   <BriefDelDiaSection agentId={agent.id} />
-                </div>
+                </Card>
               </div>
             )}
 
             {['noah', 'nelia'].includes(meerkatId ?? '') && (
               <div id="plantillas" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantillas de documentos</h2>
-                    <InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usara en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Plantillas de documentos"
+                    className="mb-4"
+                    right={<InfoTooltip text="Sube tu plantilla .docx custom para cada tipo de documento. Tu empleado la usará en lugar del formato por defecto al generar propuestas, cotizaciones o one_pagers." />}
+                  />
                   <BrandTemplateSection
                     agentId={agent.id}
                     availableTipos={
@@ -457,54 +486,62 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       []
                     }
                   />
-                </div>
+                </Card>
               </div>
             )}
 
             <div id="automatizaciones" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Automatizaciones</h2>
-                  <InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Automatizaciones"
+                  className="mb-4"
+                  right={<InfoTooltip text="Activa o pausa los reportes y tareas automáticas que tu empleado ejecuta por su cuenta. Cada una consume tareas de tu pool mensual." />}
+                />
                 <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
-              </div>
+              </Card>
             </div>
 
             {!isCoordinator && (
               <div id="notificaciones" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones</h2>
-                    <InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Notificaciones"
+                    className="mb-4"
+                    right={<InfoTooltip text="Elige cómo quieres recibir la información de cada llamada atendida por este empleado." />}
+                  />
                   <NotificationsToggle
                     token={token}
                     initWhatsApp={(agent as any).notify_whatsapp ?? false}
                     initEmail={(agent as any).notify_email ?? true}
                   />
-                </div>
+                </Card>
               </div>
             )}
 
             {!isCoordinator && (
               <div id="equipo" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Números del equipo</h2>
-                    <InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Números del equipo"
+                    className="mb-4"
+                    right={<InfoTooltip text="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo." />}
+                  />
                   <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
-                </div>
+                </Card>
               </div>
             )}
 
             <div id="correo" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Correo</h2>
-                  <InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />
-                </div>
+              <Card border elevated={false} padding="sm">
+                <SectionHeader
+                  as="h2"
+                  title="Correo"
+                  className="mb-4"
+                  right={<InfoTooltip text="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes." />}
+                />
                 {connectedEmail ? (
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
@@ -571,61 +608,69 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 )}
 
                 <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Aprobador de borradores</h3>
-                    <InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />
-                  </div>
+                  <SectionHeader
+                    as="h3"
+                    title="Aprobador de borradores"
+                    className="mb-3"
+                    right={<InfoTooltip text={'Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador.'} />}
+                  />
                   <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
                 </div>
 
                 <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Responsable de facturación</h3>
-                    <InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />
-                  </div>
+                  <SectionHeader
+                    as="h3"
+                    title="Responsable de facturación"
+                    className="mb-3"
+                    right={<InfoTooltip text={'Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.).'} />}
+                  />
                   <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
                 </div>
-              </div>
+              </Card>
             </div>
 
             <div id="sheets-del-negocio" style={SCROLL_STYLE}>
-              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <Card border elevated={false} padding="sm">
                 <SheetsMappingsSection
                   token={token}
                   agentId={agent.id}
                   initialSyncLeads={syncLeadsToSheets}
                 />
-              </div>
+              </Card>
             </div>
 
             {isOwner && hasVoiceJornada && (
               <div id="passphrase" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Frase de verificación interna</h2>
-                    <InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Frase de verificación interna"
+                    className="mb-4"
+                    right={<InfoTooltip text="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado." />}
+                  />
                   <PassphraseEditor token={token} initial={ownerPassphrase} />
-                </div>
+                </Card>
               </div>
             )}
 
             {!isCoordinator && isOwner && (
               <div id="reportes" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reportes de fallas</h2>
-                  </div>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Reportes de fallas"
+                    className="mb-4"
+                  />
                   <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
-                </div>
+                </Card>
               </div>
             )}
 
             {isOwner && (
               <div id="aprobaciones" style={SCROLL_STYLE}>
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                <Card border elevated={false} padding="sm">
                   <ApprovalSettingsSection token={token} roleColor={roleColor} />
-                </div>
+                </Card>
               </div>
             )}
 
@@ -638,9 +683,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               />
             </div>
 
-            <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <Card border elevated={false} padding="sm">
               <ResyncButton token={token} />
-            </div>
+            </Card>
 
           </div>
         </div>
