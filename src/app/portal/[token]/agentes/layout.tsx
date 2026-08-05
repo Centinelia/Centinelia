@@ -29,6 +29,9 @@ export default async function AgentesLayout({
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
 
+  const isOwner = !session?.isSubUser;
+  const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
+
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
@@ -121,10 +124,12 @@ export default async function AgentesLayout({
             showOutbound={showOutbound}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
+            isOwner={isOwner}
+            modules={modules}
             headerActions={
               <>
                 <NotificationBell token={token} />
-                <ThemeToggle />
+                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
                 <PortalLogout />
               </>
             }
