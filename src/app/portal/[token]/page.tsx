@@ -1541,268 +1541,271 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           </PageContainer>
         )}
 
-        {/* ── NEGOCIO (unchanged from V1) ──────────────────────────── */}
+        {/* ── NEGOCIO (V2 design system shells) ───────────────────── */}
         {tab === 'negocio' && (
-          <div className="flex flex-col lg:flex-row gap-5 items-start px-4 sm:px-6 py-6">
+          <PageContainer>
+            <div className="flex flex-col lg:flex-row gap-5 items-start">
 
-            {/* Main column */}
-            <div className="flex-1 min-w-0 flex flex-col gap-5">
-              <div id="organizacion">
-                {agent.portal_email && (
-                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
-                )}
-              </div>
-
-              <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
-                  <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />
+              {/* Main column */}
+              <div className="flex-1 min-w-0 flex flex-col gap-5">
+                <div id="organizacion">
+                  {agent.portal_email && (
+                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                  )}
                 </div>
-                <BrandKitEditor
-                  token={token}
-                  logoUrl={(agent as any).logo_url ?? null}
-                  businessName={agent.business_name}
-                  agentName={agent.agent_name ?? agent.business_name}
-                  initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
-                  initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
-                  initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
-                  initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
-                  initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
-                />
+
+                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Branding de documentos y correos" as="h2" right={<InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />} />}>
+                  <Card id="branding" padding="md">
+                    <BrandKitEditor
+                      token={token}
+                      logoUrl={(agent as any).logo_url ?? null}
+                      businessName={agent.business_name}
+                      agentName={agent.agent_name ?? agent.business_name}
+                      initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
+                      initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
+                      initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
+                      initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                      initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                    />
+                  </Card>
+                </PageSection>
+
+                <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" right={<InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />} />}>
+                  <Card id="conocimiento" padding="md">
+                    <KnowledgeBaseEditor
+                      token={token}
+                      initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
+                      websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
+                      hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
+                    />
+                  </Card>
+                </PageSection>
+
+                <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" right={<InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />} />}>
+                  <Card id="perfil-dueno" padding="md">
+                    <OwnerProfileEditor
+                      token={token}
+                      initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
+                    />
+                  </Card>
+                </PageSection>
+
+                <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
+                  <Card id="contratos-internos" padding="md">
+                    <ContractTrackerSection token={token} />
+                  </Card>
+                </PageSection>
+
               </div>
 
-              <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
-                  <InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />
-                </div>
-                <KnowledgeBaseEditor
-                  token={token}
-                  initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
-                  websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
-                  hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
-                />
+              {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
+              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
+                <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
+                  <Card id="sitio" padding="md">
+                    <div className="flex items-center gap-1.5 mb-4">
+                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                      <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
+                    </div>
+                    <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
+                    <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
+                      <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
+                    </div>
+                    <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
+                  </Card>
+                </PageSection>
+
+                <PageSection heading={<SectionHeader eyebrow="NOTIFICACIONES" title="Notificaciones automáticas al cliente" as="h2" right={<InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />} />}>
+                  <Card id="dominio-correo" padding="md">
+                    <EmailSettings token={token} />
+                  </Card>
+                </PageSection>
               </div>
 
-              <div id="perfil-dueno" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Perfil del responsable</h2>
-                  <InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />
-                </div>
-                <OwnerProfileEditor
-                  token={token}
-                  initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
-                />
-              </div>
-
-              <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <ContractTrackerSection token={token} />
+              {/* Col 3 — Horario de atención */}
+              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
+                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" right={<InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />} />}>
+                  <Card id="horarios" padding="md">
+                    <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
+                  </Card>
+                </PageSection>
               </div>
 
             </div>
-
-            {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
-            <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
-              <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                  <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
-                </div>
-                <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
-                <div className="flex items-center gap-1.5 mb-3">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
-                  <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
-                </div>
-                <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
-              </div>
-
-              <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
-                  <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
-                </div>
-                <EmailSettings token={token} />
-              </div>
-            </div>
-
-            {/* Col 3 — Horario de atención */}
-            <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
-              <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                <div className="flex items-center gap-1.5 mb-4">
-                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
-                  <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
-                </div>
-                <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-              </div>
-            </div>
-
-          </div>
+          </PageContainer>
         )}
 
-        {/* ── CUENTA (unchanged from V1) ──────────────────────────── */}
+        {/* ── CUENTA (V2 design system shells) ────────────────────── */}
         {tab === 'cuenta' && (
-          <div className="flex flex-col gap-5 px-4 sm:px-6 py-6">
+          <PageContainer>
+            <div className="flex flex-col gap-5">
 
-            {/* Contract gate banner */}
-            {!agent.contract_accepted_at && (
-              <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
-                style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
-                <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-                    Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
-                  </p>
-                </div>
-                <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
-              </a>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
-
-              {/* ── Col 1: Uso + Compras + Recarga ── */}
-              <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-
-                {/* ── Uso del mes: minutos + tareas en una sola tarjeta ── */}
-                {(minutesIncluded > 0 || aiOpsLimit > 0) && (
-                  <div id="uso-del-mes" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
-                    <div className="flex flex-col gap-4">
-                      {minutesIncluded > 0 && (
-                        <div>
-                          <div className="flex justify-between text-xs mb-1.5">
-                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
-                            <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
-                          </div>
-                          <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-                            <span>{minutesRemain} disponibles</span>
-                            <span>Renueva el {resetDate}</span>
-                          </div>
-                          {rolloverMinutes > 0 && (
-                            <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
-                          )}
-                        </div>
-                      )}
-                      {aiOpsLimit > 0 && (
-                        <div>
-                          <div className="flex justify-between text-xs mb-1.5">
-                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
-                            <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                            <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
-                          </div>
-                          <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-                            <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                            <span>Renueva el {resetDate}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              {/* Contract gate banner */}
+              {!agent.contract_accepted_at && (
+                <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
+                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
+                  <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
+                    </p>
                   </div>
-                )}
+                  <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+                </a>
+              )}
 
-                {/* ── Comprar: minutos + tareas en una sola tarjeta ── */}
-                {(() => {
-                  const warnPct  = Math.max(minutesPct, aiOpsPct);
-                  const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
-                  const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
-                  return (
-                    <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar saldo</h2>
-                      {warnPct >= 70 && (
-                        <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                          <AlertTriangle size={11} />
-                          {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
-                        </p>
-                      )}
-                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
-                      {annualContractInfo ? (
-                        <div className="flex flex-col gap-5">
-                          <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                          <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                          <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
+
+                {/* ── Col 1: Uso + Compras + Recarga ── */}
+                <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+
+                  {/* Uso del mes */}
+                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (
+                    <PageSection heading={<SectionHeader eyebrow="SALDO" title="Uso del mes" as="h2" />}>
+                      <Card id="uso-del-mes" padding="md">
+                        <div className="flex flex-col gap-4">
                           {minutesIncluded > 0 && (
                             <div>
-                              {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                              <BuyMinutesSection token={token} />
+                              <div className="flex justify-between text-xs mb-1.5">
+                                <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                                <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                                <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+                              </div>
+                              <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                                <span>{minutesRemain} disponibles</span>
+                                <span>Renueva el {resetDate}</span>
+                              </div>
+                              {rolloverMinutes > 0 && (
+                                <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                              )}
                             </div>
-                          )}
-                          {minutesIncluded > 0 && aiOpsLimit > 0 && (
-                            <div style={{ borderTop: '1px solid var(--c-border)' }} />
                           )}
                           {aiOpsLimit > 0 && (
                             <div>
-                              {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                              <BuyOpsSection token={token} />
+                              <div className="flex justify-between text-xs mb-1.5">
+                                <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
+                                <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
+                              </div>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                                <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                              </div>
+                              <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                                <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                                <span>Renueva el {resetDate}</span>
+                              </div>
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                      </Card>
+                    </PageSection>
+                  )}
 
-                <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
-                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
-                  <AutoRefillSection token={token} />
+                  {/* Comprar saldo — dynamic border/bg preserved via style prop */}
+                  {(() => {
+                    const warnPct  = Math.max(minutesPct, aiOpsPct);
+                    const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
+                    const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
+                    return (
+                      <PageSection heading={<SectionHeader eyebrow="COMPRAS" title="Comprar saldo" as="h2" />}>
+                        <Card id="comprar" padding="md" style={{ background: bgStyle, border: bdrStyle }}>
+                          {warnPct >= 70 && (
+                            <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                              <AlertTriangle size={11} />
+                              {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
+                            </p>
+                          )}
+                          <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
+                          {annualContractInfo ? (
+                            <div className="flex flex-col gap-5">
+                              <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                              <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                              <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-5">
+                              {minutesIncluded > 0 && (
+                                <div>
+                                  {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                                  <BuyMinutesSection token={token} />
+                                </div>
+                              )}
+                              {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                                <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                              )}
+                              {aiOpsLimit > 0 && (
+                                <div>
+                                  {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                                  <BuyOpsSection token={token} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Card>
+                      </PageSection>
+                    );
+                  })()}
+
+                  <PageSection heading={<SectionHeader eyebrow="AUTOMATIZACIÓN" title="Recarga automática" as="h2" />}>
+                    <Card id="recarga" padding="md">
+                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
+                      <AutoRefillSection token={token} />
+                    </Card>
+                  </PageSection>
                 </div>
-              </div>
 
-              {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
-              <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                  <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
-                    <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
-                      {allCalls.length > 0 && (
-                        <div className="flex flex-col gap-2">
-                          {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                          <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                          <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                          <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
+                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
+                    <PageSection heading={<SectionHeader eyebrow="ANÁLISIS" title="Consumo promedio" as="h2" />}>
+                      <Card id="consumo-promedio" padding="md">
+                        <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                          {allCalls.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                            </div>
+                          )}
+                          {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                        <div className="flex flex-col gap-2">
-                          {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                          <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                          <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                          <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                      </Card>
+                    </PageSection>
+                  )}
+                  <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
+                    <Card id="historial" padding="md">
+                      <div className="relative">
+                        <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
+                          <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
-                  <div className="relative">
-                    <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
-                      <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-                      style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
-                  </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+                          style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
+                      </div>
+                    </Card>
+                  </PageSection>
                 </div>
-              </div>
 
-              {/* ── Col 3: Serial ── */}
-              <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                {accountSerial && (
-                  <AccountSerialBadge serial={accountSerial} variant="card" />
-                )}
-              </div>
+                {/* ── Col 3: Serial ── */}
+                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                  {accountSerial && (
+                    <AccountSerialBadge serial={accountSerial} variant="card" />
+                  )}
+                </div>
 
+              </div>
             </div>
-          </div>
+          </PageContainer>
         )}
 
       </div>
