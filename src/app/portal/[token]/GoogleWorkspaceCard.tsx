@@ -119,7 +119,7 @@ export default function GoogleWorkspaceCard({ token, connected, email, needsReau
   const subServices: SubService[] = [
     { key: 'gmail',    label: 'Correo (Gmail)',               icon: <GmailIcon />,    detail: null       },
     { key: 'drive',    label: 'Archivos (Drive)',             icon: <DriveIcon />,    detail: null       },
-    { key: 'sheets',   label: 'Hojas de calculo (Sheets)',    icon: <SheetsIcon />,   detail: sheetsDetail },
+    { key: 'sheets',   label: 'Hojas de cálculo (Sheets)',    icon: <SheetsIcon />,   detail: sheetsDetail },
     { key: 'calendar', label: 'Calendario (Google Calendar)', icon: <CalendarIcon />, detail: null       },
     { key: 'contacts', label: 'Contactos',                    icon: <ContactsIcon />, detail: null       },
   ];

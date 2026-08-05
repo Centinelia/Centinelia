@@ -236,7 +236,7 @@ const SUITE_CAPABILITIES = {
     items: [
       { label: 'Gmail',                   icon: PIcons.gmail    },
       { label: 'Drive',                   icon: PIcons.drive    },
-      { label: 'Hojas de calculo',        icon: PIcons.gcal     },
+      { label: 'Hojas de cálculo',        icon: PIcons.gcal     },
       { label: 'Calendario',              icon: PIcons.gcal     },
       { label: 'Contactos',               icon: PIcons.contacts },
     ],
