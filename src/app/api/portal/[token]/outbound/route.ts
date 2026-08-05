@@ -59,5 +59,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Error al programar la llamada' }, { status: 500 });
   }
 
+  const { recordOutboundCreation } = await import('@/lib/state-machines/outbound-contact');
+  await recordOutboundCreation({
+    supabase,
+    contactId: data!.id as string,
+    actor:     'user',
+    reason:    'portal_manual_add',
+    metadata:  { agent_id: agent.id, telefono },
+  });
+
   return NextResponse.json({ ok: true, contact: data });
 }

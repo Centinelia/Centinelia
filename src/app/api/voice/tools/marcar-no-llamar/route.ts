@@ -45,12 +45,20 @@ export async function POST(req: NextRequest) {
 
   let marked = 0;
   if (!matchErr && matches) {
-    const toMark = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix)).map(r => r.id);
+    const toMark = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix)).map(r => r.id as string);
     if (toMark.length) {
-      await supabase
-        .from('outbound_contacts')
-        .update({ status: 'dnc', notes: motivo ?? 'Solicitud del ciudadano' })
-        .in('id', toMark);
+      const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
+      for (const contactId of toMark) {
+        await transitionOutboundContact({
+          supabase, contactId,
+          toStatus: 'dnc',
+          actor:    'agent',
+          reason:   'caller_requested_dnc',
+          metadata: { telefono, motivo: motivo ?? null, agent_id },
+          soft:     true,
+          extraFields: { notes: motivo ?? 'Solicitud del ciudadano' },
+        });
+      }
       marked = toMark.length;
     }
   }

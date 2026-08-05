@@ -141,7 +141,14 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (result.ok) {
       triggered++;
-      await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
+      const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
+      await transitionOutboundContact({
+        supabase, contactId: contact.id,
+        toStatus: 'calling',
+        actor:    'user',
+        reason:   'campaign_manual_trigger',
+        metadata: { campaign_id: id, vapi_call_id: result.callId },
+      });
       await supabase.from('outbound_calls').insert({
         agent_id:     agent.id,
         contact_id:   contact.id,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/admin/auth';
+import { recordOutboundBulkCreation } from '@/lib/state-machines/outbound-contact';
 
 // POST /api/outbound/contacts/upload
 // Form fields:
@@ -81,12 +82,21 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('outbound_contacts').insert(contacts);
+  const { data: inserted, error } = await supabase.from('outbound_contacts').insert(contacts).select('id');
 
   if (error) {
     console.error('[CSV upload] Supabase error:', error);
     return NextResponse.json({ error: 'Error al guardar contactos' }, { status: 500 });
   }
+
+  // Registrar creación en state machine
+  await recordOutboundBulkCreation({
+    supabase,
+    contactIds: (inserted ?? []).map(r => r.id as string),
+    actor:      'admin',
+    reason:     'csv_upload',
+    metadata:   { count: contacts.length, agent_id },
+  });
 
   return NextResponse.json({ ok: true, imported: contacts.length });
 }

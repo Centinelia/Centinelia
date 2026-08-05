@@ -100,20 +100,25 @@ export async function GET(req: NextRequest) {
     });
 
     if (vapiCallId) {
-      await Promise.all([
-        supabase.from('outbound_calls').insert({
-          agent_id: contact.agent_id,
-          contact_id: contact.id,
-          telefono: contact.telefono,
-          nombre: contact.nombre,
-          motivo: contact.motivo,
-          vapi_call_id: vapiCallId,
-          status: 'calling',
-          scheduled_at: contact.scheduled_at,
-          called_at: now.toISOString(),
-        }),
-        supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id),
-      ]);
+      await supabase.from('outbound_calls').insert({
+        agent_id: contact.agent_id,
+        contact_id: contact.id,
+        telefono: contact.telefono,
+        nombre: contact.nombre,
+        motivo: contact.motivo,
+        vapi_call_id: vapiCallId,
+        status: 'calling',
+        scheduled_at: contact.scheduled_at,
+        called_at: now.toISOString(),
+      });
+      const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
+      await transitionOutboundContact({
+        supabase, contactId: contact.id,
+        toStatus: 'calling',
+        actor:    'cron',
+        reason:   'legacy_outbound_cron_pickup',
+        metadata: { vapi_call_id: vapiCallId },
+      });
       results.fired++;
     } else {
       results.errors++;

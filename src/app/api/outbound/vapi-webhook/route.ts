@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       .update({ status: 'no_answer', outcome: 'no_answer', next_retry_at: retryAt })
       .eq('id', outboundCall.id);
 
-    // Update contact fail_count; auto-delete at 3 failures
+    // Update contact fail_count via state machine
     if (outboundCall.contact_id) {
       const { data: contact } = await supabase
         .from('outbound_contacts')
@@ -61,12 +61,29 @@ export async function POST(req: NextRequest) {
 
       if (contact) {
         const newFailCount = ((contact.fail_count as number) ?? 0) + 1;
+        const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
         if (newFailCount >= 3) {
-          await supabase.from('outbound_contacts').delete().eq('id', outboundCall.contact_id);
+          // Cambio: en vez de DELETE, marcamos como 'failed' con reason max_fails
+          // para conservar auditoría. Cleanup posterior si crece la tabla.
+          await transitionOutboundContact({
+            supabase, contactId: outboundCall.contact_id,
+            toStatus: 'failed',
+            actor:    'vapi_webhook',
+            reason:   'max_fails_3',
+            metadata: { fail_count: newFailCount, ended_reason: endedReason },
+            soft:     true,
+            extraFields: { fail_count: newFailCount },
+          });
         } else {
-          await supabase.from('outbound_contacts')
-            .update({ status: 'pending', fail_count: newFailCount })
-            .eq('id', outboundCall.contact_id);
+          await transitionOutboundContact({
+            supabase, contactId: outboundCall.contact_id,
+            toStatus: 'pending',
+            actor:    'vapi_webhook',
+            reason:   'no_answer_retry_scheduled',
+            metadata: { fail_count: newFailCount, ended_reason: endedReason, retry_at: retryAt },
+            soft:     true,
+            extraFields: { fail_count: newFailCount },
+          });
         }
       }
     }
@@ -82,12 +99,15 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', outboundCall.id);
 
-    // Mark contact as completed if linked
     if (outboundCall.contact_id) {
-      await supabase
-        .from('outbound_contacts')
-        .update({ status: 'completed' })
-        .eq('id', outboundCall.contact_id);
+      const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
+      await transitionOutboundContact({
+        supabase, contactId: outboundCall.contact_id,
+        toStatus: 'completed',
+        actor:    'vapi_webhook',
+        reason:   'answered_and_completed',
+        metadata: { ended_reason: endedReason },
+      });
     }
   }
 

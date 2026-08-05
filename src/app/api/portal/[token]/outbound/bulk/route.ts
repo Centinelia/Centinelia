@@ -83,11 +83,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No se encontraron contactos válidos en el CSV' }, { status: 400 });
   }
 
-  const { error } = await supabase.from('outbound_contacts').insert(contacts);
+  const { data: inserted, error } = await supabase.from('outbound_contacts').insert(contacts).select('id');
   if (error) {
     console.error('[portal/outbound/bulk]', error.message);
     return NextResponse.json({ error: 'Error al guardar contactos' }, { status: 500 });
   }
+
+  const { recordOutboundBulkCreation } = await import('@/lib/state-machines/outbound-contact');
+  await recordOutboundBulkCreation({
+    supabase,
+    contactIds: (inserted ?? []).map(r => r.id as string),
+    actor:      'user',
+    reason:     'portal_bulk_upload',
+    metadata:   { count: contacts.length, agent_id: agent.id },
+  });
 
   return NextResponse.json({ ok: true, imported: contacts.length });
 }

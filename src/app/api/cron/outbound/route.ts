@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { transitionOutboundContact } from '@/lib/state-machines/outbound-contact';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,13 @@ export async function GET(req: NextRequest) {
 
       if (result.ok) {
         triggered++;
-        await supabase.from('outbound_contacts').update({ status: 'calling' }).eq('id', contact.id);
+        await transitionOutboundContact({
+          supabase, contactId: contact.id,
+          toStatus: 'calling',
+          actor:    'cron',
+          reason:   'cron_pickup_outbound',
+          metadata: { vapi_call_id: result.callId, agent_id: agent.id },
+        });
         await supabase.from('outbound_calls').insert({
           agent_id:     agent.id,
           contact_id:   contact.id,
@@ -56,13 +63,26 @@ export async function GET(req: NextRequest) {
         });
       } else {
         failed++;
-        await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
+        await transitionOutboundContact({
+          supabase, contactId: contact.id,
+          toStatus: 'failed',
+          actor:    'cron',
+          reason:   'vapi_trigger_failed',
+          metadata: { error: result.error },
+        });
         console.error(`cron/outbound: failed for contact ${contact.id}:`, result.error);
       }
     } catch (err) {
       failed++;
       console.error(`cron/outbound: exception for contact ${contact.id}:`, err);
-      await supabase.from('outbound_contacts').update({ status: 'failed' }).eq('id', contact.id);
+      await transitionOutboundContact({
+        supabase, contactId: contact.id,
+        toStatus: 'failed',
+        actor:    'cron',
+        reason:   'exception_during_trigger',
+        metadata: { error: String(err) },
+        soft:     true, // puede que ya haya transicionado, no bloqueamos
+      });
     }
   }
 
