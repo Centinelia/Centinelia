@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, ChevronDown, ChevronUp, Trash2, Upload, Clock, Users, Search, Pencil, Check, X, Plus, Zap, SearchX } from 'lucide-react';
-import InfoTooltip from '@/components/InfoTooltip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHeader, Card } from '@/components/portal-ui';
 

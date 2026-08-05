@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send, SearchX } from 'lucide-react';
-import InfoTooltip from '@/components/InfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SectionHeader, EmptyState } from '@/components/portal-ui';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
@@ -307,9 +306,9 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
         <SectionHeader
           as="h2"
           title="Reportes automáticos"
+          tooltip={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."}
           right={
             <div className="flex items-center gap-2">
-              <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."} />
               <span
                 className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                 style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: 'var(--c-text-4)' }}>

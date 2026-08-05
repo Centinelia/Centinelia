@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
 import { SectionHeader, EmptyState } from '@/components/portal-ui';
 import { toast } from 'sonner';
-import InfoTooltip from '@/components/InfoTooltip';
 import type { InboxAgent } from './inbox/categories';
 import { normalizeCategory, CATEGORY_COLORS, CATEGORY_ORDER } from './inbox/categories';
 import type { CategorySlug } from './inbox/categories';
@@ -622,9 +621,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       <SectionHeader
         as="h2"
         title="Bandeja de entrada"
+        tooltip={`¿Cuántas tareas consume?\n1 tarea por cada correo entrante que el empleado analiza y clasifica.\n\nNo consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`}
         right={
           <div className="flex items-center gap-2">
-            <InfoTooltip text={`¿Cuántas tareas consume?\n1 tarea por cada correo entrante que el empleado analiza y clasifica.\n\nNo consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`} />
             <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
               <RefreshCw size={12} />
             </button>
