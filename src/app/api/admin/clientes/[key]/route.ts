@@ -33,6 +33,7 @@ const ORG_FIELDS = new Set([
 const AGENT_BULK_FIELDS = new Set([
   'client_name',
   'client_email',
+  'client_phone',
   'timezone',
   'business_address',
   'business_name',

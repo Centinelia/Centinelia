@@ -43,16 +43,17 @@ const DEFAULT_HOURS: BusinessHours = {
 };
 
 interface Props {
-  routeKey:           string;
-  agents:             VoiceAgent[];
-  orgBusinessWebsite: string | null;
-  orgBusinessHours:   BusinessHours | null;
+  routeKey:               string;
+  agents:                 VoiceAgent[];
+  orgBusinessWebsite:     string | null;
+  orgBusinessHours:       BusinessHours | null;
+  orgBusinessDescription: string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ClientEditForm({
-  routeKey, agents, orgBusinessWebsite, orgBusinessHours,
+  routeKey, agents, orgBusinessWebsite, orgBusinessHours, orgBusinessDescription,
 }: Props) {
   const router  = useRouter();
   const primary = agents[0];
@@ -63,17 +64,19 @@ export default function ClientEditForm({
   // Contacto
   const [clientName,  setClientName]  = useState(primary.client_name  ?? '');
   const [clientEmail, setClientEmail] = useState(primary.client_email ?? '');
+  const [clientPhone, setClientPhone] = useState(
+    ((primary as unknown as { client_phone?: string | null }).client_phone) ?? ''
+  );
 
   // Vertical
   const [vertical, setVertical] = useState<'negocio' | 'gobierno'>(
     (primary.features?.vertical as 'negocio' | 'gobierno') ?? 'negocio'
   );
 
-  // Negocio (compartido: aplica a todos los empleados del cliente)
+  // Negocio (compartido: aplica a todos los empleados del cliente).
+  // business_description vive en organizations (dropped column en voice_agents).
   const [businessName,        setBusinessName]        = useState(primary.business_name ?? '');
-  const [businessDescription, setBusinessDescription] = useState(
-    ((primary as unknown as { business_description?: string }).business_description) ?? ''
-  );
+  const [businessDescription, setBusinessDescription] = useState(orgBusinessDescription ?? '');
   const [businessWebsite,     setBusinessWebsite]     = useState(orgBusinessWebsite ?? '');
   const [businessPhoneDisplay,setBusinessPhoneDisplay]= useState(primary.business_phone_display ?? '');
   const [calendarUrl,         setCalendarUrl]         = useState(primary.calendar_url ?? '');
@@ -102,6 +105,7 @@ export default function ClientEditForm({
     const body: Record<string, unknown> = {
       client_name:            clientName.trim(),
       client_email:           clientEmail.trim(),
+      client_phone:           clientPhone.trim() || null,
       vertical,
       business_name:          businessName.trim(),
       business_description:   businessDescription.trim() || null,
@@ -170,6 +174,13 @@ export default function ClientEditForm({
             onChange={setClientEmail}
             placeholder="cliente@negocio.com"
             helper="Para reportes y avisos. El acceso al portal se administra desde la lista de Clientes."
+          />
+          <FieldInput
+            label="Telefono"
+            value={clientPhone}
+            onChange={setClientPhone}
+            placeholder="+52 81 1234 5678"
+            helper="WhatsApp o linea directa del contacto. Solo para uso interno."
           />
         </Card>
 

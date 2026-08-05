@@ -26,13 +26,21 @@ export default async function EditarClientePage({ params }: Props) {
   const agents = (agentsRaw ?? []) as VoiceAgent[];
   if (agents.length === 0) notFound();
 
-  // Traer campos org-level (business_website, business_hours) desde organizations
+  // Traer campos org-level (business_website, business_hours, business_description)
+  // desde organizations. Estas columnas fueron movidas de voice_agents a organizations
+  // en commit e372013; leer de primary.business_description devolvería undefined.
+  // Es aquí donde también aparece lo que el CLIENTE edita desde su portal (OrgCard,
+  // BusinessHoursEditor) via /api/portal/[token]/settings — usan la misma tabla.
   const portalEmail = agents[0].portal_email ?? null;
-  let orgData: { business_website?: string | null; business_hours?: unknown } | null = null;
+  let orgData: {
+    business_website?:     string | null;
+    business_hours?:       unknown;
+    business_description?: string | null;
+  } | null = null;
   if (portalEmail) {
     const { data } = await supabase
       .from('organizations')
-      .select('business_website, business_hours')
+      .select('business_website, business_hours, business_description')
       .eq('portal_email', portalEmail)
       .maybeSingle();
     orgData = data as any;
@@ -44,6 +52,7 @@ export default async function EditarClientePage({ params }: Props) {
       agents={agents}
       orgBusinessWebsite={(orgData?.business_website as string) ?? null}
       orgBusinessHours={(orgData?.business_hours as any) ?? null}
+      orgBusinessDescription={(orgData?.business_description as string) ?? null}
     />
   );
 }
