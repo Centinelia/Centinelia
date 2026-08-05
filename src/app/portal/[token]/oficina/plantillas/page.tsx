@@ -10,6 +10,7 @@ import {
   Copy, AlertTriangle, ExternalLink,
 } from 'lucide-react';
 import { TEMPLATE_SPECS, type PlaceholderSpec } from '@/lib/documents/template-spec';
+import { Card, SectionHeader } from '@/components/portal-ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -582,7 +583,7 @@ function TemplateCard({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <Card padding="none" border className="overflow-hidden">
       {/* Header — always visible */}
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--c-surface-2)]">
@@ -637,7 +638,7 @@ function TemplateCard({
           {children}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -1167,18 +1168,12 @@ export default function PlantillasPage() {
     <div id="of-plantillas" className="flex flex-col gap-6 p-5 sm:p-7 w-full">
 
       {/* Hero */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-          Plantillas
-        </p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
-          Ensenale a tu equipo como se hacen los documentos de tu negocio.
-        </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Sube tu formato de factura, orden de compra o cualquier documento membretado.
-          Tus empleados respetaran el formato y lo usaran cada vez que se los pidas, sin importar cuantos documentos generen.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        eyebrow="Plantillas"
+        title="Ensenale a tu equipo como se hacen los documentos de tu negocio."
+        description="Sube tu formato de factura, orden de compra o cualquier documento membretado. Tus empleados respetaran el formato y lo usaran cada vez que se los pidas, sin importar cuantos documentos generen."
+      />
 
       {/* How it works */}
       <div className="flex flex-col sm:flex-row gap-3">

@@ -8,6 +8,7 @@ import {
   BookmarkPlus, AlertTriangle, MessageSquare, Eye, X,
 } from 'lucide-react';
 import OpsContractsSection from '../../OpsContractsSection';
+import { Card, SectionHeader } from '@/components/portal-ui';
 
 interface Doc {
   id:               string;
@@ -79,10 +80,10 @@ function timeAgo(iso: string): string {
 
 function Metric({ value, label, color }: { value: number | string; label: string; color?: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 px-4 py-3 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+    <Card padding="none" border className="flex flex-col items-center gap-0.5 px-4 py-3">
       <span className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--c-text)' }}>{value}</span>
       <span className="text-[10px] uppercase tracking-widest font-semibold text-center" style={{ color: 'var(--c-text-4)' }}>{label}</span>
-    </div>
+    </Card>
   );
 }
 
@@ -235,17 +236,12 @@ export default function DocumentosPage() {
     <div id="of-documentos" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
 
       {/* Header */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-          Documentos
-        </p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
-          Centro de documentos
-        </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-          Archivos generados por tus empleados. Disponibles 30 días para descargar, conservar o reenviar.
-        </p>
-      </div>
+      <SectionHeader
+        as="h1"
+        eyebrow="Documentos"
+        title="Centro de documentos"
+        description="Archivos generados por tus empleados. Disponibles 30 días para descargar, conservar o reenviar."
+      />
 
       {/* Metrics */}
       {!loading && (docs.length > 0 || drafts.length > 0) && (
@@ -316,11 +312,11 @@ export default function DocumentosPage() {
       ) : docsForPill.length === 0 && docs.length === 0 && drafts.length === 0 ? (
         <EmptyState token={token} employeeName={employeeName} />
       ) : docsForPill.length === 0 ? (
-        <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <Card border className="flex flex-col items-center py-10 gap-2">
           <FileText size={28} style={{ color: 'var(--c-text-3)', opacity: 0.35 }} />
           <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin documentos en esta categoria</p>
           <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Pidele a {employeeName} que genere uno desde el chat.</p>
-        </div>
+        </Card>
       ) : (
         <div className="flex flex-col gap-2">
           {docsForPill.map(doc => {
@@ -332,7 +328,7 @@ export default function DocumentosPage() {
             const isPrev  = previewing  === doc.id;
 
             return (
-              <div key={doc.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+              <Card key={doc.id} padding="none" border className="overflow-hidden">
                 <div className="flex items-center gap-4 px-4 py-3.5">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: typeCfg.bg }}>
                     <FileCheck size={16} style={{ color: typeCfg.color }} />
@@ -384,7 +380,7 @@ export default function DocumentosPage() {
                     <div style={{ width: `${Math.round((days / 30) * 100)}%`, height: '100%', background: expiryColor(days) }} />
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -446,7 +442,7 @@ export default function DocumentosPage() {
 function EmptyState({ token, employeeName }: { token: string; employeeName: string }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-      <div className="flex flex-col items-start gap-4 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <Card border className="flex flex-col items-start gap-4 rounded-2xl p-6">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.08)' }}>
           <MessageSquare size={18} style={{ color: '#9B6DFF' }} />
         </div>
@@ -464,8 +460,8 @@ function EmptyState({ token, employeeName }: { token: string; employeeName: stri
           <MessageSquare size={13} />
           Consultar agente
         </Link>
-      </div>
-      <div className="flex flex-col items-start gap-4 rounded-2xl p-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      </Card>
+      <Card border className="flex flex-col items-start gap-4 rounded-2xl p-6">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.08)' }}>
           <FileText size={18} style={{ color: '#9B6DFF' }} />
         </div>
@@ -483,7 +479,7 @@ function EmptyState({ token, employeeName }: { token: string; employeeName: stri
           <FileText size={13} />
           Agregar plantilla
         </Link>
-      </div>
+      </Card>
     </div>
   );
 }
