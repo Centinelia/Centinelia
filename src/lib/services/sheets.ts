@@ -60,21 +60,21 @@ export async function getMapping(
 export async function refreshHeaders(
   mappingId: string,
 ): Promise<ToolResult<{ headers: string[] }>> {
-  const sb = createAdminClient();
-
-  const { data: mapping } = await sb
-    .from('sheets_mappings')
-    .select('*')
-    .eq('id', mappingId)
-    .single();
-
-  if (!mapping) {
-    return { ok: false, reason: 'mapping_not_found' };
-  }
-
-  let headers: string[];
-
   try {
+    const sb = createAdminClient();
+
+    const { data: mapping } = await sb
+      .from('sheets_mappings')
+      .select('*')
+      .eq('id', mappingId)
+      .single();
+
+    if (!mapping) {
+      return { ok: false, reason: 'mapping_not_found' };
+    }
+
+    let headers: string[];
+
     const client = await getSheetsClient(mapping.portal_email);
     const range = `${mapping.tab_name}!1:1`;
     const res = await client.spreadsheets.values.get({
@@ -82,17 +82,17 @@ export async function refreshHeaders(
       range,
     });
     headers = ((res.data.values?.[0] ?? []) as unknown[]).map(String);
+
+    await sb
+      .from('sheets_mappings')
+      .update({ headers, headers_synced_at: new Date().toISOString() })
+      .eq('id', mappingId);
+
+    return { ok: true, data: { headers } };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     return { ok: false, reason: 'sheets_api_error', detail };
   }
-
-  await sb
-    .from('sheets_mappings')
-    .update({ headers, headers_synced_at: new Date().toISOString() })
-    .eq('id', mappingId);
-
-  return { ok: true, data: { headers } };
 }
 
 // ---------------------------------------------------------------------------
