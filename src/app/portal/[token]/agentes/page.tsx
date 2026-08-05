@@ -11,7 +11,6 @@ import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
 import AnnualContractCallout           from '../AnnualContractCallout';
-import EquipoHoySection                from '../oficina/EquipoHoySection';
 import AgentRankingSection             from '../AgentRankingSection';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import type { MeerkatRoleId }          from '@/lib/portal/meerkat-roles';
@@ -739,9 +738,6 @@ export default async function AgentesPage({ params }: Props) {
   const pageBodyV1 = (
     <div className="flex flex-col gap-6">
 
-      {/* Equipo hoy — estado en tiempo real */}
-      <EquipoHoySection token={token} />
-
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -796,11 +792,6 @@ export default async function AgentesPage({ params }: Props) {
   // ─── V2 body (design system shell) ──────────────────────────────────────────
   const pageBodyV2 = (
     <PageContainer>
-
-      {/* Equipo hoy — estado en tiempo real */}
-      <PageSection>
-        <EquipoHoySection token={token} />
-      </PageSection>
 
       <PageSection
         heading={

@@ -1641,7 +1641,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </a>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Col 1: Uso + Compras + Recarga (fused A6) ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
@@ -1775,13 +1775,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </Card>
                   </PageSection>
-                </div>
-
-                {/* ── Col 3: Serial ── */}
-                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  {accountSerial && (
-                    <AccountSerialBadge serial={accountSerial} variant="card" />
-                  )}
                 </div>
 
               </div>

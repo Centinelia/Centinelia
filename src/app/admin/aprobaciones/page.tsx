@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { isAdmin } from '@/lib/admin/auth';
 import Link from 'next/link';
-import { ArrowLeft, Terminal } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 import { listApprovals } from '@/lib/admin/approvals';
 import ApprovalsClient from './ApprovalsClient';
 
@@ -22,24 +22,21 @@ export default async function AprobacionesPage() {
   ]);
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl" style={{ background: '#120726', minHeight: '100vh' }}>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <Link href="/admin/inicio" className="inline-flex items-center gap-1.5 text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>
-            <ArrowLeft size={12} /> Inicio
-          </Link>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)', fontFamily: 'var(--font-sora)' }}>Aprobaciones</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Aprobaciones</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
             Gate para acciones destructivas. {pending.length} pendiente{pending.length !== 1 ? 's' : ''}.
           </p>
         </div>
         <Link
           href="/admin/comando"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#FFFFFF' }}
         >
-          <Terminal size={14} />
+          <Terminal size={13} />
           Comando
         </Link>
       </div>

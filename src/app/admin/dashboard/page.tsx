@@ -83,7 +83,6 @@ export default async function DashboardPage() {
   const agents    = (agentsData ?? []) as AgentStat[];
   const calls     = (calls14d   ?? []) as CallStat[];
   const acctMins  = new Map((acctMinsData ?? []).map((m: AcctMin) => [m.portal_email, m]));
-  const seenAcct  = new Set<string>(); // deduplicate account pools in aggregate stats
 
   // Resolve effective minutes for an agent (account pool or per-agent)
   const effMins = (a: AgentStat) => a.portal_email && acctMins.has(a.portal_email)
@@ -118,12 +117,18 @@ export default async function DashboardPage() {
   }
 
   // Prioritized alerts
-  type Alert = { priority: number; label: string; sub: string; href: string; color: string };
+  type Alert = { priority: number; label: string; sub: string; href: string; color: string; bg: string; border: string };
   const alerts: Alert[] = [];
 
   for (const a of agents) {
     if (a.billing_status === 'pago_fallido') {
-      alerts.push({ priority: 0, label: a.business_name, sub: 'Pago fallido — contactar cliente', href: '/admin/billing', color: '#ef4444' });
+      alerts.push({
+        priority: 0,
+        label: a.business_name,
+        sub: 'Pago fallido, contactar cliente',
+        href: '/admin/billing',
+        color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA',
+      });
     }
   }
 
@@ -136,7 +141,13 @@ export default async function DashboardPage() {
     if (a.active && m.minutes_included > 0 && (m.minutes_used / m.minutes_included) >= 0.9) {
       alertedAccts.add(acctKey);
       const pct = Math.round((m.minutes_used / m.minutes_included) * 100);
-      alerts.push({ priority: 1, label: a.business_name, sub: `${pct}% de minutos consumidos — ofrecer recarga`, href: `/admin/agentes/${a.id}`, color: '#f59e0b' });
+      alerts.push({
+        priority: 1,
+        label: a.business_name,
+        sub: `${pct}% de minutos consumidos, ofrecer recarga`,
+        href: `/admin/agentes/${a.id}`,
+        color: '#B45309', bg: '#FFFBEB', border: '#FDE68A',
+      });
     }
   }
 
@@ -146,8 +157,14 @@ export default async function DashboardPage() {
     const last = lastCallMap[a.id];
     if (!last || last < sevenDaysAgo) {
       const days = last ? Math.floor((now - last.getTime()) / 86400000) : null;
-      const sub  = days === null ? 'Sin llamadas registradas — ¿problema?' : `Sin llamadas hace ${days} días — ¿problema?`;
-      alerts.push({ priority: 2, label: a.business_name, sub, href: `/admin/agentes/${a.id}`, color: '#6b7280' });
+      const sub  = days === null ? 'Sin llamadas registradas.' : `Sin llamadas hace ${days} días.`;
+      alerts.push({
+        priority: 2,
+        label: a.business_name,
+        sub,
+        href: `/admin/agentes/${a.id}`,
+        color: '#4B5563', bg: '#F9FAFB', border: '#E5E7EB',
+      });
     }
   }
 
@@ -188,21 +205,21 @@ export default async function DashboardPage() {
   const trendSub = callsDelta === null
     ? 'Sin datos semana anterior'
     : `${callsDelta >= 0 ? '+' : ''}${callsDelta}% vs semana anterior`;
-  const trendColor = callsDelta === null ? 'var(--c-text-4)' : callsDelta >= 0 ? '#22c55e' : '#ef4444';
+  const trendColor = callsDelta === null ? '#9CA3AF' : callsDelta >= 0 ? '#047857' : '#B91C1C';
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Dashboard</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Infra</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
             {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
         <Link
           href="/admin/comando"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff' }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#FFFFFF' }}
         >
           <Terminal size={14} />
           Comando
@@ -210,181 +227,188 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          icon={<DollarSign size={16} />}
+          icon={<DollarSign size={14} />}
           label="MRR estimado"
           value={`$${mrr.toLocaleString('es-MX')}`}
           sub="MXN / mes"
-          color="#22c55e"
+          iconColor="#047857"
+          iconBg="#ECFDF5"
         />
         <KpiCard
-          icon={<Users size={16} />}
+          icon={<Users size={14} />}
           label="Agentes activos"
           value={String(activeCount)}
           sub={`de ${agents.length} totales`}
-          color="#6C3BFF"
+          iconColor="#6C3BFF"
+          iconBg="#F3F0FF"
         />
         <KpiCard
-          icon={<PhoneCall size={16} />}
+          icon={<PhoneCall size={14} />}
           label="Llamadas esta semana"
           value={String(callsThisWeek)}
           sub={trendSub}
           subColor={trendColor}
-          color="#a855f7"
+          iconColor="#8B5CF6"
+          iconBg="#F3F0FF"
         />
         <KpiCard
-          icon={<UserPlus size={16} />}
+          icon={<UserPlus size={14} />}
           label="Nuevos clientes"
           value={String(newThisMonth)}
           sub="este mes"
-          color="#3b82f6"
+          iconColor="#2563EB"
+          iconBg="#EFF6FF"
         />
       </div>
 
       {/* Alerts */}
       {alerts.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+        <section>
+          <h2 className="text-[11px] uppercase tracking-wider font-medium mb-3" style={{ color: '#9CA3AF' }}>
             Acción requerida
           </h2>
           <div className="flex flex-col gap-2">
             {alerts.map((alert, i) => (
-              <Link key={i} href={alert.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:opacity-90 transition-opacity"
-                style={{ background: `${alert.color}10`, border: `1px solid ${alert.color}30` }}>
+              <Link
+                key={i}
+                href={alert.href}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:brightness-95"
+                style={{ background: alert.bg, border: `1px solid ${alert.border}` }}
+              >
                 <AlertTriangle size={14} style={{ color: alert.color, flexShrink: 0 }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-none" style={{ color: 'var(--c-text)' }}>{alert.label}</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>{alert.sub}</p>
+                  <p className="text-[13px] font-medium leading-none" style={{ color: '#111827' }}>{alert.label}</p>
+                  <p className="text-[12px] mt-1" style={{ color: '#6B7280' }}>{alert.sub}</p>
                 </div>
-                <ArrowRight size={13} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                <ArrowRight size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Infra monitor */}
-      <div className="mb-6">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+      <section>
+        <h2 className="text-[11px] uppercase tracking-wider font-medium mb-3" style={{ color: '#9CA3AF' }}>
           Infraestructura
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
           {/* Vapi */}
-          <div className="p-4 rounded-xl flex items-start gap-3" style={{
-            background: vapiBalance === null ? 'var(--c-surface)' : vapiBalance < VAPI_LOW_THRESHOLD ? 'rgba(239,68,68,0.06)' : 'var(--c-surface)',
-            border:     vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--c-border)',
-          }}>
-            <Server size={15} style={{ color: vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '#ef4444' : '#a855f7', flexShrink: 0, marginTop: 2 }} />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Vapi — saldo</p>
-              {vapiBalance !== null ? (
-                <>
-                  <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: vapiBalance < VAPI_LOW_THRESHOLD ? '#ef4444' : 'var(--c-text)' }}>
-                    ${vapiBalance.toFixed(2)} USD
-                  </p>
-                  {vapiBalance < VAPI_LOW_THRESHOLD && (
-                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#ef4444' }}>
-                      <AlertTriangle size={10} /> Saldo bajo — recargar
-                    </p>
-                  )}
-                </>
+          <InfraCard
+            icon={<Server size={15} />}
+            label="Vapi, saldo"
+            valueEl={
+              vapiBalance !== null ? (
+                <p className="text-[24px] font-semibold leading-none tabular-nums mt-1" style={{ color: vapiBalance < VAPI_LOW_THRESHOLD ? '#B91C1C' : '#111827' }}>
+                  ${vapiBalance.toFixed(2)}
+                  <span className="text-[13px] font-normal ml-1" style={{ color: '#6B7280' }}>USD</span>
+                </p>
               ) : (
-                <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-4)' }}>No disponible</p>
-              )}
-            </div>
-          </div>
+                <p className="text-[13px] mt-1" style={{ color: '#9CA3AF' }}>No disponible</p>
+              )
+            }
+            alertMsg={vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? 'Saldo bajo, recargar' : null}
+            alertTone="danger"
+            iconColor={vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '#B91C1C' : '#8B5CF6'}
+            iconBg={vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD ? '#FEF2F2' : '#F3F0FF'}
+          />
 
           {/* Twilio */}
-          <div className="p-4 rounded-xl flex items-start gap-3" style={{
-            background: twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? 'rgba(239,68,68,0.06)' : 'var(--c-surface)',
-            border:     twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '1px solid rgba(239,68,68,0.3)' : '1px solid var(--c-border)',
-          }}>
-            <Server size={15} style={{ color: twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#ef4444' : '#e11d48', flexShrink: 0, marginTop: 2 }} />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Twilio — saldo</p>
-              {twilioBalance2 !== null ? (
-                <>
-                  <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#ef4444' : 'var(--c-text)' }}>
-                    ${twilioBalance2.toFixed(2)} USD
-                  </p>
-                  {twilioBalance2 < TWILIO_LOW_THRESHOLD && (
-                    <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#ef4444' }}>
-                      <AlertTriangle size={10} /> Saldo bajo — recargar
-                    </p>
-                  )}
-                </>
+          <InfraCard
+            icon={<Server size={15} />}
+            label="Twilio, saldo"
+            valueEl={
+              twilioBalance2 !== null ? (
+                <p className="text-[24px] font-semibold leading-none tabular-nums mt-1" style={{ color: twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#B91C1C' : '#111827' }}>
+                  ${twilioBalance2.toFixed(2)}
+                  <span className="text-[13px] font-normal ml-1" style={{ color: '#6B7280' }}>USD</span>
+                </p>
               ) : (
-                <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-4)' }}>No disponible</p>
-              )}
-            </div>
-          </div>
+                <p className="text-[13px] mt-1" style={{ color: '#9CA3AF' }}>No disponible</p>
+              )
+            }
+            alertMsg={twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? 'Saldo bajo, recargar' : null}
+            alertTone="danger"
+            iconColor={twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#B91C1C' : '#E11D48'}
+            iconBg={twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD ? '#FEF2F2' : '#FEF2F2'}
+          />
 
           {/* Claude / Ops */}
-          <div className="p-4 rounded-xl flex items-start gap-3" style={{
-            background: claudeOverBudget ? 'rgba(239,68,68,0.06)' : claudeNearBudget ? 'rgba(245,158,11,0.06)' : 'var(--c-surface)',
-            border:     claudeOverBudget ? '1px solid rgba(239,68,68,0.3)' : claudeNearBudget ? '1px solid rgba(245,158,11,0.3)' : '1px solid var(--c-border)',
-          }}>
-            <Zap size={15} style={{ color: claudeOverBudget ? '#ef4444' : claudeNearBudget ? '#f59e0b' : '#f59e0b', flexShrink: 0, marginTop: 2 }} />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Claude — gasto mensual</p>
-              <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: claudeOverBudget ? '#ef4444' : 'var(--c-text)' }}>
-                ~${estimatedClaudeCost.toFixed(2)}
-                <span className="text-sm font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>USD</span>
-              </p>
-              {/* Budget progress bar */}
-              <div style={{ background: 'rgba(255,255,255,0.10)', borderRadius: 4, height: 4, overflow: 'hidden', margin: '8px 0 4px' }}>
-                <div style={{
-                  height: '100%',
-                  width:  `${claudeBudgetPct}%`,
-                  background: claudeOverBudget ? '#ef4444' : claudeNearBudget ? '#f59e0b' : '#a855f7',
-                  borderRadius: 4,
-                  transition: 'width 0.3s ease',
-                }} />
-              </div>
-              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                {totalOpsUsed.toLocaleString('es-MX')} ops · presupuesto ${claudeBudget} USD ({claudeBudgetPct}%)
-              </p>
-              {(claudeOverBudget || claudeNearBudget) && (
-                <p className="text-xs mt-1 flex items-center gap-1" style={{ color: claudeOverBudget ? '#ef4444' : '#f59e0b' }}>
-                  <AlertTriangle size={10} />
-                  {claudeOverBudget ? 'Presupuesto superado' : 'Cerca del límite mensual'}
-                </p>
-              )}
+          <div
+            className="rounded-xl bg-white px-5 py-4"
+            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="w-7 h-7 rounded-lg inline-flex items-center justify-center"
+                style={{
+                  background: claudeOverBudget ? '#FEF2F2' : claudeNearBudget ? '#FFFBEB' : '#FFFBEB',
+                  color: claudeOverBudget ? '#B91C1C' : claudeNearBudget ? '#B45309' : '#B45309',
+                }}
+              >
+                <Zap size={15} />
+              </span>
+              <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>Claude, gasto mensual</p>
             </div>
+            <p className="text-[24px] font-semibold leading-none tabular-nums" style={{ color: claudeOverBudget ? '#B91C1C' : '#111827' }}>
+              ~${estimatedClaudeCost.toFixed(2)}
+              <span className="text-[13px] font-normal ml-1" style={{ color: '#6B7280' }}>USD</span>
+            </p>
+            {/* Budget progress bar */}
+            <div className="mt-3" style={{ background: '#F3F4F6', borderRadius: 4, height: 4, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width:  `${claudeBudgetPct}%`,
+                background: claudeOverBudget ? '#EF4444' : claudeNearBudget ? '#F59E0B' : '#8B5CF6',
+                borderRadius: 4,
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <p className="text-[12px] mt-2" style={{ color: '#6B7280' }}>
+              {totalOpsUsed.toLocaleString('es-MX')} ops · presupuesto ${claudeBudget} USD ({claudeBudgetPct}%)
+            </p>
+            {(claudeOverBudget || claudeNearBudget) && (
+              <p className="text-[12px] mt-1 flex items-center gap-1" style={{ color: claudeOverBudget ? '#B91C1C' : '#B45309' }}>
+                <AlertTriangle size={11} />
+                {claudeOverBudget ? 'Presupuesto superado' : 'Cerca del límite mensual'}
+              </p>
+            )}
           </div>
 
         </div>
-      </div>
+      </section>
 
       {/* Bottom grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Minutes Health */}
-        <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div
+          className="rounded-xl bg-white px-6 py-5"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
               Salud de minutos
             </h2>
-            <Link href="/admin/agentes" className="text-xs hover:opacity-70 transition-opacity" style={{ color: 'var(--c-text-3)' }}>
+            <Link href="/admin/agentes" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
               Ver agentes →
             </Link>
           </div>
 
           {withMinutes.length === 0 ? (
-            <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-4)' }}>Sin agentes activos con plan de minutos</p>
+            <p className="text-[13px] py-4 text-center" style={{ color: '#9CA3AF' }}>Sin agentes activos con plan de minutos</p>
           ) : (
             <>
               <div className="flex flex-col gap-2.5">
-                <MinutesRow label="OK"       count={minsOk}       of={withMinutes.length} color="#22c55e" hint="< 70% consumido" />
-                <MinutesRow label="Alerta"   count={minsWarning}   of={withMinutes.length} color="#f59e0b" hint="70–90% consumido" />
-                <MinutesRow label="Crítico"  count={minsCritical}  of={withMinutes.length} color="#ef4444" hint="≥ 90% consumido" />
+                <MinutesRow label="OK"       count={minsOk}       of={withMinutes.length} color="#047857" hint="< 70% consumido" />
+                <MinutesRow label="Alerta"   count={minsWarning}  of={withMinutes.length} color="#B45309" hint="70 a 90% consumido" />
+                <MinutesRow label="Crítico"  count={minsCritical} of={withMinutes.length} color="#B91C1C" hint="≥ 90% consumido" />
               </div>
-              <div className="mt-4 pt-4 flex justify-between text-xs"
-                style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
                 <span>Minutos disponibles total</span>
-                <span className="font-semibold tabular-nums" style={{ color: 'var(--c-text-2)' }}>
+                <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>
                   {totalRemaining.toLocaleString('es-MX')} min
                 </span>
               </div>
@@ -393,25 +417,27 @@ export default async function DashboardPage() {
         </div>
 
         {/* Billing Summary */}
-        <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div
+          className="rounded-xl bg-white px-6 py-5"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
               Estado de facturación
             </h2>
-            <Link href="/admin/billing" className="text-xs hover:opacity-70 transition-opacity" style={{ color: 'var(--c-text-3)' }}>
+            <Link href="/admin/billing" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
               Ver billing →
             </Link>
           </div>
           <div className="flex flex-col gap-2.5">
-            <BillingRow label="Al corriente"    count={billing.activo}       color="#22c55e" />
-            <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#ef4444" />
-            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6b7280" />
+            <BillingRow label="Al corriente"    count={billing.activo}       color="#047857" />
+            <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#B91C1C" />
+            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B7280" />
             <BillingRow label="Cancelados"      count={billing.cancelado}    color="#374151" />
           </div>
-          <div className="mt-4 pt-4 flex justify-between text-xs"
-            style={{ borderTop: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
             <span>Total agentes registrados</span>
-            <span className="font-semibold tabular-nums" style={{ color: 'var(--c-text-2)' }}>{agents.length}</span>
+            <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>{agents.length}</span>
           </div>
         </div>
       </div>
@@ -421,21 +447,67 @@ export default async function DashboardPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, value, sub, color, subColor }: {
+function KpiCard({ icon, label, value, sub, iconColor, iconBg, subColor }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub?: string;
-  color: string;
+  iconColor: string;
+  iconBg: string;
   subColor?: string;
 }) {
   return (
-    <div className="p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <div className="mb-3" style={{ color }}>{icon}</div>
-      <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{value}</div>
-      <div className="text-xs mt-1 font-medium" style={{ color: 'var(--c-text-2)' }}>{label}</div>
+    <div
+      className="rounded-xl bg-white px-5 py-4"
+      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="w-7 h-7 rounded-lg inline-flex items-center justify-center"
+          style={{ background: iconBg, color: iconColor }}
+        >
+          {icon}
+        </span>
+        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+      </div>
+      <div className="text-[28px] font-semibold leading-none tabular-nums" style={{ color: '#111827' }}>{value}</div>
       {sub && (
-        <div className="text-xs mt-0.5" style={{ color: subColor ?? 'var(--c-text-4)' }}>{sub}</div>
+        <div className="text-[12px] mt-2 font-medium" style={{ color: subColor ?? '#6B7280' }}>{sub}</div>
+      )}
+    </div>
+  );
+}
+
+function InfraCard({ icon, label, valueEl, alertMsg, alertTone, iconColor, iconBg }: {
+  icon: React.ReactNode;
+  label: string;
+  valueEl: React.ReactNode;
+  alertMsg: string | null;
+  alertTone: 'danger' | 'warn';
+  iconColor: string;
+  iconBg: string;
+}) {
+  const alertColor = alertTone === 'danger' ? '#B91C1C' : '#B45309';
+  return (
+    <div
+      className="rounded-xl bg-white px-5 py-4"
+      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="w-7 h-7 rounded-lg inline-flex items-center justify-center"
+          style={{ background: iconBg, color: iconColor }}
+        >
+          {icon}
+        </span>
+        <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>{label}</p>
+      </div>
+      {valueEl}
+      {alertMsg && (
+        <p className="text-[12px] mt-2 flex items-center gap-1" style={{ color: alertColor }}>
+          <AlertTriangle size={11} />
+          {alertMsg}
+        </p>
       )}
     </div>
   );
@@ -448,11 +520,11 @@ function MinutesRow({ label, count, of: total, color, hint }: {
   return (
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="text-xs flex-1" style={{ color: 'var(--c-text-2)' }}>
-        {label} <span style={{ color: 'var(--c-text-4)' }}>— {hint}</span>
+      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>
+        {label} <span style={{ color: '#9CA3AF' }}>· {hint}</span>
       </span>
-      <span className="text-xs tabular-nums font-semibold" style={{ color }}>
-        {count} <span className="font-normal" style={{ color: 'var(--c-text-4)' }}>({pct}%)</span>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color }}>
+        {count} <span className="font-normal" style={{ color: '#9CA3AF' }}>({pct}%)</span>
       </span>
     </div>
   );
@@ -462,8 +534,8 @@ function BillingRow({ label, count, color }: { label: string; count: number; col
   return (
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="text-xs flex-1" style={{ color: 'var(--c-text-2)' }}>{label}</span>
-      <span className="text-xs tabular-nums font-semibold" style={{ color: count > 0 ? color : 'var(--c-text-4)' }}>
+      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>{label}</span>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9CA3AF' }}>
         {count}
       </span>
     </div>

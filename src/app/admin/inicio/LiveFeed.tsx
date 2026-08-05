@@ -24,13 +24,13 @@ const KIND_ICON: Record<string, React.ComponentType<{ size: number }>> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
-  call:        '#a855f7',
-  email:       '#3b82f6',
-  lead:        '#22c55e',
-  appointment: '#60a5fa',
-  order:       '#f59e0b',
+  call:        '#8B5CF6',
+  email:       '#3B82F6',
+  lead:        '#10B981',
+  appointment: '#60A5FA',
+  order:       '#F59E0B',
   task:        '#6C3BFF',
-  learning:    '#e879f9',
+  learning:    '#EC4899',
 };
 
 function relativeTime(iso: string): string {
@@ -72,36 +72,41 @@ export default function LiveFeed({ initial }: { initial: ActivityEvent[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+        <h3 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
           Feed en vivo
-        </h2>
-        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-4)' }}>
-          {refreshing ? <Loader2 size={11} className="animate-spin" /> : <Circle size={7} style={{ fill: '#22c55e', color: '#22c55e' }} />}
+        </h3>
+        <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B7280' }}>
+          {refreshing
+            ? <Loader2 size={11} className="animate-spin" />
+            : <Circle size={7} style={{ fill: '#10B981', color: '#10B981' }} />}
           <span>{relativeTime(new Date(lastFetch).toISOString())}</span>
         </div>
       </div>
-      <div className="flex flex-col gap-1 rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div
+        className="rounded-xl overflow-hidden bg-white"
+        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      >
         {events.length === 0 && (
-          <div className="p-6 text-center text-sm" style={{ color: 'var(--c-text-4)' }}>Sin actividad reciente.</div>
+          <div className="p-6 text-center text-[13px]" style={{ color: '#6B7280' }}>Sin actividad reciente.</div>
         )}
         {events.map((e, i) => {
           const Icon  = KIND_ICON[e.kind] ?? Circle;
-          const color = KIND_COLOR[e.kind] ?? '#9ca3af';
+          const color = KIND_COLOR[e.kind] ?? '#9CA3AF';
           return (
             <div
               key={e.id}
-              className="flex items-start gap-3 px-4 py-2.5"
-              style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.05)' }}
+              className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
+              style={{ borderTop: i === 0 ? 'none' : '1px solid #F3F4F6' }}
             >
               <div style={{ color, marginTop: 2, flexShrink: 0 }}>
                 <Icon size={13} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{e.actor}</span>
-                  <span className="text-xs" style={{ color: 'var(--c-text-4)', flexShrink: 0 }}>{relativeTime(e.ts)}</span>
+                  <span className="text-[13px] font-medium" style={{ color: '#111827' }}>{e.actor}</span>
+                  <span className="text-[12px] tabular-nums" style={{ color: '#9CA3AF', flexShrink: 0 }}>{relativeTime(e.ts)}</span>
                 </div>
-                <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>{e.message}</p>
+                <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>{e.message}</p>
               </div>
             </div>
           );

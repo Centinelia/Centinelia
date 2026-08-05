@@ -23,40 +23,37 @@ export default async function FacturacionPage({ searchParams }: Props) {
   const tab: TabKey = rawTab === 'contratos' || rawTab === 'facturas' ? rawTab : 'stripe';
 
   return (
-    <div className="min-h-full">
-      <div className="px-4 md:px-6 pt-4 md:pt-6">
-        <div className="mb-4">
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--c-text)' }}>Facturación</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-            Suscripciones Stripe, contratos anuales prepagados y facturas emitidas.
-          </p>
-        </div>
-
-        <nav
-          className="flex items-center gap-1 border-b"
-          style={{ borderColor: 'var(--c-border)' }}
-        >
-          {TABS.map(t => {
-            const active = tab === t.key;
-            return (
-              <Link
-                key={t.key}
-                href={`/admin/facturacion?tab=${t.key}`}
-                className="px-3 py-2 text-sm rounded-t-lg transition-colors"
-                style={{
-                  color:       active ? '#9B6DFF' : 'var(--c-text-2)',
-                  background:  active ? 'rgba(108,59,255,0.10)' : 'transparent',
-                  fontWeight:  active ? 600 : 400,
-                  borderBottom: active ? '2px solid #6C3BFF' : '2px solid transparent',
-                  marginBottom: '-1px',
-                }}
-              >
-                {t.label}
-              </Link>
-            );
-          })}
-        </nav>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Facturación</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          Suscripciones Stripe, contratos anuales prepagados y facturas emitidas.
+        </p>
       </div>
+
+      <nav
+        className="flex items-center gap-1"
+        style={{ borderBottom: '1px solid #E5E7EB' }}
+      >
+        {TABS.map(t => {
+          const active = tab === t.key;
+          return (
+            <Link
+              key={t.key}
+              href={`/admin/facturacion?tab=${t.key}`}
+              className="px-3 py-2 text-[13px] transition-colors"
+              style={{
+                color:        active ? '#6C3BFF' : '#6B7280',
+                fontWeight:   active ? 600 : 500,
+                borderBottom: active ? '2px solid #6C3BFF' : '2px solid transparent',
+                marginBottom: '-1px',
+              }}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </nav>
 
       {tab === 'stripe'    && <StripeTab />}
       {tab === 'contratos' && <AnnualContractsTab />}
@@ -65,7 +62,7 @@ export default async function FacturacionPage({ searchParams }: Props) {
   );
 }
 
-// Server component wrapper for the Stripe tab — carries the original BillingClient
+// Server component wrapper for the Stripe tab, carries the original BillingClient
 async function StripeTab() {
   const supabase = createAdminClient();
 
