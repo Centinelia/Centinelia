@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Inbox, Check, X, FileText, RefreshCw, Search, AlertTriangle, MessageSquare, RotateCcw, PlugZap, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
+import { SectionHeader, EmptyState } from '@/components/portal-ui';
 import { toast } from 'sonner';
 import InfoTooltip from '@/components/InfoTooltip';
 import type { InboxAgent } from './inbox/categories';
@@ -618,19 +619,18 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Inbox size={16} style={{ color: '#6C3BFF' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Bandeja de entrada</span>
-          <InfoTooltip text={`¿Cuántas tareas consume?
-1 tarea por cada correo entrante que el empleado analiza y clasifica.
-
-No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`} />
-        </div>
-        <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
-          <RefreshCw size={12} />
-        </button>
-      </div>
+      <SectionHeader
+        as="h2"
+        title="Bandeja de entrada"
+        right={
+          <div className="flex items-center gap-2">
+            <InfoTooltip text={`¿Cuántas tareas consume?\n1 tarea por cada correo entrante que el empleado analiza y clasifica.\n\nNo consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`} />
+            <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
+              <RefreshCw size={12} />
+            </button>
+          </div>
+        }
+      />
 
       {/* Banner: integraciones OAuth expiradas.
           Solo afecta la ingesta entrante — el envío de aprobados sigue OK
@@ -762,17 +762,19 @@ No consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, re
 
       {/* Ops inbox items */}
       {filteredItems.length === 0 && humanRequests.length === 0 && activeTab === 'pendientes' && (
-        <div className="text-center py-12" style={{ color: 'var(--c-text-4)' }}>
-          <Inbox size={28} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Sin elementos pendientes de revisión.</p>
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title="Sin elementos pendientes de revisión"
+          size="md"
+        />
       )}
 
       {filteredItems.length === 0 && activeTab !== 'pendientes' && (
-        <div className="text-center py-12" style={{ color: 'var(--c-text-4)' }}>
-          <Inbox size={28} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Sin elementos.</p>
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title="Sin elementos"
+          size="md"
+        />
       )}
 
       {applyPartition ? (

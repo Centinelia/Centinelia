@@ -29,7 +29,7 @@ export default async function BandejaPage({ params }: Props) {
   }
 
   return (
-    <div id="of-bandeja" className="flex flex-col gap-4 p-4 md:p-6">
+    <div id="of-bandeja">
       {commsRouting !== null && (
         <CommsRoutingEditor token={token} initial={commsRouting} />
       )}

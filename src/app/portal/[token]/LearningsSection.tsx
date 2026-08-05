@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Check, X, Clock, ChevronDown, BookOpen, ShieldCheck } from 'lucide-react';
+import { Card, EmptyState } from '@/components/portal-ui';
 
 interface AgentRef {
   agent_name:    string | null;
@@ -175,12 +176,14 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
       )}
 
       {!loading && pending.length === 0 && approved.length === 0 && (
-        <div className="rounded-xl p-5 text-center" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
-            Los aprendizajes aparecen aquí cuando el equipo termina llamadas.
-            <br />Puedes aprobarlos para que tu empleado los incorpore a su conocimiento.
-          </p>
-        </div>
+        <Card padding="sm">
+          <EmptyState
+            icon={Brain}
+            title="Sin aprendizajes aún"
+            description="Los aprendizajes aparecen aquí cuando el equipo termina llamadas. Puedes aprobarlos para que tu empleado los incorpore a su conocimiento."
+            size="sm"
+          />
+        </Card>
       )}
 
       {/* Pending — grouped by agent */}

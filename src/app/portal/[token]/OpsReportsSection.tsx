@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send, SearchX } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { EmptyState } from '@/components/ui/empty-state';
+import { SectionHeader, EmptyState } from '@/components/portal-ui';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import CheckinsSection, { type CheckinsSectionAgent } from './reportes/CheckinsSection';
 
@@ -304,25 +304,27 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart2 size={16} style={{ color: acColor }} />
-            <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Reportes automáticos</span>
-            <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."} />
-            <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: 'var(--c-text-4)' }}>
-              1 tarea / reporte
-            </span>
-          </div>
-          {!creating && (
-            <button onClick={() => setCreating(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-              style={{ background: `${acColor}15`, border: `1px solid ${acColor}35`, color: acColor }}>
-              <Plus size={12} />Nuevo reporte
-            </button>
-          )}
-        </div>
+        <SectionHeader
+          as="h2"
+          title="Reportes automáticos"
+          right={
+            <div className="flex items-center gap-2">
+              <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."} />
+              <span
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: 'var(--c-text-4)' }}>
+                1 tarea / reporte
+              </span>
+              {!creating && (
+                <button onClick={() => setCreating(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                  style={{ background: `${acColor}15`, border: `1px solid ${acColor}35`, color: acColor }}>
+                  <Plus size={12} />Nuevo reporte
+                </button>
+              )}
+            </div>
+          }
+        />
 
         {/* Create form */}
         {creating && (
