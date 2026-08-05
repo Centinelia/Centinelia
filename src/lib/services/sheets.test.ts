@@ -171,7 +171,11 @@ describe('appendRow', () => {
 
     const res = await appendRow('m1', { Nombre: 'X', InexistentField: 'y' });
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toBe('headers_mismatch');
+    if (!res.ok) {
+      expect(res.reason).toBe('headers_mismatch');
+      expect(res.detail).toContain('InexistentField');
+      expect(res.detail).toContain('Nombre');
+    }
   });
 
   it('returns mapping_not_found when mapping missing', async () => {
