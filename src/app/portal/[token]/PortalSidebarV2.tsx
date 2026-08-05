@@ -59,24 +59,6 @@ const TRANSITION = 'transition-colors duration-150 ease-out motion-reduce:transi
 // ─── Active-state helpers ───────────────────────────────────────────────────────
 
 /**
- * Resolve the full href for a group header.
- * Priority: directHref > tabParam > undefined
- */
-function groupHref(group: NavGroup, _token: string): string | undefined {
-  if (group.directHref) return group.directHref;
-  if (group.tabParam) {
-    // directHref is undefined, reconstruct from token embedded in sub-items or from directHref
-    // We have to reach back to the token; it's embedded in all hrefs.
-    // Extract token from directHref of any sibling, or use the root portal path.
-    // Since token is not directly stored on NavGroup, we read it from any item href.
-    // Fallback: the tabParam groups always use /portal/[token]?tab=X
-    // Token is available from other groups' directHref — but simpler: resolve at render time.
-    return undefined; // will be computed at render
-  }
-  return undefined;
-}
-
-/**
  * Check whether a single href (possibly with query) is currently active.
  */
 function isHrefActive(href: string, path: string, search: string): boolean {
