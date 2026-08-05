@@ -24,7 +24,7 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
         className="rounded-lg p-4 text-sm"
         style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}
       >
-        Este agente no tiene meerkat_role_id asignado. No aplica versioning.
+        Este empleado no tiene un rol asignado. No aplica versionado.
       </div>
     );
   }
@@ -58,11 +58,11 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
     >
       <div className="flex items-center gap-2 mb-2">
         <GitBranch className="w-4 h-4" style={{ color: 'var(--c-text-3)' }} />
-        <h3 className="font-medium" style={{ color: 'var(--c-text)' }}>Versión del meerkat</h3>
+        <h3 className="font-medium" style={{ color: 'var(--c-text)' }}>Versión del empleado</h3>
       </div>
 
       <div className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
-        Meerkat: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId}</span>
+        Rol: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
         {' · '}Versión efectiva: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{effectiveVersion}</span>
         {pin != null
           ? (
