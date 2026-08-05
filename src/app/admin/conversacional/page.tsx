@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Check, X, Zap, ChevronDown, ChevronUp, Trash2, Pencil, Sparkles } from 'lucide-react';
 
-type Status = 'pending' | 'active' | 'rejected';
+type Status = 'pending' | 'active' | 'rejected' | 'archived';
 
 const DIMENSION_LABELS: Record<string, string> = {
   fluidez:     'Fluidez',
@@ -49,28 +50,70 @@ export default function ConversacionalPage() {
   useEffect(() => { load(tab); }, [tab]);
 
   const patch = async (id: string, update: { status?: string; body?: string }) => {
-    await fetch('/api/admin/conversacional', {
-      method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id, ...update }),
-    });
-    load(tab);
+    try {
+      const res = await fetch('/api/admin/conversacional', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id, ...update }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Error ${res.status}: ${err.error ?? 'sin detalle'}`);
+        return;
+      }
+      if (update.status === 'active')   toast.success('Aprendizaje activado');
+      if (update.status === 'rejected') toast.success('Aprendizaje rechazado');
+      if (update.body)                  toast.success('Cambios guardados');
+      load(tab);
+    } catch (e) {
+      toast.error(`Fallo de red: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const remove = async (id: string) => {
-    await fetch('/api/admin/conversacional', {
-      method:  'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ id }),
-    });
-    load(tab);
+    try {
+      const res = await fetch('/api/admin/conversacional', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Error ${res.status}: ${err.error ?? 'sin detalle'}`);
+        return;
+      }
+      toast.success('Aprendizaje eliminado');
+      load(tab);
+    } catch (e) {
+      toast.error(`Fallo de red: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const tabs: { key: Status; label: string }[] = [
     { key: 'pending',  label: 'Pendientes' },
     { key: 'active',   label: 'Activos' },
     { key: 'rejected', label: 'Rechazados' },
+    { key: 'archived', label: 'Archivados' },
   ];
+
+  const purgeContaminated = async (apply: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/conversacional?action=purge-contaminated${apply ? '&apply=1' : ''}`, { method: 'POST' });
+      const d   = await res.json();
+      if (!res.ok) { toast.error(`Error ${res.status}: ${d.error ?? ''}`); return; }
+      if (apply) {
+        toast.success(`Purga aplicada: ${d.found} archivado${d.found !== 1 ? 's' : ''}`);
+        load(tab);
+      } else {
+        toast(`Dry-run: ${d.found} contaminado${d.found !== 1 ? 's' : ''} detectado${d.found !== 1 ? 's' : ''}. Confirma para archivar.`, { duration: 10000 });
+        if (d.found > 0 && confirm(`Se detectaron ${d.found} aprendizajes contaminados con contexto de negocio. ¿Archivar todos?`)) {
+          purgeContaminated(true);
+        }
+      }
+    } catch (e) {
+      toast.error(`Fallo de red: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">
@@ -83,22 +126,32 @@ export default function ConversacionalPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="inline-flex gap-1 p-1 rounded-xl" style={{ background: '#F3F4F6', border: '1px solid #E5E7EB' }}>
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all"
-            style={{
-              background: tab === t.key ? '#FFFFFF' : 'transparent',
-              color:      tab === t.key ? '#111827' : '#6B7280',
-              boxShadow:  tab === t.key ? '0 1px 2px 0 rgb(0 0 0 / 0.05)' : 'none',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* Tabs */}
+        <div className="inline-flex gap-1 p-1 rounded-xl" style={{ background: '#F3F4F6', border: '1px solid #E5E7EB' }}>
+          {tabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{
+                background: tab === t.key ? '#FFFFFF' : 'transparent',
+                color:      tab === t.key ? '#111827' : '#6B7280',
+                boxShadow:  tab === t.key ? '0 1px 2px 0 rgb(0 0 0 / 0.05)' : 'none',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => purgeContaminated(false)}
+          className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors"
+          style={{ background: '#FFFFFF', border: '1px solid #FDE68A', color: '#B45309' }}
+          title="Detecta y archiva aprendizajes con contexto de negocio (montos, industrias, nombres propios)"
+        >
+          Purgar contaminados
+        </button>
       </div>
 
       {loading ? (
@@ -233,7 +286,7 @@ export default function ConversacionalPage() {
                             <ChevronDown size={14} />
                           </button>
                         )}
-                        {tab === 'rejected' && (
+                        {(tab === 'rejected' || tab === 'archived') && (
                           <button
                             onClick={() => patch(item.id, { status: 'active' })}
                             className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"

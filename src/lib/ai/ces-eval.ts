@@ -3,6 +3,46 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const anthropic = new Anthropic();
 
+// Términos de dominio que NO deberían aparecer en un aprendizaje global de conversación.
+// Si la mejora los menciona, es porque el modelo escapó del prompt y contaminó con contexto de negocio.
+// Lista deliberadamente conservadora: cualquier match => rechazo.
+const BUSINESS_DOMAIN_TOKENS = [
+  // Trámites/gobierno
+  'anuencia', 'licencia', 'permiso', 'tramite', 'trámite', 'expediente', 'folio',
+  // Industrias comunes
+  'alcohol', 'bebida', 'licor', 'cerveza', 'vino',
+  'dental', 'clinic', 'clínic', 'medic', 'consulta médic', 'paciente',
+  'ferreter', 'restaurant', 'menú', 'menu', 'plato', 'reservación',
+  'inmobiliar', 'propiedad', 'renta', 'departamento', 'casa',
+  'contabil', 'fiscal', 'factura', 'impuesto', 'contribuyente',
+  'construc', 'obra', 'presupuesto', 'cotización', 'cotizacion',
+  // Comercio
+  'producto', 'catálogo', 'catalogo', 'inventario', 'sku', 'pedido',
+  'entrega', 'envío', 'envio', 'paquetería', 'paqueteria',
+  // Dinero/transacciones específicas
+  'mxn', 'usd', 'peso', 'dólar', 'dolar', 'tarjeta', 'transferencia', 'oxxo',
+  // Legal
+  'contrato', 'cláusula', 'clausula', 'demanda', 'notario',
+];
+
+// Detecta si una mejora conversacional está contaminada con contexto de negocio.
+// Reglas: si contiene algún token de dominio, o menciona montos con símbolos ($, %, cantidad numérica),
+// o nombres propios (2+ mayúsculas seguidas fuera del inicio), es contaminada.
+export function looksLikeBusinessSpecific(mejora: string): boolean {
+  const low = mejora.toLowerCase();
+  for (const t of BUSINESS_DOMAIN_TOKENS) {
+    if (low.includes(t)) return true;
+  }
+  // Monto o porcentaje explícito
+  if (/\$\s?\d/.test(mejora)) return true;
+  if (/\d+\s?(pesos|mxn|usd|dólares|dolares|%)/i.test(mejora)) return true;
+  // Nombres propios: 2+ palabras capitalizadas seguidas en medio de la oración
+  // (excluye la primera palabra de la oración)
+  const midSentenceCaps = mejora.slice(1).match(/(?:^|\s)([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+  if (midSentenceCaps) return true;
+  return false;
+}
+
 const DIMENSIONS = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'] as const;
 type Dimension = typeof DIMENSIONS[number];
 
@@ -47,13 +87,33 @@ Evalúa del 1 al 5 cada dimensión con UNA observación específica con evidenci
 1=Muy deficiente  2=Deficiente  3=Aceptable  4=Bueno  5=Excelente
 
 Cuando identifiques una mejora (score ≤ 2), escríbela SIEMPRE en formato condicional:
-"Cuando [señal específica del cliente observada en esta llamada], [acción concreta en primera persona]"
-El CUANDO debe ser lo suficientemente específico para activarse solo en esa situación, no como regla general.
+"Cuando [señal CONVERSACIONAL del cliente], [acción CONVERSACIONAL en primera persona]"
+
+REGLA CRÍTICA: la mejora se guarda en un catálogo GLOBAL que se inyecta a TODOS los empleados de la plataforma, sin importar el negocio. Debe ser un patrón conversacional puro que aplique a cualquier industria.
+
+PROHIBIDO en la mejora:
+- Referencias al negocio, producto, servicio, industria o transacción específica.
+- Nombres propios (clientes, empresas, ciudades, personas).
+- Montos, fechas, folios, políticas o procesos específicos.
+- Términos de dominio (anuencias, alcohol, dental, ferretería, contabilidad, etc.).
+- Cualquier cosa que sea aprendizaje del NEGOCIO del cliente, no de conversación humana.
+
+Si la mejora que se te ocurre solo tiene sentido para este negocio en particular, escribe null. NO fuerces una mejora contaminada.
+
+Ejemplos VÁLIDOS (conversacional puro):
+- "Cuando el cliente responde con monosílabo, invito a expandir con una pregunta abierta breve."
+- "Cuando el cliente suspira o baja el volumen, valido brevemente antes de continuar."
+- "Cuando repito una idea, la reformulo con otra estructura en vez de con las mismas palabras."
+
+Ejemplos INVÁLIDOS (contaminados con negocio, NO generar):
+- "Cuando el cliente pregunta por anuencias de alcohol, explico el proceso paso a paso."
+- "Cuando el cliente menciona su clínica dental, ofrezco el plan Empresarial."
+- "Cuando pregunte por el pago de la anuencia, confirmo el monto y método."
 
 Clasifícala:
-- "cce": la situación reveló violación a un estándar concreto (dos preguntas abiertas, frase prohibida, agradeció cada dato, repitió palabra, etc.)
-- "hcp": la situación reveló que faltó un patrón humano natural (no hizo eco, omitió el "porque", no suavizó mala noticia, no usó lenguaje colaborativo, etc.)
-- "mdp": es una microdecisión altamente situacional — cómo responder a una señal específica del cliente (suspiró, cambió de tema abruptamente, respondió con monosílabos, se rió, vaciló, aceleró el ritmo, etc.)
+- "cce": violación a un estándar conversacional concreto (dos preguntas abiertas seguidas, frase prohibida, agradeció cada dato, repitió palabra, etc.)
+- "hcp": faltó un patrón humano natural (no hizo eco, omitió el "porque", no suavizó mala noticia, no usó lenguaje colaborativo, etc.)
+- "mdp": microdecisión conversacional situacional — cómo responder a una señal genérica del cliente (suspiró, monosílabos, se rió, vaciló, aceleró, etc.)
 
 Responde ÚNICAMENTE con JSON válido:
 {
@@ -121,6 +181,13 @@ Responde ÚNICAMENTE con JSON válido:
     .eq('status', 'pending');
 
   if ((count ?? 0) >= 100) return;
+
+  // Guardrail: rechazar mejoras contaminadas con dominio del negocio.
+  // El catálogo es GLOBAL, no puede tener referencias específicas.
+  if (looksLikeBusinessSpecific(mejora)) {
+    console.log('[ces-eval] mejora rechazada por contaminación de dominio:', mejora.slice(0, 120));
+    return;
+  }
 
   // Dedup contra approved + rejected + pending: si ya vimos este learning
   // (aprobado, rechazado o pendiente), no lo re-insertamos. Sin esto, los
