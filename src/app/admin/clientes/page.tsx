@@ -28,6 +28,7 @@ type ClientGroup = {
   client_name: string;
   client_email: string | null;
   portal_email: string | null;
+  business_name: string | null;
   serial: string | null;
   agents: AgentRow[];
   acct_minutes_used: number | null;
@@ -69,6 +70,7 @@ export default async function ClientesPage({ searchParams }: Props) {
         client_name:           agent.client_name,
         client_email:          agent.client_email ?? null,
         portal_email:          agent.portal_email ?? null,
+        business_name:         agent.business_name ?? null,
         serial:                null,
         agents:                [],
         acct_minutes_used:     null,
