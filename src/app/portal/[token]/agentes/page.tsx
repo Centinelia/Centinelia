@@ -840,18 +840,6 @@ export default async function AgentesPage({ params }: Props) {
 
       </PageSection>
 
-      {/* Ranking del equipo */}
-      <PageSection
-        heading={
-          <SectionHeader
-            eyebrow="RENDIMIENTO"
-            title="Ranking del equipo"
-          />
-        }
-      >
-        <AgentRankingSection token={token} />
-      </PageSection>
-
     </PageContainer>
   );
 

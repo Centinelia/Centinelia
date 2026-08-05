@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap, ShieldCheck } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
@@ -1265,11 +1265,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               </div>
 
-              {/* Two-column layout from KPIs down */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
-
-                {/* ── Main column ── */}
-                <div className="flex flex-col gap-5">
+              {/* Single-column layout (right col removed: MonthReport moved to /cuenta, Contexto removed) */}
+              <div className="flex flex-col gap-5">
 
                   {/* KPI section — Tier 1 (3 primary) + Tier 2 (4 secondary chips) */}
                   <PageSection
@@ -1309,14 +1306,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       />
                     </GridStretch>
 
-                    {/* Tier 2 — 4 secondary stat chips */}
+                    {/* Tier 2 — 3 secondary stat chips (Autonomía removed: redundant with "Sin intervención" KPI) */}
                     <div className="flex flex-wrap gap-2 pt-1">
-                      <StatChip
-                        icon={ShieldCheck}
-                        label="Autonomía"
-                        value={calls.length > 0 ? `${autonomousRate}%` : '—'}
-                        tone="success"
-                      />
                       <StatChip
                         icon={Phone}
                         label="Tasa contestada"
@@ -1398,128 +1389,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </Card>
                   </PageSection>
 
-                  {/* Reporte mensual — mobile only */}
-                  <div className="lg:hidden">
-                    <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
-                      <Card padding="md">
-                        <div className="flex items-center gap-1.5 mb-4">
-                          <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
-                        </div>
-                        <MonthReportPicker token={token} />
-                      </Card>
-                    </PageSection>
-                  </div>
-
-                  {/* Contexto de empleados — mobile */}
-                  <div className="lg:hidden">
-                    <PageSection heading={<SectionHeader eyebrow="CONTEXTO" title="Contexto de empleados" as="h2" />}>
-                      <Card padding="md">
-                        <div className="flex items-center gap-1.5 mb-4">
-                          <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria." />
-                        </div>
-                        {agentContextCards.some(a => a.tokens > 0) ? (
-                          <div className="flex flex-col gap-3">
-                            {agentContextCards.map((a, i) => {
-                              const ctx   = Math.min(a.tokens, 32_000);
-                              const pct   = Math.round((ctx / 32_000) * 100);
-                              const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                              return (
-                                <div key={i} className="flex flex-col gap-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                                      {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
-                                    </div>
-                                    <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                      {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
-                                    </span>
-                                  </div>
-                                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center text-center gap-2 py-2">
-                            <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                              Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
-                            </p>
-                            <Link href={`/portal/${token}/empleados`}
-                              className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
-                              style={{ color: '#9B6DFF' }}>
-                              Configurar en Empleados →
-                            </Link>
-                          </div>
-                        )}
-                      </Card>
-                    </PageSection>
-                  </div>
-
-                </div>{/* end main column */}
-
-                {/* ── Right column (desktop only) ── */}
-                <div className="hidden lg:flex flex-col gap-4">
-
-                  {/* Reporte mensual — desktop sidebar */}
-                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
-                    <Card id="reporte-mensual" padding="md">
-                      <div className="flex items-center gap-1.5 mb-4">
-                        <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
-                      </div>
-                      <MonthReportPicker token={token} />
-                    </Card>
-                  </PageSection>
-
-                  {/* Contexto de empleados — desktop */}
-                  <PageSection heading={<SectionHeader eyebrow="CONTEXTO" title="Contexto de empleados" as="h2" />}>
-                    <Card id="contexto" padding="md">
-                      <div className="flex items-center gap-1.5 mb-4">
-                        <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (manual de la organización + instrucciones del puesto + aprendizajes). A más memoria, más informado está el empleado." />
-                      </div>
-                      {agentContextCards.some(a => a.tokens > 0) ? (
-                        <div className="flex flex-col gap-3">
-                          {agentContextCards.map((a, i) => {
-                            const ctx   = Math.min(a.tokens, 32_000);
-                            const pct   = Math.round((ctx / 32_000) * 100);
-                            const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                            return (
-                              <div key={i} className="flex flex-col gap-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                                    {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
-                                  </div>
-                                  <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                    {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
-                                  </span>
-                                </div>
-                                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-center gap-2 py-1">
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                            Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
-                          </p>
-                          <Link href={`/portal/${token}/empleados`}
-                            className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
-                            style={{ color: '#9B6DFF' }}>
-                            Configurar en Empleados →
-                          </Link>
-                        </div>
-                      )}
-                    </Card>
-                  </PageSection>
-
-                </div>{/* end right column */}
-
-              </div>{/* end two-column grid */}
+              </div>{/* end single-column layout */}
             </div>
           </PageContainer>
         )}
@@ -1726,6 +1596,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
                     <Card id="contratos-internos" padding="md">
                       <ContractTrackerSection token={token} />
+                    </Card>
+                  </PageSection>
+
+                  {/* Reporte mensual — moved from /inicio right column */}
+                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
+                    <Card id="reporte-mensual" padding="md">
+                      <div className="flex items-center gap-1.5 mb-4">
+                        <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                      </div>
+                      <MonthReportPicker token={token} />
                     </Card>
                   </PageSection>
                 </div>

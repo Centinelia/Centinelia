@@ -43,6 +43,7 @@ import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
 import SheetsMappingsSection from './SheetsMappingsSection';
 import ConfigurarTabs from './ConfigurarTabs';
+import OutboundToggles from '../OutboundToggles';
 import { Card, SectionHeader } from '@/components/portal-ui';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
@@ -83,6 +84,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const hasVoice       = !isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom');
   const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
   const teamNumbers    = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
+  const initOutbound   = !!(features.outbound_calls);
+  const initMissedCall = !!((agent as any).missed_call_recovery);
+  const showOutbound   = initOutbound || agent.plan === 'pro';
 
   const { data: emailIntegration } = await supabase
     .from('email_integrations')
@@ -664,6 +668,25 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <AutomationsSection token={token} agentId={agent.id} roleColor={roleColor} />
                 </Card>
               </div>
+
+              {/* Llamadas salientes + Missed call recovery (moved from /llamadas tabs) */}
+              {showOutbound && (
+                <div id="llamadas-salientes" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Llamadas salientes"
+                      className="mb-4"
+                      right={<InfoTooltip text="Activa o desactiva las llamadas salientes y el recovery de llamadas perdidas para este empleado." />}
+                    />
+                    <OutboundToggles
+                      token={token}
+                      initOutbound={initOutbound}
+                      initMissedCallRecovery={initMissedCall}
+                    />
+                  </Card>
+                </div>
+              )}
 
             </div>
 

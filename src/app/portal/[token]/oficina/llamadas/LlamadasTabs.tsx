@@ -9,9 +9,9 @@ import type { VoiceCall } from '@/types/agent';
 import type { LlamadasFiltro } from './page';
 import CallsSearch      from '../../CallsSearch';
 import DownloadCallsCSV from '../../DownloadCallsCSV';
-import LeadsTabsSection from '../../llamadas/entrantes/LeadsTabsSection';
-import OutboundToggles  from '../../OutboundToggles';
 import OutboundSection  from '../../OutboundSection';
+// LeadsTabsSection removed (all-time, no period filter) — data reflected in /inicio KPIs
+// OutboundToggles moved to /configurar > Horarios y automatizaciones
 
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
@@ -148,35 +148,15 @@ export default function LlamadasTabs({
             )}
           </Card>
 
-          {(showLeads || showOrders || showAppts) && (
-            <div className="flex flex-col gap-3">
-              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Capturas desde el inicio</p>
-              <LeadsTabsSection
-                token={token}
-                isPro={isPro}
-                leads={leads}
-                orders={orders}
-                appts={appts}
-                showLeads={showLeads}
-                showOrders={showOrders}
-                showAppts={showAppts}
-                businessName={businessName}
-              />
-            </div>
-          )}
+          {/* LeadsTabsSection removed: all-time data, doesn't respect period filter.
+              Leads/Citas totals visible in /inicio KPIs. */}
         </>
       )}
 
       {/* Salientes */}
       {filtro === 'salientes' && showOutbound && (
         <>
-          <div id="llamadas-sal">
-            <OutboundToggles
-              token={token}
-              initOutbound={initOutbound}
-              initMissedCallRecovery={initMissedCall}
-            />
-          </div>
+          {/* OutboundToggles moved to /configurar > Horarios y automatizaciones */}
           {initOutbound && (
             <OutboundSection
               token={token}
@@ -186,19 +166,23 @@ export default function LlamadasTabs({
               initialTab="contactos"
             />
           )}
+          {!initOutbound && (
+            <Card padding="md">
+              <EmptyState
+                icon={PhoneOutgoing}
+                title="Llamadas salientes desactivadas"
+                description="Activa esta función desde Configurar tu empleado > Horarios y automatizaciones."
+                size="sm"
+              />
+            </Card>
+          )}
         </>
       )}
 
       {/* Campañas */}
       {filtro === 'campanas' && showOutbound && (
         <>
-          <div id="llamadas-sal">
-            <OutboundToggles
-              token={token}
-              initOutbound={initOutbound}
-              initMissedCallRecovery={initMissedCall}
-            />
-          </div>
+          {/* OutboundToggles moved to /configurar > Horarios y automatizaciones */}
           {initOutbound && (
             <OutboundSection
               token={token}
@@ -208,18 +192,29 @@ export default function LlamadasTabs({
               initialTab="campanas"
             />
           )}
+          {!initOutbound && (
+            <Card padding="md">
+              <EmptyState
+                icon={Megaphone}
+                title="Llamadas salientes desactivadas"
+                description="Activa esta función desde Configurar tu empleado > Horarios y automatizaciones."
+                size="sm"
+              />
+            </Card>
+          )}
         </>
       )}
 
       {/* Recovery */}
       {filtro === 'recovery' && initMissedCall && (
-        <div id="llamadas-sal">
-          <OutboundToggles
-            token={token}
-            initOutbound={initOutbound}
-            initMissedCallRecovery={initMissedCall}
+        <Card padding="md">
+          <EmptyState
+            icon={PhoneMissed}
+            title="Missed call recovery activo"
+            description="Configura esta función desde Configurar tu empleado > Horarios y automatizaciones."
+            size="sm"
           />
-        </div>
+        </Card>
       )}
 
     </div>

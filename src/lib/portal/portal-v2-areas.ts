@@ -64,12 +64,9 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'inicio',
     tabParam: 'inicio',
     items: [
-      { label: 'Resultados',          anchor: 'resumen' },
-      { label: 'Tu equipo hoy',       anchor: 'equipo-hoy' },
-      { label: 'Actividad reciente',  anchor: 'actividad' },
-      { label: 'Actividad horaria',   anchor: 'horas-pico' },
-      { label: 'Reporte mensual',     anchor: 'reporte-mensual' },
-      { label: 'Contexto del equipo', anchor: 'contexto' },
+      { label: 'Resultados',    anchor: 'resumen' },
+      { label: 'Tu equipo hoy', anchor: 'equipo-hoy' },
+      { label: 'Actividad',     anchor: 'actividad' },
     ],
   });
 
@@ -196,9 +193,10 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'cuenta',
     tabParam: 'cuenta',
     items: [
-      { label: 'Consumo',   anchor: 'uso-del-mes' },
-      { label: 'Saldo',     anchor: 'comprar' },
-      { label: 'Historial', anchor: 'historial' },
+      { label: 'Consumo',          anchor: 'uso-del-mes' },
+      { label: 'Saldo',            anchor: 'comprar' },
+      { label: 'Historial',        anchor: 'historial' },
+      { label: 'Reporte mensual',  anchor: 'reporte-mensual' },
     ],
   });
 
