@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap, ShieldCheck } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours } from '@/types/agent';
 // Phone, CheckCircle, XCircle still used in Agentes tab and alerts
@@ -40,7 +40,7 @@ import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
 import PortalShell            from './PortalShell';
 import { isPortalV2Enabled }  from '@/lib/portal/portal-v2-flag';
-import { PageContainer, PageSection, GridStretch, SectionHeader, Card } from '@/components/portal-ui';
+import { PageContainer, PageSection, GridStretch, SectionHeader, Card, StatChip } from '@/components/portal-ui';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
@@ -419,6 +419,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const RESOLVED_OUTCOMES = new Set(['info_provided', 'lead_created', 'appointment_booked', 'order_taken', 'escalated_whatsapp', 'other']);
   const resolvedCount  = calls.filter(c => RESOLVED_OUTCOMES.has((c.outcome as string) ?? '')).length;
   const autonomousRate = calls.length > 0 ? Math.round((resolvedCount / calls.length) * 100) : 0;
+  const answeredCount  = calls.filter(c => (c.outcome as string) !== 'unanswered' && (c.outcome as string) !== 'missed').length;
+  const answeredRate   = calls.length > 0 ? Math.round((answeredCount / calls.length) * 100) : 0;
 
   const agentTimezone = ((agent as any).timezone as string | null) ?? 'America/Monterrey';
   const localHourStr  = new Date().toLocaleString('en-US', { timeZone: agentTimezone, hour: 'numeric', hour12: false });
@@ -1267,7 +1269,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Main column ── */}
                 <div className="flex flex-col gap-5">
 
-                  {/* KPI section */}
+                  {/* KPI section — Tier 1 (3 primary) + Tier 2 (4 secondary chips) */}
                   <PageSection
                     heading={
                       <SectionHeader
@@ -1277,24 +1279,61 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       />
                     }
                   >
-                    <GridStretch cols={{ base: 2, md: 4 }} gap={3}>
-                      <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}    value={String(calls.length)}   label="Conversaciones"   sub={`prom. ${avgDuration} min`}                                                                                   valueColor="#6C3BFF"  accentColor="#6C3BFF"  />
-                      <KpiCard icon={<CheckCircle size={16} color="#22c55e" />}  value={String(resolvedCount)}  label="Sin intervención" sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}                                                valueColor="#22c55e"  accentColor="#22c55e"  />
-                      {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
-                      {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
-                      {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
-                      {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
-                      {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
+                    {/* Tier 1 — 3 primary KPIs */}
+                    <GridStretch cols={{ base: 1, md: 3 }} gap={4}>
+                      <KpiCard
+                        icon={<PhoneCall size={16} color="#6C3BFF" />}
+                        value={String(calls.length)}
+                        label="Conversaciones"
+                        sub={`prom. ${avgDuration} min`}
+                        valueColor="#6C3BFF"
+                        accentColor="#6C3BFF"
+                      />
+                      <KpiCard
+                        icon={<CheckCircle size={16} color="#22c55e" />}
+                        value={String(resolvedCount)}
+                        label="Sin intervención"
+                        sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}
+                        valueColor="#22c55e"
+                        accentColor="#22c55e"
+                      />
+                      <KpiCard
+                        icon={<Zap size={16} color="#06b6d4" />}
+                        value={showOps ? String(aiOpsUsed) : '—'}
+                        label="Tareas"
+                        sub={showOps ? `de ${aiOpsLimit} disponibles` : undefined}
+                        valueColor="#06b6d4"
+                        accentColor="#06b6d4"
+                      />
                     </GridStretch>
 
-                    {/* Autonomous resolution rate */}
-                    {calls.length > 0 && (
-                      <p className="text-sm -mt-1" style={{ color: 'var(--c-text-2)' }}>
-                        Tu oficina resolvió el{' '}
-                        <span className="font-semibold" style={{ color: '#22c55e' }}>{autonomousRate}%</span>
-                        {' '}de las solicitudes sin intervención humana.
-                      </p>
-                    )}
+                    {/* Tier 2 — 4 secondary stat chips */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <StatChip
+                        icon={ShieldCheck}
+                        label="Autonomía"
+                        value={calls.length > 0 ? `${autonomousRate}%` : '—'}
+                        tone="success"
+                      />
+                      <StatChip
+                        icon={Phone}
+                        label="Tasa contestada"
+                        value={calls.length > 0 ? `${answeredRate}%` : '—'}
+                        tone="accent"
+                      />
+                      <StatChip
+                        icon={Users}
+                        label="Leads"
+                        value={showLeads ? String(leads.length) : '—'}
+                        tone="neutral"
+                      />
+                      <StatChip
+                        icon={CalendarDays}
+                        label="Citas"
+                        value={showAppts ? String(appts.length) : '—'}
+                        tone="neutral"
+                      />
+                    </div>
                   </PageSection>
 
                   {/* Brief del día — solo cuando hay Nox activo en el equipo */}
