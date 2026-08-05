@@ -26,6 +26,7 @@
     "docx": "^9.7.1",
     "docxtemplater": "^3.69.3",
     "exceljs": "^4.4.0",
+    "googleapis": "^174.0.0",
     "image-size": "^2.0.2",
     "lucide-react": "^1.21.0",
     "mammoth": "^1.12.0",

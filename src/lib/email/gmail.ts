@@ -8,6 +8,7 @@ export const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/contacts',
   'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/spreadsheets',
 ].join(' ');
 
 export function gmailAuthUrl(state: string): string {
