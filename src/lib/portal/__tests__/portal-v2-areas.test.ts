@@ -13,11 +13,7 @@ describe('buildPortalAreas', () => {
   it('owner sin ops ni outbound ve Escritorio + Historial(llamadas) + Tu equipo + Administracion (sin Bandeja)', () => {
     const areas = buildPortalAreas(baseInput);
     const ids = areas.map(a => a.id);
-    // SPEC NOTE: Brief expected ['escritorio', 'historial', 'equipo', 'administracion']
-    // but Task 2 implementation shows: owners (modules=undefined) match ALL modules via hasModule()
-    // so bandeja appears because hasModule(input, 'bandeja') === true for owners
-    // Fix: test actual behavior (5 areas) OR restrict owner to skip bandeja explicitly
-    expect(ids).toEqual(['escritorio', 'bandeja', 'historial', 'equipo', 'administracion']);
+    expect(ids).toEqual(['escritorio', 'historial', 'equipo', 'administracion']);
   });
 
   it('owner con ops agent ve las 5 areas incluyendo Bandeja', () => {

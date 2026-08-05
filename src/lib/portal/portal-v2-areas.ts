@@ -41,8 +41,11 @@ export function buildPortalAreas(input: BuildAreasInput): Area[] {
     subItems: [],
   });
 
-  // 2. Bandeja (visible si hay ops agent o helpdesk)
-  if (input.hasOpsAgent || hasModule(input, 'bandeja') || hasModule(input, 'helpdesk')) {
+  // 2. Bandeja (ops-only: owner necesita hasOpsAgent; sub-user necesita modulo explicito)
+  const bandejaVisible = input.isOwner
+    ? input.hasOpsAgent
+    : (input.modules?.includes('bandeja') || input.modules?.includes('helpdesk')) ?? false;
+  if (bandejaVisible) {
     const bandejaSubs: SubItem[] = [];
     if (input.hasOpsAgent || hasModule(input, 'helpdesk')) {
       bandejaSubs.push({
