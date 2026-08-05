@@ -37,6 +37,10 @@ const nextConfig: NextConfig = {
   images: {
     deviceSizes: [640, 828, 1080, 1200, 1920, 2560, 3840],
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      // Logos y assets de negocios subidos al bucket public de Supabase Storage.
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+    ],
   },
   async redirects() {
     return [
