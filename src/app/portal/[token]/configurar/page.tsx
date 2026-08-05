@@ -43,6 +43,7 @@ import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
+import SheetsMappingsSection from './SheetsMappingsSection';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollMarginTop: '1.5rem' };
 
@@ -126,7 +127,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     // Silently fail if table/column doesn't exist yet
   }
 
-  const spamCheckEnabled = ((agent.features as Record<string, unknown>)?.check_spam_folder) === true;
+  const spamCheckEnabled     = ((agent.features as Record<string, unknown>)?.check_spam_folder) === true;
+  const syncLeadsToSheets    = !!(agent as any).sync_leads_to_sheets;
   const spamStats = {
     revisados: spamRevisados,
     rescatados: spamRescatados,
@@ -162,6 +164,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ...(!isCoordinator
       ? [{ id: 'equipo',     label: 'Números del equipo',     group: 'Operación'     }] : []),
     { id: 'correo',          label: 'Correo',                 group: 'Herramientas'  },
+    { id: 'sheets-del-negocio', label: 'Sheets del negocio', group: 'Herramientas'  },
     ...(isOwner && hasVoiceJornada
       ? [{ id: 'passphrase', label: 'Frase de verificación',  group: 'Seguridad'     }] : []),
     ...(!isCoordinator && isOwner
@@ -582,6 +585,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   </div>
                   <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
                 </div>
+              </div>
+            </div>
+
+            <div id="sheets-del-negocio" style={SCROLL_STYLE}>
+              <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                <SheetsMappingsSection
+                  token={token}
+                  agentId={agent.id}
+                  initialSyncLeads={syncLeadsToSheets}
+                />
               </div>
             </div>
 
