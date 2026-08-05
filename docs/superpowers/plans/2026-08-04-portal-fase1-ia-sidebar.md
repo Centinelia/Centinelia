@@ -465,52 +465,74 @@ git commit -m "test(portal): buildPortalAreas covers ops/owner/subuser combos"
 
 ---
 
-## Design Tokens — Slack-quality dark shell
+## Design Tokens — Shopify-style light sidebar + dark header (Opción 1)
 
-Antes de Tasks 4-5, referencia única de tokens visuales. Se usan como *arbitrary values* de Tailwind (sin extender `tailwind.config` en Fase 1 para mantener la migración chica; se promoverán a tokens semánticos en Fase 2).
+Antes de Tasks 4-5, referencia única de tokens visuales. Referencias: **Shopify Admin** (agrupación semántica, active state con acento sutil, iconografía cálida) + **Stripe Dashboard** (spacing generoso, tipografía cuidada, tabular numerals, calma visual) + header dark inspirado en Slack/Linear para preservar el gesto de marca Centinelia.
 
-**Colores (dark shell)**
+Se usan como *arbitrary values* de Tailwind (sin extender `tailwind.config` en Fase 1 para mantener la migración chica; se promoverán a tokens semánticos en Fase 2).
+
+**Colores — Header (dark, marca Centinelia)**
 | Token           | Valor          | Uso                                        |
 |-----------------|----------------|--------------------------------------------|
-| Shell BG        | `#1A0A3B`      | Header + sidebar (bg)                      |
-| Accent          | `#6C3BFF`      | Item activo, focus ring                    |
-| Text primary    | `#FAFBFF`      | Business name, item activo                 |
-| Text idle       | `rgb(255 255 255 / 0.72)` (`text-white/70`) | Nav items idle                             |
-| Text muted      | `rgb(255 255 255 / 0.55)` (`text-white/55`) | Eyebrow "Tu oficina digital", section labels |
-| Icon idle       | `rgb(255 255 255 / 0.60)` (`text-white/60`) | Íconos Lucide idle                         |
-| Hover BG        | `rgb(255 255 255 / 0.08)` (`hover:bg-white/[0.08]`) | Item hover                        |
-| Sub-active BG   | `rgb(255 255 255 / 0.12)` (`bg-white/[0.12]`)       | Sub-item activo (no usar accent aquí) |
-| Divider         | `rgb(255 255 255 / 0.08)` (`border-white/[0.08]`)   | Border-b del header                       |
-| Focus ring      | `#6C3BFF` con offset `#1A0A3B` | `focus-visible:ring-2` + `ring-offset-2`   |
+| Header BG       | `#1A0A3B`      | Bg del header (56px)                       |
+| Header text     | `#FAFBFF`      | Business name                              |
+| Header eyebrow  | `rgb(255 255 255 / 0.55)` | "Tu oficina digital"            |
+| Header divider  | `rgb(255 255 255 / 0.08)` | Border-b del header                    |
 
-Contraste verificado: `#FAFBFF` sobre `#1A0A3B` = ~17:1 (AAA); `rgba(255,255,255,0.72)` sobre `#1A0A3B` ≈ 12:1 (AAA); `#FAFBFF` sobre `#6C3BFF` ≈ 5.5:1 (AA para body).
+**Colores — Sidebar (light, Shopify/Stripe)**
+| Token           | Valor          | Uso                                        |
+|-----------------|----------------|--------------------------------------------|
+| Sidebar BG      | `#FAFAFB`      | Bg del sidebar (casi blanco, warm)         |
+| Sidebar divider | `#E8E8ED`      | Border-r del sidebar (`border-neutral-200/80`) |
+| Item text idle  | `#3F3D56`      | Nav items idle (`text-neutral-700`)        |
+| Item text active| `#6C3BFF`      | Nav item activo (accent Centinelia)        |
+| Icon idle       | `#6B7280`      | Íconos Lucide idle (`text-neutral-500`)    |
+| Icon active     | `#6C3BFF`      | Ícono en item activo                       |
+| Active BG       | `#F3EFFF`      | Bg del ítem activo (accent tint ~10%)      |
+| Active indicator| `#6C3BFF`      | Border-l 3px del ítem activo (signature Shopify) |
+| Hover BG        | `#F3F3F5`      | Bg del ítem en hover (`hover:bg-neutral-100`) |
+| Sub-item text idle | `#525163`   | Sub-item idle (`text-neutral-600`)         |
+| Sub-item active BG | `#F3EFFF`   | Sub activo (mismo tint, sin border-l)      |
+| Focus ring      | `#6C3BFF` con offset `#FAFAFB` | `focus-visible:ring-2` + `ring-offset-2` |
+| Status chip label | `#8B8A9A`    | "Empleado Centinelia" (`text-neutral-500`) |
+| Status chip value | `#1A0A3B`    | "300 / 500 min" (brand deep purple)        |
 
-**Spacing**
-| Elemento         | Clase                           |
+**Contraste verificado:**
+- `#3F3D56` sobre `#FAFAFB` ≈ 10.5:1 (AAA)
+- `#6C3BFF` sobre `#F3EFFF` ≈ 5.4:1 (AA body)
+- `#6C3BFF` sobre `#FAFAFB` ≈ 5.6:1 (AA body)
+- `#FAFBFF` sobre `#1A0A3B` ≈ 17:1 (AAA)
+
+**Spacing (más aireado que Slack — Stripe-tier)**
+| Elemento         | Clase                          |
 |------------------|--------------------------------|
 | Header height    | `h-14` (56px)                  |
-| Sidebar width    | `w-[260px]` (`lg:w-[260px]`)   |
-| Sidebar padding  | `px-2 py-4`                    |
-| Item height      | `h-9` (36px)                   |
+| Sidebar width    | `w-[260px]`                    |
+| Sidebar padding  | `px-3 py-4`                    |
+| Item height      | `h-11` (44px) — touch-friendly |
 | Item padding-x   | `px-3`                         |
-| Item gap ícono/texto | `gap-2.5` (10px)           |
-| Sub-item height  | `h-7` (28px)                   |
-| Sub-item indent  | `ml-3 pl-6` (alinea con label) |
+| Item gap ícono/texto | `gap-3` (12px)             |
+| Sub-item height  | `h-9` (36px)                   |
+| Sub-item indent  | `pl-11 pr-3` (alinea después del ícono) |
 | Border radius    | `rounded-md` (6px) en items    |
+| Active border-l  | `border-l-[3px] border-[#6C3BFF]` (signature Shopify) |
 
-**Typography**
+**Typography (Inter/System — Stripe-quality)**
 | Elemento              | Clase                                                       |
 |-----------------------|-------------------------------------------------------------|
 | Eyebrow (header)      | `text-[10px] font-semibold uppercase tracking-[0.14em]`     |
 | Business name (header)| `text-sm font-semibold leading-tight`                       |
-| Nav item              | `text-sm font-medium leading-none`                          |
+| Nav item              | `text-[14px] font-medium leading-none`                      |
+| Nav item active       | `text-[14px] font-semibold leading-none`                    |
 | Sub-item              | `text-[13px] font-normal leading-none`                      |
-| Section label (opc.)  | `text-[11px] font-semibold uppercase tracking-[0.14em]`     |
-| Status chip (footer)  | `text-[11px] font-medium`                                   |
+| Sub-item active       | `text-[13px] font-medium leading-none`                      |
+| Section label (opc.)  | `text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500` |
+| Status chip label     | `text-[11px] font-semibold uppercase tracking-wider text-neutral-500` |
+| Status chip value     | `text-[13px] font-semibold tabular-nums text-[#1A0A3B]` (tabular-nums evita jitter en números) |
 
-**Íconos:** Lucide, `size={16}` en nav primaria, `size={14}` en sub-items, `strokeWidth={1.75}` unificado.
+**Íconos:** Lucide, `size={18}` en nav primaria (un pelo más grandes que Slack para respirar), `size={16}` en sub-items, `strokeWidth={1.75}` unificado.
 
-**Motion:** `transition-colors duration-150 ease-out` en cambios de estado; `transition-transform duration-200` para chevrons; siempre acompañar con `motion-reduce:transition-none` (respetar `prefers-reduced-motion`).
+**Motion:** `transition-colors duration-150 ease-out` en cambios de estado; `transition-transform duration-200` para chevrons; siempre acompañar con `motion-reduce:transition-none`. Sin animar layout — solo colors + transform.
 
 **Focus (obligatorio, no removible):**
 ```
@@ -518,8 +540,10 @@ focus-visible:outline-none
 focus-visible:ring-2
 focus-visible:ring-[#6C3BFF]
 focus-visible:ring-offset-2
-focus-visible:ring-offset-[#1A0A3B]
+focus-visible:ring-offset-[#FAFAFB]
 ```
+
+**Nota Fase 2:** iconos con tint contextual sutil por área (à la Shopify — cada sección con su acento en el ícono idle) es upgrade opcional. Fase 1 usa monocromo consistente.
 
 ---
 
@@ -636,7 +660,7 @@ git commit -m "feat(portal): add PortalHeader (Slack-style workspace bar, 56px, 
 
 ---
 
-## Task 5 — Componente `PortalSidebarV2` (Slack-style dark nav)
+## Task 5 — Componente `PortalSidebarV2` (Shopify-style light nav)
 
 **Files:**
 - Create: `src/app/portal/[token]/PortalSidebarV2.tsx`
@@ -659,7 +683,7 @@ git commit -m "feat(portal): add PortalHeader (Slack-style workspace bar, 56px, 
   export default function PortalSidebarV2(props: PortalSidebarV2Props): JSX.Element
   ```
 
-**Referencia visual:** Slack sidebar aubergine. Ítems compactos, active state con bg color-relleno, sub-items indentados con opacidad reducida. Chip inferior tipo "You're online" con datos de plan/minutos.
+**Referencia visual:** Sidebar Shopify Admin (ítems aireados, active state con tint accent muy suave + border-l indicator signature) con tipografía y calma Stripe Dashboard (tabular-nums, spacing generoso, monocromo hasta el hover). Chip inferior tipo Stripe status con plan + minutos restantes.
 
 - [ ] **Step 1: Crear el componente**
 
@@ -714,7 +738,7 @@ function isSubActive(subHref: string, currentPath: string): boolean {
 }
 
 const FOCUS_RING =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3BFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A0A3B]';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3BFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAFB]';
 
 export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   const { currentPath, status, ...input } = props;
@@ -722,11 +746,11 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
 
   return (
     <nav
-      aria-label="Navegacion principal"
-      className="flex h-full w-[260px] shrink-0 flex-col bg-[#1A0A3B] text-white"
+      aria-label="Navegación principal"
+      className="flex h-full w-[260px] shrink-0 flex-col border-r border-neutral-200/80 bg-[#FAFAFB]"
     >
-      {/* Lista de areas */}
-      <ul className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
+      {/* Lista de áreas */}
+      <ul className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {areas.map(area => {
           const Icon = ICON_MAP[area.iconName] ?? Home;
           const active = isAreaActive(area, currentPath);
@@ -738,25 +762,35 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                 href={area.href}
                 aria-current={active ? 'page' : undefined}
                 className={[
-                  'group flex h-9 items-center gap-2.5 rounded-md px-3 text-sm font-medium leading-none',
+                  'group relative flex h-11 items-center gap-3 rounded-md px-3',
                   'transition-colors duration-150 ease-out motion-reduce:transition-none',
                   active
-                    ? 'bg-[#6C3BFF] text-[#FAFBFF] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-                    : 'text-white/72 hover:bg-white/[0.08] hover:text-[#FAFBFF]',
+                    ? 'bg-[#F3EFFF] text-[#6C3BFF] font-semibold'
+                    : 'text-neutral-700 font-medium hover:bg-neutral-100 hover:text-neutral-900',
                   FOCUS_RING,
                 ].join(' ')}
               >
+                {/* Border-l indicator (signature Shopify) — sólo cuando activo */}
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[#6C3BFF]"
+                  />
+                )}
+
                 <Icon
-                  size={16}
+                  size={18}
                   strokeWidth={1.75}
                   aria-hidden
                   className={
                     active
-                      ? 'text-[#FAFBFF]'
-                      : 'text-white/60 group-hover:text-[#FAFBFF]'
+                      ? 'text-[#6C3BFF]'
+                      : 'text-neutral-500 group-hover:text-neutral-700'
                   }
                 />
-                <span className="flex-1 truncate">{area.label}</span>
+                <span className="flex-1 truncate text-[14px] leading-none">
+                  {area.label}
+                </span>
                 {area.subItems.length > 0 && (
                   <ChevronRight
                     size={14}
@@ -764,14 +798,16 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                     aria-hidden
                     className={[
                       'shrink-0 transition-transform duration-200 motion-reduce:transition-none',
-                      active ? 'rotate-90 text-white/70' : 'text-white/40 group-hover:text-white/70',
+                      active
+                        ? 'rotate-90 text-[#6C3BFF]'
+                        : 'text-neutral-400 group-hover:text-neutral-600',
                     ].join(' ')}
                   />
                 )}
               </Link>
 
               {showSubs && (
-                <ul className="mt-0.5 space-y-px pb-1 pl-3">
+                <ul className="mt-1 space-y-0.5 pb-1">
                   {area.subItems.map(sub => {
                     const subActive = isSubActive(sub.href, currentPath);
                     return (
@@ -780,11 +816,11 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                           href={sub.href}
                           aria-current={subActive ? 'page' : undefined}
                           className={[
-                            'flex h-7 items-center rounded-md pl-6 pr-3 text-[13px] font-normal leading-none',
+                            'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
                             'transition-colors duration-150 ease-out motion-reduce:transition-none',
                             subActive
-                              ? 'bg-white/[0.12] text-[#FAFBFF]'
-                              : 'text-white/70 hover:bg-white/[0.06] hover:text-[#FAFBFF]',
+                              ? 'bg-[#F3EFFF] font-medium text-[#6C3BFF]'
+                              : 'font-normal text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
                             FOCUS_RING,
                           ].join(' ')}
                         >
@@ -800,18 +836,18 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
         })}
       </ul>
 
-      {/* Status chip (opcional, tipo Slack presence) */}
+      {/* Status chip (Stripe-style status pinned al fondo) */}
       {status && (status.plan || typeof status.minutesRemain === 'number') && (
-        <div className="border-t border-white/[0.08] px-4 py-3">
-          <div className="flex flex-col gap-0.5">
+        <div className="border-t border-neutral-200/80 px-4 py-3">
+          <div className="flex flex-col gap-1">
             {status.plan && (
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/55">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                 {status.plan}
               </span>
             )}
             {typeof status.minutesRemain === 'number' &&
               typeof status.minutesIncluded === 'number' && (
-                <span className="text-[13px] font-medium text-[#FAFBFF]">
+                <span className="text-[13px] font-semibold tabular-nums text-[#1A0A3B]">
                   {status.minutesRemain} / {status.minutesIncluded} min
                 </span>
               )}
@@ -823,16 +859,18 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
 }
 ```
 
-Detalles clave (referencia a `--domain ux` del skill ui-ux-pro-max):
-- **Contraste AAA**: `text-white/72` sobre `#1A0A3B` ≈ 12:1 (regla `color-accessible-pairs`)
-- **Focus ring visible** obligatorio (`FOCUS_RING`), no removible — regla `focus-states`
-- **Motion 150ms** ease-out (regla `duration-timing`) + `motion-reduce:transition-none` en TODAS las transiciones (regla `reduced-motion`)
-- **Solo animo `colors` y `transform`** (rotate del chevron) — nunca width/height ni layout (regla `transform-performance`)
-- **`aria-current="page"`** en el link activo (área y sub-item) — regla `nav-state-active`
-- **Touch target 36px alto en primary, 28px en sub** — >= 32 aceptable en desktop; en mobile el drawer futuro debe subir a 44 (regla `touch-target-size` — nota para Fase 2 responsive)
-- **Overflow scroll** en `<ul>` de areas (`overflow-y-auto`) — status chip queda pegado abajo
-- **`aria-label="Navegacion principal"`** en `<nav>` — regla `keyboard-nav`
-- **Sub-item active NO usa accent color** — reservado para primary area para preservar jerarquía visual (regla `visual-hierarchy`)
+Detalles clave (aplicando reglas de `ui-ux-pro-max`):
+- **Contraste AAA**: `#3F3D56` (neutral-700 aprox) sobre `#FAFAFB` ≈ 10.5:1; `#6C3BFF` sobre `#F3EFFF` ≈ 5.4:1 AA (regla `color-accessible-pairs`)
+- **Signature Shopify**: `border-l` 3px accent absoluto dentro del ítem activo — es el gesto que distingue un buen portal de PYME
+- **Focus ring visible** obligatorio (`FOCUS_RING`), offset sobre fondo light `#FAFAFB`
+- **Touch target 44px** en primary (`h-11`) — cumple regla `touch-target-size` incluso en mobile (importante: la mayoría del segmento accede desde celular)
+- **Motion 150ms** ease-out + `motion-reduce:transition-none` en TODAS las transiciones (regla `reduced-motion`)
+- **Solo animo `colors` y `transform`** — nunca layout (regla `transform-performance`)
+- **`tabular-nums`** en el chip de minutos: previene jitter cuando el número cambia (regla Stripe-tier `number-tabular`)
+- **`aria-current="page"`** en el link activo (área y sub-item)
+- **Sub-item active reusa el mismo tint `#F3EFFF`** pero sin border-l — reserva ese gesto para primary areas (jerarquía visual)
+- **Ícono a 18px en primary, 16px en sub** — un pelo más grandes que Slack para sentirse Stripe/Notion (aire, no densidad)
+- **`gap-3` (12px)** entre ícono y texto — Stripe-tier (Slack usa 10px, más apretado)
 
 - [ ] **Step 2: Typecheck + lint**
 
@@ -1000,37 +1038,47 @@ WHERE id = '<org-id-de-prueba>';
 Refrescar la misma URL de portal. Checklist visual + interacción:
 
 *Estructura:*
-- [ ] Header 56px de alto, sticky arriba, bg `#1A0A3B`, sombra sutil bajo el border
-- [ ] Header muestra logo (o placeholder con inicial), "Tu oficina digital" en eyebrow uppercase, business name en font-semibold
-- [ ] Sidebar 260px de ancho, bg `#1A0A3B`, extendido hasta el fondo de la pantalla
+- [ ] Header 56px de alto, sticky arriba, bg dark `#1A0A3B`, sombra sutil bajo el border-b
+- [ ] Header muestra logo (o placeholder con inicial), "Tu oficina digital" en eyebrow uppercase 10px, business name en font-semibold 14px
+- [ ] Sidebar 260px de ancho, bg light `#FAFAFB`, border-r sutil `#E8E8ED`, extendido hasta el fondo
 - [ ] Sidebar muestra exactamente 5 áreas: Escritorio, Bandeja (si aplica), Historial, Tu equipo, Administración
-- [ ] Cada área tiene ícono Lucide de 16px + label 14px
+- [ ] Cada área tiene ícono Lucide de 18px + label 14px, altura de fila 44px (touch-friendly)
+- [ ] Contraste visual claro: header dark encima, sidebar light abajo, sin colisiones raras en la esquina superior izquierda
 
-*Estados:*
-- [ ] Área activa: bg accent `#6C3BFF`, chevron rotado 90°, sub-items expandidos debajo
-- [ ] Áreas idle: texto blanco 72% opacity, ícono blanco 60% opacity
-- [ ] Hover en área idle: bg `white/8`, texto y ícono a 100%
-- [ ] Sub-item activo: bg `white/12` (NO accent — jerarquía preservada)
-- [ ] Sub-item idle: texto blanco 70%, hover a bg `white/6`
+*Estados (sidebar light Shopify-tier):*
+- [ ] Área activa: bg tint `#F3EFFF`, texto y ícono en accent `#6C3BFF`, font-semibold, **border-l 3px accent visible** (signature Shopify)
+- [ ] Áreas idle: texto `neutral-700`, ícono `neutral-500`, font-medium
+- [ ] Hover en área idle: bg `neutral-100`, texto/ícono a `neutral-900`
+- [ ] Chevron: `neutral-400` idle → rotado 90° `#6C3BFF` cuando activo
+- [ ] Sub-item activo: bg `#F3EFFF`, texto `#6C3BFF` font-medium — **SIN border-l** (reservado a primary)
+- [ ] Sub-item idle: texto `neutral-600`, font-normal; hover a `neutral-100`
 
 *Accesibilidad:*
-- [ ] Tab desde el header: focus ring visible morado con offset oscuro en cada link
-- [ ] Contraste business name vs bg >= 4.5:1 (verificar en DevTools Accessibility > Contrast)
-- [ ] Enable `prefers-reduced-motion` en DevTools (Rendering panel): las transiciones desaparecen, chevron no rota animado
-- [ ] Screen reader (opcional): `nav` anunciada como "Navegacion principal"; link activo anunciado como "current page"
-- [ ] Todos los `aria-current="page"` presentes solo en el link activo (área) y sub activo
+- [ ] Tab desde el header: focus ring morado 2px visible con offset light en cada link
+- [ ] Contraste business name (header) vs bg dark >= 4.5:1 — verificar en DevTools Accessibility > Contrast (debería ser ~17:1)
+- [ ] Contraste texto idle sidebar (`neutral-700` sobre `#FAFAFB`) >= 4.5:1 — debería ser ~10:1
+- [ ] Contraste texto activo (`#6C3BFF` sobre `#F3EFFF`) >= 4.5:1 — debería ser ~5.4:1
+- [ ] Enable `prefers-reduced-motion` en DevTools (Rendering panel): transiciones desaparecen, chevron no rota animado
+- [ ] Screen reader: `nav` anunciada como "Navegación principal"; link activo anunciado como "current page"
+- [ ] `aria-current="page"` presente solo en el link activo (área) y sub activo
+
+*Tipografía y detalles Stripe-tier:*
+- [ ] Chip inferior "min restantes / totales" usa `tabular-nums` — al cambiar de "300 / 500" a "299 / 500" no hay jitter horizontal
+- [ ] Plan label del chip en uppercase tracking-wider (`Empleado Centinelia`)
+- [ ] Sin comas colgadas, sin em-dash (—)
 
 *Copy y branding:*
 - [ ] Sin emojis en ningún lado
-- [ ] Sin em-dash (—) en labels ni copy
 - [ ] Sin la palabra "IA" visible
 - [ ] Uso de "Tu equipo" (no "Empleados IA"), "Recursos de la oficina" (no "Herramientas")
-- [ ] Chip inferior muestra plan + `X / Y min` si hay datos
+- [ ] Acentos ES correctos: "Administración", "Cómo trabajamos", "Organización", "Investigación", "Navegación"
 
 *Interacción:*
-- [ ] Click en área con sub-items: navega al href principal y expande sub-items
+- [ ] Click en área con sub-items: navega al href principal y expande sub-items en el mismo movimiento
 - [ ] Click en sub-item: navega y queda marcado como activo
 - [ ] URL bar refleja la ruta vieja (ej. `/portal/[t]/oficina/bandeja`) — Fase 1 no cambia rutas
+- [ ] Hover con mouse: cursor pointer visible; sin flicker; transición suave 150ms
+- [ ] Colapso de sub-items al cambiar a otra área: instantáneo (Fase 2 puede animarlo si vale la pena)
 
 - [ ] **Step 5: Verificar sub-usuario (opcional pero recomendado)**
 
