@@ -6,6 +6,9 @@ import Icon from './Icon';
 /**
  * Chip — tag/filter interactivo, opcionalmente removible o toggleable.
  *
+ * Non-removable: outer <button>
+ * Removable: outer <span role="group"> con inner <button> label + inner <button> X
+ *
  * Uso:
  *   <Chip label="Todos" selected onSelect={() => setFilter('all')} />
  *   <Chip label="Ventas" removable onRemove={() => removeTag('ventas')} />
@@ -21,8 +24,15 @@ export interface ChipProps {
   disabled?: boolean;
 }
 
-const BASE =
+const CONTAINER =
   'inline-flex items-center gap-1.5 h-7 rounded-full text-[13px] font-medium leading-none px-3 ' +
+  'transition-colors duration-[var(--motion-fast)] ease-[var(--ease-default)] motion-reduce:transition-none ' +
+  'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] ' +
+  'disabled:opacity-60 disabled:cursor-not-allowed';
+
+const REMOVE_BTN =
+  'inline-flex items-center justify-center rounded-full p-0.5 -mr-1 ' +
+  'hover:bg-[var(--surface-elevated)] ' +
   'transition-colors duration-[var(--motion-fast)] ease-[var(--ease-default)] motion-reduce:transition-none ' +
   'focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] ' +
   'disabled:opacity-60 disabled:cursor-not-allowed';
@@ -40,32 +50,48 @@ export default function Chip({
   disabled = false,
 }: ChipProps) {
   const stateClass = selected ? SELECTED : IDLE;
+  const classes = [CONTAINER, stateClass, className ?? ''].filter(Boolean).join(' ');
 
-  const handleRemove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onRemove?.();
-  };
+  if (!removable) {
+    // Simple mode: single <button>
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={disabled}
+        aria-pressed={onSelect ? selected : undefined}
+        className={classes}
+      >
+        <span>{label}</span>
+      </button>
+    );
+  }
 
+  // Removable mode: <span role="group"> con inner buttons independientes
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      disabled={disabled}
-      aria-pressed={onSelect ? selected : undefined}
-      className={[BASE, stateClass, className ?? ''].filter(Boolean).join(' ')}
-    >
-      <span>{label}</span>
-      {removable && (
+    <span role="group" aria-label={label} className={classes}>
+      {onSelect ? (
         <button
           type="button"
-          onClick={handleRemove}
+          onClick={onSelect}
           disabled={disabled}
-          aria-label={`Quitar ${label}`}
-          className="inline-flex items-center justify-center rounded-full p-0.5 -mr-1 hover:bg-[var(--surface-sunken)] motion-reduce:transition-none"
+          aria-pressed={selected}
+          className="bg-transparent hover:underline focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] disabled:opacity-60 disabled:cursor-not-allowed rounded-sm"
         >
-          <Icon icon={X} size={14} aria-hidden />
+          {label}
         </button>
+      ) : (
+        <span>{label}</span>
       )}
-    </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        aria-label={`Quitar ${label}`}
+        className={REMOVE_BTN}
+      >
+        <Icon icon={X} size={14} aria-hidden />
+      </button>
+    </span>
   );
 }
