@@ -58,6 +58,7 @@ import ContractTrackerSection   from './ContractTrackerSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import InsightsSection          from './InsightsSection';
+import CuentaUsageTabsCard      from './CuentaUsageTabsCard';
 import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
@@ -1339,47 +1340,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {/* Brief del día — solo cuando hay Nox activo en el equipo */}
                   {hasNox && <BriefDelDiaCard />}
 
-                  {/* Tu equipo hoy */}
-                  {teamToday.length > 0 && (
-                    <PageSection heading={<SectionHeader eyebrow="EQUIPO" title="Tu equipo hoy" as="h2" />}>
-                      <Card id="equipo-hoy" padding="md">
-                        <div className="flex flex-col">
-                          {teamToday.map((m, idx) => (
-                            <div key={m.token}
-                              className="flex items-center gap-3 py-2.5"
-                              style={{ borderBottom: idx < teamToday.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                              <div className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ background: m.active ? '#22c55e' : '#9ca3af', boxShadow: m.active ? '0 0 5px #22c55e' : 'none' }} />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{m.name}</p>
-                                {m.role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{m.role}</p>}
-                              </div>
-                              <div className="flex items-center gap-3 flex-shrink-0 text-xs" style={{ color: 'var(--c-text-3)' }}>
-                                {m.calls > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <PhoneCall size={11} style={{ color: '#6C3BFF' }} /> {m.calls}
-                                  </span>
-                                )}
-                                {m.ops > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <Zap size={11} style={{ color: '#06b6d4' }} /> {m.ops}
-                                  </span>
-                                )}
-                              </div>
-                              <Link href={`/portal/${m.token}/configurar`}
-                                className="text-xs transition-opacity hover:opacity-70 flex-shrink-0"
-                                style={{ color: '#9B6DFF' }}>
-                                Ver →
-                              </Link>
-                            </div>
-                          ))}
-                        </div>
-                      </Card>
-                    </PageSection>
-                  )}
-
-                  {/* Insights de la semana */}
-                  <InsightsSection token={token} />
 
                   {/* Actividad reciente */}
                   <PageSection heading={<SectionHeader eyebrow="FEED" title="Actividad reciente" as="h2" />}>
@@ -1504,18 +1464,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* ── Right column (desktop only) ── */}
                 <div className="hidden lg:flex flex-col gap-4">
-
-                  {showOutbound && (
-                    <PageSection heading={<SectionHeader eyebrow="SALIENTES" title="Salientes" as="h2" right={<Link href={`/portal/${token}/llamadas/salientes`} className="text-xs transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>} />}>
-                      <Card padding="md">
-                        <div className="flex flex-col gap-3">
-                          <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
-                          <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
-                          <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
-                        </div>
-                      </Card>
-                    </PageSection>
-                  )}
 
                   {/* Reporte mensual — desktop sidebar */}
                   <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
@@ -1698,14 +1646,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
 
-                {/* ── Col 1: Uso + Compras + Recarga ── */}
+                {/* ── Col 1: Uso + Compras + Recarga (fused A6) ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-
-                  {/* Uso del mes */}
-                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (
-                    <PageSection heading={<SectionHeader eyebrow="SALDO" title="Uso del mes" as="h2" />}>
-                      <Card id="uso-del-mes" padding="md">
-                        <div className="flex flex-col gap-4">
+                  <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Minutos · Tareas · Recarga" as="h2" />}>
+                    <CuentaUsageTabsCard
+                      usoContent={
+                        <>
                           {minutesIncluded > 0 && (
                             <div>
                               <div className="flex justify-between text-xs mb-1.5">
@@ -1739,61 +1685,59 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                               </div>
                             </div>
                           )}
-                        </div>
-                      </Card>
-                    </PageSection>
-                  )}
-
-                  {/* Comprar saldo — dynamic border/bg preserved via style prop */}
-                  {(() => {
-                    const warnPct  = Math.max(minutesPct, aiOpsPct);
-                    const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
-                    const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
-                    return (
-                      <PageSection heading={<SectionHeader eyebrow="COMPRAS" title="Comprar saldo" as="h2" />}>
-                        <Card id="comprar" padding="md" style={{ background: bgStyle, border: bdrStyle }}>
-                          {warnPct >= 70 && (
-                            <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
-                              <AlertTriangle size={11} />
-                              {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
-                            </p>
+                          {minutesIncluded === 0 && aiOpsLimit === 0 && (
+                            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>No hay saldo configurado en esta cuenta.</p>
                           )}
-                          <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
-                          {annualContractInfo ? (
-                            <div className="flex flex-col gap-5">
-                              <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                              <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                              <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-5">
-                              {minutesIncluded > 0 && (
-                                <div>
-                                  {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                                  <BuyMinutesSection token={token} />
+                        </>
+                      }
+                      comprarContent={
+                        (() => {
+                          const warnPct = Math.max(minutesPct, aiOpsPct);
+                          return (
+                            <>
+                              {warnPct >= 70 && (
+                                <p className="text-xs flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                                  <AlertTriangle size={11} />
+                                  {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
+                                </p>
+                              )}
+                              <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
+                              {annualContractInfo ? (
+                                <div className="flex flex-col gap-5">
+                                  <AnnualContractCallout action="comprar_minutos" folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                                  <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                                  <AnnualContractCallout action="comprar_tareas"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-5">
+                                  {minutesIncluded > 0 && (
+                                    <div>
+                                      {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                                      <BuyMinutesSection token={token} />
+                                    </div>
+                                  )}
+                                  {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                                    <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                                  )}
+                                  {aiOpsLimit > 0 && (
+                                    <div>
+                                      {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                                      <BuyOpsSection token={token} />
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {minutesIncluded > 0 && aiOpsLimit > 0 && (
-                                <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                              )}
-                              {aiOpsLimit > 0 && (
-                                <div>
-                                  {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                                  <BuyOpsSection token={token} />
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </Card>
-                      </PageSection>
-                    );
-                  })()}
-
-                  <PageSection heading={<SectionHeader eyebrow="AUTOMATIZACIÓN" title="Recarga automática" as="h2" />}>
-                    <Card id="recarga" padding="md">
-                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
-                      <AutoRefillSection token={token} />
-                    </Card>
+                            </>
+                          );
+                        })()
+                      }
+                      recargaContent={
+                        <>
+                          <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
+                          <AutoRefillSection token={token} />
+                        </>
+                      }
+                    />
                   </PageSection>
                 </div>
 
