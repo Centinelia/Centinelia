@@ -36,9 +36,13 @@ export interface PortalSidebarV2Props extends BuildAreasInput {
 }
 
 function isAreaActive(area: Area, currentPath: string): boolean {
+  // Areas with sub-items match only via their sub-items to avoid href collisions.
+  // Areas without sub-items (like Escritorio) match on exact bare path.
+  if (area.subItems.length > 0) {
+    return area.subItems.some(s => currentPath.startsWith(s.href.split('?')[0]));
+  }
   const areaBase = area.href.split('?')[0];
-  if (currentPath === areaBase) return true;
-  return area.subItems.some(s => currentPath.startsWith(s.href.split('?')[0]));
+  return currentPath === areaBase;
 }
 
 function isSubActive(subHref: string, currentPath: string): boolean {
@@ -82,7 +86,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[#6C3BFF]"
+                    className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-[#6C3BFF]"
                   />
                 )}
 
