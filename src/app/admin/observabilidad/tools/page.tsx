@@ -7,15 +7,27 @@ import { ToolMetricsView } from './ToolMetricsView';
 export default async function ToolMetricsPage() {
   if (!(await isAdmin())) redirect('/admin/login');
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ color: 'var(--c-text)' }}>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Observabilidad: Tools</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Tools</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
           Éxito, latencia y errores por tool desde tool_call_log. Cross-canal.
         </p>
-        <div className="mt-3 flex gap-2 text-sm">
-          <a href="/admin/observabilidad" className="px-3 py-1.5 rounded" style={{ color: 'var(--c-text-2)' }}>Llamadas por versión</a>
-          <a href="/admin/observabilidad/tools" className="px-3 py-1.5 rounded" style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', fontWeight: 600 }}>Tools</a>
+        <div className="mt-4 inline-flex gap-1 p-1 rounded-lg" style={{ background: '#F3F4F6' }}>
+          <a
+            href="/admin/observabilidad"
+            className="px-3 py-1.5 rounded-md text-[13px] font-medium"
+            style={{ color: '#6B7280' }}
+          >
+            Llamadas por versión
+          </a>
+          <a
+            href="/admin/observabilidad/tools"
+            className="px-3 py-1.5 rounded-md text-[13px] font-semibold"
+            style={{ background: '#FFFFFF', color: '#111827', boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)' }}
+          >
+            Tools
+          </a>
         </div>
       </div>
       <ToolMetricsView />

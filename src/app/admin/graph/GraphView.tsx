@@ -135,11 +135,11 @@ export function GraphView() {
                 key={i}
                 className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50"
                 style={{
-                  gridTemplateColumns: '100px 140px 1fr 100px auto',
+                  gridTemplateColumns: '130px 140px 1fr 100px auto',
                   borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
                 }}
               >
-                <span className="font-mono tabular-nums" style={{ color: '#9CA3AF' }}>{fmt(row.at)}</span>
+                <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(row.at)}</span>
                 <MachinePill name={row.machine} label={row.machine_label} />
                 <span style={{ color: '#111827' }} className="truncate">
                   {row.count > 1 && <strong className="font-semibold">{row.count}× </strong>}

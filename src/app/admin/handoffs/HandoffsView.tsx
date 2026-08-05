@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, Ban, Check, Plus, X } from 'lucide-react';
+import { ArrowRight, Ban, Check, Plus, X, RefreshCw, Network } from 'lucide-react';
 
 type Window = '24h' | '7d' | '30d';
 
@@ -42,6 +42,15 @@ interface Data {
 }
 
 const MEERKATS = ['nia', 'noah', 'nico', 'nara', 'nelia', 'neo', 'nova', 'naia', 'nox', 'niva'];
+
+const selectStyle = {
+  background: '#FFFFFF',
+  border: '1px solid #E5E7EB',
+  color: '#111827',
+  padding: '6px 10px',
+  borderRadius: '8px',
+  fontSize: '13px',
+} as const;
 
 export function HandoffsView() {
   const [win,   setWin]   = useState<Window>('7d');
@@ -96,9 +105,8 @@ export function HandoffsView() {
       const res = await fetch(`/api/admin/handoffs?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('delete failed');
       await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally { setLoading(false); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setLoading(false); }
   };
 
   const toggleEdge = async (edge: Edge) => {
@@ -118,56 +126,92 @@ export function HandoffsView() {
       });
       if (!res.ok) throw new Error('toggle failed');
       await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally { setLoading(false); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setLoading(false); }
   };
 
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <label className="text-sm flex items-center gap-2">
-          <span style={{ color: 'var(--c-text-2)' }}>Ventana</span>
-          <select
-            value={win}
-            onChange={e => setWin(e.target.value as Window)}
-            className="px-2 py-1 rounded border"
-            style={{ background: 'transparent', borderColor: 'rgba(255,255,255,0.15)', color: 'var(--c-text)' }}
-          >
+    <div className="space-y-8">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <label className="flex items-center gap-2 text-[13px]">
+          <span style={{ color: '#6B7280' }}>Ventana</span>
+          <select value={win} onChange={e => setWin(e.target.value as Window)} style={selectStyle}>
             <option value="24h">24 horas</option>
             <option value="7d">7 días</option>
             <option value="30d">30 días</option>
           </select>
         </label>
-        {loading && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Cargando…</span>}
+        <button
+          onClick={load}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
+          style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          Actualizar
+        </button>
       </div>
 
-      {error && <div className="p-3 rounded text-sm" style={{ background: 'rgba(255,80,80,0.1)', color: '#ff7070' }}>{error}</div>}
+      {error && (
+        <div className="p-4 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
+          {error}
+        </div>
+      )}
 
       {data && (
         <>
-          {/* Pares reales (histórico) */}
+          {/* Pares reales */}
           <section>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--c-text)' }}>Handoffs reales últimos {win} — {data.pairs.length} pares únicos</h2>
-            {data.pairs.length === 0 && <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Sin handoffs registrados en el rango.</p>}
-            <div className="space-y-1.5">
-              {data.pairs.map(p => {
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#111827' }}>
+                <Network size={15} style={{ color: '#6B7280' }} />
+                Handoffs reales
+              </h2>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+                {data.pairs.length} pares
+              </span>
+            </div>
+            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+              {data.pairs.length === 0 && (
+                <div className="p-8 text-center">
+                  <Network size={20} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
+                  <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin handoffs registrados en el rango.</p>
+                  <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+                    Aparecerán cuando un meerkat consulte o delegue a otro por voz.
+                  </p>
+                </div>
+              )}
+              {data.pairs.map((p, i) => {
                 const successRate = p.total > 0 ? (p.success / p.total) * 100 : 0;
                 return (
-                  <div key={`${p.from}::${p.to}`} className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                    <span className="font-mono flex-shrink-0" style={{ color: '#9B6DFF', minWidth: '60px' }}>{p.from}</span>
-                    <ArrowRight size={14} style={{ color: 'var(--c-text-3)' }} />
-                    <span className="font-mono flex-shrink-0" style={{ color: '#9B6DFF', minWidth: '60px' }}>{p.to}</span>
-                    <span className="flex-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
-                      {Object.entries(p.by_tool).map(([t, n]) => `${t}:${n}`).join(' · ')}
+                  <div
+                    key={`${p.from}::${p.to}`}
+                    className="flex items-center gap-3 px-5 py-3 text-[13px] transition-colors hover:bg-gray-50"
+                    style={{ borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}
+                  >
+                    <MeerkatPill name={p.from} />
+                    <ArrowRight size={14} style={{ color: '#9CA3AF' }} />
+                    <MeerkatPill name={p.to} />
+                    <span className="flex-1 text-[12px] font-mono truncate" style={{ color: '#9CA3AF' }}>
+                      {Object.entries(p.by_tool).map(([t, n]) => `${t}: ${n}`).join(' · ')}
                     </span>
-                    <span className="text-xs" style={{ color: successRate >= 80 ? '#4ade80' : successRate >= 50 ? '#facc15' : '#f87171' }}>
-                      {p.success}✓ {p.rejected}⊘ {p.failed}✗
+                    <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
+                      <span style={{ color: '#10B981' }}>{p.success}✓</span>{' '}
+                      <span style={{ color: '#F59E0B' }}>{p.rejected}⊘</span>{' '}
+                      <span style={{ color: '#EF4444' }}>{p.failed}✗</span>
                     </span>
-                    <span className="font-semibold" style={{ color: 'var(--c-text)', minWidth: '40px', textAlign: 'right' }}>{p.total}</span>
+                    <span
+                      className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-md"
+                      style={{
+                        background: successRate >= 80 ? '#ECFDF5' : successRate >= 50 ? '#FFFBEB' : '#FEF2F2',
+                        color:      successRate >= 80 ? '#047857' : successRate >= 50 ? '#B45309' : '#B91C1C',
+                      }}
+                    >
+                      {p.total}
+                    </span>
                   </div>
                 );
               })}
@@ -176,66 +220,113 @@ export function HandoffsView() {
 
           {/* Edges declarativos */}
           <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Edges declarativos — {data.edges.length}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[15px] font-semibold flex items-center gap-2" style={{ color: '#111827' }}>
+                Reglas de handoff
+              </h2>
               <button
                 onClick={() => setNewEdge({ from: '', to: '', tool: '', enabled: false, reason: '' })}
-                className="text-xs px-3 py-1.5 rounded flex items-center gap-1.5"
-                style={{ background: '#6C3BFF', color: '#FAFBFF' }}
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium px-3 py-1.5 rounded-lg"
+                style={{ background: '#8B5CF6', color: '#FFFFFF' }}
               >
-                <Plus size={12} />
-                Nuevo edge
+                <Plus size={13} />
+                Nueva regla
               </button>
             </div>
 
             {newEdge && (
-              <div className="p-4 rounded-lg mb-3" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
-                  <select value={newEdge.from} onChange={e => setNewEdge({ ...newEdge, from: e.target.value })} className="px-2 py-1 rounded border" style={{ background: 'transparent', borderColor: 'var(--c-border)', color: 'var(--c-text)' }}>
-                    <option value="">from…</option>
+              <div className="rounded-xl bg-white p-5 mb-3" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-[13px]">
+                  <select value={newEdge.from} onChange={e => setNewEdge({ ...newEdge, from: e.target.value })} style={selectStyle}>
+                    <option value="">De…</option>
                     {MEERKATS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
-                  <select value={newEdge.to} onChange={e => setNewEdge({ ...newEdge, to: e.target.value })} className="px-2 py-1 rounded border" style={{ background: 'transparent', borderColor: 'var(--c-border)', color: 'var(--c-text)' }}>
-                    <option value="">to…</option>
+                  <select value={newEdge.to} onChange={e => setNewEdge({ ...newEdge, to: e.target.value })} style={selectStyle}>
+                    <option value="">Hacia…</option>
                     {MEERKATS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
-                  <select value={newEdge.tool} onChange={e => setNewEdge({ ...newEdge, tool: e.target.value })} className="px-2 py-1 rounded border" style={{ background: 'transparent', borderColor: 'var(--c-border)', color: 'var(--c-text)' }}>
-                    <option value="">todos los tools</option>
+                  <select value={newEdge.tool} onChange={e => setNewEdge({ ...newEdge, tool: e.target.value })} style={selectStyle}>
+                    <option value="">Todos los tools</option>
                     <option value="consultar_agente">consultar_agente</option>
                     <option value="delegar_tarea">delegar_tarea</option>
                   </select>
-                  <label className="flex items-center gap-1.5" style={{ color: 'var(--c-text-2)' }}>
+                  <label className="flex items-center gap-1.5" style={{ color: '#374151' }}>
                     <input type="checkbox" checked={newEdge.enabled} onChange={e => setNewEdge({ ...newEdge, enabled: e.target.checked })} />
-                    enabled
+                    Habilitado
                   </label>
                 </div>
-                <input type="text" placeholder="Razón (opcional)" value={newEdge.reason} onChange={e => setNewEdge({ ...newEdge, reason: e.target.value })} className="w-full mt-2 px-2 py-1 text-xs rounded border" style={{ background: 'transparent', borderColor: 'var(--c-border)', color: 'var(--c-text)' }} />
-                <div className="mt-2 flex gap-2 justify-end">
-                  <button onClick={() => setNewEdge(null)} className="text-xs px-3 py-1.5 rounded" style={{ color: 'var(--c-text-3)' }}>Cancelar</button>
-                  <button onClick={saveEdge} className="text-xs px-3 py-1.5 rounded" style={{ background: '#6C3BFF', color: '#FAFBFF' }}>Guardar</button>
+                <input
+                  type="text"
+                  placeholder="Razón (opcional)"
+                  value={newEdge.reason}
+                  onChange={e => setNewEdge({ ...newEdge, reason: e.target.value })}
+                  className="w-full mt-3 px-3 py-2 text-[13px] rounded-lg"
+                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
+                />
+                <div className="mt-3 flex gap-2 justify-end">
+                  <button
+                    onClick={() => setNewEdge(null)}
+                    className="text-[13px] font-medium px-3 py-1.5 rounded-lg"
+                    style={{ color: '#6B7280', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveEdge}
+                    className="text-[13px] font-medium px-3 py-1.5 rounded-lg"
+                    style={{ background: '#8B5CF6', color: '#FFFFFF' }}
+                  >
+                    Guardar
+                  </button>
                 </div>
               </div>
             )}
 
-            {data.edges.length === 0 && <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Sin edges declarativos. Por default todos los pares están permitidos.</p>}
-            <div className="space-y-1.5">
+            {data.edges.length === 0 && !newEdge && (
+              <div className="rounded-xl p-8 text-center bg-white" style={{ border: '1px solid #E5E7EB' }}>
+                <p className="text-[13px]" style={{ color: '#6B7280' }}>Sin reglas configuradas.</p>
+                <p className="text-[12px] mt-1" style={{ color: '#9CA3AF' }}>
+                  Por default todos los pares están permitidos. Crea una regla para restringir un flujo específico.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
               {data.edges.map(e => (
-                <div key={e.id} className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm" style={{
-                  background: 'var(--c-surface)',
-                  border: `1px solid ${e.enabled ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}`,
-                }}>
-                  {e.enabled ? <Check size={14} style={{ color: '#4ade80' }} /> : <Ban size={14} style={{ color: '#f87171' }} />}
-                  <span className="font-mono" style={{ color: '#9B6DFF' }}>{e.from_meerkat}</span>
-                  <ArrowRight size={12} style={{ color: 'var(--c-text-3)' }} />
-                  <span className="font-mono" style={{ color: '#9B6DFF' }}>{e.to_meerkat}</span>
-                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{e.tool_name ?? 'todos'}</span>
-                  {e.portal_email && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>· {e.portal_email}</span>}
-                  {e.reason && <span className="text-xs flex-1" style={{ color: 'var(--c-text-3)' }}>· {e.reason}</span>}
-                  <button onClick={() => toggleEdge(e)} className="text-xs px-2 py-1 rounded" style={{ color: e.enabled ? '#f87171' : '#4ade80', border: `1px solid ${e.enabled ? '#f87171' : '#4ade80'}` }}>
+                <div
+                  key={e.id}
+                  className="flex items-center gap-3 px-5 py-3 rounded-xl bg-white text-[13px]"
+                  style={{
+                    border: e.enabled ? '1px solid #A7F3D0' : '1px solid #FECACA',
+                    boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
+                  }}
+                >
+                  {e.enabled ? <Check size={14} style={{ color: '#10B981' }} /> : <Ban size={14} style={{ color: '#EF4444' }} />}
+                  <MeerkatPill name={e.from_meerkat} />
+                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <MeerkatPill name={e.to_meerkat} />
+                  <span className="text-[12px] px-2 py-0.5 rounded" style={{ background: '#F3F4F6', color: '#4B5563' }}>
+                    {e.tool_name ?? 'todos los tools'}
+                  </span>
+                  {e.reason && <span className="text-[12px] flex-1 truncate" style={{ color: '#6B7280' }}>· {e.reason}</span>}
+                  {!e.reason && <span className="flex-1" />}
+                  <button
+                    onClick={() => toggleEdge(e)}
+                    className="text-[12px] font-medium px-2.5 py-1 rounded-md"
+                    style={{
+                      color:      e.enabled ? '#EF4444' : '#10B981',
+                      border:     `1px solid ${e.enabled ? '#FECACA' : '#A7F3D0'}`,
+                      background: e.enabled ? '#FEF2F2' : '#ECFDF5',
+                    }}
+                  >
                     {e.enabled ? 'Deshabilitar' : 'Habilitar'}
                   </button>
-                  <button onClick={() => deleteEdge(e.id)} className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    <X size={12} />
+                  <button
+                    onClick={() => deleteEdge(e.id)}
+                    className="p-1 rounded"
+                    style={{ color: '#9CA3AF' }}
+                  >
+                    <X size={13} />
                   </button>
                 </div>
               ))}
@@ -244,15 +335,41 @@ export function HandoffsView() {
 
           {/* Recent */}
           <section>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--c-text)' }}>Handoffs recientes ({data.recent.length})</h2>
-            <div className="rounded border" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-              {data.recent.length === 0 && <p className="p-4 text-xs text-center" style={{ color: 'var(--c-text-3)' }}>Sin handoffs.</p>}
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
+                Handoffs recientes
+              </h2>
+              <span className="text-[12px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+                {data.recent.length} rows
+              </span>
+            </div>
+            <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}>
+              {data.recent.length === 0 && (
+                <p className="p-6 text-[13px] text-center" style={{ color: '#9CA3AF' }}>Sin handoffs recientes.</p>
+              )}
               {data.recent.map((l, i) => (
-                <div key={i} className="flex items-baseline gap-3 px-4 py-2 text-xs" style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : undefined }}>
-                  <span className="font-mono flex-shrink-0" style={{ color: 'var(--c-text-3)', minWidth: '95px' }}>{fmt(l.handoff_at)}</span>
-                  <span className="font-mono flex-shrink-0" style={{ color: '#9B6DFF' }}>{l.from_meerkat} → {l.to_meerkat}</span>
-                  <span style={{ color: 'var(--c-text-3)' }}>{l.tool_name}</span>
-                  <span style={{ color: l.outcome === 'success' ? '#4ade80' : l.outcome === 'rejected' ? '#facc15' : '#f87171' }}>{l.outcome}</span>
+                <div
+                  key={i}
+                  className="grid gap-3 px-5 py-2.5 text-[13px] transition-colors hover:bg-gray-50 items-center"
+                  style={{
+                    gridTemplateColumns: '130px auto auto auto 1fr auto',
+                    borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                  }}
+                >
+                  <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: '#9CA3AF' }}>{fmt(l.handoff_at)}</span>
+                  <MeerkatPill name={l.from_meerkat} />
+                  <ArrowRight size={12} style={{ color: '#9CA3AF' }} />
+                  <MeerkatPill name={l.to_meerkat} />
+                  <span className="text-[12px]" style={{ color: '#6B7280' }}>{l.tool_name}</span>
+                  <span
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-md uppercase tracking-wide"
+                    style={{
+                      background: l.outcome === 'success' ? '#ECFDF5' : l.outcome === 'rejected' ? '#FFFBEB' : '#FEF2F2',
+                      color:      l.outcome === 'success' ? '#047857' : l.outcome === 'rejected' ? '#B45309' : '#B91C1C',
+                    }}
+                  >
+                    {l.outcome}
+                  </span>
                 </div>
               ))}
             </div>
@@ -260,5 +377,16 @@ export function HandoffsView() {
         </>
       )}
     </div>
+  );
+}
+
+function MeerkatPill({ name }: { name: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium font-mono"
+      style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}
+    >
+      {name}
+    </span>
   );
 }
