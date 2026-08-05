@@ -1,7 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import Icon from '../primitives/Icon';
-import Badge, { type BadgeVariant } from '../primitives/Badge';
+import Badge from '../primitives/Badge';
+import { EVENT_TYPE_COLORS } from '../tokens';
 
 /**
  * ActivityEventCard — card de evento tipo feed. Icon box coloreado por type +
@@ -38,21 +39,6 @@ export interface ActivityEventCardProps {
   className?: string;
 }
 
-// Fallback map — se sobrescribe con import de tokens.ts (Task 11) cuando toque
-const EVENT_TONE: Record<EventType, { color: string; bg: string; badge: BadgeVariant }> = {
-  llamada:    { color: 'var(--accent-default)',    bg: 'var(--accent-subtle)',   badge: 'info' },
-  lead:       { color: 'var(--success)',           bg: 'var(--success-subtle)',  badge: 'success' },
-  cita:       { color: 'var(--info)',              bg: 'var(--info-subtle)',     badge: 'info' },
-  pedido:     { color: 'var(--warning)',           bg: 'var(--warning-subtle)',  badge: 'warning' },
-  ticket:     { color: 'var(--danger)',            bg: 'var(--danger-subtle)',   badge: 'danger' },
-  incidente:  { color: 'var(--danger)',            bg: 'var(--danger-subtle)',   badge: 'danger' },
-  reporte:    { color: 'var(--info)',              bg: 'var(--info-subtle)',     badge: 'info' },
-  encuesta:   { color: 'var(--accent-default)',    bg: 'var(--accent-subtle)',   badge: 'info' },
-  delegacion: { color: 'var(--accent-emphasized)', bg: 'var(--accent-subtle)',   badge: 'info' },
-  correo:     { color: 'var(--text-secondary)',    bg: 'var(--surface-sunken)',  badge: 'neutral' },
-  otro:       { color: 'var(--text-tertiary)',     bg: 'var(--surface-sunken)',  badge: 'neutral' },
-};
-
 function formatRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diff / 60_000);
@@ -75,7 +61,7 @@ export default function ActivityEventCard({
   href,
   className,
 }: ActivityEventCardProps) {
-  const tone = EVENT_TONE[type];
+  const tone = EVENT_TYPE_COLORS[type];
 
   const inner = (
     <div
