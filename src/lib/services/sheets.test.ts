@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMapping, refreshHeaders, appendRow } from './sheets';
+import { getMapping, refreshHeaders, appendRow, updateRow, readRange, searchInTab } from './sheets';
 
 vi.mock('@/lib/connectors/sheets-client');
 vi.mock('@/lib/supabase/admin');
@@ -211,6 +211,197 @@ describe('appendRow', () => {
     if (!res.ok) {
       expect(res.reason).toBe('sheets_api_error');
       expect(res.detail).toContain('Quota exceeded');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper: build a mock Sheets client with a single get + update mock
+// ---------------------------------------------------------------------------
+const mkClient = (values: string[][]) => {
+  const get = vi.fn().mockResolvedValue({ data: { values } });
+  const update = vi.fn().mockResolvedValue({ data: {} });
+  return { spreadsheets: { values: { get, update } } };
+};
+
+const mkSbMapping = (data: Record<string, unknown> | null) => ({
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        single: () => ({ data }),
+      }),
+    }),
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// readRange
+// ---------------------------------------------------------------------------
+describe('readRange', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns rows as objects using headers as keys', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue(mkClient([
+      ['Nombre', 'Telefono'],
+      ['Ana', '111'],
+      ['Beto', '222'],
+    ]));
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Clientes', headers: ['Nombre', 'Telefono'] }),
+    );
+
+    const res = await readRange('m1');
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.rows).toEqual([
+      { Nombre: 'Ana', Telefono: '111' },
+      { Nombre: 'Beto', Telefono: '222' },
+    ]);
+  });
+
+  it('returns mapping_not_found when mapping missing', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(mkSbMapping(null));
+
+    const res = await readRange('missing');
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe('mapping_not_found');
+  });
+
+  it('returns sheets_api_error when Sheets API rejects', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    const get = vi.fn().mockRejectedValue(new Error('Sheets read failed'));
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({ spreadsheets: { values: { get } } });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Clientes', headers: ['Nombre'] }),
+    );
+
+    const res = await readRange('m1');
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('sheets_api_error');
+      expect(res.detail).toContain('Sheets read failed');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// searchInTab
+// ---------------------------------------------------------------------------
+describe('searchInTab', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('filters rows case-insensitive across all columns', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue(mkClient([
+      ['Nombre', 'Telefono'],
+      ['Ana Torres', '111'],
+      ['Beto Ruiz', '222'],
+      ['Carla ana', '333'],
+    ]));
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'X', headers: ['Nombre', 'Telefono'] }),
+    );
+
+    const res = await searchInTab('m1', 'ana');
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.rows).toHaveLength(2);
+  });
+
+  it('returns mapping_not_found when mapping missing', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(mkSbMapping(null));
+
+    const res = await searchInTab('missing', 'test');
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe('mapping_not_found');
+  });
+
+  it('returns sheets_api_error when Sheets API rejects', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    const get = vi.fn().mockRejectedValue(new Error('Network error during search'));
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({ spreadsheets: { values: { get } } });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'X', headers: ['Nombre'] }),
+    );
+
+    const res = await searchInTab('m1', 'query');
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('sheets_api_error');
+      expect(res.detail).toContain('Network error during search');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateRow
+// ---------------------------------------------------------------------------
+describe('updateRow', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('finds row by match_by column and updates values', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const client = mkClient([
+      ['Nombre', 'Telefono', 'Email'],
+      ['Ana', '111', 'a@x.com'],
+      ['Beto', '222', 'b@x.com'],
+    ]);
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'Clientes', headers: ['Nombre', 'Telefono', 'Email'] }),
+    );
+
+    const res = await updateRow('m1', 'Nombre', 'Beto', { Telefono: '999' });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.row_number).toBe(3);
+    expect(client.spreadsheets.values.update).toHaveBeenCalledWith(expect.objectContaining({
+      spreadsheetId: 's1',
+      range: 'Clientes!A3:C3',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [['Beto', '999', 'b@x.com']] },
+    }));
+  });
+
+  it('returns row_not_found when match_value missing', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue(mkClient([
+      ['Nombre', 'Telefono'],
+      ['Ana', '111'],
+    ]));
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'X', headers: ['Nombre', 'Telefono'] }),
+    );
+
+    const res = await updateRow('m1', 'Nombre', 'Zoe', { Telefono: '999' });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe('row_not_found');
+  });
+
+  it('returns sheets_api_error when Sheets API update rejects', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    const get = vi.fn().mockResolvedValue({ data: { values: [['Nombre'], ['Ana']] } });
+    const update = vi.fn().mockRejectedValue(new Error('Write permission denied'));
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({ spreadsheets: { values: { get, update } } });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mkSbMapping({ id: 'm1', portal_email: 'o1', spreadsheet_id: 's1', tab_name: 'X', headers: ['Nombre'] }),
+    );
+
+    const res = await updateRow('m1', 'Nombre', 'Ana', { Nombre: 'Maria' });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('sheets_api_error');
+      expect(res.detail).toContain('Write permission denied');
     }
   });
 });

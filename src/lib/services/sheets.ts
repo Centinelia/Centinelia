@@ -95,6 +95,141 @@ export async function refreshHeaders(
   return { ok: true, data: { headers } };
 }
 
+// ---------------------------------------------------------------------------
+// Internal helper: load mapping + all sheet rows in one go
+// ---------------------------------------------------------------------------
+async function loadAllRows(mappingId: string): Promise<
+  | { ok: true; mapping: SheetsMapping; rows: string[][] }
+  | { ok: false; reason: string; detail?: string }
+> {
+  const sb = createAdminClient();
+  const { data: mapping } = await sb
+    .from('sheets_mappings')
+    .select('*')
+    .eq('id', mappingId)
+    .single();
+
+  if (!mapping) return { ok: false, reason: 'mapping_not_found' };
+
+  try {
+    const client = await getSheetsClient(mapping.portal_email);
+    const res = await client.spreadsheets.values.get({
+      spreadsheetId: mapping.spreadsheet_id,
+      range: mapping.tab_name,
+    });
+    const values = (res.data.values ?? []) as string[][];
+    return { ok: true, mapping: mapping as SheetsMapping, rows: values };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: 'sheets_api_error', detail };
+  }
+}
+
+function rowsToObjects(headers: string[], dataRows: string[][]): Record<string, string>[] {
+  return dataRows.map(row => {
+    const o: Record<string, string> = {};
+    headers.forEach((h, i) => { o[h] = row[i] ?? ''; });
+    return o;
+  });
+}
+
+/**
+ * Returns all data rows from the mapped tab as an array of header-keyed objects.
+ *
+ * Never throws — all error paths return { ok: false, reason, detail? }.
+ */
+export async function readRange(
+  mappingId: string,
+  _range?: string,
+): Promise<ToolResult<{ rows: Record<string, string>[] }>> {
+  const loaded = await loadAllRows(mappingId);
+  if (!loaded.ok) return loaded;
+  const headers = loaded.mapping.headers ?? [];
+  const dataRows = loaded.rows.slice(1);
+  return { ok: true, data: { rows: rowsToObjects(headers, dataRows) } };
+}
+
+/**
+ * Returns rows whose cells contain the query string (case-insensitive).
+ *
+ * Never throws — all error paths return { ok: false, reason, detail? }.
+ */
+export async function searchInTab(
+  mappingId: string,
+  query: string,
+): Promise<ToolResult<{ rows: Record<string, string>[] }>> {
+  const loaded = await loadAllRows(mappingId);
+  if (!loaded.ok) return loaded;
+  const headers = loaded.mapping.headers ?? [];
+  const dataRows = loaded.rows.slice(1);
+  const q = query.toLowerCase();
+  const matched = dataRows.filter(row => row.some(cell => (cell ?? '').toLowerCase().includes(q)));
+  return { ok: true, data: { rows: rowsToObjects(headers, matched) } };
+}
+
+/**
+ * Finds the first row where `matchBy` column equals `matchValue`, merges `data`
+ * into it, and writes the updated row back to Sheets.
+ *
+ * Returns { row_number } (1-indexed, header row = 1).
+ * Limitation: column notation uses A-Z only; works for sheets up to 26 columns.
+ *
+ * Never throws — all error paths return { ok: false, reason, detail? }.
+ */
+export async function updateRow(
+  mappingId: string,
+  matchBy: string,
+  matchValue: string,
+  data: Record<string, unknown>,
+): Promise<ToolResult<{ row_number: number }>> {
+  const loaded = await loadAllRows(mappingId);
+  if (!loaded.ok) return loaded;
+  const { mapping, rows } = loaded;
+  const headers = mapping.headers ?? [];
+
+  const colIdx = headers.indexOf(matchBy);
+  if (colIdx === -1) {
+    return { ok: false, reason: 'headers_mismatch', detail: `match_by '${matchBy}' not in headers` };
+  }
+
+  const unknownKeys = Object.keys(data).filter(k => !headers.includes(k));
+  if (unknownKeys.length > 0) {
+    return { ok: false, reason: 'headers_mismatch', detail: `Keys not in headers: ${unknownKeys.join(', ')}` };
+  }
+
+  const dataRows = rows.slice(1);
+  const rowIdx = dataRows.findIndex(r => (r[colIdx] ?? '') === matchValue);
+  if (rowIdx === -1) return { ok: false, reason: 'row_not_found' };
+
+  const currentRow = [...dataRows[rowIdx]];
+  while (currentRow.length < headers.length) currentRow.push('');
+
+  headers.forEach((h, i) => {
+    if (h in data) {
+      const v = data[h];
+      currentRow[i] = v === undefined || v === null ? '' : String(v);
+    }
+  });
+
+  const rowNumber = rowIdx + 2; // +1 for header row, +1 for 1-indexed
+  const lastCol = String.fromCharCode(65 + headers.length - 1); // A=65; works for ≤26 cols
+
+  try {
+    const client = await getSheetsClient(mapping.portal_email);
+    await client.spreadsheets.values.update({
+      spreadsheetId: mapping.spreadsheet_id,
+      range: `${mapping.tab_name}!A${rowNumber}:${lastCol}${rowNumber}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [currentRow] },
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: 'sheets_api_error', detail };
+  }
+
+  return { ok: true, data: { row_number: rowNumber } };
+}
+
 /**
  * Appends a data row to the mapped spreadsheet tab, mapping object keys to
  * the stored header order. Unknown keys cause an early headers_mismatch error.
