@@ -237,8 +237,12 @@ async function executeToolOnAgent(
     });
 
     if (!res.ok) return 'Error al ejecutar la acción.';
-    const data = await res.json() as { results?: Array<{ result: string }> };
-    return data.results?.[0]?.result ?? 'Acción ejecutada sin respuesta.';
+    // Compat: routes de voz devuelven { results: [{result}] } (formato Vapi),
+    // pero algunas legacy como buscar-archivo devuelven { result: "..." } directo.
+    // Aceptamos ambos formatos para no perder el output real del tool.
+    const data = await res.json() as { results?: Array<{ result: string }>; result?: string };
+    const out = data.results?.[0]?.result ?? data.result ?? null;
+    return out ?? 'Acción ejecutada sin respuesta.';
   } catch {
     return 'Error de conexión al ejecutar la acción.';
   }
