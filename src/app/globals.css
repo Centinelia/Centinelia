@@ -8,6 +8,95 @@
   --font-sans:   var(--font-dm-sans);
 }
 
+/* ── Tokens semánticos (Fase 2 design system, light-only) ─────────────── */
+:root {
+  /* Superficies */
+  --surface-canvas:    #FAFAFB;
+  --surface-elevated:  #FFFFFF;
+  --surface-sunken:    #F5F5F7;
+  --surface-inverse:   #1A0A3B;
+
+  /* Bordes */
+  --border-subtle:     rgba(26,10,59,0.08);
+  --border-default:    rgba(26,10,59,0.12);
+  --border-emphasized: rgba(26,10,59,0.20);
+
+  /* Texto */
+  --text-primary:   #1A0A3B;
+  --text-secondary: #3F3D56;
+  --text-tertiary:  #6B7280;
+  --text-inverse:   #FAFBFF;
+  --text-accent:    #6C3BFF;
+
+  /* Accent (brand) */
+  --accent-default:    #6C3BFF;
+  --accent-hover:      #5A2FDB;
+  --accent-emphasized: #4A25B8;
+  --accent-subtle:     #F3EFFF;
+
+  /* Semánticos (chips/badges/progress) */
+  --success:         #22C55E;
+  --success-subtle:  #DCFCE7;
+  --warning:         #F59E0B;
+  --warning-subtle:  #FEF3C7;
+  --danger:          #EF4444;
+  --danger-subtle:   #FEE2E2;
+  --info:            #3B82F6;
+  --info-subtle:     #DBEAFE;
+
+  /* Spacing (múltiplos de 4, escala 8-point) */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* Typography */
+  --fs-xs:   11px;
+  --fs-sm:   13px;
+  --fs-base: 14px;
+  --fs-lg:   16px;
+  --fs-xl:   20px;
+  --fs-2xl:  24px;
+  --fs-3xl:  32px;
+  --fs-4xl:  40px;
+
+  --font-body: var(--font-dm-sans);
+  /* --font-heading ya existe en el :root anterior; se reutiliza */
+
+  --tracking-wide: 0.14em;
+
+  --lh-tight:  1.2;
+  --lh-normal: 1.5;
+  --lh-loose:  1.7;
+
+  /* Radius */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-full: 9999px;
+
+  /* Shadows (Stripe-tier, sutiles) */
+  --shadow-xs:    0 1px 2px  rgba(26,10,59,0.04);
+  --shadow-sm:    0 2px 4px  rgba(26,10,59,0.06);
+  --shadow-md:    0 4px 8px  rgba(26,10,59,0.08);
+  --shadow-lg:    0 12px 24px rgba(26,10,59,0.12);
+  --shadow-focus: 0 0 0 3px  rgba(108,59,255,0.15);
+
+  /* Motion */
+  --motion-fast:    150ms;
+  --motion-default: 200ms;
+  --motion-slow:    300ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* ── Dark theme (default) ───────────────────────────────────────────────── */
 :root {
   --c-bg:           #120726;
