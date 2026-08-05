@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMapping, refreshHeaders, appendRow, updateRow, readRange, searchInTab } from './sheets';
+import { getMapping, refreshHeaders, appendRow, updateRow, readRange, searchInTab, hasAnyMapping } from './sheets';
 
 vi.mock('@/lib/connectors/sheets-client');
 vi.mock('@/lib/supabase/admin');
@@ -351,6 +351,49 @@ describe('searchInTab', () => {
       expect(res.reason).toBe('sheets_api_error');
       expect(res.detail).toContain('Network error during search');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// hasAnyMapping
+// ---------------------------------------------------------------------------
+describe('hasAnyMapping', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns true when count > 0', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    // chain: .from().select().eq() resolves to { count: 3 }
+    const eq = vi.fn().mockResolvedValue({ count: 3 });
+    const select = vi.fn().mockReturnValue({ eq });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: () => ({ select }),
+    });
+
+    const result = await hasAnyMapping('org@example.com');
+    expect(result).toBe(true);
+  });
+
+  it('returns false when count is 0', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    // chain: .from().select().eq() resolves to { count: 0 }
+    const eq = vi.fn().mockResolvedValue({ count: 0 });
+    const select = vi.fn().mockReturnValue({ eq });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: () => ({ select }),
+    });
+
+    const result = await hasAnyMapping('empty@example.com');
+    expect(result).toBe(false);
+  });
+
+  it('returns false (fail-safe) when createAdminClient throws', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error('Connection refused');
+    });
+
+    const result = await hasAnyMapping('org@example.com');
+    expect(result).toBe(false);
   });
 });
 

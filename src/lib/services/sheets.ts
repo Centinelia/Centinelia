@@ -231,6 +231,25 @@ export async function updateRow(
 }
 
 /**
+ * Returns true when the org identified by portalEmail has at least one
+ * sheets_mapping row configured.
+ *
+ * Fail-safe: returns false on any error so that buildTools never throws.
+ */
+export async function hasAnyMapping(portalEmail: string): Promise<boolean> {
+  try {
+    const sb = createAdminClient();
+    const { count } = await sb
+      .from('sheets_mappings')
+      .select('id', { count: 'exact', head: true })
+      .eq('portal_email', portalEmail);
+    return (count ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Appends a data row to the mapped spreadsheet tab, mapping object keys to
  * the stored header order. Unknown keys cause an early headers_mismatch error.
  *

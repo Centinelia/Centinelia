@@ -5,6 +5,8 @@ import { isWithinBusinessHours, nextOpenTime } from '@/lib/voice/business-hours'
 import type { VoiceAgent } from '@/types/agent';
 import { VAPI_MAX_CALL_SECONDS, VAPI_VOICE_MAX_TOKENS } from '@/lib/constants';
 import { MEERKAT_TOOL_ACCESS } from '@/lib/creativity/meerkat-gates';
+import { sheetsTools } from '@/lib/tools/definitions/sheets';
+import { hasAnyMapping } from '@/lib/services/sheets';
 
 // Vapi calls this endpoint when a call comes in on an assigned phone number.
 // We respond with the agent configuration (system prompt + tools) for this caller.
@@ -337,7 +339,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + memoryContext + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
-  const tools = buildTools(typedAgent, qbConnected);
+  const tools = await buildTools(typedAgent, qbConnected);
 
   const defaultGreeting = typedAgent.speech_style === 'tu'
     ? `Hola, gracias por llamar a ${typedAgent.business_name}. Te habla ${agentName}. ¿En qué te puedo ayudar?`
@@ -457,7 +459,7 @@ export async function POST(req: NextRequest) {
   });
 }
 
-function buildTools(agent: VoiceAgent, qbConnected = false) {
+async function buildTools(agent: VoiceAgent, qbConnected = false) {
   const tools: object[] = [];
   const f = agent.features;
 
@@ -1380,6 +1382,22 @@ NO la uses para:
       if (voiceMeerkatId && (allowed as string[]).includes(voiceMeerkatId) && CREATIVITY_VOICE_DECLS[toolName]) {
         tools.push(CREATIVITY_VOICE_DECLS[toolName]);
       }
+    }
+  }
+
+  // Google Sheets tools — only when the org has at least one sheets mapping configured
+  if (agent.portal_email && await hasAnyMapping(agent.portal_email)) {
+    const execBase = `${process.env.NEXT_PUBLIC_APP_URL}/api/voice/tools/exec`;
+    for (const t of sheetsTools) {
+      tools.push({
+        type: 'function',
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters,
+          serverUrl: `${execBase}/${t.name}?agent_id=${agent.id}`,
+        },
+      });
     }
   }
 
