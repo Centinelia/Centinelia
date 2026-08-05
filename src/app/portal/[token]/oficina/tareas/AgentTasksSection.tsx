@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2, AlertTriangle, Clock, Bot } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { CheckCircle2, XCircle, Loader2, AlertTriangle, Clock, Bot, GitBranch, ChevronDown, ChevronRight } from 'lucide-react';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'partial' | 'failed' | 'cancelled';
 
@@ -159,6 +160,8 @@ function TaskCard({ task }: { task: Task }) {
               <strong style={{ color: '#f87171' }}>Evaluación:</strong> {task.eval_notes}
             </div>
           )}
+
+          <TransitionsTimeline taskId={task.id} />
         </div>
       </div>
     </div>
@@ -183,4 +186,77 @@ function statusLabel(s: TaskStatus): string {
 function fmt(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+interface Transition {
+  id:              string;
+  from_status:     string | null;
+  to_status:       string;
+  actor:           string;
+  reason:          string | null;
+  metadata:        Record<string, unknown> | null;
+  transitioned_at: string;
+}
+
+function TransitionsTimeline({ taskId }: { taskId: string }) {
+  const params = useParams<{ token: string }>();
+  const token  = params?.token as string | undefined;
+  const [open,   setOpen]   = useState(false);
+  const [items,  setItems]  = useState<Transition[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token || items || loading) return;
+    setLoading(true);
+    try {
+      const res  = await fetch(`/api/portal/${token}/agent-tasks/${taskId}/transitions`);
+      const data = await res.json();
+      setItems(data.transitions ?? []);
+    } catch { setItems([]); } finally { setLoading(false); }
+  }, [token, taskId, items, loading]);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) void load();
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={toggle}
+        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80"
+        style={{ color: 'var(--c-text-3)' }}
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <GitBranch size={11} />
+        <span>Historial de estados</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 pl-4 border-l" style={{ borderColor: 'var(--c-border)' }}>
+          {loading && <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Cargando…</p>}
+          {!loading && items?.length === 0 && (
+            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Sin historial registrado (tarea previa al state machine).</p>
+          )}
+          {!loading && items && items.length > 0 && (
+            <ol className="space-y-1.5">
+              {items.map(t => (
+                <li key={t.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                  <span className="font-mono" style={{ color: 'var(--c-text-3)' }}>{fmt(t.transitioned_at)}</span>
+                  {' · '}
+                  <span style={{ color: 'var(--c-text)' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
+                  {' · '}
+                  <span style={{ color: 'var(--c-text-3)' }}>{t.actor}</span>
+                  {t.reason && (
+                    <span style={{ color: 'var(--c-text-3)' }}> · {t.reason}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

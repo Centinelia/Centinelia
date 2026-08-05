@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { timingSafeEqual } from 'crypto';
+import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,15 +214,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   const notes = String(form.get('owner_notes') ?? '').trim().slice(0, 3000);
 
   const nextPlan = { ...((res.task.plan ?? {}) as Record<string, unknown>), owner_notes: notes || null };
-  await res.supabase
-    .from('agent_tasks')
-    .update({
+  await transitionAgentTask({
+    supabase: res.supabase, taskId: id,
+    toStatus: 'pending',
+    actor:    'user',
+    reason:   'plan_approved_with_edits',
+    metadata: { has_owner_notes: !!notes },
+    extraFields: {
       plan:                nextPlan,
-      status:              'pending',
       plan_approved_at:    new Date().toISOString(),
       plan_approval_token: null,
-    })
-    .eq('id', id);
+    },
+  });
 
   // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el
   // cron secret existe llamamos al endpoint, si no cae al tick horario normal.

@@ -8,6 +8,7 @@ import {
 import { planApprovalEmailHtml } from '@/lib/ops/task-plan-email';
 import { sendEmail } from '@/lib/email/send';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { createAgentTask, transitionAgentTask } from '@/lib/state-machines/agent-task';
 
 export const dynamic = 'force-dynamic';
 
@@ -393,26 +394,25 @@ export async function POST(req: NextRequest) {
     }
 
     const approvalToken = generatePlanApprovalToken();
-    const { data: pendingTask } = await supabase
-      .from('agent_tasks')
-      .insert({
-        portal_email:        caller.portal_email,
-        created_by:          agentId || null,
-        assigned_to:         target.id,
-        title:               tarea.slice(0, 200),
-        description:         contexto?.trim() || null,
-        status:              'awaiting_plan_approval',
-        trigger_type:        'delegation',
-        source_context:      contexto?.trim() || null,
-        success_criteria:    success_criteria || null,
-        max_iterations:      goalIter,
-        plan,
-        plan_approval_token: approvalToken,
-      })
-      .select('id')
-      .single();
+    const created = await createAgentTask({
+      supabase,
+      portalEmail:       caller.portal_email,
+      createdBy:         agentId || null,
+      assignedTo:        target.id,
+      title:             tarea,
+      description:       contexto?.trim() || null,
+      triggerType:       'delegation',
+      sourceContext:     contexto?.trim() || null,
+      initialStatus:     'awaiting_plan_approval',
+      successCriteria:   success_criteria || null,
+      maxIterations:     goalIter,
+      plan,
+      planApprovalToken: approvalToken,
+      actor:             agentId ? `agent:${agentId}` : 'system',
+      reason:            'delegation_created_needs_approval',
+    });
 
-    const pendingId = pendingTask?.id as string | undefined;
+    const pendingId = created.ok ? created.taskId : undefined;
     if (!pendingId) return fail('No se pudo guardar el plan.');
 
     const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
@@ -522,26 +522,23 @@ export async function POST(req: NextRequest) {
     ? `Contexto de la conversación: ${contexto.trim()}\n\nTarea a ejecutar: ${tarea}`
     : `Tarea a ejecutar: ${tarea}`;
 
-  // Record task
-  const { data: taskRecord } = await supabase
-    .from('agent_tasks')
-    .insert({
-      portal_email:     caller.portal_email,
-      created_by:       agentId || null,
-      assigned_to:      target.id,
-      title:            tarea.slice(0, 200),
-      description:      contexto?.trim() || null,
-      status:           'in_progress',
-      trigger_type:     'delegation',
-      source_context:   contexto?.trim() || null,
-      started_at:       new Date().toISOString(),
-      success_criteria: success_criteria || null,
-      max_iterations:   goalIter,
-    })
-    .select('id')
-    .single();
-
-  const taskId     = taskRecord?.id as string | undefined;
+  // Record task — path directo (sin approval flow), arranca in_progress.
+  const createdDirect = await createAgentTask({
+    supabase,
+    portalEmail:     caller.portal_email,
+    createdBy:       agentId || null,
+    assignedTo:      target.id,
+    title:           tarea,
+    description:     contexto?.trim() || null,
+    triggerType:     'delegation',
+    sourceContext:   contexto?.trim() || null,
+    initialStatus:   'in_progress',
+    successCriteria: success_criteria || null,
+    maxIterations:   goalIter,
+    actor:           agentId ? `agent:${agentId}` : 'system',
+    reason:          orgAutoApproves ? 'delegation_auto_approved' : 'delegation_below_threshold',
+  });
+  const taskId = createdDirect.ok ? createdDirect.taskId : undefined;
   const client     = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const loopStart  = Date.now();
 
@@ -644,15 +641,24 @@ export async function POST(req: NextRequest) {
     if (goalMet || !attemptDone) break;
   }
 
-  // Final DB update
+  // Final transition (con historial en task_state_transitions)
   if (taskId) {
-    await supabase.from('agent_tasks').update({
-      status:       goalMet ? 'completed' : (finalResult ? 'partial' : 'failed'),
-      result:       finalResult || 'Sin respuesta del agente.',
-      goal_met:     success_criteria ? goalMet : null,
-      eval_notes:   evalNotes || null,
-      completed_at: new Date().toISOString(),
-    }).eq('id', taskId);
+    const finalStatus = goalMet ? 'completed' : (finalResult ? 'partial' : 'failed');
+    await transitionAgentTask({
+      supabase, taskId,
+      toStatus: finalStatus,
+      actor:    'executor',
+      reason:   goalMet
+        ? 'goal_met'
+        : (finalResult ? 'partial_with_output' : 'no_output'),
+      metadata: { success_criteria: success_criteria ?? null, iterations: goalIter },
+      extraFields: {
+        result:       finalResult || 'Sin respuesta del agente.',
+        goal_met:     success_criteria ? goalMet : null,
+        eval_notes:   evalNotes || null,
+        completed_at: new Date().toISOString(),
+      },
+    });
   }
 
   const agentLabel = target.agent_name || agente;

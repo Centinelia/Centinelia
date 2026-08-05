@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { agentInboxAddressFor } from '@/lib/email/inbox';
 import { findNoxAgent } from '@/lib/ops/nox-coordinator';
+import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
@@ -443,18 +444,26 @@ export async function executeTask(params: {
 
   const now = new Date().toISOString();
   if (taskDone) {
-    await supabase
-      .from('agent_tasks')
-      .update({ status: 'completed', result: finalResult, completed_at: now })
-      .eq('id', taskId);
+    await transitionAgentTask({
+      supabase, taskId,
+      toStatus: 'completed',
+      actor:    'executor',
+      reason:   'task_completed',
+      metadata: { result_preview: String(finalResult ?? '').slice(0, 300) },
+      extraFields: { result: finalResult, completed_at: now },
+    });
   } else {
     const failReason = qaExhausted
       ? `Rechazado por el coordinador tras ${MAX_QA_CYCLES} intentos. Último entregable guardado.`
       : (finalResult || 'Sin respuesta del empleado.');
-    await supabase
-      .from('agent_tasks')
-      .update({ status: 'failed', result: failReason })
-      .eq('id', taskId);
+    await transitionAgentTask({
+      supabase, taskId,
+      toStatus: 'failed',
+      actor:    'executor',
+      reason:   qaExhausted ? 'qa_cycles_exhausted' : 'no_completion',
+      metadata: { qa_exhausted: qaExhausted, cycles: MAX_QA_CYCLES },
+      extraFields: { result: failReason },
+    });
   }
 
   return { success: taskDone, result: finalResult };

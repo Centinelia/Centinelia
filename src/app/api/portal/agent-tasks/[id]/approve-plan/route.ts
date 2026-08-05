@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { timingSafeEqual } from 'crypto';
+import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,27 +74,32 @@ async function handle(req: NextRequest, id: string) {
   }
 
   if (reject) {
-    await supabase
-      .from('agent_tasks')
-      .update({
-        status:                'cancelled',
+    await transitionAgentTask({
+      supabase, taskId: id,
+      toStatus: 'cancelled',
+      actor:    'user',
+      reason:   'plan_rejected_via_email',
+      metadata: { rejection_reason: reason },
+      extraFields: {
         plan_rejected_at:      new Date().toISOString(),
         plan_rejection_reason: reason,
         plan_approval_token:   null,
-      })
-      .eq('id', id);
+      },
+    });
     return htmlResponse('rejected', 'La tarea quedó cancelada. Puedes pedirle a tu empleado que la reintente con instrucciones diferentes.');
   }
 
   // Aprobar: marcar pending Y disparar ejecución inmediata (no esperar cron).
-  await supabase
-    .from('agent_tasks')
-    .update({
-      status:              'pending',
+  await transitionAgentTask({
+    supabase, taskId: id,
+    toStatus: 'pending',
+    actor:    'user',
+    reason:   'plan_approved_via_email',
+    extraFields: {
       plan_approved_at:    new Date().toISOString(),
       plan_approval_token: null,
-    })
-    .eq('id', id);
+    },
+  });
 
   // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el
   // cron secret existe llamamos al endpoint, si no cae al tick horario normal.
