@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, ExternalLink, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users, Pencil,
+  Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import TasksAdjuster from '../agentes/[id]/TasksAdjuster';
@@ -16,6 +16,7 @@ import { Pagination } from '@/components/admin/Pagination';
 
 type AgentRow = {
   id: string;
+  agent_name: string | null;
   business_name: string;
   plan: string;
   active: boolean;
@@ -96,44 +97,53 @@ export default function ClientesClient({
   const toggle = (key: string) =>
     setExpanded(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
-  const openCred = (agentId: string, currentEmail: string | null) => {
-    setCredOpen(prev => { const n = new Set(prev); n.add(agentId); return n; });
+  // clientKey = client.key (portal_email o fallback). Un cliente = un login compartido.
+  const openCred = (clientKey: string, currentEmail: string | null) => {
+    setCredOpen(prev => { const n = new Set(prev); n.add(clientKey); return n; });
     setCredForms(prev => ({
       ...prev,
-      [agentId]: { email: currentEmail ?? '', pw: '', confirm: '', showPw: false, saving: false, msg: null },
+      [clientKey]: { email: currentEmail ?? '', pw: '', confirm: '', showPw: false, saving: false, msg: null },
     }));
   };
 
-  const closeCred = (agentId: string) =>
-    setCredOpen(prev => { const n = new Set(prev); n.delete(agentId); return n; });
+  const closeCred = (clientKey: string) =>
+    setCredOpen(prev => { const n = new Set(prev); n.delete(clientKey); return n; });
 
-  const updateForm = (agentId: string, patch: Partial<CredForm>) =>
-    setCredForms(prev => ({ ...prev, [agentId]: { ...prev[agentId], ...patch } }));
+  const updateForm = (clientKey: string, patch: Partial<CredForm>) =>
+    setCredForms(prev => ({ ...prev, [clientKey]: { ...prev[clientKey], ...patch } }));
 
-  const saveCred = async (agentId: string) => {
-    const form = credForms[agentId];
+  const saveCred = async (clientKey: string, currentPortalEmail: string | null, fallbackAgentId: string) => {
+    const form = credForms[clientKey];
     if (!form?.email) return;
     if (form.pw && form.pw !== form.confirm) {
-      updateForm(agentId, { msg: { ok: false, text: 'Las contraseñas no coinciden' } });
+      updateForm(clientKey, { msg: { ok: false, text: 'Las contraseñas no coinciden' } });
       return;
     }
     if (form.pw && form.pw.length < 8) {
-      updateForm(agentId, { msg: { ok: false, text: 'Mínimo 8 caracteres' } });
+      updateForm(clientKey, { msg: { ok: false, text: 'Mínimo 8 caracteres' } });
       return;
     }
-    updateForm(agentId, { saving: true, msg: null });
-    const body: Record<string, string> = { email: form.email };
-    if (form.pw) body.password = form.pw;
-    const res = await fetch(`/api/admin/agentes/${agentId}/portal-credentials`, {
-      method: 'POST',
+    updateForm(clientKey, { saving: true, msg: null });
+
+    // Si ya hay portal_email → bulk update sobre todos los empleados del pool.
+    // Si no (onboarding), ruta legacy per-agent: deja el email en primer empleado.
+    const useBulk = !!currentPortalEmail;
+    const url  = useBulk ? '/api/admin/portal-credentials' : `/api/admin/agentes/${fallbackAgentId}/portal-credentials`;
+    const body = useBulk
+      ? { current_portal_email: currentPortalEmail, new_email: form.email, ...(form.pw ? { password: form.pw } : {}) }
+      : { email: form.email, ...(form.pw ? { password: form.pw } : {}) };
+
+    const res = await fetch(url, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body:    JSON.stringify(body),
     });
     if (res.ok) {
-      closeCred(agentId);
+      closeCred(clientKey);
+      router.refresh();
     } else {
       const { error } = await res.json().catch(() => ({ error: 'Error al guardar' }));
-      updateForm(agentId, { saving: false, msg: { ok: false, text: error } });
+      updateForm(clientKey, { saving: false, msg: { ok: false, text: error } });
     }
   };
 
@@ -295,6 +305,26 @@ export default function ClientesClient({
                   <span className="hidden sm:inline"> Editar</span>
                 </Link>
 
+                {/* Acceso al portal (nivel cliente) */}
+                <button
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    const isOpen = credOpen.has(client.key);
+                    isOpen ? closeCred(client.key) : openCred(client.key, client.portal_email);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
+                  style={{
+                    background: credOpen.has(client.key) ? '#FFFBEB' : '#FFFFFF',
+                    color: credOpen.has(client.key) ? '#F59E0B' : (client.portal_email ? '#10B981' : '#6B7280'),
+                    border: `1px solid ${credOpen.has(client.key) ? '#FDE68A' : '#E5E7EB'}`,
+                  }}
+                  title={client.portal_email ? `Editar acceso: ${client.portal_email}` : 'Sin acceso al portal'}
+                >
+                  <KeyRound size={11} />
+                  <span className="hidden sm:inline"> {client.portal_email ? 'Acceso' : 'Sin acceso'}</span>
+                </button>
+
                 <ChevronDown
                   size={15}
                   className="flex-shrink-0 transition-transform"
@@ -302,159 +332,154 @@ export default function ClientesClient({
                 />
               </div>
 
+              {/* Credentials form (nivel cliente, aplica a TODOS los empleados del pool) */}
+              {credOpen.has(client.key) && credForms[client.key] && (() => {
+                const form = credForms[client.key];
+                const firstAgentId = client.agents[0]?.id ?? '';
+                return (
+                  <div
+                    className="px-5 py-4 flex flex-col gap-3"
+                    style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}
+                  >
+                    <p className="text-[12px] font-semibold" style={{ color: '#374151' }}>
+                      Acceso al portal.{' '}
+                      <span style={{ color: '#6B7280', fontWeight: 400 }}>
+                        Aplica a los {client.agents.length} empleado{client.agents.length !== 1 ? 's' : ''} de este cliente.
+                      </span>
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Email de acceso</label>
+                        <input
+                          type="email"
+                          value={form.email}
+                          onChange={e => updateForm(client.key, { email: e.target.value })}
+                          placeholder="cliente@negocio.com"
+                          className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
+                          {client.portal_email ? 'Nueva contraseña (vacío = sin cambio)' : 'Contraseña (mín. 8 caracteres)'}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={form.showPw ? 'text' : 'password'}
+                            value={form.pw}
+                            onChange={e => updateForm(client.key, { pw: e.target.value })}
+                            placeholder="••••••••"
+                            className="w-full text-[13px] outline-none rounded-lg px-3 py-2 pr-9"
+                            style={inputStyle}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateForm(client.key, { showPw: !form.showPw })}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                            style={{ color: '#9CA3AF' }}
+                          >
+                            {form.showPw ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                        </div>
+                      </div>
+                      {form.pw && (
+                        <div className="sm:col-start-2">
+                          <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Confirmar contraseña</label>
+                          <input
+                            type={form.showPw ? 'text' : 'password'}
+                            value={form.confirm}
+                            onChange={e => updateForm(client.key, { confirm: e.target.value })}
+                            placeholder="••••••••"
+                            className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
+                            style={inputStyle}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {form.msg && (
+                      <p className="text-[12px]" style={{ color: form.msg.ok ? '#10B981' : '#EF4444' }}>{form.msg.text}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveCred(client.key, client.portal_email, firstAgentId)}
+                        disabled={form.saving}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+                        style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+                      >
+                        <Check size={12} /> {form.saving ? 'Guardando' : 'Guardar'}
+                      </button>
+                      <button
+                        onClick={() => closeCred(client.key)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
+                        style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                      >
+                        <X size={12} /> Cancelar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Expanded: agents */}
               {open && (
                 <div style={{ borderTop: '1px solid #F3F4F6' }}>
-                  {client.agents.map((agent, i) => {
-                    const credIsOpen = credOpen.has(agent.id);
-                    const form       = credForms[agent.id];
+                  {client.agents.map((agent, i) => (
+                    <div
+                      key={agent.id}
+                      className="flex items-center gap-3 px-5 py-3"
+                      style={{
+                        borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                        background: '#F9FAFB',
+                      }}
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: agent.active ? '#10B981' : '#EF4444' }}
+                      />
 
-                    return (
-                      <div key={agent.id}>
-                        <div
-                          className="flex items-center gap-3 px-5 py-3"
-                          style={{
-                            borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
-                            background: '#F9FAFB',
-                          }}
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: agent.active ? '#10B981' : '#EF4444' }}
-                          />
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[13px] font-medium" style={{ color: '#111827' }}>{agent.business_name}</span>
-                              {agent.billing_status === 'pago_fallido' && (
-                                <span
-                                  className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
-                                  style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
-                                >
-                                  Pago fallido
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {agent.portal_token && (
-                              <Link
-                                href={`/portal/${agent.portal_token}`}
-                                target="_blank"
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
-                                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
-                              >
-                                <ExternalLink size={11} /><span className="hidden sm:inline"> Portal</span>
-                              </Link>
-                            )}
-                            <Link
-                              href={`/admin/agentes/${agent.id}/editar`}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
-                              style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[13px] font-medium flex items-center gap-1" style={{ color: '#111827' }}>
+                            <Bot size={11} style={{ color: '#7C3AED' }} />
+                            {agent.agent_name?.trim() || agent.business_name}
+                          </span>
+                          {agent.agent_name?.trim() && agent.business_name && agent.agent_name.trim() !== agent.business_name && (
+                            <span className="text-[12px]" style={{ color: '#6B7280' }}>
+                              {agent.business_name}
+                            </span>
+                          )}
+                          {agent.billing_status === 'pago_fallido' && (
+                            <span
+                              className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                              style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
                             >
-                              <Settings size={11} /><span className="hidden sm:inline"> Editar</span>
-                            </Link>
-                            <button
-                              onClick={() => credIsOpen ? closeCred(agent.id) : openCred(agent.id, agent.portal_email)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
-                              style={{
-                                background: credIsOpen ? '#FFFBEB' : '#FFFFFF',
-                                color: credIsOpen ? '#F59E0B' : (agent.portal_email ? '#10B981' : '#6B7280'),
-                                border: `1px solid ${credIsOpen ? '#FDE68A' : '#E5E7EB'}`,
-                              }}
-                            >
-                              <KeyRound size={11} />
-                              <span className="hidden sm:inline"> {agent.portal_email ? 'Acceso' : 'Sin acceso'}</span>
-                            </button>
-                          </div>
+                              Pago fallido
+                            </span>
+                          )}
                         </div>
-
-                        {/* Credentials form */}
-                        {credIsOpen && form && (
-                          <div
-                            className="px-5 py-4 flex flex-col gap-3"
-                            style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}
-                          >
-                            <p className="text-[12px] font-semibold" style={{ color: '#374151' }}>
-                              Acceso al portal.{' '}
-                              <span style={{ color: '#6B7280', fontWeight: 400 }}>{agent.business_name}</span>
-                            </p>
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                              <div>
-                                <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Email de acceso</label>
-                                <input
-                                  type="email"
-                                  value={form.email}
-                                  onChange={e => updateForm(agent.id, { email: e.target.value })}
-                                  placeholder="cliente@negocio.com"
-                                  className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
-                                  style={inputStyle}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
-                                  {agent.portal_email ? 'Nueva contraseña (vacío = sin cambio)' : 'Contraseña (mín. 8 caracteres)'}
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type={form.showPw ? 'text' : 'password'}
-                                    value={form.pw}
-                                    onChange={e => updateForm(agent.id, { pw: e.target.value })}
-                                    placeholder="••••••••"
-                                    className="w-full text-[13px] outline-none rounded-lg px-3 py-2 pr-9"
-                                    style={inputStyle}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => updateForm(agent.id, { showPw: !form.showPw })}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                                    style={{ color: '#9CA3AF' }}
-                                  >
-                                    {form.showPw ? <EyeOff size={13} /> : <Eye size={13} />}
-                                  </button>
-                                </div>
-                              </div>
-                              {form.pw && (
-                                <div className="sm:col-start-2">
-                                  <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Confirmar contraseña</label>
-                                  <input
-                                    type={form.showPw ? 'text' : 'password'}
-                                    value={form.confirm}
-                                    onChange={e => updateForm(agent.id, { confirm: e.target.value })}
-                                    placeholder="••••••••"
-                                    className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
-                                    style={inputStyle}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            {form.msg && (
-                              <p className="text-[12px]" style={{ color: form.msg.ok ? '#10B981' : '#EF4444' }}>{form.msg.text}</p>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => saveCred(agent.id)}
-                                disabled={form.saving || !form.email}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-opacity disabled:opacity-50"
-                                style={{ background: '#6C3BFF', color: '#FFFFFF' }}
-                              >
-                                <Check size={12} />
-                                {form.saving ? 'Guardando...' : 'Guardar'}
-                              </button>
-                              <button
-                                onClick={() => closeCred(agent.id)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-70"
-                                style={{ color: '#6B7280' }}
-                              >
-                                <X size={12} /> Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {agent.portal_token && (
+                          <Link
+                            href={`/portal/${agent.portal_token}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
+                            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+                          >
+                            <ExternalLink size={11} /><span className="hidden sm:inline"> Portal</span>
+                          </Link>
+                        )}
+                        <Link
+                          href={`/admin/agentes/${agent.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
+                          style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+                        >
+                          <Settings size={11} /><span className="hidden sm:inline"> Configurar</span>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Pool de la cuenta: minutos + tareas en 2 columnas */}
                   {client.agents[0] && (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network } from 'lucide-react';
+import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
@@ -15,7 +15,6 @@ const groups: NavGroup[] = [
       { href: '/admin/inicio',       icon: Home,       label: 'Inicio' },
       { href: '/admin/comando',      icon: Terminal,   label: 'Comando' },
       { href: '/admin/clientes',     icon: Users,      label: 'Clientes' },
-      { href: '/admin/agentes',      icon: Bot,        label: 'Empleados' },
       { href: '/admin/llamadas',     icon: Phone,      label: 'Llamadas' },
       { href: '/admin/analytics',    icon: BarChart3,  label: 'Analytics' },
     ],
@@ -72,7 +71,10 @@ export default function AdminNav() {
             {g.group}
           </p>
           {g.items.map(({ href, icon: Icon, label }) => {
-            const active = path === href || path.startsWith(href + '/');
+            const active = path === href
+              || path.startsWith(href + '/')
+              // Clientes absorbe /admin/agentes (config del empleado individual)
+              || (href === '/admin/clientes' && (path === '/admin/agentes' || path.startsWith('/admin/agentes/')));
             return (
               <Link
                 key={href}
