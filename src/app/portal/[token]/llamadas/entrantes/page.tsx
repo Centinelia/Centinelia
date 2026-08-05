@@ -7,7 +7,6 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 import { PhoneCall }      from 'lucide-react';
 import { EmptyState, PageContainer, PageSection, SectionHeader, Card, Badge, Icon } from '@/components/portal-ui';
-import ThemeToggle        from '@/components/ThemeToggle';
 import type { VoiceCall } from '@/types/agent';
 
 import PortalLogout     from '../../PortalLogout';
@@ -248,7 +247,6 @@ export default async function EntrantesPage({ params }: Props) {
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
           </div>

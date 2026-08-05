@@ -5,7 +5,6 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect, notFound }           from 'next/navigation';
 import { ThemeProvider }                from '@/components/ThemeProvider';
-import ThemeToggle                      from '@/components/ThemeToggle';
 import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 import NotificationBell                 from '../NotificationBell';
@@ -182,7 +181,6 @@ export default async function UsuariosPage({ params }: Props) {
             <div className="flex items-center gap-1.5 shrink-0">
               {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
               <NotificationBell token={token} />
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
           </div>

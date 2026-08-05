@@ -7,7 +7,6 @@ import { Menu, X, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Toaster } from 'sonner';
 import AdminNav from './AdminNav';
-import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const [open,    setOpen]    = useState(false);
@@ -73,17 +72,16 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {/* Nav */}
         <AdminNav />
 
-        {/* Cerrar sesión + ThemeToggle */}
-        <div className="px-3 pb-2 flex-shrink-0 flex items-center justify-between">
+        {/* Cerrar sesión */}
+        <div className="px-3 pb-2 flex-shrink-0">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 w-full"
             style={{ color: 'var(--c-text-3)' }}
           >
             <LogOut size={13} />
             Cerrar sesión
           </button>
-          {mounted && <ThemeToggle />}
         </div>
 
         {/* Footer */}

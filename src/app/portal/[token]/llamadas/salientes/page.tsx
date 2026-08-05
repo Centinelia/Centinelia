@@ -6,7 +6,6 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
 import { PhoneOutgoing }               from 'lucide-react';
-import ThemeToggle                     from '@/components/ThemeToggle';
 import { PageContainer, PageSection, SectionHeader, Icon } from '@/components/portal-ui';
 
 import PortalLogout      from '../../PortalLogout';
@@ -188,7 +187,6 @@ export default async function SalientesPage({ params, searchParams }: Props) {
               currentBusinessName={agent.business_name}
             />
             <div className="flex items-center gap-1.5 shrink-0">
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
           </div>

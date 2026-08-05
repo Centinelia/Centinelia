@@ -7,7 +7,6 @@ import { ChevronLeft, Mail, CheckCircle, AlertTriangle, Phone, Zap, Clock } from
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import ThemeToggle from '@/components/ThemeToggle';
 
 import PortalLogout              from '../PortalLogout';
 import PortalVoiceSelector       from '../PortalVoiceSelector';
@@ -152,7 +151,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               Mis empleados
             </Link>
             <div className="flex items-center gap-1.5">
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
           </div>

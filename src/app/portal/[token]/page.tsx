@@ -13,7 +13,6 @@ import type { VoiceCall } from '@/types/agent';
 import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import ThemeToggle from '@/components/ThemeToggle';
 import { cookies } from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect } from 'next/navigation';
@@ -1873,7 +1872,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             <div className="flex items-center gap-1.5 shrink-0">
               {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
               <NotificationBell token={token} />
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
               <PortalLogout />
             </div>
           </div>

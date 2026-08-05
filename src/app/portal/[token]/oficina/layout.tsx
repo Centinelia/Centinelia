@@ -5,7 +5,6 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
-import ThemeToggle                      from '@/components/ThemeToggle';
 import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 
@@ -165,7 +164,6 @@ export default async function OficinaLayout({
             />
             <div className="flex items-center gap-1.5 shrink-0">
               <NotificationBell token={token} />
-              <ThemeToggle />
               <PortalLogout />
             </div>
           </div>
