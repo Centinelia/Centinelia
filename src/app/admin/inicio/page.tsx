@@ -43,6 +43,9 @@ export default async function InicioPage() {
 
   const demoExcl = `(${DEMO_EMAILS.map(e => `"${e}"`).join(',')})`;
 
+  // Inicio del mes actual (UTC) para el gasto Claude
+  const monthStartIso = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
+
   const [
     { data: agents },
     { data: callsToday },
@@ -50,6 +53,7 @@ export default async function InicioPage() {
     { data: inboxPending },
     { data: lastCallsPerAgent },
     { data: acctMinsData },
+    { count: opsLogCount },
     approvalsPending,
     vapiAccount,
     twilioBalance,
@@ -75,6 +79,9 @@ export default async function InicioPage() {
       .order('created_at', { ascending: false })
       .limit(500),
     supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included'),
+    supabase.from('ai_ops_log')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', monthStartIso),
     pendingApprovalsCount(),
     fetch('https://api.vapi.ai/account', {
       headers: { Authorization: `Bearer ${process.env.VAPI_API_KEY}` },
@@ -121,8 +128,13 @@ export default async function InicioPage() {
   const VAPI_LOW_THRESHOLD   = 20;  // USD
   const TWILIO_LOW_THRESHOLD = 10;  // USD
 
-  // Infra: Claude estimated cost
-  const estimatedClaudeCost = opsUsedTotal * 0.0024;
+  // Infra: Claude estimated cost del mes.
+  // Fuente: ai_ops_log (incluye pool anual + Stripe legacy + demos).
+  // Sigue siendo estimado: no cuenta CES eval, learn cron, golden tests,
+  // admin /comando, generate-kb, ni tokens reales del prompt. Para exacto
+  // ver console.anthropic.com.
+  const opsThisMonth        = opsLogCount ?? 0;
+  const estimatedClaudeCost = opsThisMonth * 0.0024;
   const claudeBudget        = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
   const claudeBudgetPct     = Math.min(Math.round((estimatedClaudeCost / claudeBudget) * 100), 100);
   const claudeOverBudget    = estimatedClaudeCost >= claudeBudget;
@@ -435,7 +447,7 @@ export default async function InicioPage() {
             unit="USD"
             danger={claudeOverBudget}
             warn={claudeNearBudget}
-            hint={`${opsUsedTotal.toLocaleString('es-MX')} tareas de $${claudeBudget} (${claudeBudgetPct}%)`}
+            hint={`${opsThisMonth.toLocaleString('es-MX')} tareas del mes de $${claudeBudget} (${claudeBudgetPct}%)`}
             iconColor={claudeOverBudget ? '#EF4444' : claudeNearBudget ? '#F59E0B' : '#F59E0B'}
             iconBg={claudeOverBudget ? '#FEF2F2' : '#FFFBEB'}
           />
