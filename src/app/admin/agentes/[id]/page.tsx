@@ -5,8 +5,8 @@ import { getOrCreateSerial }  from '@/lib/portal/serial';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Phone, Globe, Calendar, CheckCircle, XCircle,
-  Pencil, ExternalLink, Check, Circle,
+  ArrowLeft, Phone, Globe, Calendar, Clock, MapPin, Mail, User, Building2,
+  Bot, Pencil, ExternalLink, Check, Circle, MessageSquare,
 } from 'lucide-react';
 import type { VoiceAgent, VoiceCall } from '@/types/agent';
 import { FEATURE_LABELS } from '@/types/agent';
@@ -52,6 +52,11 @@ const FEATURE_DESCRIPTIONS: Partial<Record<keyof AgentFeatures, string>> = {
   contract_drafts:         'Redacción de borradores de contrato',
 };
 
+const DAY_LABEL: Record<string, string> = {
+  monday:'Lunes', tuesday:'Martes', wednesday:'Miércoles',
+  thursday:'Jueves', friday:'Viernes', saturday:'Sábado', sunday:'Domingo',
+};
+
 export default async function AgentDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = createAdminClient();
@@ -72,7 +77,7 @@ export default async function AgentDetailPage({ params }: Props) {
 
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
 
-  const meerkatId  = (agent.features as any)?.meerkat_role_id as string | null;
+  const meerkatId   = (agent.features as any)?.meerkat_role_id as string | null;
   const jornadaType = (agent as any).jornada_type as string | null;
 
   // Fetch active global version del meerkat del agente
@@ -91,150 +96,148 @@ export default async function AgentDetailPage({ params }: Props) {
   const activeFeatures   = DISPLAY_FEATURES.filter(k => !!(agent.features as any)[k]);
   const inactiveFeatures = DISPLAY_FEATURES.filter(k => !(agent.features as any)[k]);
 
+  // Display name preference: agent_name (Nia, Noah…) fallback to meerkat or business
+  const displayName  = agent.agent_name || cap(meerkatId ?? '') || agent.business_name;
+  const meerkatLabel = meerkatId ? cap(meerkatId) : null;
+  const showMeerkatPill = !!meerkatLabel && (!agent.agent_name || agent.agent_name.toLowerCase() !== meerkatId);
+
   return (
-    <div className="p-4 md:p-8 max-w-4xl">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+
+      {/* Back link */}
+      <div>
+        <Link
+          href="/admin/clientes"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors hover:opacity-80"
+          style={{ color: '#6B7280' }}
+        >
+          <ArrowLeft size={14} /> Clientes
+        </Link>
+      </div>
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-start gap-3">
-          <Link href="/admin/agentes"
-            className="p-2 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0 mt-0.5"
-            style={{ color: 'var(--c-text-3)' }}>
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-2xl font-bold truncate" style={{ color: 'var(--c-text)' }}>
-                {agent.business_name}
-              </h1>
-              {agent.agent_name && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold flex-shrink-0"
-                  style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
-                  {agent.agent_name}
-                </span>
-              )}
-              {meerkatId && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
-                  style={{ background: 'rgba(108,59,255,0.08)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
-                  {meerkatId}
-                </span>
-              )}
-              {jornadaType && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
-                  style={{ background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  {jornadaType}
-                </span>
-              )}
-              {agent.active
-                ? <CheckCircle size={15} color="#22c55e" className="flex-shrink-0" />
-                : <XCircle size={15} color="#ef4444" className="flex-shrink-0" />}
-              {isOpen !== null && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                  style={{
-                    background: isOpen ? 'rgba(34,197,94,0.1)' : 'rgba(107,114,128,0.1)',
-                    color:      isOpen ? '#22c55e' : '#9ca3af',
-                    border:     `1px solid ${isOpen ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)'}`,
-                  }}>
-                  {isOpen ? 'Abierto' : 'Cerrado'}
-                </span>
-              )}
-            </div>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.client_name}</p>
-            {agent.portal_email && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{(agent as any).portal_email}</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-[24px] font-semibold tracking-tight truncate" style={{ color: '#111827' }}>
+              {displayName}
+            </h1>
+            <StatusPill active={agent.active} />
+            {isOpen !== null && <OpenPill open={isOpen} />}
+            {jornadaType && <JornadaPill jornada={jornadaType} />}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+            {showMeerkatPill && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"
+                style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #E9E1FF' }}
+              >
+                <Bot size={11} /> Meerkat: {meerkatLabel}
+              </span>
             )}
             {accountSerial && (
-              <p className="text-xs mt-1 font-mono font-semibold tracking-widest"
-                style={{ color: '#6C3BFF', letterSpacing: '0.08em' }}>
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold"
+                style={{ background: '#F3F0FF', color: '#6C3BFF', border: '1px solid #E9E1FF', letterSpacing: '0.08em' }}
+              >
                 {accountSerial}
-              </p>
+              </span>
             )}
-            <div className="sm:hidden flex items-center justify-end gap-2 mt-2 pr-4">
-              <Link href={`/admin/agentes/${agent.id}/editar`}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                <Pencil size={13} /> Editar
-              </Link>
-              <AgentActions agentId={agent.id} active={agent.active} />
-            </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <Link href={`/admin/agentes/${agent.id}/editar`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-              <Pencil size={13} /> Editar
-            </Link>
-            <AgentActions agentId={agent.id} active={agent.active} />
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/admin/agentes/${agent.id}/editar`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+          >
+            <Pencil size={13} /> Editar
+          </Link>
+          <AgentActions agentId={agent.id} active={agent.active} />
         </div>
       </div>
 
+      {/* Grid 2 cols */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left column */}
         <div className="lg:col-span-2 flex flex-col gap-6">
 
-          {/* Business info */}
-          <Card title="Negocio">
+          {/* Empresa & contacto */}
+          <Card title="Empresa y contacto" icon={<Building2 size={13} />}>
+            <FieldRow icon={<Building2 size={13} />} label="Empresa" value={agent.business_name} />
+            {agent.client_name && (
+              <FieldRow icon={<User size={13} />} label="Contacto" value={agent.client_name} />
+            )}
+            {(agent as any).client_email && (
+              <FieldRow icon={<Mail size={13} />} label="Email del cliente" value={(agent as any).client_email} />
+            )}
             {agent.business_description && (
-              <InfoRow label="Descripción" value={agent.business_description} />
+              <FieldRow icon={<MessageSquare size={13} />} label="Descripción" value={agent.business_description} multiline />
             )}
             {agent.business_address && (
-              <InfoRow label="Dirección" value={agent.business_address} />
+              <FieldRow icon={<MapPin size={13} />} label="Dirección" value={agent.business_address} />
             )}
             {agent.calendar_url && (
-              <InfoRow label="Calendario" value={agent.calendar_url} icon={<Globe size={13} />} link />
+              <FieldRow icon={<Globe size={13} />} label="Calendario" value={agent.calendar_url} link />
             )}
-            <div className="flex flex-col sm:flex-row gap-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {agent.business_phone_display && (
-                <InfoRowCompact label="Teléfono del negocio" value={agent.business_phone_display} icon={<Phone size={12} />} copyable />
+                <MetricRow label="Teléfono del negocio" value={agent.business_phone_display} icon={<Phone size={12} />} copyable />
               )}
               {agent.phone_number && (
-                <InfoRowCompact label="Número Centinelia" value={agent.phone_number} icon={<Phone size={12} />} copyable />
+                <MetricRow label="Número Centinelia" value={agent.phone_number} icon={<Phone size={12} />} copyable />
               )}
-              <InfoRowCompact label="Zona horaria" value={agent.timezone} icon={<Calendar size={12} />} />
+              {agent.timezone && (
+                <MetricRow label="Zona horaria" value={agent.timezone} icon={<Calendar size={12} />} />
+              )}
             </div>
           </Card>
 
           {/* Features */}
-          <Card title="Funciones activas">
+          <Card title="Funciones" icon={<Check size={13} />}>
             {activeFeatures.length > 0 ? (
-              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(108,59,255,0.2)' }}>
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
                 {activeFeatures.map((key, i) => (
-                  <div key={key} className="flex items-center gap-3 px-3 py-2.5"
+                  <div
+                    key={key}
+                    className="flex items-start gap-3 px-4 py-3"
                     style={{
-                      background:   'var(--c-surface)',
-                      borderBottom: i < activeFeatures.length - 1 ? '1px solid rgba(108,59,255,0.08)' : undefined,
-                    }}>
-                    <Check size={13} className="flex-shrink-0" style={{ color: '#6C3BFF' }} />
+                      background: '#FFFFFF',
+                      borderTop:  i > 0 ? '1px solid #F3F4F6' : undefined,
+                    }}
+                  >
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#F3F0FF' }}>
+                      <Check size={13} style={{ color: '#7C3AED' }} />
+                    </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{FEATURE_LABELS[key]}</p>
+                      <p className="text-[13px] font-medium" style={{ color: '#111827' }}>{FEATURE_LABELS[key]}</p>
                       {FEATURE_DESCRIPTIONS[key] && (
-                        <p className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>{FEATURE_DESCRIPTIONS[key]}</p>
+                        <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>{FEATURE_DESCRIPTIONS[key]}</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin funciones activas</p>
+              <p className="text-[13px]" style={{ color: '#9CA3AF' }}>Sin funciones activas</p>
             )}
             {inactiveFeatures.length > 0 && (
-              <div className="mt-3">
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
+              <div className="mt-4">
+                <p className="text-[11px] uppercase tracking-wider font-medium mb-2" style={{ color: '#9CA3AF' }}>
                   Desactivadas
                 </p>
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
-                  {inactiveFeatures.map((key, i) => (
-                    <div key={key} className="flex items-center gap-3 px-3 py-2"
-                      style={{
-                        background:   'var(--c-surface)',
-                        borderBottom: i < inactiveFeatures.length - 1 ? '1px solid var(--c-border)' : undefined,
-                        opacity: 0.45,
-                      }}>
-                      <Circle size={13} className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }} />
-                      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{FEATURE_LABELS[key]}</p>
-                    </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {inactiveFeatures.map(key => (
+                    <span
+                      key={key}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px]"
+                      style={{ background: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}
+                    >
+                      <Circle size={9} style={{ color: '#9CA3AF' }} />
+                      {FEATURE_LABELS[key]}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -255,81 +258,100 @@ export default async function AgentDetailPage({ params }: Props) {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
 
           {/* Portal + Vapi */}
-          {(agent.portal_token || agent.vapi_agent_id) && (
-            <div className="p-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+          {(agent.portal_token || agent.vapi_agent_id || agent.portal_email) && (
+            <Card title="Acceso" icon={<ExternalLink size={13} />}>
+              {agent.portal_email && (
+                <div className="pb-3">
+                  <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
+                    Email del portal
+                  </p>
+                  <p className="text-[13px] break-all" style={{ color: '#111827' }}>{agent.portal_email}</p>
+                </div>
+              )}
               {agent.portal_token && (
-                <>
-                  <div className="text-xs mb-2 tracking-widest uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>
+                <div style={agent.portal_email ? { borderTop: '1px solid #F3F4F6', paddingTop: 12 } : {}}>
+                  <p className="text-[11px] uppercase tracking-wider font-medium mb-2" style={{ color: '#9CA3AF' }}>
                     Portal del cliente
-                  </div>
+                  </p>
                   <div className="flex items-center gap-2">
-                    <a href={`/portal/${agent.portal_token}`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs hover:underline flex-1" style={{ color: '#9B6DFF' }}>
-                      <ExternalLink size={11} /> Ver portal
+                    <a
+                      href={`/portal/${agent.portal_token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[13px] font-medium flex-1 hover:underline"
+                      style={{ color: '#6C3BFF' }}
+                    >
+                      <ExternalLink size={12} /> Ver portal
                     </a>
                     <CopyButton text={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/${agent.portal_token}`} />
                   </div>
-                  <div className="text-xs mt-1.5 font-mono break-all" style={{ color: 'var(--c-text-4)' }}>
+                  <div className="text-[11px] font-mono mt-1.5 break-all" style={{ color: '#9CA3AF' }}>
                     /portal/{agent.portal_token?.slice(0, 8)}…
                   </div>
-                </>
-              )}
-              {agent.vapi_agent_id && (
-                <div className={agent.portal_token ? 'mt-3 pt-3' : ''}
-                  style={agent.portal_token ? { borderTop: '1px solid var(--c-divider)' } : {}}>
-                  <div className="text-xs mb-1 tracking-widest uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>
-                    Vapi Agent ID
-                  </div>
-                  <div className="text-xs font-mono break-all" style={{ color: 'var(--c-text-2)' }}>{agent.vapi_agent_id}</div>
                 </div>
               )}
-            </div>
+              {agent.vapi_agent_id && (
+                <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 12 }}>
+                  <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
+                    Vapi Agent ID
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono break-all flex-1" style={{ color: '#374151' }}>
+                      {agent.vapi_agent_id}
+                    </span>
+                    <CopyButton text={agent.vapi_agent_id} />
+                  </div>
+                </div>
+              )}
+            </Card>
           )}
 
           {/* Business hours */}
-          <div className="p-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <div className="text-xs mb-2 tracking-widest uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>
-              Horario de atención
-            </div>
+          <Card title="Horario" icon={<Clock size={13} />}>
             {agent.business_hours ? (
-              <div className="flex flex-col gap-1">
+              <div className="space-y-1.5">
                 {(['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const).map(day => {
-                  const DAY_LABEL: Record<string, string> = {
-                    monday:'Lun', tuesday:'Mar', wednesday:'Mié',
-                    thursday:'Jue', friday:'Vie', saturday:'Sáb', sunday:'Dom',
-                  };
                   const s = agent.business_hours?.[day];
                   return (
-                    <div key={day} className="flex items-center justify-between">
-                      <span className="text-xs w-8" style={{ color: 'var(--c-text-3)' }}>{DAY_LABEL[day]}</span>
+                    <div key={day} className="flex items-center justify-between text-[13px]">
+                      <span style={{ color: '#6B7280' }}>{DAY_LABEL[day]}</span>
                       {s?.open
-                        ? <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{s.from} – {s.to}</span>
-                        : <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cerrado</span>}
+                        ? <span className="font-medium tabular-nums" style={{ color: '#111827' }}>{s.from} : {s.to}</span>
+                        : <span style={{ color: '#9CA3AF' }}>Cerrado</span>}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-xs" style={{ color: '#22c55e' }}>24/7, sin restricción</div>
+              <div
+                className="inline-flex items-center gap-1.5 text-[13px] px-2.5 py-1 rounded-md font-medium"
+                style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+                24/7 sin restricción
+              </div>
             )}
-          </div>
+          </Card>
 
           {/* Transfer */}
           {(agent.transfer_whatsapp || agent.transfer_number) && (
-            <div className="p-4 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-              <div className="text-xs mb-2 tracking-widest uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>
-                Transferencia
-              </div>
+            <Card title="Transferencia" icon={<Phone size={13} />}>
               {agent.transfer_whatsapp && (
-                <div className="text-xs" style={{ color: 'var(--c-text)' }}>WhatsApp: {agent.transfer_whatsapp}</div>
+                <div className="flex items-center justify-between text-[13px] py-1">
+                  <span style={{ color: '#6B7280' }}>WhatsApp</span>
+                  <span className="font-medium tabular-nums" style={{ color: '#111827' }}>{agent.transfer_whatsapp}</span>
+                </div>
               )}
               {agent.transfer_number && (
-                <div className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>Tel: {agent.transfer_number}</div>
+                <div className="flex items-center justify-between text-[13px] py-1">
+                  <span style={{ color: '#6B7280' }}>Teléfono</span>
+                  <span className="font-medium tabular-nums" style={{ color: '#111827' }}>{agent.transfer_number}</span>
+                </div>
               )}
-            </div>
+            </Card>
           )}
         </div>
       </div>
@@ -338,6 +360,11 @@ export default async function AgentDetailPage({ params }: Props) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function cap(s: string): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 function getIsOpenNow(hours: any, timezone: string): boolean | null {
   if (!hours) return null;
@@ -358,42 +385,101 @@ function getIsOpenNow(hours: any, timezone: string): boolean | null {
   } catch { return null; }
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+// ── UI primitives ─────────────────────────────────────────────────────────────
+
+function Card({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="p-4 sm:p-5 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>{title}</h2>
-      {children}
+    <div
+      className="rounded-xl bg-white overflow-hidden"
+      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+    >
+      <div className="px-5 py-3.5" style={{ borderBottom: '1px solid #F3F4F6' }}>
+        <h2 className="text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5" style={{ color: '#9CA3AF' }}>
+          {icon}
+          {title}
+        </h2>
+      </div>
+      <div className="px-5 py-4">
+        {children}
+      </div>
     </div>
   );
 }
 
-function InfoRow({ label, value, icon, link }: { label: string; value: string; icon?: React.ReactNode; link?: boolean }) {
+function StatusPill({ active }: { active: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium"
+      style={{
+        background: active ? '#ECFDF5' : '#FEF2F2',
+        color:      active ? '#047857' : '#B91C1C',
+        border:     `1px solid ${active ? '#A7F3D0' : '#FECACA'}`,
+      }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? '#10B981' : '#EF4444' }} />
+      {active ? 'Activo' : 'Pausado'}
+    </span>
+  );
+}
+
+function OpenPill({ open }: { open: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[12px] font-medium"
+      style={{
+        background: open ? '#EFF6FF' : '#F9FAFB',
+        color:      open ? '#1D4ED8' : '#6B7280',
+        border:     `1px solid ${open ? '#BFDBFE' : '#E5E7EB'}`,
+      }}
+    >
+      <Clock size={10} />
+      {open ? 'Abierto ahora' : 'Cerrado ahora'}
+    </span>
+  );
+}
+
+function JornadaPill({ jornada }: { jornada: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"
+      style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
+    >
+      Jornada: {jornada}
+    </span>
+  );
+}
+
+function FieldRow({ icon, label, value, link, multiline }: {
+  icon?: React.ReactNode; label: string; value: string; link?: boolean; multiline?: boolean;
+}) {
   if (!value) return null;
   return (
-    <div className="flex flex-col sm:flex-row sm:gap-3 py-2 border-b last:border-b-0" style={{ borderColor: 'var(--c-divider)' }}>
-      <span className="text-xs sm:w-28 sm:flex-shrink-0 sm:pt-0.5 mb-0.5 sm:mb-0" style={{ color: 'var(--c-text-3)' }}>{label}</span>
-      <span className="text-xs flex items-center gap-1.5 flex-1 min-w-0" style={{ color: 'var(--c-text)' }}>
+    <div className="flex flex-col sm:flex-row sm:gap-4 py-2.5" style={{ borderBottom: '1px solid #F3F4F6' }}>
+      <span className="text-[12px] sm:w-36 sm:flex-shrink-0 sm:pt-0.5 mb-0.5 sm:mb-0 flex items-center gap-1.5" style={{ color: '#6B7280' }}>
         {icon}
-        <span className="break-all">
-          {link
-            ? <a href={value} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">{value}</a>
-            : value}
-        </span>
+        {label}
+      </span>
+      <span className={`text-[13px] flex-1 min-w-0 ${multiline ? '' : 'truncate'}`} style={{ color: '#111827' }}>
+        {link
+          ? <a href={value} target="_blank" rel="noopener noreferrer" className="hover:underline break-all" style={{ color: '#6C3BFF' }}>{value}</a>
+          : <span className="break-words">{value}</span>}
       </span>
     </div>
   );
 }
 
-function InfoRowCompact({ label, value, icon, copyable }: { label: string; value: string; icon?: React.ReactNode; copyable?: boolean }) {
+function MetricRow({ label, value, icon, copyable }: {
+  label: string; value: string; icon?: React.ReactNode; copyable?: boolean;
+}) {
   if (!value) return null;
   return (
-    <div className="flex flex-col gap-0.5 py-2 border-b last:border-b-0" style={{ borderColor: 'var(--c-divider)' }}>
-      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{label}</span>
-      <span className="text-xs flex items-center gap-1 min-w-0" style={{ color: 'var(--c-text)' }}>
-        {icon}
-        <span className="truncate flex-1">{value}</span>
+    <div className="rounded-lg px-3 py-2.5" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{label}</div>
+      <div className="flex items-center gap-1.5 min-w-0">
+        {icon && <span style={{ color: '#6B7280' }}>{icon}</span>}
+        <span className="text-[13px] truncate flex-1 tabular-nums" style={{ color: '#111827' }}>{value}</span>
         {copyable && <CopyButton text={value} />}
-      </span>
+      </div>
     </div>
   );
 }

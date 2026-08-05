@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Power, Check, AlertTriangle, X } from 'lucide-react';
+import { Play, Pause, Check, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AgentActions({ agentId, active }: { agentId: string; active: boolean }) {
@@ -22,33 +22,43 @@ export default function AgentActions({ agentId, active }: { agentId: string; act
     setLoading(false);
     if (res.ok) {
       setDone(true);
-      toast.success(active ? 'Agente desactivado' : 'Agente activado');
+      toast.success(active ? 'Empleado pausado' : 'Empleado activado');
       setTimeout(() => { setDone(false); router.refresh(); }, 1200);
     } else {
-      toast.error('Error al actualizar el agente');
+      toast.error('Error al actualizar el empleado');
     }
   };
 
   if (confirming) {
     return (
       <div className="flex items-center gap-1.5 shrink-0">
-        <span className="hidden sm:flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg"
-          style={{ color: active ? '#ef4444' : '#22c55e', background: active ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', border: `1px solid ${active ? '#ef444430' : '#22c55e30'}` }}>
+        <span
+          className="hidden sm:inline-flex items-center gap-1.5 text-[12px] px-2 py-1.5 rounded-lg font-medium"
+          style={{
+            color:      active ? '#B91C1C' : '#047857',
+            background: active ? '#FEF2F2' : '#ECFDF5',
+            border:     `1px solid ${active ? '#FECACA' : '#A7F3D0'}`,
+          }}
+        >
           <AlertTriangle size={11} />
-          {active ? '¿Desactivar?' : '¿Activar?'}
+          {active ? '¿Pausar?' : '¿Activar?'}
         </span>
         <button
           onClick={toggle}
           disabled={loading}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0"
-          style={{ background: active ? '#ef4444' : '#22c55e', color: '#fff', opacity: loading ? 0.6 : 1 }}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[13px] font-medium shrink-0"
+          style={{
+            background: active ? '#EF4444' : '#10B981',
+            color:      '#FFFFFF',
+            opacity:    loading ? 0.6 : 1,
+          }}
         >
           <Check size={12} /> Sí
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="p-1.5 rounded-lg text-xs shrink-0 transition-colors hover:bg-[var(--c-surface-2)]"
-          style={{ color: 'var(--c-text-3)' }}
+          className="p-1.5 rounded-lg shrink-0 transition-colors hover:bg-gray-100"
+          style={{ color: '#6B7280' }}
         >
           <X size={14} />
         </button>
@@ -56,22 +66,23 @@ export default function AgentActions({ agentId, active }: { agentId: string; act
     );
   }
 
-  const label = done ? 'Actualizado' : active ? 'Desactivar' : 'Activar';
+  const label = done ? 'Actualizado' : active ? 'Pausar' : 'Activar';
+  const Icon  = done ? Check : active ? Pause : Play;
 
   return (
     <button
       onClick={() => setConfirming(true)}
       disabled={loading || done}
       title={label}
-      className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-semibold transition-all shrink-0"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all shrink-0"
       style={{
-        background: done ? 'rgba(34,197,94,0.12)' : active ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
-        color: done ? '#22c55e' : active ? '#ef4444' : '#22c55e',
-        border: `1px solid ${done ? '#22c55e33' : active ? '#ef444433' : '#22c55e33'}`,
-        opacity: loading ? 0.5 : 1,
+        background: done ? '#ECFDF5' : active ? '#FEF2F2' : '#ECFDF5',
+        color:      done ? '#047857' : active ? '#B91C1C' : '#047857',
+        border:     `1px solid ${done ? '#A7F3D0' : active ? '#FECACA' : '#A7F3D0'}`,
+        opacity:    loading ? 0.5 : 1,
       }}
     >
-      {done ? <Check size={13} /> : <Power size={13} />}
+      <Icon size={13} />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
