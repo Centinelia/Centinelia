@@ -1390,7 +1390,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Col 1 (main, flex-1) — Organización, Branding, Conocimiento, Perfil */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil de tu negocio" as="h2" right={<InfoTooltip text="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />} />}>
+                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil de tu negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
                   <div id="organizacion">
                     {agent.portal_email && (
                       <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
@@ -1398,7 +1398,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </PageSection>
 
-                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Branding de documentos y correos" as="h2" right={<InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />} />}>
+                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Branding de documentos y correos" as="h2" tooltip="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />}>
                   <Card id="branding" padding="md">
                     <BrandKitEditor
                       token={token}
@@ -1414,7 +1414,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </Card>
                 </PageSection>
 
-                <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" right={<InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />} />}>
+                <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
                   <Card id="conocimiento" padding="md">
                     <KnowledgeBaseEditor
                       token={token}
@@ -1425,7 +1425,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </Card>
                 </PageSection>
 
-                <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" right={<InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />} />}>
+                <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
                   <Card id="perfil-dueno" padding="md">
                     <OwnerProfileEditor
                       token={token}
@@ -1438,7 +1438,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Col 2 (side, ~360px) — Horario, Sitio web, Reseñas */}
               <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 360, flexShrink: 0 }}>
-                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" right={<InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />} />}>
+                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
                   <Card id="horarios" padding="md">
                     <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
                   </Card>
@@ -1631,7 +1631,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </PageSection>
 
                   {/* Reporte mensual compacto — abajo del historial */}
-                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" right={<InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />} />}>
+                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" tooltip="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />}>
                     <Card id="reporte-mensual" padding="sm">
                       <MonthReportPicker token={token} />
                     </Card>
