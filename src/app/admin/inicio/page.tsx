@@ -166,9 +166,9 @@ export default async function InicioPage() {
   if (criticalOps.length > 0) {
     riskItems.push({
       severity: 'med',
-      label:    'Ops > 90%',
+      label:    'Tareas > 90%',
       sub:      criticalOps.map(a => a.business_name).slice(0, 3).join(', ') + (criticalOps.length > 3 ? `, +${criticalOps.length - 3}` : ''),
-      href:     '/admin/agentes',
+      href:     '/admin/clientes',
       count:    criticalOps.length,
     });
   }
@@ -283,7 +283,7 @@ export default async function InicioPage() {
           <MiniKpi icon={<Mail size={13} />} label="Correos hoy" value={inboxTodayN} color="#3B82F6" />
           <MiniKpi
             icon={<Zap size={13} />}
-            label="Ops del mes"
+            label="Tareas del mes"
             value={opsUsedTotal.toLocaleString('es-MX')}
             sub={`${opsPct}% de ${opsLimitTotal.toLocaleString('es-MX')}`}
             color={opsPct >= 90 ? '#EF4444' : opsPct >= 70 ? '#F59E0B' : '#10B981'}

@@ -56,9 +56,17 @@ export default async function ClientesPage({ searchParams }: Props) {
     );
   }
 
-  type FetchedAgent = AgentRow & { client_name: string; client_email: string | null };
+  // FetchedAgent = raw SQL shape. meerkat_role_id NO viene directo del SELECT
+  // (vive dentro de features JSONB), lo derivamos abajo al hacer push a group.agents.
+  type FetchedAgent = Omit<AgentRow, 'meerkat_role_id'> & {
+    client_name:   string;
+    client_email:  string | null;
+    features:      Record<string, unknown> | null;
+    ai_ops_used:   number | null;
+    ai_ops_limit:  number | null;
+  };
   const { data: agentsRaw } = await query;
-  const agents = (agentsRaw ?? []) as FetchedAgent[];
+  const agents = (agentsRaw ?? []) as unknown as FetchedAgent[];
 
   // Agrupar por client_email (fallback: client_name) — server-side
   const map = new Map<string, ClientGroup>();
@@ -80,13 +88,12 @@ export default async function ClientesPage({ searchParams }: Props) {
       });
     }
     const group = map.get(key)!;
-    group.acct_ops_used  += ((agent as unknown as { ai_ops_used?:  number | null }).ai_ops_used  ?? 0);
-    group.acct_ops_limit += ((agent as unknown as { ai_ops_limit?: number | null }).ai_ops_limit ?? 0);
-    const features = (agent as unknown as { features?: Record<string, unknown> }).features ?? {};
-    const meerkatRoleId = (features.meerkat_role_id as string | undefined) ?? null;
+    group.acct_ops_used  += agent.ai_ops_used  ?? 0;
+    group.acct_ops_limit += agent.ai_ops_limit ?? 0;
+    const meerkatRoleId = ((agent.features ?? {}).meerkat_role_id as string | undefined) ?? null;
     group.agents.push({
       id:                agent.id,
-      agent_name:        (agent as FetchedAgent & { agent_name?: string | null }).agent_name ?? null,
+      agent_name:        agent.agent_name ?? null,
       business_name:     agent.business_name,
       meerkat_role_id:   meerkatRoleId,
       plan:              agent.plan,
