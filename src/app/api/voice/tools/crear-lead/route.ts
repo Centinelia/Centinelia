@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -9,8 +10,10 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } =
-    (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp } = args;
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
 
@@ -41,5 +44,10 @@ export async function POST(req: NextRequest) {
     await sendWhatsApp(agent.transfer_whatsapp, msg);
   }
 
+  traceVoiceCall({
+    toolName: 'crear_lead', agentId: agent_id, sessionId, input: args,
+    result: { ok: true, lead: { nombre, negocio, servicio, whatsapp, email } },
+    startedAt,
+  });
   return NextResponse.json({ result: 'Lead registrado correctamente. Le haremos llegar información pronto.' });
 }

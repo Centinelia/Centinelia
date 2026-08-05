@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeTask, type AgentInfo } from '@/lib/ops/task-executor';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 
 export async function GET(req: NextRequest) {
   if (!verifyCronAuth(req)) {
@@ -46,6 +47,10 @@ export async function GET(req: NextRequest) {
 
   for (const task of pendingTasks) {
     // Atomic claim: only proceed if still pending (guards against concurrent cron runs)
+    // Nota: usamos UPDATE con .eq('status', 'pending') para conservar la garantía
+    // atómica que impide double-claim. La transición se registra manualmente
+    // después porque transitionAgentTask hace read-then-write (no atómico contra
+    // concurrent crons).
     const { data: claimed } = await supabase
       .from('agent_tasks')
       .update({ status: 'in_progress', started_at: new Date().toISOString() })
@@ -56,14 +61,28 @@ export async function GET(req: NextRequest) {
 
     if (!claimed) continue;
 
+    // Registrar la transición para el historial (fire-and-forget, no bloquea).
+    void supabase.from('task_state_transitions').insert({
+      task_id:     task.id,
+      from_status: 'pending',
+      to_status:   'in_progress',
+      actor:       'cron',
+      reason:      'cron_pickup',
+      metadata:    { title: task.title },
+    });
+
     const targetAgent = task.assigned_to ? agentMap.get(task.assigned_to) ?? null : null;
     const callerAgent = task.created_by  ? agentMap.get(task.created_by)  ?? null : null;
 
     if (!targetAgent) {
-      await supabase
-        .from('agent_tasks')
-        .update({ status: 'failed', result: 'Empleado asignado no encontrado.' })
-        .eq('id', task.id);
+      await transitionAgentTask({
+        supabase, taskId: task.id,
+        toStatus: 'failed',
+        actor:    'cron',
+        reason:   'assigned_agent_not_found',
+        metadata: { assigned_to: task.assigned_to },
+        extraFields: { result: 'Empleado asignado no encontrado.' },
+      });
       failed++;
       continue;
     }

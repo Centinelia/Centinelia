@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -8,7 +9,10 @@ export async function POST(req: NextRequest) {
   const agent_id = searchParams.get('agent_id');
 
   const body = await req.json();
-  const { identificador } = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const args = (body.message?.toolCallList ?? body.toolCallList)?.[0]?.function?.arguments ?? body;
+  const { identificador } = args;
+  const startedAt = Date.now();
+  const sessionId = (body.message?.call?.id as string) ?? null;
 
   if (!agent_id) return NextResponse.json({ result: 'Error de configuración.' });
   if (!identificador) return NextResponse.json({ result: 'Necesito que me indiques qué cliente buscar.' });
@@ -49,6 +53,10 @@ export async function POST(req: NextRequest) {
   const appts  = apptsRes.data  ?? [];
 
   if (calls.length === 0 && leads.length === 0 && orders.length === 0 && appts.length === 0) {
+    traceVoiceCall({
+      toolName: 'buscar_cliente', agentId: agent_id, sessionId, input: args,
+      result: { ok: true, found: false }, startedAt,
+    });
     return NextResponse.json({
       result: 'No encontré registros previos de ese cliente. ¿Le puedo ayudar como cliente nuevo?',
       found: false,
@@ -85,8 +93,14 @@ export async function POST(req: NextRequest) {
     parts.push(`Pedido pendiente: ${pendingOrders[0].items ?? ''}.`);
   }
 
+  const msg = parts.join(' ');
+  traceVoiceCall({
+    toolName: 'buscar_cliente', agentId: agent_id, sessionId, input: args,
+    result: { ok: true, found: true, nombre: lead?.nombre ?? null, calls: calls.length, leads: leads.length, orders: orders.length, appts: appts.length },
+    startedAt,
+  });
   return NextResponse.json({
-    result: parts.join(' '),
+    result: msg,
     found: true,
     nombre: lead?.nombre ?? null,
   });

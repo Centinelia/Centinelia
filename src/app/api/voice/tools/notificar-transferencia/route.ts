@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,9 +14,16 @@ export async function POST(req: NextRequest) {
   const rawArgs = (call?.function as Record<string, unknown> | undefined)?.arguments ?? body;
   const args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs as Record<string, string>;
   const toolCallId: string = (call?.id as string) ?? 'call_1';
+  const startedAt = Date.now();
+  const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
 
-  const reply = (m: string, extra: Record<string, unknown> = {}) =>
-    NextResponse.json({ results: [{ toolCallId, result: m, ...extra }] });
+  const reply = (m: string, extra: Record<string, unknown> = {}, ok = true) => {
+    traceVoiceCall({
+      toolName: 'notificar_transferencia', agentId: agent_id ?? '', sessionId,
+      input: args, result: { message: m, ...extra }, ok, startedAt,
+    });
+    return NextResponse.json({ results: [{ toolCallId, result: m, ...extra }] });
+  };
 
   if (!agent_id) return reply('Error de configuración: falta agent_id.');
 
