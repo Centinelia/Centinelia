@@ -84,7 +84,7 @@ export default function SpamFolderToggle({
         importante.
       </p>
       <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-        Costo estimado: ~30-50 ops adicionales/mes según volumen.
+        Costo estimado: ~30-50 tareas adicionales/mes según volumen.
       </p>
       {enabled && stats && stats.revisados > 0 && (
         <div
@@ -99,7 +99,7 @@ export default function SpamFolderToggle({
           </p>
           <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
             {stats.revisados} correos revisados · {stats.rescatados} rescatados ·{' '}
-            {stats.ops_consumidas} ops consumidas
+            {stats.ops_consumidas} tareas consumidas
           </p>
         </div>
       )}

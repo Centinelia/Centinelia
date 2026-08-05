@@ -368,7 +368,7 @@ export default async function DashboardPage() {
               }} />
             </div>
             <p className="text-[12px] mt-2" style={{ color: '#6B7280' }}>
-              {totalOpsUsed.toLocaleString('es-MX')} ops · presupuesto ${claudeBudget} USD ({claudeBudgetPct}%)
+              {totalOpsUsed.toLocaleString('es-MX')} tareas · presupuesto ${claudeBudget} USD ({claudeBudgetPct}%)
             </p>
             {(claudeOverBudget || claudeNearBudget) && (
               <p className="text-[12px] mt-1 flex items-center gap-1" style={{ color: claudeOverBudget ? '#B91C1C' : '#B45309' }}>

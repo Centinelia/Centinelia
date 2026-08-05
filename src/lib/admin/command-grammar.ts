@@ -55,15 +55,15 @@ const SPECS: CmdSpec[] = [
     name:  'budget report',
     regex: /^\s*(budget|presupuesto)(\s+report)?\s*$/i,
     build: () => ({ kind: 'budget_report' }),
-    trace: () => 'budget report — saldo Vapi, Twilio, ops y proyección Claude',
+    trace: () => 'budget report — saldo Vapi, Twilio, tareas y proyección Claude',
     help:  '`budget report` — saldos Vapi + Twilio + estimación Claude del mes',
   },
   {
     name:  'burn report',
     regex: /^\s*(burn|gasto)(\s+report)?\s*$/i,
     build: () => ({ kind: 'burn_report' }),
-    trace: () => 'burn report — top agentes por ops consumidas este mes',
-    help:  '`burn report` — top 10 agentes por ops usadas este mes',
+    trace: () => 'burn report — top agentes por tareas consumidas este mes',
+    help:  '`burn report` — top 10 agentes por tareas usadas este mes',
   },
   {
     name:  'list agents',

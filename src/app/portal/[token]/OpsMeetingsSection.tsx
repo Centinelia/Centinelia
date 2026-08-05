@@ -380,7 +380,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                           <div className="flex items-center gap-2 px-3 py-2 rounded-lg mt-2"
                             style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
                             <p className="text-xs" style={{ color: '#f59e0b' }}>
-                              No había ops disponibles al momento del procesamiento. La transcripción está disponible pero no se generó el análisis.
+                              No había tareas disponibles al momento del procesamiento. La transcripción está disponible pero no se generó el análisis.
                             </p>
                           </div>
                         )}

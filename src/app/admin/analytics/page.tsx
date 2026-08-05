@@ -354,14 +354,14 @@ export default async function AnalyticsPage({ searchParams }: Props) {
                       className="rounded-lg p-3 text-center"
                       style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
                     >
-                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{tier} · {opsLimit} ops</div>
+                      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{tier} · {opsLimit} tareas</div>
                       <div className="text-[22px] font-semibold leading-none tabular-nums" style={{ color: '#3B82F6' }}>
                         ~{tasksPerMonth < opsLimit ? tasksPerMonth.toLocaleString('es-MX') : opsLimit.toLocaleString('es-MX')}
                       </div>
                       <div className="text-[12px] mt-1" style={{ color: '#6B7280' }}>
                         {tasksPerMonth >= opsLimit
                           ? 'límite alcanzado en 30 días'
-                          : `tareas/mes · sobran ${(opsLimit - tasksPerMonth).toLocaleString('es-MX')} ops`}
+                          : `tareas/mes · sobran ${(opsLimit - tasksPerMonth).toLocaleString('es-MX')} tareas`}
                       </div>
                     </div>
                   );

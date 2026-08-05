@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, ChevronDown, Chev
 import type { Approval, PolicyCheck } from '@/lib/admin/approvals';
 
 const TYPE_LABEL: Record<string, string> = {
-  grant_ops:        'Grant de ops',
+  grant_ops:        'Grant de tareas',
   refund:           'Reembolso',
   cancel_agent:     'Cancelar agente',
   plan_change:      'Cambio de plan',
