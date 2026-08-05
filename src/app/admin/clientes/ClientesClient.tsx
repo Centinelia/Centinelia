@@ -33,6 +33,7 @@ type ClientGroup = {
   client_name: string;
   client_email: string | null;
   portal_email: string | null;
+  business_name: string | null;
   serial: string | null;
   agents: AgentRow[];
   acct_minutes_used: number | null;
@@ -249,45 +250,49 @@ export default function ClientesClient({
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
+                  {/* Línea 1: nombre del contacto + serial */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-semibold" style={{ color: '#111827' }}>{client.client_name}</span>
-                    <span
-                      className="inline-flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-md font-medium"
-                      style={{ background: '#F3F4F6', color: '#4B5563', border: '1px solid #E5E7EB' }}
-                    >
-                      <Users size={10} /> {client.agents.length} {client.agents.length === 1 ? 'empleado' : 'empleados'}
+                    <span className="text-[14px] font-semibold" style={{ color: '#111827' }}>
+                      {client.client_name}
                     </span>
-                    {activeCount > 0 && (
-                      <span
-                        className="text-[12px] px-2 py-0.5 rounded-md font-medium"
-                        style={{ background: '#ECFDF5', color: '#10B981', border: '1px solid #A7F3D0' }}
-                      >
-                        {activeCount} activo{activeCount > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {pausedCount > 0 && (
-                      <span
-                        className="text-[12px] px-2 py-0.5 rounded-md font-medium"
-                        style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
-                      >
-                        {pausedCount} pausado{pausedCount > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    {client.client_email && (
-                      <span className="text-[12px] truncate" style={{ color: '#6B7280' }}>
-                        {client.client_email}
-                      </span>
-                    )}
                     {client.serial && (
                       <span
-                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold"
                         style={{ background: '#F3F0FF', color: '#6C3BFF', border: '1px solid #E9E1FF', letterSpacing: '0.06em' }}
                         title="Número de serie de la cuenta"
                       >
                         {client.serial}
                       </span>
+                    )}
+                  </div>
+                  {/* Línea 2: empresa + counts consolidados */}
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[12px] flex-wrap" style={{ color: '#6B7280' }}>
+                    {client.business_name && (
+                      <>
+                        <span className="font-medium truncate" style={{ color: '#374151' }}>
+                          {client.business_name}
+                        </span>
+                        <span style={{ color: '#D1D5DB' }}>·</span>
+                      </>
+                    )}
+                    <span className="inline-flex items-center gap-1 tabular-nums">
+                      <Users size={11} /> {client.agents.length}
+                    </span>
+                    {activeCount > 0 && (
+                      <>
+                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span className="tabular-nums" style={{ color: '#10B981' }}>
+                          {activeCount} activo{activeCount > 1 ? 's' : ''}
+                        </span>
+                      </>
+                    )}
+                    {pausedCount > 0 && (
+                      <>
+                        <span style={{ color: '#D1D5DB' }}>·</span>
+                        <span className="tabular-nums" style={{ color: '#EF4444' }}>
+                          {pausedCount} pausado{pausedCount > 1 ? 's' : ''}
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
