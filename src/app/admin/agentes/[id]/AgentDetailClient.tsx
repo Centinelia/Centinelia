@@ -50,6 +50,15 @@ function isNonVoiceRole(agent: VoiceAgent): boolean {
   return isCoord || (!!roleId && NON_VOICE_ROLES.has(roleId));
 }
 
+// Solo el meerkat 'custom' permite ensamblar módulos manualmente.
+// Los meerkats predefinidos (Nia, Noah, Naia, etc.) tienen capacidades fijas
+// baked-in en su rol/prompt/tools; toggle-ar módulos no les daría las
+// herramientas subyacentes y confunde al admin.
+function isCustomMeerkat(agent: VoiceAgent): boolean {
+  const roleId = (agent.features as { meerkat_role_id?: string })?.meerkat_role_id;
+  return roleId === 'custom';
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -315,20 +324,23 @@ export default function AgentDetailClient({
             />
           </Card>
 
-          {/* Modulos */}
-          <Card title="Modulos" icon={<Puzzle size={13} />}>
-            <div className="flex flex-col gap-2">
-              {MODULE_FEATURES.map(({ key, label, desc }) => (
-                <FeatureToggleRow
-                  key={key}
-                  label={label}
-                  desc={desc}
-                  active={!!(features as unknown as Record<string, unknown>)[key]}
-                  onToggle={() => toggleFeature(key)}
-                />
-              ))}
-            </div>
-          </Card>
+          {/* Modulos: solo para meerkat custom. Los predefinidos tienen tools fijas. */}
+          {isCustomMeerkat(agent) && (
+            <Card title="Módulos" icon={<Puzzle size={13} />}
+                  subtitle="Capacidades opcionales del empleado personalizado. Activa las que aplique a su rol.">
+              <div className="flex flex-col gap-2">
+                {MODULE_FEATURES.map(({ key, label, desc }) => (
+                  <FeatureToggleRow
+                    key={key}
+                    label={label}
+                    desc={desc}
+                    active={!!(features as unknown as Record<string, unknown>)[key]}
+                    onToggle={() => toggleFeature(key)}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Configuracion avanzada */}
           <Card title="Configuracion avanzada" icon={<Settings2 size={13} />}>
