@@ -27,17 +27,30 @@ Reducir carga cognitiva del portal para que:
 
 No-goals: rebranding, cambio de motor de datos, refactor de tools.
 
-## Principio de diseño: "4 verbos + Cuenta"
+## Principio de diseño: "El portal ES tu oficina digital"
 
-Un dueño de PYME resuelve 4 preguntas en un portal así. Toda la navegación se organiza alrededor de esas 4, más un espacio administrativo:
+La landing promete una "oficina digital". Ponerla como un ítem del sidebar (compitiendo con otros 5) *debilita* la marca — la degrada a "una sección más". La forma fuerte de honrar la promesa es: **el portal entero es la oficina**. La marca vive en el header/wordmark (persistente en todas las vistas), y las secciones son *áreas* de la oficina, con lenguaje físico.
 
-| Verbo       | Pregunta que responde                 | Espacio      |
-|-------------|---------------------------------------|--------------|
-| **Ver**     | ¿Cómo va mi negocio?                  | 🏠 Inicio     |
-| **Actuar**  | ¿Qué requiere mi atención ahora?      | 📥 Bandeja    |
-| **Revisar** | ¿Qué pasó?                            | 📞 Actividad  |
-| **Ajustar equipo** | ¿Qué está haciendo mi equipo? Configurarlo. | 👥 Equipo    |
-| —           | Organización, integraciones, billing  | ⚙️ Cuenta    |
+Analogía: cuando entras a Gmail no hay un botón "Gmail" en el sidebar — la app *es* Gmail; los items son Inbox, Sent, Drafts. Aquí igual.
+
+### Header persistente
+
+En la parte superior del portal, siempre visible:
+> **Tu oficina digital · [Nombre del negocio]**
+
+Con el logo Centinelia + logo del negocio. Refuerza el concepto en cada vista sin robarle un slot al sidebar.
+
+### 5 áreas de tu oficina
+
+Un dueño de PYME resuelve 5 preguntas al llegar a su oficina. Lenguaje físico, no técnico:
+
+| Área              | Metáfora física                       | Pregunta que responde                    |
+|-------------------|---------------------------------------|------------------------------------------|
+| **Escritorio**    | Dónde llegas cada mañana              | ¿Cómo va mi negocio hoy?                 |
+| **Bandeja**       | El buzón encima del escritorio        | ¿Qué requiere mi atención ahora?         |
+| **Historial**     | El archivero al fondo                 | ¿Qué pasó?                               |
+| **Tu equipo**     | Los empleados de la oficina           | ¿Qué está haciendo mi equipo? Ajustarlo. |
+| **Administración**| El despacho administrativo            | Organización, integraciones, billing     |
 
 ## Arquitectura de información propuesta
 
@@ -62,25 +75,29 @@ Sidebar (6 grupos, 25+ rutas):
 ### Después (propuesto)
 
 ```
-Sidebar (5 grupos):
-├─ 🏠 Inicio
+┌────────────────────────────────────────────────────┐
+│  Tu oficina digital · [Nombre del negocio]         │  ← header persistente
+└────────────────────────────────────────────────────┘
+
+Sidebar (5 áreas):
+├─ 🏠 Escritorio
 ├─ 📥 Bandeja
-├─ 📞 Actividad
+├─ 📞 Historial
 │    · Llamadas (filtros: entrantes · salientes · campañas · missed)
 │    · Reportes
 │    · Aprendizajes
 │    · Investigación
-├─ 👥 Equipo
+├─ 👥 Tu equipo
 │    · Lista de empleados
-│    · Configurar empleado [modal/drawer con 5 tabs]
+│    · Configurar empleado [drawer con 5 tabs]
 │    · Cómo trabajamos (patrones + insights)
-└─ ⚙️ Cuenta
+└─ ⚙️ Administración
      · Organización (perfil, marca, horarios)
-     · Herramientas (launcher grid)  ← 9 tools ops
+     · Recursos de la oficina (launcher grid)  ← 9 tools ops
      · Integraciones
      · Usuarios y permisos [owner]
      · Uso y compras
-     · Historial
+     · Facturación
 ```
 
 Total: **5 items visibles en el sidebar principal**, resto es sub-navegación contextual dentro de cada espacio (pills, tabs, drawers). El usuario ve 5 opciones a la vez, no 25.
@@ -91,7 +108,7 @@ Total: **5 items visibles en el sidebar principal**, resto es sub-navegación co
 
 **Antes:** `/llamadas/entrantes`, `/llamadas/salientes`, `/oficina/llamadas` (4 tabs).
 
-**Después:** una sola ruta `/actividad/llamadas` con pills filtro en el header:
+**Después:** una sola ruta `/historial/llamadas` con pills filtro en el header:
 
 ```
 [ Entrantes ] [ Salientes ] [ Campañas ] [ Missed recovery ]
@@ -123,32 +140,32 @@ Sub-navegación por URL: `/bandeja?tipo=aprobaciones`, `/bandeja?agente=nia`, et
 
 Dentro de cada tab: acordeones para lo poco frecuente. Lo más usado (voz, KB, tools) al inicio del tab sin acordeón.
 
-### 4. "Oficina" como launcher, no como grupo
+### 4. "Oficina" como concepto, no como grupo — se disuelve en el todo
 
-El grupo "Oficina" **desaparece del sidebar**. Sus 14 items se redistribuyen:
+El grupo "Oficina" **desaparece del sidebar** (el portal entero YA es la oficina, redundante tenerlo también como sección). Sus 14 items se redistribuyen:
 
-| Ítem actual          | Nueva ubicación                     |
-|----------------------|-------------------------------------|
-| Hoy en la oficina    | Se fusiona con Inicio (widget "Equipo hoy" ya existe) |
-| Bandeja              | → 📥 Bandeja (top-level)             |
-| Llamadas             | → 📞 Actividad › Llamadas            |
-| Reportes             | → 📞 Actividad › Reportes            |
-| Aprendizajes         | → 📞 Actividad › Aprendizajes        |
-| Investigación        | → 📞 Actividad › Investigación       |
-| Mesa de ayuda        | → 📥 Bandeja (chip "Mesa de ayuda")  |
-| Documentos           | → ⚙️ Cuenta › Herramientas           |
-| Contratos            | → ⚙️ Cuenta › Herramientas           |
-| Plantillas           | → ⚙️ Cuenta › Herramientas           |
-| Tareas programadas   | → ⚙️ Cuenta › Herramientas           |
-| Juntas               | → ⚙️ Cuenta › Herramientas           |
-| Onboarding           | → ⚙️ Cuenta › Herramientas           |
-| Encuestas            | → ⚙️ Cuenta › Herramientas           |
-| Integraciones        | → ⚙️ Cuenta › Integraciones          |
-| Cabildo (gov)        | → ⚙️ Cuenta › Herramientas (solo si gov) |
+| Ítem actual          | Nueva ubicación                          |
+|----------------------|------------------------------------------|
+| Hoy en la oficina    | Se fusiona con Escritorio (widget "Equipo hoy" ya existe) |
+| Bandeja              | → 📥 Bandeja (top-level)                  |
+| Llamadas             | → 📞 Historial › Llamadas                 |
+| Reportes             | → 📞 Historial › Reportes                 |
+| Aprendizajes         | → 📞 Historial › Aprendizajes             |
+| Investigación        | → 📞 Historial › Investigación            |
+| Mesa de ayuda        | → 📥 Bandeja (chip "Mesa de ayuda")       |
+| Documentos           | → ⚙️ Administración › Recursos            |
+| Contratos            | → ⚙️ Administración › Recursos            |
+| Plantillas           | → ⚙️ Administración › Recursos            |
+| Tareas programadas   | → ⚙️ Administración › Recursos            |
+| Juntas               | → ⚙️ Administración › Recursos            |
+| Onboarding           | → ⚙️ Administración › Recursos            |
+| Encuestas            | → ⚙️ Administración › Recursos            |
+| Integraciones        | → ⚙️ Administración › Integraciones       |
+| Cabildo (gov)        | → ⚙️ Administración › Recursos (solo si gov) |
 
-**Herramientas** es una sola página `/cuenta/herramientas` con grid de cards. Cabe en una pantalla. Es un espacio al que entras cuando lo necesitas, no ruido permanente del sidebar.
+**Recursos de la oficina** es una sola página `/administracion/recursos` con grid de cards. Cabe en una pantalla. Es un espacio al que entras cuando lo necesitas, no ruido permanente del sidebar.
 
-### 5. Inicio — bajar densidad
+### 5. Escritorio — bajar densidad
 
 **Antes:** 7 KPIs + 4 widgets grandes + 6 anclas de scroll.
 
@@ -156,32 +173,32 @@ El grupo "Oficina" **desaparece del sidebar**. Sus 14 items se redistribuyen:
 - **3 KPIs primarios** grandes: Ahorros del mes · Llamadas hoy · Requieren tu atención (count)
 - **1 fila secundaria** de 4 stats: Autonomía · Tasa contestada · Sin intervención · Tareas completadas
 - **2 widgets** máximo: "Equipo hoy" (con estado tiempo real) + "Feed" (últimos eventos importantes)
-- Quita: "Cómo trabajamos" (mover a Equipo), Insights (mover a Actividad › Aprendizajes), 3 anclas de scroll
+- Quita: "Cómo trabajamos" (mover a Tu equipo), Insights (mover a Historial › Aprendizajes), 3 anclas de scroll
 
 ### 6. Deduplicación explícita
 
 Un solo lugar por concepto:
 
-| Concepto      | Ubicación única                        |
-|---------------|----------------------------------------|
-| Documentos    | `/cuenta/herramientas/documentos`      |
-| Integraciones | `/cuenta/integraciones`                |
-| Reportes      | `/actividad/reportes` (resumen en Inicio) |
-| Contactos     | `/actividad/llamadas?filtro=salientes&view=contactos` |
-| Horarios      | `/cuenta/organizacion#horarios`        |
-| Marca         | `/cuenta/organizacion#marca`           |
+| Concepto      | Ubicación única                                       |
+|---------------|-------------------------------------------------------|
+| Documentos    | `/administracion/recursos/documentos`                 |
+| Integraciones | `/administracion/integraciones`                       |
+| Reportes      | `/historial/reportes` (resumen en Escritorio)         |
+| Contactos     | `/historial/llamadas?filtro=salientes&view=contactos` |
+| Horarios      | `/administracion/organizacion#horarios`               |
+| Marca         | `/administracion/organizacion#marca`                  |
 
-### 7. Onboarding — mini-tour primera visita
+### 7. Onboarding — bienvenida a la oficina
 
-Primera vez que un usuario entra al portal, tooltip highlight sobre los 4 verbos + Cuenta, uno por vez:
+Primera vez que un usuario entra al portal, un mini-tour de bienvenida presenta las 5 áreas con lenguaje de oficina. Toast inicial: *"Bienvenido a tu oficina digital. Te muestro rápido cómo se organiza."*
 
-1. "Aquí ves cómo va tu negocio" → resalta Inicio
-2. "Aquí actúas sobre lo que requiere tu atención" → resalta Bandeja
-3. "Aquí revisas lo que pasó" → resalta Actividad
-4. "Aquí ajustas a tu equipo" → resalta Equipo
-5. "Y aquí lo administrativo" → resalta Cuenta
+1. "Este es tu **Escritorio** — dónde llegas cada mañana" → resalta ítem
+2. "Aquí tu **Bandeja** — lo que requiere tu atención" → resalta ítem
+3. "Aquí el **Historial** — todo lo que pasó" → resalta ítem
+4. "Aquí **Tu equipo** — tus empleados digitales" → resalta ítem
+5. "Y aquí la **Administración** — organización, integraciones, cuenta" → resalta ítem
 
-Persistido en `portal_users.onboarding_seen_at` o similar.
+Persistido en `portal_users.onboarding_seen_at` o similar. Skippable.
 
 ## Anti-patterns evitados
 
@@ -192,7 +209,7 @@ Persistido en `portal_users.onboarding_seen_at` o similar.
 
 ## Constraints técnicos
 
-- **Preservar routing existente** con redirects: `/llamadas/entrantes` → `/actividad/llamadas?filtro=entrantes`, etc. No romper links compartidos ni bookmarks de usuarios activos.
+- **Preservar routing existente** con redirects: `/llamadas/entrantes` → `/historial/llamadas?filtro=entrantes`, etc. No romper links compartidos ni bookmarks de usuarios activos.
 - **Preservar `getAgentAccess` / módulos por sub-usuario** (sesión 9-10). El nuevo sidebar debe seguir filtrando por permisos.
 - **Preservar dev bypass en proxy.ts** (feedback_dev_bypass).
 - **Preservar IDOR pattern** en todas las rutas nuevas (sesiones 35-37).
@@ -228,36 +245,48 @@ Cada fase se lanza detrás del feature flag `portal_v2`, activable por org.
 
 ## Preguntas abiertas
 
-- ¿"Empleado" como verbo top-level ("👥 Equipo") o dentro de Cuenta? *Recomendación: top-level, es el core del producto.*
-- ¿"Herramientas" cabe en Cuenta o merece top-level? *Recomendación: dentro de Cuenta — no son diarias.*
 - ¿Feature flag por org o rollout global con revert? *Recomendación: feature flag, sin fecha de forzado.*
 - ¿Piloto interno con AC Proyectos primero antes de rollout? *Recomendación: sí — coincide con handoff_google_sheets_integration.*
+- ¿URLs en español (`/escritorio`, `/historial`) o mantener inglés (`/desktop`, `/history`) por consistencia dev? *Recomendación: español, coincide con el resto del portal (`/oficina`, `/agentes`, `/llamadas`).*
 
 ## Anexo — mapping viejo → nuevo (redirects)
 
 ```
-/portal/[t]                          → sin cambio (Inicio)
-/portal/[t]?tab=negocio              → /cuenta/organizacion
-/portal/[t]?tab=cuenta               → /cuenta/uso
+/portal/[t]                          → sin cambio (/escritorio)
+/portal/[t]?tab=negocio              → /administracion/organizacion
+/portal/[t]?tab=cuenta               → /administracion/uso
 /agentes                             → /equipo
 /configurar                          → /equipo/[id]/configurar
-/llamadas/entrantes                  → /actividad/llamadas?filtro=entrantes
-/llamadas/salientes                  → /actividad/llamadas?filtro=salientes
-/oficina                             → /inicio (widget "Equipo hoy" absorbe)
+/llamadas/entrantes                  → /historial/llamadas?filtro=entrantes
+/llamadas/salientes                  → /historial/llamadas?filtro=salientes
+/oficina                             → /escritorio (widget "Equipo hoy" absorbe)
 /oficina/bandeja                     → /bandeja
-/oficina/llamadas                    → /actividad/llamadas
-/oficina/reportes                    → /actividad/reportes
-/oficina/aprendizajes                → /actividad/aprendizajes
-/oficina/investigacion               → /actividad/investigacion
+/oficina/llamadas                    → /historial/llamadas
+/oficina/reportes                    → /historial/reportes
+/oficina/aprendizajes                → /historial/aprendizajes
+/oficina/investigacion               → /historial/investigacion
 /oficina/helpdesk                    → /bandeja?tipo=helpdesk
-/oficina/documentos                  → /cuenta/herramientas/documentos
-/oficina/contratos                   → /cuenta/herramientas/contratos
-/oficina/plantillas                  → /cuenta/herramientas/plantillas
-/oficina/tareas-programadas          → /cuenta/herramientas/tareas
-/oficina/juntas                      → /cuenta/herramientas/juntas
-/oficina/onboarding                  → /cuenta/herramientas/onboarding
-/oficina/encuestas                   → /cuenta/herramientas/encuestas
-/oficina/cabildo                     → /cuenta/herramientas/cabildo
+/oficina/documentos                  → /administracion/recursos/documentos
+/oficina/contratos                   → /administracion/recursos/contratos
+/oficina/plantillas                  → /administracion/recursos/plantillas
+/oficina/tareas-programadas          → /administracion/recursos/tareas
+/oficina/juntas                      → /administracion/recursos/juntas
+/oficina/onboarding                  → /administracion/recursos/onboarding
+/oficina/encuestas                   → /administracion/recursos/encuestas
+/oficina/cabildo                     → /administracion/recursos/cabildo
 /oficina/integraciones               → /cuenta/integraciones
-/usuarios                            → /cuenta/usuarios
+/usuarios                            → /administracion/usuarios
 ```
+
+## Anexo — glosario de renombres
+
+Para mantener consistencia entre landing, portal y comunicaciones:
+
+| Concepto en producto | Copy visible en portal | Nota |
+|---|---|---|
+| Portal | "Tu oficina digital" (header) | La landing lo llama así, aquí también |
+| Dashboard/Inicio | "Escritorio" | Metáfora física |
+| Sección de billing/perfil | "Administración" | En lugar de "Cuenta" (más neutro que "Mi cuenta", más cálido que "Ajustes") |
+| Historial de eventos | "Historial" | En lugar de "Actividad" |
+| Sub-sección con docs/plantillas/contratos | "Recursos de la oficina" | En lugar de "Herramientas" (no confundir con tools de agente) |
+| Empleados IA | "Tu equipo" | Coherente con feedback_empleado_digital |
