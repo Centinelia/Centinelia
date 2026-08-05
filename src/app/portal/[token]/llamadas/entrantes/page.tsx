@@ -171,7 +171,6 @@ export default async function EntrantesPage({ params }: Props) {
             headerActions={
               <>
                 <NotificationBell token={token} />
-                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
                 <PortalLogout />
               </>
             }

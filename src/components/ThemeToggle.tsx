@@ -1,31 +1,15 @@
 'use client';
 
-import { Sun, Moon } from 'lucide-react';
-import { useTheme } from './ThemeProvider';
+// @deprecated — Portal Fase 2A eliminó dark theme. Este componente ahora
+// es un no-op (retorna null) para no romper los ~13 imports existentes
+// en V1 headers, admin, setup, configurar, requests. Fase 3+ los remueve
+// al migrar cada página al design system.
 
-export default function ThemeToggle({ className }: { className?: string }) {
-  const { theme, toggle } = useTheme();
-  return (
-    <button
-      onClick={toggle}
-      title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      className={className}
-      style={{
-        display:        'flex',
-        alignItems:     'center',
-        justifyContent: 'center',
-        width:          34,
-        height:         34,
-        borderRadius:   10,
-        background:     'var(--c-surface-2)',
-        border:         '1px solid var(--c-border)',
-        cursor:         'pointer',
-        color:          'var(--c-text-2)',
-        flexShrink:     0,
-        transition:     'background 0.15s, color 0.15s',
-      }}
-    >
-      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
-  );
+interface ThemeToggleProps {
+  className?: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function ThemeToggle(_props: ThemeToggleProps = {}) {
+  return null;
 }

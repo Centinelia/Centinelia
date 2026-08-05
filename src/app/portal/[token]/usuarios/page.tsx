@@ -133,7 +133,6 @@ export default async function UsuariosPage({ params }: Props) {
               <>
                 {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
                 <NotificationBell token={token} />
-                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
                 <PortalLogout />
               </>
             }

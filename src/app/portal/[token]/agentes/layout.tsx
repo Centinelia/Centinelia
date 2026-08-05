@@ -132,7 +132,6 @@ export default async function AgentesLayout({
             headerActions={
               <>
                 <NotificationBell token={token} />
-                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
                 <PortalLogout />
               </>
             }
