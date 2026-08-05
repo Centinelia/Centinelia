@@ -32,28 +32,37 @@ export interface PortalStatus {
 
 export interface PortalSidebarV2Props extends BuildAreasInput {
   currentPath: string;
+  currentSearch?: string;   // e.g. "tab=negocio" or "" — no leading '?'
   status?: PortalStatus;
 }
 
-function isAreaActive(area: Area, currentPath: string): boolean {
+function isSubActive(subHref: string, currentPath: string, currentSearch: string): boolean {
+  const [subPath, subQuery] = subHref.split('?');
+  if (subQuery) {
+    // Sub-item points to a query-parameterized view (e.g. /portal/[t]?tab=negocio).
+    // Match only when path matches EXACTLY and the query token appears in current search.
+    if (currentPath !== subPath) return false;
+    // subQuery is like "tab=negocio"; currentSearch could be "tab=negocio" or "tab=negocio&x=1"
+    return currentSearch.split('&').some(kv => kv === subQuery);
+  }
+  return currentPath.startsWith(subPath);
+}
+
+function isAreaActive(area: Area, currentPath: string, currentSearch: string): boolean {
   // Areas with sub-items match only via their sub-items to avoid href collisions.
   // Areas without sub-items (like Escritorio) match on exact bare path.
   if (area.subItems.length > 0) {
-    return area.subItems.some(s => currentPath.startsWith(s.href.split('?')[0]));
+    return area.subItems.some(s => isSubActive(s.href, currentPath, currentSearch));
   }
   const areaBase = area.href.split('?')[0];
   return currentPath === areaBase;
-}
-
-function isSubActive(subHref: string, currentPath: string): boolean {
-  return currentPath.startsWith(subHref.split('?')[0]);
 }
 
 const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3BFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAFB]';
 
 export default function PortalSidebarV2(props: PortalSidebarV2Props) {
-  const { currentPath, status, ...input } = props;
+  const { currentPath, currentSearch = '', status, ...input } = props;
   const areas = buildPortalAreas(input);
 
   return (
@@ -65,7 +74,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
       <ul className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {areas.map(area => {
           const Icon = ICON_MAP[area.iconName] ?? Home;
-          const active = isAreaActive(area, currentPath);
+          const active = isAreaActive(area, currentPath, currentSearch);
           const showSubs = active && area.subItems.length > 0;
 
           return (
@@ -121,7 +130,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
               {showSubs && (
                 <ul className="mt-1 space-y-0.5 pb-1">
                   {area.subItems.map(sub => {
-                    const subActive = isSubActive(sub.href, currentPath);
+                    const subActive = isSubActive(sub.href, currentPath, currentSearch);
                     return (
                       <li key={sub.href}>
                         <Link

@@ -35,7 +35,7 @@ export default async function AgentesLayout({
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, logo_url, portal_email, features, stripe_customer_id, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
+    .select('business_name, logo_url, portal_email, features, stripe_customer_id, plan, minutes_included, minutes_used, ai_ops_used, ai_ops_limit')
     .eq('portal_token', token)
     .single();
   if (!agent) notFound();
@@ -122,6 +122,7 @@ export default async function AgentesLayout({
             logoUrl={(agent as any).logo_url ?? null}
             hasOpsAgent={hasOpsAgent}
             showOutbound={showOutbound}
+            plan={(agent as any).plan ?? null} // eslint-disable-line @typescript-eslint/no-explicit-any
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
             isOwner={isOwner}

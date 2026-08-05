@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import PortalSidebarV2, { type PortalSidebarV2Props } from './PortalSidebarV2';
 
 /**
@@ -11,8 +11,10 @@ import PortalSidebarV2, { type PortalSidebarV2Props } from './PortalSidebarV2';
  * as a server-side prop.
  */
 export default function PortalSidebarV2Client(
-  props: Omit<PortalSidebarV2Props, 'currentPath'>,
+  props: Omit<PortalSidebarV2Props, 'currentPath' | 'currentSearch'>,
 ) {
   const currentPath = usePathname() ?? '';
-  return <PortalSidebarV2 {...props} currentPath={currentPath} />;
+  const searchParams = useSearchParams();
+  const currentSearch = searchParams?.toString() ?? '';
+  return <PortalSidebarV2 {...props} currentPath={currentPath} currentSearch={currentSearch} />;
 }
