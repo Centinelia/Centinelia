@@ -425,8 +425,8 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                 {!((selected.features as any)?.is_coordinator) && (() => {
                   const JORNADA_OPTS: { key: JornadaType; label: string; desc: string; color: string; bg: string; border: string; icon: React.ReactNode }[] = [
                     { key: 'combinada', label: 'Combinada',    desc: 'Voz + tareas',      color: '#6C3BFF', bg: 'rgba(108,59,255,0.1)', border: 'rgba(108,59,255,0.4)', icon: <><Clock size={11} /><Zap size={11} /></>  },
-                    { key: 'minutos',   label: 'Solo minutos', desc: 'Solo canal de voz', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.4)', icon: <Phone size={11} />                          },
-                    { key: 'tareas',    label: 'Solo tareas',  desc: 'Sin canal de voz',  color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.4)', icon: <Zap size={11} />                            },
+                    { key: 'minutos',   label: 'Solo minutos', desc: 'Solo canal de voz', color: '#0E7490', bg: 'rgba(6,182,212,0.1)',  border: 'rgba(6,182,212,0.4)',  icon: <Phone size={11} />                          },
+                    { key: 'tareas',    label: 'Solo tareas',  desc: 'Sin canal de voz',  color: '#10B981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.4)', icon: <Zap size={11} />                            },
                   ];
                   return (
                     <div className="flex flex-col gap-2">

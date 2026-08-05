@@ -31,6 +31,7 @@ type ClientGroup = {
   client_name: string;
   client_email: string | null;
   portal_email: string | null;
+  serial: string | null;
   agents: AgentRow[];
   acct_minutes_used: number | null;
   acct_minutes_included: number | null;
@@ -271,11 +272,22 @@ export default function ClientesClient({
                       </span>
                     )}
                   </div>
-                  {client.client_email && (
-                    <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>
-                      {client.client_email}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {client.client_email && (
+                      <span className="text-[12px] truncate" style={{ color: '#6B7280' }}>
+                        {client.client_email}
+                      </span>
+                    )}
+                    {client.serial && (
+                      <span
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold"
+                        style={{ background: '#F3F0FF', color: '#6C3BFF', border: '1px solid #E9E1FF', letterSpacing: '0.06em' }}
+                        title="Número de serie de la cuenta"
+                      >
+                        {client.serial}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Account minutes mini-bar */}
