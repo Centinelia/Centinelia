@@ -54,11 +54,28 @@ export type { RankRowProps, RankRowMetric, RankRowIndicator } from './patterns/R
 export type { ActivityEventCardProps, EventType }      from './patterns/ActivityEventCard';
 export type { DataTableProps, DataTableColumn, SortDirection } from './patterns/DataTable';
 
+// ─── Primitives (Fase 2B-3) ───────────────────────────────────────────
+export { default as Label }    from './primitives/Label';
+export { default as Input }    from './primitives/Input';
+export { default as Textarea } from './primitives/Textarea';
+
+export type { LabelProps }              from './primitives/Label';
+export type { InputProps, InputSize }   from './primitives/Input';
+export type { TextareaProps }           from './primitives/Textarea';
+
 // ─── Overlays (Fase 2B-3) ──────────────────────────────────────────────
-export { default as Dialog }  from './overlays/Dialog';
-export { default as Toaster, toast } from './overlays/Toast';
+export { default as Dialog }   from './overlays/Dialog';
+export { default as Dropdown } from './overlays/Dropdown';
+export { default as Popover }  from './overlays/Popover';
+export { default as Tabs }     from './overlays/Tabs';
+export { default as Sheet }    from './overlays/Sheet';
 
 export type { DialogProps, DialogSize } from './overlays/Dialog';
+export type { SheetProps, SheetSide, SheetSize } from './overlays/Sheet';
+export type { TabsVariant } from './overlays/Tabs';
+
+// Toast: helper + provider
+export { default as Toaster, toast } from './overlays/Toast';
 
 // ─── Tokens JS ─────────────────────────────────────────────────────────
 export { EVENT_TYPE_COLORS, AVATAR_SIZES, ICON_SIZES } from './tokens';
