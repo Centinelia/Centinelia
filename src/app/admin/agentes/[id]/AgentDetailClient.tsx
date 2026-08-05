@@ -220,19 +220,21 @@ export default function AgentDetailClient({
             </Card>
           )}
 
-          {/* Rol */}
-          <Card
-            title="Rol"
-            icon={<Briefcase size={13} />}
-            subtitle="Define el segundo rol del empleado. La base de conocimiento del rol aparece abajo al escribirlo."
-          >
-            <FieldInput
-              label="Rol"
-              value={role}
-              onChange={setRole}
-              placeholder="Ej: Procesador de facturas, Coordinador de juntas"
-            />
-          </Card>
+          {/* Rol: solo editable en meerkat 'custom'. Los predefinidos tienen rol fijo. */}
+          {isCustomMeerkat(agent) && (
+            <Card
+              title="Rol"
+              icon={<Briefcase size={13} />}
+              subtitle="Define el rol del empleado personalizado. La base de conocimiento del rol aparece abajo al escribirlo."
+            >
+              <FieldInput
+                label="Rol"
+                value={role}
+                onChange={setRole}
+                placeholder="Ej: Procesador de facturas, Coordinador de juntas"
+              />
+            </Card>
+          )}
 
           {/* Base de conocimiento general */}
           <Card
