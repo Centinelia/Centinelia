@@ -52,11 +52,13 @@ function purposeLabel(purpose: string, customLabel: string | null): string {
 function MappingRow({
   mapping,
   token,
+  spreadsheetsMap,
   onRefresh,
   onDelete,
 }: {
   mapping: Mapping;
   token: string;
+  spreadsheetsMap: Map<string, string>;
   onRefresh: () => void;
   onDelete: () => void;
 }) {
@@ -108,7 +110,7 @@ function MappingRow({
 
           {/* Spreadsheet + tab */}
           <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-            {mapping.spreadsheet_id}
+            {spreadsheetsMap.get(mapping.spreadsheet_id) ?? mapping.spreadsheet_id}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
             Hoja: {mapping.tab_name}
@@ -439,21 +441,39 @@ interface Props {
 }
 
 export default function SheetsMappingsSection({ token, agentId, initialSyncLeads }: Props) {
-  const [mappings, setMappings]       = useState<Mapping[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [syncLeads, setSyncLeads]     = useState(initialSyncLeads);
-  const [syncSaving, setSyncSaving]   = useState(false);
+  const [mappings, setMappings]             = useState<Mapping[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [loadError, setLoadError]           = useState(false);
+  const [showAddForm, setShowAddForm]       = useState(false);
+  const [syncLeads, setSyncLeads]           = useState(initialSyncLeads);
+  const [syncSaving, setSyncSaving]         = useState(false);
+  const [spreadsheetsMap, setSpreadsheetsMap] = useState<Map<string, string>>(new Map());
 
   const loadMappings = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch(`/api/portal/${token}/sheets-mappings`);
+      if (!res.ok) { setLoadError(true); return; }
       const d   = await res.json();
       setMappings(d.mappings ?? []);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
+  }, [token]);
+
+  // Fetch spreadsheet names once for human-readable display in MappingRow
+  useEffect(() => {
+    fetch(`/api/portal/${token}/sheets/spreadsheets`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.error === 'google_no_conectado') return; // degraded: keep empty map
+        const list: Spreadsheet[] = d.spreadsheets ?? [];
+        setSpreadsheetsMap(new Map(list.map(s => [s.id, s.name])));
+      })
+      .catch(() => { /* degraded: keep empty map */ });
   }, [token]);
 
   useEffect(() => { loadMappings(); }, [loadMappings]);
@@ -478,14 +498,14 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
   };
 
   return (
-    <section id="sheets-del-negocio" className="scroll-mt-6">
+    <section className="scroll-mt-6">
       {/* Section header */}
       <div className="mb-4">
         <h2 className="text-lg font-semibold" style={{ color: 'var(--c-text)' }}>
           Sheets del negocio
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-          Conecta un Google Sheet a cada tipo de dato. El empleado escribira y leera directamente en tus hojas existentes, respetando los encabezados que ya tienes.
+          Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes.
         </p>
       </div>
 
@@ -495,6 +515,18 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
           <Loader2 size={15} className="animate-spin" />
           Cargando hojas configuradas...
         </div>
+      ) : loadError ? (
+        <EmptyState
+          icon={Sheet}
+          title="Sin hojas configuradas"
+          description="No se pudieron cargar las hojas. Intenta recargar la página."
+          size="sm"
+          action={
+            <p className="text-xs" style={{ color: '#ef4444' }}>
+              Error al cargar las hojas configuradas.
+            </p>
+          }
+        />
       ) : mappings.length === 0 && !showAddForm ? (
         <EmptyState
           icon={Sheet}
@@ -521,6 +553,7 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
               key={m.id}
               mapping={m}
               token={token}
+              spreadsheetsMap={spreadsheetsMap}
               onRefresh={loadMappings}
               onDelete={loadMappings}
             />
@@ -593,8 +626,8 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
               </span>
               <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
                 {hasLeadsMapping
-                  ? 'Cada lead capturado por este empleado se escribira automaticamente en el sheet de Leads.'
-                  : 'Requiere configurar una hoja con proposito "Leads" arriba.'}
+                  ? 'Cada lead capturado por este empleado se escribirá automáticamente en el sheet de Leads.'
+                  : 'Requiere configurar una hoja con propósito "Leads" arriba.'}
               </p>
             </div>
           </label>
