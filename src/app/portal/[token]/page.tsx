@@ -1,14 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import { Suspense } from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, XCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, MessageCircle, AlertTriangle, ChevronRight, Clock, Zap } from 'lucide-react';
+import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours } from '@/types/agent';
-// Phone, CheckCircle, XCircle still used in Agentes tab and alerts
 import type { VoiceCall } from '@/types/agent';
 import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
@@ -30,7 +28,6 @@ import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
-import CollapsibleSection      from './CollapsibleSection';
 import PeakHoursChart          from './PeakHoursChart';
 import NotificationBell        from './NotificationBell';
 import PortalFooter            from './PortalFooter';
@@ -47,11 +44,8 @@ import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
-import PortalContactsSection     from './PortalContactsSection';
 import OutboundSection           from './OutboundSection';
-import OutboundToggles           from './OutboundToggles';
 import AutoRefillSection         from './AutoRefillSection';
-import { inboxAddressFor }       from '@/lib/email/inbox';
 import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
@@ -63,7 +57,7 @@ import CuentaUsageTabsCard      from './CuentaUsageTabsCard';
 import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
 import type { OutboundCall }     from './PortalOutboundSection';
-import type { ContactVoiceLead, ContactOutbound } from './PortalContactsSection';
+import type { ContactOutbound } from './PortalContactsSection';
 
 type Tab = 'inicio' | 'llamadas' | 'salientes' | 'oficina' | 'agentes' | 'negocio' | 'integraciones' | 'cuenta' | 'equipo';
 
@@ -242,8 +236,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
   })();
 
-  const inboxAddress = agent.portal_email ? inboxAddressFor(agent.portal_email) : null;
-
   // AI ops: account-level pool (SUM of all agents in account)
   const { data: opsAgents } = agent.portal_email
     ? await supabase.from('voice_agents').select('id, ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
@@ -269,7 +261,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     ? allClientAgents.map(a => a.id)
     : [agent.id];
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactLeadsRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, allCallsRes, outboundRes, contactOutboundRes, outboundCampaignsRes, emailIntsRes] = await Promise.all([
     // Calls — account-level for Inicio activity and Llamadas
     since
       ? supabase.from('voice_calls').select('*').in('agent_id', agentIdsForCalls).gte('created_at', since).order('created_at', { ascending: false }).limit(100)
@@ -279,8 +271,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     showAppts  ? supabase.from('appointments_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     supabase.from('voice_calls').select('duration_seconds, created_at').in('agent_id', agentIdsForCalls).order('created_at', { ascending: true }),
     showOutbound ? supabase.from('outbound_calls').select('*').eq('agent_id', agent.id).order('scheduled_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
-    // Contacts tab
-    supabase.from('leads_voice').select('id, nombre, whatsapp, telefono, email, servicio, presupuesto, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
     supabase.from('email_integrations').select('provider, email, needs_reauth').eq('agent_id', agent.id),
@@ -292,7 +282,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const appts             = apptsRes.data            ?? [];
   const allCalls          = allCallsRes.data         ?? [];
   const outboundCalls     = (outboundRes.data        ?? []) as OutboundCall[];
-  const contactVoiceLeads = (contactLeadsRes.data    ?? []) as ContactVoiceLead[];
   const contactOutbound   = (contactOutboundRes.data ?? []) as ContactOutbound[];
   const outboundCampaigns = outboundCampaignsRes.data  ?? [];
   const reauthAlerts      = (emailIntsRes.data ?? []).filter((i: any) => i.needs_reauth) as { provider: 'gmail' | 'outlook'; email: string }[];
