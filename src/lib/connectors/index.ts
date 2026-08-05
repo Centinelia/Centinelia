@@ -36,21 +36,43 @@ export async function refreshIfNeeded(integration: IntegrationRow, supabase: Sup
   const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
   if (!needsRefresh) return integration.access_token;
   if (!integration.refresh_token) return integration.access_token;
+
+  // Detecta si venimos de un synthetic row (org-level via integration_accounts).
+  // getFileConnector genera id "org:portalEmail:provider" cuando cae en fallback.
+  const isSyntheticOrgRow = typeof integration.id === 'string' && integration.id.startsWith('org:');
   try {
     const plainRefreshToken = decrypt(integration.refresh_token);
     const refreshed = integration.provider === 'gmail'
       ? await gmailRefreshToken(plainRefreshToken)
       : await outlookRefreshToken(plainRefreshToken);
-    await supabase.from('email_integrations').update({
-      access_token:     refreshed.access_token,
-      token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-      needs_reauth:     false,
-    }).eq('id', integration.id);
+    const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+
+    if (isSyntheticOrgRow) {
+      // Persistir el refresh a la fuente real: integration_accounts por portal_email+provider
+      const parts = integration.id.split(':'); // ['org', portalEmail, provider]
+      const portalEmail = parts[1];
+      const provider    = parts[2];
+      if (portalEmail && provider) {
+        await supabase.from('integration_accounts').update({
+          access_token: refreshed.access_token,
+          expires_at:   newExpiresAt,
+          status:       'active',
+        }).eq('portal_email', portalEmail).eq('provider', provider);
+      }
+    } else {
+      await supabase.from('email_integrations').update({
+        access_token:     refreshed.access_token,
+        token_expires_at: newExpiresAt,
+        needs_reauth:     false,
+      }).eq('id', integration.id);
+    }
     return refreshed.access_token;
   } catch {
-    await supabase.from('email_integrations')
-      .update({ needs_reauth: true })
-      .eq('id', integration.id);
+    if (!isSyntheticOrgRow) {
+      await supabase.from('email_integrations')
+        .update({ needs_reauth: true })
+        .eq('id', integration.id);
+    }
 
     const { data: agent } = await supabase
       .from('voice_agents')
