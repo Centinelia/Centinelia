@@ -126,7 +126,6 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
     const body = {
       client_name:            fd.get('client_name'),
       client_email:           fd.get('client_email')   || null,
-      portal_email:           fd.get('portal_email')   || null,
       business_name:          fd.get('business_name'),
       business_description:   fd.get('business_description'),
       business_address:       fd.get('business_address'),
@@ -246,13 +245,11 @@ export default function EditAgentForm({ agent }: { agent: VoiceAgent }) {
             </div>
           </Card>
 
-          <Card title="Cliente" icon={<UserIcon size={13} />}>
+          <Card title="Contacto" icon={<UserIcon size={13} />}>
             <Field label="Nombre del contacto" name="client_name" required defaultValue={agent.client_name} />
             <Field label="Email del cliente" name="client_email" placeholder="cliente@email.com"
-              defaultValue={agent.client_email ?? ''} />
-            <Field label="Email del portal" name="portal_email" placeholder="acceso@negocio.com"
-              defaultValue={(agent as any).portal_email ?? ''}
-              helper="Correo con el que el cliente inicia sesión en su portal. Todos los empleados con el mismo email comparten pool de minutos y tareas." />
+              defaultValue={agent.client_email ?? ''}
+              helper="Email comercial del cliente (para reportes y avisos). El acceso al portal se administra desde Clientes." />
           </Card>
 
           <Card title="Negocio" icon={<Building2 size={13} />}>
