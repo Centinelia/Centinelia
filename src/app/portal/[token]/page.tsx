@@ -50,6 +50,7 @@ import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
 import ContractTrackerSection   from './ContractTrackerSection';
+import ContractSection          from './ContractSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
 import InsightsSection          from './InsightsSection';
@@ -134,10 +135,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, billing_model')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
+
+  // Contrato de servicios: fuente de verdad = organizations.contract_accepted_at.
+  // Fallback a voice_agents.contract_accepted_at para demos sin portal_email.
+  // Ver [[contract-at-organization-level]].
+  const contractAcceptedAt: string | null =
+    (orgSettings as { contract_accepted_at?: string | null } | null)?.contract_accepted_at
+    ?? (agent as { contract_accepted_at?: string | null }).contract_accepted_at
+    ?? null;
 
   // Anual: si la org está en contrato prepagado, esconde botones Stripe (compra
   // minutos/tareas/plan) y muestra callout. Fetch contract info sólo si aplica.
@@ -552,20 +561,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* Contract gate notice */}
-              {!agent.contract_accepted_at && (
-                <a href={`/portal/${token}/configurar#contrato`}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-90"
-                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                  <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                  <p className="flex-1 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-                    Tienes un contrato de servicios pendiente de firma.
-                  </p>
-                  <span className="text-xs font-semibold whitespace-nowrap" style={{ color: '#f59e0b' }}>Firmar ahora</span>
-                  <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                </a>
-              )}
-
               {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
               {actionTotal > 0 && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
@@ -955,20 +950,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
 
-              {/* Contract gate banner */}
-              {!agent.contract_accepted_at && (
-                <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
-                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
-                  <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
-                </a>
-              )}
+              {/* Contrato de servicios: 1 firma por cliente cubre a todos los
+                  empleados actuales y futuros. Ver [[contract-at-organization-level]]. */}
+              <div id="contrato">
+                <ContractSection
+                  token={token}
+                  businessName={agent.business_name}
+                  signedAt={contractAcceptedAt}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
+                />
+              </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
 
@@ -1211,20 +1202,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     </p>
                   </div>
                 </div>
-              )}
-
-              {/* Contract gate notice */}
-              {!agent.contract_accepted_at && (
-                <a href={`/portal/${token}/configurar#contrato`}
-                  className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-90"
-                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                  <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                  <p className="flex-1 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-                    Tienes un contrato de servicios pendiente de firma.
-                  </p>
-                  <span className="text-xs font-semibold whitespace-nowrap" style={{ color: '#f59e0b' }}>Firmar ahora</span>
-                  <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                </a>
               )}
 
               {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
@@ -1547,20 +1524,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           <PageContainer>
             <div className="flex flex-col gap-5">
 
-              {/* Contract gate banner */}
-              {!agent.contract_accepted_at && (
-                <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
-                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
-                  <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
-                      Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
-                </a>
-              )}
+              {/* Contrato de servicios: 1 firma por cliente cubre a todos los
+                  empleados actuales y futuros. Ver [[contract-at-organization-level]]. */}
+              <div id="contrato">
+                <ContractSection
+                  token={token}
+                  businessName={agent.business_name}
+                  signedAt={contractAcceptedAt}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
+                />
+              </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 

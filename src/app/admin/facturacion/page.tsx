@@ -68,23 +68,83 @@ export default async function FacturacionPage({ searchParams }: Props) {
   );
 }
 
+// Contratos ya son per-cliente (organizations.contract_accepted_at). Dedupe
+// por portal_email para mostrar 1 fila por cliente en vez de N filas por
+// empleado. Mismo patron que StripeTab abajo. Ver
+// [[contract-at-organization-level]].
 async function ClientesTab() {
   const supabase = createAdminClient();
-  const { data: agents } = await supabase
-    .from('voice_agents')
-    .select('id, business_name, client_name, plan, portal_token, contract_accepted_at, active, contract_text')
-    .neq('id', process.env.DEMO_AGENT_ID ?? '')
-    .order('created_at', { ascending: false });
 
-  const raw          = agents ?? [];
-  const list         = raw.map(({ contract_text, ...rest }) => ({ ...rest, has_custom: !!contract_text }));
-  const signedCount  = list.filter(a => a.contract_accepted_at).length;
-  const pendingCount = list.filter(a => !a.contract_accepted_at).length;
-  const customCount  = list.filter(a => a.has_custom).length;
+  const { data: rawAgents } = await supabase
+    .from('voice_agents')
+    .select('id, business_name, client_name, plan, portal_token, portal_email, contract_text, contract_accepted_at, active, created_at')
+    .neq('id', process.env.DEMO_AGENT_ID ?? '')
+    .order('created_at', { ascending: true });
+
+  const agents = rawAgents ?? [];
+
+  const portalEmails = agents.map(a => a.portal_email).filter(Boolean) as string[];
+  const { data: orgRows } = portalEmails.length
+    ? await supabase
+        .from('organizations')
+        .select('portal_email, contract_accepted_at, contract_ip')
+        .in('portal_email', portalEmails)
+    : { data: [] };
+  const orgMap = new Map((orgRows ?? []).map(o => [o.portal_email as string, o]));
+
+  // Agrupar por portal_email (agentes sin portal_email mantienen 1 fila propia)
+  const clientRows: import('../contratos/ContratosClient').ContratoRow[] = [];
+  const seenEmails = new Set<string>();
+
+  for (const a of agents) {
+    if (a.portal_email) {
+      if (seenEmails.has(a.portal_email)) continue;
+      seenEmails.add(a.portal_email);
+      const org           = orgMap.get(a.portal_email);
+      const siblings      = agents.filter(x => x.portal_email === a.portal_email);
+      const businessNames = Array.from(new Set(siblings.map(s => s.business_name))).filter(Boolean);
+      const anyCustom     = siblings.some(s => !!s.contract_text);
+      const anchorAgent   = siblings.find(s => !!s.contract_text) ?? a;
+
+      clientRows.push({
+        id:                    anchorAgent.id,
+        business_name:         businessNames.length > 1
+          ? `${businessNames[0]} +${businessNames.length - 1}`
+          : (businessNames[0] ?? a.business_name),
+        client_name:           a.client_name,
+        plan:                  a.plan,
+        portal_token:          anchorAgent.portal_token,
+        portal_email:          a.portal_email,
+        has_custom:            anyCustom,
+        contract_accepted_at:  (org?.contract_accepted_at as string | null) ?? null,
+        active:                a.active,
+        employee_count:        siblings.length,
+      });
+    } else {
+      // Demo/standalone sin portal_email: fila per-agente con firma legacy
+      // (contract_accepted_at aun vive en voice_agents para estos casos).
+      clientRows.push({
+        id:                    a.id,
+        business_name:         a.business_name,
+        client_name:           a.client_name,
+        plan:                  a.plan,
+        portal_token:          a.portal_token,
+        portal_email:          null,
+        has_custom:            !!a.contract_text,
+        contract_accepted_at:  a.contract_accepted_at ?? null,
+        active:                a.active,
+        employee_count:        1,
+      });
+    }
+  }
+
+  const signedCount  = clientRows.filter(r => r.contract_accepted_at).length;
+  const pendingCount = clientRows.filter(r => !r.contract_accepted_at).length;
+  const customCount  = clientRows.filter(r => r.has_custom).length;
 
   return (
     <ContratosClient
-      list={list}
+      list={clientRows}
       signedCount={signedCount}
       pendingCount={pendingCount}
       customCount={customCount}
