@@ -41,6 +41,7 @@ import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
 import PortalShell            from './PortalShell';
 import { isPortalV2Enabled }  from '@/lib/portal/portal-v2-flag';
+import { PageContainer, PageSection, GridStretch, SectionHeader, Card } from '@/components/portal-ui';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
@@ -435,8 +436,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     { id: 'equipo',   label: 'Equipo de gestión' },
   ];
 
-  // Main content column — shared between V1 and V2 layouts
-  const mainColumn = (
+  // V1 main content column — used by the V1 layout unchanged
+  const pageBodyV1 = (
     <div className="flex-1 min-w-0 flex flex-col">
 
             {/* Tab nav — mobile only */}
@@ -1117,6 +1118,699 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           </div> // /main content column
   );
 
+  // ── V2 body: design-system shell (outer containers only; inner logic untouched) ──
+  const pageBodyV2 = (
+    <div className="flex-1 min-w-0 flex flex-col">
+
+      {/* Tab nav — mobile only (unchanged from V1) */}
+      <div className="md:hidden" style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)', position: 'sticky', top: 53, zIndex: 9 }}>
+        <div className="px-4 sm:px-6">
+          <PortalTabNav token={token} currentTab={tab} tabs={TABS} />
+        </div>
+      </div>
+
+      {/* Alerts (unchanged from V1) */}
+      {(!agent.active || minutesPct > 80) && (
+        <div className="px-4 sm:px-6 pt-4 flex flex-col gap-2 max-w-4xl w-full mx-auto md:mx-0">
+          {billingPaused && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+              <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
+              <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                Tu empleado está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
+              </p>
+            </div>
+          )}
+          {clientPaused && !billingPaused && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0" />
+              <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                Tu empleado está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
+              </p>
+            </div>
+          )}
+          {minutesPct > 80 && agent.active && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                  Estás al {Math.round(minutesPct)}% de tus minutos, te quedan {minutesRemain} min
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>Reset el {resetDate}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab content ── */}
+      <div className={`flex-1 w-full md:mx-0 ${tab === 'negocio' ? '' : tab === 'inicio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* ── INICIO (V2 with design system shells) ───────────────── */}
+        {tab === 'inicio' && (
+          <PageContainer>
+            <div className="flex flex-col gap-5">
+
+              {/* Greeting banner — status-aware, keep as-is (styled alert) */}
+              <div className="rounded-xl px-5 py-4"
+                style={{ background: officeOk ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${officeOk ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
+                  <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                    <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
+                    <span style={{ color: 'var(--c-text-2)' }}>
+                      {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {isFirstTime && (
+                <div
+                  className="relative rounded-xl overflow-hidden"
+                  style={{
+                    background: 'rgba(108,59,255,0.06)',
+                    border:     '1px solid rgba(108,59,255,0.15)',
+                    minHeight:  96,
+                  }}
+                >
+                  <div style={{ position: 'absolute', bottom: 0, left: 16, width: 160, height: 112, pointerEvents: 'none' }}>
+                    <Image src="/meerkats-team.png" alt="" fill sizes="160px"
+                      style={{ objectFit: 'contain', objectPosition: 'bottom left' }} />
+                  </div>
+                  <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
+                      En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Contract gate notice */}
+              {!agent.contract_accepted_at && (
+                <a href={`/portal/${token}/configurar#contrato`}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-90"
+                  style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  <p className="flex-1 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+                    Tienes un contrato de servicios pendiente de firma.
+                  </p>
+                  <span className="text-xs font-semibold whitespace-nowrap" style={{ color: '#f59e0b' }}>Firmar ahora</span>
+                  <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                </a>
+              )}
+
+              {/* Reauth alerts — mobile strip */}
+              {reauthAlerts.length > 0 && (
+                <div className="flex flex-col gap-2 lg:hidden">
+                  {reauthAlerts.map(alert => (
+                    <Link key={alert.provider}
+                      href={`/portal/${token}/oficina/integraciones`}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-80"
+                      style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                      <AlertTriangle size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
+                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexion
+                        </p>
+                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
+                      </div>
+                      <ChevronRight size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {/* Period filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
+                <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
+                    const active = (period ?? '') === param;
+                    return (
+                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Two-column layout from KPIs down */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
+
+                {/* ── Main column ── */}
+                <div className="flex flex-col gap-5">
+
+                  {/* KPI section */}
+                  <PageSection
+                    heading={
+                      <SectionHeader
+                        eyebrow="HOY"
+                        title="Resumen de actividad"
+                        as="h2"
+                      />
+                    }
+                  >
+                    <GridStretch cols={{ base: 2, md: 4 }} gap={3}>
+                      <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}    value={String(calls.length)}   label="Conversaciones"   sub={`prom. ${avgDuration} min`}                                                                                   valueColor="#6C3BFF"  accentColor="#6C3BFF"  />
+                      <KpiCard icon={<CheckCircle size={16} color="#22c55e" />}  value={String(resolvedCount)}  label="Sin intervención" sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}                                                valueColor="#22c55e"  accentColor="#22c55e"  />
+                      {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
+                      {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
+                      {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
+                      {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
+                      {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
+                    </GridStretch>
+
+                    {/* Autonomous resolution rate */}
+                    {calls.length > 0 && (
+                      <p className="text-sm -mt-1" style={{ color: 'var(--c-text-2)' }}>
+                        Tu oficina resolvió el{' '}
+                        <span className="font-semibold" style={{ color: '#22c55e' }}>{autonomousRate}%</span>
+                        {' '}de las solicitudes sin intervención humana.
+                      </p>
+                    )}
+                  </PageSection>
+
+                  {/* Brief del día — solo cuando hay Nox activo en el equipo */}
+                  {hasNox && <BriefDelDiaCard />}
+
+                  {/* Tu equipo hoy */}
+                  {teamToday.length > 0 && (
+                    <PageSection heading={<SectionHeader eyebrow="EQUIPO" title="Tu equipo hoy" as="h2" />}>
+                      <Card id="equipo-hoy" padding="md">
+                        <div className="flex flex-col">
+                          {teamToday.map((m, idx) => (
+                            <div key={m.token}
+                              className="flex items-center gap-3 py-2.5"
+                              style={{ borderBottom: idx < teamToday.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                              <div className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ background: m.active ? '#22c55e' : '#9ca3af', boxShadow: m.active ? '0 0 5px #22c55e' : 'none' }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{m.name}</p>
+                                {m.role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{m.role}</p>}
+                              </div>
+                              <div className="flex items-center gap-3 flex-shrink-0 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                                {m.calls > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <PhoneCall size={11} style={{ color: '#6C3BFF' }} /> {m.calls}
+                                  </span>
+                                )}
+                                {m.ops > 0 && (
+                                  <span className="flex items-center gap-1">
+                                    <Zap size={11} style={{ color: '#06b6d4' }} /> {m.ops}
+                                  </span>
+                                )}
+                              </div>
+                              <Link href={`/portal/${m.token}/configurar`}
+                                className="text-xs transition-opacity hover:opacity-70 flex-shrink-0"
+                                style={{ color: '#9B6DFF' }}>
+                                Ver →
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    </PageSection>
+                  )}
+
+                  {/* Insights de la semana */}
+                  <InsightsSection token={token} />
+
+                  {/* Actividad reciente */}
+                  <PageSection heading={<SectionHeader eyebrow="FEED" title="Actividad reciente" as="h2" />}>
+                    <Card id="actividad" padding="md">
+                      {resumenFeed.length === 0 ? (
+                        <div className="flex flex-col items-center py-8 gap-0">
+                          <div className="relative" style={{ width: 96, height: 132 }}>
+                            <Image src="/agent-f2.png" alt="" fill sizes="96px"
+                              style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
+                          </div>
+                          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          {resumenFeed.map((item, idx) => {
+                            const cfg = item.type === 'call'
+                              ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
+                              : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
+                            return (
+                              <div key={`${item.type}-${item.id}`}
+                                className="flex items-center gap-3 py-2.5"
+                                style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                  style={{ background: cfg.bg, color: cfg.color }}>
+                                  {item.type === 'call'  && <Phone        size={12} />}
+                                  {item.type === 'lead'  && <Users        size={12} />}
+                                  {item.type === 'order' && <ShoppingBag  size={12} />}
+                                  {item.type === 'appt'  && <CalendarDays size={12} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
+                                    {item.label}
+                                  </span>
+                                  {item.sub && (
+                                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                  style={{ background: cfg.bg, color: cfg.color }}>
+                                  {cfg.label}
+                                </span>
+                                <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
+                                  {fmtRelative(item.created_at)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </Card>
+                  </PageSection>
+
+                  {/* Actividad horaria */}
+                  {calls.length > 0 && (
+                    <PageSection heading={<SectionHeader eyebrow="ANÁLISIS" title="Actividad de tu oficina" as="h2" />}>
+                      <Card id="horas-pico" padding="md">
+                        <PeakHoursChart hourCounts={hourCounts} />
+                      </Card>
+                    </PageSection>
+                  )}
+
+                  {/* Reporte mensual — mobile only */}
+                  <div className="lg:hidden">
+                    <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
+                      <Card padding="md">
+                        <div className="flex items-center gap-1.5 mb-4">
+                          <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                        </div>
+                        <MonthReportPicker token={token} />
+                      </Card>
+                    </PageSection>
+                  </div>
+
+                  {/* Contexto de empleados — mobile */}
+                  <div className="lg:hidden">
+                    <PageSection heading={<SectionHeader eyebrow="CONTEXTO" title="Contexto de empleados" as="h2" />}>
+                      <Card padding="md">
+                        <div className="flex items-center gap-1.5 mb-4">
+                          <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria." />
+                        </div>
+                        {agentContextCards.some(a => a.tokens > 0) ? (
+                          <div className="flex flex-col gap-3">
+                            {agentContextCards.map((a, i) => {
+                              const ctx   = Math.min(a.tokens, 32_000);
+                              const pct   = Math.round((ctx / 32_000) * 100);
+                              const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                              return (
+                                <div key={i} className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                                      {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                                    </div>
+                                    <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                                      {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                                    <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center text-center gap-2 py-2">
+                            <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+                              Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
+                            </p>
+                            <Link href={`/portal/${token}/empleados`}
+                              className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
+                              style={{ color: '#9B6DFF' }}>
+                              Configurar en Empleados →
+                            </Link>
+                          </div>
+                        )}
+                      </Card>
+                    </PageSection>
+                  </div>
+
+                </div>{/* end main column */}
+
+                {/* ── Right column (desktop only) ── */}
+                <div className="hidden lg:flex flex-col gap-4">
+
+                  {showOutbound && (
+                    <PageSection heading={<SectionHeader eyebrow="SALIENTES" title="Salientes" as="h2" right={<Link href={`/portal/${token}/llamadas/salientes`} className="text-xs transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>} />}>
+                      <Card padding="md">
+                        <div className="flex flex-col gap-3">
+                          <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
+                          <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
+                          <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
+                        </div>
+                      </Card>
+                    </PageSection>
+                  )}
+
+                  {/* Reporte mensual — desktop sidebar */}
+                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h2" />}>
+                    <Card id="reporte-mensual" padding="md">
+                      <div className="flex items-center gap-1.5 mb-4">
+                        <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                      </div>
+                      <MonthReportPicker token={token} />
+                    </Card>
+                  </PageSection>
+
+                  {/* Contexto de empleados — desktop */}
+                  <PageSection heading={<SectionHeader eyebrow="CONTEXTO" title="Contexto de empleados" as="h2" />}>
+                    <Card id="contexto" padding="md">
+                      <div className="flex items-center gap-1.5 mb-4">
+                        <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (manual de la organización + instrucciones del puesto + aprendizajes). A más memoria, más informado está el empleado." />
+                      </div>
+                      {agentContextCards.some(a => a.tokens > 0) ? (
+                        <div className="flex flex-col gap-3">
+                          {agentContextCards.map((a, i) => {
+                            const ctx   = Math.min(a.tokens, 32_000);
+                            const pct   = Math.round((ctx / 32_000) * 100);
+                            const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
+                            return (
+                              <div key={i} className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
+                                    {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
+                                  </div>
+                                  <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
+                                    {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center text-center gap-2 py-1">
+                          <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
+                            Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
+                          </p>
+                          <Link href={`/portal/${token}/empleados`}
+                            className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
+                            style={{ color: '#9B6DFF' }}>
+                            Configurar en Empleados →
+                          </Link>
+                        </div>
+                      )}
+                    </Card>
+                  </PageSection>
+
+                </div>{/* end right column */}
+
+              </div>{/* end two-column grid */}
+            </div>
+          </PageContainer>
+        )}
+
+        {/* ── NEGOCIO (unchanged from V1) ──────────────────────────── */}
+        {tab === 'negocio' && (
+          <div className="flex flex-col lg:flex-row gap-5 items-start px-4 sm:px-6 py-6">
+
+            {/* Main column */}
+            <div className="flex-1 min-w-0 flex flex-col gap-5">
+              <div id="organizacion">
+                {agent.portal_email && (
+                  <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                )}
+              </div>
+
+              <div id="branding" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Branding de documentos y correos</h2>
+                  <InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />
+                </div>
+                <BrandKitEditor
+                  token={token}
+                  logoUrl={(agent as any).logo_url ?? null}
+                  businessName={agent.business_name}
+                  agentName={agent.agent_name ?? agent.business_name}
+                  initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
+                  initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
+                  initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
+                  initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                  initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                />
+              </div>
+
+              <div id="conocimiento" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Manual de la organización</h2>
+                  <InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />
+                </div>
+                <KnowledgeBaseEditor
+                  token={token}
+                  initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
+                  websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
+                  hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
+                />
+              </div>
+
+              <div id="perfil-dueno" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Perfil del responsable</h2>
+                  <InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />
+                </div>
+                <OwnerProfileEditor
+                  token={token}
+                  initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
+                />
+              </div>
+
+              <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <ContractTrackerSection token={token} />
+              </div>
+
+            </div>
+
+            {/* Col 2 — Sitio web, Reseñas, Notificaciones */}
+            <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 420, flexShrink: 0 }}>
+              <div id="sitio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                  <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
+                </div>
+                <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
+                <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
+                <div className="flex items-center gap-1.5 mb-3">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
+                  <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
+                </div>
+                <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
+              </div>
+
+              <div id="dominio-correo" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Notificaciones automáticas al cliente</h2>
+                  <InfoTooltip text="Cuando tu empleado atiende una llamada, Centinelia envía correos automáticos al cliente (confirmación de cita, acuse de lead, etc.). Por defecto salen desde centinelia.mx. Registra tu dominio para que lleguen desde tuempresa.com." />
+                </div>
+                <EmailSettings token={token} />
+              </div>
+            </div>
+
+            {/* Col 3 — Horario de atención */}
+            <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 280, flexShrink: 0 }}>
+              <div id="horarios" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="flex items-center gap-1.5 mb-4">
+                  <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Horario de atención</h2>
+                  <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
+                </div>
+                <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ── CUENTA (unchanged from V1) ──────────────────────────── */}
+        {tab === 'cuenta' && (
+          <div className="flex flex-col gap-5 px-4 sm:px-6 py-6">
+
+            {/* Contract gate banner */}
+            {!agent.contract_accepted_at && (
+              <a href={`/portal/${token}/configurar#contrato`} className="flex items-start gap-3 rounded-xl px-4 py-3.5 no-underline transition-opacity hover:opacity-90"
+                style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.28)' }}>
+                <AlertTriangle size={15} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: '#92400e' }}>Contrato pendiente de firma</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+                    Revisa y firma el contrato de servicios para formalizar el uso de tu empleado digital. Ve a Configurar tu empleado para firmarlo.
+                  </p>
+                </div>
+                <ChevronRight size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+              </a>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
+
+              {/* ── Col 1: Uso + Compras + Recarga ── */}
+              <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+
+                {/* ── Uso del mes: minutos + tareas en una sola tarjeta ── */}
+                {(minutesIncluded > 0 || aiOpsLimit > 0) && (
+                  <div id="uso-del-mes" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                    <div className="flex flex-col gap-4">
+                      {minutesIncluded > 0 && (
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                            <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
+                          </div>
+                          <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span>{minutesRemain} disponibles</span>
+                            <span>Renueva el {resetDate}</span>
+                          </div>
+                          {rolloverMinutes > 0 && (
+                            <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                          )}
+                        </div>
+                      )}
+                      {aiOpsLimit > 0 && (
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
+                            <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                          </div>
+                          <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                            <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
+                            <span>Renueva el {resetDate}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Comprar: minutos + tareas en una sola tarjeta ── */}
+                {(() => {
+                  const warnPct  = Math.max(minutesPct, aiOpsPct);
+                  const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
+                  const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
+                  return (
+                    <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar saldo</h2>
+                      {warnPct >= 70 && (
+                        <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
+                          <AlertTriangle size={11} />
+                          {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
+                        </p>
+                      )}
+                      <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
+                      {annualContractInfo ? (
+                        <div className="flex flex-col gap-5">
+                          <AnnualContractCallout action="comprar_minutos"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                          <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                          <AnnualContractCallout action="comprar_tareas"   folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-5">
+                          {minutesIncluded > 0 && (
+                            <div>
+                              {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                              <BuyMinutesSection token={token} />
+                            </div>
+                          )}
+                          {minutesIncluded > 0 && aiOpsLimit > 0 && (
+                            <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                          )}
+                          {aiOpsLimit > 0 && (
+                            <div>
+                              {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                              <BuyOpsSection token={token} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
+                  <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
+                  <AutoRefillSection token={token} />
+                </div>
+              </div>
+
+              {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
+              <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
+                  <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
+                    <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                      {allCalls.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                          <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                          <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                          <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                        </div>
+                      )}
+                      {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                        <div className="flex flex-col gap-2">
+                          {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                          <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                          <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                          <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
+                  <div className="relative">
+                    <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
+                      <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+                      style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Col 3: Serial ── */}
+              <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                {accountSerial && (
+                  <AccountSerialBadge serial={accountSerial} variant="card" />
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      <PortalFooter token={token} />
+    </div>
+  );
+
   // V2 layout: PortalShell renders header + V2 sidebar, main column is passed as prop
   if (v2Enabled) {
     return (
@@ -1144,7 +1838,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <PortalLogout />
               </>
             }
-            main={mainColumn}
+            main={pageBodyV2}
           />
         </div>
       </ThemeProvider>
@@ -1198,7 +1892,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             modules={modules}
             jornadaType={(agent as any).jornada_type ?? 'combinada'}
           />
-          {mainColumn}
+          {pageBodyV1}
         </div>
 
       </div>
