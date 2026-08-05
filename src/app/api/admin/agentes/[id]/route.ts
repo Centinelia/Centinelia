@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createVapiAssistant, updateVapiAssistant, assignAssistantToPhone, resyncPeerAgents } from '@/lib/vapi/sync';
 import type { VoiceAgent } from '@/types/agent';
 import { PLAN_CONCURRENT_CALLS } from '@/types/agent';
+import { isAdmin } from '@/lib/admin/auth';
+import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 import { scrapeWebsite } from '@/lib/scrape/website';
 import { configureTwilioWhatsAppWebhook } from '@/lib/twilio/configure-webhook';
@@ -141,8 +143,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json(data);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
+  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { id } = await params;
+  let body: { password?: string } = {};
+  try { body = await req.json(); } catch { /* body opcional */ }
+
+  const expected = process.env.ADMIN_DELETE_PASSWORD;
+  if (!expected) {
+    return NextResponse.json({
+      error: 'ADMIN_DELETE_PASSWORD no está configurado. Agrega la variable en Vercel para permitir eliminaciones.',
+    }, { status: 500 });
+  }
+  if (!body.password || !timingSafeCompareStrings(body.password, expected)) {
+    return NextResponse.json({ error: 'Contraseña incorrecta.' }, { status: 403 });
+  }
+
   const supabase = createAdminClient();
   const { error } = await supabase.from('voice_agents').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

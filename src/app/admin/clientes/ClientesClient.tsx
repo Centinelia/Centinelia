@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Search, ChevronDown, ExternalLink, Settings, KeyRound,
+  Search, ChevronDown, Settings, KeyRound,
   Eye, EyeOff, Check, X, Plus, Users, Pencil, Bot,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
@@ -460,16 +460,6 @@ export default function ClientesClient({
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {agent.portal_token && (
-                          <Link
-                            href={`/portal/${agent.portal_token}`}
-                            target="_blank"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
-                            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
-                          >
-                            <ExternalLink size={11} /><span className="hidden sm:inline"> Portal</span>
-                          </Link>
-                        )}
                         <Link
                           href={`/admin/agentes/${agent.id}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
