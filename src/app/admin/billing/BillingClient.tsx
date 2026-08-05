@@ -21,6 +21,8 @@ interface Agent {
   minutes_reset_date: string | null;
   active: boolean;
   employee_count?: number;
+  ops_used?: number;
+  ops_limit?: number;
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle2 }> = {
@@ -346,18 +348,48 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
                 </div>
               </div>
 
-              {/* Minutes bar */}
-              {agent.minutes_included > 0 && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
-                    <span>{agent.minutes_used} / {agent.minutes_included} min</span>
-                    {agent.minutes_reset_date && (
-                      <span>Reinicia {new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</span>
-                    )}
-                  </div>
-                  <div className="h-1.5 rounded-full" style={{ background: 'var(--c-border)' }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
-                  </div>
+              {/* Minutes + Tareas: barras del pool de la cuenta */}
+              {(agent.minutes_included > 0 || (agent.ops_limit ?? 0) > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {agent.minutes_included > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#0E7490' }} />
+                          Minutos
+                        </span>
+                        <span className="tabular-nums">{agent.minutes_used} / {agent.minutes_included}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full" style={{ background: 'var(--c-border)' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
+                      </div>
+                      {agent.minutes_reset_date && (
+                        <div className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                          Reinicia {new Date(agent.minutes_reset_date + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(agent.ops_limit ?? 0) > 0 && (() => {
+                    const opsUsed  = agent.ops_used  ?? 0;
+                    const opsLimit = agent.ops_limit ?? 0;
+                    const opsPct   = opsLimit > 0 ? Math.min((opsUsed / opsLimit) * 100, 100) : 0;
+                    const opsColor = opsPct > 90 ? '#EF4444' : opsPct > 70 ? '#F59E0B' : '#10B981';
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+                            Tareas
+                          </span>
+                          <span className="tabular-nums">{opsUsed.toLocaleString('es-MX')} / {opsLimit.toLocaleString('es-MX')}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full" style={{ background: 'var(--c-border)' }}>
+                          <div className="h-full rounded-full transition-all" style={{ width: `${opsPct}%`, background: opsColor }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

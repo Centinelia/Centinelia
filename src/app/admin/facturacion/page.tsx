@@ -100,7 +100,7 @@ async function StripeTab() {
 
   const { data: rawAgents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email, created_at')
+    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email, created_at, ai_ops_used, ai_ops_limit')
     .neq('id', process.env.DEMO_AGENT_ID ?? '')
     .order('created_at', { ascending: true });
 
@@ -110,16 +110,21 @@ async function StripeTab() {
     : { data: [] };
   const acctMap = new Map((acctData ?? []).map((m: any) => [m.portal_email, m]));
 
-  // Dedupe: 1 fila por portal_email (el primer agente creado = anchor).
-  // Agentes sin portal_email (demos legacy, standalone) mantienen 1 fila per-agent.
-  const seen = new Set<string>();
+  // Sumatorias por portal_email para minutos + tareas (pool de la cuenta).
   const employeeCountByEmail = new Map<string, number>();
+  const opsUsedByEmail       = new Map<string, number>();
+  const opsLimitByEmail      = new Map<string, number>();
   for (const a of (rawAgents ?? [])) {
     if (a.portal_email) {
       employeeCountByEmail.set(a.portal_email, (employeeCountByEmail.get(a.portal_email) ?? 0) + 1);
+      opsUsedByEmail.set(a.portal_email, (opsUsedByEmail.get(a.portal_email) ?? 0) + ((a.ai_ops_used ?? 0) as number));
+      opsLimitByEmail.set(a.portal_email, (opsLimitByEmail.get(a.portal_email) ?? 0) + ((a.ai_ops_limit ?? 0) as number));
     }
   }
 
+  // Dedupe: 1 fila por portal_email (el primer agente creado = anchor).
+  // Agentes sin portal_email (demos legacy, standalone) mantienen 1 fila per-agent.
+  const seen = new Set<string>();
   const agents = (rawAgents ?? []).filter((a: any) => {
     if (!a.portal_email) return true;
     if (seen.has(a.portal_email)) return false;
@@ -128,10 +133,12 @@ async function StripeTab() {
   }).map((a: any) => {
     const acct = a.portal_email ? acctMap.get(a.portal_email) : null;
     const employeeCount = a.portal_email ? (employeeCountByEmail.get(a.portal_email) ?? 1) : 1;
+    const opsUsed  = a.portal_email ? (opsUsedByEmail.get(a.portal_email)  ?? 0) : ((a.ai_ops_used  ?? 0) as number);
+    const opsLimit = a.portal_email ? (opsLimitByEmail.get(a.portal_email) ?? 0) : ((a.ai_ops_limit ?? 0) as number);
     const base = acct
       ? { ...a, minutes_used: acct.minutes_used, minutes_included: acct.minutes_included, minutes_reset_date: acct.minutes_reset_date }
       : a;
-    return { ...base, employee_count: employeeCount };
+    return { ...base, employee_count: employeeCount, ops_used: opsUsed, ops_limit: opsLimit };
   });
 
   return <BillingClient agents={agents} />;
