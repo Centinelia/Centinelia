@@ -35,7 +35,13 @@ export async function POST(req: NextRequest) {
     agentId:  agent_id,
     sessionId,
     input:    { busqueda },
-    result:   { ok: result.ok, files_count: files.length, files: files.slice(0, 5), message: result.message ?? null, error: result.error ?? null },
+    result:   {
+      ok:          result.ok,
+      files_count: files.length,
+      files:       files.slice(0, 5),
+      ...(result.message ? { message: result.message } : {}),
+      ...(result.ok ? {} : { error: result.error ?? 'unknown' }),
+    },
     startedAt,
   });
 

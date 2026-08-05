@@ -10,6 +10,7 @@ interface Rule {
   stuck_status:      string;
   stuck_after_min:   number;
   would_recover_now: number;
+  query_error?:      string | null;
 }
 
 interface ExecResult {
@@ -191,6 +192,11 @@ export function RecoveryView() {
                       timeout {fmtMin(rule.stuck_after_min)}
                     </span>
                   </div>
+                  {rule.query_error && (
+                    <p className="mt-2 text-[11px] font-mono px-2 py-1 rounded" style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
+                      query error: {rule.query_error}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

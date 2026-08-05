@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       if (f.op === 'eq') q = q.eq(f.column, f.value);
       else if (f.op === 'is') q = q.is(f.column, f.value as null);
     }
-    const { count } = await q;
+    const { count, error } = await q;
     return {
       id:                rule.id,
       description:       rule.description,
@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
       stuck_status:      rule.stuckStatus,
       stuck_after_min:   rule.stuckAfterMinutes,
       would_recover_now: count ?? 0,
+      query_error:       error?.message ?? null,
     };
   }));
 

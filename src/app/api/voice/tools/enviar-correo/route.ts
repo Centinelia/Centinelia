@@ -81,6 +81,14 @@ export async function POST(req: NextRequest) {
   );
 
   const finalMsg = result.message ?? result.error ?? 'Error desconocido.';
-  traceResp({ ok: result.ok, message: result.message ?? null, error: result.error ?? null, sent_to: to, subject, has_attachment: !!attFileId, attFileName }, result.ok);
+  traceResp({
+    ok:              result.ok,
+    sent_to:         to,
+    subject,
+    has_attachment:  !!attFileId,
+    attFileName,
+    ...(result.message ? { message: result.message } : {}),
+    ...(result.ok ? {} : { error: result.error ?? 'unknown' }),
+  }, result.ok);
   return NextResponse.json({ result: finalMsg });
 }

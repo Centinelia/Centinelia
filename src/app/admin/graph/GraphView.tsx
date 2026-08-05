@@ -12,6 +12,9 @@ interface StateMachineSummary {
   transitions_by_actor: Record<string, number>;
   top_reasons:        Array<{ reason: string; count: number }>;
   terminal_ratio:     number | null;
+  total_rows:         number;
+  sampled_rows:       number;
+  truncated:          boolean;
 }
 
 interface FeedItem {
@@ -47,15 +50,19 @@ export function GraphView() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
 
+  const [warnings, setWarnings] = useState<string[]>([]);
+
   const load = async () => {
     setLoading(true);
     setError(null);
+    setWarnings([]);
     try {
       const res  = await fetch('/api/admin/graph/summary', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'fetch failed');
       setSummaries(data.summaries ?? []);
       setFeed(data.feed ?? []);
+      if (Array.isArray(data.errors) && data.errors.length) setWarnings(data.errors);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -97,6 +104,13 @@ export function GraphView() {
       {error && (
         <div className="p-4 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
           {error}
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="p-3 rounded-xl text-[12px] font-mono" style={{ background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}>
+          <div className="font-sans font-medium mb-1">Errores parciales en queries:</div>
+          {warnings.map((w, i) => <div key={i}>• {w}</div>)}
         </div>
       )}
 
@@ -190,14 +204,15 @@ function MachinePill({ name, label }: { name: string; label: string }) {
 }
 
 function MachineCard({ m }: { m: StateMachineSummary }) {
-  const total   = Object.values(m.status_distribution).reduce((a, b) => a + b, 0);
+  const sampled = Object.values(m.status_distribution).reduce((a, b) => a + b, 0);
+  const total   = m.total_rows ?? sampled;
   const accent  = MACHINE_ACCENTS[m.name] ?? '#6B7280';
   const sortedStates = Object.entries(m.status_distribution).sort((a, b) => b[1] - a[1]);
 
   // Alertas: si failed/rejected supera 40% → badge
   const failedCount = (m.status_distribution.failed ?? 0) + (m.status_distribution.rejected ?? 0) + (m.status_distribution.cancelled ?? 0) + (m.status_distribution.cancelado ?? 0) + (m.status_distribution.rechazado ?? 0);
-  const failedRatio = total > 0 ? failedCount / total : 0;
-  const hasAlert    = total > 0 && failedRatio > 0.4;
+  const failedRatio = sampled > 0 ? failedCount / sampled : 0;
+  const hasAlert    = sampled > 0 && failedRatio > 0.4;
 
   const isEmpty = total === 0;
 
@@ -221,6 +236,15 @@ function MachineCard({ m }: { m: StateMachineSummary }) {
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide" style={{ background: '#FEE2E2', color: '#B91C1C' }}>
                 <AlertTriangle size={9} />
                 {(failedRatio * 100).toFixed(0)}% fallidos
+              </span>
+            )}
+            {m.truncated && (
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                style={{ background: '#FEF3C7', color: '#92400E' }}
+                title={`Distribución basada en ${sampled.toLocaleString()} de ${total.toLocaleString()} rows`}
+              >
+                muestra parcial
               </span>
             )}
           </div>

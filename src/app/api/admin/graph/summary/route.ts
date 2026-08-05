@@ -17,6 +17,9 @@ interface StateMachineSummary {
   transitions_by_actor: Record<string, number>;              // { user: 3, cron: 8, ... }
   top_reasons:        Array<{ reason: string; count: number }>;
   terminal_ratio:     number | null;                         // % en estados terminales
+  total_rows:         number;                                // exacto (independiente del sample)
+  sampled_rows:       number;                                // usado para distribution
+  truncated:          boolean;                               // true si total_rows > sampled_rows
 }
 
 const MACHINES = [
@@ -34,12 +37,21 @@ export async function GET(_req: NextRequest) {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const summaries: StateMachineSummary[] = [];
 
+  const errors: string[] = [];
+
   for (const m of MACHINES) {
-    // 1. Distribution de estados actuales
-    const { data: items } = await supabase
+    // 1. Total exacto (independiente del limit) para saber si distribución es parcial
+    const { count: totalExact, error: totalErr } = await supabase
+      .from(m.source_table)
+      .select('id', { count: 'exact', head: true });
+    if (totalErr) errors.push(`${m.name}.count: ${totalErr.message}`);
+
+    // 2. Distribution de estados actuales (muestra hasta 10K)
+    const { data: items, error: itemsErr } = await supabase
       .from(m.source_table)
       .select('status')
       .limit(10_000);
+    if (itemsErr) errors.push(`${m.name}.status: ${itemsErr.message}`);
 
     const dist: Record<string, number> = {};
     let terminalCount = 0;
@@ -48,14 +60,15 @@ export async function GET(_req: NextRequest) {
       dist[st] = (dist[st] ?? 0) + 1;
       if (m.terminals.includes(st)) terminalCount++;
     }
-    const total = items?.length ?? 0;
+    const sampled = items?.length ?? 0;
 
-    // 2. Transitions últimas 24h
-    const { data: trans } = await supabase
+    // 3. Transitions últimas 24h
+    const { data: trans, error: transErr } = await supabase
       .from(m.transitions_table)
       .select('actor, reason')
       .gte('transitioned_at', since24h)
       .limit(10_000);
+    if (transErr) errors.push(`${m.name}.transitions: ${transErr.message}`);
 
     const byActor:  Record<string, number> = {};
     const byReason: Record<string, number> = {};
@@ -81,7 +94,10 @@ export async function GET(_req: NextRequest) {
       transitions_24h:      trans?.length ?? 0,
       transitions_by_actor: byActor,
       top_reasons:          topReasons,
-      terminal_ratio:       total ? terminalCount / total : null,
+      terminal_ratio:       sampled ? terminalCount / sampled : null,
+      total_rows:           totalExact ?? sampled,
+      sampled_rows:         sampled,
+      truncated:            (totalExact ?? 0) > sampled,
     });
   }
 
@@ -108,5 +124,5 @@ export async function GET(_req: NextRequest) {
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 40);
 
-  return NextResponse.json({ summaries, feed });
+  return NextResponse.json({ summaries, feed, errors: errors.length ? errors : undefined });
 }

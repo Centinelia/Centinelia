@@ -15,6 +15,15 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - hours * 3_600_000).toISOString();
 
   const supabase = createAdminClient();
+
+  // Total exacto (independiente del limit) para no mentir en "N decisiones en X"
+  let countQ = supabase
+    .from('human_gate_decisions')
+    .select('id', { count: 'exact', head: true })
+    .gte('decided_at', since);
+  if (type) countQ = countQ.eq('gate_type', type);
+  const { count: totalExact, error: countErr } = await countQ;
+
   let q = supabase
     .from('human_gate_decisions')
     .select('*')
@@ -23,7 +32,10 @@ export async function GET(req: NextRequest) {
     .limit(500);
   if (type) q = q.eq('gate_type', type);
 
-  const { data: decisions } = await q;
+  const { data: decisions, error: rowsErr } = await q;
+  if (countErr || rowsErr) {
+    return NextResponse.json({ error: (countErr ?? rowsErr)!.message }, { status: 500 });
+  }
   const rows = (decisions ?? []) as Array<Record<string, unknown>>;
 
   // Aggregate by gate_type + decision
@@ -42,7 +54,9 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    total:    rows.length,
+    total:      totalExact ?? rows.length,
+    aggregated: rows.length,
+    truncated:  (totalExact ?? 0) > rows.length,
     window,
     by_type:    byType,
     by_actor:   byActor,

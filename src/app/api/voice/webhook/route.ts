@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
         appointment_created: outcome === 'appointment_booked',
         order_created:       outcome === 'order_taken',
         transferred:         outcome === 'transferred',
-        cost_usd:            call?.cost ?? null,
+        cost_usd:            message.cost ?? call?.cost ?? null,
         nivel_interes:        structured?.nivel_interes       ?? null,
         acciones_pendientes:  structured?.acciones_pendientes ?? null,
         meerkat_id:          obs.meerkat_id,

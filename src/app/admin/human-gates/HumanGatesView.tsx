@@ -20,12 +20,14 @@ interface Decision {
 }
 
 interface Summary {
-  total:      number;
-  window:     Window;
-  by_type:    Record<string, Record<string, number>>;
-  by_actor:   Record<string, number>;
-  by_channel: Record<string, number>;
-  decisions:  Decision[];
+  total:       number;
+  aggregated?: number;
+  truncated?:  boolean;
+  window:      Window;
+  by_type:     Record<string, Record<string, number>>;
+  by_actor:    Record<string, number>;
+  by_channel:  Record<string, number>;
+  decisions:   Decision[];
 }
 
 const WINDOWS: { key: Window; label: string }[] = [
@@ -131,7 +133,7 @@ export function HumanGatesView() {
         <>
           {/* KPIs top */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KpiCard label="Total decisiones" value={data.total} sub={`en ${data.window}`} />
+            <KpiCard label="Total decisiones" value={data.total} sub={data.truncated ? `en ${data.window} · agregado sobre ${data.aggregated?.toLocaleString()}` : `en ${data.window}`} />
             <BreakdownCard label="Por canal"  entries={data.by_channel} />
             <BreakdownCard label="Por actor"  entries={data.by_actor} />
           </div>

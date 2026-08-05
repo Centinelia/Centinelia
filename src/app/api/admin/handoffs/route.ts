@@ -15,12 +15,18 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  const { data: logs } = await supabase
+  const { count: logsTotal, error: countErr } = await supabase
+    .from('meerkat_handoff_log')
+    .select('id', { count: 'exact', head: true })
+    .gte('handoff_at', since);
+
+  const { data: logs, error: logsErr } = await supabase
     .from('meerkat_handoff_log')
     .select('portal_email, from_meerkat, to_meerkat, tool_name, outcome, handoff_at')
     .gte('handoff_at', since)
     .order('handoff_at', { ascending: false })
     .limit(5000);
+  if (countErr || logsErr) return NextResponse.json({ error: (countErr ?? logsErr)!.message }, { status: 500 });
 
   // Agregar por par
   const pairs: Record<string, { from: string; to: string; total: number; success: number; rejected: number; failed: number; by_tool: Record<string, number> }> = {};
@@ -38,15 +44,19 @@ export async function GET(req: NextRequest) {
     pairs[key].by_tool[tn] = (pairs[key].by_tool[tn] ?? 0) + 1;
   }
 
-  const { data: edges } = await supabase
+  const { data: edges, error: edgesErr } = await supabase
     .from('meerkat_handoff_edges')
     .select('id, portal_email, from_meerkat, to_meerkat, tool_name, enabled, reason, updated_at')
     .order('updated_at', { ascending: false });
+  if (edgesErr) return NextResponse.json({ error: edgesErr.message }, { status: 500 });
 
   const recentLogs = (logs ?? []).slice(0, 50);
 
   return NextResponse.json({
     window,
+    total:      logsTotal ?? (logs?.length ?? 0),
+    aggregated: logs?.length ?? 0,
+    truncated:  (logsTotal ?? 0) > (logs?.length ?? 0),
     pairs: Object.values(pairs).sort((a, b) => b.total - a.total),
     edges: edges ?? [],
     recent: recentLogs,

@@ -108,7 +108,7 @@ export function ObservabilityView({ meerkatIds, flagKeys }: Props) {
               border: '1px solid var(--c-border)',
             }}
           >
-            {id}
+            {capitalize(id)}
           </button>
         ))}
       </div>
@@ -137,6 +137,11 @@ function fmt(v: number | null, decimals: number, suffix = ''): string {
   return v.toFixed(decimals) + suffix;
 }
 
+function capitalize(id: string): string {
+  if (id === 'unattributed') return 'Sin atribuir';
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
+
 function Delta({ cur, prev, invert = false }: { cur: number | null; prev: number | null; invert?: boolean }) {
   if (cur == null || prev == null || prev === 0) return null;
   const signedCur  = invert ? -cur  : cur;
@@ -156,7 +161,7 @@ function MeerkatTable({ meerkatId, rows }: { meerkatId: string; rows: MeerkatObs
   return (
     <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface)' }}>
       <div className="px-4 py-2 font-semibold text-sm" style={{ color: 'var(--c-text)', borderBottom: '1px solid var(--c-border)' }}>
-        {meerkatId.toUpperCase()}
+        {capitalize(meerkatId)}
       </div>
       <table className="w-full text-sm">
         <thead>

@@ -47,8 +47,8 @@ const groups: NavGroup[] = [
       { href: '/admin/graph',           icon: GitBranch,    label: 'State machines' },
       { href: '/admin/human-gates',     icon: ShieldCheck,  label: 'Human gates' },
       { href: '/admin/recovery',        icon: LifeBuoy,     label: 'Recovery' },
-      { href: '/admin/handoffs',        icon: Network,      label: 'Handoffs DAG' },
-      { href: '/admin/failed-handoffs', icon: AlertOctagon, label: 'Handoffs fallidos' },
+      { href: '/admin/handoffs',        icon: Network,      label: 'Flujos entre empleados' },
+      { href: '/admin/failed-handoffs', icon: AlertOctagon, label: 'Cola de reintentos' },
     ],
   },
 ];
