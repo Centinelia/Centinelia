@@ -49,7 +49,7 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
       <PortalHeader businessName={businessName} logoUrl={logoUrl ?? null}>
         {headerActions}
       </PortalHeader>
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-[calc(100vh-56px)]">
         <PortalSidebarV2Client
           token={token}
           hasOpsAgent={hasOpsAgent}

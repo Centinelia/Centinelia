@@ -44,9 +44,16 @@ export function buildPortalAreas(input: BuildAreasInput): Area[] {
   // 2. Bandeja (ops-only: owner necesita hasOpsAgent; sub-user necesita modulo explicito)
   const bandejaVisible = input.isOwner
     ? input.hasOpsAgent
-    : (input.modules?.includes('bandeja') || input.modules?.includes('helpdesk')) ?? false;
+    : (input.modules?.includes('bandeja') || input.modules?.includes('helpdesk') || input.modules?.includes('tareas')) ?? false;
   if (bandejaVisible) {
     const bandejaSubs: SubItem[] = [];
+    if (input.hasOpsAgent || hasModule(input, 'tareas')) {
+      bandejaSubs.push({
+        label: 'Tareas',
+        href: `/portal/${t}/oficina/tareas`,
+        moduleId: 'tareas',
+      });
+    }
     if (input.hasOpsAgent || hasModule(input, 'helpdesk')) {
       bandejaSubs.push({
         label: 'Mesa de ayuda',
