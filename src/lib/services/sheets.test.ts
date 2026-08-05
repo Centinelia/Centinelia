@@ -1,0 +1,118 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getMapping, refreshHeaders } from './sheets';
+
+vi.mock('@/lib/connectors/sheets-client');
+vi.mock('@/lib/supabase/admin');
+
+describe('getMapping', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns mapping when found by reserved purpose', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const single = vi.fn().mockResolvedValue({ data: { id: 'm1', purpose: 'clientes' }, error: null });
+    const eq2 = vi.fn().mockReturnValue({ single });
+    const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
+    const from = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: eq1 }) });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({ from });
+
+    const result = await getMapping('org@example.com', 'clientes');
+    expect(result).toEqual({ id: 'm1', purpose: 'clientes' });
+  });
+
+  it('returns null when no mapping', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const single = vi.fn().mockResolvedValue({ data: null, error: null });
+    const chain = { select: () => ({ eq: () => ({ eq: () => ({ single }) }) }) };
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({ from: () => chain });
+
+    const result = await getMapping('org@example.com', 'clientes');
+    expect(result).toBeNull();
+  });
+
+  it('requires custom_purpose_label for purpose=custom', async () => {
+    await expect(getMapping('org@example.com', 'custom')).rejects.toThrow('custom_purpose_label required');
+  });
+});
+
+describe('refreshHeaders', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('reads row 1 from tab and updates headers', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    const values = { get: vi.fn().mockResolvedValue({ data: { values: [['Nombre', 'Telefono', 'Email']] } }) };
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({ spreadsheets: { values } });
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    const from = vi.fn().mockImplementation(() => ({
+      select: () => ({
+        eq: () => ({
+          single: () => ({
+            data: {
+              id: 'm1',
+              portal_email: 'org@example.com',
+              spreadsheet_id: 'sheet-1',
+              tab_name: 'Clientes',
+            },
+          }),
+        }),
+      }),
+      update: () => ({ eq }),
+    }));
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({ from });
+
+    const result = await refreshHeaders('m1');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.headers).toEqual(['Nombre', 'Telefono', 'Email']);
+    expect(values.get).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spreadsheetId: 'sheet-1',
+        range: 'Clientes!1:1',
+      }),
+    );
+  });
+
+  it('returns error when mapping not found', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: () => ({ select: () => ({ eq: () => ({ single: () => ({ data: null }) }) }) }),
+    });
+    const result = await refreshHeaders('missing');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('mapping_not_found');
+  });
+
+  it('returns sheets_api_error when Sheets API rejects', async () => {
+    const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+
+    const values = { get: vi.fn().mockRejectedValue(new Error('Request had insufficient authentication scopes.')) };
+    (getSheetsClient as ReturnType<typeof vi.fn>).mockResolvedValue({ spreadsheets: { values } });
+
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: () => ({
+              data: {
+                id: 'm2',
+                portal_email: 'org@example.com',
+                spreadsheet_id: 'sheet-2',
+                tab_name: 'Leads',
+              },
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const result = await refreshHeaders('m2');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('sheets_api_error');
+      expect(result.detail).toContain('insufficient authentication');
+    }
+  });
+});
