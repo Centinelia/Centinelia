@@ -160,5 +160,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     soft:     true, // permitir cancelar desde borrador o enviado
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 500 });
+
+  const { recordHumanDecision } = await import('@/lib/human-gates/record');
+  recordHumanDecision({
+    supabase, gateType: 'contract_send', resourceId: id,
+    decision: 'cancel', channel: 'portal_ui',
+    reason: 'user_cancelled_from_portal',
+  });
+
   return NextResponse.json({ ok: true });
 }

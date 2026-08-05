@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { timingSafeEqual } from 'crypto';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
+import { recordHumanDecision } from '@/lib/human-gates/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -225,6 +226,13 @@ export async function POST(req: NextRequest, { params }: Params) {
       plan_approved_at:    new Date().toISOString(),
       plan_approval_token: null,
     },
+  });
+  recordHumanDecision({
+    supabase: res.supabase, gateType: 'agent_task_plan', resourceId: id,
+    decision: notes ? 'edit' : 'approve',
+    channel:  'email_magic_link',
+    reason:   notes ? 'plan_approved_with_owner_notes' : 'plan_approved_via_edit_page',
+    metadata: { has_owner_notes: !!notes, notes_preview: notes.slice(0, 200) },
   });
 
   // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el

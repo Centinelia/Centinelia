@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { timingSafeEqual } from 'crypto';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
+import { recordHumanDecision } from '@/lib/human-gates/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,12 @@ async function handle(req: NextRequest, id: string) {
         plan_approval_token:   null,
       },
     });
+    recordHumanDecision({
+      supabase, gateType: 'agent_task_plan', resourceId: id,
+      decision: 'reject', channel: 'email_magic_link',
+      reason: 'plan_rejected_via_email',
+      metadata: { rejection_reason: reason, title: task.title },
+    });
     return htmlResponse('rejected', 'La tarea quedó cancelada. Puedes pedirle a tu empleado que la reintente con instrucciones diferentes.');
   }
 
@@ -99,6 +106,12 @@ async function handle(req: NextRequest, id: string) {
       plan_approved_at:    new Date().toISOString(),
       plan_approval_token: null,
     },
+  });
+  recordHumanDecision({
+    supabase, gateType: 'agent_task_plan', resourceId: id,
+    decision: 'approve', channel: 'email_magic_link',
+    reason: 'plan_approved_via_email',
+    metadata: { title: task.title, assigned_to: task.assigned_to },
   });
 
   // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el

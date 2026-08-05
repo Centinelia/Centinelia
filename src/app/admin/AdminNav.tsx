@@ -22,6 +22,7 @@ const links = [
   { href: '/admin/flags',        icon: Flag,            label: 'Feature flags' },
   { href: '/admin/observabilidad', icon: Activity,        label: 'Observabilidad' },
   { href: '/admin/graph',        icon: GitBranch,       label: 'Graph (state machines)' },
+  { href: '/admin/human-gates',  icon: ShieldCheck,     label: 'Human gates' },
   { href: '/admin/tools',        icon: Wrench,          label: 'Tools registry' },
   { href: '/admin/failed-handoffs', icon: AlertOctagon,   label: 'Handoffs fallidos' },
 ];

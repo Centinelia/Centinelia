@@ -76,6 +76,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     metadata: { sent_to: draft.client_email },
     extraFields: { sent_at: new Date().toISOString() },
   });
+  const { recordHumanDecision } = await import('@/lib/human-gates/record');
+  recordHumanDecision({
+    supabase, gateType: 'contract_send', resourceId: id,
+    decision: 'send', channel: 'portal_ui',
+    reason: 'contract_sent_to_client',
+    metadata: { sent_to: draft.client_email, client_name: draft.client_name },
+  });
 
   return NextResponse.json({ ok: true });
 }

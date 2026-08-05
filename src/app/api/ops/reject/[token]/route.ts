@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
+import { recordHumanDecision } from '@/lib/human-gates/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
     actor:    'user',
     reason:   'user_rejected_via_magic_link',
     extraFields: { updated_at: new Date().toISOString() },
+  });
+  recordHumanDecision({
+    supabase, gateType: 'ops_inbox', resourceId: item.id,
+    decision: 'reject', channel: 'email_magic_link',
+    reason: 'user_rejected_via_magic_link',
   });
 
   const { data: agent } = await supabase

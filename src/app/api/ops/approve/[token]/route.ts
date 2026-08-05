@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
+import { recordHumanDecision } from '@/lib/human-gates/record';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       sent_at:    new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
+  });
+  recordHumanDecision({
+    supabase, gateType: 'ops_inbox', resourceId: item.id,
+    decision: 'approve', channel: 'email_magic_link',
+    reason: 'user_approved_via_magic_link',
+    metadata: { item_type: item.item_type, sent_to: item.email_from, subject: item.email_subject },
+    portalEmail: agent?.client_email ?? null,
   });
 
   const portalUrl = agent?.portal_token ? `${BASE_URL}/portal/${agent.portal_token}?tab=oficina` : BASE_URL;
