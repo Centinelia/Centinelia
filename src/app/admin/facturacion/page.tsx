@@ -92,25 +92,46 @@ async function ClientesTab() {
   );
 }
 
-// Server component wrapper for the Stripe tab, carries the original BillingClient
+// Server component wrapper for the Stripe tab, carries the original BillingClient.
+// Dedupe por portal_email: 1 cliente = 1 subscripción Stripe = 1 fila.
+// Antes: mostraba N filas por cliente (una por empleado del pool) — bug de UX.
 async function StripeTab() {
   const supabase = createAdminClient();
 
   const { data: rawAgents } = await supabase
     .from('voice_agents')
-    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email')
+    .select('id, business_name, client_name, plan, minutes_plan, billing_status, stripe_subscription_id, minutes_used, minutes_included, minutes_reset_date, active, portal_email, created_at')
     .neq('id', process.env.DEMO_AGENT_ID ?? '')
-    .order('business_name');
+    .order('created_at', { ascending: true });
 
   const portalEmails = (rawAgents ?? []).map((a: any) => a.portal_email).filter(Boolean) as string[];
   const { data: acctData } = portalEmails.length
     ? await supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included, minutes_reset_date').in('portal_email', portalEmails)
     : { data: [] };
   const acctMap = new Map((acctData ?? []).map((m: any) => [m.portal_email, m]));
-  const agents = (rawAgents ?? []).map((a: any) => {
+
+  // Dedupe: 1 fila por portal_email (el primer agente creado = anchor).
+  // Agentes sin portal_email (demos legacy, standalone) mantienen 1 fila per-agent.
+  const seen = new Set<string>();
+  const employeeCountByEmail = new Map<string, number>();
+  for (const a of (rawAgents ?? [])) {
+    if (a.portal_email) {
+      employeeCountByEmail.set(a.portal_email, (employeeCountByEmail.get(a.portal_email) ?? 0) + 1);
+    }
+  }
+
+  const agents = (rawAgents ?? []).filter((a: any) => {
+    if (!a.portal_email) return true;
+    if (seen.has(a.portal_email)) return false;
+    seen.add(a.portal_email);
+    return true;
+  }).map((a: any) => {
     const acct = a.portal_email ? acctMap.get(a.portal_email) : null;
-    if (!acct) return a;
-    return { ...a, minutes_used: acct.minutes_used, minutes_included: acct.minutes_included, minutes_reset_date: acct.minutes_reset_date };
+    const employeeCount = a.portal_email ? (employeeCountByEmail.get(a.portal_email) ?? 1) : 1;
+    const base = acct
+      ? { ...a, minutes_used: acct.minutes_used, minutes_included: acct.minutes_included, minutes_reset_date: acct.minutes_reset_date }
+      : a;
+    return { ...base, employee_count: employeeCount };
   });
 
   return <BillingClient agents={agents} />;

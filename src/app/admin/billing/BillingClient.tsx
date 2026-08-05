@@ -20,6 +20,7 @@ interface Agent {
   minutes_included: number;
   minutes_reset_date: string | null;
   active: boolean;
+  employee_count?: number;
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle2 }> = {
@@ -318,8 +319,15 @@ export default function BillingClient({ agents }: { agents: Agent[] }) {
               {/* Header */}
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <div className="font-medium text-sm" style={{ color: 'var(--c-text)' }}>{agent.business_name}</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.client_name}</div>
+                  <div className="font-medium text-sm" style={{ color: 'var(--c-text)' }}>
+                    {agent.client_name}
+                    {agent.employee_count && agent.employee_count > 1 && (
+                      <span className="ml-2 text-xs font-normal" style={{ color: 'var(--c-text-3)' }}>
+                        · {agent.employee_count} empleados
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>{agent.business_name}</div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   {fCfg && (
