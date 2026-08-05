@@ -5,6 +5,7 @@ import { requireVapiAuth } from '@/lib/vapi/auth';
 import { executeSendEmail } from '@/lib/services/connector-tools';
 import { checkAccount } from '@/lib/compliance/account-guard';
 import { agentInboxAddressFor } from '@/lib/email/inbox';
+import { traceVoiceCall } from '@/lib/observability/voice-trace';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,8 +22,18 @@ export async function POST(req: NextRequest) {
     attachment_mime_type: attMimeType,
   } = args as { to: string; subject: string; body: string; attachment_file_id?: string; attachment_file_name?: string; attachment_mime_type?: string };
 
-  if (!to || !subject || !emailBody)
-    return NextResponse.json({ result: 'Necesito el destinatario, asunto y cuerpo del correo.' });
+  const startedAt = Date.now();
+  const sessionId = (((body.message as Record<string, unknown> | undefined)?.call as Record<string, unknown> | undefined)?.id as string) ?? null;
+  const traceInput = { to, subject, body_preview: String(emailBody ?? '').slice(0, 200), has_attachment: !!attFileId, attFileName, attMimeType };
+  const traceResp = (result: unknown, ok = true) => {
+    traceVoiceCall({ toolName: 'enviar_correo', agentId: agent_id, sessionId, input: traceInput, result, ok, startedAt });
+  };
+
+  if (!to || !subject || !emailBody) {
+    const msg = 'Necesito el destinatario, asunto y cuerpo del correo.';
+    traceResp({ error: 'missing_params', message: msg }, false);
+    return NextResponse.json({ result: msg });
+  }
 
   // Anti-teatro de adjunto: el modelo a veces escribe "📎 archivo.pdf" o dice
   // "adjunto el documento" en el body pero olvida attachment_file_id, dejando
@@ -33,9 +44,9 @@ export async function POST(req: NextRequest) {
     const clipEmojis = /📎|📄|📃|📑|📁|📂|📇/.test(bodyStr);
     const claimsAdjunto = /\b(adjunt[oa]s?|anex[oa]s?|se\s+anex|te\s+env[ií]o\s+adjunt|env[ií]o\s+adjunt|attached|enclosed|incluy[oe]\s+el\s+(archivo|documento|contrato|pdf|excel|word))\b/i.test(bodyStr);
     if (clipEmojis || claimsAdjunto) {
-      return NextResponse.json({
-        result: 'ERROR: Tu correo dice que adjuntas un archivo pero NO pasaste attachment_file_id / attachment_file_name / attachment_mime_type. El correo NO se envió porque sería engañoso al destinatario. Corrige de una de estas dos formas: (a) invoca buscar_archivo para localizar el archivo, luego enviar_correo de nuevo con los 3 campos de attachment completos, o (b) reescribe el body sin mencionar adjuntos y envía el contenido en texto.',
-      });
+      const msg = 'ERROR: Tu correo dice que adjuntas un archivo pero NO pasaste attachment_file_id / attachment_file_name / attachment_mime_type. El correo NO se envió porque sería engañoso al destinatario. Corrige de una de estas dos formas: (a) invoca buscar_archivo para localizar el archivo, luego enviar_correo de nuevo con los 3 campos de attachment completos, o (b) reescribe el body sin mencionar adjuntos y envía el contenido en texto.';
+      traceResp({ error: 'attachment_theater_blocked', message: msg }, false);
+      return NextResponse.json({ result: msg });
     }
   }
 
@@ -45,21 +56,31 @@ export async function POST(req: NextRequest) {
     .select('id, business_name, portal_email')
     .eq('id', agent_id)
     .single();
-  if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado' });
+  if (!agent) {
+    traceResp({ error: 'agent_not_found' }, false);
+    return NextResponse.json({ result: 'Error: agente no encontrado' });
+  }
 
   const guard = await checkAccount((agent as any).portal_email, supabase);
   if (!guard.canUseOffice) {
-    return NextResponse.json({ result: 'Esta cuenta no puede enviar correos. Contacta a soporte.' });
+    const msg = 'Esta cuenta no puede enviar correos. Contacta a soporte.';
+    traceResp({ error: 'account_blocked', message: msg }, false);
+    return NextResponse.json({ result: msg });
   }
 
   const opsResult = await consumeAiOp(agent_id, 1);
-  if (!opsResult.ok)
-    return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para enviar correos.' });
+  if (!opsResult.ok) {
+    const msg = 'No tienes operaciones IA disponibles este mes para enviar correos.';
+    traceResp({ error: 'ops_exhausted', message: msg }, false);
+    return NextResponse.json({ result: msg });
+  }
 
   const result = await executeSendEmail(
     { agentId: agent_id, to, subject, body: emailBody, businessName: agent.business_name as string, replyTo: agentInboxAddressFor(agent_id), attFileId, attFileName, attMimeType },
     supabase,
   );
 
-  return NextResponse.json({ result: result.message ?? result.error ?? 'Error desconocido.' });
+  const finalMsg = result.message ?? result.error ?? 'Error desconocido.';
+  traceResp({ ok: result.ok, message: result.message ?? null, error: result.error ?? null, sent_to: to, subject, has_attachment: !!attFileId, attFileName }, result.ok);
+  return NextResponse.json({ result: finalMsg });
 }
