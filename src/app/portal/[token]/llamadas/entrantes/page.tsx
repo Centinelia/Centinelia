@@ -165,6 +165,9 @@ export default async function EntrantesPage({ params }: Props) {
             modules={modules}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
             headerActions={
               <>
                 <NotificationBell token={token} />

@@ -1134,6 +1134,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             modules={modules}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
             headerActions={
               <>
                 {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}

@@ -11,6 +11,7 @@ import {
   CircleUser,
   Users,
   ChevronDown,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -18,6 +19,7 @@ import {
   type BuildNavInput,
   type NavGroup,
 } from '@/lib/portal/portal-v2-areas';
+import { uColor } from '@/lib/portal/utils';
 
 // ─── Icon registry ─────────────────────────────────────────────────────────────
 
@@ -36,6 +38,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
 export interface PortalStatus {
   minutesRemain?: number | null;
   minutesIncluded?: number | null;
+  aiOpsUsed?: number | null;
+  aiOpsLimit?: number | null;
+  hasStripe?: boolean;
 }
 
 export interface PortalSidebarV2Props extends BuildNavInput {
@@ -343,21 +348,97 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
         })}
       </ul>
 
-      {/* Chip inferior: minutos disponibles del mes */}
+      {/* Uso del mes: Minutos + Tareas con progress bars (V1 pattern con V2 tokens) */}
       {status &&
         typeof status.minutesRemain === 'number' &&
-        typeof status.minutesIncluded === 'number' && (
-          <div className="border-t border-neutral-200/80 px-4 py-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                Minutos disponibles
-              </span>
-              <span className="text-[13px] font-semibold tabular-nums text-[#1A0A3B]">
-                {status.minutesRemain} / {status.minutesIncluded} min
-              </span>
-            </div>
-          </div>
-        )}
+        typeof status.minutesIncluded === 'number' &&
+        status.minutesIncluded > 0 &&
+        (() => {
+          const minPct   = Math.min(Math.round((1 - status.minutesRemain! / status.minutesIncluded!) * 100), 100);
+          const opsUsed  = typeof status.aiOpsUsed  === 'number' ? status.aiOpsUsed  : 0;
+          const opsLimit = typeof status.aiOpsLimit === 'number' ? status.aiOpsLimit : 0;
+          const opsPct   = opsLimit > 0 ? Math.min(Math.round((opsUsed / opsLimit) * 100), 100) : 0;
+          const opsRemain = Math.max(0, opsLimit - opsUsed);
+          return (
+            <Link
+              href={`/portal/${token}?tab=cuenta#uso-del-mes`}
+              className={[
+                'block border-t border-neutral-200/80 px-4 py-3',
+                'hover:bg-neutral-100/60',
+                TRANSITION,
+                FOCUS_RING,
+              ].join(' ')}
+            >
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                Uso del mes
+              </p>
+              {/* Minutos */}
+              <div className="mb-2">
+                <div className="mb-1 flex justify-between">
+                  <span className="text-[11px] text-neutral-600">Minutos</span>
+                  <span
+                    className="text-[11px] font-medium tabular-nums"
+                    style={{ color: uColor(minPct) }}
+                  >
+                    {status.minutesRemain} restantes
+                  </span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
+                  <div
+                    className="h-full rounded-full motion-reduce:transition-none"
+                    style={{
+                      width: `${minPct}%`,
+                      background: uColor(minPct),
+                      transition: 'width 0.4s',
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Tareas */}
+              {opsLimit > 0 && (
+                <div>
+                  <div className="mb-1 flex justify-between">
+                    <span className="text-[11px] text-neutral-600">Tareas</span>
+                    <span
+                      className="text-[11px] font-medium tabular-nums"
+                      style={{ color: uColor(opsPct) }}
+                    >
+                      {opsRemain} restantes
+                    </span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
+                    <div
+                      className="h-full rounded-full motion-reduce:transition-none"
+                      style={{
+                        width: `${opsPct}%`,
+                        background: uColor(opsPct),
+                        transition: 'width 0.4s',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </Link>
+          );
+        })()}
+
+      {/* Plan y consumo (Stripe portal) — solo si hasStripe */}
+      {status?.hasStripe && (
+        <div className="border-t border-neutral-200/80 px-3 py-3">
+          <a
+            href={`/api/billing/portal-session?token=${token}`}
+            className={[
+              'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold',
+              'bg-[#F3EFFF] text-[#6C3BFF] hover:bg-[#EAE2FF]',
+              TRANSITION,
+              FOCUS_RING,
+            ].join(' ')}
+          >
+            <CreditCard size={14} aria-hidden />
+            Plan y consumo
+          </a>
+        </div>
+      )}
     </nav>
   );
 }

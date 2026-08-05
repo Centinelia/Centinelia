@@ -124,6 +124,9 @@ export default async function AgentesLayout({
             showOutbound={showOutbound}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
             isOwner={isOwner}
             modules={modules}
             headerActions={

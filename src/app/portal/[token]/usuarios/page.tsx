@@ -126,6 +126,9 @@ export default async function UsuariosPage({ params }: Props) {
             isOwner={true}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
             headerActions={
               <>
                 {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}

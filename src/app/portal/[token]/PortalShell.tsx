@@ -13,6 +13,9 @@ export interface PortalShellProps {
   modules?: string[];
   minutesRemain?: number | null;
   minutesIncluded?: number | null;
+  aiOpsUsed?: number | null;
+  aiOpsLimit?: number | null;
+  hasStripe?: boolean;
   headerActions?: React.ReactNode;        // right slot of V2 header
   main: React.ReactNode;                  // page content
 }
@@ -37,6 +40,9 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
     modules,
     minutesRemain,
     minutesIncluded,
+    aiOpsUsed,
+    aiOpsLimit,
+    hasStripe,
     headerActions,
     main,
   } = props;
@@ -59,6 +65,9 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
           status={{
             minutesRemain:   minutesRemain ?? null,
             minutesIncluded: minutesIncluded ?? null,
+            aiOpsUsed:       aiOpsUsed ?? null,
+            aiOpsLimit:      aiOpsLimit ?? null,
+            hasStripe:       hasStripe ?? false,
           }}
         />
         <main className="flex-1 min-w-0">{main}</main>
