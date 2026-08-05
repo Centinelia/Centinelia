@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy, Network, type LucideIcon } from 'lucide-react';
+import { Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy, Network } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
 interface NavGroup { group: string; items: NavItem[]; }
