@@ -39,6 +39,9 @@ import PortalFooter            from './PortalFooter';
 import CallsSearch             from './CallsSearch';
 import PortalTabNav           from './PortalTabNav';
 import PortalSidebar          from './PortalSidebar';
+import PortalHeader           from './PortalHeader';
+import PortalSidebarV2Client  from './PortalSidebarV2Client';
+import { isPortalV2Enabled }  from '@/lib/portal/portal-v2-flag';
 import KnowledgeBaseEditor    from './KnowledgeBaseEditor';
 import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
@@ -374,6 +377,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     (a: any) => (a.features as any)?.meerkat_role_id === 'nox' && a.active,
   );
 
+  // Portal V2 flag — orgId is portal_email (primary key of organizations)
+  const v2Enabled = agent.portal_email
+    ? await isPortalV2Enabled(agent.portal_email)
+    : false;
+
   // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
   const agentContextCards = allClientAgents.map(a => {
     const kb   = ((a as any).knowledge_base         as string | null) ?? '';
@@ -434,47 +442,72 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         {/* Ambient orb, top center */}
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
-        {/* Header */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-            <BusinessSwitcher
-              current={{
-                business_name: agent.business_name,
-                logo_url:      (agent as any).logo_url ?? null,
-                first_token:   token,
-              }}
-              options={businessGroups.map(g => ({
-                business_name: g.business_name,
-                logo_url:      g.logo_url,
-                first_token:   g.first_token,
-              }))}
-              currentBusinessName={agent.business_name}
-            />
-            <div className="flex items-center gap-1.5 shrink-0">
-              {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
-              <NotificationBell token={token} />
-              <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
-              <PortalLogout />
+        {/* V2: Slack-style workspace header (only when flag is on) */}
+        {v2Enabled && (
+          <PortalHeader
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null}
+          />
+        )}
+
+        {/* V1 header (BusinessSwitcher + controls) — hidden when V2 is active */}
+        {!v2Enabled && (
+          <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+              <BusinessSwitcher
+                current={{
+                  business_name: agent.business_name,
+                  logo_url:      (agent as any).logo_url ?? null,
+                  first_token:   token,
+                }}
+                options={businessGroups.map(g => ({
+                  business_name: g.business_name,
+                  logo_url:      g.logo_url,
+                  first_token:   g.first_token,
+                }))}
+                currentBusinessName={agent.business_name}
+              />
+              <div className="flex items-center gap-1.5 shrink-0">
+                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}
+                <NotificationBell token={token} />
+                <ThemeToggle className="!text-[var(--c-text-2)] !bg-[var(--c-surface-2)]" />
+                <PortalLogout />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Body: sidebar + main */}
         <div className="flex flex-1">
-          <PortalSidebar
-            token={token}
-            currentTab={tab}
-            hasOpsAgent={hasOpsAgent}
-            showOutbound={showOutbound || agent.plan === 'pro'}
-            hasStripe={hasStripe}
-            minutesRemain={minutesRemain}
-            minutesIncluded={minutesIncluded}
-            aiOpsUsed={aiOpsUsed}
-            aiOpsLimit={aiOpsLimit}
-            isOwner={isOwner}
-            modules={modules}
-            jornadaType={(agent as any).jornada_type ?? 'combinada'}
-          />
+          {v2Enabled ? (
+            <PortalSidebarV2Client
+              token={token}
+              hasOpsAgent={hasOpsAgent}
+              showOutbound={showOutbound || agent.plan === 'pro'}
+              isOwner={isOwner}
+              modules={modules}
+              status={{
+                plan:            agent.plan ?? null,
+                minutesRemain:   minutesRemain,
+                minutesIncluded: minutesIncluded,
+              }}
+            />
+          ) : (
+            <PortalSidebar
+              token={token}
+              currentTab={tab}
+              hasOpsAgent={hasOpsAgent}
+              showOutbound={showOutbound || agent.plan === 'pro'}
+              hasStripe={hasStripe}
+              minutesRemain={minutesRemain}
+              minutesIncluded={minutesIncluded}
+              aiOpsUsed={aiOpsUsed}
+              aiOpsLimit={aiOpsLimit}
+              isOwner={isOwner}
+              modules={modules}
+              jornadaType={(agent as any).jornada_type ?? 'combinada'}
+            />
+          )}
 
           {/* Main content column */}
           <div className="flex-1 min-w-0 flex flex-col">
