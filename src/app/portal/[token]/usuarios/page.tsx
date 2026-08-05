@@ -126,7 +126,6 @@ export default async function UsuariosPage({ params }: Props) {
             isOwner={true}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
-            plan={agent.plan ?? null}
             headerActions={
               <>
                 {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" />}

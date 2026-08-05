@@ -25,7 +25,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 export interface PortalStatus {
-  plan?: string | null;
   minutesRemain?: number | null;
   minutesIncluded?: number | null;
 }
@@ -157,24 +156,21 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
         })}
       </ul>
 
-      {/* Status chip (Stripe-style status pinned al fondo) */}
-      {status && (status.plan || typeof status.minutesRemain === 'number') && (
-        <div className="border-t border-neutral-200/80 px-4 py-3">
-          <div className="flex flex-col gap-1">
-            {status.plan && (
+      {/* Chip inferior: minutos disponibles del mes */}
+      {status &&
+        typeof status.minutesRemain === 'number' &&
+        typeof status.minutesIncluded === 'number' && (
+          <div className="border-t border-neutral-200/80 px-4 py-3">
+            <div className="flex flex-col gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                {status.plan}
+                Minutos disponibles
               </span>
-            )}
-            {typeof status.minutesRemain === 'number' &&
-              typeof status.minutesIncluded === 'number' && (
-                <span className="text-[13px] font-semibold tabular-nums text-[#1A0A3B]">
-                  {status.minutesRemain} / {status.minutesIncluded} min
-                </span>
-              )}
+              <span className="text-[13px] font-semibold tabular-nums text-[#1A0A3B]">
+                {status.minutesRemain} / {status.minutesIncluded} min
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </nav>
   );
 }

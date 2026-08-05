@@ -1132,7 +1132,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             showOutbound={showOutbound || agent.plan === 'pro'}
             isOwner={isOwner}
             modules={modules}
-            plan={agent.plan ?? null}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
             headerActions={

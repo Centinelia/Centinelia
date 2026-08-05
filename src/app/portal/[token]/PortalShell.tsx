@@ -11,7 +11,6 @@ export interface PortalShellProps {
   showOutbound: boolean;
   isOwner?: boolean;
   modules?: string[];
-  plan?: string | null;
   minutesRemain?: number | null;
   minutesIncluded?: number | null;
   headerActions?: React.ReactNode;        // right slot of V2 header
@@ -36,7 +35,6 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
     showOutbound,
     isOwner,
     modules,
-    plan,
     minutesRemain,
     minutesIncluded,
     headerActions,
@@ -59,7 +57,6 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
           isOwner={isOwner ?? true}
           modules={modules}
           status={{
-            plan:            plan ?? null,
             minutesRemain:   minutesRemain ?? null,
             minutesIncluded: minutesIncluded ?? null,
           }}

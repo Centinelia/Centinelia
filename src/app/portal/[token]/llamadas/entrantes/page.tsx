@@ -165,7 +165,6 @@ export default async function EntrantesPage({ params }: Props) {
             modules={modules}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
-            plan={agent.plan ?? null}
             headerActions={
               <>
                 <NotificationBell token={token} />
