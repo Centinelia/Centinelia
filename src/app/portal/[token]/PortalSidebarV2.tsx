@@ -141,6 +141,35 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPath, currentSearch]);
 
+  // Scroll-to-anchor + pulse highlight (V1 pattern preserved)
+  const [pendingIds, setPendingIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!pendingIds || pendingIds.length === 0) return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (attempts > 100) { clearInterval(timer); setPendingIds(null); return; }
+      const firstEl = document.getElementById(pendingIds[0]);
+      if (!firstEl) return;
+      clearInterval(timer);
+      setPendingIds(null);
+      const rect = firstEl.getBoundingClientRect();
+      window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
+      for (const id of pendingIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.style.transition = 'box-shadow 0.15s';
+        el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
+        setTimeout(() => {
+          el.style.transition = 'box-shadow 1.5s ease-out';
+          el.style.boxShadow = '';
+          setTimeout(() => { el.style.transition = ''; }, 1500);
+        }, 600);
+      }
+    }, 50);
+    return () => clearInterval(timer);
+  }, [pendingIds]);
+
   function toggle(id: string) {
     setOpenIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
@@ -258,6 +287,10 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                           <li key={item.anchor ?? item.href ?? item.label}>
                             <Link
                               href={itemHref}
+                              scroll={false}
+                              onClick={() => {
+                                if (item.anchor) setPendingIds([item.anchor]);
+                              }}
                               aria-current={itemActive ? 'page' : undefined}
                               className={[
                                 'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
@@ -303,6 +336,10 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                                 <li key={item.anchor ?? item.href ?? item.label}>
                                   <Link
                                     href={itemHref}
+                                    scroll={false}
+                                    onClick={() => {
+                                      if (item.anchor) setPendingIds([item.anchor]);
+                                    }}
                                     aria-current={itemActive ? 'page' : undefined}
                                     className={[
                                       'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',

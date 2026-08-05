@@ -1165,7 +1165,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
       )}
 
       {/* ── Tab content ── */}
-      <div className={`flex-1 w-full md:mx-0 ${tab === 'negocio' ? '' : tab === 'inicio' || tab === 'cuenta' ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ position: 'relative', zIndex: 1 }}>
+      <div className="flex-1 w-full md:mx-0" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* ── INICIO (V2 with design system shells) ───────────────── */}
         {tab === 'inicio' && (
@@ -1547,11 +1547,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Main column */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <div id="organizacion">
-                  {agent.portal_email && (
-                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
-                  )}
-                </div>
+                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil de tu negocio" as="h2" right={<InfoTooltip text="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />} />}>
+                  <div id="organizacion">
+                    {agent.portal_email && (
+                      <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                    )}
+                  </div>
+                </PageSection>
 
                 <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Branding de documentos y correos" as="h2" right={<InfoTooltip text="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />} />}>
                   <Card id="branding" padding="md">
