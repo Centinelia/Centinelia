@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getCommsRouting } from '@/lib/comms/routing';
 import OpsInboxSection from '../../OpsInboxSection';
 import CommsRoutingEditor from './CommsRoutingEditor';
+import AttentionPanel from '../AttentionPanel';
 import type { InboxAgent } from '../../inbox/categories';
 
 interface Props { params: Promise<{ token: string }> }
@@ -29,7 +30,8 @@ export default async function BandejaPage({ params }: Props) {
   }
 
   return (
-    <div id="of-bandeja">
+    <div id="of-bandeja" className="flex flex-col gap-6">
+      <AttentionPanel token={token} />
       {commsRouting !== null && (
         <CommsRoutingEditor token={token} initial={commsRouting} />
       )}
