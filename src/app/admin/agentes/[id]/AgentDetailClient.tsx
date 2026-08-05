@@ -309,7 +309,7 @@ export default function AgentDetailClient({
           <Card title="Llamadas salientes" icon={<PhoneOutgoing size={13} />}>
             <FeatureToggleRow
               label="Activar llamadas salientes"
-              desc="El cliente puede subir contactos y disparar campanas desde su portal"
+              desc="El empleado puede hacer llamadas si así fuera necesario para la operación de la organización"
               active={!!features.outbound_calls}
               onToggle={() => toggleFeature('outbound_calls')}
             />
