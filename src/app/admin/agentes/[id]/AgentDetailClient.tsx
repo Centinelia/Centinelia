@@ -8,7 +8,6 @@ import {
   Puzzle, Settings2, Mic, Briefcase, BookOpen,
 } from 'lucide-react';
 import type { VoiceAgent, VoiceCall, AgentFeatures } from '@/types/agent';
-import { FEATURE_LABELS } from '@/types/agent';
 import VoiceSelector from '@/components/VoiceSelector';
 import AgentActions from './AgentActions';
 import DangerZone from './DangerZone';
@@ -18,27 +17,23 @@ import { AgentVersionTab } from '@/components/admin/AgentVersionTab';
 
 // ── Feature groups (preservados de EditAgentForm) ─────────────────────────────
 
-const INBOUND_FEATURES: { key: keyof AgentFeatures; desc: string }[] = [
-  { key: 'lead_qualification',      desc: 'Pregunta nombre, contacto e interes del llamante y lo registra' },
-  { key: 'appointment_booking',     desc: 'Agenda, modifica o cancela citas y las registra' },
-  { key: 'existing_client_support', desc: 'Atiende dudas y consultas de clientes actuales' },
-  { key: 'smart_transfer',          desc: 'Transfiere a humano y notifica por WhatsApp cuando es necesario' },
-  { key: 'order_taking',            desc: 'Toma pedidos de productos o platillos y los registra' },
-  { key: 'client_memory',           desc: 'Recuerda historial de llamadas anteriores del mismo numero' },
-];
+// INBOUND_FEATURES eliminado: eran capacidades baked-in del meerkat
+// (lead_qualification, appointment_booking, etc.), no settings toggleables.
 
+// MODULE_FEATURES: solo aplican al meerkat 'custom' (ensamble manual).
 const MODULE_FEATURES: { key: keyof AgentFeatures; label: string; desc: string }[] = [
   { key: 'helpdesk',        label: 'Mesa de ayuda IT',      desc: 'Activa tools de tickets, incidentes y directorio' },
-  { key: 'of_encuestas',    label: 'Encuestas telefonicas', desc: 'El empleado puede aplicar encuestas en llamada' },
-  { key: 'civic_reports',   label: 'Reportes ciudadanos',   desc: 'Modulo de reportes para verticales de gobierno' },
+  { key: 'of_encuestas',    label: 'Encuestas telefónicas', desc: 'El empleado puede aplicar encuestas en llamada' },
+  { key: 'civic_reports',   label: 'Reportes ciudadanos',   desc: 'Módulo de reportes para verticales de gobierno' },
   { key: 'contract_drafts', label: 'Contratos',             desc: 'El empleado puede redactar borradores de contrato' },
 ];
 
+// PROMPT_FLAGS: comportamientos reales del prompt en llamada. Excluye
+// is_coordinator porque eso lo define el meerkat (Nox/Niva), no un toggle.
 const PROMPT_FLAGS: { key: keyof AgentFeatures; label: string; desc: string }[] = [
   { key: 'skip_aup',              label: 'Omitir aviso de privacidad', desc: 'No lee el AUP al iniciar la llamada' },
-  { key: 'skip_recording_notice', label: 'Omitir aviso de grabacion',  desc: 'No menciona que la llamada se graba' },
+  { key: 'skip_recording_notice', label: 'Omitir aviso de grabación',  desc: 'No menciona que la llamada se graba' },
   { key: 'lite_prompt',           label: 'Prompt ligero',              desc: 'System prompt reducido, menor latencia, menos contexto' },
-  { key: 'is_coordinator',        label: 'Coordinador (sin voz)',      desc: 'Empleado de oficina puro: Nox, Niva. Sin llamadas entrantes' },
 ];
 
 // Fuente de verdad en sync.ts: NON_VOICE_ROLES = ['nox', 'niva'].
@@ -271,47 +266,20 @@ export default function AgentDetailClient({
             </Card>
           )}
 
-          {/* Llamadas entrantes: features + transferencia */}
-          <Card title="Llamadas entrantes" icon={<Phone size={13} />}>
-            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
-              {INBOUND_FEATURES.map(({ key, desc }, i) => {
-                const on = !!features[key];
-                return (
-                  <div
-                    key={key}
-                    className="flex items-start gap-3 px-4 py-3 cursor-pointer select-none transition-colors hover:bg-gray-50"
-                    onClick={() => toggleFeature(key)}
-                    style={{
-                      background: on ? '#FAFAFF' : '#FFFFFF',
-                      borderTop:  i > 0 ? '1px solid #F3F4F6' : undefined,
-                    }}
-                  >
-                    <Toggle on={on} />
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium" style={{ color: on ? '#111827' : '#6B7280' }}>
-                        {FEATURE_LABELS[key]}
-                      </p>
-                      <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>{desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-col gap-3 pt-3">
-              <FieldInput
-                label="Numero de transferencia a humano"
-                value={transferNumber}
-                onChange={setTransferNumber}
-                helper="Si el llamante pide hablar con una persona, el empleado transfiere aqui."
-              />
-              <FieldInput
-                label="WhatsApp para notificaciones"
-                value={transferWhatsapp}
-                onChange={setTransferWhatsapp}
-                helper="Recibe avisos de leads, citas y pedidos en este numero."
-              />
-            </div>
+          {/* Transferencia: destinos donde escalar/notificar cuando algo requiere humano */}
+          <Card title="Transferencia" icon={<Phone size={13} />}>
+            <FieldInput
+              label="Número de transferencia a humano"
+              value={transferNumber}
+              onChange={setTransferNumber}
+              helper="Si el llamante pide hablar con una persona, el empleado transfiere aquí."
+            />
+            <FieldInput
+              label="WhatsApp para notificaciones"
+              value={transferWhatsapp}
+              onChange={setTransferWhatsapp}
+              helper="Recibe avisos de leads, citas y pedidos en este número."
+            />
           </Card>
 
           {/* Llamadas salientes */}
