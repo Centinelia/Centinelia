@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
-import type { VoiceAgent, VoiceCall } from '@/types/agent';
+import type { VoiceAgent } from '@/types/agent';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
 import AgentDetailClient from './AgentDetailClient';
 
@@ -18,11 +18,6 @@ export default async function AgentDetailPage({ params }: Props) {
   if (!agentData) notFound();
 
   const agent = agentData as VoiceAgent;
-
-  const { data: callsData } = await supabase
-    .from('voice_calls').select('*').eq('agent_id', id).order('created_at', { ascending: false }).limit(50);
-
-  const calls = (callsData ?? []) as VoiceCall[];
 
   const isOpen = getIsOpenNow(agent.business_hours, agent.timezone ?? 'America/Monterrey');
 
@@ -53,7 +48,6 @@ export default async function AgentDetailPage({ params }: Props) {
   return (
     <AgentDetailClient
       agent={agent}
-      calls={calls}
       meerkatId={meerkatId}
       meerkatLabel={meerkatLabel}
       showMeerkatPill={showMeerkatPill}

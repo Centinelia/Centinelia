@@ -7,11 +7,10 @@ import {
   ArrowLeft, Phone, PhoneOutgoing, Clock, Bot, Check, RefreshCw,
   Puzzle, Settings2, Mic, Briefcase, BookOpen,
 } from 'lucide-react';
-import type { VoiceAgent, VoiceCall, AgentFeatures } from '@/types/agent';
+import type { VoiceAgent, AgentFeatures } from '@/types/agent';
 import VoiceSelector from '@/components/VoiceSelector';
 import AgentActions from './AgentActions';
 import DangerZone from './DangerZone';
-import CallsSection from './CallsSection';
 import CopyButton from './CopyButton';
 import { AgentVersionTab } from '@/components/admin/AgentVersionTab';
 
@@ -58,7 +57,6 @@ function isCustomMeerkat(agent: VoiceAgent): boolean {
 
 interface Props {
   agent:                VoiceAgent;
-  calls:                VoiceCall[];
   meerkatId:            string | null;
   meerkatLabel:         string | null;
   showMeerkatPill:      boolean;
@@ -73,7 +71,7 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AgentDetailClient({
-  agent, calls, meerkatId, meerkatLabel, showMeerkatPill, displayName,
+  agent, meerkatId, meerkatLabel, showMeerkatPill, displayName,
   isOpen, jornadaType, availableVersions, activeGlobalVersion, pinnedVersion,
 }: Props) {
   const router = useRouter();
@@ -325,8 +323,15 @@ export default function AgentDetailClient({
             </div>
           </Card>
 
-          {/* Llamadas recientes */}
-          <CallsSection calls={calls} timezone={agent.timezone ?? 'America/Monterrey'} agentName={agent.agent_name} />
+          {/* Zona peligrosa */}
+          <DangerZone
+            agentId={agent.id}
+            displayName={agent.agent_name || agent.business_name}
+          />
+        </div>
+
+        {/* Right column: Versión + Vapi */}
+        <div className="flex flex-col gap-6">
 
           {/* Version pin controls */}
           <AgentVersionTab
@@ -336,16 +341,6 @@ export default function AgentDetailClient({
             activeGlobalVersion={activeGlobalVersion}
             pinnedVersion={pinnedVersion}
           />
-
-          {/* Zona peligrosa */}
-          <DangerZone
-            agentId={agent.id}
-            displayName={agent.agent_name || agent.business_name}
-          />
-        </div>
-
-        {/* Right column: Vapi */}
-        <div className="flex flex-col gap-6">
 
           <Card
             title="Vapi"
