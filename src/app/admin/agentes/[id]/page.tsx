@@ -41,16 +41,12 @@ export default async function AgentDetailPage({ params }: Props) {
     ((agent.features as unknown as Record<string, unknown>)?.pinned_meerkat_version as number | null) ?? null;
 
   // Display name preference: agent_name (Nia, Noah) fallback to meerkat or business
-  const displayName  = agent.agent_name || cap(meerkatId ?? '') || agent.business_name;
-  const meerkatLabel = meerkatId ? cap(meerkatId) : null;
-  const showMeerkatPill = !!meerkatLabel && (!agent.agent_name || agent.agent_name.toLowerCase() !== meerkatId);
+  const displayName = agent.agent_name || cap(meerkatId ?? '') || agent.business_name;
 
   return (
     <AgentDetailClient
       agent={agent}
       meerkatId={meerkatId}
-      meerkatLabel={meerkatLabel}
-      showMeerkatPill={showMeerkatPill}
       displayName={displayName}
       isOpen={isOpen}
       jornadaType={jornadaType}

@@ -8,6 +8,7 @@ import {
   Puzzle, Settings2, Mic, Briefcase, BookOpen,
 } from 'lucide-react';
 import type { VoiceAgent, AgentFeatures } from '@/types/agent';
+import { MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import VoiceSelector from '@/components/VoiceSelector';
 import AgentActions from './AgentActions';
 import DangerZone from './DangerZone';
@@ -58,8 +59,6 @@ function isCustomMeerkat(agent: VoiceAgent): boolean {
 interface Props {
   agent:                VoiceAgent;
   meerkatId:            string | null;
-  meerkatLabel:         string | null;
-  showMeerkatPill:      boolean;
   displayName:          string;
   isOpen:               boolean | null;
   jornadaType:          string | null;
@@ -71,7 +70,7 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AgentDetailClient({
-  agent, meerkatId, meerkatLabel, showMeerkatPill, displayName,
+  agent, meerkatId, displayName,
   isOpen, jornadaType, availableVersions, activeGlobalVersion, pinnedVersion,
 }: Props) {
   const router = useRouter();
@@ -172,19 +171,10 @@ export default function AgentDetailClient({
             <h1 className="text-[24px] font-semibold tracking-tight truncate" style={{ color: '#111827' }}>
               {displayName}
             </h1>
+            <RolePill meerkatId={meerkatId} />
             <StatusPill active={agent.active} />
             {isOpen !== null && <OpenPill open={isOpen} />}
             {jornadaType && <JornadaPill jornada={jornadaType} />}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap mt-1.5">
-            {showMeerkatPill && meerkatLabel && (
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[12px] font-medium"
-                style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #E9E1FF' }}
-              >
-                <Bot size={11} /> Meerkat: {meerkatLabel}
-              </span>
-            )}
           </div>
         </div>
 
@@ -532,6 +522,24 @@ function FeatureToggleRow({ label, desc, active, onToggle }: {
       </div>
       <Toggle on={active} />
     </div>
+  );
+}
+
+function RolePill({ meerkatId }: { meerkatId: string | null }) {
+  if (!meerkatId) return null;
+  const role = MEERKAT_MAP[meerkatId as MeerkatRoleId];
+  if (!role) return null;
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-medium"
+      style={{
+        background: `${role.color}14`,
+        color:      role.color,
+        border:     `1px solid ${role.color}30`,
+      }}
+    >
+      {role.rol}
+    </span>
   );
 }
 

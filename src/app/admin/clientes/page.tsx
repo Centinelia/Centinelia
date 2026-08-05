@@ -14,6 +14,7 @@ type AgentRow = {
   id: string;
   agent_name: string | null;
   business_name: string;
+  meerkat_role_id: string | null;
   plan: string;
   active: boolean;
   billing_status: string | null;
@@ -44,7 +45,7 @@ export default async function ClientesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('voice_agents')
-    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap, ai_ops_used, ai_ops_limit')
+    .select('id, client_name, client_email, agent_name, business_name, plan, active, billing_status, portal_email, portal_token, daily_minutes_cap, ai_ops_used, ai_ops_limit, features')
     .neq('id', demoId ?? '')
     .order('client_name', { ascending: true });
 
@@ -79,10 +80,13 @@ export default async function ClientesPage({ searchParams }: Props) {
     const group = map.get(key)!;
     group.acct_ops_used  += ((agent as unknown as { ai_ops_used?:  number | null }).ai_ops_used  ?? 0);
     group.acct_ops_limit += ((agent as unknown as { ai_ops_limit?: number | null }).ai_ops_limit ?? 0);
+    const features = (agent as unknown as { features?: Record<string, unknown> }).features ?? {};
+    const meerkatRoleId = (features.meerkat_role_id as string | undefined) ?? null;
     group.agents.push({
       id:                agent.id,
       agent_name:        (agent as FetchedAgent & { agent_name?: string | null }).agent_name ?? null,
       business_name:     agent.business_name,
+      meerkat_role_id:   meerkatRoleId,
       plan:              agent.plan,
       active:            agent.active,
       billing_status:    agent.billing_status ?? null,
