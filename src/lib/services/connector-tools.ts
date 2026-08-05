@@ -219,11 +219,36 @@ export async function executeSearchFiles(
   const ic = await getFileConnector(agentId, supabase);
   if (!ic) return { ok: false, error: NO_DRIVE_ERROR };
 
-  const files = await ic.conn.files.search(query);
-  return files.length
-    ? { ok: true, files, message: `Encontré ${files.length} archivo(s): ${files.map(f => `${f.name} (id: ${f.id}, tipo: ${f.mimeType})`).join(', ')}` }
-    : { ok: true, files: [], message: `No encontré archivos que coincidan con "${query}".` };
+  // Estrategia progresiva — la transcripción de Deepgram puede corromper nombres
+  // propios (Pneuma → Number, Centinelia → Ventanilla). Si la búsqueda inicial
+  // falla, probamos con cada palabra individual >3 chars y también los pares
+  // consecutivos. Devolvemos el primer conjunto no vacío.
+  let files = await ic.conn.files.search(query);
+  const attempts: string[] = [query];
+
+  if (files.length === 0) {
+    const words = query.split(/\s+/).filter(w => w.length >= 4 && !STOPWORDS.has(w.toLowerCase()));
+    // 1. cada palabra sola (más largas primero, más específicas)
+    const singles = [...new Set(words)].sort((a, b) => b.length - a.length);
+    for (const w of singles) {
+      attempts.push(w);
+      files = await ic.conn.files.search(w);
+      if (files.length) break;
+    }
+  }
+
+  if (files.length === 0) {
+    return { ok: true, files: [], message: `No encontré archivos. Probé con: ${attempts.join(', ')}. Si el archivo tiene un nombre distinto al que buscaste, pide al usuario el nombre exacto o palabras clave diferentes.` };
+  }
+
+  return { ok: true, files, message: `Encontré ${files.length} archivo(s) con "${attempts[attempts.length-1]}": ${files.map(f => `${f.name} (id: ${f.id}, tipo: ${f.mimeType})`).join(', ')}` };
 }
+
+const STOPWORDS = new Set([
+  'el','la','los','las','un','una','unos','unas','de','del','al','a','en','y','o','u','que','con','por','para','sin',
+  'este','esta','ese','esa','aquel','aquella','esos','esas','mi','tu','su','sus','nos','les','se','lo',
+  'como','pero','ya','muy','más','menos','solo','sólo','tan','todo','toda','todos','todas',
+]);
 
 export async function executeReadFile(
   agentId:  string,
