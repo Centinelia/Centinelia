@@ -5,19 +5,19 @@ import { Check, Loader2, Plus, Minus, RotateCcw } from 'lucide-react';
 
 type Action = 'credit' | 'debit' | 'set_used';
 
-export default function MinutesAdjuster({
+export default function TasksAdjuster({
   agentId,
-  minutesUsed,
-  minutesIncluded,
+  opsUsed,
+  opsLimit,
   isAccountPool = false,
 }: {
   agentId: string;
-  minutesUsed: number;
-  minutesIncluded: number;
+  opsUsed: number;
+  opsLimit: number;
   isAccountPool?: boolean;
 }) {
-  const [used, setUsed]         = useState(minutesUsed);
-  const [included, setIncluded] = useState(minutesIncluded);
+  const [used, setUsed]         = useState(opsUsed);
+  const [included, setIncluded] = useState(opsLimit);
   const [action, setAction]     = useState<Action>('credit');
   const [amount, setAmount]     = useState('');
   const [reason, setReason]     = useState('');
@@ -41,15 +41,15 @@ export default function MinutesAdjuster({
     setConfirming(false);
     setLoading(true);
     setSaved(false);
-    const res = await fetch(`/api/admin/agentes/${agentId}/minutes`, {
+    const res = await fetch(`/api/admin/agentes/${agentId}/ops`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ action, amount: n, reason: reason.trim() || undefined }),
     });
     if (res.ok) {
       const data = await res.json();
-      setUsed(data.minutes_used);
-      setIncluded(data.minutes_included);
+      setUsed(data.ops_used);
+      setIncluded(data.ops_limit);
       setAmount('');
       setReason('');
       setSaved(true);
@@ -59,14 +59,14 @@ export default function MinutesAdjuster({
   };
 
   const ACTIONS: { id: Action; label: string; icon: React.ReactNode; color: string; hint: string }[] = [
-    { id: 'credit',   label: 'Acreditar',  icon: <Plus size={12} />,     color: '#10B981', hint: 'Suma minutos al saldo disponible' },
-    { id: 'debit',    label: 'Descontar',  icon: <Minus size={12} />,    color: '#EF4444', hint: 'Resta minutos del saldo disponible' },
-    { id: 'set_used', label: 'Fijar uso',  icon: <RotateCcw size={12} />,color: '#F59E0B', hint: 'Establece los minutos usados a un valor exacto' },
+    { id: 'credit',   label: 'Acreditar',  icon: <Plus size={12} />,     color: '#10B981', hint: 'Suma tareas al saldo disponible' },
+    { id: 'debit',    label: 'Descontar',  icon: <Minus size={12} />,    color: '#EF4444', hint: 'Resta tareas del saldo disponible' },
+    { id: 'set_used', label: 'Fijar uso',  icon: <RotateCcw size={12} />,color: '#F59E0B', hint: 'Establece las tareas usadas a un valor exacto' },
   ];
 
   const activeAction = ACTIONS.find(a => a.id === action)!;
-  const amountLabel  = action === 'set_used' ? 'Fijar minutos usados a' : 'Cantidad de minutos';
-  const btnLabel     = action === 'credit' ? `Acreditar ${amount || '0'} min` : action === 'debit' ? `Descontar ${amount || '0'} min` : `Fijar en ${amount || '0'}`;
+  const amountLabel  = action === 'set_used' ? 'Fijar tareas usadas a' : 'Cantidad de tareas';
+  const btnLabel     = action === 'credit' ? `Acreditar ${amount || '0'} tareas` : action === 'debit' ? `Descontar ${amount || '0'} tareas` : `Fijar en ${amount || '0'}`;
 
   return (
     <div
@@ -77,7 +77,7 @@ export default function MinutesAdjuster({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9CA3AF' }}>Minutos</span>
+          <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9CA3AF' }}>Tareas</span>
           {isAccountPool && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: '#F3F0FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
               Cuenta
@@ -95,7 +95,7 @@ export default function MinutesAdjuster({
       <div>
         <div className="flex items-baseline gap-1.5 mb-2">
           <span className="text-[24px] font-bold tabular-nums" style={{ color: barColor }}>{used}</span>
-          <span className="text-[13px]" style={{ color: '#6B7280' }}>usados / {included} incluidos</span>
+          <span className="text-[13px]" style={{ color: '#6B7280' }}>usadas / {included} incluidas</span>
         </div>
         <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
           <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
@@ -159,7 +159,7 @@ export default function MinutesAdjuster({
       {confirming ? (
         <div className="rounded-lg p-3 flex flex-col gap-2.5" style={{ background: `${activeAction.color}12`, border: `1px solid ${activeAction.color}40` }}>
           <p className="text-[12px] font-medium text-center" style={{ color: '#111827' }}>
-            ¿Confirmar {activeAction.label.toLowerCase()} <strong>{amount} min</strong>
+            ¿Confirmar {activeAction.label.toLowerCase()} <strong>{amount} tareas</strong>
             {action !== 'set_used' ? ' a este cliente?' : ' de uso?'}
           </p>
           <div className="flex gap-2">
