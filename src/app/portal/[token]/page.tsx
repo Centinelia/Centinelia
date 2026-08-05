@@ -372,19 +372,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     ? await isPortalV2Enabled(agent.portal_email)
     : false;
 
-  // Per-agent context estimates (tokens ≈ chars / 4) for Inicio widget
-  const agentContextCards = allClientAgents.map(a => {
-    const kb   = ((a as any).knowledge_base         as string | null) ?? '';
-    const rkb  = ((a as any).role_knowledge_base    as string | null) ?? '';
-    const rl   = ((a as any).role_learnings         as string | null) ?? '';
-    const total = Math.ceil((kb.length + rkb.length + rl.length) / 4);
-    return {
-      name:   (a.agent_name?.trim() || 'Empleado'),
-      role:   ((a as any).role as string | null)?.trim() ?? null,
-      tokens: total,
-    };
-  });
-
   // Per-agent call counts for "Tu equipo hoy"
   const callsByAgentId: Record<string, number> = {};
   for (const c of calls) {
@@ -712,50 +699,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <MonthReportPicker token={token} />
                 </div>
 
-                {/* Contexto de empleados — mobile */}
-                <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
-                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria." />
-                  </div>
-                  {agentContextCards.some(a => a.tokens > 0) ? (
-                    <div className="flex flex-col gap-3">
-                      {agentContextCards.map((a, i) => {
-                        const ctx   = Math.min(a.tokens, 32_000);
-                        const pct   = Math.round((ctx / 32_000) * 100);
-                        const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                        return (
-                          <div key={i} className="flex flex-col gap-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                                {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
-                              </div>
-                              <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                              <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center text-center gap-2 py-2">
-                      <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                        Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
-                      </p>
-                      <Link href={`/portal/${token}/empleados`}
-                        className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
-                        style={{ color: '#9B6DFF' }}>
-                        Configurar en Empleados →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-
               </div>{/* end main column */}
 
               {/* ── Right column (desktop only) ── */}
@@ -788,50 +731,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
                   </div>
                   <MonthReportPicker token={token} />
-                </div>
-
-                {/* Contexto de empleados */}
-                <div id="contexto" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Contexto de empleados</h2>
-                    <InfoTooltip text="Cuánto contexto tiene cada empleado cargado en su memoria (manual de la organización + instrucciones del puesto + aprendizajes). A más memoria, más informado está el empleado." />
-                  </div>
-                  {agentContextCards.some(a => a.tokens > 0) ? (
-                    <div className="flex flex-col gap-3">
-                      {agentContextCards.map((a, i) => {
-                        const ctx   = Math.min(a.tokens, 32_000);
-                        const pct   = Math.round((ctx / 32_000) * 100);
-                        const color = pct > 80 ? '#22c55e' : pct > 40 ? '#6C3BFF' : '#9ca3af';
-                        return (
-                          <div key={i} className="flex flex-col gap-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium truncate" style={{ color: 'var(--c-text)' }}>{a.name}</p>
-                                {a.role && <p className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.role}</p>}
-                              </div>
-                              <span className="text-xs tabular-nums flex-shrink-0" style={{ color }}>
-                                {a.tokens >= 1000 ? `${(a.tokens / 1000).toFixed(1)}k` : a.tokens} mem
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                              <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(2, pct)}%`, background: color }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center text-center gap-2 py-1">
-                      <p className="text-xs" style={{ color: 'var(--c-text-3)', lineHeight: 1.6 }}>
-                        Tu empleado aún no tiene instrucciones ni manual configurados. Agrégalos para que aprenda tu organización.
-                      </p>
-                      <Link href={`/portal/${token}/empleados`}
-                        className="text-xs font-semibold transition-opacity hover:opacity-70 mt-1"
-                        style={{ color: '#9B6DFF' }}>
-                        Configurar en Empleados →
-                      </Link>
-                    </div>
-                  )}
                 </div>
 
               </div>

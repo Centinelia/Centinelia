@@ -72,7 +72,6 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         { label: 'Actividad reciente', id: 'actividad' },
         { label: 'Actividad horaria',  id: 'horas-pico' },
         { label: 'Reporte mensual',    id: 'reporte-mensual' },
-        { label: 'Contexto del equipo',id: 'contexto' },
       ],
     },
     {
