@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
+import { syncLeadToSheets } from '@/lib/services/sheets';
 
 export async function POST(req: NextRequest) {
   if (!requireVapiAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,13 +22,17 @@ export async function POST(req: NextRequest) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, transfer_whatsapp')
+    .select('business_name, transfer_whatsapp, portal_email')
     .eq('id', agent_id)
     .single();
 
   await supabase.from('leads_voice').insert({
     agent_id, nombre, negocio, giro, servicio, presupuesto, timeline, email, whatsapp, source: 'llamada',
   });
+
+  if (agent?.portal_email) {
+    void syncLeadToSheets(agent.portal_email, agent_id, args);
+  }
 
   if (agent?.transfer_whatsapp) {
     const msg = [
