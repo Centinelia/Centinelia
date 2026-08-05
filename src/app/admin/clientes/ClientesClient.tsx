@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, ExternalLink, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users, ChevronLeft, ChevronRight,
+  Eye, EyeOff, Check, X, Plus, Users,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import DailyCapEditor from '../agentes/[id]/DailyCapEditor';
+import { Pagination } from '@/components/admin/Pagination';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -477,33 +478,12 @@ export default function ClientesClient({
         })}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div
-          className="flex items-center justify-between pt-4"
-          style={{ borderTop: '1px solid #E5E7EB' }}
-        >
-          <button
-            onClick={() => navigate(currentSearch, page - 1)}
-            disabled={page <= 1 || pending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            <ChevronLeft size={13} /> Anterior
-          </button>
-          <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => navigate(currentSearch, page + 1)}
-            disabled={page >= totalPages || pending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            Siguiente <ChevronRight size={13} />
-          </button>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        disabled={pending}
+        onNavigate={p => navigate(currentSearch, p)}
+      />
     </div>
   );
 }
