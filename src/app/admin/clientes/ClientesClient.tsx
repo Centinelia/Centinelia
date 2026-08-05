@@ -133,39 +133,48 @@ export default function ClientesClient({
     }
   };
 
+  const inputStyle: React.CSSProperties = {
+    background: '#FFFFFF',
+    border: '1px solid #E5E7EB',
+    color: '#111827',
+  };
+
   return (
-    <div className="p-4 md:p-8 max-w-4xl" style={{ opacity: pending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+    <div className="p-8 max-w-7xl mx-auto space-y-6" style={{ opacity: pending ? 0.6 : 1, transition: 'opacity 0.15s' }}>
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Clientes</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Clientes</h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
           {totalCount} cliente{totalCount !== 1 ? 's' : ''} · {totalAgents} empleado{totalAgents !== 1 ? 's' : ''} · {totalActive} activo{totalActive !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Search */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'var(--c-text-3)' }} />
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: '#9CA3AF' }}
+          />
           <input
             type="text"
-            placeholder="Buscar por cliente, email o negocio… (Enter)"
+            placeholder="Buscar por cliente, email o negocio... (Enter)"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && commitSearch()}
             onBlur={commitSearch}
             disabled={pending}
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            className="w-full pl-9 pr-4 py-2 rounded-lg text-[13px] outline-none"
+            style={inputStyle}
           />
         </div>
         {currentSearch && (
           <button
             onClick={clearSearch}
-            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-            style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ color: '#374151', border: '1px solid #E5E7EB', background: '#FFFFFF' }}
           >
             <X size={12} /> Limpiar
           </button>
@@ -174,7 +183,7 @@ export default function ClientesClient({
 
       {/* Result count when searching */}
       {currentSearch && (
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[12px]" style={{ color: '#6B7280' }}>
           {totalCount} resultado{totalCount !== 1 ? 's' : ''} para &ldquo;{currentSearch}&rdquo;
           {totalPages > 1 && ` · página ${page} de ${totalPages}`}
         </p>
@@ -183,9 +192,12 @@ export default function ClientesClient({
       {/* Client list */}
       <div className="flex flex-col gap-3">
         {clients.length === 0 ? (
-          <div className="text-center py-16" style={{ color: 'var(--c-text-3)' }}>
-            <Users size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">
+          <div
+            className="text-center py-16 rounded-xl bg-white"
+            style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+          >
+            <Users size={36} className="mx-auto mb-3" style={{ color: '#D1D5DB' }} />
+            <p className="text-[13px]" style={{ color: '#6B7280' }}>
               {currentSearch ? 'Sin resultados para esa búsqueda' : 'Sin clientes registrados'}
             </p>
           </div>
@@ -198,44 +210,55 @@ export default function ClientesClient({
           const acctUsed     = client.acct_minutes_used;
           const acctIncluded = client.acct_minutes_included;
           const acctPct      = acctIncluded && acctIncluded > 0 ? Math.round((acctUsed! / acctIncluded) * 100) : 0;
-          const acctBarColor = acctPct > 90 ? '#ef4444' : acctPct > 70 ? '#f59e0b' : '#22c55e';
+          const acctBarColor = acctPct > 90 ? '#EF4444' : acctPct > 70 ? '#F59E0B' : '#10B981';
 
           return (
-            <div key={client.key} className="rounded-xl overflow-hidden"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div
+              key={client.key}
+              className="rounded-xl overflow-hidden bg-white"
+              style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+            >
 
               {/* Client header row */}
               <button
                 onClick={() => toggle(client.key)}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--c-surface-2)]"
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50"
               >
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
-                  style={{ background: 'rgba(108,59,255,0.15)', color: '#9B6DFF' }}>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-semibold"
+                  style={{ background: '#F5F0FF', color: '#6C3BFF' }}
+                >
                   {initials}
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{client.client_name}</span>
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>
+                    <span className="text-[13px] font-semibold" style={{ color: '#111827' }}>{client.client_name}</span>
+                    <span
+                      className="inline-flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-md font-medium"
+                      style={{ background: '#F3F4F6', color: '#4B5563', border: '1px solid #E5E7EB' }}
+                    >
                       <Users size={10} /> {client.agents.length} {client.agents.length === 1 ? 'empleado' : 'empleados'}
                     </span>
                     {activeCount > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
+                      <span
+                        className="text-[12px] px-2 py-0.5 rounded-md font-medium"
+                        style={{ background: '#ECFDF5', color: '#10B981', border: '1px solid #A7F3D0' }}
+                      >
                         {activeCount} activo{activeCount > 1 ? 's' : ''}
                       </span>
                     )}
                     {pausedCount > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
+                      <span
+                        className="text-[12px] px-2 py-0.5 rounded-md font-medium"
+                        style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
+                      >
                         {pausedCount} pausado{pausedCount > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
                   {client.client_email && (
-                    <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+                    <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>
                       {client.client_email}
                     </p>
                   )}
@@ -244,23 +267,28 @@ export default function ClientesClient({
                 {/* Account minutes mini-bar */}
                 {acctIncluded != null && acctIncluded > 0 && (
                   <div className="hidden sm:flex flex-col items-end gap-1 mr-1 flex-shrink-0">
-                    <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+                    <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
                       {acctUsed}/{acctIncluded} min
                     </span>
-                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${Math.min(acctPct, 100)}%`, background: acctBarColor }} />
+                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(acctPct, 100)}%`, background: acctBarColor }}
+                      />
                     </div>
                   </div>
                 )}
 
-                <ChevronDown size={15} className="flex-shrink-0 transition-transform"
-                  style={{ color: 'var(--c-text-3)', transform: open ? 'rotate(180deg)' : undefined }} />
+                <ChevronDown
+                  size={15}
+                  className="flex-shrink-0 transition-transform"
+                  style={{ color: '#9CA3AF', transform: open ? 'rotate(180deg)' : undefined }}
+                />
               </button>
 
               {/* Expanded: agents */}
               {open && (
-                <div style={{ borderTop: '1px solid var(--c-divider)' }}>
+                <div style={{ borderTop: '1px solid #F3F4F6' }}>
                   {client.agents.map((agent, i) => {
                     const credIsOpen = credOpen.has(agent.id);
                     const form       = credForms[agent.id];
@@ -269,17 +297,24 @@ export default function ClientesClient({
                       <div key={agent.id}>
                         <div
                           className="flex items-center gap-3 px-5 py-3"
-                          style={{ borderTop: i > 0 ? '1px solid var(--c-divider)' : undefined, background: 'var(--c-surface-2)' }}
+                          style={{
+                            borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
+                            background: '#F9FAFB',
+                          }}
                         >
-                          <div className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: agent.active ? '#22c55e' : '#ef4444' }} />
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: agent.active ? '#10B981' : '#EF4444' }}
+                          />
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{agent.business_name}</span>
+                              <span className="text-[13px] font-medium" style={{ color: '#111827' }}>{agent.business_name}</span>
                               {agent.billing_status === 'pago_fallido' && (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full"
-                                  style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
+                                <span
+                                  className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                                  style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}
+                                >
                                   Pago fallido
                                 </span>
                               )}
@@ -288,25 +323,31 @@ export default function ClientesClient({
 
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {agent.portal_token && (
-                              <Link href={`/portal/${agent.portal_token}`} target="_blank"
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                              <Link
+                                href={`/portal/${agent.portal_token}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
+                                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+                              >
                                 <ExternalLink size={11} /><span className="hidden sm:inline"> Portal</span>
                               </Link>
                             )}
-                            <Link href={`/admin/agentes/${agent.id}/editar`}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                              style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                            <Link
+                              href={`/admin/agentes/${agent.id}/editar`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-90"
+                              style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+                            >
                               <Settings size={11} /><span className="hidden sm:inline"> Editar</span>
                             </Link>
                             <button
                               onClick={() => credIsOpen ? closeCred(agent.id) : openCred(agent.id, agent.portal_email)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
                               style={{
-                                background: credIsOpen ? 'rgba(245,158,11,0.12)' : 'var(--c-surface)',
-                                color: credIsOpen ? '#f59e0b' : (agent.portal_email ? '#16a34a' : 'var(--c-text-3)'),
-                                border: `1px solid ${credIsOpen ? 'rgba(245,158,11,0.25)' : 'var(--c-border)'}`,
-                              }}>
+                                background: credIsOpen ? '#FFFBEB' : '#FFFFFF',
+                                color: credIsOpen ? '#F59E0B' : (agent.portal_email ? '#10B981' : '#6B7280'),
+                                border: `1px solid ${credIsOpen ? '#FDE68A' : '#E5E7EB'}`,
+                              }}
+                            >
                               <KeyRound size={11} />
                               <span className="hidden sm:inline"> {agent.portal_email ? 'Acceso' : 'Sin acceso'}</span>
                             </button>
@@ -315,65 +356,81 @@ export default function ClientesClient({
 
                         {/* Credentials form */}
                         {credIsOpen && form && (
-                          <div className="px-5 py-4 flex flex-col gap-3"
-                            style={{ background: 'rgba(245,158,11,0.04)', borderTop: '1px solid rgba(245,158,11,0.15)' }}>
-                            <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-                              Acceso al portal —{' '}
-                              <span style={{ color: 'var(--c-text-3)', fontWeight: 400 }}>{agent.business_name}</span>
+                          <div
+                            className="px-5 py-4 flex flex-col gap-3"
+                            style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}
+                          >
+                            <p className="text-[12px] font-semibold" style={{ color: '#374151' }}>
+                              Acceso al portal.{' '}
+                              <span style={{ color: '#6B7280', fontWeight: 400 }}>{agent.business_name}</span>
                             </p>
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                               <div>
-                                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Email de acceso</label>
-                                <input type="email" value={form.email}
+                                <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Email de acceso</label>
+                                <input
+                                  type="email"
+                                  value={form.email}
                                   onChange={e => updateForm(agent.id, { email: e.target.value })}
                                   placeholder="cliente@negocio.com"
-                                  className="w-full text-sm outline-none rounded-lg px-3 py-2"
-                                  style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+                                  className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
+                                  style={inputStyle}
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
+                                <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
                                   {agent.portal_email ? 'Nueva contraseña (vacío = sin cambio)' : 'Contraseña (mín. 8 caracteres)'}
                                 </label>
                                 <div className="relative">
-                                  <input type={form.showPw ? 'text' : 'password'} value={form.pw}
+                                  <input
+                                    type={form.showPw ? 'text' : 'password'}
+                                    value={form.pw}
                                     onChange={e => updateForm(agent.id, { pw: e.target.value })}
                                     placeholder="••••••••"
-                                    className="w-full text-sm outline-none rounded-lg px-3 py-2 pr-9"
-                                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+                                    className="w-full text-[13px] outline-none rounded-lg px-3 py-2 pr-9"
+                                    style={inputStyle}
                                   />
-                                  <button type="button" onClick={() => updateForm(agent.id, { showPw: !form.showPw })}
+                                  <button
+                                    type="button"
+                                    onClick={() => updateForm(agent.id, { showPw: !form.showPw })}
                                     className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                                    style={{ color: 'var(--c-text-4)' }}>
+                                    style={{ color: '#9CA3AF' }}
+                                  >
                                     {form.showPw ? <EyeOff size={13} /> : <Eye size={13} />}
                                   </button>
                                 </div>
                               </div>
                               {form.pw && (
                                 <div className="sm:col-start-2">
-                                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Confirmar contraseña</label>
-                                  <input type={form.showPw ? 'text' : 'password'} value={form.confirm}
+                                  <label className="block text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>Confirmar contraseña</label>
+                                  <input
+                                    type={form.showPw ? 'text' : 'password'}
+                                    value={form.confirm}
                                     onChange={e => updateForm(agent.id, { confirm: e.target.value })}
                                     placeholder="••••••••"
-                                    className="w-full text-sm outline-none rounded-lg px-3 py-2"
-                                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+                                    className="w-full text-[13px] outline-none rounded-lg px-3 py-2"
+                                    style={inputStyle}
                                   />
                                 </div>
                               )}
                             </div>
                             {form.msg && (
-                              <p className="text-xs" style={{ color: form.msg.ok ? '#16a34a' : '#dc2626' }}>{form.msg.text}</p>
+                              <p className="text-[12px]" style={{ color: form.msg.ok ? '#10B981' : '#EF4444' }}>{form.msg.text}</p>
                             )}
                             <div className="flex items-center gap-2">
-                              <button onClick={() => saveCred(agent.id)} disabled={form.saving || !form.email}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-50"
-                                style={{ background: '#6C3BFF', color: '#FAFBFF' }}>
+                              <button
+                                onClick={() => saveCred(agent.id)}
+                                disabled={form.saving || !form.email}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-opacity disabled:opacity-50"
+                                style={{ background: '#6C3BFF', color: '#FFFFFF' }}
+                              >
                                 <Check size={12} />
-                                {form.saving ? 'Guardando…' : 'Guardar'}
+                                {form.saving ? 'Guardando...' : 'Guardar'}
                               </button>
-                              <button onClick={() => closeCred(agent.id)}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-                                style={{ color: 'var(--c-text-3)' }}>
+                              <button
+                                onClick={() => closeCred(agent.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-70"
+                                style={{ color: '#6B7280' }}
+                              >
                                 <X size={12} /> Cancelar
                               </button>
                             </div>
@@ -385,8 +442,8 @@ export default function ClientesClient({
 
                   {/* Account minutes adjuster + daily cap */}
                   {client.agents[0] && (
-                    <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
-                      <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
+                    <div className="px-5 py-5 flex flex-col gap-4" style={{ borderTop: '1px solid #F3F4F6' }}>
+                      <p className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
                         Pool de minutos de la cuenta
                       </p>
                       <MinutesAdjuster
@@ -404,11 +461,11 @@ export default function ClientesClient({
                   )}
 
                   {/* Agregar empresa */}
-                  <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                  <div className="px-5 py-3 flex justify-end" style={{ borderTop: '1px solid #F3F4F6' }}>
                     <Link
                       href={`/admin/agentes/nuevo?client_name=${encodeURIComponent(client.client_name)}&client_email=${encodeURIComponent(client.client_email ?? '')}&portal_email=${encodeURIComponent(client.portal_email ?? '')}`}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50"
+                      style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6C3BFF' }}
                     >
                       <Plus size={11} /> Agregar empresa
                     </Link>
@@ -422,23 +479,26 @@ export default function ClientesClient({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div
+          className="flex items-center justify-between pt-4"
+          style={{ borderTop: '1px solid #E5E7EB' }}
+        >
           <button
             onClick={() => navigate(currentSearch, page - 1)}
             disabled={page <= 1 || pending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             <ChevronLeft size={13} /> Anterior
           </button>
-          <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+          <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
             {page} / {totalPages}
           </span>
           <button
             onClick={() => navigate(currentSearch, page + 1)}
             disabled={page >= totalPages || pending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-            style={{ background: 'var(--c-surface)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             Siguiente <ChevronRight size={13} />
           </button>

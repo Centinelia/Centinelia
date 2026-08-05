@@ -22,7 +22,6 @@ export default async function AgentesPage({ searchParams }: Props) {
   const { page = '1', status = '', plan = '', search = '', sort = 'recent' } = await searchParams;
   const pageNum = Math.max(1, parseInt(page) || 1);
   const demoId             = process.env.DEMO_AGENT_ID;
-  const demoPersonalizadoId = process.env.DEMO_PERSONALIZADO_AGENT_ID;
   const supabase = createAdminClient();
 
   let query = supabase
@@ -32,8 +31,6 @@ export default async function AgentesPage({ searchParams }: Props) {
       { count: 'exact' }
     )
     .neq('id', demoId ?? '');
-  // NOTA: demoPersonalizadoId (Nia Monterrey en el piloto) SÍ se muestra —
-  // es un agente real usado para prospectos/pilotos, no un demo genérico.
 
   if (status === 'activos')  query = query.eq('active', true);
   if (status === 'pausados') query = query.eq('active', false);
@@ -44,7 +41,7 @@ export default async function AgentesPage({ searchParams }: Props) {
     if (isSerial) {
       const portalEmail = await resolveSerial(search.trim());
       if (portalEmail) query = query.eq('portal_email', portalEmail);
-      else             query = query.eq('id', 'no-match'); // serial not found → empty results
+      else             query = query.eq('id', 'no-match');
     } else {
       query = query.or(
         `business_name.ilike.%${search}%,client_name.ilike.%${search}%,phone_number.ilike.%${search}%,portal_email.ilike.%${search}%`
@@ -61,11 +58,11 @@ export default async function AgentesPage({ searchParams }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>Empleados</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>Empleados</h1>
+          <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
             {totalCount.toLocaleString('es-MX')} empleado{totalCount !== 1 ? 's' : ''} en total
           </p>
         </div>
@@ -73,26 +70,26 @@ export default async function AgentesPage({ searchParams }: Props) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link
             href="/admin/demo"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.40)', color: '#9B6DFF' }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
           >
-            <Bot size={14} />
+            <Bot size={13} />
             <span>Demo</span>
           </Link>
           <Link
             href="/admin/demo-personalizado"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.40)', color: '#9B6DFF' }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
           >
-            <Bot size={14} />
+            <Bot size={13} />
             <span>Demo personalizado</span>
           </Link>
           <Link
             href="/admin/agentes/nuevo"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-            style={{ background: '#6C3BFF', color: '#FAFBFF' }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium"
+            style={{ background: '#6C3BFF', color: '#FFFFFF' }}
           >
-            <Plus size={15} />
+            <Plus size={13} />
             <span className="hidden sm:inline">Nuevo empleado</span>
           </Link>
         </div>

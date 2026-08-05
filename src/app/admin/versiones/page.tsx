@@ -67,11 +67,17 @@ export default async function VersionesPage() {
   }));
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Versiones de meerkats</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-          Rollout real per-org se controla por flags (ver <a href="/admin/flags" style={{ color: '#9B6DFF' }}>Feature flags</a>). La columna &ldquo;Rollout activo&rdquo; muestra los flags meerkat.&lt;id&gt;.v&lt;n&gt; existentes; la columna &ldquo;Fallback&rdquo; muestra la versión legacy que reciben los agentes sin flag aplicable.
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+          Versiones de meerkats
+        </h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          El rollout real por organización se controla con flags (ver{' '}
+          <a href="/admin/flags" className="font-medium" style={{ color: '#6C3BFF' }}>
+            Feature flags
+          </a>
+          ). La columna &ldquo;Rollout activo&rdquo; muestra los flags meerkat.&lt;id&gt;.v&lt;n&gt; existentes; la columna &ldquo;Fallback&rdquo; muestra la versión legacy que reciben los agentes sin flag aplicable.
         </p>
       </div>
       <VersionesTable rows={rows} />

@@ -30,14 +30,14 @@ export default async function FlagsPage() {
   const flags = (data ?? []) as FlagRow[];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--c-text)' }}>Feature flags</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-            Rollout gradual por organización. Precedencia: killed, denylist, allowlist, hash.
-          </p>
-        </div>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: '#111827' }}>
+          Feature flags
+        </h1>
+        <p className="text-[13px] mt-1.5" style={{ color: '#6B7280' }}>
+          Rollout gradual por organización. Precedencia: killed, denylist, allowlist, hash.
+        </p>
       </div>
 
       <FlagsTable initialFlags={flags} />

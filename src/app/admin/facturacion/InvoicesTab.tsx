@@ -9,7 +9,7 @@ function formatMXN(n: number): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '.';
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -67,20 +67,20 @@ export default function InvoicesTab() {
   }, [invoiced, year, search]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="space-y-4 pt-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-3)' }} />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9CA3AF' }} />
           <input
             type="text"
-            placeholder="Buscar por folio CFDI, contrato o cliente…"
+            placeholder="Buscar por folio CFDI, contrato o cliente..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-9 py-2 rounded-lg text-sm outline-none"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            className="w-full pl-9 pr-9 py-1.5 rounded-lg text-[13px] outline-none"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-3)' }}>
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#9CA3AF' }}>
               <X size={13} />
             </button>
           )}
@@ -89,62 +89,65 @@ export default function InvoicesTab() {
         <select
           value={year === 'all' ? 'all' : String(year)}
           onChange={e => setYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          className="px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          className="px-2.5 py-1.5 rounded-lg text-[13px] outline-none"
+          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
         >
           <option value="all">Todos los años</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      <div
+        className="rounded-xl overflow-hidden bg-white"
+        style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+      >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead style={{ background: 'var(--c-surface-2)' }}>
+          <table className="w-full text-[13px]">
+            <thead style={{ background: '#F9FAFB' }}>
               <tr>
-                <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Folio CFDI</th>
-                <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Cliente</th>
-                <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Contrato</th>
-                <th className="text-left px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Fecha SPEI</th>
-                <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Monto</th>
-                <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Descargar</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Folio CFDI</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Cliente</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Contrato</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Fecha SPEI</th>
+                <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Monto</th>
+                <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider" style={{ color: '#6B7280' }}>Descargar</th>
               </tr>
             </thead>
             <tbody>
               {contracts === null && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--c-text-2)' }}>Cargando facturas…</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-[13px]" style={{ color: '#6B7280' }}>Cargando facturas...</td></tr>
               )}
               {contracts !== null && filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center">
-                    <FileText size={26} className="mx-auto mb-2" style={{ color: 'var(--c-text-3)' }} />
-                    <div className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+                    <FileText size={22} className="mx-auto mb-2" style={{ color: '#D1D5DB' }} />
+                    <div className="text-[13px]" style={{ color: '#6B7280' }}>
                       {error ? error : 'Sin facturas emitidas para los filtros seleccionados.'}
                     </div>
                   </td>
                 </tr>
               )}
-              {filtered.map(c => (
-                <tr key={c.id} style={{ borderTop: '1px solid var(--c-divider)' }}>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--c-text)' }}>{c.invoice_folio}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: 'var(--c-text)' }}>{c.organization_email}</td>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--c-text-2)' }}>{c.contract_folio}</td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-2)' }}>{formatDate(c.payment_received_at)}</td>
-                  <td className="px-4 py-3 text-right text-sm font-medium" style={{ color: 'var(--c-text)' }}>{formatMXN(Number(c.amount_mxn))}</td>
-                  <td className="px-4 py-3 text-right">
+              {filtered.map((c, i) => (
+                <tr key={c.id} style={{ borderTop: '1px solid #F3F4F6' }} className="hover:bg-gray-50">
+                  <td className="px-4 py-2.5 font-mono text-[12px]" style={{ color: '#111827' }}>{c.invoice_folio}</td>
+                  <td className="px-4 py-2.5 text-[13px]" style={{ color: '#111827' }}>{c.organization_email}</td>
+                  <td className="px-4 py-2.5 font-mono text-[12px]" style={{ color: '#6B7280' }}>{c.contract_folio}</td>
+                  <td className="px-4 py-2.5 text-[12px]" style={{ color: '#6B7280' }}>{formatDate(c.payment_received_at)}</td>
+                  <td className="px-4 py-2.5 text-right text-[13px] font-medium tabular-nums" style={{ color: '#111827' }}>{formatMXN(Number(c.amount_mxn))}</td>
+                  <td className="px-4 py-2.5 text-right">
                     {c.invoice_pdf_url ? (
                       <a
                         href={c.invoice_pdf_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium hover:underline"
-                        style={{ color: '#9B6DFF' }}
+                        className="inline-flex items-center gap-1 text-[12px] font-medium hover:underline"
+                        style={{ color: '#6C3BFF' }}
                       >
                         <Download size={12} />
                         PDF
                       </a>
                     ) : (
-                      <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Sin archivo</span>
+                      <span className="text-[12px]" style={{ color: '#9CA3AF' }}>Sin archivo</span>
                     )}
                   </td>
                 </tr>

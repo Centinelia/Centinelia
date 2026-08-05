@@ -91,37 +91,36 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4"
-      style={{ background: 'rgba(0,0,0,0.55)' }}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/50"
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl my-8"
-        style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)' }}
+        className="w-full max-w-2xl rounded-xl my-8 bg-white overflow-hidden"
+        style={{ border: '1px solid #E5E7EB', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
           <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Nuevo contrato anual</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
+            <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>Nuevo contrato anual</h2>
+            <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>
               Guarda como borrador para editar después, o actívalo para arrancar el pool prepagado.
             </p>
           </div>
           <button
             onClick={onClose}
             disabled={!!submitting}
-            className="p-1.5 rounded-lg transition-colors hover:opacity-80"
-            style={{ color: 'var(--c-text-2)' }}
+            className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+            style={{ color: '#6B7280' }}
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-6 space-y-4">
           {error && (
             <div
-              className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
-              style={{ background: 'rgba(248,113,113,0.10)', color: '#f87171', border: '1px solid rgba(248,113,113,0.30)' }}
+              className="flex items-start gap-2 rounded-lg px-3 py-2 text-[13px]"
+              style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
             >
               <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
               <span>{error}</span>
@@ -132,7 +131,7 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
             <Label>Cliente</Label>
             <OrgAutocomplete value={org} onChange={setOrg} />
             {hasStripeConflict && (
-              <p className="text-xs mt-1.5" style={{ color: '#facc15' }}>
+              <p className="text-[12px] mt-1.5" style={{ color: '#B45309' }}>
                 Este cliente hoy paga por Stripe. Al activar el contrato dejará de cobrarse por tarjeta.
               </p>
             )}
@@ -194,19 +193,19 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
               onChange={e => setNotes(e.target.value)}
               rows={3}
               placeholder="Detalles de la negociación, contacto interno, etc."
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
+        <div className="flex items-center justify-end gap-2 px-6 py-4" style={{ borderTop: '1px solid #F3F4F6', background: '#F9FAFB' }}>
           <button
             type="button"
             onClick={onClose}
             disabled={!!submitting}
-            className="px-3 py-2 rounded-lg text-sm transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            className="px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             Cancelar
           </button>
@@ -214,8 +213,8 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
             type="button"
             onClick={() => submit(false)}
             disabled={!!submitting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text)', border: '1px solid var(--c-border)' }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
+            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
           >
             {submitting === 'draft' ? <Loader2 size={13} className="animate-spin" /> : null}
             Guardar como borrador
@@ -224,8 +223,8 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
             type="button"
             onClick={() => submit(true)}
             disabled={!!submitting}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: '#6C3BFF', color: '#FAFBFF' }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ background: '#6C3BFF', color: '#FFFFFF' }}
           >
             {submitting === 'activate' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             Activar
@@ -237,7 +236,7 @@ export default function NewContractModal({ onClose, onCreated }: Props) {
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{children}</label>;
+  return <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#374151' }}>{children}</label>;
 }
 
 function Input({
@@ -254,8 +253,8 @@ function Input({
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-      style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+      className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+      style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
     />
   );
 }
@@ -306,34 +305,34 @@ function OrgAutocomplete({ value, onChange }: { value: OrgOption | null; onChang
         value={open ? query : label}
         onFocus={() => { setOpen(true); setQuery(''); }}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
-        placeholder="Buscar por correo o nombre del cliente…"
-        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+        placeholder="Buscar por correo o nombre del cliente..."
+        className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+        style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#111827' }}
       />
       {open && (
         <div
-          className="absolute z-50 top-full mt-1 left-0 right-0 rounded-lg overflow-hidden shadow-xl max-h-72 overflow-y-auto"
-          style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border-2)' }}
+          className="absolute z-50 top-full mt-1 left-0 right-0 rounded-lg overflow-hidden max-h-72 overflow-y-auto bg-white"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
         >
           {loading && (
-            <div className="px-3 py-2 text-xs" style={{ color: 'var(--c-text-2)' }}>Buscando…</div>
+            <div className="px-3 py-2 text-[12px]" style={{ color: '#6B7280' }}>Buscando...</div>
           )}
           {!loading && options.length === 0 && (
-            <div className="px-3 py-2 text-xs" style={{ color: 'var(--c-text-2)' }}>Sin resultados.</div>
+            <div className="px-3 py-2 text-[12px]" style={{ color: '#6B7280' }}>Sin resultados.</div>
           )}
-          {!loading && options.map(o => (
+          {!loading && options.map((o, i) => (
             <button
               key={o.portal_email}
               type="button"
               onClick={() => { onChange(o); setOpen(false); }}
-              className="w-full flex flex-col gap-0.5 px-3 py-2 text-left text-xs transition-colors hover:opacity-80"
+              className="w-full flex flex-col gap-0.5 px-3 py-2 text-left text-[13px] transition-colors hover:bg-gray-50"
               style={{
-                background: value?.portal_email === o.portal_email ? 'rgba(108,59,255,0.10)' : 'transparent',
-                borderTop: '1px solid var(--c-divider)',
+                background: value?.portal_email === o.portal_email ? '#F5F3FF' : 'transparent',
+                borderTop: i > 0 ? '1px solid #F3F4F6' : undefined,
               }}
             >
-              <span className="font-medium" style={{ color: 'var(--c-text)' }}>{o.name ?? o.portal_email}</span>
-              <span style={{ color: 'var(--c-text-3)' }}>
+              <span className="font-medium" style={{ color: '#111827' }}>{o.name ?? o.portal_email}</span>
+              <span className="text-[12px]" style={{ color: '#6B7280' }}>
                 {o.portal_email}
                 {o.billing_model && o.billing_model !== 'stripe' ? ` · ${o.billing_model}` : ''}
               </span>
