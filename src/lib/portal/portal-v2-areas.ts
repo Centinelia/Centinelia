@@ -1,161 +1,237 @@
-export type AreaId = 'escritorio' | 'bandeja' | 'historial' | 'equipo' | 'administracion';
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface SubItem {
+export type GroupId =
+  | 'inicio'
+  | 'negocio'
+  | 'agentes'
+  | 'oficina'
+  | 'llamadas'
+  | 'cuenta'
+  | 'usuarios';
+
+export interface NavItem {
   label: string;
-  href: string;
+  /** Direct href — used as-is. Mutually exclusive with anchor+tabParam. */
+  href?: string;
+  /** Anchor id (without #). Combined with the group's tabParam when navigating. */
+  anchor?: string;
   moduleId?: string;
 }
 
-export interface Area {
-  id: AreaId;
+export interface SubGroup {
+  /** Section header label (e.g. 'Actividad', 'Entrantes') */
   label: string;
-  iconName: string;
-  href: string;
-  subItems: SubItem[];
+  items: NavItem[];
 }
 
-export interface BuildAreasInput {
+export interface NavGroup {
+  id: GroupId;
+  label: string;
+  /** Lucide component name — resolved at render time via ICON_MAP */
+  iconName: string;
+  /** moduleId used for sub-user filtering */
+  moduleId?: string;
+  /** If set, the group header is a direct link (no tab query param) */
+  directHref?: string;
+  /** e.g. 'inicio' — for ?tab=inicio href on the group header */
+  tabParam?: string;
+  /** Flat anchor list when there are no sub-groups */
+  items?: NavItem[];
+  /** Nested sub-groups (Oficina, Llamadas) */
+  subGroups?: SubGroup[];
+}
+
+export interface BuildNavInput {
   token: string;
   hasOpsAgent: boolean;
   showOutbound: boolean;
   isOwner: boolean;
   modules?: string[];
-  isGovernment?: boolean;
 }
 
-function hasModule(input: BuildAreasInput, moduleId: string): boolean {
-  if (!input.modules) return true; // owner: sin filtro
-  return input.modules.includes(moduleId);
-}
+// ─── Builder ──────────────────────────────────────────────────────────────────
 
-export function buildPortalAreas(input: BuildAreasInput): Area[] {
-  const t = input.token;
-  const areas: Area[] = [];
+export function buildPortalNav(input: BuildNavInput): NavGroup[] {
+  const { token: t, hasOpsAgent, showOutbound, isOwner, modules } = input;
 
-  // 1. Escritorio (siempre visible)
-  areas.push({
-    id: 'escritorio',
-    label: 'Escritorio',
-    iconName: 'Home',
-    href: `/portal/${t}`,
-    subItems: [],
+  const all: NavGroup[] = [];
+
+  // ── 1. Inicio ──────────────────────────────────────────────────────────────
+  all.push({
+    id: 'inicio',
+    label: 'Inicio',
+    iconName: 'LayoutDashboard',
+    moduleId: 'inicio',
+    tabParam: 'inicio',
+    items: [
+      { label: 'Resultados',          anchor: 'resumen' },
+      { label: 'Tu equipo hoy',       anchor: 'equipo-hoy' },
+      { label: 'Actividad reciente',  anchor: 'actividad' },
+      { label: 'Actividad horaria',   anchor: 'horas-pico' },
+      { label: 'Reporte mensual',     anchor: 'reporte-mensual' },
+      { label: 'Contexto del equipo', anchor: 'contexto' },
+    ],
   });
 
-  // 2. Bandeja (ops-only: owner necesita hasOpsAgent; sub-user necesita modulo explicito)
-  const bandejaVisible = input.isOwner
-    ? input.hasOpsAgent
-    : (input.modules?.includes('bandeja') || input.modules?.includes('helpdesk') || input.modules?.includes('tareas')) ?? false;
-  if (bandejaVisible) {
-    const bandejaSubs: SubItem[] = [];
-    if (input.hasOpsAgent || hasModule(input, 'tareas')) {
-      bandejaSubs.push({
-        label: 'Tareas',
-        href: `/portal/${t}/oficina/tareas`,
-        moduleId: 'tareas',
-      });
-    }
-    if (input.hasOpsAgent || hasModule(input, 'helpdesk')) {
-      bandejaSubs.push({
-        label: 'Mesa de ayuda',
-        href: `/portal/${t}/oficina/helpdesk`,
-        moduleId: 'helpdesk',
-      });
-    }
-    areas.push({
-      id: 'bandeja',
-      label: 'Bandeja',
-      iconName: 'Inbox',
-      href: `/portal/${t}/oficina/bandeja`,
-      subItems: bandejaSubs,
-    });
-  }
+  // ── 2. Organización ────────────────────────────────────────────────────────
+  all.push({
+    id: 'negocio',
+    label: 'Organización',
+    iconName: 'Building2',
+    moduleId: 'negocio',
+    tabParam: 'negocio',
+    items: [
+      { label: 'Organización',                 anchor: 'organizacion' },
+      { label: 'Branding',                     anchor: 'branding' },
+      { label: 'Manual de la organización',    anchor: 'conocimiento' },
+      { label: 'Perfil del responsable',       anchor: 'perfil-dueno' },
+      { label: 'Contratos internos',           anchor: 'contratos-internos' },
+      { label: 'Sitio web y reseñas',          anchor: 'sitio' },
+      { label: 'Notificaciones al cliente',    anchor: 'dominio-correo' },
+      { label: 'Horarios',                     anchor: 'horarios' },
+    ],
+  });
 
-  // 3. Historial
-  const historialSubs: SubItem[] = [];
-  if (hasModule(input, 'llamadas')) {
-    historialSubs.push({
-      label: 'Llamadas',
-      href: input.hasOpsAgent ? `/portal/${t}/oficina/llamadas` : `/portal/${t}/llamadas/entrantes`,
-      moduleId: 'llamadas',
-    });
-  }
-  if (input.showOutbound && hasModule(input, 'salientes')) {
-    historialSubs.push({
-      label: 'Salientes',
-      href: `/portal/${t}/llamadas/salientes`,
-      moduleId: 'salientes',
-    });
-  }
-  if (input.hasOpsAgent && hasModule(input, 'reportes')) {
-    historialSubs.push({
-      label: 'Reportes',
-      href: `/portal/${t}/oficina/reportes`,
-      moduleId: 'reportes',
-    });
-  }
-  if (input.hasOpsAgent && hasModule(input, 'aprendizajes')) {
-    historialSubs.push({
-      label: 'Aprendizajes',
-      href: `/portal/${t}/oficina/aprendizajes`,
-      moduleId: 'aprendizajes',
-    });
-  }
-  if (input.hasOpsAgent && hasModule(input, 'investigacion')) {
-    historialSubs.push({
-      label: 'Investigación',
-      href: `/portal/${t}/oficina/investigacion`,
-      moduleId: 'investigacion',
-    });
-  }
-  if (historialSubs.length > 0) {
-    areas.push({
-      id: 'historial',
-      label: 'Historial',
-      iconName: 'Clock',
-      href: historialSubs[0].href,
-      subItems: historialSubs,
-    });
-  }
-
-  // 4. Tu equipo
-  const equipoSubs: SubItem[] = [];
-  equipoSubs.push({
+  // ── 3. Empleados ───────────────────────────────────────────────────────────
+  all.push({
+    id: 'agentes',
     label: 'Empleados',
-    href: `/portal/${t}/agentes`,
+    iconName: 'Bot',
     moduleId: 'agentes',
+    directHref: `/portal/${t}/agentes`,
   });
-  if (input.hasOpsAgent && hasModule(input, 'patrones')) {
-    equipoSubs.push({
-      label: 'Cómo trabajamos',
-      href: `/portal/${t}/oficina/patrones`,
-      moduleId: 'patrones',
+
+  // ── 4. Oficina (only if hasOpsAgent) ──────────────────────────────────────
+  if (hasOpsAgent) {
+    all.push({
+      id: 'oficina',
+      label: 'Oficina',
+      iconName: 'Briefcase',
+      moduleId: 'oficina',
+      directHref: `/portal/${t}/oficina`,
+      subGroups: [
+        {
+          label: 'Actividad',
+          items: [
+            { label: 'Hoy en la oficina', href: `/portal/${t}/oficina` },
+            { label: 'Bandeja',           href: `/portal/${t}/oficina/bandeja` },
+            { label: 'Llamadas',          href: `/portal/${t}/oficina/llamadas` },
+            { label: 'Mesa de ayuda',     href: `/portal/${t}/oficina/helpdesk` },
+          ],
+        },
+        {
+          label: 'Análisis',
+          items: [
+            { label: 'Reportes',       href: `/portal/${t}/oficina/reportes` },
+            { label: 'Cómo trabajamos', href: `/portal/${t}/oficina/aprendizajes` },
+            { label: 'Investigación',  href: `/portal/${t}/oficina/investigacion` },
+          ],
+        },
+        {
+          label: 'Documentos',
+          items: [
+            { label: 'Documentos', href: `/portal/${t}/oficina/documentos` },
+            { label: 'Contratos',  href: `/portal/${t}/oficina/contratos` },
+            { label: 'Plantillas', href: `/portal/${t}/oficina/plantillas` },
+          ],
+        },
+        {
+          label: 'Programado',
+          items: [
+            { label: 'Tareas programadas', href: `/portal/${t}/oficina/tareas-programadas` },
+            { label: 'Juntas',             href: `/portal/${t}/oficina/juntas` },
+            { label: 'Onboarding',         href: `/portal/${t}/oficina/onboarding` },
+            { label: 'Encuestas',          href: `/portal/${t}/oficina/encuestas` },
+          ],
+        },
+        {
+          label: 'Sistema',
+          items: [
+            { label: 'Integraciones', href: `/portal/${t}/oficina/integraciones` },
+          ],
+        },
+      ],
     });
   }
-  areas.push({
-    id: 'equipo',
-    label: 'Tu equipo',
-    iconName: 'Users',
-    href: `/portal/${t}/agentes`,
-    subItems: equipoSubs,
-  });
 
-  // 5. Administración
-  const adminSubs: SubItem[] = [
-    { label: 'Organización', href: `/portal/${t}?tab=negocio` },
-    { label: 'Recursos de la oficina', href: `/portal/${t}/oficina` }, // launcher temp = página oficina actual
-    { label: 'Integraciones', href: `/portal/${t}/oficina/integraciones`, moduleId: 'integraciones' },
-    { label: 'Uso y compras', href: `/portal/${t}?tab=cuenta` },
-  ];
-  if (input.isOwner) {
-    adminSubs.push({ label: 'Usuarios y permisos', href: `/portal/${t}/usuarios` });
+  // ── 5. Llamadas (only if !hasOpsAgent) ────────────────────────────────────
+  if (!hasOpsAgent) {
+    const llamadasSubGroups: SubGroup[] = [
+      {
+        label: 'Entrantes',
+        items: [
+          { label: 'Registro de llamadas',    anchor: 'registro' },
+          { label: 'Leads / Citas / Pedidos', anchor: 'leads-citas-pedidos' },
+        ],
+      },
+    ];
+
+    if (showOutbound) {
+      llamadasSubGroups.push({
+        label: 'Salientes',
+        items: [
+          { label: 'Permisos',  anchor: 'llamadas-sal' },
+          { label: 'Campañas',  href: `/portal/${t}/llamadas/salientes?view=campanas` },
+          { label: 'Contactos', href: `/portal/${t}/llamadas/salientes?view=contactos` },
+        ],
+      });
+    }
+
+    all.push({
+      id: 'llamadas',
+      label: 'Llamadas',
+      iconName: 'Phone',
+      moduleId: 'llamadas',
+      directHref: `/portal/${t}/llamadas/entrantes`,
+      subGroups: llamadasSubGroups,
+    });
   }
-  areas.push({
-    id: 'administracion',
-    label: 'Administración',
-    iconName: 'Settings',
-    href: `/portal/${t}?tab=negocio`,
-    subItems: adminSubs,
+
+  // ── 6. Cuenta ──────────────────────────────────────────────────────────────
+  all.push({
+    id: 'cuenta',
+    label: 'Cuenta',
+    iconName: 'CircleUser',
+    moduleId: 'cuenta',
+    tabParam: 'cuenta',
+    items: [
+      { label: 'Consumo',   anchor: 'uso-del-mes' },
+      { label: 'Saldo',     anchor: 'comprar' },
+      { label: 'Historial', anchor: 'historial' },
+    ],
   });
 
-  return areas;
+  // ── 7. Usuarios y permisos (owner-only) ───────────────────────────────────
+  if (isOwner) {
+    all.push({
+      id: 'usuarios',
+      label: 'Usuarios y permisos',
+      iconName: 'Users',
+      directHref: `/portal/${t}/usuarios`,
+    });
+  }
+
+  // ── Module filtering (sub-users only) ─────────────────────────────────────
+  if (!modules) return all; // owner: no filter
+
+  return all.filter(g => {
+    if (!g.moduleId) return true; // no restriction (e.g. Usuarios — owner-only guard is above)
+    if (modules.includes(g.moduleId)) return true;
+    // Special case: Oficina visible if user has llamadas or salientes access
+    if (g.id === 'oficina' && ['llamadas', 'salientes'].some(m => modules.includes(m))) return true;
+    return false;
+  });
 }
+
+// ─── Compatibility alias ──────────────────────────────────────────────────────
+
+/** @deprecated Use buildPortalNav instead */
+export const buildPortalAreas = buildPortalNav;
+
+// ─── Legacy type aliases (keep exports so old imports compile) ────────────────
+
+/** @deprecated */
+export type BuildAreasInput = BuildNavInput;
+
+/** @deprecated Use NavGroup */
+export type Area = NavGroup;

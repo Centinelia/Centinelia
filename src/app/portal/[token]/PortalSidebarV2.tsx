@@ -1,155 +1,342 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Home,
-  Inbox,
-  Clock,
+  LayoutDashboard,
+  Building2,
+  Bot,
+  Briefcase,
+  Phone,
+  CircleUser,
   Users,
-  Settings,
-  ChevronRight,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 import {
-  buildPortalAreas,
-  type Area,
-  type BuildAreasInput,
+  buildPortalNav,
+  type BuildNavInput,
+  type NavGroup,
 } from '@/lib/portal/portal-v2-areas';
 
+// ─── Icon registry ─────────────────────────────────────────────────────────────
+
 const ICON_MAP: Record<string, LucideIcon> = {
-  Home,
-  Inbox,
-  Clock,
+  LayoutDashboard,
+  Building2,
+  Bot,
+  Briefcase,
+  Phone,
+  CircleUser,
   Users,
-  Settings,
 };
+
+// ─── Public props ──────────────────────────────────────────────────────────────
 
 export interface PortalStatus {
   minutesRemain?: number | null;
   minutesIncluded?: number | null;
 }
 
-export interface PortalSidebarV2Props extends BuildAreasInput {
+export interface PortalSidebarV2Props extends BuildNavInput {
   currentPath: string;
-  currentSearch?: string;   // e.g. "tab=negocio" or "" — no leading '?'
+  currentSearch?: string; // e.g. "tab=negocio" — no leading '?'
   status?: PortalStatus;
 }
 
-function isSubActive(subHref: string, currentPath: string, currentSearch: string): boolean {
-  const [subPath, subQuery] = subHref.split('?');
-  if (subQuery) {
-    // Sub-item points to a query-parameterized view (e.g. /portal/[t]?tab=negocio).
-    // Match only when path matches EXACTLY and the query token appears in current search.
-    if (currentPath !== subPath) return false;
-    // subQuery is like "tab=negocio"; currentSearch could be "tab=negocio" or "tab=negocio&x=1"
-    return currentSearch.split('&').some(kv => kv === subQuery);
-  }
-  return currentPath.startsWith(subPath);
-}
-
-function isAreaActive(area: Area, currentPath: string, currentSearch: string): boolean {
-  // Areas with sub-items match only via their sub-items to avoid href collisions.
-  // Areas without sub-items (like Escritorio) match on exact bare path.
-  if (area.subItems.length > 0) {
-    return area.subItems.some(s => isSubActive(s.href, currentPath, currentSearch));
-  }
-  const areaBase = area.href.split('?')[0];
-  return currentPath === areaBase;
-}
+// ─── Style constants ────────────────────────────────────────────────────────────
 
 const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3BFF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FAFAFB]';
 
+const TRANSITION = 'transition-colors duration-150 ease-out motion-reduce:transition-none';
+
+// ─── Active-state helpers ───────────────────────────────────────────────────────
+
+/**
+ * Resolve the full href for a group header.
+ * Priority: directHref > tabParam > undefined
+ */
+function groupHref(group: NavGroup, _token: string): string | undefined {
+  if (group.directHref) return group.directHref;
+  if (group.tabParam) {
+    // directHref is undefined, reconstruct from token embedded in sub-items or from directHref
+    // We have to reach back to the token; it's embedded in all hrefs.
+    // Extract token from directHref of any sibling, or use the root portal path.
+    // Since token is not directly stored on NavGroup, we read it from any item href.
+    // Fallback: the tabParam groups always use /portal/[token]?tab=X
+    // Token is available from other groups' directHref — but simpler: resolve at render time.
+    return undefined; // will be computed at render
+  }
+  return undefined;
+}
+
+/**
+ * Check whether a single href (possibly with query) is currently active.
+ */
+function isHrefActive(href: string, path: string, search: string): boolean {
+  const [hrefPath, hrefQuery] = href.split('?');
+  if (hrefQuery) {
+    if (path !== hrefPath) return false;
+    return search.split('&').some(kv => kv === hrefQuery);
+  }
+  // Path-prefix match for nested routes; exact for root-level
+  return path === hrefPath || path.startsWith(hrefPath + '/');
+}
+
+/**
+ * Determine if a group is active given the current URL.
+ */
+function isGroupActive(group: NavGroup, token: string, path: string, search: string): boolean {
+  // Check direct href (exact / prefix)
+  if (group.directHref) {
+    // Exact match or starts-with for nested paths
+    if (path === group.directHref || path.startsWith(group.directHref + '/')) return true;
+  }
+
+  // Check tab param
+  if (group.tabParam) {
+    // path must be /portal/[token] and tab must match
+    const portalRoot = `/portal/${token}`;
+    if (path === portalRoot) {
+      if (search === `tab=${group.tabParam}`) return true;
+      // Inicio is the default when no tab param
+      if (group.tabParam === 'inicio' && (!search || search === '' || search === 'tab=inicio')) return true;
+    }
+  }
+
+  // Check flat items
+  if (group.items) {
+    for (const item of group.items) {
+      if (item.href && isHrefActive(item.href, path, search)) return true;
+    }
+  }
+
+  // Check sub-group items
+  if (group.subGroups) {
+    for (const sg of group.subGroups) {
+      for (const item of sg.items) {
+        if (item.href && isHrefActive(item.href, path, search)) return true;
+        // anchor items only match when parent is active via tabParam/directHref above
+      }
+    }
+  }
+
+  return false;
+}
+
+// ─── Sidebar component ─────────────────────────────────────────────────────────
+
 export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   const { currentPath, currentSearch = '', status, ...input } = props;
-  const areas = buildPortalAreas(input);
+  const { token } = input;
+
+  const groups = buildPortalNav(input);
+
+  // Determine which groups should start open (those that are currently active)
+  const initialOpen = groups
+    .filter(g => isGroupActive(g, token, currentPath, currentSearch))
+    .map(g => g.id);
+
+  const [openIds, setOpenIds] = useState<string[]>(initialOpen);
+
+  // Re-sync open state when URL changes
+  useEffect(() => {
+    const active = groups
+      .filter(g => isGroupActive(g, token, currentPath, currentSearch))
+      .map(g => g.id);
+    setOpenIds(prev => {
+      // Add newly active groups; don't collapse already-open ones
+      const next = new Set(prev);
+      for (const id of active) next.add(id);
+      return Array.from(next);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath, currentSearch]);
+
+  function toggle(id: string) {
+    setOpenIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+    );
+  }
 
   return (
     <nav
       aria-label="Navegación principal"
       className="flex w-[260px] shrink-0 flex-col self-stretch border-r border-neutral-200/80 bg-[#FAFAFB] pb-20"
     >
-      {/* Lista de áreas */}
-      <ul className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {areas.map(area => {
-          const Icon = ICON_MAP[area.iconName] ?? Home;
-          const active = isAreaActive(area, currentPath, currentSearch);
-          const showSubs = active && area.subItems.length > 0;
+      <ul className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        {groups.map(group => {
+          const Icon = ICON_MAP[group.iconName] ?? LayoutDashboard;
+          const active = isGroupActive(group, token, currentPath, currentSearch);
+          const open = openIds.includes(group.id);
+
+          // Compute the group header href
+          const hasChildren =
+            (group.items && group.items.length > 0) ||
+            (group.subGroups && group.subGroups.length > 0);
+
+          const headerHref: string = group.directHref
+            ? group.directHref
+            : group.tabParam
+            ? `/portal/${token}?tab=${group.tabParam}`
+            : `/portal/${token}`;
 
           return (
-            <li key={area.id} className="flex flex-col">
-              <Link
-                href={area.href}
-                aria-current={active ? 'page' : undefined}
-                className={[
-                  'group relative flex h-11 items-center gap-3 rounded-md px-3',
-                  'transition-colors duration-150 ease-out motion-reduce:transition-none',
-                  active
-                    ? 'bg-[#F3EFFF] text-[#6C3BFF] font-semibold'
-                    : 'text-neutral-700 font-medium hover:bg-neutral-100 hover:text-neutral-900',
-                  FOCUS_RING,
-                ].join(' ')}
-              >
-                {/* Border-l indicator (signature Shopify) -- solo cuando activo */}
+            <li key={group.id} className="flex flex-col">
+              {/* Group header row */}
+              <div className="relative flex items-center">
+                {/* Active border-l */}
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-[#6C3BFF]"
+                    className="pointer-events-none absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-[#6C3BFF]"
                   />
                 )}
 
-                <Icon
-                  size={18}
-                  strokeWidth={1.75}
-                  aria-hidden
-                  className={
+                {/* Group label link */}
+                <Link
+                  href={headerHref}
+                  aria-current={active && !hasChildren ? 'page' : undefined}
+                  onClick={() => {
+                    if (hasChildren && !open) toggle(group.id);
+                  }}
+                  className={[
+                    'flex h-11 flex-1 items-center gap-3 rounded-md px-3',
+                    TRANSITION,
+                    FOCUS_RING,
                     active
-                      ? 'text-[#6C3BFF]'
-                      : 'text-neutral-500 group-hover:text-neutral-700'
-                  }
-                />
-                <span className="flex-1 truncate text-[14px] leading-none">
-                  {area.label}
-                </span>
-                {area.subItems.length > 0 && (
-                  <ChevronRight
-                    size={14}
-                    strokeWidth={2}
+                      ? 'bg-[#F3EFFF] font-semibold text-[#6C3BFF]'
+                      : 'font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900',
+                  ].join(' ')}
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={1.75}
                     aria-hidden
-                    className={[
-                      'shrink-0 transition-transform duration-200 motion-reduce:transition-none',
-                      active
-                        ? 'rotate-90 text-[#6C3BFF]'
-                        : 'text-neutral-400 group-hover:text-neutral-600',
-                    ].join(' ')}
+                    className={active ? 'text-[#6C3BFF]' : 'text-neutral-500'}
                   />
-                )}
-              </Link>
+                  <span className="flex-1 truncate text-[14px] leading-none">
+                    {group.label}
+                  </span>
+                </Link>
 
-              {showSubs && (
-                <ul className="mt-1 space-y-0.5 pb-1">
-                  {area.subItems.map(sub => {
-                    const subActive = isSubActive(sub.href, currentPath, currentSearch);
-                    return (
-                      <li key={sub.href}>
-                        <Link
-                          href={sub.href}
-                          aria-current={subActive ? 'page' : undefined}
-                          className={[
-                            'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
-                            'transition-colors duration-150 ease-out motion-reduce:transition-none',
-                            subActive
-                              ? 'bg-[#F3EFFF] font-medium text-[#6C3BFF]'
-                              : 'font-normal text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
-                            FOCUS_RING,
-                          ].join(' ')}
-                        >
-                          {sub.label}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {/* Chevron toggle button (only when there are children) */}
+                {hasChildren && (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-label={open ? `Colapsar ${group.label}` : `Expandir ${group.label}`}
+                    onClick={() => toggle(group.id)}
+                    className={[
+                      'flex h-11 w-10 shrink-0 items-center justify-center rounded-md',
+                      TRANSITION,
+                      FOCUS_RING,
+                      active ? 'text-[#6C3BFF]' : 'text-neutral-400 hover:text-neutral-600',
+                    ].join(' ')}
+                  >
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={2}
+                      aria-hidden
+                      className={[
+                        'transition-transform duration-200 motion-reduce:transition-none',
+                        open ? 'rotate-180' : '',
+                      ].join(' ')}
+                    />
+                  </button>
+                )}
+              </div>
+
+              {/* Children — only when open */}
+              {open && hasChildren && (
+                <div className="mt-0.5 pb-1">
+                  {/* Flat anchor items */}
+                  {group.items && group.items.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {group.items.map(item => {
+                        const itemHref = item.href
+                          ? item.href
+                          : item.anchor && group.tabParam
+                          ? `/portal/${token}?tab=${group.tabParam}#${item.anchor}`
+                          : item.anchor
+                          ? `#${item.anchor}`
+                          : headerHref;
+
+                        const itemActive = item.href
+                          ? isHrefActive(item.href, currentPath, currentSearch)
+                          : false; // anchor items don't have precise active tracking
+
+                        return (
+                          <li key={item.anchor ?? item.href ?? item.label}>
+                            <Link
+                              href={itemHref}
+                              aria-current={itemActive ? 'page' : undefined}
+                              className={[
+                                'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
+                                TRANSITION,
+                                FOCUS_RING,
+                                itemActive
+                                  ? 'bg-[#F3EFFF] font-medium text-[#6C3BFF]'
+                                  : 'font-normal text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
+                              ].join(' ')}
+                            >
+                              {item.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  {/* Sub-grouped items (Oficina, Llamadas) */}
+                  {group.subGroups && group.subGroups.length > 0 && (
+                    <div>
+                      {group.subGroups.map(sg => (
+                        <div key={sg.label}>
+                          {/* Section label */}
+                          <p className="pl-11 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                            {sg.label}
+                          </p>
+                          <ul className="space-y-0.5">
+                            {sg.items.map(item => {
+                              const itemHref = item.href
+                                ? item.href
+                                : item.anchor && group.directHref
+                                ? `${group.directHref}#${item.anchor}`
+                                : item.anchor
+                                ? `#${item.anchor}`
+                                : group.directHref ?? headerHref;
+
+                              const itemActive = item.href
+                                ? isHrefActive(item.href, currentPath, currentSearch)
+                                : false;
+
+                              return (
+                                <li key={item.anchor ?? item.href ?? item.label}>
+                                  <Link
+                                    href={itemHref}
+                                    aria-current={itemActive ? 'page' : undefined}
+                                    className={[
+                                      'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
+                                      TRANSITION,
+                                      FOCUS_RING,
+                                      itemActive
+                                        ? 'bg-[#F3EFFF] font-medium text-[#6C3BFF]'
+                                        : 'font-normal text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
+                                    ].join(' ')}
+                                  >
+                                    {item.label}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </li>
           );
