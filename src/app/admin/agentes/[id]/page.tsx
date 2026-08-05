@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Phone, Globe, Calendar, Clock, MapPin, Mail, User, Building2,
-  Bot, Pencil, ExternalLink, Check, Circle, MessageSquare,
+  ArrowLeft, Phone, Clock,
+  Bot, Pencil, Check, Circle,
 } from 'lucide-react';
 import type { VoiceAgent, VoiceCall } from '@/types/agent';
 import { FEATURE_LABELS } from '@/types/agent';
@@ -152,37 +152,6 @@ export default async function AgentDetailPage({ params }: Props) {
         {/* Left column */}
         <div className="lg:col-span-2 flex flex-col gap-6">
 
-          {/* Empresa & contacto */}
-          <Card title="Empresa y contacto" icon={<Building2 size={13} />}>
-            <FieldRow icon={<Building2 size={13} />} label="Empresa" value={agent.business_name} />
-            {agent.client_name && (
-              <FieldRow icon={<User size={13} />} label="Contacto" value={agent.client_name} />
-            )}
-            {(agent as any).client_email && (
-              <FieldRow icon={<Mail size={13} />} label="Email del cliente" value={(agent as any).client_email} />
-            )}
-            {agent.business_description && (
-              <FieldRow icon={<MessageSquare size={13} />} label="Descripción" value={agent.business_description} multiline />
-            )}
-            {agent.business_address && (
-              <FieldRow icon={<MapPin size={13} />} label="Dirección" value={agent.business_address} />
-            )}
-            {agent.calendar_url && (
-              <FieldRow icon={<Globe size={13} />} label="Calendario" value={agent.calendar_url} link />
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              {agent.business_phone_display && (
-                <MetricRow label="Teléfono del negocio" value={agent.business_phone_display} icon={<Phone size={12} />} copyable />
-              )}
-              {agent.phone_number && (
-                <MetricRow label="Número Centinelia" value={agent.phone_number} icon={<Phone size={12} />} copyable />
-              )}
-              {agent.timezone && (
-                <MetricRow label="Zona horaria" value={agent.timezone} icon={<Calendar size={12} />} />
-              )}
-            </div>
-          </Card>
-
           {/* Features */}
           <Card title="Funciones" icon={<Check size={13} />}>
             {activeFeatures.length > 0 ? (
@@ -254,43 +223,26 @@ export default async function AgentDetailPage({ params }: Props) {
         {/* Right column */}
         <div className="flex flex-col gap-6">
 
-          {/* Portal + Vapi */}
-          {(agent.portal_token || agent.vapi_agent_id || agent.portal_email) && (
-            <Card title="Acceso" icon={<ExternalLink size={13} />}>
-              {agent.portal_email && (
-                <div className="pb-3">
+          {/* Vapi (per-empleado). Portal y email viven en el editor de cliente. */}
+          {(agent.vapi_agent_id || agent.phone_number) && (
+            <Card title="Vapi" icon={<Phone size={13} />}>
+              {agent.phone_number && (
+                <div>
                   <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
-                    Email del portal
-                  </p>
-                  <p className="text-[13px] break-all" style={{ color: '#111827' }}>{agent.portal_email}</p>
-                </div>
-              )}
-              {agent.portal_token && (
-                <div style={agent.portal_email ? { borderTop: '1px solid #F3F4F6', paddingTop: 12 } : {}}>
-                  <p className="text-[11px] uppercase tracking-wider font-medium mb-2" style={{ color: '#9CA3AF' }}>
-                    Portal del cliente
+                    Número entrante
                   </p>
                   <div className="flex items-center gap-2">
-                    <a
-                      href={`/portal/${agent.portal_token}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-[13px] font-medium flex-1 hover:underline"
-                      style={{ color: '#6C3BFF' }}
-                    >
-                      <ExternalLink size={12} /> Ver portal
-                    </a>
-                    <CopyButton text={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/portal/${agent.portal_token}`} />
-                  </div>
-                  <div className="text-[11px] font-mono mt-1.5 break-all" style={{ color: '#9CA3AF' }}>
-                    /portal/{agent.portal_token?.slice(0, 8)}…
+                    <span className="text-[13px] font-mono flex-1" style={{ color: '#111827' }}>
+                      {agent.phone_number}
+                    </span>
+                    <CopyButton text={agent.phone_number} />
                   </div>
                 </div>
               )}
               {agent.vapi_agent_id && (
-                <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 12 }}>
+                <div style={agent.phone_number ? { borderTop: '1px solid #F3F4F6', paddingTop: 12, marginTop: 12 } : {}}>
                   <p className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>
-                    Vapi Agent ID
+                    Agent ID
                   </p>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-mono break-all flex-1" style={{ color: '#374151' }}>
@@ -454,37 +406,3 @@ function JornadaPill({ jornada }: { jornada: string }) {
   );
 }
 
-function FieldRow({ icon, label, value, link, multiline }: {
-  icon?: React.ReactNode; label: string; value: string; link?: boolean; multiline?: boolean;
-}) {
-  if (!value) return null;
-  return (
-    <div className="flex flex-col sm:flex-row sm:gap-4 py-2.5" style={{ borderBottom: '1px solid #F3F4F6' }}>
-      <span className="text-[12px] sm:w-36 sm:flex-shrink-0 sm:pt-0.5 mb-0.5 sm:mb-0 flex items-center gap-1.5" style={{ color: '#6B7280' }}>
-        {icon}
-        {label}
-      </span>
-      <span className={`text-[13px] flex-1 min-w-0 ${multiline ? '' : 'truncate'}`} style={{ color: '#111827' }}>
-        {link
-          ? <a href={value} target="_blank" rel="noopener noreferrer" className="hover:underline break-all" style={{ color: '#6C3BFF' }}>{value}</a>
-          : <span className="break-words">{value}</span>}
-      </span>
-    </div>
-  );
-}
-
-function MetricRow({ label, value, icon, copyable }: {
-  label: string; value: string; icon?: React.ReactNode; copyable?: boolean;
-}) {
-  if (!value) return null;
-  return (
-    <div className="rounded-lg px-3 py-2.5" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-      <div className="text-[11px] uppercase tracking-wider font-medium mb-1" style={{ color: '#9CA3AF' }}>{label}</div>
-      <div className="flex items-center gap-1.5 min-w-0">
-        {icon && <span style={{ color: '#6B7280' }}>{icon}</span>}
-        <span className="text-[13px] truncate flex-1 tabular-nums" style={{ color: '#111827' }}>{value}</span>
-        {copyable && <CopyButton text={value} />}
-      </div>
-    </div>
-  );
-}
