@@ -12,6 +12,7 @@ import type { VoiceAgent, VoiceCall } from '@/types/agent';
 import { FEATURE_LABELS } from '@/types/agent';
 import type { AgentFeatures } from '@/types/agent';
 import AgentActions from './AgentActions';
+import DangerZone from './DangerZone';
 import CallsSection from './CallsSection';
 import CopyButton from './CopyButton';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
@@ -254,6 +255,12 @@ export default async function AgentDetailPage({ params }: Props) {
             availableVersions={availableVersions}
             activeGlobalVersion={activeGlobalVersion}
             pinnedVersion={pinnedVersion}
+          />
+
+          {/* Zona peligrosa: eliminar empleado */}
+          <DangerZone
+            agentId={agent.id}
+            displayName={agent.agent_name || agent.business_name}
           />
         </div>
 
