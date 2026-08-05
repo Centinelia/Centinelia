@@ -36,15 +36,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const { submitted_docs, responses } = body;
 
-  await supabase
-    .from('onboarding_instances')
-    .update({
+  const { transitionOnboarding } = await import('@/lib/state-machines/onboarding-instance');
+  await transitionOnboarding({
+    supabase, instanceId: instance.id,
+    toStatus: 'en_proceso',
+    actor:    'client',
+    reason:   'client_submitted_form',
+    metadata: { doc_count: (submitted_docs ?? []).length, has_responses: Object.keys(responses ?? {}).length > 0 },
+    extraFields: {
       submitted_docs: submitted_docs ?? [],
       responses:      responses ?? {},
-      status:         'en_proceso',
       submitted_at:   new Date().toISOString(),
-    })
-    .eq('id', instance.id);
+    },
+  });
 
   // Notify agent owner
   const { data: agent } = await supabase

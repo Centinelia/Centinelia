@@ -1407,7 +1407,7 @@ async function executeAgentToolInner(
     const submitToken = randomUUID();
     const submitUrl  = `${baseUrl}/onboarding/${submitToken}`;
 
-    const { error } = await supabase.from('onboarding_instances').insert({
+    const { data: instance, error } = await supabase.from('onboarding_instances').insert({
       agent_id:       agentId,
       template_id:    (tpl as any).id,
       contact_name:   contactName,
@@ -1415,9 +1415,18 @@ async function executeAgentToolInner(
       submit_token:   submitToken,
       status:         'pendiente',
       submitted_docs: [],
-    });
+    }).select('id').single();
 
     if (error) return { ok: false, error: error.message };
+
+    const { recordOnboardingCreation } = await import('@/lib/state-machines/onboarding-instance');
+    await recordOnboardingCreation({
+      supabase,
+      instanceId: instance!.id as string,
+      actor:      `agent:${agentId}`,
+      reason:     'naia_initiated_onboarding',
+      metadata:   { template_id: (tpl as any).id, contact_name: contactName, contact_email: contactEmail },
+    });
 
     await sendOnboardingWelcome({
       to:           contactEmail,
