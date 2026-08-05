@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy, Network, type LucideIcon } from 'lucide-react';
+import { Bot, BarChart3, Plus, CreditCard, FileText, Users, Settings, Phone, Sparkles, Home, Terminal, DollarSign, ShieldCheck, Server, GitBranch, FlaskConical, Flag, Activity, AlertOctagon, Wrench, LifeBuoy, Network } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
 interface NavGroup { group: string; items: NavItem[]; }
@@ -70,7 +71,7 @@ export default function AdminNav() {
         <div key={g.group} className={gi > 0 ? 'mt-3' : ''}>
           <p
             className="text-[10px] font-bold tracking-widest uppercase px-3 mb-1.5"
-            style={{ color: 'var(--c-text-4)' }}
+            style={{ color: 'rgba(255,255,255,0.5)' }}
           >
             {g.group}
           </p>
@@ -82,8 +83,8 @@ export default function AdminNav() {
                 href={href}
                 className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-all"
                 style={{
-                  color:      active ? '#9B6DFF' : 'var(--c-text-2)',
-                  background: active ? 'rgba(108,59,255,0.12)' : 'transparent',
+                  color:      active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+                  background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
                   fontWeight: active ? 600 : 400,
                 }}
               >
@@ -96,7 +97,7 @@ export default function AdminNav() {
       ))}
 
       {/* Configuración — fijo al fondo del nav */}
-      <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         {(() => {
           const active = path === '/admin/configuracion' || path.startsWith('/admin/configuracion/');
           return (
@@ -104,8 +105,8 @@ export default function AdminNav() {
               href="/admin/configuracion"
               className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
               style={{
-                color:      active ? '#9B6DFF' : 'var(--c-text-2)',
-                background: active ? 'rgba(108,59,255,0.12)' : 'transparent',
+                color:      active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+                background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
                 fontWeight: active ? 600 : 400,
               }}
             >
