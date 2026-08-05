@@ -232,14 +232,6 @@ function getAgentTools(features: Record<string, unknown>): ToolChip[] {
   return tools;
 }
 
-function officeTier(pct: number): string {
-  if (pct === 100) return 'Oficina Completa';
-  if (pct >= 95)   return 'Oficina Empresarial';
-  if (pct >= 80)   return 'Oficina Profesional';
-  if (pct >= 66)   return 'Oficina Básica';
-  return 'Primeros pasos';
-}
-
 const COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
 function agentColor(id: string) {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -579,23 +571,23 @@ export default async function AgentesPage({ params }: Props) {
         border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
       }}>
 
-      {/* Header row: tier name + % + progress bar */}
+      {/* Header row: coverage label + areas + % + progress bar */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold" style={{ color: overallPct === 100 ? '#16a34a' : '#6C3BFF' }}>
-            {officeTier(overallPct)}
+          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            Cobertura funcional
           </p>
           {overallPct < 100 && missingCats.length > 0 && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
-              Incorpora:{' '}
+            <p className="text-xs mt-1 truncate" style={{ color: 'var(--c-text-2)' }}>
+              Sin cubrir:{' '}
               {missingCats.length <= 3
                 ? missingCats.map(c => c.label).join(', ')
                 : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
             </p>
           )}
           {overallPct === 100 && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Tu equipo tiene todas las capacidades disponibles.
+            <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>
+              Tu equipo cubre todas las áreas funcionales.
             </p>
           )}
         </div>
@@ -655,7 +647,7 @@ export default async function AgentesPage({ params }: Props) {
                           }}>
                           {t.covered
                             ? t.agents.join(' · ')
-                            : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                            : `Disponible en: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
                         </span>
                       </span>
                     )}
@@ -707,7 +699,7 @@ export default async function AgentesPage({ params }: Props) {
                             }}>
                             {t.covered
                               ? t.agents.join(' · ')
-                              : `Contratar: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
+                              : `Disponible en: ${t.suggestedRoles.slice(0, 3).join(', ')}`}
                           </span>
                         </span>
                       )}
