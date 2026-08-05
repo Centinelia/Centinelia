@@ -286,6 +286,20 @@ describe('readRange', () => {
       expect(res.detail).toContain('Sheets read failed');
     }
   });
+
+  it('returns sheets_api_error when Supabase throws during loadAllRows', async () => {
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    (createAdminClient as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      throw new Error('Supabase connection failed');
+    });
+
+    const res = await readRange('m1');
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.reason).toBe('sheets_api_error');
+      expect(res.detail).toContain('Supabase connection failed');
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

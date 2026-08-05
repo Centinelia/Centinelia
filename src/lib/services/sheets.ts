@@ -102,16 +102,16 @@ async function loadAllRows(mappingId: string): Promise<
   | { ok: true; mapping: SheetsMapping; rows: string[][] }
   | { ok: false; reason: string; detail?: string }
 > {
-  const sb = createAdminClient();
-  const { data: mapping } = await sb
-    .from('sheets_mappings')
-    .select('*')
-    .eq('id', mappingId)
-    .single();
-
-  if (!mapping) return { ok: false, reason: 'mapping_not_found' };
-
   try {
+    const sb = createAdminClient();
+    const { data: mapping } = await sb
+      .from('sheets_mappings')
+      .select('*')
+      .eq('id', mappingId)
+      .single();
+
+    if (!mapping) return { ok: false, reason: 'mapping_not_found' };
+
     const client = await getSheetsClient(mapping.portal_email);
     const res = await client.spreadsheets.values.get({
       spreadsheetId: mapping.spreadsheet_id,
@@ -240,32 +240,32 @@ export async function appendRow(
   mappingId: string,
   data: Record<string, unknown>,
 ): Promise<ToolResult<{ row_number: number }>> {
-  const sb = createAdminClient();
-  const { data: mapping } = await sb
-    .from('sheets_mappings')
-    .select('*')
-    .eq('id', mappingId)
-    .single();
-
-  if (!mapping) return { ok: false, reason: 'mapping_not_found' };
-
-  const headers: string[] = mapping.headers ?? [];
-  const dataKeys = Object.keys(data);
-  const unknownKeys = dataKeys.filter(k => !headers.includes(k));
-  if (unknownKeys.length > 0) {
-    return {
-      ok: false,
-      reason: 'headers_mismatch',
-      detail: `Keys not in sheet headers: ${unknownKeys.join(', ')}. Headers: ${headers.join(', ')}`,
-    };
-  }
-
-  const row = headers.map(h => {
-    const v = data[h];
-    return v === undefined || v === null ? '' : String(v);
-  });
-
   try {
+    const sb = createAdminClient();
+    const { data: mapping } = await sb
+      .from('sheets_mappings')
+      .select('*')
+      .eq('id', mappingId)
+      .single();
+
+    if (!mapping) return { ok: false, reason: 'mapping_not_found' };
+
+    const headers: string[] = mapping.headers ?? [];
+    const dataKeys = Object.keys(data);
+    const unknownKeys = dataKeys.filter(k => !headers.includes(k));
+    if (unknownKeys.length > 0) {
+      return {
+        ok: false,
+        reason: 'headers_mismatch',
+        detail: `Keys not in sheet headers: ${unknownKeys.join(', ')}. Headers: ${headers.join(', ')}`,
+      };
+    }
+
+    const row = headers.map(h => {
+      const v = data[h];
+      return v === undefined || v === null ? '' : String(v);
+    });
+
     const client = await getSheetsClient(mapping.portal_email);
     const res = await client.spreadsheets.values.append({
       spreadsheetId: mapping.spreadsheet_id,
