@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, ChevronDown, ExternalLink, Settings, KeyRound,
-  Eye, EyeOff, Check, X, Plus, Users,
+  Eye, EyeOff, Check, X, Plus, Users, Pencil,
 } from 'lucide-react';
 import MinutesAdjuster from '../agentes/[id]/MinutesAdjuster';
 import DailyCapEditor from '../agentes/[id]/DailyCapEditor';
@@ -221,9 +221,9 @@ export default function ClientesClient({
             >
 
               {/* Client header row */}
-              <button
+              <div
                 onClick={() => toggle(client.key)}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50"
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 cursor-pointer select-none"
               >
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-semibold"
@@ -280,12 +280,24 @@ export default function ClientesClient({
                   </div>
                 )}
 
+                {/* Editar cliente (nivel cliente) */}
+                <Link
+                  href={`/admin/clientes/${encodeURIComponent(client.key)}/editar`}
+                  onClick={e => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors hover:bg-gray-50 flex-shrink-0"
+                  style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
+                  title="Editar datos del cliente"
+                >
+                  <Pencil size={11} />
+                  <span className="hidden sm:inline"> Editar</span>
+                </Link>
+
                 <ChevronDown
                   size={15}
                   className="flex-shrink-0 transition-transform"
                   style={{ color: '#9CA3AF', transform: open ? 'rotate(180deg)' : undefined }}
                 />
-              </button>
+              </div>
 
               {/* Expanded: agents */}
               {open && (
