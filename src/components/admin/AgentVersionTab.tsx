@@ -82,22 +82,23 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
       </div>
 
       {!editing && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => { setPending(pin ?? activeGlobalVersion ?? 1); setEditing(true); }}
-            className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
-            style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-90"
+            style={{ background: '#6C3BFF', color: '#FFFFFF' }}
           >
-            {pin != null ? 'Cambiar pin' : 'Fijar en versión específica'}
+            <Pin className="w-3.5 h-3.5" />
+            {pin != null ? 'Cambiar versión fija' : 'Fijar en versión específica'}
           </button>
           {pin != null && (
             <button
               onClick={() => save(null)}
               disabled={submitting}
-              className="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity disabled:opacity-40"
-              style={{ border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-40"
+              style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
             >
-              <PinOff className="inline w-3 h-3" /> Quitar pin
+              <PinOff className="w-3.5 h-3.5" /> Quitar pin
             </button>
           )}
         </div>
