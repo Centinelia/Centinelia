@@ -5,10 +5,9 @@ import { MONTHLY_CONFIG } from '@/lib/billing/plans';
 import type { Plan, MinutesTier } from '@/lib/billing/plans';
 import Link from 'next/link';
 import {
-  AlertTriangle, ArrowRight, Terminal, PhoneCall, Inbox,
-  Users, DollarSign, Zap, CheckCircle2, Server, ShieldCheck,
+  AlertTriangle, ArrowRight, Terminal, PhoneCall,
+  Users, DollarSign, Zap, CheckCircle2, Server,
 } from 'lucide-react';
-import LiveFeed from './LiveFeed';
 import { pendingCount as pendingApprovalsCount } from '@/lib/admin/approvals';
 
 export const dynamic = 'force-dynamic';
@@ -27,25 +26,6 @@ interface AgentRow {
   portal_email:     string | null;
   plan:             string | null;
   minutes_plan:     string | null;
-}
-
-interface CallRow {
-  id:         string;
-  agent_id:   string;
-  created_at: string;
-  outcome:    string | null;
-  duration_seconds: number | null;
-  summary:    string | null;
-}
-
-interface InboxRow {
-  id:           string;
-  agent_id:     string;
-  created_at:   string;
-  email_from:   string;
-  email_subject: string;
-  category:     string | null;
-  status:       string;
 }
 
 type Severity = 'high' | 'med' | 'low';
@@ -68,8 +48,6 @@ export default async function InicioPage() {
     { data: callsToday },
     { data: callsYest },
     { data: inboxPending },
-    { data: recentCalls },
-    { data: recentInbox },
     { data: lastCallsPerAgent },
     { data: acctMinsData },
     approvalsPending,
@@ -92,14 +70,6 @@ export default async function InicioPage() {
       .in('status', ['pending', 'escalated'])
       .order('created_at', { ascending: false })
       .limit(20),
-    supabase.from('voice_calls')
-      .select('id, agent_id, created_at, outcome, duration_seconds, summary')
-      .order('created_at', { ascending: false })
-      .limit(12),
-    supabase.from('ops_inbox')
-      .select('id, agent_id, created_at, email_from, email_subject, category, status')
-      .order('created_at', { ascending: false })
-      .limit(12),
     supabase.from('voice_calls')
       .select('agent_id, created_at')
       .order('created_at', { ascending: false })
@@ -277,33 +247,38 @@ export default async function InicioPage() {
   const sevRank: Record<Severity, number> = { high: 0, med: 1, low: 2 };
   alerts.sort((a, b) => sevRank[a.severity] - sevRank[b.severity]);
 
-  // Initial feed
-  interface InitialEvent { id: string; ts: string; kind: string; actor: string; message: string; agentId?: string; status?: string }
-  const initialFeed: InitialEvent[] = [];
-  for (const c of (recentCalls ?? []) as CallRow[]) {
-    const summary = c.summary?.trim().slice(0, 90);
-    initialFeed.push({
-      id:      `call_${c.id}`,
-      ts:      c.created_at,
-      kind:    'call',
-      actor:   nameOf.get(c.agent_id) ?? 'empleado',
-      message: summary ?? `Llamada. ${c.outcome ?? 'sin resultado'}. ${c.duration_seconds ?? 0}s`,
-      agentId: c.agent_id,
-      status:  c.outcome ?? undefined,
-    });
+  // ── Rollups: Salud de minutos + Estado de facturación ────────────────────
+  // (traídos de /admin/dashboard viejo — rollup ejecutivo por-cuenta)
+  const effMins = (a: AgentRow) => {
+    const pool = a.portal_email ? acctMins.get(a.portal_email) : null;
+    return pool
+      ? { used: pool.minutes_used, included: pool.minutes_included }
+      : { used: a.minutes_used ?? 0, included: a.minutes_included ?? 0 };
+  };
+  const healthAgents: { used: number; included: number }[] = [];
+  const seenHealthAcct = new Set<string>();
+  let totalRemaining = 0;
+  for (const a of agentList) {
+    if (!a.active) continue;
+    const acctKey = a.portal_email ?? a.id;
+    if (seenHealthAcct.has(acctKey)) continue;
+    seenHealthAcct.add(acctKey);
+    const m = effMins(a);
+    if (m.included > 0) {
+      healthAgents.push(m);
+      totalRemaining += Math.max(0, m.included - m.used);
+    }
   }
-  for (const i of (recentInbox ?? []) as InboxRow[]) {
-    initialFeed.push({
-      id:      `inbox_${i.id}`,
-      ts:      i.created_at,
-      kind:    'email',
-      actor:   nameOf.get(i.agent_id) ?? 'empleado',
-      message: `${i.category ?? 'otro'} · ${i.status} · de ${i.email_from}: ${(i.email_subject ?? '(sin asunto)').slice(0, 60)}`,
-      agentId: i.agent_id,
-      status:  i.status,
-    });
-  }
-  initialFeed.sort((a, b) => b.ts.localeCompare(a.ts));
+  const minsOk       = healthAgents.filter(m => (m.used / m.included) <  0.70).length;
+  const minsWarning  = healthAgents.filter(m => { const p = m.used / m.included; return p >= 0.70 && p < 0.90; }).length;
+  const minsCritical = healthAgents.filter(m => (m.used / m.included) >= 0.90).length;
+
+  const billing = {
+    activo:       agentList.filter(a => a.billing_status === 'activo').length,
+    pago_fallido: agentList.filter(a => a.billing_status === 'pago_fallido').length,
+    sin_plan:     agentList.filter(a => !a.billing_status || a.billing_status === 'sin_plan').length,
+    cancelado:    agentList.filter(a => a.billing_status === 'cancelado').length,
+  };
 
   const sevColor: Record<Severity, string> = {
     high: '#EF4444',
@@ -467,24 +442,92 @@ export default async function InicioPage() {
         </div>
       </section>
 
-      {/* Live feed */}
-      <LiveFeed initial={initialFeed} />
-
-      {/* Quick actions */}
-      <section className="space-y-4">
-        <h2 className="text-[15px] font-semibold" style={{ color: '#111827' }}>
-          Accesos rápidos
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <QuickAction href="/admin/comando"        icon={<Terminal size={15} />}    label="Comando"      hint="terminal de operación" primary />
-          <QuickAction href="/admin/ledger"         icon={<DollarSign size={15} />}  label="Ledger"       hint="revenue vs costo por empleado" />
-          <QuickAction href="/admin/aprobaciones"   icon={<ShieldCheck size={15} />} label="Aprobaciones" hint={approvalsPending > 0 ? `${approvalsPending} pendiente${approvalsPending > 1 ? 's' : ''}` : 'gate limpio'} />
-          <QuickAction href="/admin/agentes"        icon={<Users size={15} />}       label="Empleados"    hint={`${activeCount} activos`} />
-          <QuickAction href="/admin/llamadas"       icon={<PhoneCall size={15} />}   label="Llamadas"     hint="historial completo" />
-          <QuickAction href="/admin/analytics"      icon={<Zap size={15} />}         label="Analytics"    hint="métricas del mes" />
-          <QuickAction href="/admin/conversacional" icon={<Inbox size={15} />}       label="Aprendizaje"  hint="learnings por revisar" />
+      {/* Rollups: Salud de minutos + Estado de facturación */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          className="rounded-xl bg-white px-6 py-5"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              Salud de minutos
+            </h2>
+            <Link href="/admin/clientes" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
+              Ver clientes →
+            </Link>
+          </div>
+          {healthAgents.length === 0 ? (
+            <p className="text-[13px] py-4 text-center" style={{ color: '#9CA3AF' }}>Sin cuentas activas con plan de minutos</p>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2.5">
+                <MinutesRow label="OK"      count={minsOk}       of={healthAgents.length} color="#047857" hint="< 70% consumido" />
+                <MinutesRow label="Alerta"  count={minsWarning}  of={healthAgents.length} color="#B45309" hint="70 a 90% consumido" />
+                <MinutesRow label="Crítico" count={minsCritical} of={healthAgents.length} color="#B91C1C" hint="≥ 90% consumido" />
+              </div>
+              <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
+                <span>Minutos disponibles total</span>
+                <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>
+                  {totalRemaining.toLocaleString('es-MX')} min
+                </span>
+              </div>
+            </>
+          )}
         </div>
-      </section>
+
+        <div
+          className="rounded-xl bg-white px-6 py-5"
+          style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)' }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[11px] uppercase tracking-wider font-medium" style={{ color: '#9CA3AF' }}>
+              Estado de facturación
+            </h2>
+            <Link href="/admin/facturacion" className="text-[12px] font-medium transition-colors hover:text-[#6C3BFF]" style={{ color: '#6B7280' }}>
+              Ver facturación →
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <BillingRow label="Al corriente"    count={billing.activo}       color="#047857" />
+            <BillingRow label="Pago fallido"    count={billing.pago_fallido} color="#B91C1C" />
+            <BillingRow label="Sin plan activo" count={billing.sin_plan}     color="#6B7280" />
+            <BillingRow label="Cancelados"      count={billing.cancelado}    color="#374151" />
+          </div>
+          <div className="mt-5 pt-4 flex justify-between text-[12px]" style={{ borderTop: '1px solid #F3F4F6', color: '#6B7280' }}>
+            <span>Total empleados registrados</span>
+            <span className="font-semibold tabular-nums" style={{ color: '#111827' }}>{agentList.length}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MinutesRow({ label, count, of: total, color, hint }: {
+  label: string; count: number; of: number; color: string; hint: string;
+}) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>
+        {label} <span style={{ color: '#9CA3AF' }}>· {hint}</span>
+      </span>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color }}>
+        {count} <span className="font-normal" style={{ color: '#9CA3AF' }}>({pct}%)</span>
+      </span>
+    </div>
+  );
+}
+
+function BillingRow({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-[13px] flex-1" style={{ color: '#374151' }}>{label}</span>
+      <span className="text-[13px] tabular-nums font-semibold" style={{ color: count > 0 ? color : '#9CA3AF' }}>
+        {count}
+      </span>
     </div>
   );
 }
@@ -563,24 +606,3 @@ function InfraMini({ icon, label, value, unit, danger, warn, hint, iconColor, ic
   );
 }
 
-function QuickAction({ href, icon, label, hint, primary }: {
-  href: string; icon: React.ReactNode; label: string; hint: string; primary?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col gap-1.5 p-4 rounded-xl transition-colors hover:bg-gray-50"
-      style={{
-        background: primary ? '#F5F0FF' : '#FFFFFF',
-        border:     primary ? '1px solid #DDD1FF' : '1px solid #E5E7EB',
-        boxShadow:  '0 1px 3px 0 rgb(0 0 0 / 0.05)',
-      }}
-    >
-      <span style={{ color: primary ? '#6C3BFF' : '#6B7280' }}>{icon}</span>
-      <div>
-        <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>{label}</p>
-        <p className="text-[12px] mt-0.5" style={{ color: '#6B7280' }}>{hint}</p>
-      </div>
-    </Link>
-  );
-}
