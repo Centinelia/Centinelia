@@ -62,19 +62,23 @@ export function AgentVersionTab({ agentId, meerkatId, availableVersions, activeG
       </div>
 
       <div className="text-sm mb-3" style={{ color: 'var(--c-text-2)' }}>
-        Rol: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
-        {' · '}Versión efectiva: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{effectiveVersion}</span>
-        {pin != null
-          ? (
+        <div>
+          Rol: <span className="font-medium" style={{ color: 'var(--c-text)' }}>{meerkatId.charAt(0).toUpperCase() + meerkatId.slice(1)}</span>
+          {' · '}Versión efectiva: <span className="font-medium" style={{ color: 'var(--c-text)' }}>v{effectiveVersion}</span>
+          {pin != null && (
             <span
               className="ml-2 inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded"
               style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)' }}
             >
               <Pin className="w-3 h-3" /> PIN activo
             </span>
-          )
-          : <span className="ml-2 text-xs" style={{ color: 'var(--c-text-3)' }}>(siguiendo latest global v{activeGlobalVersion})</span>
-        }
+          )}
+        </div>
+        {pin == null && (
+          <div className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+            Siguiendo la última versión global (v{activeGlobalVersion})
+          </div>
+        )}
       </div>
 
       {!editing && (
