@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Bot, Plus } from 'lucide-react';
 import AgentesClient from './AgentesClient';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 interface Props {
   searchParams: Promise<{

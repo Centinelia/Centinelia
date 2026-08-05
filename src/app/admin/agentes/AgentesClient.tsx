@@ -3,10 +3,11 @@
 import { useState, useEffect, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Search, X, ChevronLeft, ChevronRight,
+  Search, X,
   CheckCircle2, XCircle, AlertTriangle, ArrowRight, ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Pagination } from '@/components/admin/Pagination';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Filters = { status: string; plan: string; search: string; sort: string };
@@ -281,32 +282,12 @@ export default function AgentesClient({
         </div>
       )}
 
-      {/* ── Pagination ── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-5 pt-4" style={{ borderTop: '1px solid #E5E7EB' }}>
-          <button
-            onClick={() => navigate({ page: page - 1 })}
-            disabled={page <= 1 || pending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            <ChevronLeft size={13} /> Anterior
-          </button>
-
-          <span className="text-[12px] tabular-nums" style={{ color: '#6B7280' }}>
-            {page} / {totalPages}
-          </span>
-
-          <button
-            onClick={() => navigate({ page: page + 1 })}
-            disabled={page >= totalPages || pending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:opacity-30"
-            style={{ background: '#FFFFFF', color: '#374151', border: '1px solid #E5E7EB' }}
-          >
-            Siguiente <ChevronRight size={13} />
-          </button>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        disabled={pending}
+        onNavigate={p => navigate({ page: p })}
+      />
     </div>
   );
 }
