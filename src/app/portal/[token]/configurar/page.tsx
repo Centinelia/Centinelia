@@ -464,19 +464,47 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                  Con qué canales y apps interactúa el empleado.             */}
             <div className="flex flex-col gap-5">
 
-              {isOwner && hasVoiceJornada && (
-                <div id="passphrase" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Frase de verificación interna"
-                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
-                      className="mb-4"
-                    />
-                    <PassphraseEditor token={token} initial={ownerPassphrase} />
+              <div id="correo" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Correo"
+                    tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
+                    className="mb-4"
+                  />
+                  <AgentEmailSection token={token} />
+
+                    {connectedEmail && (
+                      <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                        <SpamFolderToggle
+                          token={token}
+                          initial={spamCheckEnabled}
+                          stats={spamStats.revisados > 0 ? spamStats : null}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                      <SectionHeader
+                        as="h3"
+                        title="Aprobador de borradores"
+                        tooltip="Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador."
+                        className="mb-3"
+                      />
+                      <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
+                    </div>
+
+                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+                      <SectionHeader
+                        as="h3"
+                        title="Responsable de facturación"
+                        tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
+                        className="mb-3"
+                      />
+                      <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
+                    </div>
                   </Card>
                 </div>
-              )}
 
               {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
                 <div id="desvio" style={SCROLL_STYLE}>
@@ -529,47 +557,19 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              <div id="correo" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Correo"
-                    tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
-                    className="mb-4"
-                  />
-                  <AgentEmailSection token={token} />
-
-                    {connectedEmail && (
-                      <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                        <SpamFolderToggle
-                          token={token}
-                          initial={spamCheckEnabled}
-                          stats={spamStats.revisados > 0 ? spamStats : null}
-                        />
-                      </div>
-                    )}
-
-                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <SectionHeader
-                        as="h3"
-                        title="Aprobador de borradores"
-                        tooltip="Cuando el empleado redacta una respuesta de correo que necesita revisión humana (según su Modo de respuesta), esta persona recibirá la notificación para aprobar o descartar el borrador."
-                        className="mb-3"
-                      />
-                      <ApprovalEmailEditor token={token} initialEmail={(agent as any).approval_email ?? ''} />
-                    </div>
-
-                    <div className="mt-5 pt-5" style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <SectionHeader
-                        as="h3"
-                        title="Responsable de facturación"
-                        tooltip="Cuando el empleado recolecte una solicitud de factura de un cliente, esta persona recibirá el correo con todos los datos para timbrar el CFDI en su sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.)."
-                        className="mb-3"
-                      />
-                      <InvoicingEmailEditor token={token} initialEmail={((agent as any).features?.invoicing_email as string | undefined) ?? ''} />
-                    </div>
+              {isOwner && hasVoiceJornada && (
+                <div id="passphrase" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Frase de verificación interna"
+                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
+                      className="mb-4"
+                    />
+                    <PassphraseEditor token={token} initial={ownerPassphrase} />
                   </Card>
                 </div>
+              )}
 
               {/* Sheets del negocio — movido a /oficina/integraciones porque
                   es config per-organización, no per-empleado (los mappings ya

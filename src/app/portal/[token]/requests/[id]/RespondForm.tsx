@@ -163,7 +163,11 @@ export default function RespondForm(props: Props) {
     await submit({
       response_text: notes.trim() || undefined,
       response_files: filesPayload,
-      response_action: props.requestType === 'action' ? action : props.requestType === 'approval' ? (approvalDecision === 'approved' ? 'done' : 'cannot_do') : undefined,
+      response_action: props.requestType === 'action'
+        ? action
+        : props.requestType === 'approval' && approvalDecision
+          ? (approvalDecision === 'approved' ? 'done' : 'cannot_do')
+          : undefined,
     });
   }
 
@@ -238,22 +242,48 @@ export default function RespondForm(props: Props) {
 
           {props.requestType === 'approval' && (
             <>
-              <div className="flex flex-col gap-2 mb-3">
-                {(['approved','rejected'] as const).map(d => (
-                  <label key={d} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
-                    <input type="radio" name="approval" value={d} checked={approvalDecision === d} onChange={() => setApprovalDecision(d)} />
-                    {d === 'approved' ? 'Aprobado' : 'Rechazado'}
-                  </label>
-                ))}
-              </div>
-              <label className="block mb-3">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Motivo / notas</span>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 w-full text-sm px-3 py-2 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 80 }} />
+              <label className="block mb-4">
+                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu respuesta para el empleado</span>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="mt-1 w-full text-sm px-3 py-2 rounded-lg border"
+                  style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 100 }}
+                  placeholder="Ejemplo: 'Rango $8,000 a $15,000 según alcance' o 'Sí, autorizo el descuento' o instrucciones detalladas..."
+                />
               </label>
-              <div>
+
+              <div className="mb-4">
                 <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Adjuntos (opcional)</p>
                 <FileDropzone files={files} setFiles={setFiles} />
               </div>
+
+              <details className="rounded-lg border" style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface-2)' }}>
+                <summary className="text-xs cursor-pointer px-3 py-2" style={{ color: 'var(--c-text-3)' }}>
+                  Marcar decisión formal (opcional) {approvalDecision ? `— ${approvalDecision === 'approved' ? 'Autorizado' : 'No autorizado'}` : ''}
+                </summary>
+                <div className="px-3 pb-3 pt-1 flex flex-col gap-2">
+                  <p className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                    Solo si el empleado te pidió un sí/no explícito.
+                  </p>
+                  {(['approved','rejected'] as const).map(d => (
+                    <label key={d} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
+                      <input type="radio" name="approval" value={d} checked={approvalDecision === d} onChange={() => setApprovalDecision(d)} />
+                      {d === 'approved' ? 'Autorizado' : 'No autorizado'}
+                    </label>
+                  ))}
+                  {approvalDecision && (
+                    <button
+                      type="button"
+                      onClick={() => setApprovalDecision(null)}
+                      className="text-[11px] self-start underline"
+                      style={{ color: 'var(--c-text-4)' }}
+                    >
+                      Quitar decisión
+                    </button>
+                  )}
+                </div>
+              </details>
             </>
           )}
 
