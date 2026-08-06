@@ -54,7 +54,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
   const needsInbound  = filtro === 'entrantes';
   const needsOutbound = filtro === 'salientes';
 
-  const [callsRes, leadsRes, ordersRes, apptsRes, contactsRes, campaignsRes] = await Promise.all([
+  const [callsRes, leadsRes, ordersRes, apptsRes, outboundHistoryRes] = await Promise.all([
     // Always fetch calls for entrantes (default); skip for outbound-only tabs
     needsInbound
       ? supabase.from('voice_calls').select('*').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(200)
@@ -68,11 +68,13 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
     showAppts && needsInbound
       ? supabase.from('appointments_voice').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
+    // Historial de llamadas salientes ya realizadas (para tab Salientes)
     showOutbound && needsOutbound
-      ? supabase.from('outbound_contacts').select('id,nombre,telefono,motivo,source,status,fail_count,created_at').in('agent_id', agentIds).order('created_at', { ascending: false }).limit(500)
-      : Promise.resolve({ data: [] }),
-    showOutbound && needsOutbound
-      ? supabase.from('outbound_campaigns').select('*').in('agent_id', agentIds).order('created_at', { ascending: false })
+      ? supabase.from('outbound_calls')
+          .select('id,agent_id,telefono,nombre,motivo,status,called_at,completed_at,duration_sec,ended_reason,campaign_id')
+          .in('agent_id', agentIds)
+          .order('called_at', { ascending: false })
+          .limit(200)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -155,8 +157,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
         showOutbound={showOutbound}
         initOutbound={initOutbound}
         initMissedCall={initMissedCall}
-        contactOutbound={contactsRes.data ?? []}
-        outboundCampaigns={campaignsRes.data ?? []}
+        outboundHistory={(outboundHistoryRes.data ?? []) as any[]}
         outboundAgents={outboundAgents}
         callerNames={callerNames}
         agentNameById={agentNameById}

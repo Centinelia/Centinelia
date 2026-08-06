@@ -9,6 +9,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
+import ContactTags from './oficina/ContactTags';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ interface Contact {
   status:     'pending' | 'calling' | 'completed' | 'failed' | 'cancelled';
   fail_count: number;
   created_at: string;
+  tags?:      string[];
 }
 
 interface Agent {
@@ -515,12 +517,21 @@ export default function OutboundSection({
   const pendingContacts = contacts.filter(c => c.status === 'pending');
   const selectedPending = [...selected].filter(id => contacts.find(c => c.id === id && c.status === 'pending'));
 
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+
+  const allTagsFromContacts = useMemo(() => {
+    const bag = new Set<string>();
+    for (const c of contacts) for (const t of c.tags ?? []) bag.add(t);
+    return Array.from(bag).sort();
+  }, [contacts]);
+
   const visibleContacts = useMemo(() => {
     const q = contactSearch.trim().toLowerCase();
     return contacts
       .filter(c => sourceFilter === 'all' || c.source === sourceFilter)
+      .filter(c => !tagFilter || (c.tags ?? []).includes(tagFilter))
       .filter(c => !q || c.nombre?.toLowerCase().includes(q) || c.telefono.includes(q));
-  }, [contacts, sourceFilter, contactSearch]);
+  }, [contacts, sourceFilter, contactSearch, tagFilter]);
 
   const visiblePending = visibleContacts.filter(c => c.status === 'pending');
 
@@ -611,6 +622,24 @@ export default function OutboundSection({
     } finally {
       setContactSaving(false);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const handleTagsChange = async (contactId: string, tags: string[]) => {
+    // Optimistic update
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, tags } : c));
+    try {
+      const res = await fetch(`/api/portal/${token}/salientes/contacts/${contactId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tags }),
+      });
+      if (!res.ok) throw new Error('save failed');
+    } catch {
+      // Revert en caso de error
+      setContactError('No se pudieron guardar los tags');
+      const res = await fetch(`/api/portal/${token}/salientes/contacts`);
+      if (res.ok) setContacts(await res.json());
     }
   };
 
@@ -719,7 +748,7 @@ export default function OutboundSection({
             <div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Contactos</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                Selecciona contactos y el empleado los llama.
+                Tu base de contactos. Agrégales tags para que las campañas los llamen por segmento.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -808,6 +837,38 @@ export default function OutboundSection({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Tag filter chips (segmentación) */}
+          {allTagsFromContacts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] mr-1" style={{ color: '#6B6480' }}>Tags:</span>
+              <button
+                onClick={() => setTagFilter(null)}
+                className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                style={{
+                  background: tagFilter === null ? '#1A0A3B' : '#ffffff',
+                  color:      tagFilter === null ? '#ffffff' : '#6B6480',
+                  border:     tagFilter === null ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
+                }}
+              >
+                Todos
+              </button>
+              {allTagsFromContacts.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTagFilter(t)}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                  style={{
+                    background: tagFilter === t ? '#6C3BFF' : '#ffffff',
+                    color:      tagFilter === t ? '#ffffff' : '#6B6480',
+                    border:     tagFilter === t ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Work queue panel */}
           {pendingContacts.length > 0 && (
@@ -978,6 +1039,12 @@ export default function OutboundSection({
                       <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
                         {[c.motivo, narrativeStatus(c)].filter(Boolean).join(' · ')}
                       </p>
+                      <div className="mt-2" onClick={e => e.stopPropagation()}>
+                        <ContactTags
+                          tags={c.tags ?? []}
+                          onChange={tags => handleTagsChange(c.id, tags)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

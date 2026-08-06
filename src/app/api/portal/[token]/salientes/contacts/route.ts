@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data, error } = await createAdminClient()
     .from('outbound_contacts')
-    .select('*')
+    .select('id,nombre,telefono,motivo,source,status,fail_count,created_at,tags')
     .in('agent_id', access.ids)
     .order('created_at', { ascending: false });
 

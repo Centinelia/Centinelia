@@ -7,11 +7,13 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Card, SectionHeader } from '@/components/portal-ui';
 import type { VoiceCall } from '@/types/agent';
 import type { LlamadasFiltro } from './page';
-import CallsSearch      from '../../CallsSearch';
-import DownloadCallsCSV from '../../DownloadCallsCSV';
-import OutboundSection  from '../../OutboundSection';
+import CallsSearch          from '../../CallsSearch';
+import DownloadCallsCSV     from '../../DownloadCallsCSV';
+import OutboundHistoryList  from '../OutboundHistoryList';
+import type { OutboundCallRow } from '../OutboundHistoryList';
+import Link                 from 'next/link';
 // LeadsTabsSection removed (all-time, no period filter) — data reflected in /inicio KPIs
-// OutboundToggles moved to /configurar > Horarios y automatizaciones
+// OutboundToggles moved to /configurar > Herramientas > Llamadas salientes
 
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
@@ -38,8 +40,7 @@ interface Props {
   showOutbound:      boolean;
   initOutbound:      boolean;
   initMissedCall:    boolean;
-  contactOutbound:   any[];
-  outboundCampaigns: any[];
+  outboundHistory:   OutboundCallRow[];
   outboundAgents:    OutboundAgent[];
   callerNames:       Record<string, string>;
   agentNameById?:    Record<string, string>;
@@ -76,7 +77,7 @@ export default function LlamadasTabs({
   calls, leads, orders, appts,
   showLeads, showOrders, showAppts,
   showOutbound, initOutbound, initMissedCall,
-  contactOutbound, outboundCampaigns, outboundAgents,
+  outboundHistory, outboundAgents,
   callerNames, agentNameById, counters,
 }: Props) {
   const router   = useRouter();
@@ -210,26 +211,29 @@ export default function LlamadasTabs({
         </>
       )}
 
-      {/* Salientes */}
+      {/* Salientes — historial de llamadas salientes ya realizadas.
+          Contactos y campañas viven en /oficina/campanas. */}
       {filtro === 'salientes' && showOutbound && (
         <>
-          {/* OutboundToggles moved to /configurar > Horarios y automatizaciones */}
-          {initOutbound && (
-            <OutboundSection
-              token={token}
-              initialContacts={contactOutbound}
-              initialCampaigns={outboundCampaigns}
-              agents={outboundAgents}
-              initialTab="contactos"
-              show="contactos"
-            />
-          )}
-          {!initOutbound && (
+          {initOutbound ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h2 className="text-base font-semibold" style={{ color: '#1A0A3B' }}>Historial de llamadas salientes</h2>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
+                    Todas las llamadas que tus empleados han hecho. Para lanzar nuevas, usa{' '}
+                    <Link href={`/portal/${token}/oficina/campanas`} className="font-medium underline" style={{ color: '#6C3BFF' }}>Campañas</Link>.
+                  </p>
+                </div>
+              </div>
+              <OutboundHistoryList calls={outboundHistory} agentNameById={agentNameById ?? {}} />
+            </div>
+          ) : (
             <Card padding="md">
               <EmptyState
                 icon={PhoneOutgoing}
                 title="Llamadas salientes desactivadas"
-                description="Activa esta función desde Configurar tu empleado > Horarios y automatizaciones."
+                description="Activa esta función desde Configurar tu empleado > Herramientas > Llamadas salientes."
                 size="sm"
               />
             </Card>
