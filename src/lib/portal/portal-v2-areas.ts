@@ -97,59 +97,11 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     directHref: `/portal/${t}/agentes`,
   });
 
-  // ── 4. Oficina (only if hasOpsAgent) ──────────────────────────────────────
-  if (hasOpsAgent) {
-    all.push({
-      id: 'oficina',
-      label: 'Oficina',
-      iconName: 'Briefcase',
-      moduleId: 'oficina',
-      directHref: `/portal/${t}/oficina`,
-      subGroups: [
-        {
-          label: 'Actividad',
-          items: [
-            { label: 'Hoy en la oficina', href: `/portal/${t}/oficina` },
-            { label: 'Bandeja',           href: `/portal/${t}/oficina/bandeja` },
-            { label: 'Llamadas',          href: `/portal/${t}/oficina/llamadas?filtro=entrantes` },
-            { label: 'Salientes',         href: `/portal/${t}/oficina/llamadas?filtro=salientes` },
-            { label: 'Mesa de ayuda',     href: `/portal/${t}/oficina/bandeja?tipo=helpdesk` },
-          ],
-        },
-        {
-          label: 'Análisis',
-          items: [
-            { label: 'Reportes',       href: `/portal/${t}/oficina/reportes` },
-            { label: 'Cómo trabajamos', href: `/portal/${t}/oficina/aprendizajes` },
-            { label: 'Investigación',  href: `/portal/${t}/oficina/investigacion` },
-          ],
-        },
-        {
-          label: 'Documentos',
-          items: [
-            { label: 'Documentos', href: `/portal/${t}/oficina/documentos` },
-            { label: 'Contratos',  href: `/portal/${t}/oficina/contratos` },
-            { label: 'Plantillas', href: `/portal/${t}/oficina/plantillas` },
-          ],
-        },
-        {
-          label: 'Programado',
-          items: [
-            { label: 'Tareas programadas', href: `/portal/${t}/oficina/tareas-programadas` },
-            { label: 'Juntas',             href: `/portal/${t}/oficina/juntas` },
-            { label: 'Onboarding',         href: `/portal/${t}/oficina/onboarding` },
-            { label: 'Encuestas',          href: `/portal/${t}/oficina/encuestas` },
-          ],
-        },
-        {
-          label: 'Sistema',
-          items: [
-            { label: 'Integraciones', href: `/portal/${t}/oficina/integraciones` },
-          ],
-        },
-      ],
-    });
-  }
+  // ── 4. Oficina ───────────────────────────────────────────────────────────
+  // Oficina YA NO se agrega como grupo del nav — es EL PRODUCTO y merece
+  // trato protagonista. Se renderiza como CTA card destacado arriba del
+  // sidebar (ver PortalSidebarV2). Aquí solo dejamos la marca del ID
+  // documentada para futuros lectores.
 
   // ── 5. Llamadas (only if !hasOpsAgent) ────────────────────────────────────
   if (!hasOpsAgent) {

@@ -18,20 +18,22 @@ function groupIds(input: BuildNavInput) {
 // ─── test suites ──────────────────────────────────────────────────────────────
 
 describe('buildPortalNav', () => {
-  // 1. Owner con ops ve todos los grupos incluida Oficina
-  it('owner con ops ve todos los grupos: inicio, negocio, agentes, oficina, cuenta, usuarios', () => {
+  // 1. Owner con ops: Oficina YA NO está en el nav flat — vive como CTA
+  // protagonista arriba del sidebar (ver PortalSidebarV2). El resto de
+  // grupos ordinarios sí se listan.
+  it('owner con ops: nav flat sin oficina (es CTA protagonista)', () => {
     const ids = groupIds(base);
     expect(ids).toContain('inicio');
     expect(ids).toContain('negocio');
     expect(ids).toContain('agentes');
-    expect(ids).toContain('oficina');
+    expect(ids).not.toContain('oficina'); // ← CTA protagonista, no grupo
     expect(ids).not.toContain('llamadas'); // hasOpsAgent=true → Llamadas hidden
     expect(ids).toContain('cuenta');
     expect(ids).toContain('usuarios');
   });
 
-  // 2. Owner sin ops ve Inicio, Organización, Empleados, Llamadas, Cuenta, Usuarios (SIN Oficina)
-  it('owner sin ops ve llamadas en vez de oficina', () => {
+  // 2. Owner sin ops ve Inicio, Organización, Empleados, Llamadas, Cuenta, Usuarios
+  it('owner sin ops ve llamadas', () => {
     const ids = groupIds({ ...base, hasOpsAgent: false });
     expect(ids).toContain('inicio');
     expect(ids).toContain('negocio');
@@ -42,46 +44,7 @@ describe('buildPortalNav', () => {
     expect(ids).toContain('usuarios');
   });
 
-  // 3. Oficina tiene exactamente 5 sub-grupos con los items correctos
-  it('Oficina tiene 5 sub-grupos con conteos correctos', () => {
-    const groups = buildPortalNav(base);
-    const oficina = groups.find(g => g.id === 'oficina')!;
-    expect(oficina).toBeDefined();
-    expect(oficina.subGroups).toHaveLength(5);
-
-    const [actividad, analisis, documentos, programado, sistema] = oficina.subGroups!;
-
-    expect(actividad.label).toBe('Actividad');
-    expect(actividad.items).toHaveLength(4);
-
-    expect(analisis.label).toBe('Análisis');
-    expect(analisis.items).toHaveLength(3);
-
-    expect(documentos.label).toBe('Documentos');
-    expect(documentos.items).toHaveLength(3);
-
-    expect(programado.label).toBe('Programado');
-    expect(programado.items).toHaveLength(4);
-
-    expect(sistema.label).toBe('Sistema');
-    expect(sistema.items).toHaveLength(1);
-  });
-
-  // 3b. Oficina Actividad sub-group items correctos
-  it('Oficina > Actividad contiene los 4 items correctos', () => {
-    const groups = buildPortalNav(base);
-    const oficina = groups.find(g => g.id === 'oficina')!;
-    const actividad = oficina.subGroups![0];
-    const labels = actividad.items.map(i => i.label);
-    expect(labels).toEqual([
-      'Hoy en la oficina',
-      'Bandeja',
-      'Llamadas',
-      'Mesa de ayuda',
-    ]);
-  });
-
-  // 4. Llamadas (no-ops) tiene sub-grupos Entrantes; Salientes solo si showOutbound
+  // 3. Llamadas (no-ops) tiene sub-grupos Entrantes; Salientes solo si showOutbound
   it('Llamadas sin outbound tiene solo sub-grupo Entrantes', () => {
     const groups = buildPortalNav({ ...base, hasOpsAgent: false, showOutbound: false });
     const llamadas = groups.find(g => g.id === 'llamadas')!;
@@ -105,7 +68,7 @@ describe('buildPortalNav', () => {
     expect(labels).toEqual(['Permisos', 'Campañas', 'Contactos']);
   });
 
-  // 5. Sub-usuario con modules=['agentes'] solo ve Empleados (y Cuenta y Usuarios no aparecen)
+  // 4. Sub-usuario con modules=['agentes'] solo ve Empleados
   it('sub-usuario modules=["agentes"] ve solo agentes (y Usuarios no pasa porque !isOwner)', () => {
     const ids = groupIds({
       ...base,
@@ -114,27 +77,23 @@ describe('buildPortalNav', () => {
       modules: ['agentes'],
     });
     expect(ids).toContain('agentes');
-    // No 'inicio' (moduleId='inicio' not in ['agentes'])
     expect(ids).not.toContain('inicio');
-    // No 'negocio'
     expect(ids).not.toContain('negocio');
-    // No 'llamadas' (moduleId='llamadas' not in ['agentes'])
     expect(ids).not.toContain('llamadas');
-    // No 'cuenta' (moduleId='cuenta' not in ['agentes'])
     expect(ids).not.toContain('cuenta');
-    // No 'usuarios' (owner-only guard, isOwner=false)
     expect(ids).not.toContain('usuarios');
   });
 
-  // 6. Sub-usuario con modules=['llamadas'] ve Oficina (special case) o Llamadas top-level
-  it('sub-usuario con modules=["llamadas"] y hasOpsAgent=true ve Oficina (special case)', () => {
+  // 5. Sub-usuario con modules=['llamadas'] y hasOpsAgent=true — Oficina ya no
+  //    aparece en el nav (es CTA). El acceso a Oficina no depende del nav flat.
+  it('sub-usuario con modules=["llamadas"] y hasOpsAgent=true no ve oficina en nav flat', () => {
     const ids = groupIds({
       ...base,
       hasOpsAgent: true,
       isOwner: false,
       modules: ['llamadas'],
     });
-    expect(ids).toContain('oficina');
+    expect(ids).not.toContain('oficina'); // CTA protagonista, no en flat nav
     expect(ids).not.toContain('llamadas'); // hasOpsAgent=true → Llamadas group never generated
   });
 
@@ -146,10 +105,10 @@ describe('buildPortalNav', () => {
       modules: ['llamadas'],
     });
     expect(ids).toContain('llamadas');
-    expect(ids).not.toContain('oficina'); // hasOpsAgent=false → Oficina never generated
+    expect(ids).not.toContain('oficina');
   });
 
-  // 7. Usuarios y permisos solo aparece si isOwner
+  // 6. Usuarios y permisos solo aparece si isOwner
   it('Usuarios aparece solo cuando isOwner=true', () => {
     const ownerIds = groupIds({ ...base, isOwner: true });
     const subIds = groupIds({ ...base, isOwner: false });
@@ -157,7 +116,7 @@ describe('buildPortalNav', () => {
     expect(subIds).not.toContain('usuarios');
   });
 
-  // 8. tabParam y directHref correctos
+  // 7. tabParam y directHref correctos
   it('Inicio tiene tabParam="inicio" y no directHref', () => {
     const groups = buildPortalNav(base);
     const inicio = groups.find(g => g.id === 'inicio')!;
@@ -184,12 +143,6 @@ describe('buildPortalNav', () => {
     expect(cuenta.tabParam).toBe('cuenta');
   });
 
-  it('Oficina tiene directHref=/portal/tok123/oficina', () => {
-    const groups = buildPortalNav(base);
-    const oficina = groups.find(g => g.id === 'oficina')!;
-    expect(oficina.directHref).toBe('/portal/tok123/oficina');
-  });
-
   it('todos los hrefs contienen el token', () => {
     const groups = buildPortalNav({ ...base, token: 'MYTOK' });
     for (const g of groups) {
@@ -205,13 +158,13 @@ describe('buildPortalNav', () => {
     }
   });
 
-  // Group order verification
-  it('grupos en orden correcto: inicio, negocio, agentes, oficina, cuenta, usuarios', () => {
+  // Group order verification (sin oficina — es CTA protagonista)
+  it('grupos con ops en orden: inicio, negocio, agentes, cuenta, usuarios', () => {
     const ids = groupIds(base);
-    expect(ids).toEqual(['inicio', 'negocio', 'agentes', 'oficina', 'cuenta', 'usuarios']);
+    expect(ids).toEqual(['inicio', 'negocio', 'agentes', 'cuenta', 'usuarios']);
   });
 
-  it('grupos en orden correcto sin ops: inicio, negocio, agentes, llamadas, cuenta, usuarios', () => {
+  it('grupos sin ops en orden: inicio, negocio, agentes, llamadas, cuenta, usuarios', () => {
     const ids = groupIds({ ...base, hasOpsAgent: false });
     expect(ids).toEqual(['inicio', 'negocio', 'agentes', 'llamadas', 'cuenta', 'usuarios']);
   });

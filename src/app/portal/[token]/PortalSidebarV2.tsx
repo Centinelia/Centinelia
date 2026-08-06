@@ -120,7 +120,7 @@ function isGroupActive(group: NavGroup, token: string, path: string, search: str
 
 export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   const { currentPath, currentSearch = '', status, ...input } = props;
-  const { token } = input;
+  const { token, hasOpsAgent } = input;
 
   const groups = buildPortalNav(input);
 
@@ -185,7 +185,54 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
       aria-label="Navegación principal"
       className="sticky top-14 flex h-[calc(100vh-56px)] w-[260px] shrink-0 flex-col self-start border-r border-neutral-200/80 bg-[#FAFAFB]"
     >
-      <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+      {/* CTA protagonista: Oficina — el producto, no un item más del nav */}
+      {hasOpsAgent && (
+        <div className="px-3 pt-4 pb-2">
+          <Link
+            href={`/portal/${token}/oficina`}
+            className={[
+              'group relative flex items-center gap-3 rounded-xl px-3.5 py-3',
+              'text-white overflow-hidden',
+              TRANSITION,
+              FOCUS_RING,
+            ].join(' ')}
+            style={{
+              background: 'linear-gradient(135deg, #1A0A3B 0%, #2A1470 50%, #6C3BFF 100%)',
+              boxShadow:  '0 6px 20px rgba(108,59,255,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
+            }}
+          >
+            {/* Meerkat icon 40x40, misma altura visual que Centinelia brand */}
+            <img
+              src="/icons/meerkat-lucide.png"
+              alt=""
+              width={40}
+              height={40}
+              style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0, filter: 'brightness(1.15)' }}
+              draggable={false}
+            />
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(196,181,253,0.9)' }}>
+                Entra a
+              </span>
+              <span className="text-[15px] font-extrabold leading-tight tracking-tight">
+                LA OFICINA
+              </span>
+              <span className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                Tu consola de trabajo
+              </span>
+            </div>
+            <span
+              aria-hidden
+              className="text-lg transition-transform group-hover:translate-x-0.5"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              →
+            </span>
+          </Link>
+        </div>
+      )}
+
+      <ul className={`min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 ${hasOpsAgent ? 'pt-1 pb-4' : 'py-4'}`}>
         {groups.map(group => {
           const Icon = ICON_MAP[group.iconName] ?? LayoutDashboard;
           const active = isGroupActive(group, token, currentPath, currentSearch);
