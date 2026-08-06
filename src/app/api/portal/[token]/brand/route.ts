@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     email_footer_text?:    string;
     brand_website?:        string;
     brand_address?:        string;
+    brand_phone?:          string;
     brand_color_secondary?: string;
   };
 
@@ -31,6 +32,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if ('email_footer_text'    in body) patch.email_footer_text    = body.email_footer_text    ?? null;
   if ('brand_website'        in body) patch.brand_website        = body.brand_website        ?? null;
   if ('brand_address'        in body) patch.brand_address        = body.brand_address        ?? null;
+  if ('brand_phone'          in body) patch.brand_phone          = body.brand_phone          ?? null;
   if ('brand_color_secondary' in body) patch.brand_color_secondary = body.brand_color_secondary ?? null;
 
   if (!Object.keys(patch).length) return NextResponse.json({ ok: true });

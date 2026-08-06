@@ -12,6 +12,7 @@ interface Props {
   initialColorSecondary: string;
   initialWebsite:      string;
   initialAddress:      string;
+  initialPhone:        string;
   initialFooter:       string;
 }
 
@@ -23,11 +24,12 @@ const PRESET_COLORS = [
 
 export default function BrandKitEditor({
   token, logoUrl, businessName, agentName,
-  initialColor, initialColorSecondary, initialWebsite, initialAddress, initialFooter,
+  initialColor, initialColorSecondary, initialWebsite, initialAddress, initialPhone, initialFooter,
 }: Props) {
   const [color,    setColor]    = useState(initialColor          || '#6C3BFF');
   const [color2,   setColor2]   = useState(initialColorSecondary || '');
   const [website,  setWebsite]  = useState(initialWebsite        || '');
+  const [phone,    setPhone]    = useState(initialPhone          || '');
   const [address,  setAddress]  = useState(initialAddress        || '');
   const [footer,   setFooter]   = useState(initialFooter         || '');
   const [colorOpen,  setColorOpen]  = useState(false);
@@ -47,6 +49,7 @@ export default function BrandKitEditor({
           email_footer_text:     footer  || null,
           brand_website:         website || null,
           brand_address:         address || null,
+          brand_phone:           phone   || null,
         }),
       });
       setSaved(true);
@@ -152,7 +155,7 @@ export default function BrandKitEditor({
       </div>
 
       {/* ── Datos de contacto ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
             Sitio web
@@ -162,6 +165,19 @@ export default function BrandKitEditor({
             value={website}
             onChange={e => setWebsite(e.target.value)}
             placeholder="https://tuempresa.mx"
+            className="w-full text-sm rounded-lg px-3 py-2"
+            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+            Teléfono de contacto
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="81 1234 5678"
             className="w-full text-sm rounded-lg px-3 py-2"
             style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
           />

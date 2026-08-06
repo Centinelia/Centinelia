@@ -134,7 +134,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
@@ -859,6 +859,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
                     initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
                     initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                    initialPhone={orgSettings?.brand_phone ?? ''}
                     initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                   />
                 </div>

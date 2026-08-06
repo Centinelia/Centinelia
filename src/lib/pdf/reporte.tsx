@@ -4,12 +4,15 @@ import type { BrandKit } from '@/lib/brand/kit';
 
 export interface ReporteData {
   period:       string;
+  clientName?:  string;   // Nombre del cliente al que se le entrega el reporte
   totalCalls:   number;
   leads:        number;
   appointments: number;
   orders:       number;
   minutesUsed:  number;
   minutesTotal: number;
+  tasksUsed:    number;   // ai_ops_used del período
+  tasksTotal:   number;   // ai_ops_limit del período
   outcomeBreakdown: { outcome: string; label: string; count: number; color: string }[];
   topHours?:    { hour: number; count: number }[];
 }
@@ -74,12 +77,15 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
   const accent = brand.color || '#6C3BFF';
   const pct    = data.minutesTotal > 0 ? Math.min(Math.round((data.minutesUsed / data.minutesTotal) * 100), 100) : 0;
   const barCol = pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#22C55E';
+  const tasksPct    = data.tasksTotal > 0 ? Math.min(Math.round((data.tasksUsed / data.tasksTotal) * 100), 100) : 0;
+  const tasksBarCol = tasksPct >= 90 ? '#EF4444' : tasksPct >= 70 ? '#F59E0B' : '#22C55E';
 
   // Executive summary: 1-2 sentences narrating what happened
   const summarize = () => {
-    if (data.totalCalls === 0) return 'Este período no registró actividad.';
+    if (data.totalCalls === 0 && data.tasksUsed === 0) return 'Este período no registró actividad.';
     const parts = [];
-    parts.push(`${data.totalCalls} ${data.totalCalls === 1 ? 'llamada atendida' : 'llamadas atendidas'}`);
+    if (data.totalCalls > 0)   parts.push(`${data.totalCalls} ${data.totalCalls === 1 ? 'llamada atendida' : 'llamadas atendidas'}`);
+    if (data.tasksUsed > 0)    parts.push(`${data.tasksUsed} ${data.tasksUsed === 1 ? 'tarea completada' : 'tareas completadas'}`);
     if (data.leads > 0)        parts.push(`${data.leads} ${data.leads === 1 ? 'lead capturado' : 'leads capturados'}`);
     if (data.appointments > 0) parts.push(`${data.appointments} ${data.appointments === 1 ? 'cita agendada' : 'citas agendadas'}`);
     if (data.orders > 0)       parts.push(`${data.orders} ${data.orders === 1 ? 'pedido tomado' : 'pedidos tomados'}`);
@@ -96,7 +102,7 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
       {/* ═══ HERO — período grande estilo editorial ═══════════════════════════ */}
       <View style={{ marginBottom: 32, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: HAIRLINE }}>
         <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
-          Reporte de actividad
+          Reporte de actividad{data.clientName ? ` · Preparado para ${data.clientName}` : ''}
         </Text>
         <Text style={{ fontSize: 32, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.5, lineHeight: 1.1 }}>
           {data.period}
@@ -117,35 +123,54 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
         </View>
       </View>
 
-      {/* ═══ 02 CONSUMO ═══════════════════════════════════════════════════════ */}
+      {/* ═══ 02 CONSUMO — minutos + tareas ══════════════════════════════════ */}
       <View style={{ marginBottom: 28 }}>
-        <SectionOrdinal n={2} title="Consumo de minutos" color={accent} />
-        <View style={{ paddingVertical: 18, paddingHorizontal: 20, backgroundColor: MUTED_BG, borderRadius: 6 }}>
-          <View style={[S.spaceBetween, { alignItems: 'baseline', marginBottom: 14 }]}>
-            <View>
-              <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.8, lineHeight: 1 }}>
+        <SectionOrdinal n={2} title="Consumo del período" color={accent} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+
+          {/* Minutos */}
+          <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED_TXT, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+              Minutos de llamadas
+            </Text>
+            <View style={[S.spaceBetween, { alignItems: 'baseline', marginBottom: 10 }]}>
+              <Text style={{ fontSize: 22, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.6, lineHeight: 1 }}>
                 {data.minutesUsed}
-                <Text style={{ fontSize: 14, color: MUTED_TXT }}> / {data.minutesTotal} min</Text>
+                <Text style={{ fontSize: 11, color: MUTED_TXT }}> / {data.minutesTotal}</Text>
               </Text>
-              <Text style={{ fontSize: 8, color: MUTED_TXT, marginTop: 6, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                Consumido este período
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color: barCol, letterSpacing: -0.8, lineHeight: 1 }}>
+              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: barCol, letterSpacing: -0.3, lineHeight: 1 }}>
                 {pct}%
               </Text>
-              <Text style={{ fontSize: 8, color: MUTED_TXT, marginTop: 6, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                Del plan mensual
+            </View>
+            <View style={{ height: 5, backgroundColor: '#FFFFFF', borderRadius: 3 }}>
+              <View style={{ height: 5, width: `${pct}%`, backgroundColor: barCol, borderRadius: 3 }} />
+            </View>
+            <Text style={{ fontSize: 8, color: SUBINK, marginTop: 8 }}>
+              Restan {Math.max(0, data.minutesTotal - data.minutesUsed)} minutos
+            </Text>
+          </View>
+
+          {/* Tareas */}
+          <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED_TXT, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+              Tareas automatizadas
+            </Text>
+            <View style={[S.spaceBetween, { alignItems: 'baseline', marginBottom: 10 }]}>
+              <Text style={{ fontSize: 22, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.6, lineHeight: 1 }}>
+                {data.tasksUsed}
+                <Text style={{ fontSize: 11, color: MUTED_TXT }}> / {data.tasksTotal}</Text>
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: tasksBarCol, letterSpacing: -0.3, lineHeight: 1 }}>
+                {tasksPct}%
               </Text>
             </View>
+            <View style={{ height: 5, backgroundColor: '#FFFFFF', borderRadius: 3 }}>
+              <View style={{ height: 5, width: `${tasksPct}%`, backgroundColor: tasksBarCol, borderRadius: 3 }} />
+            </View>
+            <Text style={{ fontSize: 8, color: SUBINK, marginTop: 8 }}>
+              Restan {Math.max(0, data.tasksTotal - data.tasksUsed)} tareas
+            </Text>
           </View>
-          <View style={{ height: 6, backgroundColor: '#FFFFFF', borderRadius: 3 }}>
-            <View style={{ height: 6, width: `${pct}%`, backgroundColor: barCol, borderRadius: 3 }} />
-          </View>
-          <Text style={{ fontSize: 9, color: SUBINK, marginTop: 12 }}>
-            Te quedan <Text style={{ fontFamily: 'Helvetica-Bold', color: INK }}>{Math.max(0, data.minutesTotal - data.minutesUsed)} minutos</Text> disponibles para el resto del período.
-          </Text>
         </View>
       </View>
 
