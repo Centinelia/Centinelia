@@ -180,6 +180,7 @@ export function approvalEmailHtml(opts: {
       ${invoiceSection}
       ${draftSection}
 
+      ${draft ? `
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
         <tr>
           <td style="padding-right:8px;width:50%">
@@ -194,6 +195,10 @@ export function approvalEmailHtml(opts: {
       <div style="text-align:center">
         <a href="${portalUrl}" style="color:${MUTE};font-size:12px;text-decoration:none">Ver en el portal →</a>
       </div>
+      ` : `
+      <a href="${portalUrl}" style="display:block;text-align:center;background:#6C3BFF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 12px;border-radius:12px;margin-bottom:16px">Revisar en el portal</a>
+      <p style="color:${MUTE};font-size:12px;text-align:center;margin:0 0 4px">No hay borrador listo. Redacta la respuesta desde la bandeja.</p>
+      `}
 
     </div>
     <div style="text-align:center;padding:24px 0 0">

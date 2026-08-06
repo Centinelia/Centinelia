@@ -46,6 +46,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
         Tu empleado lee el correo del negocio (Oficina → Integraciones) y aprende cómo se toman decisiones en su área.
         Si 3 de 10 correos hablan de ventas, el empleado de ventas analiza esos 3 y extrae las reglas implícitas de tu organización.
+        Los aprendizajes se guardan en <strong style={{ color: 'var(--c-text-2)' }}>Rol y Personalidad → Responsabilidades → Aprendizajes del rol</strong>, donde puedes editarlos o borrarlos.
       </p>
 
       {state === 'no-email' && (
@@ -138,7 +139,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                     Se guardaron en <strong style={{ color: 'var(--c-text-2)' }}>Responsabilidades → Aprendizajes del rol</strong>. Edítalos ahí si es necesario.
                   </p>
                   <a
-                    href="#rol"
+                    href="?tab=personalidad#rol"
                     className="self-start flex items-center gap-1 text-[11px] font-medium"
                     style={{ color: '#6C3BFF' }}
                   >

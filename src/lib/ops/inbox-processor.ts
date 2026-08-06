@@ -640,10 +640,16 @@ Ejemplo E: Cliente pide factura pero no dio RFC ni razón social.
 → needs_info: true
 → request_to_sender: "Para emitirte la factura confirma: RFC, razón social, uso CFDI y forma de pago."
 
+Ejemplo F: Correo vago sin contexto suficiente. Ej. subject="Cita" o "Cotización" con body vacío, de una sola línea, o sin datos concretos.
+→ needs_info: true
+→ request_to_sender: acuse breve + 2-3 preguntas específicas para desbloquear. Ejemplo para "Cita": "Hola, gracias por escribirnos. Para agendar tu cita necesito: 1) el servicio que buscas, 2) 2-3 opciones de fecha/horario que te acomoden, 3) un teléfono donde te podamos contactar. Con esos datos te confirmo horario disponible."
+→ NUNCA dejes draft=null y needs_info=false en correos legítimos vagos — eso deja al humano sin nada que aprobar. Si el correo NO es spam ni fraude, tienes que emitir needs_info+request_to_sender (correo vago) o draft (correo claro).
+
 REGLA DE ORO — NO NEGOCIABLE:
 - needs_info=true SIEMPRE requiere request_to_sender con texto real.
 - Si necesitas info del equipo interno (no del remitente), USA LA TOOL pedir_a_humano, NUNCA needs_info=true.
 - Si dudas entre "escalar al equipo" o "pedir al remitente": ¿la info que necesito la tiene el remitente mismo? Sí → needs_info + request_to_sender. No → pedir_a_humano.
+- En correo legítimo (no spam) SIEMPRE emites algo accionable: draft, needs_info+request_to_sender, o pedir_a_humano. Nunca las tres en null.
 
 Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false y llena "draft".
 
