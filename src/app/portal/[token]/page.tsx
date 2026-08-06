@@ -936,8 +936,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           {tab === 'cuenta' && (
             <div className="flex flex-col gap-5">
 
-              {/* Contrato de servicios: 1 firma por cliente cubre a todos los
-                  empleados actuales y futuros. Ver [[contract-at-organization-level]]. */}
+              {/* Header — patrón consistente con /inicio y /agentes */}
+              <div>
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+                  TU CUENTA
+                </p>
+                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Plan y consumo</h1>
+                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  Revisa tu uso del mes, compra saldo extra y consulta el historial de movimientos.
+                </p>
+              </div>
+
+              {/* Contrato de servicios */}
               <div id="contrato">
                 <ContractSection
                   token={token}
@@ -947,15 +957,42 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px_300px] gap-5 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 
                 {/* ── Col 1: Uso + Compras + Recarga ── */}
-                <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <div className="flex flex-col gap-5" id="minutos">
 
-                  {/* ── Uso del mes: minutos + tareas en una sola tarjeta ── */}
-                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (
-                    <div id="uso-del-mes" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Uso del mes</h2>
+                  {/* ── Uso del mes: bloque destacado cuando saldo bajo, normal cuando no ── */}
+                  {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
+                    const warnPct = Math.max(minutesPct, aiOpsPct);
+                    const isLow = warnPct >= 80;
+                    return (
+                    <div id="uso-del-mes" className={isLow ? "rounded-2xl overflow-hidden" : "rounded-xl p-5"}
+                      style={isLow ? {
+                        background: 'linear-gradient(180deg, rgba(239,68,68,0.06) 0%, var(--c-surface) 100%)',
+                        border: '2px solid rgba(239,68,68,0.3)',
+                        boxShadow: '0 4px 20px rgba(239,68,68,0.08)',
+                      } : { background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                      <div className={isLow ? "px-5 pt-5 pb-4 flex items-center gap-3" : ""} style={isLow ? { borderBottom: '1px solid var(--c-border-2)' } : {}}>
+                        {isLow && (
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.35)' }}>
+                            <AlertTriangle size={18} color="#fff" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <h2 className={isLow ? "text-base font-bold" : "text-xs font-semibold mb-4 tracking-widest uppercase"}
+                            style={{ color: isLow ? '#dc2626' : 'var(--c-text-3)' }}>
+                            {isLow ? 'Tu saldo está bajando' : 'Uso del mes'}
+                          </h2>
+                          {isLow && (
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                              Considera recargar antes del reset para no interrumpir el servicio.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className={isLow ? "p-5" : ""}>
                       <div className="flex flex-col gap-4">
                         {minutesIncluded > 0 && (
                           <div>
@@ -991,8 +1028,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           </div>
                         )}
                       </div>
+                      </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* ── Comprar: minutos + tareas en una sola tarjeta ── */}
                   {(() => {
@@ -1000,7 +1039,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     const bgStyle  = warnPct >= 70 ? 'rgba(108,59,255,0.03)' : 'var(--c-surface)';
                     const bdrStyle = warnPct >= 90 ? '1px solid rgba(239,68,68,0.35)' : warnPct >= 70 ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)';
                     return (
-                      <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                      <div id="comprar" className="rounded-xl p-5" style={{ background: bgStyle, border: bdrStyle }}>
                         <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Comprar saldo</h2>
                         {warnPct >= 70 && (
                           <p className="text-xs mb-2 flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
@@ -1038,7 +1077,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     );
                   })()}
 
-                  <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                  <div id="recarga" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                     <h3 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Recarga automática</h3>
                     <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
                     <AutoRefillSection token={token} />
@@ -1046,9 +1085,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
 
                 {/* ── Col 2: Consumo promedio + Historial de minutos ── */}
-                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <div className="flex flex-col gap-5">
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                       <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
                       <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
                         {allCalls.length > 0 && (
@@ -1070,8 +1109,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   )}
-                  <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Historial de minutos</h2>
+                  <div id="historial" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Movimientos recientes</h2>
                     <div className="relative">
                       <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
                         <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
@@ -1080,13 +1119,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
                     </div>
                   </div>
-                </div>
-
-                {/* ── Col 3: Serial ── */}
-                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  {accountSerial && (
-                    <AccountSerialBadge serial={accountSerial} variant="card" />
-                  )}
                 </div>
 
               </div>
@@ -1474,8 +1506,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           <PageContainer>
             <div className="flex flex-col gap-5">
 
-              {/* Contrato de servicios: 1 firma por cliente cubre a todos los
-                  empleados actuales y futuros. Ver [[contract-at-organization-level]]. */}
+              {/* Header — patrón consistente con /inicio y /agentes */}
+              <div>
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+                  TU CUENTA
+                </p>
+                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Plan y consumo</h1>
+                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  Revisa tu uso del mes, compra saldo extra y consulta el historial de movimientos.
+                </p>
+              </div>
+
+              {/* Contrato de servicios */}
               <div id="contrato">
                 <ContractSection
                   token={token}
@@ -1489,7 +1531,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* ── Col 1: Uso + Compras + Recarga (fused A6) + Contratos ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Minutos · Tareas · Recarga" as="h2" />}>
+                  <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Consumo, compras y recarga" as="h2" />}>
                     <CuentaUsageTabsCard
                       usoContent={
                         <>

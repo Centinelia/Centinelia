@@ -307,7 +307,7 @@ export default async function AgentesPage({ params }: Props) {
   const activeAgentsCount = agents.filter(a =>
     (a.active as boolean) && !(a.client_paused as boolean) && (a.billing_status as string) !== 'pago_fallido'
   ).length;
-  const totalCallsMonth = Object.values(callCountMap).reduce((sum, c) => sum + (c as number), 0);
+  const totalCallsMonth = Object.values(callCountMap).reduce<number>((sum, c) => sum + (c as number), 0);
   const totalOpsMonth   = agents.reduce((sum, a) => sum + ((a.ai_ops_used as number) ?? 0), 0);
   const agentsWithRole  = agents.filter(a => !!((a.role as string | null)?.trim())).length;
   const rolePct         = agents.length > 0 ? Math.round((agentsWithRole / agents.length) * 100) : 0;

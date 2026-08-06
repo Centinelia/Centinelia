@@ -29,10 +29,10 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
       }}
     >
       {/* Pill tab bar */}
-      <div className="px-5 pt-4 pb-0">
+      <div className="p-5">
         <Tabs.Root defaultValue="uso" variant="pill">
           <Tabs.List>
-            <Tabs.Trigger value="uso">Minutos</Tabs.Trigger>
+            <Tabs.Trigger value="uso">Uso</Tabs.Trigger>
             <Tabs.Trigger value="comprar">Comprar</Tabs.Trigger>
             <Tabs.Trigger value="recarga">Recarga</Tabs.Trigger>
           </Tabs.List>
