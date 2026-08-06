@@ -26,6 +26,7 @@ import BuyMinutesSection       from './BuyMinutesSection';
 import BuyOpsSection           from './BuyOpsSection';
 import AnnualContractCallout   from './AnnualContractCallout';
 import MinutesLedgerSection    from './MinutesLedgerSection';
+import HistorialConsumoSection from './HistorialConsumoSection';
 import CallCard                from './CallCard';
 import DownloadCallsCSV        from './DownloadCallsCSV';
 import PeakHoursChart          from './PeakHoursChart';
@@ -1688,11 +1689,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                 {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
-                  <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
+                  <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de consumo" as="h2" />}>
                     <Card id="historial" padding="md">
                       <div className="relative">
-                        <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
-                          <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                        <div className="overflow-y-auto" style={{ maxHeight: '520px', paddingRight: 12 }}>
+                          {agent.portal_email ? (
+                            <HistorialConsumoSection
+                              portalEmail={agent.portal_email as string}
+                              agentIds={allClientAgents.length > 0 ? allClientAgents.map(a => a.id) : [agent.id]}
+                              minutesIncluded={minutesIncluded}
+                              callerNames={callerNames}
+                            />
+                          ) : (
+                            <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
+                          )}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
                           style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
