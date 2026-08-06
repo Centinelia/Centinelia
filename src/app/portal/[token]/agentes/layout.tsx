@@ -15,6 +15,7 @@ import PortalFooter                     from '../PortalFooter';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
 import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
+import { getOrCreateSerial }            from '@/lib/portal/serial';
 
 export default async function AgentesLayout({
   children,
@@ -64,6 +65,7 @@ export default async function AgentesLayout({
   const hasOpsAgent  = allClientAgents.some((a: any) => !!(a.role as string | null)); // eslint-disable-line @typescript-eslint/no-explicit-any
   const showOutbound = !!(agent.features as any)?.outbound_calls; // eslint-disable-line @typescript-eslint/no-explicit-any
   const hasStripe    = !!(agent as any).stripe_customer_id;
+  const accountSerial = lookupEmail ? await getOrCreateSerial(lookupEmail) : null;
 
   // Usage data
   const { data: acctMins } = lookupEmail
@@ -126,6 +128,7 @@ export default async function AgentesLayout({
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
             hasStripe={hasStripe}
+            accountSerial={accountSerial}
             isOwner={isOwner}
             modules={modules}
             headerActions={

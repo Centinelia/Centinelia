@@ -12,8 +12,11 @@ import OficinaSidebar                   from './OficinaSidebar';
 import OficinaMobileNav                 from './OficinaMobileNav';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
+import PortalShell                      from '../PortalShell';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
+import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
+import { getOrCreateSerial }            from '@/lib/portal/serial';
 
 // Next.js 15 generates Promise<unknown> for nested layout params;
 // use Promise<any> so the type is compatible at the call site.
@@ -29,6 +32,9 @@ export default async function OficinaLayout({
 
   const cookieStore = await cookies();
   const session     = await verifySession(cookieStore.get(PORTAL_COOKIE)?.value ?? '');
+
+  const isOwner = !session?.isSubUser;
+  const modules = session?.isSubUser ? (session.modules ?? []) : undefined;
 
   const supabase = createAdminClient();
   const { data: agent } = await supabase
@@ -52,15 +58,23 @@ export default async function OficinaLayout({
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
 
   const { data: opsAgents } = lookupEmail
-    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
+    ? await supabase.from('voice_agents').select('role, features, ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
     : { data: null };
-  const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
-  const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
-  const hasStripe  = !!(agent as any).stripe_customer_id;
-  const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
-  const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;
+  const opsAgentsList = (opsAgents ?? []) as any[];
+  const aiOpsUsed     = opsAgentsList.reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit    = opsAgentsList.reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
+  const hasStripe     = !!(agent as any).stripe_customer_id;
+  const vertical      = ((agent as any).features as any)?.vertical as string | undefined;
+  const hasOpsAgent   = opsAgentsList.some(a => !!(a.role as string | null));
+  const showOutbound  = !!((agent.features as any)?.outbound_calls);
+  const accountSerial = lookupEmail ? await getOrCreateSerial(lookupEmail) : null;
 
-  // Business switcher options
+  // V2 flag
+  const v2Enabled = agent.portal_email
+    ? await isPortalV2Enabled(agent.portal_email)
+    : false;
+
+  // Business switcher options (V1 only)
   const { data: clientAgents } = lookupEmail
     ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token').eq('portal_email', lookupEmail)
     : { data: [] };
@@ -151,6 +165,50 @@ export default async function OficinaLayout({
     }
   }
 
+  // Content column — shared between V1 y V2
+  const mainColumn = (
+    <div className="flex-1 min-w-0 flex flex-col">
+      <div className="px-4 sm:px-6 py-6 flex-1">
+        {children}
+      </div>
+      <PortalFooter token={token} />
+    </div>
+  );
+
+  // ── V2 layout: mismo shell del portal (Header + SidebarV2) ─────────────
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+          <PortalShell
+            orgId={agent.portal_email ?? ''}
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null}
+            hasOpsAgent={hasOpsAgent}
+            showOutbound={showOutbound}
+            minutesRemain={minutesRemain}
+            minutesIncluded={minutesIncluded}
+            aiOpsUsed={aiOpsUsed}
+            aiOpsLimit={aiOpsLimit}
+            hasStripe={hasStripe}
+            accountSerial={accountSerial}
+            isOwner={isOwner}
+            modules={modules}
+            headerActions={
+              <>
+                <NotificationBell token={token} onDark />
+                <PortalLogout onDark />
+              </>
+            }
+            main={mainColumn}
+          />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // ── V1 layout: mantener sidebar/header legacy (a eliminar pronto) ──────
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
