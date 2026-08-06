@@ -191,7 +191,6 @@ export interface VoiceAgent {
   // Role configuration extras
   role_learnings?: string | null;
   approval_email?: string | null;
-  allow_bug_reports?: boolean | null;
   // Account status
   client_paused?: boolean | null;
   // Extended email branding

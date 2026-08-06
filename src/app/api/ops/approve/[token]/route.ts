@@ -40,13 +40,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const agentName    = agent?.agent_name ?? 'Centinelia';
     const businessName = agent?.business_name ?? 'Negocio';
 
-    // Resolver connector: per-org primero, per-agent fallback. Sin esto el reply
-    // sale desde notificaciones@centinelia.mx (Resend) en lugar de la cuenta
-    // Gmail/Outlook del negocio, y el cliente ve un remitente ajeno al hilo.
+    // Resolver connector: per-agent primero (identidad del empleado), per-org
+    // fallback. Sin esta prioridad, empleados con su propio correo (ej. Noah
+    // con verdantismx@gmail.com) veían sus respuestas salir desde el correo
+    // organizacional (nazre20@gmail.com) — remitente ajeno al hilo del cliente.
     type IntegrationRow = Parameters<typeof getConnector>[0];
     let integration: IntegrationRow | null = null;
 
-    if (agent?.portal_email) {
+    const { data: perAgent } = await supabase
+      .from('email_integrations')
+      .select('*')
+      .eq('agent_id', item.agent_id)
+      .eq('needs_reauth', false)
+      .maybeSingle();
+    if (perAgent) integration = perAgent as IntegrationRow;
+
+    if (!integration && agent?.portal_email) {
       const { data: orgAcct } = await supabase
         .from('integration_accounts')
         .select('provider, account_label, access_token, refresh_token, expires_at, status')
@@ -70,25 +79,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
       }
     }
 
-    if (!integration) {
-      const { data: perAgent } = await supabase
-        .from('email_integrations')
-        .select('*')
-        .eq('agent_id', item.agent_id)
-        .maybeSingle();
-      if (perAgent) integration = perAgent as IntegrationRow;
-    }
-
     let sentViaConnector = false;
     if (integration) {
       try {
         const conn = await getConnector(integration, supabase);
+        const fromDisplay = businessName ? `${agentName} - ${businessName}` : agentName;
         await conn.email.sendReply({
           messageId: (item.raw_message_id as string | null) ?? '',
           threadId:  (item.thread_id as string | null) ?? undefined,
           to:        item.email_from as string,
           subject:   (item.email_subject as string | null) ?? '',
           body:      item.ai_draft as string,
+          fromDisplay,
         });
         sentViaConnector = true;
       } catch (err) {

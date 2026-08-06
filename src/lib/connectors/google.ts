@@ -116,12 +116,30 @@ class GoogleEmail implements EmailConnector {
     });
   }
 
-  async sendReply({ messageId, threadId, to = '', subject = '', body }: ReplyParams): Promise<void> {
+  private async getAuthenticatedEmail(): Promise<string | null> {
+    try {
+      const res = await fetch(`${GMAIL}/profile`, { headers: this.h() });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data.emailAddress as string | undefined) ?? null;
+    } catch { return null; }
+  }
+
+  async sendReply({ messageId, threadId, to = '', subject = '', body, fromDisplay }: ReplyParams): Promise<void> {
     const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
     const encodedSubject = encodeHeaderRFC2047(replySubject);
     const refId = threadId ?? messageId;
+    // From con display name: "Noah - Pneuma Studio <cuenta@gmail.com>". Gmail
+    // acepta cambios de nombre visible pero la dirección debe ser la cuenta
+    // autenticada. Si no podemos obtener el email autenticado, omitimos From.
+    let fromHeader: string | null = null;
+    if (fromDisplay?.trim()) {
+      const authEmail = await this.getAuthenticatedEmail();
+      if (authEmail) fromHeader = `${encodeHeaderRFC2047(fromDisplay.trim())} <${authEmail}>`;
+    }
     const raw = [
       `To: ${to}`,
+      ...(fromHeader ? [`From: ${fromHeader}`] : []),
       `Subject: ${encodedSubject}`,
       `In-Reply-To: ${refId}`,
       `References: ${refId}`,

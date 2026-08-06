@@ -58,16 +58,24 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
     ? 'always' as const
     : baseAutoMode;
 
-  // Build sendReplyFn — resolver correo per-org primero, per-agent fallback.
-  // Sin este fallback, orgs que conectaron Gmail solo a nivel organizacional
-  // caen en pending sin enviar aunque autoMode='always'. Mismo patrón que
-  // /api/cron/learn (commit f93698d9).
+  // Build sendReplyFn — para SEND prioriza per-agent (identidad del empleado)
+  // y solo cae a per-org (integration_accounts) si el agente no tiene su propia
+  // conexión. Es lo opuesto a /api/cron/learn donde per-org es fuente de verdad
+  // del aprendizaje. Aquí es identidad del remitente.
   let sendReplyFn: ((body: string) => Promise<void>) | undefined;
 
   type IntegrationRow = Parameters<typeof getConnector>[0];
   let integration: IntegrationRow | null = null;
 
-  if (agent.portal_email) {
+  const { data: perAgent } = await supabase
+    .from('email_integrations')
+    .select('*')
+    .eq('agent_id', request.agent_id)
+    .eq('needs_reauth', false)
+    .maybeSingle();
+  if (perAgent) integration = perAgent as IntegrationRow;
+
+  if (!integration && agent.portal_email) {
     const { data: orgAcct } = await supabase
       .from('integration_accounts')
       .select('provider, account_label, access_token, refresh_token, expires_at, status')
@@ -91,24 +99,21 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
     }
   }
 
-  if (!integration) {
-    const { data: perAgent } = await supabase
-      .from('email_integrations')
-      .select('*')
-      .eq('agent_id', request.agent_id)
-      .maybeSingle();
-    if (perAgent) integration = perAgent as IntegrationRow;
-  }
-
   if (integration) {
     try {
       const conn = await getConnector(integration, supabase);
+      const agentDisplayName = ((agent.agent_name as string | null)?.trim()) || null;
+      const businessDisplayName = ((agent.business_name as string | null)?.trim()) || null;
+      const fromDisplay = agentDisplayName
+        ? (businessDisplayName ? `${agentDisplayName} - ${businessDisplayName}` : agentDisplayName)
+        : undefined;
       sendReplyFn = (body: string) => conn.email.sendReply({
         messageId: inbox.raw_message_id as string ?? '',
         threadId:  inbox.thread_id   as string | undefined,
         to:        inbox.email_from  as string,
         subject:   inbox.email_subject as string ?? '',
         body,
+        fromDisplay,
       });
     } catch (err) {
       console.error('[resume] could not build sendReplyFn, degrading to pending:', err);

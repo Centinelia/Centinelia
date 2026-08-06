@@ -1257,13 +1257,19 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   const notifyTo  = approvalEmail || ownerEmail;
 
   if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
-    await sendReplyFn(result.requestToSender).catch(err =>
-      console.error('[ops/inbox-processor] info_requested send failed:', err)
-    );
+    try {
+      await sendReplyFn(result.requestToSender);
+      if (item?.id) {
+        await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
+      }
+    } catch (err) {
+      console.error('[ops/inbox-processor] info_requested send failed:', err);
+    }
 
   } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
       await sendReplyFn(result.draft);
+      await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
     } catch (err) {
       console.error('[ops/inbox-processor] auto_reply send failed:', err);
       // Degrade to pending so a human sees it

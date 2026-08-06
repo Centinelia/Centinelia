@@ -36,6 +36,12 @@ export interface ReplyParams {
   to?:       string;
   subject?:  string;
   body:      string;
+  /**
+   * Display name para el header From, e.g. "Noah - Pneuma Studio". La dirección
+   * real siempre es la cuenta autenticada por OAuth. Gmail/Outlook aceptan
+   * cambios de display name pero ignoran/rechazan direcciones no verificadas.
+   */
+  fromDisplay?: string;
 }
 
 export interface EmailConnector {
