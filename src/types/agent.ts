@@ -299,4 +299,5 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   nash_active_healthcheck: 'Nash — health-check activo de admin',
   nash_anomaly_detection:  'Nash — detección de anomalías en datos',
   nash_cron_enabled:       'Nash — cron cada 10 min',
+  outbound_capabilities:   '',
 };

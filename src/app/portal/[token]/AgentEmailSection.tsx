@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, RefreshCw, User } from 'lucide-react';
+import { Mail, CheckCircle, Loader2, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -11,7 +11,6 @@ interface AgentEmail {
   email:         string;
   last_sync_at:  string | null;
   needs_reauth:  boolean;
-  send_as_email: string | null;
 }
 
 // ── Provider config ───────────────────────────────────────────────────────────
@@ -21,7 +20,6 @@ const PROVIDERS = [
     id:        'gmail' as const,
     label:     'Gmail',
     areaDesc:  'Google Workspace o Gmail del área',
-    aliasNote: 'Para que funcione, este correo debe estar añadido como alias verificado en la cuenta de Gmail conectada (Configuración → Cuentas e importación → Enviar correo como).',
     color:     '#EA4335',
     icon: (
       <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
@@ -34,7 +32,6 @@ const PROVIDERS = [
     id:        'outlook' as const,
     label:     'Outlook',
     areaDesc:  'Microsoft 365 o Outlook del área',
-    aliasNote: 'Para que funcione, el administrador de Microsoft 365 debe otorgar el permiso "Enviar como" para esta dirección en Exchange Admin Center.',
     color:     '#0078D4',
     icon: (
       <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
@@ -65,8 +62,6 @@ export default function AgentEmailSection({ token }: { token: string }) {
   const [connections,   setConnections]   = useState<AgentEmail[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
-  const [sendAsDraft,   setSendAsDraft]   = useState<Record<string, string>>({});
-  const [savingSendAs,  setSavingSendAs]  = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,25 +82,10 @@ export default function AgentEmailSection({ token }: { token: string }) {
       const data = await res.json();
       const conns: AgentEmail[] = data.connections ?? [];
       setConnections(conns);
-      setSendAsDraft(Object.fromEntries(conns.map(c => [c.provider, c.send_as_email ?? ''])));
     } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
-
-  async function saveSendAs(provider: 'gmail' | 'outlook') {
-    setSavingSendAs(provider);
-    try {
-      await fetch(`/api/portal/${token}/agent-email`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ provider, send_as_email: sendAsDraft[provider] || null }),
-      });
-      setConnections(prev => prev.map(c =>
-        c.provider === provider ? { ...c, send_as_email: sendAsDraft[provider] || null } : c,
-      ));
-    } finally { setSavingSendAs(null); }
-  }
 
   async function disconnect(provider: 'gmail' | 'outlook') {
     const label = provider === 'gmail' ? 'Gmail' : 'Outlook';
@@ -129,8 +109,6 @@ export default function AgentEmailSection({ token }: { token: string }) {
       </div>
     );
   }
-
-  const anyConnected = connections.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
