@@ -732,39 +732,45 @@ export default async function AgentesPage({ params }: Props) {
   );
 
   const billingAlertBanner = pausedByBilling.length > 0 ? (
-    <div className="rounded-2xl p-5"
-      style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(239,68,68,0.12)' }}>
-          <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+    <div className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(239,68,68,0.08) 0%, var(--c-surface) 100%)',
+        border: '2px solid rgba(239,68,68,0.3)',
+        boxShadow: '0 4px 20px rgba(239,68,68,0.08)',
+      }}>
+      <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.35)' }}>
+          <AlertTriangle size={18} color="#fff" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold" style={{ color: '#dc2626' }}>
-            {pausedByBilling.length} {pausedByBilling.length === 1 ? 'empleado pausado' : 'empleados pausados'} por falta de pago
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>
-            Cada empleado tiene su propia suscripción. Al resolver el pago de uno, solo ese se reactiva; los demás siguen su ciclo normal.
+          <h2 className="text-base font-bold" style={{ color: '#dc2626' }}>
+            {pausedByBilling.length} {pausedByBilling.length === 1 ? 'empleado pausado por falta de pago' : 'empleados pausados por falta de pago'}
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            Cada empleado tiene su propia suscripción. Al resolver el pago de uno, solo ese se reactiva.
           </p>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="p-5 flex flex-col gap-2">
         {pausedByBilling.map(a => {
           const name = ((a.agent_name as string | null)?.trim()) || 'Empleado';
           const role = ((a.role as string | null)?.trim()) || null;
           return (
             <a key={a.id as string}
               href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl no-underline transition-opacity hover:opacity-85"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+              className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: '#ef4444' }}>
+                <AlertTriangle size={16} color="#fff" />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{name}</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{name}</p>
                 {role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{role}</p>}
               </div>
               <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                style={{ background: 'rgba(239,68,68,0.1)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.25)' }}>
-                Resolver pago →
-              </span>
+                style={{ background: '#ef4444', color: '#fff' }}>Resolver</span>
             </a>
           );
         })}
@@ -772,15 +778,18 @@ export default async function AgentesPage({ params }: Props) {
     </div>
   ) : null;
 
-  // ─── V1 body (unchanged legacy layout) ──────────────────────────────────────
+  // ─── V1 body (unified with /inicio look & feel) ─────────────────────────────
   const pageBodyV1 = (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
 
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+      {/* Page header — patrón consistente con /inicio */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
+          <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+            Tu equipo
+          </p>
           <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Mis Empleados</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
             {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
           </p>
         </div>
@@ -803,13 +812,13 @@ export default async function AgentesPage({ params }: Props) {
         />
       )}
 
-      {/* Empleados pausados por pago — banner consolidado */}
+      {/* Empleados pausados por pago — banner destacado (urgencia) */}
       {billingAlertBanner}
 
       {/* Empty state */}
       {agents.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-20 rounded-2xl"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+        <div className="flex flex-col items-center gap-3 py-20 rounded-xl"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
             <Bot size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
@@ -818,13 +827,13 @@ export default async function AgentesPage({ params }: Props) {
         </div>
       )}
 
-      {/* Agent cards */}
+      {/* Agent cards — el catálogo del equipo */}
       {agentCardsGrid}
 
-      {/* Banner cobertura de capacidades */}
+      {/* Cobertura funcional — banner rebrandeado */}
       {capabilityBanner}
 
-      {/* Ranking del equipo */}
+      {/* Ranking del equipo — tiene su propio wrapper card */}
       <AgentRankingSection token={token} />
 
     </div>
@@ -862,7 +871,7 @@ export default async function AgentesPage({ params }: Props) {
           />
         )}
 
-        {/* Empleados pausados por pago — banner consolidado */}
+        {/* Empleados pausados por pago — banner destacado (urgencia) */}
         {billingAlertBanner}
 
         {/* Empty state */}
@@ -879,8 +888,11 @@ export default async function AgentesPage({ params }: Props) {
         {/* Agent cards */}
         {agents.length > 0 && agentCardsGrid}
 
-        {/* Banner cobertura de capacidades */}
+        {/* Cobertura funcional */}
         {capabilityBanner}
+
+        {/* Ranking del equipo */}
+        <AgentRankingSection token={token} />
 
       </PageSection>
 
