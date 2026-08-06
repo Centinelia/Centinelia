@@ -34,6 +34,11 @@ interface InboxItem {
   auto_mode_flag_reason:   string | null;
   auto_mode_flag_category: string | null;
   client_replied_at:       string | null;
+  // Dispatcher metadata (fase 2 — bandeja compartida org)
+  origin_scope:            'per_agent' | 'org_shared' | null;
+  assigned_by:             'per_agent' | 'rule' | 'llm' | 'fallback' | 'human' | null;
+  assignment_confidence:   number | null;
+  assignment_metadata:     Record<string, unknown> | null;
 }
 
 interface HumanRequest {
@@ -119,6 +124,24 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
   })();
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(initialCategory);
 
+  type ScopeFilter = 'all' | 'org_shared' | 'per_agent';
+  const initialScope: ScopeFilter = (() => {
+    const s = searchParams.get('origen');
+    if (s === 'compartida') return 'org_shared';
+    if (s === 'propia')     return 'per_agent';
+    return 'all';
+  })();
+  const [activeScope, setActiveScope] = useState<ScopeFilter>(initialScope);
+
+  const changeScope = useCallback((next: ScopeFilter) => {
+    setActiveScope(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === 'all') params.delete('origen');
+    else params.set('origen', next === 'org_shared' ? 'compartida' : 'propia');
+    router.replace(`?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const changeCategory = useCallback((next: CategorySlug | null) => {
     setActiveCategory(next);
     const params = new URLSearchParams(searchParams.toString());
@@ -198,6 +221,41 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       closeCorrection();
     } finally {
       setSendingCorrection(false);
+    }
+  };
+
+  const handleReassign = async (id: string, newAgentId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/portal/${token}/ops-inbox/${id}/reassign`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ agent_id: newAgentId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? 'No se pudo reasignar.');
+        return false;
+      }
+      const data = await res.json() as { agent_name?: string };
+      // Update optimista
+      setItems(prev => prev.map(x =>
+        x.id === id
+          ? {
+              ...x,
+              agent_id:            newAgentId,
+              assigned_by:         'human',
+              assignment_metadata: {
+                ...(x.assignment_metadata ?? {}),
+                reassigned_at: new Date().toISOString(),
+              },
+            }
+          : x,
+      ));
+      toast.success(`Reasignado a ${data.agent_name ?? 'nuevo empleado'}.`);
+      return true;
+    } catch {
+      toast.error('No se pudo reasignar.');
+      return false;
     }
   };
 
@@ -294,9 +352,15 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       (i.ai_summary    ?? '').toLowerCase().includes(q) ||
       (i.category      ?? '').toLowerCase().includes(q)
     );
-    if (!activeCategory) return bySearch;
-    return bySearch.filter(i => normalizeCategory(i.category) === activeCategory);
-  }, [tabItems, search, activeCategory]);
+    const byCategory = !activeCategory
+      ? bySearch
+      : bySearch.filter(i => normalizeCategory(i.category) === activeCategory);
+    if (activeScope === 'all') return byCategory;
+    // 'per_agent' matchea también rows históricas sin origin_scope (null)
+    if (activeScope === 'per_agent')
+      return byCategory.filter(i => i.origin_scope === 'per_agent' || !i.origin_scope);
+    return byCategory.filter(i => i.origin_scope === 'org_shared');
+  }, [tabItems, search, activeCategory, activeScope]);
 
   const attentionItems = useMemo(
     () => filteredItems.filter(i => i.status === 'escalated' || i.status === 'info_requested'),
@@ -351,6 +415,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             if (opening) markRead(item.id);
           }}
           showStateBadge={showStateBadge}
+          onReassign={handleReassign}
         />
 
         {/* Expanded body */}

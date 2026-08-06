@@ -22,7 +22,6 @@ import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
-import BrandVoiceEditor              from '../BrandVoiceEditor';
 import GoalsSection                  from '../GoalsSection';
 import GuardrailsEditor              from '../GuardrailsEditor';
 import HeartbeatEditor               from '../HeartbeatEditor';
@@ -100,10 +99,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     : null;
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase = orgRow?.owner_passphrase ?? '';
-  const brandVoiceGuide = (orgRow as { brand_voice_guide?: string | null } | null)?.brand_voice_guide ?? '';
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -240,7 +238,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           // y haga scroll al anchor correspondiente.
           const pending = [
             !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
-            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'conocimiento', anchor: 'rol'      },
+            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'personalidad', anchor: 'rol'      },
             !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'personalidad', anchor: 'llamadas' },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
@@ -312,18 +310,30 @@ export default async function ConfigurarAgentePage({ params }: Props) {
               {/* Idioma movido a /negocio#idioma en 2026-08-06.
                   Era config per-org disfrazada de per-empleado. */}
 
-              {!isCoordinator && (
-                <div id="tono-de-marca" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Tono de marca"
-                      tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico."
-                      className="mb-4"
-                    />
-                    <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
-                  </Card>
-                </div>
+              {/* Tono de marca movido a /negocio#branding en 2026-08-06.
+                  Era config per-org (organizations.brand_voice_guide). */}
+
+              <div id="rol" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Responsabilidades, objetivos y conducta"
+                    tooltip="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario."
+                    className="mb-4"
+                  />
+                  <AgentKnowledgeBaseEditor
+                    token={token}
+                    initialRole={(agent as any).role ?? ''}
+                    initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
+                    initialRoleKb={(agent as any).role_knowledge_base ?? ''}
+                    initialLearnings={(agent as any).role_learnings ?? ''}
+                    websiteSynced={!!((agent as any).website_knowledge)}
+                    hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
+                    colorLocked={colorLocked}
+                    roleLocked={!!meerkatId}
+                  />
+                </Card>
+              </div>
               )}
 
               {!isCoordinator && (
@@ -350,27 +360,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                  Qué sabe y qué le toca hacer.                              */}
             <div className="flex flex-col gap-5">
 
-              <div id="rol" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Responsabilidades, objetivos y conducta"
-                    tooltip="Define el rol de este empleado: qué hace, cómo se comporta y qué reglas sigue en su trabajo diario."
-                    className="mb-4"
-                  />
-                  <AgentKnowledgeBaseEditor
-                    token={token}
-                    initialRole={(agent as any).role ?? ''}
-                    initialRoleColor={((agent as any).features as any)?.role_color ?? ''}
-                    initialRoleKb={(agent as any).role_knowledge_base ?? ''}
-                    initialLearnings={(agent as any).role_learnings ?? ''}
-                    websiteSynced={!!((agent as any).website_knowledge)}
-                    hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
-                    colorLocked={colorLocked}
-                    roleLocked={!!meerkatId}
-                  />
-                </Card>
-              </div>
+              {/* 'Responsabilidades, objetivos y conducta' movido a tab
+                  Rol y Personalidad (2026-08-06). Es la definición del rol,
+                  no una pieza de conocimiento adquirido. */}
 
               <div id="dod" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">

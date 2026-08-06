@@ -46,6 +46,7 @@ import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
 import MultilingualToggle     from './MultilingualToggle';
+import BrandVoiceEditor       from './BrandVoiceEditor';
 import OutboundSection           from './OutboundSection';
 import AutoRefillSection         from './AutoRefillSection';
 import IntegrationsHub           from './IntegrationsHub';
@@ -136,7 +137,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
@@ -1549,6 +1550,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         initialPhone={orgSettings?.brand_phone ?? ''}
                         initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                       />
+                    </Card>
+                  </PageSection>
+                </div>
+
+                <div id="tono-de-marca" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Tono de marca" as="h2" tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Todos tus empleados hablarán como tu marca, no con un tono genérico." />}>
+                    <Card padding="md">
+                      <BrandVoiceEditor token={token} initGuide={(orgSettings as any)?.brand_voice_guide ?? ''} />
                     </Card>
                   </PageSection>
                 </div>
