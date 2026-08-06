@@ -322,33 +322,39 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                   key={cap.id}
                   onMouseEnter={() => !isActive && setHoverCap(cap.id)}
                   onMouseLeave={() => setHoverCap(null)}
-                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity w-fit"
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg w-fit"
                   style={{
                     background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface-2)',
-                    border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
-                    opacity:    isActive ? 1 : 0.55,
+                    border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
                     cursor:     isActive ? 'default' : 'help',
                   }}
                   title={isActive ? cap.description : undefined}
                 >
                   <div
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: isActive ? '#6C3BFF' : 'var(--c-text-4)' }}
+                    style={{ background: isActive ? '#6C3BFF' : 'var(--c-text-4)', opacity: isActive ? 1 : 0.6 }}
                   />
-                  <span className="text-xs whitespace-nowrap" style={{ color: isActive ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                  <span
+                    className="text-xs whitespace-nowrap"
+                    style={{
+                      color:   isActive ? 'var(--c-text)' : 'var(--c-text-4)',
+                      opacity: isActive ? 1 : 0.85,
+                    }}
+                  >
                     {cap.label}
                   </span>
 
                   {hoverCap === cap.id && !isActive && owners.length > 0 && (
                     <div
-                      className="absolute z-10 top-full left-0 mt-1 min-w-[180px] rounded-xl shadow-lg p-2.5"
+                      className="absolute z-20 top-full left-0 mt-1.5 min-w-[190px] rounded-xl p-2.5"
                       style={{
-                        background: 'var(--c-modal)',
-                        border:     '1px solid var(--c-border)',
-                        boxShadow:  '0 8px 24px rgba(0,0,0,0.15)',
+                        background:    'var(--c-surface)',
+                        border:        '1px solid var(--c-border-2)',
+                        boxShadow:     '0 12px 32px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.15)',
+                        backdropFilter: 'none',
                       }}
                     >
-                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>
                         Lo desbloquea
                       </p>
                       <div className="flex flex-col gap-1.5">
@@ -358,7 +364,12 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                               className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden"
                               style={{ background: `${o.color}18`, border: `1px solid ${o.color}55` }}
                             >
-                              <img src={o.imagen} alt={o.nombre} className="w-full h-full object-cover" />
+                              <img
+                                src={o.imagen}
+                                alt={o.nombre}
+                                className="w-full h-full"
+                                style={{ objectFit: 'cover', objectPosition: 'center 3%' }}
+                              />
                             </div>
                             <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>
                               {o.nombre}
