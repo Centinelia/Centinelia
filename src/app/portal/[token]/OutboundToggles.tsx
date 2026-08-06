@@ -13,12 +13,14 @@ interface Props {
   agentName?:             string;
 }
 
-/** Meerkats que declaran cada capability, para el hover-tooltip discovery. */
+/** Meerkats que declaran cada capability, para el hover-tooltip discovery.
+ *  MeerkatRole.imagen es string | null (custom no tiene imagen). Coalesce
+ *  a '' para el <img src>. Custom se filtra abajo igual. */
 const CAPABILITY_OWNERS: Record<string, { id: string; nombre: string; imagen: string; color: string }[]> =
   OUTBOUND_CAPABILITIES.reduce((acc, cap) => {
     acc[cap.id] = MEERKAT_ROLES
       .filter(m => (m.features.outbound_capabilities ?? []).includes(cap.id) && m.id !== 'custom')
-      .map(m => ({ id: m.id, nombre: m.nombre, imagen: m.imagen, color: m.color }));
+      .map(m => ({ id: m.id, nombre: m.nombre, imagen: m.imagen ?? '', color: m.color }));
     return acc;
   }, {} as Record<string, { id: string; nombre: string; imagen: string; color: string }[]>);
 
