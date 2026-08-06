@@ -393,6 +393,34 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </Card>
               </div>
 
+              <div id="metas" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Metas"
+                    tooltip="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones."
+                    className="mb-4"
+                  />
+                  <GoalsSection token={token} roleColor={roleColor} />
+                </Card>
+              </div>
+
+              <div id="limites" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Límites de autoridad"
+                    tooltip="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores."
+                    className="mb-4"
+                  />
+                  <GuardrailsEditor
+                    token={token}
+                    initialValue={(agent as any).agent_guardrails ?? ''}
+                    initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
+                  />
+                </Card>
+              </div>
+
               <div id="aprendizaje" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
@@ -573,33 +601,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              <div id="metas" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Metas"
-                    tooltip="Define objetivos medibles para este empleado. El empleado conoce su avance en cada llamada y puede usarlo para priorizar y motivar sus acciones."
-                    className="mb-4"
-                  />
-                  <GoalsSection token={token} roleColor={roleColor} />
-                </Card>
-              </div>
-
-              <div id="limites" style={SCROLL_STYLE}>
-                <Card border elevated={false} padding="sm">
-                  <SectionHeader
-                    as="h2"
-                    title="Límites de autoridad"
-                    tooltip="Define qué puede hacer este empleado por su cuenta y qué debe escalar antes de actuar. Sin límites claros, el empleado adivina, y eso genera errores."
-                    className="mb-4"
-                  />
-                  <GuardrailsEditor
-                    token={token}
-                    initialValue={(agent as any).agent_guardrails ?? ''}
-                    initialGuardrailsLearnings={(agent as any).guardrails_learnings ?? ''}
-                  />
-                </Card>
-              </div>
+              {/* 'Metas' y 'Límites de autoridad' movidos a tab Conocimiento
+                  (2026-08-06). Son cosas que el empleado debe SABER (qué
+                  perseguir, hasta dónde puede llegar), no automatizaciones. */}
 
               <div id="checkin" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
