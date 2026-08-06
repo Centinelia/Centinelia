@@ -18,6 +18,9 @@ interface Props {
   initialUsers:   PortalUser[];
   accountGiro?:   string;
   accountSerial?: string;
+  /** ID del sub-usuario logueado (undefined si es owner). Se usa para ocultar
+   *  las acciones sobre su propia tarjeta y evitar auto-lockout. */
+  currentUserId?: string;
 }
 
 // ── Module Selector ────────────────────────────────────────────────────────────
@@ -306,7 +309,7 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function SubUserManager({ token, initialUsers, accountGiro, accountSerial }: Props) {
+export default function SubUserManager({ token, initialUsers, accountGiro, accountSerial, currentUserId }: Props) {
   const [users, setUsers]         = useState<PortalUser[]>(initialUsers);
   const [showAdd, setShowAdd]     = useState(false);
   const [editId, setEditId]       = useState<string | null>(null);
@@ -587,7 +590,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
                 </div>
               </div>
-              {!u.is_owner && (
+              {!u.is_owner && u.id !== currentUserId && (
                 <div className="flex items-center gap-1 shrink-0">
                   {editId !== u.id ? (
                     <>

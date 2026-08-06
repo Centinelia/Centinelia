@@ -60,8 +60,10 @@ export default async function UsuariosPage({ params }: Props) {
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)
     redirect('/portal/login');
 
-  // Only owners can access this page
-  if (session?.isSubUser) redirect(`/portal/${token}?tab=inicio`);
+  // Acceso: owner siempre; sub-usuario solo si tiene el módulo 'usuarios'
+  const canManageUsers = !session?.isSubUser || (session.modules ?? []).includes('usuarios');
+  if (!canManageUsers) redirect(`/portal/${token}?tab=inicio`);
+  const isOwnerSession = !session?.isSubUser;
 
   const { data: acctMins } = agent.portal_email
     ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', agent.portal_email).single()
@@ -121,6 +123,7 @@ export default async function UsuariosPage({ params }: Props) {
       initialUsers={(existingUsers ?? []) as any[]}
       accountGiro={(agent as any).features?.vertical ?? undefined}
       accountSerial={accountSerial ?? undefined}
+      currentUserId={session?.isSubUser ? session.userId : undefined}
     />
   );
 
@@ -190,7 +193,8 @@ export default async function UsuariosPage({ params }: Props) {
             logoUrl={(agent as any).logo_url ?? null}
             hasOpsAgent={hasOpsAgent}
             showOutbound={showOutbound}
-            isOwner={true}
+            isOwner={isOwnerSession}
+            modules={session?.isSubUser ? (session.modules ?? []) : undefined}
             minutesRemain={minutesRemain}
             minutesIncluded={minutesIncluded}
             aiOpsUsed={aiOpsUsed}
@@ -243,7 +247,8 @@ export default async function UsuariosPage({ params }: Props) {
             minutesIncluded={minutesIncluded}
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
-            isOwner={true}
+            isOwner={isOwnerSession}
+            modules={session?.isSubUser ? (session.modules ?? []) : undefined}
           />
           {pageBodyV1}
         </div>

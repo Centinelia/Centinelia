@@ -372,6 +372,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     websiteSynced={!!((agent as any).website_knowledge)}
                     hasBusinessKb={!!((agent as any).knowledge_base?.trim())}
                     colorLocked={colorLocked}
+                    roleLocked={!!meerkatId}
                   />
                 </Card>
               </div>

@@ -10,7 +10,10 @@ async function getOwnerEmail(token: string): Promise<string | null> {
   return data?.portal_email ?? null;
 }
 
-async function requireOwner(token: string): Promise<{ accountId: string } | NextResponse> {
+async function requireUsersAccess(token: string): Promise<
+  | { accountId: string; isOwner: boolean; actorUserId?: string }
+  | NextResponse
+> {
   const cookieStore   = await cookies();
   const sessionCookie = cookieStore.get(PORTAL_COOKIE)?.value ?? '';
   const session       = await verifySession(sessionCookie);
@@ -18,15 +21,19 @@ async function requireOwner(token: string): Promise<{ accountId: string } | Next
   const accountId = await getOwnerEmail(token);
   if (!accountId) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
 
-  if (process.env.NODE_ENV !== 'development') {
-    if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    if (session.portalEmail !== accountId)
-      return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
-    if (session.isSubUser)
-      return NextResponse.json({ error: 'Solo el propietario puede gestionar usuarios' }, { status: 403 });
+  if (process.env.NODE_ENV === 'development') {
+    return { accountId, isOwner: true };
   }
 
-  return { accountId };
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  if (session.portalEmail !== accountId)
+    return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
+
+  if (!session.isSubUser) return { accountId, isOwner: true };
+  if (!(session.modules ?? []).includes('usuarios'))
+    return NextResponse.json({ error: 'No tienes acceso al módulo Usuarios y permisos' }, { status: 403 });
+
+  return { accountId, isOwner: false, actorUserId: session.userId };
 }
 
 export async function GET(
@@ -34,7 +41,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const check     = await requireOwner(token);
+  const check     = await requireUsersAccess(token);
   if (check instanceof NextResponse) return check;
 
   const supabase = createAdminClient();
@@ -53,7 +60,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const check     = await requireOwner(token);
+  const check     = await requireUsersAccess(token);
   if (check instanceof NextResponse) return check;
 
   const body = await req.json() as {

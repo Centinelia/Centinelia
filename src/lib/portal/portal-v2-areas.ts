@@ -200,12 +200,13 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     ],
   });
 
-  // ── 7. Usuarios y permisos (owner-only) ───────────────────────────────────
-  if (isOwner) {
+  // ── 7. Usuarios y permisos (owner o sub-usuario con módulo 'usuarios') ────
+  if (isOwner || modules?.includes('usuarios')) {
     all.push({
       id: 'usuarios',
       label: 'Usuarios y permisos',
       iconName: 'Users',
+      moduleId: 'usuarios',
       directHref: `/portal/${t}/usuarios`,
     });
   }

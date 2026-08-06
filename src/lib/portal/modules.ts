@@ -9,16 +9,20 @@ export const PORTAL_MODULES = [
     desc: 'Manual de la organización, branding, horarios y configuración de tus empleados.',
   },
   {
-    id: 'oficina', label: 'Oficina', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
-  },
-  {
     id: 'agentes', label: 'Empleados', group: 'Portal', giros: ['all'] as string[],
     desc: 'Lista de todos los empleados Centinelia activos en la cuenta.',
   },
   {
+    id: 'oficina', label: 'Oficina', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
+  },
+  {
     id: 'cuenta', label: 'Cuenta', group: 'Portal', giros: ['all'] as string[],
     desc: 'Consumo, saldo, historial y términos de servicio de la cuenta.',
+  },
+  {
+    id: 'usuarios', label: 'Usuarios y permisos', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Administrar colaboradores del portal: crear accesos, cambiar contraseñas y asignar secciones. No incluye modificar al propietario ni a sí mismo.',
   },
   // ── Oficina general — todos los giros ───────────────────────────────────
   {
@@ -116,7 +120,7 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   'llamadas':                      'llamadas',
   'llamadas/entrantes':            'llamadas',
   'llamadas/salientes':            'salientes',
-  'usuarios':                      '__owner_only__',
+  'usuarios':                      'usuarios',
   // Oficina
   'oficina':                       'oficina',
   'oficina/bandeja':               'of_bandeja',

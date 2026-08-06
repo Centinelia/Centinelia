@@ -61,6 +61,7 @@ export default function AgentKnowledgeBaseEditor({
   websiteSynced  = false,
   hasBusinessKb  = false,
   colorLocked    = false,
+  roleLocked     = false,
 }: {
   token:             string;
   initialRole:       string;
@@ -70,6 +71,8 @@ export default function AgentKnowledgeBaseEditor({
   websiteSynced?:    boolean;
   hasBusinessKb?:    boolean;
   colorLocked?:      boolean;
+  /** Meerkats predeterminados: el puesto es fijo (Nia=recepcionista, Noah=ventas, etc.). */
+  roleLocked?:       boolean;
 }) {
   const router = useRouter();
   const [role,          setRole]          = useState(initialRole);
@@ -250,24 +253,35 @@ export default function AgentKnowledgeBaseEditor({
         <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-3)' }}>
           Puesto del empleado
         </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={role}
-            onChange={e => { setRole(e.target.value); setSavedRoleName(false); setDirtyRoleName(true); }}
-            placeholder="Ej. Coordinadora de ventas, Asistente ejecutivo..."
-            className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
-          />
-          <button
-            onClick={saveRoleName}
-            disabled={savingRoleName}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50 shrink-0"
-            style={{ background: savedRoleName ? '#22c55e' : 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: savedRoleName ? '#fff' : '#9B6DFF' }}
-          >
-            {savingRoleName ? <Loader2 size={12} className="animate-spin" /> : savedRoleName ? <><Check size={12} />Guardado</> : 'Guardar'}
-          </button>
-        </div>
+        {roleLocked ? (
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm"
+            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: roleColor }} />
+            <span className="font-medium">{role}</span>
+            <span className="ml-auto text-[10px] uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>
+              Predeterminado
+            </span>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={role}
+              onChange={e => { setRole(e.target.value); setSavedRoleName(false); setDirtyRoleName(true); }}
+              placeholder="Ej. Coordinadora de ventas, Asistente ejecutivo..."
+              className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
+              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+            />
+            <button
+              onClick={saveRoleName}
+              disabled={savingRoleName}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50 shrink-0"
+              style={{ background: savedRoleName ? '#22c55e' : 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: savedRoleName ? '#fff' : '#9B6DFF' }}
+            >
+              {savingRoleName ? <Loader2 size={12} className="animate-spin" /> : savedRoleName ? <><Check size={12} />Guardado</> : 'Guardar'}
+            </button>
+          </div>
+        )}
 
         {/* Color del rol */}
         <div className="pt-1">
