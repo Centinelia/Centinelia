@@ -115,7 +115,7 @@ export default function HistorialConsumoClient({
 
       {/* Toggle Minutos / Tareas — centrado */}
       <div className="flex justify-center mb-4">
-        <div className="inline-flex items-center gap-1 p-1 rounded-full"
+        <div className="inline-flex items-center gap-1 p-1 rounded-lg"
           style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
           {(['minutos', 'tareas'] as const).map(t => {
             const activeTab = tab === t;
@@ -123,7 +123,7 @@ export default function HistorialConsumoClient({
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className="px-5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                className="px-5 py-1.5 rounded-md text-xs font-semibold transition-all"
                 style={{
                   background: activeTab ? '#6C3BFF' : 'transparent',
                   color:      activeTab ? '#fff'    : 'var(--c-text-3)',
