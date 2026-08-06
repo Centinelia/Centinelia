@@ -31,6 +31,7 @@ export function brandKitFromAgent(
   const orgAddress = org?.brand_address as string | null | undefined;
   const orgFooter = org?.email_footer_text as string | null | undefined;
   const orgLogoUrl = org?.logo_url as string | null | undefined;
+  const orgPhone = org?.brand_phone as string | null | undefined;
 
   return {
     businessName:   (agent.business_name          as string)      ?? '',
@@ -39,7 +40,9 @@ export function brandKitFromAgent(
     logoUrl:        (orgLogoUrl                   ?? null) ?? (agent.logo_url as string|null) ?? (agent.email_logo_url as string|null) ?? null,
     color:          (orgColor      ?? null) ?? '#6C3BFF',
     colorSecondary: (orgSecondary  ?? null) ?? null,
-    phone:          (agent.phone_number            as string|null) ?? null,
+    // brand_phone es teléfono de contacto del negocio (opcional, se setea en BrandKit editor).
+    // NO usar agent.phone_number — ese es el número Twilio del empleado, no un teléfono público.
+    phone:          (orgPhone      ?? null),
     website:        (orgWebsite    ?? null) ?? null,
     address:        (orgAddress    ?? null) ?? null,
     footerText:     (orgFooter     ?? null) ?? null,
