@@ -27,9 +27,9 @@ function H2({ children }: { children: React.ReactNode }) {
   );
 }
 
-function P({ children }: { children: React.ReactNode }) {
+function P({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <p style={{ fontSize: 15, color: C.textSub, lineHeight: 1.7, marginBottom: 12 }}>
+    <p style={{ fontSize: 15, color: C.textSub, lineHeight: 1.7, marginBottom: 12, ...style }}>
       {children}
     </p>
   );
