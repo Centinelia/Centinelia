@@ -219,17 +219,35 @@ export async function POST(req: NextRequest) {
       // Si en el futuro necesitamos recuperar citas mencionadas pero no
       // agendadas via tool, hacerlo con un flujo separado + revision humana.
 
-      // 2c. Outbound contact upsert (race-safe — unique constraint on agent_id,telefono)
+      // 2c. Outbound contact dedupe por sufijo de 10 dígitos.
+      // La unique constraint es sobre expresión (RIGHT(digits, 10)), así que
+      // supabase.upsert() no funciona con onConflict de columna. Hacemos
+      // check-first: si existe contacto con este teléfono normalizado,
+      // update; si no, insert.
       const callTypeRaw   = call?.type ?? '';
       const isInboundCall = !callTypeRaw || callTypeRaw === 'inboundPhoneCall';
-      if (isInboundCall && callerNumber && durationSeconds > 5) {
-        await supabase.from('outbound_contacts').upsert({
-          agent_id: resolvedAgentId,
-          nombre:   structured?.nombre ?? null,
-          telefono: callerNumber,
-          motivo:   null,
-          source:   'llamada_entrante',
-        }, { onConflict: 'agent_id,telefono', ignoreDuplicates: true });
+      const callerSuffix  = (callerNumber ?? '').replace(/\D/g, '').slice(-10);
+      if (isInboundCall && callerSuffix.length >= 10 && durationSeconds > 5) {
+        const { data: existingContacts } = await supabase
+          .from('outbound_contacts')
+          .select('id, nombre, telefono')
+          .eq('agent_id', resolvedAgentId);
+        const existing = (existingContacts ?? []).find(c =>
+          (c.telefono as string ?? '').replace(/\D/g, '').endsWith(callerSuffix)
+        );
+        if (!existing) {
+          await supabase.from('outbound_contacts').insert({
+            agent_id: resolvedAgentId,
+            nombre:   structured?.nombre ?? null,
+            telefono: callerNumber,
+            motivo:   null,
+            source:   'llamada_entrante',
+          });
+        } else if (structured?.nombre && !existing.nombre) {
+          await supabase.from('outbound_contacts')
+            .update({ nombre: structured.nombre })
+            .eq('id', existing.id as string);
+        }
 
         if (structured?.nombre) {
           await supabase.from('outbound_contacts')
@@ -807,13 +825,27 @@ async function triggerCrossAgentQueue(
     if (structured?.nivel_interes) motiParts.push(`Nivel de interés: ${structured.nivel_interes}.`);
     if (structured?.presupuesto)   motiParts.push(`Presupuesto: ${structured.presupuesto}.`);
 
-    await supabase.from('outbound_contacts').insert({
-      agent_id: peer.id,
-      nombre:   structured?.nombre ?? null,
-      telefono: callerPhone,
-      motivo:   motiParts.join(' '),
-      source:   'cross_agent',
-    });
+    // Dedup por sufijo — no duplica si ya hay contacto con este teléfono
+    // para el peer. Match tolerante a variaciones de formato.
+    const suffix = (callerPhone ?? '').replace(/\D/g, '').slice(-10);
+    if (suffix.length >= 10) {
+      const { data: existingCross } = await supabase
+        .from('outbound_contacts')
+        .select('id, telefono')
+        .eq('agent_id', peer.id);
+      const already = (existingCross ?? []).some(c =>
+        (c.telefono as string ?? '').replace(/\D/g, '').endsWith(suffix)
+      );
+      if (!already) {
+        await supabase.from('outbound_contacts').insert({
+          agent_id: peer.id,
+          nombre:   structured?.nombre ?? null,
+          telefono: callerPhone,
+          motivo:   motiParts.join(' '),
+          source:   'cross_agent',
+        });
+      }
+    }
 
     console.log(`[cross-agent] Queued ${normPhone} → ${roleLabel} (agent ${peer.id})`);
   }

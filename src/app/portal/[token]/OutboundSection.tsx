@@ -807,7 +807,7 @@ export default function OutboundSection({
 
         {/* ── CONTACTOS ── */}
         {show !== 'campanas' && (
-        <div id="contactos" className="flex flex-col gap-4">
+        <div id="contactos" className="flex flex-col gap-4 order-2">
 
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1077,24 +1077,24 @@ export default function OutboundSection({
                   }}
                   onClick={() => c.status === 'pending' && toggle(c.id)}
                 >
-                  <div className="px-3 py-2.5 flex items-start gap-2.5">
+                  <div className="px-3 py-2 flex items-center gap-2.5">
                     {c.status === 'pending' && (
                       <input type="checkbox" checked={selected.has(c.id)}
                         onChange={() => toggle(c.id)} onClick={e => e.stopPropagation()}
-                        className="mt-0.5 flex-shrink-0"
+                        className="flex-shrink-0"
                         style={{ accentColor: '#6C3BFF' }} />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>
+                        <span className="text-[13px] font-semibold" style={{ color: 'var(--c-text)' }}>
                           {c.nombre ?? c.telefono}
                         </span>
                         {c.nombre && (
-                          <span className="text-[10px] font-mono" style={{ color: 'var(--c-text-3)' }}>
+                          <span className="text-[11px] tabular-nums" style={{ color: 'var(--c-text-4)' }}>
                             {c.telefono}
                           </span>
                         )}
-                        <StatusPill status={c.status} />
+                        {c.status !== 'pending' && <StatusPill status={c.status} />}
                         {c.fail_count > 0 && c.status !== 'completed' && c.status !== 'cancelled' && (
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums"
                             style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
@@ -1102,16 +1102,23 @@ export default function OutboundSection({
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                        {[c.motivo, narrativeStatus(c)].filter(Boolean).join(' · ')}
-                      </p>
-                      <div className="mt-2" onClick={e => e.stopPropagation()}>
+                      {(c.tags ?? []).length > 0 && (
+                        <div className="mt-1" onClick={e => e.stopPropagation()}>
+                          <ContactTags
+                            tags={c.tags ?? []}
+                            onChange={tags => handleTagsChange(c.id, tags)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {(c.tags ?? []).length === 0 && (
+                      <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
                         <ContactTags
                           tags={c.tags ?? []}
                           onChange={tags => handleTagsChange(c.id, tags)}
                         />
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1129,7 +1136,7 @@ export default function OutboundSection({
 
         {/* ── CAMPAÑAS ── */}
         {show !== 'contactos' && (
-        <div id="campanas" className="flex flex-col gap-5">
+        <div id="campanas" className="flex flex-col gap-5 order-1">
           {/* Header */}
           <div className="flex items-center justify-between gap-3">
             <div>
