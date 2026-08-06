@@ -152,7 +152,7 @@ export default async function OficinaLayout({
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+      <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
 
         {/* Header */}
         <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -183,7 +183,7 @@ export default async function OficinaLayout({
         </div>
 
         {/* Body */}
-        <div className="flex min-h-[calc(100vh-53px)]">
+        <div className="flex flex-1">
           <OficinaSidebar
             token={token}
             badges={badges}
