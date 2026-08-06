@@ -457,7 +457,7 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
   /* ── summary caps ───────────────────────────────────────────────────── */
 
   const caps: CapabilitySummary[] = [
-    { id: 'correo',      label: 'Correo',      connected: status.emails.length > 0 },
+    { id: 'correo',      label: 'Bandeja compartida', connected: status.emails.length > 0 },
     { id: 'calendario',  label: 'Calendario',  connected: !!calViaEmail || !!status.cal?.calendar_type },
     { id: 'crm',      label: 'Conocimiento del cliente', connected: !!status.notion?.connected },
     ...(hasOpsAgent ? [{ id: 'mensajeria', label: 'Mensajería', connected: !!status.teamsEmail }] : []),

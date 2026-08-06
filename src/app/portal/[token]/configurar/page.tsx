@@ -334,7 +334,6 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   />
                 </Card>
               </div>
-              )}
 
               {!isCoordinator && (
                 <div id="llamadas" style={SCROLL_STYLE}>
