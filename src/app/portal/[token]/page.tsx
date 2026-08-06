@@ -1650,21 +1650,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-5">
-                                  {minutesIncluded > 0 && (
-                                    <div>
-                                      {aiOpsLimit > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                                      <BuyMinutesSection token={token} />
-                                    </div>
-                                  )}
-                                  {minutesIncluded > 0 && aiOpsLimit > 0 && (
-                                    <div style={{ borderTop: '1px solid var(--c-border)' }} />
-                                  )}
-                                  {aiOpsLimit > 0 && (
-                                    <div>
-                                      {minutesIncluded > 0 && <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                                      <BuyOpsSection token={token} />
-                                    </div>
-                                  )}
+                                  <div>
+                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>
+                                    <BuyMinutesSection token={token} />
+                                  </div>
+                                  <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                                  <div>
+                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>
+                                    <BuyOpsSection token={token} />
+                                  </div>
                                 </div>
                               )}
                             </>
