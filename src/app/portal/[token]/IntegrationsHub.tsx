@@ -474,14 +474,29 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
       {/* ── Category rows ──────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1.5">
 
-        {/* Correo */}
+        {/* Bandeja compartida de la organización */}
         <CapabilityRow
           icon={<Mail size={16} style={{ color: '#9B6DFF' }} />}
           connectedIcon={emailConn?.provider === 'gmail' ? RowIcons.gmail : RowIcons.outlook}
-          label="Correo"
-          subtitle={emailSubtitle}
+          label="Bandeja compartida"
+          subtitle={emailSubtitle ?? 'Correos entrantes se rutean automáticamente al empleado que corresponde por rol'}
           connected={status.emails.length > 0}
         >
+          <div className="mb-4 flex gap-2.5 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}>
+            <Users size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+            <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+              <p className="font-semibold" style={{ color: 'var(--c-text)' }}>
+                Cómo funciona la bandeja compartida
+              </p>
+              <p className="mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                Los correos que lleguen a esta dirección se distribuyen automáticamente entre tus empleados según su rol: <strong>ventas</strong> → tu vendedor, <strong>cobranza</strong> → tu cobrador, <strong>facturación</strong> → quien lleva cuentas, etc. Cada empleado responde desde su propio correo si tiene uno conectado; si no, sale desde esta bandeja.
+              </p>
+              <p className="mt-1.5" style={{ color: 'var(--c-text-3)' }}>
+                Si el asignación automática no acierta, puedes reasignar cualquier correo desde la Bandeja de la Oficina.
+              </p>
+            </div>
+          </div>
           <EmailOAuthSection
             token={token}
             workspacePanel={

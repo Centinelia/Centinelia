@@ -773,6 +773,37 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         />
       </div>
 
+      {/* Origen filter chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: 'var(--c-text-4)' }}>
+          Origen
+        </span>
+        {([
+          { key: 'all',        label: 'Todo' },
+          { key: 'org_shared', label: 'Bandeja compartida' },
+          { key: 'per_agent',  label: 'Buzones propios' },
+        ] as const).map(chip => {
+          const isActive = activeScope === chip.key;
+          return (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => changeScope(chip.key)}
+              className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
+              style={{
+                background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface)',
+                color:      isActive ? '#6C3BFF' : 'var(--c-text-3)',
+                border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : 'var(--c-border)'}`,
+                fontWeight: isActive ? 600 : 400,
+                cursor:     'pointer',
+              }}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Category filter chips */}
       <CategoryChips
         items={tabItems}

@@ -84,6 +84,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   nash_active_healthcheck: '',
   nash_anomaly_detection:  '',
   nash_cron_enabled:       '',
+  outbound_capabilities:   '',
 };
 
 const DEFAULT_FEATURES: AgentFeatures = {
