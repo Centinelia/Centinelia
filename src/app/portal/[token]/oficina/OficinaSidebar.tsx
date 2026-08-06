@@ -123,10 +123,10 @@ export default function OficinaSidebar({
         position:    'sticky',
         top:         53,
         height:      'calc(100vh - 53px)',
-        overflowY:   'auto',
+        overflow:    'hidden',
       }}
     >
-      <nav className="flex flex-col py-2 px-2">
+      <nav className="flex flex-col py-2 px-2 flex-1 min-h-0 overflow-y-auto">
         <Link
           href={`/portal/${token}?tab=inicio`}
           className="flex items-center gap-2 px-3 py-2 mb-3 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
@@ -206,9 +206,9 @@ export default function OficinaSidebar({
       </nav>
 
 
-      {/* Bloque inferior fijo al fondo — widget usage + button en un solo wrapper mt-auto */}
+      {/* Bloque inferior — nav flex-1 lo empuja al fondo */}
       {((minutesIncluded > 0 || aiOpsLimit > 0) || hasStripe) && (
-        <div className="mt-auto shrink-0">
+        <div className="shrink-0">
           {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
             const hasMinPlan = minutesIncluded > 0;
             const minPct    = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;

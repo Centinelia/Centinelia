@@ -175,10 +175,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         position:    'sticky',
         top:         53,
         height:      'calc(100vh - 53px)',
-        overflowY:   'auto',
+        overflow:    'hidden',
       }}
     >
-      <nav className="flex flex-col py-2 px-2">
+      <nav className="flex flex-col py-2 px-2 flex-1 min-h-0 overflow-y-auto">
         {sections.map(section => {
           const isActive = currentTab === section.id || (section.id === 'oficina' && isOnLlamadas);
           const isOpen   = openIds.includes(section.id) || (section.id === 'oficina' && isOnLlamadas);
@@ -314,9 +314,9 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         })}
       </nav>
 
-      {/* Bloque inferior fijo al fondo (mt-auto en el wrapper) — widget usage + button */}
+      {/* Bloque inferior — nav flex-1 lo empuja al fondo */}
       {((minutesIncluded > 0 || aiOpsLimit > 0) || hasStripe) && (
-        <div className="mt-auto shrink-0">
+        <div className="shrink-0">
           {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
             const hasMinPlan = minutesIncluded > 0;
             const minPct  = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;
