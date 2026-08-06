@@ -139,7 +139,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+      <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
 
         {/* Header */}
         <div style={{ background: 'var(--c-surface)', borderBottom: '1px solid var(--c-border)' }}>

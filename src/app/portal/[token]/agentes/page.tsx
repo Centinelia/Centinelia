@@ -847,6 +847,7 @@ export default async function AgentesPage({ params }: Props) {
         heading={
           <SectionHeader
             as="h1"
+            eyebrow="TU EQUIPO"
             title="Mis Empleados"
             description={`${agents.length} ${agents.length === 1 ? 'empleado' : 'empleados'} · ${baseAgent.business_name}`}
             right={

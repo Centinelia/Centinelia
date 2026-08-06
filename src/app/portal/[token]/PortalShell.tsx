@@ -70,7 +70,7 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
             hasStripe:       hasStripe ?? false,
           }}
         />
-        <main className="flex-1 min-w-0">{main}</main>
+        <main className="flex-1 min-w-0 flex flex-col">{main}</main>
       </div>
     </div>
   );

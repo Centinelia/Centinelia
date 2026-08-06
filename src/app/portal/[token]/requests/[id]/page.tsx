@@ -43,8 +43,8 @@ export default async function RespondRequestPage({ params }: Props) {
 
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div style={{ background: 'var(--c-bg-1)', minHeight: '100vh' }}>
-        <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="flex flex-col" style={{ background: 'var(--c-bg-1)', minHeight: '100vh' }}>
+        <div className="max-w-2xl mx-auto px-4 py-8 flex-1 w-full">
           <a href={`/portal/${token}/oficina/bandeja`} className="text-xs" style={{ color: 'var(--c-text-3)' }}>
             &larr; Volver a bandeja
           </a>
