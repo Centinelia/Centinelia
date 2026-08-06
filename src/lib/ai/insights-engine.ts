@@ -12,6 +12,24 @@ export interface InsightRec {
   metric_key?:    string;
   current_value?: number;
   priority:       'high' | 'medium' | 'low';
+  deep_link?:     string;  // Ruta relativa donde el usuario puede aplicar el cambio
+}
+
+// Mapa determinístico: metric_key → hash del portal token para ir directo al lugar de edición.
+// El caller debe llamar con el token del cliente para producir la URL final.
+export function metricKeyToDeepLink(metricKey: string | undefined | null, token: string): string {
+  const base = `/portal/${token}`;
+  if (!metricKey) return `${base}/agentes`;
+  if (metricKey === 'escalation_rate')  return `${base}?tab=negocio#conocimiento`;
+  if (metricKey === 'ces_fluidez')      return `${base}/configurar?tab=knowledge#correo`;
+  if (metricKey === 'ces_comprension')  return `${base}?tab=negocio#conocimiento`;
+  if (metricKey === 'ces_naturalidad')  return `${base}/configurar?tab=knowledge`;
+  if (metricKey === 'ces_conduccion')   return `${base}/configurar?tab=tools#autonomia`;
+  if (metricKey === 'ces_confianza')    return `${base}?tab=negocio#conocimiento`;
+  if (metricKey === 'ces_resolucion')   return `${base}/agentes`;
+  if (metricKey === 'self_eval')        return `${base}/configurar?tab=tools#autonomia`;
+  if (metricKey === 'goal')             return `${base}/agentes`;
+  return `${base}/agentes`;
 }
 
 export interface CallRow {

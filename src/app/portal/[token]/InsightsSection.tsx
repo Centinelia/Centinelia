@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { CheckCircle, X, RefreshCw } from 'lucide-react';
+import { CheckCircle, X, RefreshCw, ArrowRight } from 'lucide-react';
 import InfoTooltip from '@/components/InfoTooltip';
 
 interface Rec {
@@ -13,7 +13,8 @@ interface Rec {
   metric_key:    string | null;
   current_value: number | null;
   priority:      'high' | 'medium' | 'low';
-  status:        'nueva' | 'aplicada' | 'descartada';
+  status:        'nueva' | 'aplicada' | 'descartada' | 'expirada';
+  deep_link:     string | null;
 }
 
 interface ApiResponse {
@@ -305,8 +306,17 @@ export default function InsightsSection({ token }: { token: string }) {
                         </p>
                       )}
 
-                      {/* Actions */}
+                      {/* Actions — botón primario "Aplicar" va al deep_link */}
                       <div className="flex items-center gap-2 mt-3">
+                        {rec.deep_link ? (
+                          <a
+                            href={rec.deep_link}
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold no-underline transition-opacity hover:opacity-80"
+                            style={{ background: '#6C3BFF', color: '#fff' }}>
+                            Aplicar
+                            <ArrowRight size={12} />
+                          </a>
+                        ) : null}
                         <button
                           disabled={!!pending[rec.id]}
                           onClick={() => updateStatus(rec.id, 'aplicada')}

@@ -5,9 +5,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
-import { generateLLMInsights }   from '@/lib/ai/insights-engine';
+import { generateLLMInsights, metricKeyToDeepLink } from '@/lib/ai/insights-engine';
 import { generateRulesInsights } from '@/lib/ai/insights-rules';
 import { consumeAiOp }           from '@/lib/ai/ops-guard';
+
+// Cap duro para evitar bloat contemplativo. Si ya hay N activos, no generar más.
+const MAX_ACTIVE_INSIGHTS_PER_ORG = 3;
+// Ventana de dedup: no volver a generar un insight con la misma métrica dentro de X días.
+const DEDUP_WINDOW_DAYS = 14;
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -64,7 +69,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   return NextResponse.json({
     recs:        recsRes.data ?? [],
-    mode:        (orgRes.data?.insight_mode ?? 'llm') as 'llm' | 'rules',
+    mode:        (orgRes.data?.insight_mode ?? 'rules') as 'llm' | 'rules',
     agentCount:  agentsRes.count ?? 1,
     weekStart,
   });
@@ -115,11 +120,38 @@ export async function POST(_req: NextRequest, { params }: Params) {
     supabase.from('voice_agents').select('id, business_name, role').eq('portal_email', portalEmail).eq('active', true),
   ]);
 
-  const rawMode = orgRes.data?.insight_mode ?? 'llm';
-  const mode: 'llm' | 'rules' = rawMode === 'rules' ? 'rules' : 'llm';
+  const rawMode = orgRes.data?.insight_mode ?? 'rules';
+  const mode: 'llm' | 'rules' = rawMode === 'llm' ? 'llm' : 'rules';
   const agents  = agentsRes.data ?? [];
 
   if (!agents.length) return NextResponse.json({ error: 'sin_agentes' }, { status: 400 });
+
+  // Hard cap: rehusar si ya hay MAX_ACTIVE activos (status 'nueva').
+  const { count: activeCount } = await supabase
+    .from('agent_recommendations')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', portalEmail)
+    .eq('status', 'nueva');
+  if ((activeCount ?? 0) >= MAX_ACTIVE_INSIGHTS_PER_ORG) {
+    return NextResponse.json({
+      error: 'cap_reached',
+      message: `Ya tienes ${activeCount} insights activos. Aplica o descarta los actuales antes de generar más.`,
+    }, { status: 409 });
+  }
+
+  // Dedup: fetch metric_keys usados recientemente (últimos DEDUP_WINDOW_DAYS)
+  // por agente. Se filtran de los nuevos recs antes de insertar.
+  const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_DAYS * 86400000).toISOString();
+  const { data: recentRecs } = await supabase
+    .from('agent_recommendations')
+    .select('agent_id, metric_key')
+    .eq('org_id', portalEmail)
+    .in('status', ['nueva', 'aplicada'])
+    .gte('created_at', dedupCutoff)
+    .not('metric_key', 'is', null);
+  const dedupSet = new Set(
+    (recentRecs ?? []).map(r => `${r.agent_id}::${r.metric_key}`)
+  );
 
   // For LLM mode: consume 2 ops per agent upfront (sequential — atomic check)
   if (mode === 'llm') {
@@ -154,6 +186,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
     for (let j = 0; j < recs.length; j++) {
       const r = recs[j];
+      // Dedup: skip si el (agent, metric_key) ya fue emitido dentro de la ventana
+      const dedupKey = `${agent.id}::${r.metric_key ?? 'null'}`;
+      if (r.metric_key && dedupSet.has(dedupKey)) continue;
+      // Respetar cap total: sumar activos existentes + los que planeamos insertar
+      if ((activeCount ?? 0) + allRows.length >= MAX_ACTIVE_INSIGHTS_PER_ORG) break;
+
       allRows.push({
         org_id:        portalEmail,
         agent_id:      agent.id,
@@ -166,10 +204,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
         current_value: r.current_value ?? null,
         priority:      r.priority,
         mode,
+        deep_link:     metricKeyToDeepLink(r.metric_key, token),
       });
     }
 
-    await supabase.from('agent_recommendations').delete().eq('agent_id', agent.id).eq('week_start', weekStart);
+    // Solo borrar rows viejos de este agente+semana si vamos a reemplazar
+    // (ya no hacemos delete indiscriminado — el ledger histórico se preserva
+    // con status 'expirada' vía el cron correspondiente).
   }
 
   if (allRows.length > 0) await supabase.from('agent_recommendations').insert(allRows);

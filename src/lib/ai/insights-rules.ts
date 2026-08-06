@@ -1,5 +1,6 @@
 import { getGoalsWithProgress } from '@/lib/goals/progress';
 import type { CallRow, InsightRec } from './insights-engine';
+// Nota: deep_link se agrega al insertar en DB, no aquí (necesita token del portal).
 
 const CES_DIMS: string[] = ['fluidez', 'comprension', 'naturalidad', 'conduccion', 'confianza', 'resolucion'];
 const DIM_ES: Record<string, string> = {

@@ -2,11 +2,14 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateLLMInsights, type InsightRec } from '@/lib/ai/insights-engine';
+import { generateLLMInsights, type InsightRec, metricKeyToDeepLink } from '@/lib/ai/insights-engine';
 import { generateRulesInsights }                from '@/lib/ai/insights-rules';
 import { consumeAiOp }                          from '@/lib/ai/ops-guard';
 import { maybeSendQuotaEmail }                  from '@/lib/ai/quota-email';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+
+const MAX_ACTIVE_INSIGHTS_PER_ORG = 3;
+const DEDUP_WINDOW_DAYS = 14;
 
 function currentWeekStart(): string {
   const d = new Date();
@@ -45,7 +48,30 @@ export async function GET(req: NextRequest) {
   const modeByOrg: Record<string, string> = {};
   const orgList = orgs ?? [];
   for (let oi = 0; oi < orgList.length; oi++) {
-    modeByOrg[orgList[oi].portal_email] = orgList[oi].insight_mode ?? 'llm';
+    modeByOrg[orgList[oi].portal_email] = orgList[oi].insight_mode ?? 'rules';
+  }
+
+  // Contadores por org (para respetar hard cap sin dobles queries)
+  const activeCountByOrg: Record<string, number> = {};
+  const dedupSetByOrg: Record<string, Set<string>> = {};
+  const dedupCutoff = new Date(Date.now() - DEDUP_WINDOW_DAYS * 86400000).toISOString();
+  for (let oi = 0; oi < emails.length; oi++) {
+    const email = emails[oi];
+    const { count } = await supabase
+      .from('agent_recommendations')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', email)
+      .eq('status', 'nueva');
+    activeCountByOrg[email] = count ?? 0;
+
+    const { data: recent } = await supabase
+      .from('agent_recommendations')
+      .select('agent_id, metric_key')
+      .eq('org_id', email)
+      .in('status', ['nueva', 'aplicada'])
+      .gte('created_at', dedupCutoff)
+      .not('metric_key', 'is', null);
+    dedupSetByOrg[email] = new Set((recent ?? []).map(r => `${r.agent_id}::${r.metric_key}`));
   }
 
   let totalRecs = 0;
@@ -53,8 +79,11 @@ export async function GET(req: NextRequest) {
   for (let i = 0; i < agents.length; i++) {
     const agent    = agents[i];
     const orgEmail = agent.portal_email as string;
-    const rawMode  = modeByOrg[orgEmail] ?? 'llm';
-    const mode: 'llm' | 'rules' = rawMode === 'rules' ? 'rules' : 'llm';
+    const rawMode  = modeByOrg[orgEmail] ?? 'rules';
+    const mode: 'llm' | 'rules' = rawMode === 'llm' ? 'llm' : 'rules';
+
+    // Skip si esta cuenta ya llegó al cap
+    if (activeCountByOrg[orgEmail] >= MAX_ACTIVE_INSIGHTS_PER_ORG) continue;
 
     // Ops guard — LLM costs 3 ops, rules costs 0
     const cost = mode === 'rules' ? 0 : 3;
@@ -104,29 +133,40 @@ export async function GET(req: NextRequest) {
 
     if (!recs.length) continue;
 
-    const rows = recs.map(r => ({
-      org_id:        orgEmail,
-      agent_id:      agent.id,
-      agent_name:    agent.business_name,
-      agent_role:    agent.role ?? null,
-      week_start:    weekStart,
-      title:         r.title,
-      body:          r.body,
-      metric_key:    r.metric_key ?? null,
-      current_value: r.current_value ?? null,
-      priority:      r.priority,
-      mode,
-    }));
+    // Dedup + cap: filtrar recs que ya se hayan generado recientemente para este agente,
+    // y respetar el cap total activo por org.
+    const rows: Array<Record<string, unknown>> = [];
+    const dedupSet = dedupSetByOrg[orgEmail];
+    const agentToken = (agent as any).portal_token as string | null;
+    for (let j = 0; j < recs.length; j++) {
+      const r = recs[j];
+      const dedupKey = `${agent.id}::${r.metric_key ?? 'null'}`;
+      if (r.metric_key && dedupSet.has(dedupKey)) continue;
+      if (activeCountByOrg[orgEmail] + rows.length >= MAX_ACTIVE_INSIGHTS_PER_ORG) break;
 
-    // Delete previous recs for this agent+week (idempotent)
-    await supabase
-      .from('agent_recommendations')
-      .delete()
-      .eq('agent_id', agent.id)
-      .eq('week_start', weekStart);
+      rows.push({
+        org_id:        orgEmail,
+        agent_id:      agent.id,
+        agent_name:    agent.business_name,
+        agent_role:    agent.role ?? null,
+        week_start:    weekStart,
+        title:         r.title,
+        body:          r.body,
+        metric_key:    r.metric_key ?? null,
+        current_value: r.current_value ?? null,
+        priority:      r.priority,
+        mode,
+        deep_link:     agentToken ? metricKeyToDeepLink(r.metric_key, agentToken) : null,
+      });
+    }
+
+    if (!rows.length) continue;
 
     await supabase.from('agent_recommendations').insert(rows);
     totalRecs += rows.length;
+
+    // Actualizar contador local para respetar cap entre iteraciones del mismo org
+    activeCountByOrg[orgEmail] += rows.length;
 
     // Update last_ran_at for this agent (merge-write, never replace whole features object)
     // Re-SELECT fresh features to avoid clobbering concurrent PATCH toggles
