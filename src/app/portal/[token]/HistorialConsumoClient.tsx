@@ -260,9 +260,13 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium leading-snug truncate" style={{ color: 'var(--c-text)' }}>
-                    {meta.label}
+                    {e.title || meta.label}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                      style={{ background: `${meta.color}18`, color: meta.color }}>
+                      {meta.label}
+                    </span>
                     {e.agentName && (
                       <span className="text-[11px]" style={{ color: '#9B6DFF' }}>
                         {e.agentName}

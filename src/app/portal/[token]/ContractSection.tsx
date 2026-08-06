@@ -51,7 +51,7 @@ export default function ContractSection({ token, businessName, signedAt, contrac
             : <FileText size={14} style={{ color: '#f59e0b' }} />
           }
           <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-            Contrato de servicios
+            Términos de servicio
           </span>
           {done
             ? <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
@@ -73,8 +73,8 @@ export default function ContractSection({ token, businessName, signedAt, contrac
               <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
                 <CheckCircle size={16} color="#22c55e" className="flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium" style={{ color: '#16a34a' }}>Contrato firmado digitalmente</p>
-                  {signedDate && <p className="text-xs mt-0.5" style={{ color: '#15803d' }}>Aceptado el {signedDate} por {businessName}</p>}
+                  <p className="text-sm font-medium" style={{ color: '#16a34a' }}>Términos aceptados</p>
+                  {signedDate && <p className="text-xs mt-0.5" style={{ color: '#15803d' }}>Aceptados el {signedDate} por {businessName}</p>}
                 </div>
               </div>
               <a
@@ -85,15 +85,14 @@ export default function ContractSection({ token, businessName, signedAt, contrac
                 style={{ background: 'var(--c-surface-2)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}
               >
                 <ExternalLink size={13} />
-                Ver e imprimir contrato
+                Ver e imprimir términos
               </a>
             </div>
           ) : (
             /* Unsigned state */
             <div className="flex flex-col gap-4 pt-4">
               <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>
-                Por favor revisa tu contrato de servicios Centinelia antes de firmar.
-                El contrato detalla los servicios incluidos y no incluidos en tu plan, precio mensual y términos generales.
+                Revisa los términos de servicio de Centinelia antes de aceptarlos. El documento describe el catálogo de capacidades, uso responsable, limitación de responsabilidad y las condiciones generales bajo las que se ofrece la plataforma.
               </p>
 
               <a
@@ -104,7 +103,7 @@ export default function ContractSection({ token, businessName, signedAt, contrac
                 style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}
               >
                 <ExternalLink size={13} />
-                Ver contrato completo
+                Ver términos completos
               </a>
 
               <label className="flex items-start gap-3 cursor-pointer">
@@ -115,7 +114,7 @@ export default function ContractSection({ token, businessName, signedAt, contrac
                   className="mt-0.5 w-4 h-4 rounded accent-purple-600 flex-shrink-0"
                 />
                 <span className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-                  He leído y acepto los términos y condiciones del contrato de servicios Centinelia para <strong style={{ color: 'var(--c-text)' }}>{businessName}</strong>.
+                  He leído y acepto los términos de servicio de Centinelia en nombre de <strong style={{ color: 'var(--c-text)' }}>{businessName}</strong>.
                 </span>
               </label>
 
@@ -130,7 +129,7 @@ export default function ContractSection({ token, businessName, signedAt, contrac
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                {loading ? 'Firmando…' : 'Firmar contrato'}
+                {loading ? 'Aceptando…' : 'Aceptar términos'}
               </button>
             </div>
           )}

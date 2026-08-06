@@ -25,7 +25,7 @@ export default async function ContratoPrintPage({ params }: Props) {
     <div className="min-h-screen" style={{ background: '#fff', color: '#1a1a1a' }}>
       {/* Print toolbar, hidden when printing */}
       <div className="print:hidden flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white sticky top-0 z-10">
-        <span className="text-sm font-medium text-gray-600">Contrato, {agent.business_name}</span>
+        <span className="text-sm font-medium text-gray-600">Términos de servicio · {agent.business_name}</span>
         <PrintButton />
       </div>
 

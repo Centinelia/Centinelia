@@ -1,69 +1,35 @@
-import { PLAN_LABELS } from '@/types/agent';
-import type { VoiceAgent, AgentFeatures } from '@/types/agent';
-import { MINUTES_TIER_CONFIG, MONTHLY_CONFIG } from '@/lib/billing/plans';
-import type { MinutesTier } from '@/lib/billing/plans';
+import type { VoiceAgent } from '@/types/agent';
+
+// ─── Paleta ────────────────────────────────────────────────────────────────────
+
+const ACCENT     = '#6C3BFF';
+const ACCENT_BG  = 'rgba(108,59,255,0.06)';
+const ACCENT_BD  = 'rgba(108,59,255,0.16)';
+const WARN_BG    = 'rgba(245,158,11,0.06)';
+const WARN_BD    = 'rgba(245,158,11,0.22)';
+const INK        = '#1A0A3B';
+const INK_SOFT   = '#4a4266';
+const MUTED      = '#8a83a3';
+const RULE       = 'rgba(26,10,59,0.08)';
+
+const FONT_STACK = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
 
 function fmt(date: string) {
   return new Date(date).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-const BASE_CAPABILITIES = [
-  'Disponibilidad 24/7 sin interrupciones',
-  'Grabaciones y transcripciones de cada interacción',
-  'Portal de reportes, estadísticas y actividad en tiempo real',
-  'Notificaciones al equipo por correo electrónico y WhatsApp',
-  'Aprendizaje continuo supervisado por el administrador',
-  'Check-in automático con reporte programable',
-  'Metas medibles con seguimiento activo en cada conversación',
-  'Límites de autoridad y reglas de escalación configurables',
-  'Personalización de nombre, voz y personalidad del empleado',
-  'Sub-usuarios del portal con permisos granulares por módulo',
-  'Soporte técnico por WhatsApp y correo (hasta 24 h hábiles)',
-];
-
-const DYNAMIC_LABELS: Partial<Record<keyof AgentFeatures, string>> = {
-  receptionist:            'Recepcionista — atención general e información del negocio',
-  lead_qualification:      'Calificación y captura de prospectos',
-  appointment_booking:     'Agendamiento, modificación y cancelación de citas',
-  existing_client_support: 'Atención a clientes existentes con consulta de historial',
-  smart_transfer:          'Transferencia inteligente a miembro del equipo humano',
-  order_taking:            'Toma y registro de pedidos',
-  multilingual:            'Atención en español e inglés de forma automática',
-  client_memory:           'Memoria persistente de cliente entre sesiones',
-  outbound_calls:          'Llamadas salientes desde el portal',
-  helpdesk:                'Mesa de ayuda IT: tickets, incidentes y directorio',
-  is_coordinator:          'Coordinación de equipos y delegación entre empleados digitales',
-};
+// ─── Documento ─────────────────────────────────────────────────────────────────
 
 export function ContractDocument({ agent }: { agent: VoiceAgent }) {
-  const features        = agent.features ?? {};
-  const planLabel       = PLAN_LABELS[agent.plan] ?? agent.plan;
-  const tierCfg         = agent.minutes_plan ? MINUTES_TIER_CONFIG[agent.minutes_plan as MinutesTier] : null;
-  const monthlyCfg      = (agent.plan && agent.minutes_plan)
-    ? MONTHLY_CONFIG[agent.plan as 'pro']?.[agent.minutes_plan as MinutesTier]
-    : null;
-  const monthlyPrice    = monthlyCfg?.mxn ?? 0;
-  const minutesIncluded = agent.minutes_included ?? (tierCfg?.minutes ?? 0);
-  const signedAt        = agent.contract_accepted_at ? fmt(agent.contract_accepted_at) : null;
-  const today           = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const signedAt = agent.contract_accepted_at ? fmt(agent.contract_accepted_at) : null;
+  const today    = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  const business = agent.business_name;
 
-  const dynamicIncluded = (Object.entries(features) as [keyof AgentFeatures, unknown][])
-    .filter(([k, v]) => v && DYNAMIC_LABELS[k])
-    .map(([k]) => DYNAMIC_LABELS[k] as string);
-
-  const dynamicExcluded = (Object.entries(features) as [keyof AgentFeatures, unknown][])
-    .filter(([k, v]) => !v && DYNAMIC_LABELS[k])
-    .map(([k]) => DYNAMIC_LABELS[k] as string);
-
-  const allIncluded = [...BASE_CAPABILITIES, ...dynamicIncluded];
-
-  // Clause numbering shifts if there are excluded services
-  const n = (base: number) => `${dynamicExcluded.length > 0 ? base : base - 1}`;
-
+  // Fallback: si hay contract_text custom (admin lo editó), respetarlo.
   if (agent.contract_text) {
     return (
-      <div style={{ fontFamily: 'Georgia, serif', lineHeight: 1.7, color: 'inherit' }}>
-        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.875rem', margin: 0 }}>
+      <div style={{ fontFamily: FONT_STACK, lineHeight: 1.75, color: INK, fontSize: '0.9rem' }}>
+        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 'inherit', margin: 0 }}>
           {agent.contract_text}
         </pre>
         {signedAt && <SignatureBlock name={agent.client_name} date={signedAt} ip={agent.contract_ip} />}
@@ -72,204 +38,291 @@ export function ContractDocument({ agent }: { agent: VoiceAgent }) {
   }
 
   return (
-    <div style={{ fontFamily: 'Georgia, serif', lineHeight: 1.7, color: 'inherit', fontSize: '0.875rem' }}>
+    <article style={{ fontFamily: FONT_STACK, color: INK, fontSize: '0.92rem', lineHeight: 1.75 }}>
 
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <div style={{ fontWeight: 700, fontSize: '1rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Contrato de Prestación de Servicios
+      {/* ── Cover ────────────────────────────────────────────────────────── */}
+      <header style={{ paddingBottom: '2rem', marginBottom: '2.75rem', borderBottom: `1px solid ${RULE}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '1.75rem' }}>
+          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: ACCENT }} />
+          <span style={{ fontSize: '0.7rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, fontWeight: 700 }}>
+            Centinelia · Pneuma Studio
+          </span>
         </div>
-        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.55 }}>Centinelia · Pneuma Studio</div>
-      </div>
+        <h1 style={{ fontSize: '2.1rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: INK }}>
+          Términos de servicio
+        </h1>
+        <p style={{ marginTop: '0.85rem', color: INK_SOFT, fontSize: '0.95rem', maxWidth: '38rem' }}>
+          Documento vigente para <strong style={{ color: INK }}>{business}</strong>. Emitido el {today}.
+        </p>
 
-      <Clause title="1. PARTES">
+        <div style={{ marginTop: '1.75rem', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+          <Chip label="Sin permanencia" />
+          <Chip label="Cancelable en cualquier momento" />
+          <Chip label="Sujeto a revisión periódica" />
+        </div>
+      </header>
+
+      {/* ── Preámbulo ─────────────────────────────────────────────────────── */}
+      <p style={{ marginTop: 0, marginBottom: '2.5rem', fontSize: '0.95rem', color: INK_SOFT }}>
+        Estos términos regulan el uso que <strong style={{ color: INK }}>{business}</strong> (&ldquo;el Cliente&rdquo;) hace de la plataforma <strong style={{ color: INK }}>Centinelia</strong>, desarrollada y operada por Pneuma Studio (&ldquo;Centinelia&rdquo;). Al activar cualquier empleado digital o funcionalidad, el Cliente confirma haber leído y aceptado estos términos.
+      </p>
+
+      {/* ── Cláusulas ─────────────────────────────────────────────────────── */}
+
+      <Section n="01" title="Qué es Centinelia">
         <p>
-          <strong>Prestador de servicios:</strong> Pneuma Studio, desarrollador de la plataforma Centinelia, en
-          adelante &ldquo;Centinelia&rdquo;.
+          Centinelia es una <strong>plataforma en la nube de empleados digitales</strong> basados en inteligencia artificial. Cada empleado tiene un rol especializado (recepción, ventas, atención a clientes, cobranza, coordinación, recursos humanos, operaciones, entre otros) y opera de forma autónoma dentro de los límites que el Cliente configura desde el portal.
         </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          <strong>Cliente:</strong> {agent.business_name}, representado por {agent.client_name}, en
-          adelante &ldquo;el Cliente&rdquo;.
-        </p>
-      </Clause>
-
-      <Clause title="2. OBJETO DEL CONTRATO">
         <p>
-          Centinelia se compromete a poner a disposición del Cliente uno o más empleados digitales de inteligencia
-          artificial bajo el plan <strong>{planLabel}</strong>, configurados específicamente para la
-          organización <strong>{agent.business_name}</strong>.{' '}
-          {agent.phone_number
-            ? `Los empleados operarán en el número telefónico asignado (${agent.phone_number}) y ejecutarán las funciones descritas en la Cláusula 3, disponibles 24/7 de forma autónoma.`
-            : 'Los empleados ejecutarán las funciones descritas en la Cláusula 3, disponibles 24/7 de forma autónoma.'}
+          El servicio se opera bajo un modelo SaaS: no hay software que instalar en las instalaciones del Cliente ni infraestructura que mantener. Todo el acceso y la administración se realiza desde el portal web de Centinelia.
         </p>
-      </Clause>
+      </Section>
 
-      <Clause title="3. SERVICIOS INCLUIDOS">
-        <p>El plan <strong>{planLabel}</strong> incluye los siguientes servicios y capacidades:</p>
-        <ul style={{ marginTop: '0.5rem', paddingLeft: 0, listStyle: 'none' }}>
-          {allIncluded.map(s => (
-            <li key={s} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.3rem' }}>
-              <span style={{ color: '#16a34a', flexShrink: 0, fontWeight: 700, lineHeight: 1.6 }}>✓</span>
-              <span>{s}</span>
-            </li>
-          ))}
+      <Section n="02" title="Capacidades de la plataforma">
+        <p style={{ marginTop: 0 }}>
+          Al momento de emitirse este documento, la plataforma incluye las siguientes familias de capacidades. El detalle específico habilitado para cada empleado depende del rol asignado y de la configuración vigente en el portal.
+        </p>
+
+        <CapabilityGroup title="Atención por voz 24/7">
+          Recepción de llamadas entrantes, calificación de prospectos, agendamiento, toma de pedidos, atención a clientes existentes, transferencia inteligente al equipo humano, cobranza y llamadas salientes con cumplimiento LFPC.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Oficina digital">
+          Procesamiento de correos entrantes con clasificación y respuesta asistida, generación de documentos (facturas, órdenes de compra, cotizaciones, notas, contratos, reportes) en PDF, Word, Excel y PowerPoint, gestión de plantillas de marca y flujo de aprobación humana opcional.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Coordinación entre empleados">
+          Coordinadores internos (Nox, Niva) que delegan tareas entre el equipo digital, revisan resultados, generan briefs y reportes ejecutivos, y proponen mejoras basadas en la operación semanal.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Integraciones externas">
+          Conexión vía OAuth con Gmail, Outlook, Google Calendar, Microsoft Calendar, Google Drive, OneDrive, Google Sheets, Notion, Mercado Libre y QuickBooks Online. Emisión y consulta de CFDI 4.0 a través de proveedor autorizado.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Automatizaciones opcionales">
+          Check-in periódico, brief del día, reportes automáticos, aprendizaje semanal a partir de correos y patrones de interacción, encuestas telefónicas de satisfacción, y recordatorios de fechas críticas.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Gobierno y sector público">
+          Módulo especializado para organismos municipales: registro de reportes ciudadanos con folio y seguimiento, coordinación de despacho, y consulta de historial.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Escalación humana">
+          Los empleados pueden solicitar ayuda al propietario o a un aprobador designado cuando detectan situaciones que exceden su autoridad, con solicitudes tipificadas (información, acción o aprobación) y canal de respuesta trazable.
+        </CapabilityGroup>
+
+        <CapabilityGroup title="Portal de administración">
+          Reportes, estadísticas y actividad en tiempo real, sub-usuarios con permisos granulares por módulo, personalización de voz, personalidad y base de conocimiento por empleado, límites de autoridad, metas medibles con seguimiento y grabación/transcripción de cada interacción.
+        </CapabilityGroup>
+
+        <Callout tone="accent">
+          El catálogo de capacidades evoluciona continuamente. Centinelia se reserva el derecho de agregar, modificar o retirar capacidades del catálogo notificando al Cliente con antelación razonable cuando el cambio sea material.
+        </Callout>
+      </Section>
+
+      <Section n="03" title="Modelo comercial">
+        <p style={{ marginTop: 0 }}>
+          Centinelia opera bajo un modelo de suscripción mensual. El plan vigente, número de empleados activos, saldo de minutos y tareas disponibles se muestran en tiempo real en la sección <em>Cuenta</em> del portal.
+        </p>
+        <ul style={ULIST}>
+          <li><strong>Sin permanencia.</strong> El Cliente puede cancelar en cualquier momento desde el portal o notificando por correo a <strong>hola@centinelia.mx</strong>. La cancelación surte efecto al término del período mensual en curso.</li>
+          <li><strong>Sin reembolsos parciales.</strong> El pago mensual no se prorratea por baja anticipada.</li>
+          <li><strong>Recargas opcionales.</strong> Paquetes adicionales de minutos o tareas pueden adquirirse desde el portal cuando el Cliente lo requiera.</li>
+          <li><strong>Facturación.</strong> Los pagos se procesan mediante Stripe. Centinelia emite CFDI 4.0 a solicitud del Cliente con los datos fiscales que éste proporcione.</li>
         </ul>
-        <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', opacity: 0.7 }}>
-          El plan incluye <strong>{minutesIncluded} minutos mensuales</strong> de conversación. Los minutos no
-          utilizados se acumulan al mes siguiente con un límite de un mes adicional de tu plan.
+      </Section>
+
+      <Section n="04" title="Limitación de responsabilidad">
+        <p style={{ marginTop: 0 }}>
+          El Cliente reconoce y acepta expresamente que:
         </p>
-      </Clause>
+        <ul style={ULIST}>
+          <li>Los empleados digitales son <strong>sistemas basados en inteligencia artificial</strong>. Aunque están entrenados y supervisados, sus respuestas pueden contener errores, imprecisiones u omisiones. El Cliente debe supervisar el desempeño y ajustar la configuración cuando lo estime necesario.</li>
+          <li>Centinelia <strong>no sustituye asesoría profesional legal, médica, financiera, contable, fiscal ni de ninguna otra especialidad regulada</strong>. La información proporcionada por los empleados digitales no debe interpretarse como consejo profesional.</li>
+          <li>Centinelia actúa <strong>exclusivamente como proveedor de tecnología</strong>. No es responsable por decisiones comerciales, transaccionales, contractuales o de cualquier otra índole que el Cliente, sus colaboradores o sus clientes finales tomen con base en interacciones con la plataforma.</li>
+          <li>El Cliente es el <strong>único responsable de la exactitud y actualización de la información</strong> que carga en la plataforma: base de conocimiento, precios, políticas, disponibilidad, catálogo, datos de contacto y cualquier otro contenido. Centinelia no verifica ni valida el contenido cargado.</li>
+          <li>Centinelia no garantiza que el servicio esté <strong>libre de interrupciones</strong>. Interrupciones causadas por proveedores upstream (telefonía, modelos de IA, correo, integraciones externas) están fuera del control directo de Centinelia; se hará el mejor esfuerzo por restablecer el servicio en tiempo razonable.</li>
+        </ul>
+        <Callout tone="warn">
+          <strong>Límite de responsabilidad monetaria.</strong> La responsabilidad total de Centinelia frente al Cliente, por cualquier causa y bajo cualquier teoría legal, se limita al monto efectivamente pagado por el Cliente durante los tres meses anteriores al evento que motivó la reclamación.
+        </Callout>
+      </Section>
 
-      {dynamicExcluded.length > 0 && (
-        <Clause title="4. SERVICIOS NO INCLUIDOS">
-          <p>
-            Los siguientes servicios <strong>no están incluidos</strong> en el plan contratado y requieren una
-            actualización de plan para ser habilitados:
-          </p>
-          <ul style={{ marginTop: '0.5rem', paddingLeft: 0, listStyle: 'none' }}>
-            {dynamicExcluded.map(s => (
-              <li key={s} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.3rem' }}>
-                <span style={{ color: '#dc2626', flexShrink: 0, fontWeight: 700, lineHeight: 1.6 }}>✗</span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ul>
-        </Clause>
-      )}
+      <Section n="05" title="Uso responsable y cumplimiento legal">
+        <ul style={{ ...ULIST, marginTop: 0 }}>
+          <li><strong>Protección de datos personales.</strong> El Cliente es responsable de contar con el consentimiento requerido para tratar datos personales de sus clientes finales y de mantener un aviso de privacidad vigente conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).</li>
+          <li><strong>Lista Nacional de No Llamar.</strong> Para llamadas salientes, el Cliente es el único responsable de verificar que los números de destino no estén registrados en la LNCL administrada por PROFECO, conforme a los artículos 17 BIS y 17 BIS 2 de la Ley Federal de Protección al Consumidor.</li>
+          <li><strong>Notificación de grabación.</strong> Las interacciones telefónicas pueden ser grabadas con fines de calidad y mejora del servicio. El Cliente se compromete a informar a sus clientes finales conforme a la legislación aplicable.</li>
+          <li><strong>Usos prohibidos.</strong> Queda expresamente prohibido usar la plataforma para (i) prospección masiva sin consentimiento previo, (ii) contactar reiteradamente a personas que hayan solicitado no ser contactadas, (iii) suplantación de identidad o fraude, o (iv) cualquier actividad contraria a la legislación mexicana aplicable.</li>
+          <li><strong>Indemnización.</strong> El Cliente se obliga a mantener indemne a Centinelia frente a cualquier reclamación, sanción o multa iniciada por PROFECO, IFT, INAI o cualquier otra autoridad competente derivada del uso que el Cliente dé a la plataforma.</li>
+        </ul>
+      </Section>
 
-      <Clause title={`${n(5)}. FACTURACIÓN`}>
+      <Section n="06" title="Datos, privacidad y confidencialidad">
+        <ul style={{ ...ULIST, marginTop: 0 }}>
+          <li><strong>Propiedad del contenido.</strong> Toda la información cargada por el Cliente (base de conocimiento, contactos, correos, documentos, grabaciones de sus interacciones) es de su propiedad. Centinelia la procesa exclusivamente para operar el servicio contratado.</li>
+          <li><strong>Retención.</strong> Grabaciones, transcripciones y documentos generados se conservan por el tiempo razonablemente necesario para operar el servicio (típicamente 12 meses, salvo obligación legal distinta). El Cliente puede solicitar la eliminación anticipada por escrito.</li>
+          <li><strong>Confidencialidad.</strong> Centinelia trata la información del Cliente como confidencial y no la comparte con terceros salvo (i) proveedores subcontratados estrictamente necesarios para operar (telefonía, modelos de IA, almacenamiento en la nube) bajo acuerdos de confidencialidad equivalentes, y (ii) requerimientos legales de autoridad competente.</li>
+          <li><strong>Uso agregado y anónimo.</strong> Centinelia podrá utilizar información agregada y despersonalizada para mejorar la plataforma, sin identificar al Cliente ni a sus clientes finales.</li>
+        </ul>
+      </Section>
+
+      <Section n="07" title="Propiedad intelectual">
+        <ul style={{ ...ULIST, marginTop: 0 }}>
+          <li>La plataforma Centinelia, incluyendo su software, arquitectura, prompts, modelos entrenados, marca, personajes (los meerkats: Nia, Noah, Nico, Nara, Naia, Nelia, Neo, Nova, Nox, Niva y demás), voces sintéticas, ilustraciones, iconografía y diseño, es <strong>propiedad exclusiva de Pneuma Studio</strong>.</li>
+          <li>Al Cliente se le otorga una licencia limitada, no exclusiva, no transferible y revocable para usar la plataforma durante la vigencia de la suscripción.</li>
+          <li>El contenido cargado por el Cliente sigue siendo suyo. El Cliente concede a Centinelia una licencia técnica, limitada al fin de operar el servicio, para almacenar, procesar y desplegar dicho contenido.</li>
+        </ul>
+      </Section>
+
+      <Section n="08" title="Modificaciones al servicio y a estos términos">
+        <p style={{ marginTop: 0 }}>
+          Centinelia mejora la plataforma continuamente. Podrá agregar, modificar o retirar funcionalidades. Los cambios materiales se notificarán con antelación razonable por correo o desde el portal.
+        </p>
         <p>
-          La mensualidad del servicio es de{' '}
-          <strong>${monthlyPrice > 0 ? monthlyPrice.toLocaleString('es-MX') : '___'} MXN + IVA</strong> por mes,
-          correspondiente al plan <strong>{tierCfg?.label ?? agent.minutes_plan ?? planLabel}</strong>{' '}
-          ({minutesIncluded} min/mes). El cobro se realiza de forma automática a través de Stripe en la fecha de
-          renovación mensual.
+          Estos términos pueden actualizarse en el tiempo. La versión vigente estará siempre disponible en el portal del Cliente. El uso continuado del servicio tras una actualización implica aceptación de los nuevos términos. Si el Cliente no está de acuerdo con una modificación material, puede cancelar sin penalización conforme a la Cláusula 03.
         </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          En caso de fallo en el pago, el Cliente recibirá notificación y contará con un período de gracia de 3
-          días naturales para regularizar antes de que el servicio sea pausado. El servicio se reanuda al
-          actualizar el método de pago.
-        </p>
-      </Clause>
+      </Section>
 
-      <Clause title={`${n(6)}. DURACIÓN Y TERMINACIÓN`}>
+      <Section n="09" title="Uso de marca y casos de éxito">
+        <p style={{ marginTop: 0 }}>
+          El Cliente autoriza a Centinelia y a Pneuma Studio a mencionar el nombre y logotipo de <strong>{business}</strong> como caso de referencia en materiales comerciales (sitio web, redes sociales, presentaciones, correos). Esta autorización no implica ningún respaldo activo del Cliente y puede revocarse en cualquier momento por escrito a <strong>hola@centinelia.mx</strong>.
+        </p>
+      </Section>
+
+      <Section n="10" title="Aceptación">
+        <p style={{ marginTop: 0 }}>
+          Al activar cualquier funcionalidad del servicio o presionar el botón de aceptación en el portal, el Cliente declara haber leído, entendido y aceptado estos términos en su totalidad. La aceptación queda registrada digitalmente con fecha, hora e IP de origen.
+        </p>
         <p>
-          El contrato tiene vigencia mensual con renovación automática. Para cancelar, el Cliente deberá
-          contactar a Centinelia con al menos 5 días naturales de anticipación a la fecha de renovación.
-          No se realizan reembolsos por períodos parciales.
+          Estos términos se rigen por la legislación mexicana. Para cualquier controversia, las partes acuerdan someterse a la jurisdicción de los tribunales competentes de Monterrey, Nuevo León, renunciando expresamente a cualquier otra que pudiera corresponderles.
         </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          Si el servicio permanece pausado por más de 3 meses consecutivos sin regularizar, Centinelia se
-          reserva el derecho de reasignar el número telefónico asignado, notificando al Cliente con al menos
-          15 días naturales de anticipación.
-        </p>
-      </Clause>
+      </Section>
 
-      <Clause title={`${n(7)}. LIMITACIONES DE RESPONSABILIDAD`}>
-        <p>
-          Los empleados digitales de Centinelia son asistentes de inteligencia artificial y no sustituyen la
-          asesoría profesional legal, médica, financiera ni ninguna otra especialidad regulada. Centinelia no
-          se hace responsable de decisiones tomadas por terceros con base en la información proporcionada por
-          el empleado digital.
-        </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          El Cliente es responsable de mantener actualizada la base de conocimiento del empleado y de
-          verificar la exactitud de la información compartida con sus clientes finales. Las interacciones
-          pueden ser grabadas con fines de calidad y mejora del modelo. El Cliente acepta notificar a sus
-          clientes finales de esta posibilidad conforme a la Ley Federal de Protección de Datos Personales
-          en Posesión de los Particulares (México).
-        </p>
-      </Clause>
-
-      <Clause title={`${n(8)}. USO RESPONSABLE Y CUMPLIMIENTO LEGAL`}>
-        <p>
-          <strong>Uso permitido.</strong> El Cliente utilizará al empleado digital exclusivamente para
-          comunicaciones con personas que tengan o hayan manifestado interés en establecer una relación
-          comercial con el negocio del Cliente: (i) atender comunicaciones entrantes; (ii) dar seguimiento a
-          prospectos que proporcionaron sus datos voluntariamente; (iii) confirmar, modificar o cancelar
-          compromisos con clientes existentes; y (iv) ejecutar tareas operativas internas autorizadas.
-        </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          <strong>Lista Nacional de No Llamar (LNCL).</strong> Para llamadas salientes, el Cliente es el
-          único responsable de verificar que los números de destino no estén registrados en la LNCL
-          administrada por PROFECO, conforme a la LFPC artículos 17 BIS y 17 BIS 2.
-        </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          <strong>Usos prohibidos.</strong> Queda expresamente prohibido utilizar al empleado digital para:
-          (i) prospección masiva sin consentimiento previo; (ii) contactar reiteradamente a personas que
-          hayan solicitado no ser contactadas; o (iii) cualquier actividad contraria a la legislación
-          mexicana aplicable.
-        </p>
-        <p style={{ marginTop: '0.5rem' }}>
-          <strong>Responsabilidad.</strong> Centinelia actúa exclusivamente como proveedor de tecnología.
-          El Cliente libera a Centinelia de toda responsabilidad derivada del uso que dé al servicio y se
-          compromete a indemnizar a Centinelia respecto de cualquier reclamación, sanción o multa iniciada
-          por PROFECO, IFT o cualquier autoridad competente derivada de las comunicaciones realizadas.
-        </p>
-      </Clause>
-
-      <Clause title={`${n(9)}. SOPORTE`}>
-        <p>
-          El Cliente tiene acceso a soporte técnico por WhatsApp y correo electrónico con tiempos de
-          respuesta de hasta 24 horas hábiles. Actualizaciones de configuración del empleado (personalidad,
-          base de conocimiento, horarios, metas, límites de autoridad) pueden realizarse directamente desde
-          el portal sin necesidad de contactar soporte.
-        </p>
-      </Clause>
-
-      <Clause title={`${n(10)}. USO DE MARCA Y CASOS DE ÉXITO`}>
-        <p>
-          Al aceptar este contrato, el Cliente autoriza a Centinelia y a Pneuma Studio a mencionar el nombre
-          y logotipo de <strong>{agent.business_name}</strong> como caso de éxito en materiales de
-          marketing, sitio web, redes sociales y presentaciones comerciales. Esta autorización no implica
-          ningún respaldo activo del Cliente hacia Centinelia y puede revocarse en cualquier momento
-          mediante solicitud escrita a <strong>hola@centinelia.mx</strong>.
-        </p>
-      </Clause>
-
-      <Clause title={`${n(11)}. ACEPTACIÓN`}>
-        <p>
-          Al firmar este contrato, el Cliente declara haber leído, entendido y aceptado todos los términos
-          y condiciones establecidos en el presente documento. Este contrato entra en vigor en la fecha de
-          aceptación digital y se considera vinculante para ambas partes.
-        </p>
-      </Clause>
-
+      {/* ── Firma / footer ───────────────────────────────────────────────── */}
       {signedAt
         ? <SignatureBlock name={agent.client_name} date={signedAt} ip={agent.contract_ip} />
-        : <div style={{ marginTop: '2.5rem', borderTop: '1px solid currentColor', opacity: 0.12 }} />
+        : <div style={{ marginTop: '2.5rem', paddingTop: '2rem', borderTop: `1px solid ${RULE}` }}>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: MUTED }}>
+              Este documento no requiere firma manuscrita. La aceptación se completa desde el portal.
+            </p>
+          </div>
       }
 
-      <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', opacity: 0.4, textAlign: 'center' }}>
-        Documento generado el {today} · Centinelia by Pneuma Studio
+      <p style={{ marginTop: '2rem', fontSize: '0.72rem', letterSpacing: '0.05em', color: MUTED, textAlign: 'center', textTransform: 'uppercase' }}>
+        Centinelia by Pneuma Studio · Documento generado el {today}
+      </p>
+    </article>
+  );
+}
+
+// ─── Sub-componentes ───────────────────────────────────────────────────────────
+
+function Chip({ label }: { label: string }) {
+  return (
+    <div style={{
+      padding:      '0.55rem 0.75rem',
+      background:   ACCENT_BG,
+      border:       `1px solid ${ACCENT_BD}`,
+      borderRadius: 8,
+      fontSize:     '0.72rem',
+      fontWeight:   600,
+      color:        ACCENT,
+      textAlign:    'center',
+      letterSpacing: '0.01em',
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ marginBottom: '2.5rem', pageBreakInside: 'avoid' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginBottom: '1rem' }}>
+        <span style={{
+          fontSize:       '0.72rem',
+          fontWeight:     700,
+          letterSpacing:  '0.15em',
+          color:          ACCENT,
+          minWidth:       '1.5rem',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {n}
+        </span>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: INK, letterSpacing: '-0.008em' }}>
+          {title}
+        </h2>
+      </div>
+      <div style={{ paddingLeft: '2.5rem', color: INK_SOFT }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function CapabilityGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: '1.1rem', paddingTop: '1.1rem', borderTop: `1px solid ${RULE}` }}>
+      <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, color: INK, letterSpacing: '0.005em' }}>
+        {title}
+      </p>
+      <p style={{ margin: '0.35rem 0 0 0', color: INK_SOFT }}>
+        {children}
       </p>
     </div>
   );
 }
 
-function Clause({ title, children }: { title: string; children: React.ReactNode }) {
+function Callout({ tone = 'accent', children }: { tone?: 'accent' | 'warn'; children: React.ReactNode }) {
+  const bg = tone === 'warn' ? WARN_BG : ACCENT_BG;
+  const bd = tone === 'warn' ? WARN_BD : ACCENT_BD;
   return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <div style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.03em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-        {title}
-      </div>
-      <div>{children}</div>
+    <div style={{
+      marginTop:     '1.25rem',
+      padding:       '0.9rem 1.1rem',
+      background:    bg,
+      border:        `1px solid ${bd}`,
+      borderRadius:  10,
+      fontSize:      '0.87rem',
+      color:         INK_SOFT,
+      lineHeight:    1.65,
+    }}>
+      {children}
     </div>
   );
 }
 
+const ULIST: React.CSSProperties = {
+  margin:     '0.75rem 0 0 0',
+  paddingLeft: '1.1rem',
+  color:       INK_SOFT,
+};
+
 function SignatureBlock({ name, date, ip }: { name: string; date: string; ip?: string | null }) {
   return (
-    <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid currentColor', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+    <div style={{
+      marginTop:  '3rem',
+      paddingTop: '1.75rem',
+      borderTop:  `2px solid ${INK}`,
+      display:    'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap:        '2rem',
+    }}>
       <div>
-        <div style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.75rem' }}>Prestador</div>
-        <div style={{ fontSize: '0.85rem' }}>Centinelia / Pneuma Studio</div>
-        <div style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.25rem' }}>Firmado digitalmente</div>
+        <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUTED, marginBottom: '0.75rem' }}>
+          Prestador
+        </div>
+        <div style={{ fontSize: '0.9rem', color: INK, fontWeight: 600 }}>Centinelia · Pneuma Studio</div>
+        <div style={{ fontSize: '0.78rem', color: MUTED, marginTop: '0.25rem' }}>Emitido digitalmente</div>
       </div>
       <div>
-        <div style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.75rem' }}>Cliente</div>
-        <div style={{ fontSize: '0.85rem' }}>{name}</div>
-        <div style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.25rem' }}>Aceptado el {date}</div>
-        {ip && <div style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '0.15rem' }}>IP: {ip}</div>}
+        <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUTED, marginBottom: '0.75rem' }}>
+          Cliente
+        </div>
+        <div style={{ fontSize: '0.9rem', color: INK, fontWeight: 600 }}>{name}</div>
+        <div style={{ fontSize: '0.78rem', color: MUTED, marginTop: '0.25rem' }}>Aceptado el {date}</div>
+        {ip && <div style={{ fontSize: '0.7rem', color: MUTED, marginTop: '0.15rem', fontVariantNumeric: 'tabular-nums' }}>IP: {ip}</div>}
       </div>
     </div>
   );
