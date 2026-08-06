@@ -302,6 +302,15 @@ export default async function AgentesPage({ params }: Props) {
   // Anual: si la org está en contrato prepagado, no se puede autocontratar por Stripe.
   const billingModel = (orgRow?.billing_model as string | null) ?? 'stripe';
   const isAnnualOrExpired = billingModel === 'annual_prepaid' || billingModel === 'expired';
+
+  // ─── Métricas agregadas del equipo (para bloque destacado tipo /inicio) ─────
+  const activeAgentsCount = agents.filter(a =>
+    (a.active as boolean) && !(a.client_paused as boolean) && (a.billing_status as string) !== 'pago_fallido'
+  ).length;
+  const totalCallsMonth = Object.values(callCountMap).reduce((sum, c) => sum + (c as number), 0);
+  const totalOpsMonth   = agents.reduce((sum, a) => sum + ((a.ai_ops_used as number) ?? 0), 0);
+  const agentsWithRole  = agents.filter(a => !!((a.role as string | null)?.trim())).length;
+  const rolePct         = agents.length > 0 ? Math.round((agentsWithRole / agents.length) * 100) : 0;
   let annualContractInfo: { folio: string; endDate: string; isExpired: boolean } | null = null;
   if (isAnnualOrExpired) {
     // Última contrato activo o expirado más reciente
@@ -815,6 +824,41 @@ export default async function AgentesPage({ params }: Props) {
       {/* Empleados pausados por pago — banner destacado (urgencia) */}
       {billingAlertBanner}
 
+      {/* Métricas del equipo — bloque estilo /inicio */}
+      {agents.length > 0 && (
+        <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+          <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            Tu equipo este mes
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Empleados activos</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{activeAgentsCount}</p>
+                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>de {agents.length}</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Llamadas atendidas</p>
+              <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalCallsMonth}</p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>en total del mes</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Tareas ejecutadas</p>
+              <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalOpsMonth}</p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>ops del mes</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Con puesto asignado</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{rolePct}%</p>
+                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>({agentsWithRole}/{agents.length})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Empty state */}
       {agents.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 rounded-xl"
@@ -874,6 +918,41 @@ export default async function AgentesPage({ params }: Props) {
 
         {/* Empleados pausados por pago — banner destacado (urgencia) */}
         {billingAlertBanner}
+
+        {/* Métricas del equipo — bloque estilo /inicio */}
+        {agents.length > 0 && (
+          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+            <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+              Tu equipo este mes
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Empleados activos</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{activeAgentsCount}</p>
+                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>de {agents.length}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Llamadas atendidas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalCallsMonth}</p>
+                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>en total del mes</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Tareas ejecutadas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalOpsMonth}</p>
+                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>ops del mes</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Con puesto asignado</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{rolePct}%</p>
+                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>({agentsWithRole}/{agents.length})</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Empty state */}
         {agents.length === 0 && (

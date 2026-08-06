@@ -279,15 +279,30 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
   const [editPassword, setEditPassword] = useState('');
   const [editOpen,     setEditOpen]     = useState(false);
 
+  // Derived per-user serial: owner → accountSerial as-is; sub-users → CNT-XXXXX-NN
+  // where NN is a 2-digit index based on creation order among non-owners.
+  const serialByUserId = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    if (!accountSerial) return map;
+    let subIdx = 0;
+    for (const u of users) {
+      if (u.is_owner) { map[u.id] = accountSerial; continue; }
+      subIdx += 1;
+      map[u.id] = `${accountSerial}-${String(subIdx).padStart(2, '0')}`;
+    }
+    return map;
+  }, [users, accountSerial]);
+
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
     if (accountSerial && q === accountSerial.toLowerCase()) return users;
     return users.filter(u =>
       u.email.toLowerCase().includes(q) ||
-      (u.name ?? '').toLowerCase().includes(q)
+      (u.name ?? '').toLowerCase().includes(q) ||
+      (serialByUserId[u.id] ?? '').toLowerCase().includes(q)
     );
-  }, [users, search, accountSerial]);
+  }, [users, search, accountSerial, serialByUserId]);
 
   const startEdit = (u: PortalUser) => {
     setEditId(u.id); setEditName(u.name ?? ''); setEditModules(u.modules);
@@ -513,12 +528,12 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
             {editId !== u.id && (
               <div className="px-4 pb-3 flex items-end justify-between gap-2">
                 <ModuleChips modules={u.modules} />
-                {accountSerial && (
+                {serialByUserId[u.id] && (
                   <span
                     className="shrink-0 text-[10px] font-semibold"
                     style={{ color: 'var(--c-text-4)', fontFamily: 'monospace', letterSpacing: '0.04em' }}
                   >
-                    {accountSerial}
+                    {serialByUserId[u.id]}
                   </span>
                 )}
               </div>
