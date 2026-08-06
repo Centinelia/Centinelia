@@ -131,32 +131,19 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // Get all active agents with a valid email integration.
-  // !inner ensures PostgREST uses INNER JOIN so the .eq() on the joined column
-  // filters rows at the SQL level rather than just filtering nested objects.
-  const { data: integrations } = await supabase
-    .from('email_integrations')
-    .select(`
-      agent_id,
-      provider,
-      access_token,
-      refresh_token,
-      token_expiry,
-      needs_reauth,
-      voice_agents!agent_id!inner (
-        id, agent_name, business_name, role, role_knowledge_base, portal_email, active,
-        client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features, timezone
-      )
-    `)
-    .eq('needs_reauth', false)
-    .eq('voice_agents.features->automations->learn->>enabled', 'true');
+  // Iterar por agents con learn.enabled=true directamente. Antes hacíamos
+  // INNER JOIN a email_integrations, lo cual excluía silenciosamente a los
+  // que tienen el correo conectado solo per-org (integration_accounts).
+  // Ver commits ae177a76 y patrón synthetic org row en connector-tools.ts.
+  const { data: agents } = await supabase
+    .from('voice_agents')
+    .select('id, agent_name, business_name, role, role_knowledge_base, portal_email, active, client_email, ai_ops_used, ai_ops_limit, minutes_reset_date, portal_token, features, timezone')
+    .eq('active', true)
+    .eq('features->automations->learn->>enabled', 'true');
 
-  // Belt-and-suspenders: re-filter in memory in case the JSONB filter on the
-  // joined column silently fails (PostgREST version mismatch, etc.).
-  const filtered = (integrations ?? []).filter(row => {
-    const agent = (row as any).voice_agents;
-    return agent?.features?.automations?.learn?.enabled === true;
-  });
+  const filtered = (agents ?? []).filter(a =>
+    (a as any).features?.automations?.learn?.enabled === true && a.portal_email
+  );
 
   if (!filtered.length) {
     return NextResponse.json({ ok: true, processed: 0 });
@@ -165,26 +152,43 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // last 14 days (biweekly cadence)
   let processed = 0;
   let totalSaved = 0;
+  let skippedNoEmail = 0;
 
-  for (const integration of filtered) {
-    const agent = (integration as any).voice_agents as {
-      id: string;
-      agent_name: string | null;
-      business_name: string;
-      role: string | null;
-      role_knowledge_base: string | null;
-      portal_email: string | null;
-      active: boolean;
-      client_email: string | null;
-      ai_ops_used: number;
-      ai_ops_limit: number;
-      minutes_reset_date: string | null;
-      portal_token: string | null;
-      features: any;
-      timezone: string | null;
-    } | null;
-
+  for (const agent of filtered as any[]) {
     if (!agent?.active || !agent.portal_email) continue;
+
+    // Resolver integración: per-org primero, per-agent fallback.
+    let integration: IntegrationRow | null = null;
+    const { data: orgAcct } = await supabase
+      .from('integration_accounts')
+      .select('provider, account_label, access_token, refresh_token, expires_at, status')
+      .eq('portal_email', agent.portal_email)
+      .in('provider', ['gmail', 'outlook'])
+      .maybeSingle();
+    if (orgAcct && (orgAcct as any).status !== 'needs_reauth') {
+      integration = {
+        id:                 `org:${agent.portal_email}:${(orgAcct as any).provider}`,
+        agent_id:           agent.id,
+        provider:           (orgAcct as any).provider as 'gmail' | 'outlook',
+        email:              ((orgAcct as any).account_label as string | null) ?? '',
+        access_token:       ((orgAcct as any).access_token as string | null) ?? '',
+        refresh_token:      ((orgAcct as any).refresh_token as string | null) ?? null,
+        token_expires_at:   ((orgAcct as any).expires_at as string | null) ?? null,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      };
+    }
+    if (!integration) {
+      const { data: perAgent } = await supabase
+        .from('email_integrations')
+        .select('*')
+        .eq('agent_id', agent.id)
+        .eq('needs_reauth', false)
+        .maybeSingle();
+      if (perAgent) integration = perAgent as IntegrationRow;
+    }
+    if (!integration) { skippedNoEmail++; continue; }
 
     try {
       const ops = await consumeAiOp(agent.id, 40, { source: 'learn', label: 'Aprendizaje continuo del negocio' }); // learn is heavy (multi-source)
@@ -193,7 +197,7 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      const accessToken = await refreshIfNeeded(integration as unknown as IntegrationRow, supabase);
+      const accessToken = await refreshIfNeeded(integration, supabase);
       const agentTimezone = agent.timezone ?? 'America/Monterrey';
 
       // Fetch emails from mail API and agent activity from Supabase in parallel
@@ -261,5 +265,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, processed, saved: totalSaved });
+  return NextResponse.json({ ok: true, processed, saved: totalSaved, skippedNoEmail });
 }

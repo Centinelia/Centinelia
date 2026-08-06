@@ -60,10 +60,22 @@ async function loadAgent(token: string, agentId: string) {
 }
 
 // ─── Email integration check ──────────────────────────────────────────────────
-// Single query via embedded FK join: email_integrations → voice_agents.portal_email.
+// El correo de aprendizaje es el CORREO DEL NEGOCIO. Primero busca per-org
+// (integration_accounts), fallback per-agent (email_integrations) por
+// retrocompat. Ver commit ae177a76 y role-email-learning/route.ts.
 
 async function hasEmailIntegration(portalEmail: string): Promise<boolean> {
   const supabase = createAdminClient();
+
+  const { data: orgAcct } = await supabase
+    .from('integration_accounts')
+    .select('provider, status')
+    .eq('portal_email', portalEmail)
+    .in('provider', [...LEARN_EMAIL_PROVIDERS])
+    .neq('status', 'needs_reauth')
+    .limit(1);
+  if ((orgAcct?.length ?? 0) > 0) return true;
+
   const { data } = await (supabase
     .from('email_integrations')
     .select('agent_id, voice_agents!inner(portal_email)')
