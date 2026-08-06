@@ -168,7 +168,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
 
   return (
     <aside
-      className="hidden md:flex flex-col w-52 shrink-0"
+      className="hidden md:flex flex-col w-[260px] shrink-0"
       style={{
         borderRight: '1px solid var(--c-border)',
         background:  'var(--c-modal)',
@@ -314,9 +314,10 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         })}
       </nav>
 
-      {/* Usage widget */}
-      {minutesIncluded > 0 && (() => {
-        const minPct  = Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100);
+      {/* Usage widget — muestra siempre que haya algún dato de plan */}
+      {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
+        const hasMinPlan = minutesIncluded > 0;
+        const minPct  = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;
         const opsPct  = aiOpsLimit > 0 ? Math.min(Math.round((aiOpsUsed / aiOpsLimit) * 100), 100) : 0;
         const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
         return (
@@ -330,8 +331,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
             <div className="mb-2">
               <div className="flex justify-between mb-1">
                 <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
-                <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(minPct) }}>
-                  {minutesRemain} restantes
+                <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
+                  {hasMinPlan ? `${minutesRemain} restantes` : 'Sin plan'}
                 </span>
               </div>
               <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
@@ -357,7 +358,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       })()}
 
       {hasStripe && (
-        <div className="px-2 py-3 shrink-0" style={{ borderTop: minutesIncluded > 0 ? 'none' : '1px solid var(--c-border)', marginTop: minutesIncluded > 0 ? 0 : 'auto' }}>
+        <div className="px-2 py-3 shrink-0" style={{ borderTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 'none' : '1px solid var(--c-border)', marginTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 0 : 'auto' }}>
           <a
             href={`/api/billing/portal-session?token=${token}`}
             className="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80 w-full"

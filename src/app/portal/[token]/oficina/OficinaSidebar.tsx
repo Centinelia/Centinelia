@@ -116,7 +116,7 @@ export default function OficinaSidebar({
 
   return (
     <aside
-      className="hidden md:flex flex-col w-52 shrink-0"
+      className="hidden md:flex flex-col w-[260px] shrink-0"
       style={{
         borderRight: '1px solid var(--c-border)',
         background:  'var(--c-modal)',

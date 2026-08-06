@@ -368,16 +368,16 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
       </ul>
 
       {/* Uso del mes: Minutos + Tareas con progress bars (V1 pattern con V2 tokens) */}
-      {status &&
-        typeof status.minutesRemain === 'number' &&
-        typeof status.minutesIncluded === 'number' &&
-        status.minutesIncluded > 0 &&
+      {status && (typeof status.minutesRemain === 'number' || typeof status.aiOpsUsed === 'number') &&
         (() => {
-          const minPct   = Math.min(Math.round((1 - status.minutesRemain! / status.minutesIncluded!) * 100), 100);
-          const opsUsed  = typeof status.aiOpsUsed  === 'number' ? status.aiOpsUsed  : 0;
-          const opsLimit = typeof status.aiOpsLimit === 'number' ? status.aiOpsLimit : 0;
-          const opsPct   = opsLimit > 0 ? Math.min(Math.round((opsUsed / opsLimit) * 100), 100) : 0;
-          const opsRemain = Math.max(0, opsLimit - opsUsed);
+          const minIncluded = typeof status.minutesIncluded === 'number' ? status.minutesIncluded : 0;
+          const minRemain   = typeof status.minutesRemain === 'number' ? status.minutesRemain : 0;
+          const minPct      = minIncluded > 0 ? Math.min(Math.round((1 - minRemain / minIncluded) * 100), 100) : 0;
+          const opsUsed     = typeof status.aiOpsUsed  === 'number' ? status.aiOpsUsed  : 0;
+          const opsLimit    = typeof status.aiOpsLimit === 'number' ? status.aiOpsLimit : 0;
+          const opsPct      = opsLimit > 0 ? Math.min(Math.round((opsUsed / opsLimit) * 100), 100) : 0;
+          const opsRemain   = Math.max(0, opsLimit - opsUsed);
+          const hasMinPlan  = minIncluded > 0;
           return (
             <Link
               href={`/portal/${token}?tab=cuenta#uso-del-mes`}
@@ -397,9 +397,9 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                   <span className="text-[11px] text-neutral-600">Minutos</span>
                   <span
                     className="text-[11px] font-medium tabular-nums"
-                    style={{ color: uColor(minPct) }}
+                    style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}
                   >
-                    {status.minutesRemain} restantes
+                    {hasMinPlan ? `${minRemain} restantes` : 'Sin plan'}
                   </span>
                 </div>
                 <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
