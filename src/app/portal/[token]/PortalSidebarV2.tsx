@@ -201,13 +201,14 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
               boxShadow:  '0 6px 20px rgba(108,59,255,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
             }}
           >
-            {/* Meerkat icon 40x40, misma altura visual que Centinelia brand */}
+            {/* Icono Lucide de Centinelia (meerkat outline) — contrasta bien
+                sobre el gradient dark del CTA. */}
             <img
               src="/icons/meerkat-lucide.png"
               alt=""
-              width={40}
-              height={40}
-              style={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0, filter: 'brightness(1.15)' }}
+              width={56}
+              height={56}
+              style={{ width: 56, height: 56, objectFit: 'contain', flexShrink: 0, filter: 'brightness(1.15)' }}
               draggable={false}
             />
             <div className="flex flex-col min-w-0 flex-1">
