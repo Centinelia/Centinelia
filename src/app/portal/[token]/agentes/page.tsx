@@ -941,7 +941,7 @@ export default async function AgentesPage({ params }: Props) {
               <div>
                 <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Tareas ejecutadas</p>
                 <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalOpsMonth}</p>
-                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>ops del mes</p>
+                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>total del mes</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Con puesto asignado</p>
