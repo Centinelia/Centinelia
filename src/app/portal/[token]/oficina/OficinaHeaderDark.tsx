@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import BusinessSwitcher from '../BusinessSwitcher';
-import NotificationBell from '../NotificationBell';
-import PortalLogout    from '../PortalLogout';
+import OficinaBusinessChip from './OficinaBusinessChip';
+import NotificationBell    from '../NotificationBell';
+import PortalLogout        from '../PortalLogout';
 
 interface Props {
   token:            string;
@@ -11,11 +11,14 @@ interface Props {
 }
 
 /**
- * OficinaHeaderDark — header 48px dark #1A0A3B para el shell V2 de Oficina.
+ * OficinaHeaderDark — header 60px dark #1A0A3B para el shell V2 de Oficina.
  *
- * Diseño 'workspace mode': compacto, minimalista, con chip 'OFICINA' que
- * comunica que estás en una sección distinta del portal principal. Todos
- * los controles (business switcher, notification, logout) en variante onDark.
+ * Layout co-brand tipo GitHub/Vercel:
+ *   [Centinelia icon] × [Business logo/name ⌄]   [OFICINA]      [🔔] [logout]
+ *
+ * Comunica que Centinelia está trabajando POR el negocio del cliente,
+ * separados por '×' (colaboración). BusinessChip clickable actúa como switcher
+ * cuando el owner tiene >1 organización.
  */
 export default function OficinaHeaderDark({ token, businessName, logoUrl, businessOptions }: Props) {
   return (
@@ -27,12 +30,12 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
         borderBottom: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      {/* Left — brand + eyebrow + switcher */}
+      {/* Left — co-brand + eyebrow */}
       <div className="flex items-center gap-3 min-w-0">
         <Link
           href={`/portal/${token}?tab=inicio`}
           className="flex items-center gap-3 shrink-0"
-          aria-label="Volver al portal"
+          aria-label="Volver al portal Centinelia"
         >
           <img
             src="/logo-icon.png"
@@ -42,25 +45,37 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
             style={{ width: 46, height: 46, objectFit: 'contain', display: 'block' }}
             draggable={false}
           />
-          <span
-            className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.18em] px-2 py-0.5 rounded"
-            style={{
-              color:      '#C4B5FD',
-              background: 'rgba(108,59,255,0.18)',
-              border:     '1px solid rgba(108,59,255,0.35)',
-            }}
-          >
-            Oficina
-          </span>
         </Link>
 
+        {/* Divisor '×' — colaboración */}
+        <span
+          aria-hidden
+          className="text-lg font-light shrink-0 select-none"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+        >
+          ×
+        </span>
+
+        {/* Business del cliente (con switcher si multi-org) */}
         <div className="min-w-0">
-          <BusinessSwitcher
+          <OficinaBusinessChip
             current={{ business_name: businessName, logo_url: logoUrl, first_token: token }}
             options={businessOptions}
             currentBusinessName={businessName}
           />
         </div>
+
+        {/* Chip OFICINA — visible en sm+ */}
+        <span
+          className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.18em] px-2 py-0.5 rounded shrink-0"
+          style={{
+            color:      '#C4B5FD',
+            background: 'rgba(108,59,255,0.18)',
+            border:     '1px solid rgba(108,59,255,0.35)',
+          }}
+        >
+          Oficina
+        </span>
       </div>
 
       {/* Right — actions */}
