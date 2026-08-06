@@ -78,6 +78,9 @@ export const TOOL_REGISTRY: ToolEntry[] = [
   { name: 'consult_agent',            description: 'Consulta síncrona a otro empleado',                     channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: policyFor('consult_agent') },
   { name: 'reportar_falla',           description: 'Reporta bug al equipo Centinelia',                      channels: A, category: 'meta',      destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
 
+  // nash (interno) — solo se expone al meerkat interno Nash
+  { name: 'revisar_incidentes_plataforma', description: 'Nash: lee las 5 fuentes de incidentes (bug_reports, llm_call_log errores, ops_inbox escalado stale, handoff_failed_responses, agent_tasks failed) con dedupe contra platform_incidents', channels: ['chat', 'email'], category: 'nash', destructive: false, gatedByRole: ['nash'], gatedByFeature: 'nash_passive_discovery', capability: null, policy: DEFAULT_POLICY },
+
   // brand / voc
   { name: 'extraer_tono_de_marca',    description: 'Extrae guía de tono desde muestras',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },
   { name: 'extraer_voz_del_cliente',  description: 'VoC desde llamadas/correos/tickets',                    channels: A, category: 'brand',     destructive: false, gatedByRole: null, gatedByFeature: null,      capability: null, policy: DEFAULT_POLICY },

@@ -764,6 +764,22 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       });
     }
 
+    // Nash (meerkat interno) — tool exclusiva de monitoreo pasivo.
+    if (inboxMeerkatId === 'nash') {
+      tools.push({
+        name: 'revisar_incidentes_plataforma',
+        description: 'Uso exclusivo de Nash. Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica automáticamente contra platform_incidents ya abiertos. Úsala como primera acción de cada ciclo de monitoreo.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            days:             { type: 'number', description: 'Ventana hacia atrás en días. Default 7. Máximo 30.' },
+            limit_per_source: { type: 'number', description: 'Máximo de filas por fuente. Default 25. Máximo 100.' },
+          },
+          required: [],
+        },
+      });
+    }
+
     // Pilar 2 Creatividad — tools condicionales por meerkat_role_id (email)
     {
       const { MEERKAT_TOOL_ACCESS } = await import('@/lib/creativity/meerkat-gates');

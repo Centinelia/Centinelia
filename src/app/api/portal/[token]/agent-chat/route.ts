@@ -630,6 +630,19 @@ const ML_VER_METRICAS_TOOL: Anthropic.Tool = {
   },
 };
 
+const REVISAR_INCIDENTES_PLATAFORMA_TOOL: Anthropic.Tool = {
+  name: 'revisar_incidentes_plataforma',
+  description: 'Uso exclusivo de Nash (meerkat interno de Centinelia). Lee las 5 fuentes de incidentes de la plataforma en una sola llamada: bug reports enviados vía reportar_falla, errores del LLM (llm_call_log), bandejas escaladas estancadas más de 24h, handoff replies fallidos, y agent_tasks con status="failed". Deduplica automáticamente contra platform_incidents ya abiertos (para no crear duplicados). Úsala como primera acción de cada ciclo de monitoreo antes de decidir qué escalar a Claude Code, qué contestar al cliente afectado, o qué marcar como incidente manual.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      days:             { type: 'number', description: 'Ventana hacia atrás en días. Default 7. Máximo 30.' },
+      limit_per_source: { type: 'number', description: 'Máximo de filas por fuente. Default 25. Máximo 100.' },
+    },
+    required: [],
+  },
+};
+
 const REPORT_ISSUE_TOOL: Anthropic.Tool = {
   name: 'reportar_falla',
   description: 'Reporta una falla técnica inesperada al equipo de Centinelia. Úsala cuando encuentres un error real del sistema: timeout de API, falla al escribir archivo, herramienta con comportamiento incorrecto, resultado corrupto, etc. NO la uses para errores de autenticación o sesión expirada — esos se resuelven pidiéndole al dueño que reconecte la integración. No consume ops del cliente.',
@@ -1033,7 +1046,14 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   ver_metricas_ml:           ML_VER_METRICAS_TOOL,
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
+  revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
 };
+
+// Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
+// getToolsForRole detecta meerkat_role_id === 'nash'.
+const NASH_TOOLS: Anthropic.Tool[] = [
+  REVISAR_INCIDENTES_PLATAFORMA_TOOL,
+];
 
 function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionProductsConnected: boolean): Anthropic.Tool[] {
   const voiceNames = meerkatId && meerkatId !== 'custom'
@@ -1045,8 +1065,12 @@ function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionP
     ...(notionProductsConnected  ? [BUSCAR_PRODUCTO_TOOL] : []),
   ];
 
-  // Custom agents or unknown role → previous behavior (all tools)
-  if (!voiceNames) return [...ALL_TOOLS, ...extras];
+  // Custom agents or unknown role → previous behavior (all tools).
+  // Nash (meerkat interno) además recibe sus tools exclusivas.
+  if (!voiceNames) {
+    const base = [...ALL_TOOLS, ...extras];
+    return meerkatId === 'nash' ? [...base, ...NASH_TOOLS] : base;
+  }
 
   const tools: Anthropic.Tool[] = [];
   const seen = new Set<string>();

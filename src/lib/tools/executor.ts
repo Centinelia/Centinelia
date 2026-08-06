@@ -674,6 +674,124 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // revisar_incidentes_plataforma (Nash-only)
+  // Lee las 5 fuentes de incidentes que Nash monitorea y devuelve señales
+  // nuevas (dedupe contra platform_incidents no-cerrados).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'revisar_incidentes_plataforma') {
+    const features       = (agent.features as Record<string, unknown> | null) ?? {};
+    const meerkatRoleId  = features.meerkat_role_id;
+    if (meerkatRoleId !== 'nash') {
+      return { ok: false, error: 'Solo Nash puede usar revisar_incidentes_plataforma.' };
+    }
+    if (features.nash_passive_discovery === false) {
+      return { ok: false, error: 'Descubrimiento pasivo desactivado en la configuración de Nash (features.nash_passive_discovery).' };
+    }
+
+    const days      = Math.max(1, Math.min(30, (toolInput.days as number | undefined) ?? 7));
+    const now       = Date.now();
+    const sinceIso  = new Date(now - days * 86_400_000).toISOString();
+    const staleIso  = new Date(now - 24 * 3_600_000).toISOString();
+    const perSource = Math.max(1, Math.min(100, (toolInput.limit_per_source as number | undefined) ?? 25));
+
+    // Dedupe: source_id de incidentes no-cerrados ya rastreados por Nash.
+    const { data: trackedRows } = await supabase
+      .from('platform_incidents')
+      .select('source, source_id')
+      .not('status', 'in', '(resolved,closed)')
+      .not('source_id', 'is', null);
+    const trackedSet = new Set<string>(
+      (trackedRows ?? [])
+        .filter((r): r is { source: string; source_id: string } => typeof r.source_id === 'string')
+        .map(r => `${r.source}:${r.source_id}`)
+    );
+
+    // 1) Bug reports enviados vía tool `reportar_falla` (log en tool_call_log).
+    const { data: bugRaw } = await supabase
+      .from('tool_call_log')
+      .select('id, agent_id, portal_email, input_json, created_at')
+      .eq('tool_name', 'reportar_falla')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(perSource);
+    const bug_reports = (bugRaw ?? [])
+      .filter(r => !trackedSet.has(`bug_report:${r.id}`))
+      .map(r => {
+        const input = (r.input_json ?? {}) as Record<string, unknown>;
+        return {
+          id:            r.id,
+          agent_id:      r.agent_id,
+          portal_email:  r.portal_email,
+          tipo:          input.tipo ?? null,
+          descripcion:   input.descripcion ?? null,
+          contexto:      input.contexto ?? null,
+          created_at:    r.created_at,
+        };
+      });
+
+    // 2) Errores de LLM (llm_call_log.error is not null).
+    const { data: llmRaw } = await supabase
+      .from('llm_call_log')
+      .select('id, source, model, agent_id, portal_email, error, created_at')
+      .not('error', 'is', null)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(perSource);
+    const error_logs = (llmRaw ?? []).filter(r => !trackedSet.has(`error_log:${r.id}`));
+
+    // 3) Bandeja escalada estancada (>24h sin actualización).
+    const { data: inboxRaw } = await supabase
+      .from('ops_inbox')
+      .select('id, agent_id, email_from, email_subject, category, updated_at, created_at')
+      .eq('status', 'escalated')
+      .lt('updated_at', staleIso)
+      .order('updated_at', { ascending: true })
+      .limit(perSource);
+    const escalated_stale = (inboxRaw ?? []).filter(r => !trackedSet.has(`escalated_inbox:${r.id}`));
+
+    // 4) Handoff replies fallidos sin resolver.
+    const { data: hfRaw } = await supabase
+      .from('handoff_failed_responses')
+      .select('id, from_email, subject, retry_count, last_error, last_attempted_at, notified_admin_at')
+      .is('resolved_at', null)
+      .gte('created_at', sinceIso)
+      .order('last_attempted_at', { ascending: false })
+      .limit(perSource);
+    const failed_handoffs = (hfRaw ?? []).filter(r => !trackedSet.has(`failed_handoff:${r.id}`));
+
+    // 5) agent_tasks status='failed'.
+    const { data: atRaw } = await supabase
+      .from('agent_tasks')
+      .select('id, portal_email, title, description, result, eval_notes, updated_at')
+      .eq('status', 'failed')
+      .gte('updated_at', sinceIso)
+      .order('updated_at', { ascending: false })
+      .limit(perSource);
+    const failed_tasks = (atRaw ?? []).filter(r => !trackedSet.has(`agent_task:${r.id}`));
+
+    const totalNew = bug_reports.length + error_logs.length + escalated_stale.length + failed_handoffs.length + failed_tasks.length;
+
+    return {
+      ok: true,
+      summary: {
+        window_days:            days,
+        already_tracked_count:  trackedSet.size,
+        total_new_signals:      totalNew,
+        bug_reports_count:      bug_reports.length,
+        error_logs_count:       error_logs.length,
+        escalated_stale_count:  escalated_stale.length,
+        failed_handoffs_count:  failed_handoffs.length,
+        failed_tasks_count:     failed_tasks.length,
+      },
+      bug_reports,
+      error_logs,
+      escalated_stale,
+      failed_handoffs,
+      failed_tasks,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Mercado Libre — require portal cookie (not available in email context)
   // ─────────────────────────────────────────────────────────────────────────
   if (['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'].includes(toolName)) {
