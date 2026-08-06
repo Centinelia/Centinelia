@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Tabs from '@/components/portal-ui/overlays/Tabs';
 
 interface Props {
@@ -11,13 +12,33 @@ interface Props {
   recargaContent: React.ReactNode;
 }
 
+// Map URL hash (used by sidebar anchors) → tab value
+function hashToTab(): 'uso' | 'comprar' | 'recarga' {
+  if (typeof window === 'undefined') return 'uso';
+  const h = window.location.hash.slice(1);
+  if (h === 'comprar') return 'comprar';
+  if (h === 'recarga') return 'recarga';
+  return 'uso';
+}
+
 /**
  * CuentaUsageTabsCard
  *
- * Client shell that fuses the 3 cuenta-Col-1 sections (Uso / Comprar / Recarga)
- * into a single Card with pill tabs. Created in portal restructure A6.
+ * Client shell que fusiona las 3 secciones (Uso / Comprar / Recarga) en una
+ * sola Card con pill tabs. El tab activo se sincroniza con el hash de la URL
+ * para que los links "Consumo" (#uso-del-mes) y "Saldo" (#comprar) del sidebar
+ * abran el tab correcto.
  */
 export default function CuentaUsageTabsCard({ usoContent, comprarContent, recargaContent }: Props) {
+  const [value, setValue] = useState<'uso' | 'comprar' | 'recarga'>('uso');
+
+  useEffect(() => {
+    setValue(hashToTab());
+    const onHash = () => setValue(hashToTab());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   return (
     <div
       className="rounded-xl"
@@ -30,7 +51,7 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
     >
       {/* Pill tab bar */}
       <div className="p-5">
-        <Tabs.Root defaultValue="uso" variant="pill">
+        <Tabs.Root value={value} onValueChange={v => setValue(v as 'uso' | 'comprar' | 'recarga')} variant="pill">
           <Tabs.List>
             <Tabs.Trigger value="uso">Uso</Tabs.Trigger>
             <Tabs.Trigger value="comprar">Comprar</Tabs.Trigger>

@@ -113,24 +113,27 @@ export default function HistorialConsumoClient({
   return (
     <div className="flex flex-col">
 
-      {/* Toggle Minutos / Tareas */}
-      <div className="flex items-center gap-1 p-1 rounded-lg mb-3 self-start"
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
-        {(['minutos', 'tareas'] as const).map(t => {
-          const activeTab = tab === t;
-          return (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className="px-3 py-1 rounded-md text-xs font-medium transition-all"
-              style={{
-                background: activeTab ? '#6C3BFF' : 'transparent',
-                color:      activeTab ? '#fff'    : 'var(--c-text-3)',
-              }}>
-              {t === 'minutos' ? 'Minutos' : 'Tareas'}
-            </button>
-          );
-        })}
+      {/* Toggle Minutos / Tareas — centrado */}
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex items-center gap-1 p-1 rounded-full"
+          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
+          {(['minutos', 'tareas'] as const).map(t => {
+            const activeTab = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="px-5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                style={{
+                  background: activeTab ? '#6C3BFF' : 'transparent',
+                  color:      activeTab ? '#fff'    : 'var(--c-text-3)',
+                  boxShadow:  activeTab ? '0 2px 8px rgba(108,59,255,0.25)' : 'none',
+                }}>
+                {t === 'minutos' ? 'Minutos' : 'Tareas'}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Date filter — sticky */}
