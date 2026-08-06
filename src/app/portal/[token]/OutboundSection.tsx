@@ -610,13 +610,21 @@ export default function OutboundSection({
 
   const handleDelete = async () => {
     if (!selected.size) return;
+    // Password gate — misma contraseña que usamos para eliminar empleados.
+    // Solo Nazre y owners de confianza deberían tenerla.
+    const password = window.prompt(
+      `Eliminar ${selected.size} contacto${selected.size !== 1 ? 's' : ''}. Esta acción no se puede deshacer.\n\nIngresa la contraseña de administrador:`
+    );
+    if (password === null) return;  // cancelado
+    if (!password.trim()) { setContactError('Contraseña requerida.'); return; }
+
     setDeleting(true);
     setContactError('');
     try {
       const res = await fetch(`/api/portal/${token}/salientes/contacts`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [...selected] }),
+        body: JSON.stringify({ ids: [...selected], password: password.trim() }),
       });
       if (!res.ok) { const d = await res.json(); setContactError(d.error ?? 'Error al eliminar'); return; }
       setContacts(prev => prev.filter(c => !selected.has(c.id)));

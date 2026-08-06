@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { getAgentAccess } from '@/lib/portal/agent-access';
+import { timingSafeCompareStrings } from '@/lib/auth/cron-auth';
 
 interface Params { params: Promise<{ token: string }> }
 
@@ -85,8 +86,23 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const agent = await getAgent(token, session.portalEmail);
   if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const { ids } = await req.json() as { ids: string[] };
+  const { ids, password } = await req.json() as { ids: string[]; password?: string };
   if (!ids?.length) return NextResponse.json({ error: 'Se requieren IDs' }, { status: 400 });
+
+  // Password gate — misma env var que /api/admin/agentes/[id] DELETE.
+  // Solo Nazre/owners de confianza deberían tenerla. Bloquea borrado accidental
+  // de contactos por el portal.
+  const expected = process.env.ADMIN_DELETE_PASSWORD;
+  if (!expected) {
+    return NextResponse.json({
+      error: 'ADMIN_DELETE_PASSWORD no está configurado. Contacta a soporte.',
+    }, { status: 500 });
+  }
+  const provided = (password ?? '').trim();
+  const expect   = expected.trim();
+  if (!provided || provided.length !== expect.length || !timingSafeCompareStrings(provided, expect)) {
+    return NextResponse.json({ error: 'Contraseña incorrecta.' }, { status: 403 });
+  }
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -96,5 +112,5 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     .in('id', ids);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: ids.length });
 }
