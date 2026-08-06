@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Check, Loader2, Brain, BookOpen, ChevronDown, Sparkles, Columns3, Award } from 'lucide-react';
 import { useDirtyWarning } from '@/lib/portal/useDirtyWarning';
 import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
@@ -74,7 +74,10 @@ export default function AgentKnowledgeBaseEditor({
   /** Meerkats predeterminados: el puesto es fijo (Nia=recepcionista, Noah=ventas, etc.). */
   roleLocked?:       boolean;
 }) {
-  const router = useRouter();
+  const router       = useRouter();
+  const pathname     = usePathname();
+  const searchParams = useSearchParams();
+  const learningRunning = searchParams?.get('learning') === 'running';
   const [role,          setRole]          = useState(initialRole);
   const [roleColor,     setRoleColor]     = useState(initialRoleColor || '#6C3BFF');
   const [roleKb,        setRoleKb]        = useState(initialRoleKb);
@@ -97,6 +100,24 @@ export default function AgentKnowledgeBaseEditor({
   const [filterReasonRole,  setFilterReasonRole]  = useState<string | null>(null);
 
   useDirtyWarning('agent-kb', dirtyRoleName || dirtyRoleKb || dirtyLearnings);
+
+  // Cuando el server re-renderiza con nuevos initialLearnings (después de que
+  // el usuario disparó 'Aprender de mis correos'), sincronizar el state local.
+  // Solo si no hay edits en curso, para no sobreescribir cambios del usuario.
+  useEffect(() => {
+    if (dirtyLearnings) return;
+    if (initialLearnings !== learnings) setLearnings(initialLearnings);
+    // Si veníamos con ?learning=running y ya llegaron los nuevos aprendizajes,
+    // quitar el flag de la URL para que un refresh de página no muestre el
+    // banner otra vez.
+    if (learningRunning && initialLearnings !== learnings) {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      params.delete('learning');
+      const qs = params.toString();
+      router.replace(`${pathname}${qs ? `?${qs}` : ''}${window.location.hash}`, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialLearnings]);
 
   const save = async (field: 'role_knowledge_base' | 'role_learnings', val: string, setSaving: (b: boolean) => void, setSaved: (b: boolean) => void, setDirty: (b: boolean) => void) => {
     setSaving(true);
@@ -453,6 +474,20 @@ export default function AgentKnowledgeBaseEditor({
         <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
           Todo lo que tu empleado ha aprendido en campo y fue aprobado en Oficina. Puedes editar, reorganizar o eliminar entradas directamente aquí.
         </p>
+        {learningRunning && (
+          <div className="flex items-center gap-2.5 rounded-xl px-3.5 py-3"
+            style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.28)' }}>
+            <Loader2 size={14} className="animate-spin flex-shrink-0" style={{ color: '#6C3BFF' }} />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-semibold" style={{ color: '#6C3BFF' }}>
+                Analizando correos del negocio…
+              </span>
+              <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                Cuando termine, los nuevos aprendizajes aparecerán abajo automáticamente.
+              </span>
+            </div>
+          </div>
+        )}
         <textarea
           value={learnings}
           onChange={e => { setLearnings(e.target.value); setSavedLearn(false); setDirtyLearnings(true); }}

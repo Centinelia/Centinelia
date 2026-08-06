@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Mail, Check, AlertCircle, ArrowRight, BookOpen } from 'lucide-react';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 type State = 'idle' | 'loading' | 'done' | 'error' | 'no-email' | 'no-relevant';
 
 export default function RoleEmailLearningSection({ token, connectedEmail, agentRole }: Props) {
+  const router   = useRouter();
+  const pathname = usePathname();
   const [state,   setState]   = useState<State>(connectedEmail ? 'idle' : 'no-email');
   const [result,  setResult]  = useState<{ saved: number; relevant_count: number; total_emails: number } | null>(null);
   const [errMsg,  setErrMsg]  = useState<string | null>(null);
@@ -20,6 +23,11 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
     setState('loading');
     setResult(null);
     setErrMsg(null);
+
+    // Navega inmediatamente al tab de aprendizajes para que el user vea el
+    // spinner ahí y luego cómo se puebla la lista. El POST corre en paralelo.
+    router.push(`${pathname}?tab=personalidad&learning=running#rol`, { scroll: true });
+
     try {
       const res  = await fetch(`/api/portal/${token}/role-email-learning`, { method: 'POST' });
       const data = await res.json();
@@ -35,6 +43,9 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
         setState('done');
         setResult(data);
       }
+      // Refresh SSR para que AgentKnowledgeBaseEditor recargue initialLearnings
+      // con las nuevas reglas guardadas en voice_agents.role_learnings.
+      router.refresh();
     } catch {
       setErrMsg('Error de conexión. Intenta de nuevo.');
       setState('error');
