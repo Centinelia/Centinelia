@@ -45,10 +45,19 @@ export async function POST(req: NextRequest) {
 
   let marked = 0;
   if (!matchErr && matches) {
-    const toMark = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix)).map(r => r.id as string);
-    if (toMark.length) {
+    const matching = matches.filter(r => digitsOnly(r.telefono as string).endsWith(suffix));
+    if (matching.length) {
       const { transitionOutboundContact } = await import('@/lib/state-machines/outbound-contact');
-      for (const contactId of toMark) {
+      // Fetch tags actuales para agregar 'no_llamar' sin sobreescribir
+      const { data: withTags } = await supabase
+        .from('outbound_contacts')
+        .select('id, tags')
+        .in('id', matching.map(m => m.id as string));
+      const tagsById = new Map<string, string[]>(
+        (withTags ?? []).map(r => [r.id as string, (r.tags as string[] | null) ?? []])
+      );
+      for (const c of matching) {
+        const contactId = c.id as string;
         await transitionOutboundContact({
           supabase, contactId,
           toStatus: 'dnc',
@@ -58,8 +67,15 @@ export async function POST(req: NextRequest) {
           soft:     true,
           extraFields: { notes: motivo ?? 'Solicitud del ciudadano' },
         });
+        // Auto-tag 'no_llamar' para segmentación (excluir de futuras campañas)
+        const existing = tagsById.get(contactId) ?? [];
+        if (!existing.includes('no_llamar')) {
+          await supabase.from('outbound_contacts')
+            .update({ tags: [...existing, 'no_llamar'].slice(0, 20) })
+            .eq('id', contactId);
+        }
       }
-      marked = toMark.length;
+      marked = matching.length;
     }
   }
 

@@ -9,7 +9,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { PhoneOutgoing, PhoneMissed, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
+import { PhoneOutgoing, PhoneMissed, CheckCircle2, XCircle, Clock, Loader2, Search, X } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export interface OutboundCallRow {
@@ -63,14 +63,25 @@ interface Props {
 
 export default function OutboundHistoryList({ calls, agentNameById }: Props) {
   const [filter, setFilter] = useState<Filter>('todas');
+  const [query,  setQuery]  = useState('');
 
-  const filtered = useMemo(() => {
+  const filteredByStatus = useMemo(() => {
     if (filter === 'todas') return calls;
     if (filter === 'completadas')   return calls.filter(c => c.status === 'completed');
     if (filter === 'sin_respuesta') return calls.filter(c => c.status === 'no_answer');
     if (filter === 'fallidas')      return calls.filter(c => c.status === 'failed');
     return calls;
   }, [calls, filter]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return filteredByStatus;
+    return filteredByStatus.filter(c =>
+      (c.nombre ?? '').toLowerCase().includes(q) ||
+      c.telefono.includes(q) ||
+      (c.motivo ?? '').toLowerCase().includes(q)
+    );
+  }, [filteredByStatus, query]);
 
   const counts = useMemo(() => ({
     todas:         calls.length,
@@ -88,6 +99,37 @@ export default function OutboundHistoryList({ calls, agentNameById }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Toolbar: búsqueda + chips */}
+      {calls.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9B8FB5' }} />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Buscar por nombre, teléfono o motivo…"
+              className="w-full rounded-xl text-[13px] outline-none"
+              style={{
+                padding:    '9px 12px 9px 34px',
+                background: '#ffffff',
+                border:     '1px solid #E8E3F5',
+                color:      '#1A0A3B',
+              }}
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:opacity-70"
+                style={{ color: '#9B8FB5' }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Filter chips */}
       <div className="flex flex-wrap gap-1.5">
         {filterDefs.map(f => {
@@ -115,11 +157,17 @@ export default function OutboundHistoryList({ calls, agentNameById }: Props) {
       {filtered.length === 0 ? (
         <div className="rounded-2xl" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
           <EmptyState
-            icon={PhoneOutgoing}
-            title={filter === 'todas' ? 'Sin llamadas salientes todavía' : 'Sin resultados con este filtro'}
-            description={filter === 'todas'
-              ? 'Cuando tu empleado empiece a marcar contactos, el historial aparecerá aquí.'
-              : 'Cambia el filtro para ver otras llamadas.'}
+            icon={query.trim() ? Search : PhoneOutgoing}
+            title={
+              query.trim()               ? 'Sin resultados con esta búsqueda'
+              : filter === 'todas'       ? 'Sin llamadas salientes todavía'
+                                         : 'Sin resultados con este filtro'
+            }
+            description={
+              query.trim()               ? 'Intenta con otro nombre, teléfono o motivo.'
+              : filter === 'todas'       ? 'Cuando tu empleado empiece a marcar contactos, el historial aparecerá aquí.'
+                                         : 'Cambia el filtro para ver otras llamadas.'
+            }
             size="sm"
           />
         </div>

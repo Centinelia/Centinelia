@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body  = await req.json();
   const patch: Record<string, unknown> = {};
 
-  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','status','capability'] as const;
+  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','tag_filter','status','capability'] as const;
   for (const f of fields) {
     if (f in body) patch[f] = body[f];
   }
@@ -127,12 +127,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   let contactsQuery = supabase
     .from('outbound_contacts')
-    .select('id, nombre, telefono, motivo')
+    .select('id, nombre, telefono, motivo, tags')
     .eq('agent_id', agent.id)
     .eq('status', 'pending');
 
   if (campaign.contact_filter?.length) {
     contactsQuery = contactsQuery.in('source', campaign.contact_filter);
+  }
+
+  const campTagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
+  if (campTagFilter.length > 0) {
+    contactsQuery = contactsQuery.contains('tags', campTagFilter);
   }
 
   const { data: contacts } = await contactsQuery.limit(100);

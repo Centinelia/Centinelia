@@ -74,12 +74,19 @@ export async function GET(req: NextRequest) {
     // Fetch pending contacts for this campaign
     let q = supabase
       .from('outbound_contacts')
-      .select('id, nombre, telefono, motivo')
+      .select('id, nombre, telefono, motivo, tags')
       .eq('agent_id', campaign.agent_id)
       .eq('status', 'pending');
 
     if (campaign.contact_filter?.length) {
       q = q.in('source', campaign.contact_filter);
+    }
+
+    // tag_filter: contactos que tengan TODOS los tags requeridos (AND).
+    // Vacío = todos los contactos pasan.
+    const tagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
+    if (tagFilter.length > 0) {
+      q = q.contains('tags', tagFilter);
     }
 
     const { data: contacts } = await q.limit(100);

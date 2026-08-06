@@ -500,6 +500,35 @@ export async function POST(req: NextRequest) {
 
         const callerIsInternal = callerNumberIsInternal || passphraseUsed;
 
+        // Auto-tag por outcome (Fase E): agrega el tag correspondiente al
+        // contacto de outbound_contacts si existe uno con este teléfono.
+        // Los tags alimentan la segmentación de futuras campañas.
+        // Mapping: lead_created → 'interesado', appointment_booked → 'cotizó',
+        //          order_taken → 'compró'
+        const autoTag = outcome === 'lead_created'       ? 'interesado'
+                      : outcome === 'appointment_booked' ? 'cotizó'
+                      : outcome === 'order_taken'        ? 'compró'
+                      : null;
+        if (autoTag && normCallerD.length >= 10 && agent?.id) {
+          try {
+            const suffix = normCallerD.slice(-10);
+            const { data: matches } = await supabase
+              .from('outbound_contacts')
+              .select('id, telefono, tags')
+              .eq('agent_id', agent.id as string);
+            for (const c of matches ?? []) {
+              const digits = (c.telefono as string ?? '').replace(/\D+/g, '');
+              if (!digits.endsWith(suffix)) continue;
+              const existing = (c.tags as string[] | null) ?? [];
+              if (existing.includes(autoTag)) continue;
+              const next = [...existing, autoTag].slice(0, 20);
+              await supabase.from('outbound_contacts').update({ tags: next }).eq('id', c.id as string);
+            }
+          } catch (err) {
+            console.error('[voice/webhook auto-tag]', err);
+          }
+        }
+
         if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome) && !callerIsInternal) {
           // Encolamos al digest diario. Marca urgent=true para lead_created
           // y transferred (el owner querría enterarse en el momento); el resto

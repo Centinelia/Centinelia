@@ -54,8 +54,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     nombre, instrucciones, motivo,
     schedule_type, run_at_time, run_on_days, run_at_date,
     contact_filter,
+    tag_filter,
     capability,
   } = body;
+
+  // Sanitiza tag_filter: array de strings, trim + lowercase + dedup, cap 10
+  const cleanTagFilter = Array.isArray(tag_filter)
+    ? Array.from(new Set(
+        (tag_filter as unknown[])
+          .filter((t): t is string => typeof t === 'string')
+          .map(t => t.trim().toLowerCase())
+          .filter(t => t.length > 0 && t.length <= 40)
+      )).slice(0, 10)
+    : [];
 
   if (!nombre?.trim()) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 });
   if (!schedule_type) return NextResponse.json({ error: 'El tipo de programación es requerido' }, { status: 400 });
@@ -85,6 +96,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       run_on_days:    run_on_days  ?? [],
       run_at_date:    run_at_date  ?? null,
       contact_filter: contact_filter ?? null,
+      tag_filter:     cleanTagFilter,
       capability:     cap,
       status:         'active',
       next_run_at:    next?.toISOString() ?? null,

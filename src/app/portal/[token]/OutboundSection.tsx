@@ -44,6 +44,7 @@ interface Campaign {
   run_on_days:    number[];
   run_at_date:    string | null;
   contact_filter: string[] | null;
+  tag_filter:     string[];
   status:         'active' | 'paused' | 'completed';
   last_run_at:    string | null;
   next_run_at:    string | null;
@@ -260,7 +261,7 @@ interface CampaignFormProps {
   onCancel:    () => void;
 }
 
-function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) {
+function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignFormProps & { contacts?: Contact[] }) {
   const [nombre,        setNombre]        = useState(initial?.nombre        ?? '');
   const [motivo,        setMotivo]        = useState(initial?.motivo        ?? '');
   const [instrucciones, setInstrucciones] = useState(initial?.instrucciones ?? '');
@@ -271,8 +272,29 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
   const [contactFilter, setContactFilter] = useState<'all' | 'llamada_entrante' | 'csv' | 'manual'>(
     !initial?.contact_filter ? 'all' : (initial.contact_filter[0] as 'llamada_entrante' | 'csv' | 'manual') ?? 'all'
   );
+  const [tagFilter, setTagFilter] = useState<string[]>(initial?.tag_filter ?? []);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
+
+  // Tags disponibles (extraídos de contactos) + preview de cuántos matchean
+  const allTags = useMemo(() => {
+    const bag = new Set<string>();
+    for (const c of contacts ?? []) for (const t of c.tags ?? []) bag.add(t);
+    return Array.from(bag).sort();
+  }, [contacts]);
+
+  const previewCount = useMemo(() => {
+    if (!contacts?.length) return 0;
+    return contacts.filter(c => {
+      if (c.status !== 'pending') return false;
+      if (contactFilter !== 'all' && c.source !== contactFilter) return false;
+      if (tagFilter.length && !tagFilter.every(t => (c.tags ?? []).includes(t))) return false;
+      return true;
+    }).length;
+  }, [contacts, contactFilter, tagFilter]);
+
+  const toggleTag = (t: string) =>
+    setTagFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
   const toggleDay = (d: number) =>
     setRunOnDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
@@ -291,6 +313,7 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
       run_at_date:    scheduleType === 'once'   ? (runAtDate || null) : null,
       run_on_days:    scheduleType === 'weekly' ? runOnDays           : [],
       contact_filter: contactFilter === 'all'   ? null                : [contactFilter],
+      tag_filter:     tagFilter,
     };
 
     setSaving(true);
@@ -434,6 +457,49 @@ function CampaignForm({ token, initial, onSaved, onCancel }: CampaignFormProps) 
             <SelectItem value="manual">Solo manuales</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Tag filter — segmentación */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+          Segmentar por tags
+          {tagFilter.length > 0 && (
+            <span className="ml-2 text-[10px] font-normal" style={{ color: 'var(--c-text-3)' }}>
+              (contactos que tengan todos los tags seleccionados)
+            </span>
+          )}
+        </label>
+        {allTags.length === 0 ? (
+          <p className="text-[11px] px-3 py-2 rounded-lg" style={{ color: 'var(--c-text-3)', background: 'var(--c-surface-2)' }}>
+            No hay tags aún. Agrega tags a tus contactos en la lista de arriba y podrás segmentarlos aquí.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {allTags.map(t => {
+              const active = tagFilter.includes(t);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => toggleTag(t)}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                  style={{
+                    background: active ? '#6C3BFF' : '#ffffff',
+                    color:      active ? '#ffffff' : '#6B6480',
+                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                  }}
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {contacts && contacts.length > 0 && (
+          <p className="text-[11px] mt-1" style={{ color: previewCount === 0 ? '#EF4444' : '#6B6480' }}>
+            <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto pendiente' : 'contactos pendientes'} con estos filtros
+          </p>
+        )}
       </div>
 
       {error && (
@@ -1087,6 +1153,7 @@ export default function OutboundSection({
             <CampaignForm
               token={token}
               initial={null}
+              contacts={contacts}
               onSaved={handleCampaignSaved}
               onCancel={() => setShowCampForm(false)}
             />
@@ -1097,6 +1164,7 @@ export default function OutboundSection({
             <CampaignForm
               token={token}
               initial={editCampaign}
+              contacts={contacts}
               onSaved={handleCampaignSaved}
               onCancel={() => setEditCampaign(null)}
             />
