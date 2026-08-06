@@ -1478,6 +1478,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
                       initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
                       initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                      initialPhone={orgSettings?.brand_phone ?? ''}
                       initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                     />
                   </Card>
