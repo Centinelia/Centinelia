@@ -61,8 +61,9 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
       className="mt-auto px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0"
       style={{ borderTop: '1px solid var(--c-border)' }}
     >
-      {/* Mobile layout: Contacto ↔ Reportar falla, Powered by pegado al fondo */}
-      <div className="sm:hidden flex flex-col">
+      {/* Mobile layout: Contacto ↔ Reportar falla en su posición natural,
+          Powered by absolute al fondo (entre los FABs flotantes) */}
+      <div className="sm:hidden relative pb-16">
         <div className="flex items-start justify-between gap-3">
           {contactoBlock}
           {showBugReport && token && (
@@ -71,7 +72,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
             </div>
           )}
         </div>
-        <div className="mt-10 flex justify-center">
+        <div className="absolute inset-x-0 bottom-0 flex justify-center">
           {poweredByBlock}
         </div>
       </div>
