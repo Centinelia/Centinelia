@@ -21,7 +21,7 @@ export default function AccountSerialBadge({ serial, variant = 'header', onDark 
       <button
         onClick={copy}
         title="Copiar número de cuenta"
-        className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all hover:opacity-80"
+        className="flex shrink-0 whitespace-nowrap items-center gap-1.5 px-2 py-1 rounded-lg transition-all hover:opacity-80"
         style={{
           background: onDark ? 'rgba(255,255,255,0.08)' : 'rgba(108,59,255,0.08)',
           border:     onDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(108,59,255,0.2)',

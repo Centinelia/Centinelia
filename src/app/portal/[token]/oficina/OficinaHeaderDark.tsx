@@ -31,15 +31,14 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
       <div className="flex items-center gap-3 min-w-0">
         <Link
           href={`/portal/${token}?tab=inicio`}
-          className="flex items-center gap-2 shrink-0"
+          className="flex items-center gap-3 shrink-0"
           aria-label="Volver al portal"
         >
           <img
-            src="/icons/meerkat-lucide.png"
+            src="/logo.png"
             alt="Centinelia"
-            width={22}
             height={22}
-            style={{ objectFit: 'contain', filter: 'brightness(1.2)' }}
+            style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block' }}
             draggable={false}
           />
           <span

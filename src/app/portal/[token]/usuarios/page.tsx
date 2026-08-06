@@ -200,9 +200,14 @@ export default async function UsuariosPage({ params }: Props) {
             aiOpsUsed={aiOpsUsed}
             aiOpsLimit={aiOpsLimit}
             hasStripe={hasStripe}
+            accountSerial={accountSerial}
             headerActions={
               <>
-                {accountSerial && <AccountSerialBadge serial={accountSerial} variant="header" onDark />}
+                {accountSerial && (
+                  <div className="hidden sm:flex">
+                    <AccountSerialBadge serial={accountSerial} variant="header" onDark />
+                  </div>
+                )}
                 <NotificationBell token={token} onDark />
                 <PortalLogout onDark />
               </>

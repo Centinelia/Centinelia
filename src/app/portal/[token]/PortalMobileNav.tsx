@@ -5,9 +5,12 @@ import { usePathname } from 'next/navigation';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import { Menu, X } from 'lucide-react';
 import PortalSidebarV2Client from './PortalSidebarV2Client';
+import AccountSerialBadge from './AccountSerialBadge';
 import type { PortalSidebarV2Props } from './PortalSidebarV2';
 
-type Props = Omit<PortalSidebarV2Props, 'currentPath' | 'currentSearch'>;
+type Props = Omit<PortalSidebarV2Props, 'currentPath' | 'currentSearch'> & {
+  accountSerial?: string | null;
+};
 
 /**
  * Mobile-only nav trigger + drawer. Renders a hamburger button in the header
@@ -15,6 +18,7 @@ type Props = Omit<PortalSidebarV2Props, 'currentPath' | 'currentSearch'>;
  * Auto-closes on route change so tapping a link navigates and closes the drawer.
  */
 export default function PortalMobileNav(props: Props) {
+  const { accountSerial, ...sidebarProps } = props;
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -58,11 +62,20 @@ export default function PortalMobileNav(props: Props) {
               <X size={18} strokeWidth={1.75} aria-hidden />
             </RadixDialog.Close>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {/* Reuse the exact V2 sidebar. Its own sticky/height styles are
-                neutralized by wrapper (drawer already provides them). */}
-            <div className="[&>nav]:!static [&>nav]:!h-auto [&>nav]:!w-full [&>nav]:!border-r-0">
-              <PortalSidebarV2Client {...props} />
+          {accountSerial && (
+            <div className="border-b border-neutral-200/80 px-4 py-3 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                Número de cuenta
+              </p>
+              <AccountSerialBadge serial={accountSerial} variant="header" />
+            </div>
+          )}
+          <div className="flex-1 min-h-0 flex flex-col [&>div]:!flex-1 [&>div]:!min-h-0 [&>div]:!flex [&>div]:!flex-col">
+            {/* Reuse the exact V2 sidebar. Neutralize its sticky/fixed shell so
+                the drawer owns the height; the sidebar's internal <ul flex-1>
+                still pushes "Uso del mes" + "Plan y consumo" to the bottom. */}
+            <div className="[&>nav]:!static [&>nav]:!h-full [&>nav]:!w-full [&>nav]:!border-r-0 [&>nav]:!flex-1 [&>nav]:!min-h-0">
+              <PortalSidebarV2Client {...sidebarProps} />
             </div>
           </div>
         </RadixDialog.Content>
