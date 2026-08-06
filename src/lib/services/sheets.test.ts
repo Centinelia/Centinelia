@@ -558,20 +558,14 @@ describe('updateRow', () => {
 describe('syncLeadToSheets', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('calls appendRow when agent.sync_leads_to_sheets=true and mapping exists', async () => {
+  it('calls appendRow when a leads mapping exists (no flag needed)', async () => {
     const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
     const { createAdminClient } = await import('@/lib/supabase/admin');
 
-    // voice_agents query returns sync_leads_to_sheets=true
     // sheets_mappings query (inside getMapping) returns a mapping
     // appendRow's internal sheets_mappings query returns the mapping with headers
     let callCount = 0;
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'voice_agents') {
-        return {
-          select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: true } }) }) }),
-        };
-      }
       if (table === 'sheets_mappings') {
         callCount++;
         if (callCount === 1) {
@@ -621,15 +615,21 @@ describe('syncLeadToSheets', () => {
     );
   });
 
-  it('does not call appendRow when sync_leads_to_sheets=false', async () => {
+  it('does not call appendRow when no leads mapping exists', async () => {
     const { getSheetsClient } = await import('@/lib/connectors/sheets-client');
     const { createAdminClient } = await import('@/lib/supabase/admin');
 
     (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'voice_agents') {
+        if (table === 'sheets_mappings') {
           return {
-            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: false } }) }) }),
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  single: () => Promise.resolve({ data: null, error: { code: 'PGRST116' } }),
+                }),
+              }),
+            }),
           };
         }
         return {};
@@ -652,11 +652,6 @@ describe('syncLeadToSheets', () => {
     let callCount = 0;
     (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({
       from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'voice_agents') {
-          return {
-            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { sync_leads_to_sheets: true } }) }) }),
-          };
-        }
         if (table === 'sheets_mappings') {
           callCount++;
           if (callCount === 1) {

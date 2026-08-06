@@ -250,8 +250,9 @@ export async function hasAnyMapping(portalEmail: string): Promise<boolean> {
 }
 
 /**
- * Fire-and-forget helper: syncs a newly-created lead to Google Sheets when
- * the agent has `sync_leads_to_sheets = true` and a 'leads' mapping exists.
+ * Fire-and-forget helper: syncs a newly-created lead to Google Sheets cuando
+ * existe un mapping de 'leads' en la org. El mapping mismo es el switch —
+ * si no quieres sincronizar, borra el mapping.
  *
  * Contract:
  * - Never throws, never propagates a rejection — safe for `void syncLeadToSheets(...)`.
@@ -261,19 +262,11 @@ export async function hasAnyMapping(portalEmail: string): Promise<boolean> {
  */
 export async function syncLeadToSheets(
   portalEmail: string,
-  agentId: string,
+  _agentId: string,
   args: Record<string, string | undefined>,
 ): Promise<void> {
   try {
     const sb = createAdminClient();
-
-    const { data: agent } = await sb
-      .from('voice_agents')
-      .select('sync_leads_to_sheets')
-      .eq('id', agentId)
-      .single();
-
-    if (!agent?.sync_leads_to_sheets) return;
 
     const mapping = await getMapping(portalEmail, 'leads');
     if (!mapping) return;

@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await supabase.from('voice_agents').update({ features: merged }).eq('id', agent.id);
   }
 
-  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'directorio_interno', 'owner_passphrase', 'allow_bug_reports', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email', 'sync_leads_to_sheets'];
+  const allowed = ['business_hours', 'knowledge_base', 'business_description', 'role_knowledge_base', 'role_learnings', 'guardrails_learnings', 'role', 'outbound_knowledge_base', 'notify_whatsapp', 'notify_email', 'first_message', 'transfer_rules', 'missed_call_recovery', 'agent_name', 'speech_style', 'folio_config', 'tramite_docs', 'cabildo_template', 'comms_routing', 'guardia_schedule', 'directorio_interno', 'owner_passphrase', 'allow_bug_reports', 'definition_of_done', 'owner_profile', 'agent_guardrails', 'heartbeat_config', 'trust_stage', 'approval_email'];
   const update = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
 
   // heartbeat_config.enabled is owned by /automations endpoint (D9). If the

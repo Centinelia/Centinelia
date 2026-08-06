@@ -437,23 +437,14 @@ function AddMappingForm({
 
 interface Props {
   token: string;
-  /** Opcional. Cuando se pasa (contexto per-empleado legacy), se muestra el
-   *  toggle 'Sincronizar leads a Sheets' que escribe voice_agents.sync_leads_to_sheets.
-   *  En contexto Oficina/Integraciones se omite: los mappings son per-org,
-   *  el toggle se maneja a nivel org. */
-  agentId?: string;
-  initialSyncLeads?: boolean;
 }
 
-export default function SheetsMappingsSection({ token, agentId, initialSyncLeads }: Props) {
+export default function SheetsMappingsSection({ token }: Props) {
   const [mappings, setMappings]             = useState<Mapping[]>([]);
   const [loading, setLoading]               = useState(true);
   const [loadError, setLoadError]           = useState(false);
   const [showAddForm, setShowAddForm]       = useState(false);
-  const [syncLeads, setSyncLeads]           = useState(initialSyncLeads ?? false);
-  const [syncSaving, setSyncSaving]         = useState(false);
   const [spreadsheetsMap, setSpreadsheetsMap] = useState<Map<string, string>>(new Map());
-  const showSyncToggle = agentId !== undefined && initialSyncLeads !== undefined;
 
   const loadMappings = useCallback(async () => {
     setLoading(true);
@@ -483,25 +474,6 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
   }, [token]);
 
   useEffect(() => { loadMappings(); }, [loadMappings]);
-
-  const hasLeadsMapping = mappings.some(m => m.purpose === 'leads');
-
-  const handleToggleSyncLeads = async (checked: boolean) => {
-    setSyncSaving(true);
-    setSyncLeads(checked);
-    try {
-      await fetch(`/api/portal/${token}/settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sync_leads_to_sheets: checked }),
-      });
-    } catch {
-      // Revert on error
-      setSyncLeads(!checked);
-    } finally {
-      setSyncSaving(false);
-    }
-  };
 
   return (
     <section className="scroll-mt-6">
@@ -592,53 +564,6 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
         </button>
       )}
 
-      {/* Sync leads toggle — solo en contexto per-empleado (legacy) */}
-      {!loading && showSyncToggle && (
-        <div
-          className="mt-5 pt-4"
-          style={{ borderTop: '1px solid var(--c-border)' }}
-        >
-          <label
-            className="flex items-start gap-3 cursor-pointer"
-            style={{ opacity: hasLeadsMapping ? 1 : 0.4 }}
-          >
-            <div className="relative mt-0.5 flex-shrink-0">
-              <input
-                id="sync-leads-toggle"
-                type="checkbox"
-                checked={syncLeads}
-                disabled={!hasLeadsMapping || syncSaving}
-                onChange={e => handleToggleSyncLeads(e.target.checked)}
-                className="sr-only"
-              />
-              {/* Custom toggle */}
-              <div
-                className="w-9 h-5 rounded-full transition-colors"
-                style={{
-                  background: syncLeads && hasLeadsMapping ? 'var(--c-accent, #6C3BFF)' : 'var(--c-border)',
-                }}
-              >
-                <div
-                  className="w-4 h-4 rounded-full bg-white shadow transition-transform absolute top-0.5"
-                  style={{
-                    left: syncLeads && hasLeadsMapping ? '1.15rem' : '0.15rem',
-                  }}
-                />
-              </div>
-            </div>
-            <div>
-              <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                Sincronizar leads a Sheets
-              </span>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                {hasLeadsMapping
-                  ? 'Cada lead capturado por este empleado se escribirá automáticamente en el sheet de Leads.'
-                  : 'Requiere configurar una hoja con propósito "Leads" arriba.'}
-              </p>
-            </div>
-          </label>
-        </div>
-      )}
     </section>
   );
 }
