@@ -466,12 +466,18 @@ export default function OutboundSection({
   initialCampaigns,
   agents,
   initialTab = 'contactos',
+  show = 'both',
 }: {
   token:             string;
   initialContacts:   Contact[];
   initialCampaigns:  Campaign[];
   agents:            Agent[];
   initialTab?:       'contactos' | 'campanas';
+  /** Controla qué columnas se renderizan.
+   *  'both' (default): contactos + campañas lado a lado (legacy)
+   *  'contactos':      solo la columna de contactos (usado en /oficina/llamadas?filtro=salientes)
+   *  'campanas':       solo la columna de campañas   (usado en /oficina/campanas) */
+  show?:             'contactos' | 'campanas' | 'both';
 }) {
   // ── Contacts state ────────────────────────────────────────────────────────────
   const [contacts,        setContacts]        = useState<Contact[]>(initialContacts);
@@ -697,11 +703,15 @@ export default function OutboundSection({
     color:      'var(--c-text)',
   };
 
+  const showBoth = show === 'both';
+  const gridCols = showBoth ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1';
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+      <div className={`grid ${gridCols} gap-6 items-start`}>
 
         {/* ── CONTACTOS ── */}
+        {show !== 'campanas' && (
         <div id="contactos" className="flex flex-col gap-4">
 
           {/* Header */}
@@ -982,8 +992,10 @@ export default function OutboundSection({
             </div>
           )}
         </div>
+        )}
 
         {/* ── CAMPAÑAS ── */}
+        {show !== 'contactos' && (
         <div id="campanas" className="flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-center justify-between gap-3">
@@ -1186,6 +1198,7 @@ export default function OutboundSection({
             </div>
           )}
         </div>
+        )}
 
       </div>
     </div>

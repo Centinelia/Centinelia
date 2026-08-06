@@ -102,6 +102,7 @@ export default function CampanasClient({
           initialCampaigns={campaigns}
           agents={outboundAgents}
           initialTab="campanas"
+          show="campanas"
         />
       )}
     </div>

@@ -221,6 +221,7 @@ export default function LlamadasTabs({
               initialCampaigns={outboundCampaigns}
               agents={outboundAgents}
               initialTab="contactos"
+              show="contactos"
             />
           )}
           {!initOutbound && (
