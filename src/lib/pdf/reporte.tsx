@@ -151,7 +151,7 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
 
       {/* ═══ 03 RESULTADOS ════════════════════════════════════════════════════ */}
       {data.outcomeBreakdown.length > 0 && (
-        <View style={{ marginBottom: 28 }}>
+        <View break style={{ marginBottom: 28 }} wrap={false}>
           <SectionOrdinal n={3} title="Resultados de llamadas" color={accent} />
           <View>
             {/* Table header — minimal, just uppercase labels */}
@@ -195,7 +195,7 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
 
       {/* ═══ 04 HORAS PICO ════════════════════════════════════════════════════ */}
       {data.topHours && data.topHours.length > 0 && (
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 20 }} wrap={false}>
           <SectionOrdinal n={4} title="Horas pico de llamadas" color={accent} />
           <View style={{ paddingVertical: 6 }}>
             {data.topHours.map(({ hour, count }, i) => {
