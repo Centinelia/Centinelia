@@ -238,7 +238,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           // y haga scroll al anchor correspondiente.
           const pending = [
             !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'tools',        anchor: 'llamadas' },
-            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'rol',          anchor: 'rol'      },
+            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'conocimiento', anchor: 'rol'      },
             !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'tools', anchor: 'llamadas' },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
@@ -289,7 +289,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           <ConfigurarTabs roleColor={roleColor}>
 
-            {/* ── Tab 0: Personalidad ────────────────────────────────────
+            {/* ── Tab 0: Rol y Personalidad ─────────────────────────────
                  Cómo suena y cómo se identifica el empleado.               */}
             <div className="flex flex-col gap-5">
 
@@ -351,7 +351,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
             </div>
 
-            {/* ── Tab 1: Rol y conocimiento ──────────────────────────────
+            {/* ── Tab 1: Conocimiento ────────────────────────────────────
                  Qué sabe y qué le toca hacer.                              */}
             <div className="flex flex-col gap-5">
 
@@ -606,7 +606,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
             </div>
 
-            {/* ── Tab 3: Autonomía y avisos ──────────────────────────────
+            {/* ── Tab 3: Autonomía y Avisos ─────────────────────────────
                  Cuánto decide solo y cómo te informa.                      */}
             <div className="flex flex-col gap-5">
 

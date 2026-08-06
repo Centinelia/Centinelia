@@ -11,16 +11,17 @@ interface Props {
 }
 
 const TAB_DEFS = [
-  { value: 'personalidad', label: 'Personalidad' },
-  { value: 'rol',          label: 'Rol y conocimiento' },
+  { value: 'personalidad', label: 'Rol y Personalidad' },
+  { value: 'conocimiento', label: 'Conocimiento' },
   { value: 'tools',        label: 'Herramientas' },
-  { value: 'autonomia',    label: 'Autonomía y avisos' },
+  { value: 'autonomia',    label: 'Autonomía y Avisos' },
 ] as const;
 
-// Retrocompat: legacy ?tab=knowledge / ?tab=voz / ?tab=horarios / ?tab=marca
+// Retrocompat: legacy ?tab=knowledge / ?tab=voz / ?tab=rol / ?tab=horarios / ?tab=marca
 const LEGACY_MAP: Record<string, string> = {
   voz:       'personalidad',
-  knowledge: 'rol',
+  knowledge: 'conocimiento',
+  rol:       'conocimiento',
   horarios:  'autonomia',
   marca:     'autonomia',
 };

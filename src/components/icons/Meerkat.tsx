@@ -5,9 +5,11 @@ export interface MeerkatIconProps extends Omit<SVGProps<SVGSVGElement>, 'width' 
 }
 
 /**
- * Meerkat — icono de línea al estilo Lucide (fill none, stroke currentColor,
- * strokeWidth 2, rounded caps/joins). Silueta de suricata alerta en posición
- * bípeda, para representar al "empleado" Centinelia.
+ * Meerkat — icono outline al estilo Lucide (fill none, stroke currentColor,
+ * strokeWidth 2, rounded caps/joins). Trazado a partir del isotipo de
+ * Centinelia: cabeza de suricata en perfil mirando a la derecha, con oreja
+ * en la parte superior-trasera, máscara facial almendrada alrededor del ojo,
+ * hocico pronunciado y nariz redondeada.
  */
 export default function Meerkat({
   size          = 24,
@@ -32,19 +34,25 @@ export default function Meerkat({
       aria-hidden="true"
       {...rest}
     >
-      {/* Orejas — pequeñas V */}
-      <path d="M9.7 4 L 10.2 2.5 L 10.8 4" />
-      <path d="M14.3 4 L 13.8 2.5 L 13.2 4" />
-      {/* Cabeza + cuerpo — silueta continua vertical, cintura marcada */}
-      <path d="M9 6.5
-               C 9 4.5, 15 4.5, 15 6.5
-               C 15 7.9, 13.9 8.5, 13.4 8.9
-               C 15.4 11.8, 15.8 15.8, 14.4 19
-               L 9.6 19
-               C 8.2 15.8, 8.6 11.8, 10.6 8.9
-               C 10.1 8.5, 9 7.9, 9 6.5 Z" />
-      {/* Suelo / patas */}
-      <path d="M9 20 h 6" />
+      {/* Silueta de cabeza en perfil (mirando a la derecha) */}
+      <path d="M 6.2 5.2
+               C 7.5 3.8, 11.5 3.6, 13.8 4.6
+               C 15.5 5.2, 17 6.5, 18 8
+               C 19.2 9, 20.6 10, 21.5 10.8
+               C 22 11.3, 22 12.1, 21 12.5
+               L 18.4 12.9
+               C 16 14, 12 14.6, 8 14.2
+               C 5 13.6, 3.6 11, 3.8 8
+               C 4 6.2, 5 5.4, 6.2 5.2 Z" />
+      {/* Oreja — pequeña V arriba-atrás */}
+      <path d="M 8 4 L 8.8 2.4 L 10.2 3.8" />
+      {/* Máscara facial almendrada alrededor del ojo */}
+      <path d="M 12 8
+               C 10.4 9.4, 10.8 11.2, 13 11.5
+               C 15.5 11.4, 16.4 9.8, 15 8.2
+               C 14 7.6, 12.8 7.6, 12 8 Z" />
+      {/* Ojo */}
+      <circle cx="13.2" cy="9.6" r="0.9" />
     </svg>
   );
 }

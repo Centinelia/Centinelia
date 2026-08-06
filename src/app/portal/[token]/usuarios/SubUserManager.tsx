@@ -264,6 +264,23 @@ function ModuleChips({ modules }: { modules: string[] }) {
   );
 }
 
+// ── Field group (label + input + hint) ────────────────────────────────────────
+
+function FieldGroup({ label, required, hint, children }: {
+  label: string; required?: boolean; hint?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--c-text-2)', letterSpacing: '0.01em' }}>
+        {label}
+        {required && <span style={{ color: '#ef4444' }}>*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] leading-relaxed" style={{ color: 'var(--c-text-4)' }}>{hint}</p>}
+    </div>
+  );
+}
+
 // ── Password field ─────────────────────────────────────────────────────────────
 
 function PasswordField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
@@ -275,13 +292,13 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 pr-9 rounded-lg text-xs"
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+        className="w-full px-3.5 py-2.5 pr-10 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
+        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
       />
       <button type="button" onClick={() => setShow(v => !v)}
-        className="absolute right-2 top-1/2 -translate-y-1/2"
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors hover:bg-[var(--c-surface)]"
         style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
-        {show ? <EyeOff size={13} /> : <Eye size={13} />}
+        {show ? <EyeOff size={14} /> : <Eye size={14} />}
       </button>
     </div>
   );
@@ -415,54 +432,92 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
         {/* Add form */}
         {showAdd ? (
-          <div className="rounded-xl p-4 flex flex-col gap-3"
-            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
-            <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo usuario</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Correo *</label>
-                <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                  placeholder="usuario@empresa.com" className="w-full px-3 py-2 rounded-lg text-xs"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+          <div
+            className="rounded-2xl p-5 flex flex-col gap-4"
+            style={{
+              background: 'var(--c-surface)',
+              border:     '1px solid rgba(108,59,255,0.25)',
+              boxShadow:  '0 12px 30px rgba(108,59,255,0.08)',
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.22)' }}
+              >
+                <Plus size={14} style={{ color: '#6C3BFF' }} />
               </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
-                <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
-                  placeholder="Nombre del usuario" className="w-full px-3 py-2 rounded-lg text-xs"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--c-text)' }}>
+                  Nuevo colaborador
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                  Configura correo, contraseña inicial y las secciones a las que tendrá acceso.
+                </p>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Contraseña inicial *</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FieldGroup label="Correo" required>
+                <input
+                  type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  placeholder="usuario@empresa.com"
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
+                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                />
+              </FieldGroup>
+              <FieldGroup label="Nombre">
+                <input
+                  type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                  placeholder="Nombre del colaborador"
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
+                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                />
+              </FieldGroup>
+            </div>
+
+            <FieldGroup label="Contraseña inicial" required hint="Mínimo 8 caracteres. El usuario podrá cambiarla al iniciar sesión.">
               <PasswordField value={newPassword} onChange={setNewPassword} placeholder="Mínimo 8 caracteres" />
-            </div>
+            </FieldGroup>
 
-            <div>
-              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+            <FieldGroup label="Secciones con acceso" hint="Selecciona qué áreas del portal podrá ver este usuario.">
               <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
-            </div>
+            </FieldGroup>
 
-            <div className="flex gap-2 pt-1">
-              <button onClick={handleAdd} disabled={saving}
-                className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Guardando...' : 'Crear usuario'}
-              </button>
-              <button onClick={resetAdd}
-                className="px-4 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}>
+            <div className="flex items-center justify-end gap-2 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <button
+                onClick={resetAdd}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--c-surface-2)]"
+                style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
+              >
                 Cancelar
+              </button>
+              <button
+                onClick={handleAdd} disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 12px rgba(108,59,255,0.25)' }}
+              >
+                {saving ? 'Guardando…' : (<><Plus size={13} /> Crear colaborador</>)}
               </button>
             </div>
           </div>
         ) : (
-          <div className="px-4 py-3 rounded-xl text-xs flex flex-col gap-1"
-            style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)', color: 'var(--c-text-3)' }}>
-            <p className="font-semibold" style={{ color: 'var(--c-text-2)' }}>Acerca de los usuarios</p>
-            <p>Cada usuario tiene su propio correo y contraseña. Al iniciar sesión, solo ven las secciones que tú les asignas.</p>
-            <p>El propietario siempre tiene acceso completo.</p>
+          <div
+            className="rounded-2xl px-4 py-4 flex gap-3"
+            style={{ background: 'rgba(108,59,255,0.045)', border: '1px solid rgba(108,59,255,0.16)' }}
+          >
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.22)' }}
+            >
+              <Info size={14} style={{ color: '#6C3BFF' }} />
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Acerca de los usuarios</p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                Cada usuario inicia sesión con su propio correo y contraseña. Solo ve las secciones que le asignes. El propietario siempre tiene acceso completo.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -582,28 +637,31 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
             {/* Edit mode */}
             {editId === u.id && (
-              <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <div className="pt-3">
-                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
-                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                    placeholder="Nombre del usuario" className="w-full px-3 py-2 rounded-lg text-xs"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-                </div>
+              <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-border)', background: 'rgba(108,59,255,0.02)' }}>
+                <FieldGroup label="Nombre">
+                  <input
+                    type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                    placeholder="Nombre del colaborador"
+                    className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
+                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  />
+                </FieldGroup>
 
-                <div>
-                  <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Secciones con acceso</label>
+                <FieldGroup label="Secciones con acceso">
                   <ModuleSelector selected={editModules} onChange={setEditModules} accountGiro={accountGiro} />
-                </div>
+                </FieldGroup>
 
                 <div>
-                  <button type="button" onClick={() => setEditOpen(v => !v)}
-                    className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-                    style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer', padding: 0 }}>
-                    {editOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  <button
+                    type="button" onClick={() => setEditOpen(v => !v)}
+                    className="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
+                    style={{ background: 'none', border: 'none', color: '#6C3BFF', cursor: 'pointer', padding: 0 }}
+                  >
+                    {editOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                     Cambiar contraseña
                   </button>
                   {editOpen && (
-                    <div className="mt-2">
+                    <div className="mt-2.5">
                       <PasswordField value={editPassword} onChange={setEditPassword} placeholder="Nueva contraseña" />
                     </div>
                   )}

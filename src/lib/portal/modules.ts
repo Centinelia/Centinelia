@@ -1,73 +1,77 @@
 export const PORTAL_MODULES = [
   // ── Portal principal — todos los giros ──────────────────────────────────
   {
-    id: 'inicio', label: 'Inicio (dashboard)', group: 'Portal', giros: ['all'] as string[],
+    id: 'inicio', label: 'Inicio', group: 'Portal', giros: ['all'] as string[],
     desc: 'Resumen general: llamadas, tareas, métricas y actividad reciente de tus empleados.',
   },
   {
-    id: 'negocio', label: 'Negocio (KB, horarios)', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Manual de la organización, horarios de atención y configuración de tus empleados.',
+    id: 'negocio', label: 'Organización', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Manual de la organización, branding, horarios y configuración de tus empleados.',
   },
   {
-    id: 'oficina', label: 'Oficina (acceso general)', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno, incluyendo llamadas.',
-  },
-  {
-    id: 'llamadas', label: 'Llamadas entrantes', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Historial de llamadas recibidas, grabaciones y transcripciones.',
-  },
-  {
-    id: 'salientes', label: 'Llamadas salientes', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Campañas y registros de llamadas que tus empleados realizan de forma proactiva.',
+    id: 'oficina', label: 'Oficina', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
   },
   {
     id: 'agentes', label: 'Empleados', group: 'Portal', giros: ['all'] as string[],
     desc: 'Lista de todos los empleados Centinelia activos en la cuenta.',
   },
   {
-    id: 'integraciones', label: 'Integraciones', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Conexiones con calendarios, CRMs, correo, WhatsApp y otras plataformas.',
-  },
-  {
-    id: 'cuenta', label: 'Cuenta y facturación', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Plan contratado, minutos disponibles, historial de pagos y datos de la cuenta.',
+    id: 'cuenta', label: 'Cuenta', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Consumo, saldo, historial y términos de servicio de la cuenta.',
   },
   // ── Oficina general — todos los giros ───────────────────────────────────
   {
-    id: 'of_actividad', label: 'Actividad', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Registro de todo lo que han hecho tus empleados: tareas completadas y pendientes.',
+    id: 'of_actividad', label: 'Hoy en la oficina', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Panorama en tiempo real de lo que tus empleados están haciendo ahora.',
   },
   {
-    id: 'of_reportes', label: 'Reportes automáticos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Resúmenes periódicos generados por tus empleados sobre la operación.',
+    id: 'llamadas', label: 'Llamadas entrantes', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Historial de llamadas recibidas, grabaciones y transcripciones.',
   },
   {
-    id: 'of_bandeja', label: 'Bandeja de entrada', group: 'Oficina', giros: ['all'] as string[],
+    id: 'salientes', label: 'Llamadas salientes', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Campañas y registros de llamadas que tus empleados realizan de forma proactiva.',
+  },
+  {
+    id: 'of_bandeja', label: 'Bandeja', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Correos entrantes, respuestas automáticas y aprobaciones que gestionan tus empleados.',
   },
   {
-    id: 'of_plantillas', label: 'Plantillas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Plantillas de factura, orden de compra y otros documentos que tus empleados usan como base.',
+    id: 'of_reportes', label: 'Reportes', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Resúmenes periódicos generados por tus empleados sobre la operación.',
   },
   {
-    id: 'of_tareas_programadas', label: 'Tareas programadas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Tareas recurrentes que tus empleados ejecutan de forma automática según un calendario.',
+    id: 'of_aprendizajes', label: 'Cómo trabajamos', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Revisión y aprobación de lo que tus empleados aprenden de llamadas, correos y conversaciones.',
   },
   {
-    id: 'of_contratos', label: 'Contratos', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Contratos y documentos legales que tus empleados pueden consultar y referenciar.',
+    id: 'of_investigacion', label: 'Investigación', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Búsquedas e investigaciones realizadas por tus empleados sobre clientes o temas.',
   },
   {
     id: 'of_documentos', label: 'Documentos', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Archivos generados por tus empleados o subidos para que los utilicen como referencia.',
   },
   {
-    id: 'of_juntas', label: 'Juntas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Actas y resúmenes de reuniones procesadas por tus empleados.',
+    id: 'of_contratos', label: 'Contratos', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Borradores de contratos que tus empleados redactan a partir de plantillas de la organización.',
   },
   {
-    id: 'of_investigacion', label: 'Investigación', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Búsquedas e investigaciones realizadas por tus empleados sobre clientes o temas.',
+    id: 'of_plantillas', label: 'Plantillas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Plantillas de factura, orden de compra, contrato y otros documentos que tus empleados usan como base.',
+  },
+  {
+    id: 'of_facturas', label: 'Facturas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Solicitudes de factura pendientes de emitir y su seguimiento fiscal.',
+  },
+  {
+    id: 'of_tareas_programadas', label: 'Tareas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Tareas manuales y programadas que ejecutan tus empleados, con calendario y aprobaciones.',
+  },
+  {
+    id: 'of_juntas', label: 'Juntas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Actas y resúmenes de reuniones procesadas por tus empleados.',
   },
   {
     id: 'of_onboarding', label: 'Onboarding', group: 'Oficina', giros: ['all'] as string[],
@@ -78,8 +82,8 @@ export const PORTAL_MODULES = [
     desc: 'Encuestas de satisfacción o recopilación de datos realizadas por llamada.',
   },
   {
-    id: 'of_aprendizajes', label: 'Aprendizajes', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Revisión y aprobación de lo que tus empleados aprenden de llamadas, correos y conversaciones.',
+    id: 'integraciones', label: 'Integraciones', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Conexiones con calendarios, CRMs, correo, WhatsApp y otras plataformas.',
   },
   // ── Oficina sector — Gobierno / Municipio ───────────────────────────────
   {
@@ -122,7 +126,9 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   'oficina/documentos':            'of_documentos',
   'oficina/contratos':             'of_contratos',
   'oficina/plantillas':            'of_plantillas',
-  'oficina/tareas-programadas':    'of_tareas_programadas',
+  'oficina/facturas':              'of_facturas',
+  'oficina/tareas':                'of_tareas_programadas',
+  'oficina/tareas-programadas':    'of_tareas_programadas', // redirige a /oficina/tareas
   'oficina/juntas':                'of_juntas',
   'oficina/reportes-ciudadanos':   'of_reportes_ciudadanos',
   'oficina/cabildo':               'of_cabildo',
