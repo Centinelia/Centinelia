@@ -11,7 +11,8 @@ export interface OpsResult {
 export interface OpsMeta {
   source?:       string;   // 'heartbeat' | 'learn' | 'weekly_insights' | 'nox_brief' | 'agent_chat' | etc.
   reference_id?: string;   // task_id, report_id, meeting_id, etc.
-  label?:        string;   // Texto legible para historial de consumo (fallback: source)
+  label?:        string;   // Texto legible corto para historial de consumo (fallback: source)
+  context?:      string;   // Descripción completa expandida — se muestra al hacer hover en el historial
 }
 
 // Atomically checks and consumes AI ops from the account pool.
@@ -25,6 +26,7 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
     source:       meta?.source       ?? 'unknown',
     reference_id: meta?.reference_id ?? null,
     label:        meta?.label        ?? null,
+    context:      meta?.context      ?? null,
     count,
   };
 

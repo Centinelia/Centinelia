@@ -140,7 +140,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         .single()
     : { data: null };
 
-  // Contrato de servicios: fuente de verdad = organizations.contract_accepted_at.
+  // Términos de servicio: fuente de verdad = organizations.contract_accepted_at.
   // Fallback a voice_agents.contract_accepted_at para demos sin portal_email.
   // Ver [[contract-at-organization-level]].
   const contractAcceptedAt: string | null =
@@ -1147,8 +1147,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               </div>
 
-              {/* Contrato de servicios — al fondo (referencia legal, no diario) */}
-              <div id="contrato">
+              {/* Términos de servicio — al fondo (referencia legal, no diario) */}
+              <div id="terminos-servicio" style={{ scrollMarginTop: '1.5rem' }}>
                 <ContractSection
                   token={token}
                   businessName={agent.business_name}
@@ -1724,8 +1724,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               </div>
 
-              {/* Contrato de servicios — al fondo (referencia legal, no diario) */}
-              <div id="contrato">
+              {/* Términos de servicio — al fondo (referencia legal, no diario) */}
+              <div id="terminos-servicio" style={{ scrollMarginTop: '1.5rem' }}>
                 <ContractSection
                   token={token}
                   businessName={agent.business_name}

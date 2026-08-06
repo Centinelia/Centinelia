@@ -192,10 +192,11 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'cuenta',
     tabParam: 'cuenta',
     items: [
-      { label: 'Consumo',          anchor: 'uso-del-mes' },
-      { label: 'Saldo',            anchor: 'comprar' },
-      { label: 'Historial',        anchor: 'historial' },
-      { label: 'Reporte mensual',  anchor: 'reporte-mensual' },
+      { label: 'Consumo',              anchor: 'uso-del-mes' },
+      { label: 'Saldo',                anchor: 'comprar' },
+      { label: 'Historial',            anchor: 'historial' },
+      { label: 'Reporte mensual',      anchor: 'reporte-mensual' },
+      { label: 'Términos de servicio', anchor: 'terminos-servicio' },
     ],
   });
 

@@ -259,7 +259,11 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                   {renderIcon(meta.iconKey)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium leading-snug truncate" style={{ color: 'var(--c-text)' }}>
+                  <p
+                    className="text-xs font-medium leading-snug truncate"
+                    style={{ color: 'var(--c-text)', cursor: e.description ? 'help' : 'default' }}
+                    title={e.description ?? e.title ?? ''}
+                  >
                     {e.title || meta.label}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">

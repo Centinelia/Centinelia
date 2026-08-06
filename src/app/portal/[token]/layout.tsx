@@ -88,11 +88,11 @@ export default async function TokenLayout({
           boxShadow: '0 2px 16px rgba(0,0,0,0.4)',
         }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-            {isTerminated ? 'Contrato rescindido' : 'Cuenta suspendida'}
+            {isTerminated ? 'Servicio terminado' : 'Cuenta suspendida'}
           </span>
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', flex: 1 }}>
             {isTerminated
-              ? (org?.suspension_reason ?? 'Tu contrato ha sido rescindido por infracciones a la Política de Uso Aceptable.')
+              ? (org?.suspension_reason ?? 'Tu servicio ha sido terminado por infracciones a la Política de Uso Aceptable.')
               : untilLabel
                 ? `Suspendida hasta el ${untilLabel}. ${org?.suspension_reason ?? ''}`
                 : (org?.suspension_reason ?? 'Tu cuenta está suspendida temporalmente.')}

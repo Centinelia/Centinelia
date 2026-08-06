@@ -720,8 +720,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
             </div>
 
             {/* ── Tab 4: Marca y ajustes ────────────────────────────────── */}
-            {/* El contrato de servicios ya no vive aqui: es per-cliente y se
-                gestiona en /portal/[token]?tab=cuenta#contrato. Ver
+            {/* Los términos de servicio ya no viven aquí: son per-cliente y se
+                gestionan en /portal/[token]?tab=cuenta#terminos-servicio. Ver
                 [[contract-at-organization-level]]. */}
             <div className="flex flex-col gap-5">
 

@@ -74,7 +74,7 @@ export default async function HistorialConsumoSection({
     // Fuente unificada de consumo de tareas — cualquier consumeAiOp() escribe aquí.
     supabase
       .from('ai_ops_log')
-      .select('id, agent_id, created_at, source, count, reference_id, label')
+      .select('id, agent_id, created_at, source, count, reference_id, label, context')
       .eq('portal_email', portalEmail)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -139,7 +139,7 @@ export default async function HistorialConsumoSection({
       id:            o.id as string,
       date:          o.created_at as string,
       title:         (o.label as string | null) ?? meta.label,
-      description:   null,
+      description:   (o.context as string | null) ?? null,
       agentName:     (o.agent_id as string | null) ? (agentNameMap[o.agent_id as string] ?? null) : null,
       triggerType:   meta.trigger,
       status:        'completed',
