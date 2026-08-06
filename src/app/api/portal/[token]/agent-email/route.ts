@@ -34,7 +34,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
     .select('id, provider, email, last_sync_at, needs_reauth, send_as_email')
     .eq('agent_id', agent.id);
 
-  return NextResponse.json({ connections: data ?? [] });
+  // Filtrar leftovers de conexiones org-level (mismo email/provider en
+  // integration_accounts). El callback nuevo ya no las escribe, pero registros
+  // históricos siguen ahí hasta que el owner los desconecte desde Integraciones.
+  let filtered = data ?? [];
+  if (agent.portal_email && filtered.length > 0) {
+    const { data: orgAccounts } = await supabase
+      .from('integration_accounts')
+      .select('provider, account_label')
+      .eq('portal_email', agent.portal_email)
+      .eq('capability', 'email')
+      .neq('status', 'disconnected');
+
+    const orgKeys = new Set(
+      (orgAccounts ?? []).map(a => `${a.provider}:${(a.account_label ?? '').toLowerCase()}`),
+    );
+    filtered = filtered.filter(
+      row => !orgKeys.has(`${row.provider}:${(row.email ?? '').toLowerCase()}`),
+    );
+  }
+
+  return NextResponse.json({ connections: filtered });
 }
 
 // PATCH — update send_as_email for a given provider connection

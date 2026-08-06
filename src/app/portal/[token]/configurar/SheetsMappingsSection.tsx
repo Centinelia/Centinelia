@@ -437,8 +437,12 @@ function AddMappingForm({
 
 interface Props {
   token: string;
-  agentId: string;
-  initialSyncLeads: boolean;
+  /** Opcional. Cuando se pasa (contexto per-empleado legacy), se muestra el
+   *  toggle 'Sincronizar leads a Sheets' que escribe voice_agents.sync_leads_to_sheets.
+   *  En contexto Oficina/Integraciones se omite: los mappings son per-org,
+   *  el toggle se maneja a nivel org. */
+  agentId?: string;
+  initialSyncLeads?: boolean;
 }
 
 export default function SheetsMappingsSection({ token, agentId, initialSyncLeads }: Props) {
@@ -446,9 +450,10 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
   const [loading, setLoading]               = useState(true);
   const [loadError, setLoadError]           = useState(false);
   const [showAddForm, setShowAddForm]       = useState(false);
-  const [syncLeads, setSyncLeads]           = useState(initialSyncLeads);
+  const [syncLeads, setSyncLeads]           = useState(initialSyncLeads ?? false);
   const [syncSaving, setSyncSaving]         = useState(false);
   const [spreadsheetsMap, setSpreadsheetsMap] = useState<Map<string, string>>(new Map());
+  const showSyncToggle = agentId !== undefined && initialSyncLeads !== undefined;
 
   const loadMappings = useCallback(async () => {
     setLoading(true);
@@ -503,10 +508,11 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
       <SectionHeader
         as="h2"
         title="Sheets del negocio"
+        tooltip="Configuración global de todos tus empleados. Conecta un Google Sheet a cada tipo de dato y todos los empleados escribirán y leerán directamente en tus hojas existentes."
         className="mb-2"
       />
       <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
-        Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes.
+        Conecta un Google Sheet a cada tipo de dato. Todos tus empleados escribirán y leerán directamente en tus hojas existentes, respetando los encabezados que ya tienes.
       </p>
 
       {/* Mapping list */}
@@ -586,8 +592,8 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
         </button>
       )}
 
-      {/* Sync leads toggle */}
-      {!loading && (
+      {/* Sync leads toggle — solo en contexto per-empleado (legacy) */}
+      {!loading && showSyncToggle && (
         <div
           className="mt-5 pt-4"
           style={{ borderTop: '1px solid var(--c-border)' }}

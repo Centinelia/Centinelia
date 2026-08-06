@@ -135,15 +135,28 @@ export default function AgentEmailSection({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Slot 1: Bandeja de área ───────────────────────────────────────── */}
+      {/* ── Slot 1: Bandeja del empleado ─────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-            Bandeja de área
+            Correo del empleado
           </p>
           <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-            El empleado lee, clasifica y responde como esta dirección. Es el correo del área que este empleado atiende.
+            Conecta la bandeja real que este empleado atenderá (por ejemplo <span style={{ fontFamily: 'monospace', color: 'var(--c-text-2)' }}>nia@tuempresa.com</span>). Centinelia leerá y enviará correos desde ahí como si el empleado tuviera la contraseña.
           </p>
+        </div>
+
+        <div
+          className="flex gap-2.5 rounded-lg px-3 py-2.5"
+          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
+        >
+          <Mail size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
+          <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+            <p className="font-semibold" style={{ color: 'var(--c-text)' }}>Cómo funciona el acceso</p>
+            <p className="mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              Al hacer clic en <strong>Conectar</strong> abre el login de Google o Microsoft. Inicia sesión con las credenciales de la cuenta que quieres darle al empleado (no la tuya). Centinelia guarda un token que renueva solo — no tenemos ni guardamos la contraseña.
+            </p>
+          </div>
         </div>
 
         {justConnected && (
@@ -266,15 +279,25 @@ export default function AgentEmailSection({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* ── Slot 2: Correo propio del empleado ───────────────────────────── */}
+      {/* ── Slot 2: Alias "Send As" (avanzado) ───────────────────────────── */}
       {anyConnected && (
         <div className="flex flex-col gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-              Correo propio del empleado
+              Alias adicional (avanzado)
             </p>
             <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-              Para seguimientos, propuestas y correos personales, el empleado envía desde su propia dirección en lugar del correo del área.
+              Si además de la bandeja conectada quieres que ciertos correos salgan con otro remitente (ej. una dirección de firma o de departamento), configura aquí el alias. <strong style={{ color: 'var(--c-text-2)' }}>Requiere setup previo</strong> en Google Workspace o Microsoft 365, no basta con escribirlo.
+            </p>
+          </div>
+
+          <div
+            className="flex gap-2.5 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)' }}
+          >
+            <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+              Escribir un correo aquí <strong>no</strong> le da acceso a esa cuenta — solo cambia la etiqueta &ldquo;De:&rdquo; en correos salientes. Si el alias no está verificado en la cuenta conectada arriba, Google/Microsoft ignorará el override y el correo saldrá con la dirección original.
             </p>
           </div>
 
@@ -318,7 +341,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
                   <User size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
                   <input
                     type="email"
-                    placeholder="Neo@empresa.com"
+                    placeholder="alias-verificado@empresa.com"
                     value={draft}
                     onChange={e => setSendAsDraft(prev => ({ ...prev, [conn.provider]: e.target.value }))}
                     className="flex-1 text-xs px-2.5 py-1.5 rounded-lg outline-none"

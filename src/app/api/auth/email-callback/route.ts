@@ -40,20 +40,24 @@ export async function GET(req: NextRequest) {
     const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
     const encryptedRefresh = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
 
-    // ── 1. Keep writing to email_integrations (connectors still use this for token refresh) ──
-    await supabase.from('email_integrations').upsert({
-      agent_id:           agent.id,
-      provider,
-      email:              tokens.email,
-      access_token:       tokens.access_token,
-      refresh_token:      encryptedRefresh,
-      token_expires_at:   expiresAt,
-      last_sync_at:       null,
-      needs_reauth:       false,
-      reauth_notified_at: null,
-    }, { onConflict: 'agent_id,provider' });
+    // ── 1. Per-agent (scope=agent) → email_integrations. Org-level NO escribe aquí. ──
+    // Antes escribíamos en ambos, lo que causaba que la conexión org apareciera como
+    // "correo del empleado" en la config del agente que casualmente inició el OAuth.
+    if (isAgentScope) {
+      await supabase.from('email_integrations').upsert({
+        agent_id:           agent.id,
+        provider,
+        email:              tokens.email,
+        access_token:       tokens.access_token,
+        refresh_token:      encryptedRefresh,
+        token_expires_at:   expiresAt,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      }, { onConflict: 'agent_id,provider' });
+    }
 
-    // ── 2. For account-level connects (IntegrationsHub), also write to integration_accounts ──
+    // ── 2. Org-level (IntegrationsHub) → integration_accounts. ──
     if (!isAgentScope && agent.portal_email) {
       const { data: existing } = await supabase
         .from('integration_accounts')
