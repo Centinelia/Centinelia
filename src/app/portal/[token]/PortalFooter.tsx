@@ -58,11 +58,11 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
 
   return (
     <div
-      className="mt-auto px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0"
+      className="mt-auto px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0 relative"
       style={{ borderTop: '1px solid var(--c-border)' }}
     >
       {/* Mobile layout: Contacto ↔ Reportar falla en su posición natural.
-          Powered by es fixed a la altura del centro de los FABs (bottom 44px). */}
+          Powered by absolute anclado al footer, alineado con el centro de los FABs. */}
       <div className="sm:hidden">
         <div className="flex items-start justify-between gap-3">
           {contactoBlock}
@@ -72,11 +72,9 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
             </div>
           )}
         </div>
-        <div className="fixed bottom-9 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <span className="pointer-events-auto">
-            {poweredByBlock}
-          </span>
-        </div>
+      </div>
+      <div className="sm:hidden absolute inset-x-0 bottom-9 flex justify-center">
+        {poweredByBlock}
       </div>
 
       {/* Desktop layout: 3-col grid (contacto · review+bug · powered by) */}

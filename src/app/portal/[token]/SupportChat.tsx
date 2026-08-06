@@ -11,7 +11,14 @@ const WELCOME: Message = {
   content: '¡Hola! Soy el asistente de Centinelia. Puedo ayudarte con dudas sobre tu portal, minutos, configuración del agente o cualquier otra pregunta. ¿En qué te puedo ayudar?',
 };
 
-export default function SupportChat() {
+interface SupportChatProps {
+  /** 'left' (default) posiciona el FAB tras el sidebar del portal.
+   *  'right' lo posiciona en la esquina inferior derecha, donde tradicionalmente
+   *  vivía el ops-agents FAB. Ver PortalChatDock para el switching por ruta. */
+  position?: 'left' | 'right';
+}
+
+export default function SupportChat({ position = 'left' }: SupportChatProps = {}) {
   const [open, setOpen]           = useState(false);
   const [messages, setMessages]   = useState<Message[]>([WELCOME]);
   const [input, setInput]         = useState('');
@@ -90,7 +97,9 @@ export default function SupportChat() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-20 left-4 md:left-[276px] z-50 flex flex-col overflow-hidden"
+          className={`fixed bottom-20 z-50 flex flex-col overflow-hidden ${
+            position === 'right' ? 'right-4' : 'left-4 md:left-[276px]'
+          }`}
           style={{
             width: 'min(360px, calc(100vw - 32px))',
             height: 480,
@@ -215,7 +224,9 @@ export default function SupportChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="fixed bottom-4 left-4 md:left-[276px] z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all"
+        className={`fixed bottom-4 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+          position === 'right' ? 'right-4' : 'left-4 md:left-[276px]'
+        }`}
         style={{
           background: open ? 'rgba(108,59,255,0.9)' : 'linear-gradient(135deg, #6C3BFF, #9B6DFF)',
           boxShadow: '0 8px 32px rgba(108,59,255,0.45)',

@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import SupportChat       from './SupportChat';
-import OpsAgentChatFab, { type AgentOption } from './OpsAgentChatFab';
+import PortalChatDock    from './PortalChatDock';
+import { type AgentOption } from './OpsAgentChatFab';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 export default async function TokenLayout({
@@ -103,8 +103,7 @@ export default async function TokenLayout({
         </div>
       )}
       {children}
-      <SupportChat />
-      {opsAgents.length > 0 && <OpsAgentChatFab token={token} agents={opsAgents} />}
+      <PortalChatDock token={token} opsAgents={opsAgents} />
     </>
   );
 }
