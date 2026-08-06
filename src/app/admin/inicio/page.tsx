@@ -26,6 +26,7 @@ interface AgentRow {
   portal_email:     string | null;
   plan:             string | null;
   minutes_plan:     string | null;
+  approval_email:   string | null;
 }
 
 type Severity = 'high' | 'med' | 'low';
@@ -59,7 +60,7 @@ export default async function InicioPage() {
     twilioBalance,
   ] = await Promise.all([
     supabase.from('voice_agents')
-      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email, plan, minutes_plan')
+      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email, plan, minutes_plan, approval_email')
       .not('portal_email', 'in', demoExcl)
       .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
@@ -69,12 +70,13 @@ export default async function InicioPage() {
       .select('id')
       .gte('created_at', yestIso)
       .lt('created_at', todayIso),
-    // Solo 'escalated' es tu bola. 'pending' es cosa del cliente en su portal.
+    // Solo 'escalated'. Se van al approval_email del empleado (email, no
+    // hay bandeja UI en admin). La alerta solo avisa que revisen el correo.
     supabase.from('ops_inbox')
       .select('id, agent_id, created_at, email_from, email_subject, category, status')
       .eq('status', 'escalated')
       .order('created_at', { ascending: false })
-      .limit(20),
+      .limit(50),
     supabase.from('voice_calls')
       .select('agent_id, created_at')
       .order('created_at', { ascending: false })
@@ -178,17 +180,24 @@ export default async function InicioPage() {
 
   const inboxEscalatedN = (inboxPending ?? []).length;
   if (inboxEscalatedN > 0) {
-    // Agrupar por agent_id para ver a qué empleado pertenece la mayoría
-    const byAgent = new Map<string, number>();
+    // Escalated se envían al approval_email del agente vía correo. No hay
+    // bandeja UI en admin. La alerta le dice al owner a qué email(s) revisar.
+    const approvalEmailByAgent = new Map(agentList.map(a => [a.id, a.approval_email]));
+    const emailsSet = new Set<string>();
     for (const i of (inboxPending ?? []) as { agent_id: string }[]) {
-      byAgent.set(i.agent_id, (byAgent.get(i.agent_id) ?? 0) + 1);
+      const email = approvalEmailByAgent.get(i.agent_id);
+      if (email) emailsSet.add(email);
     }
-    const topAgentIds = [...byAgent.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
-    const topNames = topAgentIds.map(id => nameOf.get(id) ?? 'empleado').join(', ');
+    const emails = [...emailsSet];
+    const emailList = emails.slice(0, 3).join(', ') + (emails.length > 3 ? `, +${emails.length - 3}` : '');
     alerts.push({
       severity: 'high',
-      label:    `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''} a ti`,
-      sub:      byAgent.size === 1 ? `Del empleado ${topNames}` : `Empleados: ${topNames}${byAgent.size > 3 ? ` +${byAgent.size - 3}` : ''}`,
+      label:    emails.length === 0
+                  ? `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''}`
+                  : emails.length === 1
+                    ? `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''} a ${emails[0]}`
+                    : `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''}`,
+      sub:      emails.length > 1 ? `Revisar bandeja de: ${emailList}` : 'Revisar la bandeja del correo destino',
       href:     '/admin/human-gates?gate_type=ops_inbox',
       count:    inboxEscalatedN,
     });
