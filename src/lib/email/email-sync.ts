@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector, type IntegrationRow } from '@/lib/connectors';
 import { dispatchEmail, type DispatchResult } from '@/lib/email/dispatcher';
+import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
+import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
 
 type EmailIntegration = IntegrationRow & {
   agent_id:     string;
@@ -327,6 +329,11 @@ interface OrgAccountRow {
   metadata:      Record<string, unknown> | null;
 }
 
+// Rate limit: máximo N correos por org por corrida del cron. Evita quemar
+// tokens Sonnet si una bandeja recibe flood. Los excedentes quedan unread
+// (no markRead) y se procesan en el siguiente tick.
+const ORG_MESSAGES_PER_TICK = 20;
+
 export async function syncAllOrgInboxes(): Promise<{ synced: number; errors: number }> {
   const supabase = createAdminClient();
 
@@ -401,10 +408,14 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
     .eq('provider', org.provider);
 
   const orgEmailAddr = org.account_label ?? '';
+  const rateLimited  = messages.slice(0, ORG_MESSAGES_PER_TICK);
+  if (messages.length > ORG_MESSAGES_PER_TICK) {
+    console.log(`[org-sync] ${org.portal_email}/${org.provider}: ${messages.length} msgs pero cap=${ORG_MESSAGES_PER_TICK}, resto en próximo tick`);
+  }
 
-  for (const msg of messages) {
-    // Idempotencia: si YA existe una row ops_inbox con el mismo raw_message_id
-    // y origin_scope='org_shared' + este org_email en metadata, skip.
+  for (const msg of rateLimited) {
+    // Idempotencia: si YA existe row ops_inbox con el mismo raw_message_id
+    // y origin_scope='org_shared' + este org_email en metadata, skip + markRead.
     const { data: existing } = await supabase
       .from('ops_inbox')
       .select('id')
@@ -419,12 +430,54 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
       continue;
     }
 
-    // Dispatcher decide
+    // ── Pass 1: Quick-classify (spam/notificación automática) ───────────
+    // Ahorra tokens Sonnet: los patrones obvios (marketing, notificaciones,
+    // no-reply) se skipean sin llamar al dispatcher LLM.
+    const quick = quickClassifyEmail({ from: msg.from, subject: msg.subject, body: msg.body });
+    if (quick.category) {
+      const category = quick.category === 'spam' ? 'spam' : 'otro';
+      const summary  = quick.category === 'spam'
+        ? `Correo de marketing (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`
+        : `Notificación automática (clasificado sin IA: ${quick.reason ?? 'patrón detectado'}).`;
+
+      try {
+        const { error } = await supabase.from('ops_inbox').insert({
+          agent_id:              pivotAgent.id as string,
+          source:                org.provider,
+          raw_message_id:        msg.id,
+          thread_id:             msg.threadId ?? null,
+          email_from:            msg.from,
+          email_subject:         msg.subject,
+          email_body:            msg.body.slice(0, EMAIL_BODY_TRUNCATE_CHARS),
+          attachments:           [],
+          category,
+          ai_summary:            summary,
+          ai_draft:              null,
+          item_type:             'email',
+          status:                'skipped',
+          origin_scope:          'org_shared',
+          assigned_by:           'rule',
+          assignment_confidence: 1.0,
+          assignment_metadata:   { org_email: orgEmailAddr, rule: `quick_${quick.category}`, quick_reason: quick.reason },
+        });
+        if (error) throw error;
+        // markRead solo si insert OK
+        await conn.email.markRead(msg.id).catch(err =>
+          console.error(`[org-sync] markRead failed post-quick for ${msg.id}:`, err));
+      } catch (err) {
+        console.error(`[org-sync] quick-classify insert failed for ${msg.id}:`, err);
+        // NO markRead — próximo tick reintenta
+      }
+      continue;
+    }
+
+    // ── Pass 2: Dispatcher (reglas + LLM + fallback) ─────────────────────
     let dispatch: DispatchResult;
     try {
       dispatch = await dispatchEmail({
-        portalEmail: org.portal_email,
-        orgEmail:    orgEmailAddr,
+        portalEmail:  org.portal_email,
+        orgEmail:     orgEmailAddr,
+        pivotAgentId: pivotAgent.id as string,
         message: {
           id:      msg.id,
           from:    msg.from,
@@ -437,16 +490,20 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
       continue; // no markRead — permitir retry en próximo sync
     }
 
-    await conn.email.markRead(msg.id).catch(err =>
-      console.error(`[org-sync] markRead failed for ${msg.id}:`, err));
-
-    // Escalación a humano: sin agentId asignado → crear human_request
+    // ── Pass 3: Escalación a humano ──────────────────────────────────────
     if (!dispatch.agentId) {
-      await createOrgHumanRequest({ supabase, org, pivotAgentId: pivotAgent.id as string, msg, dispatch });
+      try {
+        await createOrgHumanRequest({ supabase, org, pivotAgentId: pivotAgent.id as string, msg, dispatch });
+        await conn.email.markRead(msg.id).catch(err =>
+          console.error(`[org-sync] markRead failed post-escalation for ${msg.id}:`, err));
+      } catch (err) {
+        console.error(`[org-sync] createOrgHumanRequest failed for ${msg.id}:`, err);
+        // NO markRead — próximo tick reintenta
+      }
       continue;
     }
 
-    // Asignado — cargar contexto del agente y delegar a processInboxEmail
+    // ── Pass 4: Delegar a processInboxEmail con agente asignado ─────────
     const { data: assignedAgent } = await supabase
       .from('voice_agents')
       .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, trust_stage')
@@ -455,6 +512,8 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
 
     if (!assignedAgent?.client_email) {
       console.warn(`[org-sync] agente asignado sin client_email, skipping msg ${msg.id}`);
+      // markRead — no vamos a poder procesarlo, evitar loop infinito
+      await conn.email.markRead(msg.id).catch(() => {});
       continue;
     }
 
@@ -470,34 +529,38 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
       orgDisabled,
     });
 
-    await processInboxEmail({
-      agentId:              assignedAgent.id as string,
-      source:               org.provider,
-      rawMessageId:         msg.id,
-      threadId:             msg.threadId,
-      emailFrom:            msg.from,
-      emailSubject:         msg.subject,
-      emailBody:            msg.body,
-      attachments:          [],
-      agentName:            (assignedAgent.agent_name as string | null) ?? 'Centinelia',
-      businessName:         assignedAgent.business_name as string,
-      knowledgeBase:        (orgData as { knowledge_base?: string | null } | null)?.knowledge_base ?? null,
-      roleKB:               assignedAgent.role_knowledge_base as string | null,
-      agentRole:            assignedAgent.role as string | null,
-      ownerEmail:           assignedAgent.client_email as string,
-      portalToken:          assignedAgent.portal_token as string,
-      portalEmail:          assignedAgent.portal_email as string | undefined,
-      autoMode,
-      approvalEmail:        (assignedAgent as Record<string, unknown>).approval_email as string | null | undefined,
-      // Dispatcher metadata
-      originScope:          'org_shared',
-      assignedBy:           dispatch.assignedBy,
-      assignmentConfidence: dispatch.confidence,
-      assignmentMetadata:   dispatch.metadata as unknown as Record<string, unknown>,
-      // Respuesta sale desde el correo del empleado si lo tiene (getFileConnector
-      // ya prefiere per-agent; org es fallback). No pasamos sendReplyFn org-level
-      // aquí — que el flow normal de respuesta lo decida.
-    });
+    try {
+      await processInboxEmail({
+        agentId:              assignedAgent.id as string,
+        source:               org.provider,
+        rawMessageId:         msg.id,
+        threadId:             msg.threadId,
+        emailFrom:            msg.from,
+        emailSubject:         msg.subject,
+        emailBody:            msg.body,
+        attachments:          [],
+        agentName:            (assignedAgent.agent_name as string | null) ?? 'Centinelia',
+        businessName:         assignedAgent.business_name as string,
+        knowledgeBase:        (orgData as { knowledge_base?: string | null } | null)?.knowledge_base ?? null,
+        roleKB:               assignedAgent.role_knowledge_base as string | null,
+        agentRole:            assignedAgent.role as string | null,
+        ownerEmail:           assignedAgent.client_email as string,
+        portalToken:          assignedAgent.portal_token as string,
+        portalEmail:          assignedAgent.portal_email as string | undefined,
+        autoMode,
+        approvalEmail:        (assignedAgent as Record<string, unknown>).approval_email as string | null | undefined,
+        originScope:          'org_shared',
+        assignedBy:           dispatch.assignedBy,
+        assignmentConfidence: dispatch.confidence,
+        assignmentMetadata:   dispatch.metadata as unknown as Record<string, unknown>,
+      });
+      // markRead SOLO tras insert exitoso
+      await conn.email.markRead(msg.id).catch(err =>
+        console.error(`[org-sync] markRead failed post-process for ${msg.id}:`, err));
+    } catch (err) {
+      console.error(`[org-sync] processInboxEmail failed for ${msg.id}:`, err);
+      // NO markRead — próximo tick reintenta
+    }
   }
 }
 
@@ -519,17 +582,20 @@ async function createOrgHumanRequest(args: {
 
   const targetEmail = (agentInfo?.client_email as string | null) ?? org.portal_email;
 
-  await supabase.from('human_requests').insert({
+  const { error } = await supabase.from('human_requests').insert({
     agent_id:        pivotAgentId,
     source_channel:  'email',
     source_context:  `Correo entrante a bandeja compartida (${org.account_label ?? org.portal_email}) sin asignación clara.\n\nDe: ${msg.from}\nAsunto: ${msg.subject}\n\n${msg.body.slice(0, 500)}`,
     request_type:    'action',
     title:           `Asignar correo entrante: "${msg.subject.slice(0, 80)}"`,
     description:     dispatch.metadata.escalated_reason ?? 'El dispatcher no pudo decidir a qué empleado asignar este correo.',
-    urgency:         'normal',
+    // urgency debe ser 'baja' | 'media' | 'alta' (ver notify.ts:47)
+    urgency:         'media',
     target_email:    targetEmail,
-    target_type:     'owner',
+    // target_type='specific' matchea el patrón del resto del código (respond route)
+    target_type:     'specific',
     channels_notified: [],
     status:          'pending',
   });
+  if (error) throw error; // propagar al caller para que NO markRead
 }

@@ -89,30 +89,31 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ? (features.outbound_capabilities as string[])
     : meerkatCaps;
 
-  // Email connection: primero per-agent (email_integrations), fallback per-org
-  // (integration_accounts). Necesario porque el owner puede conectar Gmail
-  // desde IntegrationsHub (Oficina) — queda en integration_accounts — y no
-  // aparecía aquí. Ver [[email-oauth-dual-scope]].
+  // Correo del negocio: fuente de verdad para aprendizaje del rol es
+  // integration_accounts (per-org). El empleado no aprende del correo del
+  // empleado, aprende del correo del NEGOCIO. Fallback a email_integrations
+  // solo por retrocompat con conexiones viejas per-agent.
+  let connectedEmail: string | null = null;
+  if (agent.portal_email) {
+    const { data } = await supabase
+      .from('integration_accounts')
+      .select('account_label, status')
+      .eq('portal_email', agent.portal_email)
+      .in('provider', ['gmail', 'outlook'])
+      .maybeSingle();
+    if (data && (data as any).status !== 'needs_reauth') {
+      connectedEmail = ((data as any).account_label as string) ?? null;
+    }
+  }
+
   const { data: emailIntegration } = await supabase
     .from('email_integrations')
     .select('email, needs_reauth, provider, send_as_email')
     .eq('agent_id', agent.id)
     .maybeSingle();
 
-  let connectedEmail: string | null = (emailIntegration && !emailIntegration.needs_reauth)
-    ? (emailIntegration.email as string)
-    : null;
-
-  if (!connectedEmail && agent.portal_email) {
-    const { data } = await supabase
-      .from('integration_accounts')
-      .select('email, needs_reauth')
-      .eq('portal_email', agent.portal_email)
-      .in('provider', ['gmail', 'outlook'])
-      .maybeSingle();
-    if (data && !(data as any).needs_reauth) {
-      connectedEmail = (data as any).email as string;
-    }
+  if (!connectedEmail && emailIntegration && !emailIntegration.needs_reauth) {
+    connectedEmail = (emailIntegration.email as string);
   }
 
   const { data: orgRow } = agent.portal_email

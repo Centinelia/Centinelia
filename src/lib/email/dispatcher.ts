@@ -15,6 +15,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { MEERKAT_CONFIGS } from '@/lib/vapi/meerkat-configs';
+import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 const DISPATCHER_MODEL     = 'claude-sonnet-4-6';
@@ -27,8 +29,12 @@ const SONNET_MEERKATS = new Set(['noah', 'nox', 'niva']);
 // ─── Types ────────────────────────────────────────────────────────────────
 
 export interface DispatchInput {
-  portalEmail: string;
-  orgEmail:    string;
+  portalEmail:  string;
+  orgEmail:     string;
+  /** Agente pivote al que se le cobra la op del dispatcher LLM. Típicamente el
+   *  primer agente activo de la org (ya calculado en el sync). Si no se pasa,
+   *  el LLM corre sin metering (para tests). */
+  pivotAgentId?: string;
   message: {
     id?:      string;
     from:     string;
@@ -102,7 +108,28 @@ export async function dispatchEmail(input: DispatchInput): Promise<DispatchResul
   const ruleResult = tryRules(input.message, agents);
   if (ruleResult) return finalize(ruleResult, input.orgEmail);
 
-  const llmResult = await tryLLM(input.message, agents);
+  // Metering: la llamada Sonnet consume 1 op. Se cobra al pivote (típicamente
+  // el primer agente activo). Si la cuenta está sin quota, saltamos el LLM y
+  // caemos al fallback directo — evita cargar operaciones no cobradas.
+  let llmAllowed = true;
+  if (input.pivotAgentId) {
+    try {
+      const gate = await consumeAiOp(input.pivotAgentId, 1, {
+        source:       'org_dispatcher',
+        reference_id: input.message.id,
+        label:        'Ruteo de correo compartido',
+        context:      `Bandeja compartida (${input.orgEmail}) — asunto: ${input.message.subject.slice(0, 120)}`,
+      });
+      llmAllowed = gate.ok;
+    } catch (err) {
+      console.error('[dispatcher] consumeAiOp error, skipping LLM:', err);
+      llmAllowed = false;
+    }
+  }
+
+  const llmResult = llmAllowed
+    ? await tryLLM(input.message, agents, input.portalEmail, input.pivotAgentId)
+    : null;
   if (llmResult && llmResult.confidence >= CONFIDENCE_THRESHOLD) {
     return finalize(llmResult, input.orgEmail);
   }
@@ -115,15 +142,17 @@ export async function dispatchEmail(input: DispatchInput): Promise<DispatchResul
       assignedBy: 'fallback',
       confidence: 0.3,
       metadata:   {
-        rule:       'sonnet_fallback',
-        llm_reason: llmResult?.metadata.llm_reason,
+        rule:            llmAllowed ? 'sonnet_fallback' : 'sonnet_fallback_no_quota',
+        llm_reason:      llmResult?.metadata.llm_reason,
       },
     }, input.orgEmail);
   }
 
   return escalate(
     input.orgEmail,
-    'Sin agente Sonnet activo y confianza del LLM < 0.5',
+    llmAllowed
+      ? 'Sin agente Sonnet activo y confianza del LLM < 0.5'
+      : 'Sin quota IA para dispatcher y sin agente Sonnet activo',
     llmResult?.metadata.llm_reason,
   );
 }
@@ -207,7 +236,13 @@ function tryRules(msg: DispatchInput['message'], agents: DispatchAgent[]): Parti
 
 // ─── LLM pass ─────────────────────────────────────────────────────────────
 
-async function tryLLM(msg: DispatchInput['message'], agents: DispatchAgent[]): Promise<PartialResult | null> {
+async function tryLLM(
+  msg:          DispatchInput['message'],
+  agents:       DispatchAgent[],
+  portalEmail?: string,
+  agentId?:     string,
+): Promise<PartialResult | null> {
+  const start = Date.now();
   try {
     const rosterLines = agents.map(a => {
       const model = a.meerkat_id ? getMeerkatModelLabel(a.meerkat_id) : 'custom';
@@ -246,6 +281,17 @@ Sin markdown, sin texto extra, solo el JSON.`;
       messages:    [{ role: 'user', content: prompt }],
     });
 
+    // Observabilidad: registrar la llamada (tokens, costo, latencia)
+    await logLlmCall({
+      source:      'org_dispatcher',
+      model:       DISPATCHER_MODEL,
+      usage:       resp.usage,
+      agentId,
+      portalEmail,
+      latencyMs:   Date.now() - start,
+      meta:        { msg_id: msg.id, subject: msg.subject.slice(0, 120) },
+    }).catch(err => console.error('[dispatcher] logLlmCall error:', err));
+
     const first = resp.content[0];
     const text  = first && first.type === 'text' ? first.text.trim() : '';
     if (!text) return null;
@@ -265,6 +311,15 @@ Sin markdown, sin texto extra, solo el JSON.`;
     };
   } catch (err) {
     console.error('[dispatcher] LLM error:', err);
+    await logLlmCall({
+      source:      'org_dispatcher',
+      model:       DISPATCHER_MODEL,
+      usage:       { input_tokens: 0, output_tokens: 0 },
+      agentId,
+      portalEmail,
+      latencyMs:   Date.now() - start,
+      error:       String(err).slice(0, 500),
+    }).catch(() => {});
     return null;
   }
 }

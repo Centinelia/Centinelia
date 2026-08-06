@@ -37,23 +37,57 @@ export async function POST(
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  // Get email integration for this agent
-  const { data: integration } = await supabase
-    .from('email_integrations')
-    .select('*')
-    .eq('agent_id', agent.id)
-    .maybeSingle();
+  // El correo de aprendizaje es el CORREO DE LA ORG, no del empleado.
+  // Un empleado no aprende a hablar como la marca leyendo sus propios drafts
+  // — aprende leyendo la bandeja del negocio (hola@empresa.com), que es la
+  // fuente de verdad del tono/reglas del negocio. Primero busca per-org
+  // (integration_accounts). Fallback per-agent (email_integrations) solo
+  // por retrocompat con conexiones viejas.
+  let integration: IntegrationRow | null = null;
+
+  if (agent.portal_email) {
+    const { data: orgAcct } = await supabase
+      .from('integration_accounts')
+      .select('provider, account_label, access_token, refresh_token, expires_at, status')
+      .eq('portal_email', agent.portal_email)
+      .in('provider', ['gmail', 'outlook'])
+      .maybeSingle();
+
+    if (orgAcct) {
+      integration = {
+        id:                 `org:${agent.portal_email}:${orgAcct.provider}`,
+        agent_id:           agent.id as string,
+        provider:           orgAcct.provider as 'gmail' | 'outlook',
+        email:              (orgAcct.account_label as string | null) ?? '',
+        access_token:       (orgAcct.access_token as string | null) ?? '',
+        refresh_token:      (orgAcct.refresh_token as string | null) ?? null,
+        token_expires_at:   (orgAcct.expires_at as string | null) ?? null,
+        last_sync_at:       null,
+        needs_reauth:       orgAcct.status === 'needs_reauth',
+        reauth_notified_at: null,
+      };
+    }
+  }
+
+  if (!integration) {
+    const { data: perAgent } = await supabase
+      .from('email_integrations')
+      .select('*')
+      .eq('agent_id', agent.id)
+      .maybeSingle();
+    if (perAgent) integration = perAgent as IntegrationRow;
+  }
 
   if (!integration) {
     return NextResponse.json(
-      { error: 'Sin correo conectado. Conecta Gmail o Outlook en la sección "Correo electrónico" de este empleado.' },
+      { error: 'Sin correo del negocio conectado. Conecta Gmail o Outlook en Oficina → Integraciones.' },
       { status: 422 },
     );
   }
 
-  if ((integration as IntegrationRow & { needs_reauth: boolean }).needs_reauth) {
+  if (integration.needs_reauth) {
     return NextResponse.json(
-      { error: 'Tu conexión de correo necesita reautorizarse. Ve a la sección "Correo electrónico" para reconectarla.' },
+      { error: 'La conexión de correo requiere reautorizarse. Ve a Oficina → Integraciones para reconectarla.' },
       { status: 422 },
     );
   }

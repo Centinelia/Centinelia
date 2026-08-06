@@ -44,7 +44,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        Tu empleado lee los correos de la organización y aprende cómo se toman decisiones en su área.
+        Tu empleado lee el correo del negocio (Oficina → Integraciones) y aprende cómo se toman decisiones en su área.
         Si 3 de 10 correos hablan de ventas, el empleado de ventas analiza esos 3 y extrae las reglas implícitas de tu organización.
       </p>
 
@@ -54,10 +54,10 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
           <AlertCircle size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0, marginTop: 1 }} />
           <div>
             <p className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-              Sin correo conectado
+              Sin correo del negocio conectado
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-              Conecta Gmail o Outlook en la sección "Correo electrónico" para activar el aprendizaje de plataformas.
+              Conecta Gmail o Outlook en Oficina → Integraciones para activar el aprendizaje de plataformas.
             </p>
           </div>
         </div>
