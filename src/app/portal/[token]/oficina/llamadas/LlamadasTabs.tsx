@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useMemo } from 'react';
-import { PhoneCall, PhoneOutgoing, Megaphone, PhoneMissed } from 'lucide-react';
+import { PhoneCall, PhoneOutgoing, PhoneMissed } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Card, SectionHeader } from '@/components/portal-ui';
 import type { VoiceCall } from '@/types/agent';
@@ -86,10 +86,12 @@ export default function LlamadasTabs({
     router.push(`${pathname}?filtro=${f}`);
   };
 
+  // 'Campañas' se movió a página propia /oficina/campanas (2026-08-06).
+  // Aquí solo dejamos filtros de atención directa: Entrantes, Salientes
+  // manuales, Recovery.
   const pills: PillDef[] = ([
     { id: 'entrantes' as LlamadasFiltro, label: 'Entrantes', icon: PhoneCall,     visible: true,           color: '#6C3BFF' },
     { id: 'salientes' as LlamadasFiltro, label: 'Salientes', icon: PhoneOutgoing, visible: showOutbound,   color: '#a855f7' },
-    { id: 'campanas'  as LlamadasFiltro, label: 'Campañas',  icon: Megaphone,     visible: showOutbound,   color: '#a855f7' },
     { id: 'recovery'  as LlamadasFiltro, label: 'Recovery',  icon: PhoneMissed,   visible: initMissedCall, color: '#f59e0b' },
   ] as PillDef[]).filter(p => p.visible);
 
@@ -234,31 +236,9 @@ export default function LlamadasTabs({
         </>
       )}
 
-      {/* Campañas */}
-      {filtro === 'campanas' && showOutbound && (
-        <>
-          {/* OutboundToggles moved to /configurar > Horarios y automatizaciones */}
-          {initOutbound && (
-            <OutboundSection
-              token={token}
-              initialContacts={contactOutbound}
-              initialCampaigns={outboundCampaigns}
-              agents={outboundAgents}
-              initialTab="campanas"
-            />
-          )}
-          {!initOutbound && (
-            <Card padding="md">
-              <EmptyState
-                icon={Megaphone}
-                title="Llamadas salientes desactivadas"
-                description="Activa esta función desde Configurar tu empleado > Horarios y automatizaciones."
-                size="sm"
-              />
-            </Card>
-          )}
-        </>
-      )}
+      {/* 'Campañas' fue promovida a página propia — ver /oficina/campanas
+          (commit 2026-08-06). Si alguien llega con ?filtro=campanas por
+          bookmark viejo, el page.tsx server-side hace redirect. */}
 
       {/* Recovery */}
       {filtro === 'recovery' && initMissedCall && (

@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { notFound }          from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { VoiceCall }    from '@/types/agent';
 import LlamadasTabs          from './LlamadasTabs';
 
-export type LlamadasFiltro = 'entrantes' | 'salientes' | 'campanas' | 'recovery';
+export type LlamadasFiltro = 'entrantes' | 'salientes' | 'recovery';
 
 interface Props {
   params:       Promise<{ token: string }>;
@@ -16,8 +16,13 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
   const { token }  = await params;
   const { filtro: filtroRaw } = await searchParams;
 
+  // Retrocompat: ?filtro=campanas ahora vive en /oficina/campanas
+  if (filtroRaw === 'campanas') {
+    redirect(`/portal/${token}/oficina/campanas`);
+  }
+
   const filtro: LlamadasFiltro =
-    filtroRaw === 'salientes' || filtroRaw === 'campanas' || filtroRaw === 'recovery'
+    filtroRaw === 'salientes' || filtroRaw === 'recovery'
       ? (filtroRaw as LlamadasFiltro)
       : 'entrantes';
 
@@ -47,7 +52,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
 
   // Fetch data conditionally based on active filter tab to avoid unnecessary queries
   const needsInbound  = filtro === 'entrantes';
-  const needsOutbound = filtro === 'salientes' || filtro === 'campanas';
+  const needsOutbound = filtro === 'salientes';
 
   const [callsRes, leadsRes, ordersRes, apptsRes, contactsRes, campaignsRes] = await Promise.all([
     // Always fetch calls for entrantes (default); skip for outbound-only tabs

@@ -20,7 +20,7 @@ import {
   ArrowLeft, Search, CreditCard, FolderOpen,
   ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
   ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
-  Inbox, FileSignature, Receipt,
+  Inbox, FileSignature, Receipt, Megaphone,
 } from 'lucide-react';
 
 interface NavItem {
@@ -67,6 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'PERSONAS',
     items: [
       { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '' },
+      { href: '/campanas',   moduleId: 'llamadas',      label: 'Campañas',   icon: Megaphone, badgeKey: '' },
       { href: '/onboarding', moduleId: 'of_onboarding', label: 'Onboarding', icon: UserCheck, badgeKey: '' },
       { href: '/encuestas',  moduleId: 'of_encuestas',  label: 'Calidad',    icon: PieChart,  badgeKey: '' },
     ],
