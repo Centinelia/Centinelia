@@ -159,10 +159,22 @@ export default async function InicioPage() {
     severity: Severity;
     label:    string;
     sub:      string;
-    href:     string;
+    href?:    string;  // opcional. Sin href = alerta informativa (no clickeable).
     count?:   number;
   }
   const alerts: AlertItem[] = [];
+
+  // Detecta el proveedor de webmail por dominio del email destino.
+  // Si no reconoce el dominio, devuelve null → alerta queda sin link.
+  const inboxUrlFor = (email: string): string | null => {
+    const domain = email.split('@')[1]?.toLowerCase() ?? '';
+    if (domain === 'gmail.com' || domain === 'googlemail.com') return 'https://mail.google.com/mail/';
+    if (['outlook.com', 'hotmail.com', 'live.com', 'msn.com'].includes(domain)) return 'https://outlook.live.com/mail/';
+    if (domain === 'yahoo.com' || domain.endsWith('.yahoo.com'))                 return 'https://mail.yahoo.com/';
+    // Google Workspace / custom domain con MX de Google → asume Gmail (mayoría en LATAM)
+    // Sin manera confiable de detectar, mejor no linkear.
+    return null;
+  };
 
   // Helper: link directo cuando hay 1 afectado, o link a búsqueda pre-filtrada cuando hay más.
   const clientLink = (a: AgentRow) => {
@@ -201,6 +213,9 @@ export default async function InicioPage() {
     }
     const emails = [...emailsSet];
     const emailList = emails.slice(0, 3).join(', ') + (emails.length > 3 ? `, +${emails.length - 3}` : '');
+    // Solo hay href si SÓLO hay 1 email destino Y su dominio es reconocido.
+    // Con múltiples destinos no podemos abrir varias bandejas; queda informativa.
+    const singleInboxUrl = emails.length === 1 ? inboxUrlFor(emails[0]) : null;
     alerts.push({
       severity: 'high',
       label:    emails.length === 0
@@ -208,8 +223,12 @@ export default async function InicioPage() {
                   : emails.length === 1
                     ? `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''} a ${emails[0]}`
                     : `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''}`,
-      sub:      emails.length > 1 ? `Revisar bandeja de: ${emailList}` : 'Revisar la bandeja del correo destino',
-      href:     '/admin/human-gates?gate_type=ops_inbox',
+      sub:      emails.length > 1
+                  ? `Revisar bandeja de: ${emailList}`
+                  : singleInboxUrl
+                    ? 'Abrir bandeja para responder'
+                    : 'Revisar la bandeja del correo destino',
+      ...(singleInboxUrl ? { href: singleInboxUrl } : {}),
       count:    inboxEscalatedN,
     });
   }
@@ -444,31 +463,66 @@ export default async function InicioPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {alerts.map((r, i) => (
-              <Link
-                key={i}
-                href={r.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors hover:brightness-95"
-                style={{ background: sevBg[r.severity], border: `1px solid ${sevBorder[r.severity]}` }}
-              >
-                <AlertTriangle size={15} style={{ color: sevColor[r.severity], flexShrink: 0 }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>{r.label}</p>
-                    {typeof r.count === 'number' && (
-                      <span
-                        className="text-[11px] font-semibold px-2 py-0.5 rounded-md tabular-nums"
-                        style={{ background: `${sevColor[r.severity]}14`, color: sevColor[r.severity], border: `1px solid ${sevColor[r.severity]}30` }}
-                      >
-                        {r.count}
-                      </span>
-                    )}
+            {alerts.map((r, i) => {
+              const isExternal = r.href?.startsWith('http');
+              const body = (
+                <>
+                  <AlertTriangle size={15} style={{ color: sevColor[r.severity], flexShrink: 0 }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-semibold" style={{ color: '#111827' }}>{r.label}</p>
+                      {typeof r.count === 'number' && (
+                        <span
+                          className="text-[11px] font-semibold px-2 py-0.5 rounded-md tabular-nums"
+                          style={{ background: `${sevColor[r.severity]}14`, color: sevColor[r.severity], border: `1px solid ${sevColor[r.severity]}30` }}
+                        >
+                          {r.count}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>{r.sub}</p>
                   </div>
-                  <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B7280' }}>{r.sub}</p>
-                </div>
-                <ArrowRight size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
-              </Link>
-            ))}
+                  {r.href && <ArrowRight size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />}
+                </>
+              );
+              const baseClass = 'flex items-center gap-3 px-4 py-3 rounded-xl';
+              const bgStyle   = { background: sevBg[r.severity], border: `1px solid ${sevBorder[r.severity]}` };
+
+              // Sin href → alerta informativa, cursor default, sin hover
+              if (!r.href) {
+                return (
+                  <div key={i} className={baseClass} style={bgStyle}>
+                    {body}
+                  </div>
+                );
+              }
+              // Con href externo → <a target=_blank>
+              if (isExternal) {
+                return (
+                  <a
+                    key={i}
+                    href={r.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${baseClass} transition-colors hover:brightness-95`}
+                    style={bgStyle}
+                  >
+                    {body}
+                  </a>
+                );
+              }
+              // Con href interno → <Link>
+              return (
+                <Link
+                  key={i}
+                  href={r.href}
+                  className={`${baseClass} transition-colors hover:brightness-95`}
+                  style={bgStyle}
+                >
+                  {body}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
