@@ -297,7 +297,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {['Seguimientos', 'Confirmaciones', 'Cobranza', 'Recordatorios'].map(item => (
+            {['Seguimientos', 'Confirmaciones', 'Cobranza', 'Recordatorios', 'Promociones', 'Encuestas'].map(item => (
               <div key={item} className="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
                 <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#6C3BFF' }} />
