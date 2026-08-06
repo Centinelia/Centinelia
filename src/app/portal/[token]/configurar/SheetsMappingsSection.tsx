@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import EmptyState from '@/components/ui/empty-state';
+import { SectionHeader } from '@/components/portal-ui';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -499,15 +500,12 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
 
   return (
     <section className="scroll-mt-6">
-      {/* Section header */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold" style={{ color: 'var(--c-text)' }}>
-          Sheets del negocio
-        </h2>
-        <p className="text-sm mt-1" style={{ color: 'var(--c-text-2)' }}>
-          Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes.
-        </p>
-      </div>
+      <SectionHeader
+        as="h2"
+        title="Sheets del negocio"
+        description="Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes."
+        className="mb-4"
+      />
 
       {/* Mapping list */}
       {loading ? (
