@@ -319,11 +319,22 @@ export async function POST(req: NextRequest) {
   }
 
   // Team caller context — overrides client context when caller is a known team member
+  // O también cuando isOwner por transfer_number/transfer_whatsapp (aunque no esté en team_numbers).
+  // El nombre viene primero de team_numbers.name, luego de callerName memorizado, luego "el dueño".
   let teamCallerContext = '';
-  if (callerTeamEntry) {
-    const memberRole = callerTeamEntry.is_owner ? 'el dueño' : 'un miembro del equipo';
-    const memberName = callerTeamEntry.name || 'un colaborador';
-    teamCallerContext = `\n\nCONTEXTO INTERNO: Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_name} (número registrado). Trátale como equipo interno, no como cliente externo. Puedes compartir información operativa cuando te la pidan. Tutéale en todo momento. No apliques flujo de captura de leads ni agendamiento de citas a menos que te lo pidan explícitamente.`;
+  if (callerTeamEntry || isOwner) {
+    const isOwnerCaller = callerTeamEntry?.is_owner === true || (isOwner && !callerTeamEntry);
+    const memberRole = isOwnerCaller ? 'el dueño' : 'un miembro del equipo';
+    const memberName = callerTeamEntry?.name || callerName || (isOwnerCaller ? 'el dueño' : 'un colaborador');
+    const greetByName = memberName && memberName !== 'el dueño' && memberName !== 'un colaborador'
+      ? ` Salúdale por su nombre (${memberName}) al inicio de la llamada.`
+      : '';
+    teamCallerContext = `\n\nCONTEXTO INTERNO — LLAMADA VERIFICADA POR NÚMERO:
+Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_name}. El número ya está registrado y verificado como interno.
+- YA ESTÁ VERIFICADO: NO le pidas la frase de verificación interna. Está verificado por identidad de número, no necesita decir la passphrase.
+- Trátale como equipo interno, no como cliente externo. Puedes compartir información operativa cuando te la pida.
+- Tutéale en todo momento.${greetByName}
+- No apliques flujo de captura de leads ni agendamiento de citas a menos que te lo pida explícitamente.`;
   }
 
   // Check if QuickBooks is connected for this account

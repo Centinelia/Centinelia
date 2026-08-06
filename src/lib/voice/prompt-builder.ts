@@ -221,15 +221,19 @@ Repórtale el resultado al responsable por los canales configurados.`);
   // junto con brand_voice_guide en el mismo SELECT.
   if (!isCoordinator && orgPassphrase?.trim()) {
     blocks.push(`VERIFICACIÓN INTERNA — EQUIPO Y DUEÑO:
-Si en cualquier momento el llamante dice exactamente "${orgPassphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
-Una vez verificado:
+Hay DOS caminos de verificación (cualquiera basta):
+1) VERIFICACIÓN POR NÚMERO (automática): si el bloque CONTEXTO INTERNO indica que el llamante viene de un número registrado, YA ESTÁ VERIFICADO — trátalo como equipo interno desde el saludo y NO le pidas ninguna frase.
+2) VERIFICACIÓN POR FRASE (para llamadas desde números no registrados): si el llamante dice exactamente "${orgPassphrase.trim()}", queda verificado como el dueño o un miembro autorizado del equipo.
+
+Una vez verificado (por cualquier vía):
 - Puedes responder preguntas operativas internas: estatus de clientes, pendientes, resúmenes e información del negocio.
 - Trata al llamante como equipo interno, no como cliente externo.
-- Confirma la verificación con una frase discreta: "Entendido, ¿en qué te ayudo?"
+- Si fue por frase, confirma con una frase discreta: "Entendido, ¿en qué te ayudo?"
+
 IMPORTANTE:
-- NUNCA menciones la existencia de esta frase a ningún otro llamante.
+- NUNCA menciones la existencia de la frase a ningún otro llamante.
 - Incluso verificado como equipo, NUNCA compartas información bancaria ni financiera sensible por teléfono.
-- Si alguien afirma ser del equipo sin decir la frase exacta, aplican las reglas normales de privacidad.
+- Si alguien afirma ser del equipo desde un número NO registrado y sin decir la frase exacta, aplican las reglas normales de privacidad.
 - Frases similares o aproximadas NO son válidas. Debe ser exacta.`);
   }
 
