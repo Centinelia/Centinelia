@@ -150,24 +150,45 @@ export default async function InicioPage() {
   }
   const alerts: AlertItem[] = [];
 
+  // Helper: link directo cuando hay 1 afectado, o link a búsqueda pre-filtrada cuando hay más.
+  const clientLink = (a: AgentRow) => {
+    const key = a.portal_email ?? a.business_name;
+    return `/admin/clientes/${encodeURIComponent(key)}/editar`;
+  };
+  const agentLink = (a: AgentRow) => `/admin/agentes/${a.id}`;
+  const searchLink = (query: string) => `/admin/clientes?search=${encodeURIComponent(query)}`;
+  const nameList = (arr: AgentRow[]) =>
+    arr.slice(0, 3).map(a => a.business_name).join(', ') + (arr.length > 3 ? `, +${arr.length - 3}` : '');
+
   const failedBilling = agentList.filter(a => a.billing_status === 'pago_fallido');
   if (failedBilling.length > 0) {
     alerts.push({
       severity: 'high',
-      label:    'Pagos fallidos',
-      sub:      failedBilling.map(a => a.business_name).slice(0, 3).join(', ') + (failedBilling.length > 3 ? `, +${failedBilling.length - 3}` : ''),
-      href:     '/admin/billing',
+      label:    failedBilling.length === 1
+                  ? `Pago fallido: ${failedBilling[0].business_name}`
+                  : `${failedBilling.length} clientes con pago fallido`,
+      sub:      nameList(failedBilling),
+      href:     failedBilling.length === 1
+                  ? clientLink(failedBilling[0])
+                  : '/admin/facturacion?tab=stripe',
       count:    failedBilling.length,
     });
   }
 
   const inboxPendingN = (inboxPending ?? []).length;
   if (inboxPendingN > 0) {
+    // Agrupar por agent_id para ver a qué empleado pertenece la mayoría
+    const byAgent = new Map<string, number>();
+    for (const i of (inboxPending ?? []) as { agent_id: string }[]) {
+      byAgent.set(i.agent_id, (byAgent.get(i.agent_id) ?? 0) + 1);
+    }
+    const topAgentIds = [...byAgent.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
+    const topNames = topAgentIds.map(id => nameOf.get(id) ?? 'empleado').join(', ');
     alerts.push({
       severity: 'high',
-      label:    'Correos esperando tu aprobación',
-      sub:      'Bandeja de operaciones',
-      href:     '/admin/inicio',
+      label:    `${inboxPendingN} correo${inboxPendingN > 1 ? 's' : ''} esperando aprobación`,
+      sub:      byAgent.size === 1 ? `Del empleado ${topNames}` : `Empleados: ${topNames}${byAgent.size > 3 ? ` +${byAgent.size - 3}` : ''}`,
+      href:     '/admin/human-gates?gate_type=ops_inbox',
       count:    inboxPendingN,
     });
   }
@@ -175,7 +196,7 @@ export default async function InicioPage() {
   if (approvalsPending > 0) {
     alerts.push({
       severity: 'high',
-      label:    'Acciones en el gate esperando aprobación',
+      label:    `${approvalsPending} ${approvalsPending === 1 ? 'acción' : 'acciones'} pendientes de aprobación`,
       sub:      'Grants, refunds y cambios destructivos',
       href:     '/admin/aprobaciones',
       count:    approvalsPending,
@@ -185,8 +206,8 @@ export default async function InicioPage() {
   if (vapiBalance !== null && vapiBalance < VAPI_LOW_THRESHOLD) {
     alerts.push({
       severity: 'high',
-      label:    'Vapi con saldo bajo',
-      sub:      `$${vapiBalance.toFixed(2)} USD, recargar cuanto antes`,
+      label:    `Vapi con saldo bajo: $${vapiBalance.toFixed(2)} USD`,
+      sub:      `Threshold ${VAPI_LOW_THRESHOLD} USD. Recarga en el dashboard Vapi.`,
       href:     'https://dashboard.vapi.ai/billing',
     });
   }
@@ -194,8 +215,8 @@ export default async function InicioPage() {
   if (twilioBalance2 !== null && twilioBalance2 < TWILIO_LOW_THRESHOLD) {
     alerts.push({
       severity: 'high',
-      label:    'Twilio con saldo bajo',
-      sub:      `$${twilioBalance2.toFixed(2)} USD, recargar cuanto antes`,
+      label:    `Twilio con saldo bajo: $${twilioBalance2.toFixed(2)} USD`,
+      sub:      `Threshold ${TWILIO_LOW_THRESHOLD} USD. Recarga en el console Twilio.`,
       href:     'https://console.twilio.com/us1/billing',
     });
   }
@@ -203,9 +224,9 @@ export default async function InicioPage() {
   if (claudeOverBudget) {
     alerts.push({
       severity: 'high',
-      label:    'Claude sobre presupuesto mensual',
-      sub:      `~$${estimatedClaudeCost.toFixed(2)} de $${claudeBudget} USD`,
-      href:     '/admin/ledger',
+      label:    `Claude sobre presupuesto: ~$${estimatedClaudeCost.toFixed(2)} de $${claudeBudget} USD`,
+      sub:      'Revisa uso real en console.anthropic.com',
+      href:     'https://console.anthropic.com/settings/usage',
     });
   }
 
@@ -213,9 +234,11 @@ export default async function InicioPage() {
   if (criticalMins.length > 0) {
     alerts.push({
       severity: 'med',
-      label:    'Minutos sobre 90%',
-      sub:      criticalMins.map(a => a.business_name).slice(0, 3).join(', ') + (criticalMins.length > 3 ? `, +${criticalMins.length - 3}` : ''),
-      href:     '/admin/agentes',
+      label:    criticalMins.length === 1
+                  ? `${criticalMins[0].business_name}: minutos al ${Math.round(((criticalMins[0].minutes_used ?? 0) / criticalMins[0].minutes_included!) * 100)}%`
+                  : `${criticalMins.length} clientes con minutos > 90%`,
+      sub:      nameList(criticalMins),
+      href:     criticalMins.length === 1 ? clientLink(criticalMins[0]) : searchLink(criticalMins[0].business_name),
       count:    criticalMins.length,
     });
   }
@@ -224,9 +247,11 @@ export default async function InicioPage() {
   if (criticalOps.length > 0) {
     alerts.push({
       severity: 'med',
-      label:    'Tareas sobre 90%',
-      sub:      criticalOps.map(a => a.business_name).slice(0, 3).join(', ') + (criticalOps.length > 3 ? `, +${criticalOps.length - 3}` : ''),
-      href:     '/admin/clientes',
+      label:    criticalOps.length === 1
+                  ? `${criticalOps[0].business_name}: tareas al ${Math.round(((criticalOps[0].ai_ops_used ?? 0) / criticalOps[0].ai_ops_limit!) * 100)}%`
+                  : `${criticalOps.length} clientes con tareas > 90%`,
+      sub:      nameList(criticalOps),
+      href:     criticalOps.length === 1 ? clientLink(criticalOps[0]) : searchLink(criticalOps[0].business_name),
       count:    criticalOps.length,
     });
   }
@@ -234,9 +259,9 @@ export default async function InicioPage() {
   if (claudeNearBudget) {
     alerts.push({
       severity: 'med',
-      label:    'Claude cerca del límite mensual',
-      sub:      `~$${estimatedClaudeCost.toFixed(2)} de $${claudeBudget} USD (${claudeBudgetPct}%)`,
-      href:     '/admin/ledger',
+      label:    `Claude cerca del límite: ~$${estimatedClaudeCost.toFixed(2)} (${claudeBudgetPct}%)`,
+      sub:      `Presupuesto mensual $${claudeBudget} USD. Revisa uso en Anthropic.`,
+      href:     'https://console.anthropic.com/settings/usage',
     });
   }
 
@@ -248,9 +273,11 @@ export default async function InicioPage() {
   if (silentAgents.length > 0) {
     alerts.push({
       severity: 'low',
-      label:    'Empleados activos sin llamadas 7d',
-      sub:      silentAgents.map(a => a.business_name).slice(0, 3).join(', ') + (silentAgents.length > 3 ? `, +${silentAgents.length - 3}` : ''),
-      href:     '/admin/agentes',
+      label:    silentAgents.length === 1
+                  ? `${silentAgents[0].business_name}: sin llamadas 7d`
+                  : `${silentAgents.length} empleados activos sin llamadas 7d`,
+      sub:      nameList(silentAgents),
+      href:     silentAgents.length === 1 ? agentLink(silentAgents[0]) : searchLink(silentAgents[0].business_name),
       count:    silentAgents.length,
     });
   }
