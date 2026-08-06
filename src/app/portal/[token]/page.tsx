@@ -1525,63 +1525,72 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Col 1 (main, flex-1) — Organización, Branding, Conocimiento, Perfil */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
-                  <div id="organizacion">
+                <div id="organizacion" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
                     {agent.portal_email && (
                       <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
                     )}
-                  </div>
-                </PageSection>
+                  </PageSection>
+                </div>
 
-                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
-                  <Card id="branding" padding="md">
-                    <BrandKitEditor
-                      token={token}
-                      logoUrl={(agent as any).logo_url ?? null}
-                      businessName={agent.business_name}
-                      agentName={agent.agent_name ?? agent.business_name}
-                      initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
-                      initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
-                      initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
-                      initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
-                      initialPhone={orgSettings?.brand_phone ?? ''}
-                      initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
-                    />
-                  </Card>
-                </PageSection>
+                <div id="branding" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
+                    <Card padding="md">
+                      <BrandKitEditor
+                        token={token}
+                        logoUrl={(agent as any).logo_url ?? null}
+                        businessName={agent.business_name}
+                        agentName={agent.agent_name ?? agent.business_name}
+                        initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
+                        initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
+                        initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
+                        initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                        initialPhone={orgSettings?.brand_phone ?? ''}
+                        initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                      />
+                    </Card>
+                  </PageSection>
+                </div>
 
-                <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
-                  <Card id="conocimiento" padding="md">
-                    <KnowledgeBaseEditor
-                      token={token}
-                      initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
-                      websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
-                      hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
-                    />
-                  </Card>
-                </PageSection>
+                <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
+                    <Card padding="md">
+                      <KnowledgeBaseEditor
+                        token={token}
+                        initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
+                        websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
+                        hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
+                      />
+                    </Card>
+                  </PageSection>
+                </div>
 
-                <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
-                  <Card id="perfil-dueno" padding="md">
-                    <OwnerProfileEditor
-                      token={token}
-                      initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
-                    />
-                  </Card>
-                </PageSection>
+                <div id="perfil-dueno" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
+                    <Card padding="md">
+                      <OwnerProfileEditor
+                        token={token}
+                        initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
+                      />
+                    </Card>
+                  </PageSection>
+                </div>
 
               </div>
 
               {/* Col 2 (side, ~360px) — Horario, Sitio web, Reseñas */}
               <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 360, flexShrink: 0 }}>
-                <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
-                  <Card id="horarios" padding="md">
-                    <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-                  </Card>
-                </PageSection>
+                <div id="horarios" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
+                    <Card padding="md">
+                      <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
+                    </Card>
+                  </PageSection>
+                </div>
 
-                <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
-                  <Card id="sitio" padding="md">
+                <div id="sitio" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
+                    <Card padding="md">
                     <div className="flex items-center gap-1.5 mb-4">
                       <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
                       <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
@@ -1595,6 +1604,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
                   </Card>
                 </PageSection>
+                </div>{/* end #sitio */}
               </div>
 
               </div>{/* end wrapper flex-row */}
