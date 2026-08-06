@@ -322,7 +322,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                   key={cap.id}
                   onMouseEnter={() => !isActive && setHoverCap(cap.id)}
                   onMouseLeave={() => setHoverCap(null)}
-                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity basis-[calc(50%-4px)] sm:basis-[calc(33.333%-6px)] max-w-full"
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity w-fit"
                   style={{
                     background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface-2)',
                     border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
@@ -335,7 +335,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ background: isActive ? '#6C3BFF' : 'var(--c-text-4)' }}
                   />
-                  <span className="text-xs truncate" style={{ color: isActive ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                  <span className="text-xs whitespace-nowrap" style={{ color: isActive ? 'var(--c-text)' : 'var(--c-text-3)' }}>
                     {cap.label}
                   </span>
 
