@@ -106,7 +106,9 @@ export default function ActividadFeed({ token }: { token: string }) {
   const [loading,  setLoading]  = useState(true);
   const [days,     setDays]     = useState(7);
   const [type,     setType]     = useState<EventType | 'all'>('all');
-  const [limit,    setLimit]    = useState(60);
+  // Feed inicial capado en 15 para evitar scroll infinito en el dashboard.
+  // El usuario puede pedir 'Ver más' (+15 cada click) para cargar más.
+  const [limit,    setLimit]    = useState(15);
 
   const load = useCallback(async (d: number, t: string, l: number) => {
     setLoading(true);
@@ -145,7 +147,7 @@ export default function ActividadFeed({ token }: { token: string }) {
           {/* Days selector */}
           <Select
             value={String(days)}
-            onValueChange={v => { setDays(Number(v)); setLimit(60); }}
+            onValueChange={v => { setDays(Number(v)); setLimit(15); }}
           >
             <SelectTrigger className="w-auto py-1.5 px-3 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
               <SelectValue />
@@ -176,7 +178,7 @@ export default function ActividadFeed({ token }: { token: string }) {
           return (
             <button
               key={t}
-              onClick={() => { setType(t); setLimit(60); }}
+              onClick={() => { setType(t); setLimit(15); }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
               style={{
                 background: active ? (cfg?.bg ?? 'rgba(108,59,255,0.12)') : 'var(--c-surface-2)',
@@ -216,7 +218,7 @@ export default function ActividadFeed({ token }: { token: string }) {
             {total > events.length && (
               <div className="px-4 py-3 flex justify-center" style={{ borderTop: '1px solid var(--c-border)' }}>
                 <button
-                  onClick={() => setLimit(l => l + 60)}
+                  onClick={() => setLimit(l => l + 15)}
                   disabled={loading}
                   className="text-xs font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-70"
                   style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}

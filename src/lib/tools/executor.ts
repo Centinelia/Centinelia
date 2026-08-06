@@ -1471,6 +1471,7 @@ async function executeAgentToolInner(
     const hora     = args.hora as string | undefined;
     const telefono = args.telefono as string | undefined;
     const fechaIso = args.fecha_iso as string | undefined;
+    const ubicacion = args.ubicacion as string | undefined;
     const duracionMin = typeof args.duracion_min === 'number'
       ? args.duracion_min
       : (typeof args.duracion_min === 'string' ? parseInt(args.duracion_min, 10) : 60);

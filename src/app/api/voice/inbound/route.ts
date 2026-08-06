@@ -549,7 +549,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false) {
         type: 'function',
         function: {
           name: 'agendar_cita',
-          description: 'Agenda, modifica o cancela una cita.',
+          description: 'Agenda, modifica o cancela una cita. Pregunta y captura la ubicación (dirección física, link Zoom/Meet, oficina, o "por confirmar") para que el equipo sepa dónde ocurrirá.',
           parameters: {
             type: 'object',
             properties: {
@@ -559,6 +559,7 @@ async function buildTools(agent: VoiceAgent, qbConnected = false) {
               fecha:    { type: 'string', description: 'Fecha preferida (YYYY-MM-DD)' },
               hora:     { type: 'string', description: 'Hora preferida (HH:MM)' },
               telefono: { type: 'string', description: 'Teléfono de confirmación' },
+              ubicacion:{ type: 'string', description: 'Dirección física, link de videollamada (Zoom/Meet), oficina, o instrucciones para llegar. Requerido si no es virtual — el equipo debe saber dónde ir.' },
             },
             required: ['accion', 'nombre', 'fecha'],
           },
