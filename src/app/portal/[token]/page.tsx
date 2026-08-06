@@ -449,6 +449,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     token:  a.portal_token as string,
   }));
 
+  // Últimas 3 conversaciones — respondidas, en orden reverso cronológico
+  const latestCalls = (calls as any[])
+    .filter(c => (c.outcome as string) !== 'unanswered' && (c.outcome as string) !== 'missed')
+    .slice(0, 3);
+
   const RESOLVED_OUTCOMES = new Set(['info_provided', 'lead_created', 'appointment_booked', 'order_taken', 'escalated_whatsapp', 'other']);
   const resolvedCount  = calls.filter(c => RESOLVED_OUTCOMES.has((c.outcome as string) ?? '')).length;
   const autonomousRate = calls.length > 0 ? Math.round((resolvedCount / calls.length) * 100) : 0;
@@ -704,6 +709,64 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           </Link>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Últimas conversaciones con recap */}
+                {latestCalls.length > 0 && (
+                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                        Últimas conversaciones
+                      </h2>
+                      <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                        className="text-xs transition-opacity hover:opacity-70"
+                        style={{ color: '#9B6DFF' }}>
+                        Ver todas →
+                      </Link>
+                    </div>
+                    <div className="flex flex-col">
+                      {latestCalls.map((c: any, idx: number) => {
+                        const cfg = FEED_OUTCOME[c.outcome as string] ?? FEED_OUTCOME.other;
+                        const normNumber = (c.caller_number ?? '').toString().replace(/\D/g, '').slice(-10);
+                        const callerName = callerNames[normNumber];
+                        const displayName = (callerName as string | undefined) ?? 'Cliente anónimo';
+                        const durMin = Math.max(1, Math.round(((c.duration_seconds as number) ?? 0) / 60));
+                        return (
+                          <div key={c.id as string}
+                            className="flex items-start gap-3 py-3"
+                            style={{ borderBottom: idx < latestCalls.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: cfg.bg, color: cfg.color }}>
+                              <Phone size={14} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{displayName}</span>
+                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                  style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                              </div>
+                              {c.summary && (
+                                <p className="text-xs mt-1 leading-relaxed" style={{
+                                  color: 'var(--c-text-2)',
+                                  display:          '-webkit-box',
+                                  WebkitLineClamp:  2,
+                                  WebkitBoxOrient:  'vertical',
+                                  overflow:         'hidden',
+                                }}>
+                                  {c.summary as string}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1.5 text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                                <span>{fmtRelative(c.created_at as string)}</span>
+                                <span>•</span>
+                                <span>{durMin} min</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1354,6 +1417,68 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {/* Brief del día — solo cuando hay Nox activo en el equipo */}
                   {hasNox && <BriefDelDiaCard />}
 
+                  {/* Últimas conversaciones con recap */}
+                  {latestCalls.length > 0 && (
+                    <PageSection heading={
+                      <SectionHeader
+                        eyebrow="CONVERSACIONES"
+                        title="Últimas atendidas"
+                        as="h2"
+                        right={
+                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                            className="text-xs transition-opacity hover:opacity-70"
+                            style={{ color: '#9B6DFF' }}>
+                            Ver todas →
+                          </Link>
+                        }
+                      />
+                    }>
+                      <Card padding="md">
+                        <div className="flex flex-col">
+                          {latestCalls.map((c: any, idx: number) => {
+                            const cfg = FEED_OUTCOME[c.outcome as string] ?? FEED_OUTCOME.other;
+                            const normNumber = (c.caller_number ?? '').toString().replace(/\D/g, '').slice(-10);
+                            const callerName = callerNames[normNumber];
+                            const displayName = (callerName as string | undefined) ?? 'Cliente anónimo';
+                            const durMin = Math.max(1, Math.round(((c.duration_seconds as number) ?? 0) / 60));
+                            return (
+                              <div key={c.id as string}
+                                className="flex items-start gap-3 py-3"
+                                style={{ borderBottom: idx < latestCalls.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                                  style={{ background: cfg.bg, color: cfg.color }}>
+                                  <Phone size={14} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{displayName}</span>
+                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                                      style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                                  </div>
+                                  {c.summary && (
+                                    <p className="text-xs mt-1 leading-relaxed" style={{
+                                      color: 'var(--c-text-2)',
+                                      display:          '-webkit-box',
+                                      WebkitLineClamp:  2,
+                                      WebkitBoxOrient:  'vertical',
+                                      overflow:         'hidden',
+                                    }}>
+                                      {c.summary as string}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-1.5 text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                                    <span>{fmtRelative(c.created_at as string)}</span>
+                                    <span>•</span>
+                                    <span>{durMin} min</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </Card>
+                    </PageSection>
+                  )}
 
                   {/* Actividad — reciente + horaria (fused with tabs) */}
                   <PageSection heading={<SectionHeader eyebrow="ACTIVIDAD" title="Ver por..." as="h2" />}>
