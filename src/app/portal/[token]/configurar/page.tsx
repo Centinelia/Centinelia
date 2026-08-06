@@ -243,7 +243,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           const pending = [
             !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
             !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'conocimiento', anchor: 'rol'      },
-            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'tools', anchor: 'llamadas' },
+            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'personalidad', anchor: 'llamadas' },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
 
