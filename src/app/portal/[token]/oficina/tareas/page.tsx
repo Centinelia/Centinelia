@@ -51,7 +51,7 @@ export default async function TareasPage({ params }: Props) {
         // Programadas activas
         supabase.from('agent_tasks').select('id', { count: 'exact', head: true })
           .in('assigned_to', agentIds).eq('trigger_type', 'scheduled')
-          .then(r => r).catch(() => ({ count: 0 })),
+,
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 

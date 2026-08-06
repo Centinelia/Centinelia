@@ -125,10 +125,10 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
           .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString()),
         supabase.from('leads_voice').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+,
         supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+,
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 

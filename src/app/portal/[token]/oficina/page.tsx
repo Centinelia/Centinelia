@@ -144,7 +144,7 @@ export default async function OficinaHome({ params }: Props) {
           .select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds)
           .gte('created_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+,
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 

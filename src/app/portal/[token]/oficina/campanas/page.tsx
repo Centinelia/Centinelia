@@ -55,10 +55,10 @@ export default async function OficinaCampanasPage({ params }: Props) {
           .in('agent_id', agentIds).eq('status', 'active'),
         supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).gte('called_at', todayStart.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+,
         supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+,
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }];
 
