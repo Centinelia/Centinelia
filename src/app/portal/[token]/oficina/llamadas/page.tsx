@@ -110,7 +110,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const weekAgo    = new Date(Date.now() - 7 * 86400000);
 
-  const [hoyRes, semanaRes, leadsRes, outConnectRes] = agentIds.length > 0
+  const [hoyRes, semanaRes, leadsCountRes, outConnectRes] = agentIds.length > 0
     ? await Promise.all([
         supabase.from('voice_calls').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).gte('created_at', todayStart.toISOString()),
@@ -126,9 +126,9 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 
   const counters = {
-    hoy:      hoyRes?.count       ?? 0,
-    semana:   semanaRes?.count    ?? 0,
-    leads:    leadsRes?.count     ?? 0,
+    hoy:      hoyRes?.count        ?? 0,
+    semana:   semanaRes?.count     ?? 0,
+    leads:    leadsCountRes?.count ?? 0,
     outbound: outConnectRes?.count ?? 0,
   };
 
