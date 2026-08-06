@@ -1558,21 +1558,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
                     <PageSection heading={<SectionHeader eyebrow="PROMEDIO" title="Consumo promedio" as="h2" />}>
                       <Card id="consumo-promedio" padding="md">
-                        <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                        <div className="flex flex-col gap-4">
                           {allCalls.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                            <div>
+                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                              <div className="grid grid-cols-3 gap-2">
+                                <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                                <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                                <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                              </div>
                             </div>
                           )}
                           {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                            <div className="flex flex-col gap-2">
-                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                            <div>
+                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                              <div className="grid grid-cols-3 gap-2">
+                                <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                                <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                                <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                              </div>
                             </div>
                           )}
                         </div>
