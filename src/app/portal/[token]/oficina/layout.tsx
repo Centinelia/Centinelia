@@ -182,7 +182,7 @@ export default async function OficinaLayout({
           <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Oficina</span>
         </div>
 
-        {/* Body */}
+        {/* Body — sidebar is position:fixed, main content has md:pl-[260px] to compensate */}
         <div className="flex flex-1">
           <OficinaSidebar
             token={token}
@@ -195,7 +195,7 @@ export default async function OficinaLayout({
             vertical={vertical}
             modules={modules}
           />
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-w-0 flex flex-col md:pl-[260px]">
             <div className="px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>

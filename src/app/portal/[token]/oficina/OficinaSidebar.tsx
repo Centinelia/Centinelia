@@ -120,10 +120,12 @@ export default function OficinaSidebar({
       style={{
         borderRight: '1px solid var(--c-border)',
         background:  'var(--c-modal)',
-        position:    'sticky',
+        position:    'fixed',
         top:         53,
+        left:        0,
         height:      'calc(100vh - 53px)',
         overflow:    'hidden',
+        zIndex:      5,
       }}
     >
       <nav className="flex flex-col py-2 px-2 flex-1 min-h-0 overflow-y-auto">
