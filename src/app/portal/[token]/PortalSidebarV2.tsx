@@ -191,7 +191,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
           <Link
             href={`/portal/${token}/oficina`}
             className={[
-              'group relative flex items-center gap-3 rounded-xl px-3.5 py-3',
+              'group relative flex items-center gap-3 rounded-xl px-3 py-1.5',
               'text-white overflow-hidden',
               TRANSITION,
               FOCUS_RING,
@@ -201,8 +201,8 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
               boxShadow:  '0 6px 20px rgba(108,59,255,0.28), inset 0 1px 0 rgba(255,255,255,0.12)',
             }}
           >
-            {/* Logo icon oficial de Centinelia (C + suricata) — mismo brand mark
-                que usa el header dark de /oficina, garantiza consistencia visual. */}
+            {/* Logo icon oficial de Centinelia (C + suricata). Padding reducido
+                del card para que el logo grande no lo haga crecer. */}
             <img
               src="/logo-icon.png"
               alt=""
