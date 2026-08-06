@@ -37,9 +37,9 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
           <img
             src="/logo-icon.png"
             alt="Centinelia"
-            width={26}
-            height={26}
-            style={{ width: 26, height: 26, objectFit: 'contain', display: 'block' }}
+            width={36}
+            height={36}
+            style={{ width: 36, height: 36, objectFit: 'contain', display: 'block' }}
             draggable={false}
           />
           <span
