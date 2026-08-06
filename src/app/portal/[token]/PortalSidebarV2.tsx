@@ -179,7 +179,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-14 flex h-[calc(100vh-56px)] w-[260px] shrink-0 flex-col self-start border-r border-neutral-200/80 bg-[#FAFAFB] pb-16"
+      className="sticky top-14 flex h-[calc(100vh-56px)] w-[260px] shrink-0 flex-col self-start border-r border-neutral-200/80 bg-[#FAFAFB]"
     >
       <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {groups.map(group => {
