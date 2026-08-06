@@ -313,7 +313,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                 : 'Activa las llamadas salientes abajo. Estas son las tareas que puede hacer este empleado; los grises los desbloquea otro (pasa el mouse para ver cuál).'}
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {OUTBOUND_CAPABILITIES.map(cap => {
               const isActive = outbound && activeCaps.has(cap.id);
               const owners   = CAPABILITY_OWNERS[cap.id] ?? [];
@@ -322,7 +322,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                   key={cap.id}
                   onMouseEnter={() => !isActive && setHoverCap(cap.id)}
                   onMouseLeave={() => setHoverCap(null)}
-                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity"
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity basis-[calc(50%-4px)] sm:basis-[calc(33.333%-6px)] max-w-full"
                   style={{
                     background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface-2)',
                     border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
