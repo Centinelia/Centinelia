@@ -9,11 +9,14 @@ import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 
 import OficinaSidebar                   from './OficinaSidebar';
+import OficinaSidebarV2                 from './OficinaSidebarV2';
+import OficinaHeaderDark                from './OficinaHeaderDark';
 import OficinaMobileNav                 from './OficinaMobileNav';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import Link                             from 'next/link';
 import { ArrowLeft }                    from 'lucide-react';
+import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 
 // Next.js 15 generates Promise<unknown> for nested layout params;
 // use Promise<any> so the type is compatible at the call site.
@@ -60,6 +63,11 @@ export default async function OficinaLayout({
   const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
   const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;
 
+  // V2 flag
+  const v2Enabled = agent.portal_email
+    ? await isPortalV2Enabled(agent.portal_email)
+    : false;
+
   // Business switcher options
   const { data: clientAgents } = lookupEmail
     ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token').eq('portal_email', lookupEmail)
@@ -78,7 +86,6 @@ export default async function OficinaLayout({
 
   if (lookupEmail) {
     try {
-      // Agent IDs for this account
       const { data: aIds } = await supabase
         .from('voice_agents').select('id').eq('portal_email', lookupEmail);
       const agentIds = (aIds ?? []).map((a: any) => a.id as string);
@@ -86,7 +93,6 @@ export default async function OficinaLayout({
       if (agentIds.length > 0) {
         const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
 
-        // Read receipts per type
         const [inboxR, contractR, meetingR] = await Promise.all([
           supabase.from('portal_read_receipts').select('item_id').eq('portal_email', lookupEmail).eq('item_type', 'inbox'),
           supabase.from('portal_read_receipts').select('item_id').eq('portal_email', lookupEmail).eq('item_type', 'contract'),
@@ -97,9 +103,6 @@ export default async function OficinaLayout({
         const readContract = (contractR.data ?? []).map((r: any) => r.item_id as string);
         const readMeeting  = (meetingR.data  ?? []).map((r: any) => r.item_id as string);
 
-        // Unread inbox: refleja lo que aparece en la tab "Pendientes" del portal.
-        // Incluye pending + escalated + info_requested (los 3 estados que requieren
-        // atención humana) y suma human_requests activos (que también cuentan en la tab).
         let inboxQ = supabase.from('ops_inbox')
           .select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds)
@@ -109,7 +112,6 @@ export default async function OficinaLayout({
           inboxQ = inboxQ.not('id', 'in', `(${readInbox.join(',')})`);
         const { count: ic } = await inboxQ;
 
-        // Human requests activos (target al owner o approver de este portal)
         const { count: hrc } = await supabase
           .from('human_requests')
           .select('id', { count: 'exact', head: true })
@@ -119,7 +121,6 @@ export default async function OficinaLayout({
 
         badges.bandeja = (ic ?? 0) + (hrc ?? 0);
 
-        // Unread contracts (new in last 30 days)
         let contractQ = supabase.from('ops_contracts')
           .select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).gte('created_at', cutoff);
@@ -128,7 +129,6 @@ export default async function OficinaLayout({
         const { count: cc } = await contractQ;
         badges.contratos = cc ?? 0;
 
-        // Unread meetings (done, last 30 days)
         let meetingQ = supabase.from('ops_meetings')
           .select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).eq('status', 'done').gte('created_at', cutoff);
@@ -137,7 +137,6 @@ export default async function OficinaLayout({
         const { count: mc } = await meetingQ;
         badges.juntas = mc ?? 0;
 
-        // Unread check-ins de coordinators (Nox / Niva) últimos 30d
         const { count: hrc2 } = await supabase
           .from('heartbeat_runs')
           .select('id', { count: 'exact', head: true })
@@ -151,6 +150,43 @@ export default async function OficinaLayout({
     }
   }
 
+  // ── V2 shell: header dark 48px + sidebar dark 260px + content light ────
+  if (v2Enabled) {
+    return (
+      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: 'var(--c-text)' }}>
+          <OficinaHeaderDark
+            token={token}
+            businessName={agent.business_name}
+            logoUrl={(agent as any).logo_url ?? null}
+            businessOptions={businessGroups}
+          />
+
+          <div className="flex flex-1 min-h-0">
+            <OficinaSidebarV2
+              token={token}
+              badges={badges}
+              minutesRemain={minutesRemain}
+              minutesIncluded={minutesIncluded}
+              aiOpsUsed={aiOpsUsed}
+              aiOpsLimit={aiOpsLimit}
+              hasStripe={hasStripe}
+              vertical={vertical}
+              modules={modules}
+            />
+            <main className="flex-1 min-w-0 flex flex-col">
+              <div className="px-4 sm:px-6 py-6 flex-1">
+                {children}
+              </div>
+              <PortalFooter token={token} />
+            </main>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // ── V1 layout (legacy — se eliminará pronto) ─────────────────────────────
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
