@@ -8,6 +8,7 @@ import {
   Play, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import OficinaModal from '../OficinaModal';
 
 interface Agent {
   id:              string;
@@ -235,186 +236,161 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
     }
   }
 
-  const inputStyle = {
-    width: '100%', boxSizing: 'border-box' as const,
-    background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)',
-    borderRadius: 12, padding: '10px 14px', color: 'var(--c-text)', fontSize: 14, outline: 'none',
+  const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    background: '#ffffff', border: '1px solid #E8E3F5',
+    borderRadius: 10, padding: '10px 14px', color: '#1A0A3B', fontSize: 14, outline: 'none',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 20, width: '100%', maxWidth: 520, overflowY: 'auto', maxHeight: '90vh' }}>
+    <OficinaModal
+      open
+      onClose={onClose}
+      eyebrow="Nueva tarea"
+      title="Programa una ejecución automática"
+      description="El agente la ejecutará en el horario que definas."
+      size="md"
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction onClick={handleSave} loading={saving}>Guardar</OficinaModal.PrimaryAction>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
 
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--c-border-2)' }}>
-          <p style={{ color: 'var(--c-text)', fontWeight: 600, fontSize: 16 }}>Nueva tarea programada</p>
-          <p style={{ color: 'var(--c-text-3)', fontSize: 13, marginTop: 4 }}>El agente la ejecutará automáticamente en el horario definido.</p>
-        </div>
-
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-          {/* Agent */}
-          <div>
-            <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Asignar a</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {selectedAgent && <AgentAvatar agent={selectedAgent} size={36} />}
-              <div style={{ flex: 1 }}>
-                <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger
-                    className="rounded-xl"
-                    style={{
-                      background: 'var(--c-surface-2)',
-                      border: '1px solid var(--c-border-2)',
-                      padding: '10px 14px',
-                      fontSize: 14,
-                    }}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agents.map(a => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.agent_name ?? a.role ?? 'Agente'}{a.is_coordinator ? ' (Coordinador)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {/* Agent */}
+        <OficinaModal.Field label="Asignar a">
+          <div className="flex items-center gap-2">
+            {selectedAgent && <AgentAvatar agent={selectedAgent} size={36} />}
+            <div className="flex-1">
+              <Select value={agentId} onValueChange={setAgentId}>
+                <SelectTrigger
+                  className="rounded-lg"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '10px 14px', fontSize: 14 }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.agent_name ?? a.role ?? 'Agente'}{a.is_coordinator ? ' (Coordinador)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </OficinaModal.Field>
 
-          {/* Name */}
-          <div>
-            <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Nombre de la tarea</label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ej: Reporte semanal de leads"
-              style={{ ...inputStyle }}
-            />
+        <OficinaModal.Field label="Nombre de la tarea">
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Ej: Reporte semanal de leads"
+            style={inputStyle}
+          />
+        </OficinaModal.Field>
+
+        <OficinaModal.Field label="Instrucción para el agente">
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Describe qué debe hacer. Ej: Genera un resumen de los leads de la semana y envíalo por correo."
+            style={{ ...inputStyle, resize: 'none', lineHeight: 1.55 }}
+          />
+        </OficinaModal.Field>
+
+        <OficinaModal.Field label="Criterio de listo" hint="opcional">
+          <input
+            value={successCriteria}
+            onChange={e => setSuccessCriteria(e.target.value)}
+            placeholder="Ej: El correo fue enviado con al menos 3 leads listados"
+            style={inputStyle}
+          />
+          {successCriteria && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs" style={{ color: '#6B6480' }}>Reintentos si no se cumple:</span>
+              <Select value={String(maxIterations)} onValueChange={v => setMaxIterations(Number(v))}>
+                <SelectTrigger
+                  className="w-auto rounded-md"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '4px 8px', fontSize: 12 }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </OficinaModal.Field>
+
+        <OficinaModal.Field label="Frecuencia">
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {(['daily', 'weekly', 'monthly'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFrequency(f)}
+                className="rounded-lg text-[13px] font-semibold transition-all"
+                style={{
+                  padding:    '9px 0',
+                  border:     'none',
+                  cursor:     'pointer',
+                  background: frequency === f ? '#1A0A3B' : '#ffffff',
+                  color:      frequency === f ? '#ffffff' : '#6B6480',
+                  boxShadow:  frequency === f ? '0 2px 6px rgba(26,10,59,0.2)' : 'none',
+                  outline:    frequency === f ? 'none' : '1px solid #E8E3F5',
+                }}
+              >
+                {FREQ_LABELS[f]}
+              </button>
+            ))}
           </div>
 
-          {/* Description */}
-          <div>
-            <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Instrucción para el agente</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Describe qué debe hacer. Ej: Genera un resumen de los leads de la semana y envíalo por correo."
-              style={{ ...inputStyle, resize: 'none', lineHeight: 1.55 }}
-            />
-          </div>
-
-          {/* Success criteria */}
-          <div>
-            <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>
-              Criterio de listo{' '}
-              <span style={{ color: 'var(--c-text-4)', fontWeight: 400, textTransform: 'none' }}>(opcional)</span>
-            </label>
-            <input
-              value={successCriteria}
-              onChange={e => setSuccessCriteria(e.target.value)}
-              placeholder="Ej: El correo fue enviado con al menos 3 leads listados"
-              style={{ ...inputStyle }}
-            />
-            {successCriteria && (
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: 'var(--c-text-3)', fontSize: 12 }}>Reintentos si no se cumple:</span>
-                <Select value={String(maxIterations)} onValueChange={v => setMaxIterations(Number(v))}>
-                  <SelectTrigger
-                    className="w-auto rounded-md"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '4px 8px', fontSize: 12 }}
-                  >
+          <div className="flex gap-2.5">
+            {frequency === 'weekly' && (
+              <div className="flex-1">
+                <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Día</label>
+                <Select value={String(dayOfWeek)} onValueChange={v => setDayOfWeek(Number(v))}>
+                  <SelectTrigger className="rounded-lg" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '8px 12px', fontSize: 13 }}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                    {DAY_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             )}
-          </div>
-
-          {/* Schedule */}
-          <div>
-            <label style={{ color: 'var(--c-text-3)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Frecuencia</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-              {(['daily', 'weekly', 'monthly'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFrequency(f)}
-                  style={{ padding: '8px 0', borderRadius: 12, fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer', background: frequency === f ? '#6C3BFF' : 'var(--c-surface-2)', color: frequency === f ? '#fff' : 'var(--c-text-3)' }}
-                >
-                  {FREQ_LABELS[f]}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              {frequency === 'weekly' && (
-                <div style={{ flex: 1 }}>
-                  <label style={{ color: 'var(--c-text-4)', fontSize: 11, display: 'block', marginBottom: 4 }}>Día</label>
-                  <Select value={String(dayOfWeek)} onValueChange={v => setDayOfWeek(Number(v))}>
-                    <SelectTrigger
-                      className="rounded-xl"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '8px 12px', fontSize: 13 }}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAY_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {frequency === 'monthly' && (
-                <div style={{ flex: 1 }}>
-                  <label style={{ color: 'var(--c-text-4)', fontSize: 11, display: 'block', marginBottom: 4 }}>Día del mes</label>
-                  <input
-                    type="number" min={1} max={28}
-                    value={dayOfMonth}
-                    onChange={e => setDayOfMonth(Number(e.target.value))}
-                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', borderRadius: 12, padding: '8px 12px', color: 'var(--c-text)', fontSize: 13, outline: 'none' }}
-                  />
-                </div>
-              )}
-              <div style={{ flex: 1 }}>
-                <label style={{ color: 'var(--c-text-4)', fontSize: 11, display: 'block', marginBottom: 4 }}>Hora</label>
-                <Select value={String(hour)} onValueChange={v => setHour(Number(v))}>
-                  <SelectTrigger
-                    className="rounded-xl"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', padding: '8px 12px', fontSize: 13 }}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            {frequency === 'monthly' && (
+              <div className="flex-1">
+                <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Día del mes</label>
+                <input
+                  type="number" min={1} max={28}
+                  value={dayOfMonth}
+                  onChange={e => setDayOfMonth(Number(e.target.value))}
+                  style={{ ...inputStyle, padding: '8px 12px', fontSize: 13, borderRadius: 8 }}
+                />
               </div>
+            )}
+            <div className="flex-1">
+              <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Hora</label>
+              <Select value={String(hour)} onValueChange={v => setHour(Number(v))}>
+                <SelectTrigger className="rounded-lg" style={{ background: '#ffffff', border: '1px solid #E8E3F5', padding: '8px 12px', fontSize: 13 }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </OficinaModal.Field>
 
-          {error && <p style={{ color: '#f87171', fontSize: 13 }}>{error}</p>}
-        </div>
-
-        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--c-border-2)', display: 'flex', gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: 'var(--c-surface-2)', color: 'var(--c-text-2)', fontSize: 14, border: 'none', cursor: 'pointer' }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 12, background: '#6C3BFF', color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
-          >
-            {saving ? 'Guardando...' : 'Guardar'}
-          </button>
-        </div>
+        {error && <p className="text-[13px]" style={{ color: '#EF4444' }}>{error}</p>}
       </div>
-    </div>
+    </OficinaModal>
   );
 }
 
