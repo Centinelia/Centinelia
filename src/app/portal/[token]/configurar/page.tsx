@@ -34,7 +34,6 @@ import InvoicingEmailEditor         from '../InvoicingEmailEditor';
 import CallForwardingSection from '../CallForwardingSection';
 import AgentEmailSection     from '../AgentEmailSection';
 import SpamFolderToggle      from '../SpamFolderToggle';
-import MultilingualToggle    from '../MultilingualToggle';
 import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
@@ -101,11 +100,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     : null;
 
   const { data: orgRow } = agent.portal_email
-    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide, multilingual').eq('portal_email', agent.portal_email).maybeSingle()
+    ? await supabase.from('organizations').select('owner_passphrase, brand_voice_guide').eq('portal_email', agent.portal_email).maybeSingle()
     : { data: null };
   const ownerPassphrase = orgRow?.owner_passphrase ?? '';
   const brandVoiceGuide = (orgRow as { brand_voice_guide?: string | null } | null)?.brand_voice_guide ?? '';
-  const orgMultilingual = (orgRow as { multilingual?: boolean | null } | null)?.multilingual ?? false;
 
   // Fetch spam folder stats for the last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -311,19 +309,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              {isOwner && !isCoordinator && (
-                <div id="idioma" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Idioma"
-                      tooltip="Ajuste a nivel cuenta: aplica a todos tus empleados."
-                      className="mb-4"
-                    />
-                    <MultilingualToggle token={token} initial={orgMultilingual} />
-                  </Card>
-                </div>
-              )}
+              {/* Idioma movido a /negocio#idioma en 2026-08-06.
+                  Era config per-org disfrazada de per-empleado. */}
 
               {!isCoordinator && (
                 <div id="tono-de-marca" style={SCROLL_STYLE}>

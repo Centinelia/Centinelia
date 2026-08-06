@@ -441,6 +441,12 @@ export async function processInboxEmail(params: {
   fromSpamFolder?:   boolean;        // true when fetched from provider spam/junk folder
   unmarkSpamFn?:     (messageId: string) => Promise<void>; // best-effort: move out of spam in provider
   sendReplyFn?:      (body: string) => Promise<void>;
+  // Dispatcher metadata — set cuando el correo llegó a la bandeja compartida
+  // de la org y fue asignado por el dispatcher. En flow per-agent son undefined.
+  originScope?:          'per_agent' | 'org_shared';
+  assignedBy?:           'per_agent' | 'rule' | 'llm' | 'fallback' | 'human';
+  assignmentConfidence?: number | null;
+  assignmentMetadata?:   Record<string, unknown> | null;
 }): Promise<void> {
   const {
     agentId, source, rawMessageId, threadId, emailFrom, emailSubject,
@@ -448,7 +454,16 @@ export async function processInboxEmail(params: {
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
     autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
     fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
+    originScope, assignedBy, assignmentConfidence, assignmentMetadata,
   } = params;
+
+  // Metadata común de asignación — se aplica a AMBOS inserts (quick-classify y LLM).
+  const dispatcherCols = {
+    origin_scope:          originScope          ?? 'per_agent',
+    assigned_by:           assignedBy           ?? 'per_agent',
+    assignment_confidence: assignmentConfidence ?? null,
+    assignment_metadata:   assignmentMetadata   ?? null,
+  };
 
   // If this is a reply to an info_requested thread, prepend the original context
   const effectiveBody = originalEmailBody
@@ -493,6 +508,7 @@ export async function processInboxEmail(params: {
         ai_draft:       null,
         item_type:      'email',
         status:         'skipped',
+        ...dispatcherCols,
       });
       return;
     }
@@ -1182,6 +1198,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
         auto_mode_decision:  autoModeVerdict?.decision ?? null,
         auto_mode_reason:    autoModeVerdict?.reason ?? null,
         auto_mode_signals:   autoModeVerdict?.signals ?? [],
+        ...dispatcherCols,
       })
       .select('id, approval_token')
       .single();

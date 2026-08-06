@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector, type IntegrationRow } from '@/lib/connectors';
+import { dispatchEmail, type DispatchResult } from '@/lib/email/dispatcher';
 
 type EmailIntegration = IntegrationRow & {
   agent_id:     string;
@@ -306,4 +307,229 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       }
     }
   }
+}
+
+// ─── Org-shared inbox sync ────────────────────────────────────────────────
+//
+// Nueva ruta paralela: correos que llegan a la bandeja compartida de la org
+// (integration_accounts, capability='email') se ingestan, ruteán via dispatcher
+// al meerkat que corresponde por rol, y se insertan en ops_inbox con
+// origin_scope='org_shared' + metadata del dispatcher.
+
+interface OrgAccountRow {
+  portal_email:  string;
+  provider:      'gmail' | 'outlook';
+  account_label: string | null;
+  access_token:  string | null;
+  refresh_token: string | null;
+  expires_at:    string | null;
+  status:        string | null;
+  metadata:      Record<string, unknown> | null;
+}
+
+export async function syncAllOrgInboxes(): Promise<{ synced: number; errors: number }> {
+  const supabase = createAdminClient();
+
+  const { data } = await supabase
+    .from('integration_accounts')
+    .select('portal_email, provider, account_label, access_token, refresh_token, expires_at, status, metadata')
+    .eq('capability', 'email')
+    .neq('status', 'disconnected');
+
+  const orgs = (data ?? []) as OrgAccountRow[];
+  if (!orgs.length) return { synced: 0, errors: 0 };
+
+  let synced = 0; let errors = 0;
+
+  for (const org of orgs) {
+    try {
+      await syncOrgInbox(org, supabase);
+      synced++;
+    } catch (err) {
+      console.error(`[org-sync] error for ${org.portal_email}/${org.provider}:`, err);
+      errors++;
+    }
+  }
+
+  return { synced, errors };
+}
+
+async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof createAdminClient>) {
+  // Necesitamos un agent_id para el synthetic IntegrationRow (el connector lo
+  // usa como pivote para refresh de tokens). Usamos el primer agente activo
+  // de la org como pivote — no importa quién sea, el token es de la org.
+  const { data: pivotAgent } = await supabase
+    .from('voice_agents')
+    .select('id')
+    .eq('portal_email', org.portal_email)
+    .eq('active', true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!pivotAgent?.id) {
+    console.warn(`[org-sync] Sin agente activo para ${org.portal_email}, skipping`);
+    return;
+  }
+
+  const synthetic: IntegrationRow = {
+    id:                 `org:${org.portal_email}:${org.provider}`,
+    agent_id:           pivotAgent.id as string,
+    provider:           org.provider,
+    email:              org.account_label ?? '',
+    access_token:       org.access_token ?? '',
+    refresh_token:      org.refresh_token ?? null,
+    token_expires_at:   org.expires_at ?? null,
+    last_sync_at:       null,
+    needs_reauth:       org.status === 'needs_reauth',
+    reauth_notified_at: null,
+  };
+
+  const conn = await getConnector(synthetic, supabase);
+
+  const lastSyncAt = (org.metadata?.last_sync_at as string | undefined) ?? null;
+  const since      = lastSyncAt
+    ? new Date(lastSyncAt)
+    : new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const messages = await conn.email.fetchUnread(since);
+
+  const syncedAt = new Date().toISOString();
+  await supabase
+    .from('integration_accounts')
+    .update({ metadata: { ...(org.metadata ?? {}), last_sync_at: syncedAt } })
+    .eq('portal_email', org.portal_email)
+    .eq('provider', org.provider);
+
+  const orgEmailAddr = org.account_label ?? '';
+
+  for (const msg of messages) {
+    // Idempotencia: si YA existe una row ops_inbox con el mismo raw_message_id
+    // y origin_scope='org_shared' + este org_email en metadata, skip.
+    const { data: existing } = await supabase
+      .from('ops_inbox')
+      .select('id')
+      .eq('raw_message_id', msg.id)
+      .eq('origin_scope', 'org_shared')
+      .contains('assignment_metadata', { org_email: orgEmailAddr })
+      .maybeSingle();
+
+    if (existing) {
+      await conn.email.markRead(msg.id).catch(err =>
+        console.error(`[org-sync] markRead retry failed for ${msg.id}:`, err));
+      continue;
+    }
+
+    // Dispatcher decide
+    let dispatch: DispatchResult;
+    try {
+      dispatch = await dispatchEmail({
+        portalEmail: org.portal_email,
+        orgEmail:    orgEmailAddr,
+        message: {
+          id:      msg.id,
+          from:    msg.from,
+          subject: msg.subject,
+          body:    msg.body,
+        },
+      });
+    } catch (err) {
+      console.error(`[org-sync] dispatcher error for msg ${msg.id}:`, err);
+      continue; // no markRead — permitir retry en próximo sync
+    }
+
+    await conn.email.markRead(msg.id).catch(err =>
+      console.error(`[org-sync] markRead failed for ${msg.id}:`, err));
+
+    // Escalación a humano: sin agentId asignado → crear human_request
+    if (!dispatch.agentId) {
+      await createOrgHumanRequest({ supabase, org, pivotAgentId: pivotAgent.id as string, msg, dispatch });
+      continue;
+    }
+
+    // Asignado — cargar contexto del agente y delegar a processInboxEmail
+    const { data: assignedAgent } = await supabase
+      .from('voice_agents')
+      .select('id, business_name, agent_name, client_email, portal_token, role_knowledge_base, role, portal_email, approval_email, trust_stage')
+      .eq('id', dispatch.agentId)
+      .single();
+
+    if (!assignedAgent?.client_email) {
+      console.warn(`[org-sync] agente asignado sin client_email, skipping msg ${msg.id}`);
+      continue;
+    }
+
+    const { data: orgData } = assignedAgent.portal_email
+      ? await supabase.from('organizations')
+          .select('knowledge_base, auto_mode_disabled_at')
+          .eq('portal_email', assignedAgent.portal_email)
+          .single()
+      : { data: null };
+    const orgDisabled  = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
+    const autoMode     = resolveAutoMode({
+      trust_stage: (assignedAgent as Record<string, unknown>).trust_stage as number | null,
+      orgDisabled,
+    });
+
+    await processInboxEmail({
+      agentId:              assignedAgent.id as string,
+      source:               org.provider,
+      rawMessageId:         msg.id,
+      threadId:             msg.threadId,
+      emailFrom:            msg.from,
+      emailSubject:         msg.subject,
+      emailBody:            msg.body,
+      attachments:          [],
+      agentName:            (assignedAgent.agent_name as string | null) ?? 'Centinelia',
+      businessName:         assignedAgent.business_name as string,
+      knowledgeBase:        (orgData as { knowledge_base?: string | null } | null)?.knowledge_base ?? null,
+      roleKB:               assignedAgent.role_knowledge_base as string | null,
+      agentRole:            assignedAgent.role as string | null,
+      ownerEmail:           assignedAgent.client_email as string,
+      portalToken:          assignedAgent.portal_token as string,
+      portalEmail:          assignedAgent.portal_email as string | undefined,
+      autoMode,
+      approvalEmail:        (assignedAgent as Record<string, unknown>).approval_email as string | null | undefined,
+      // Dispatcher metadata
+      originScope:          'org_shared',
+      assignedBy:           dispatch.assignedBy,
+      assignmentConfidence: dispatch.confidence,
+      assignmentMetadata:   dispatch.metadata as unknown as Record<string, unknown>,
+      // Respuesta sale desde el correo del empleado si lo tiene (getFileConnector
+      // ya prefiere per-agent; org es fallback). No pasamos sendReplyFn org-level
+      // aquí — que el flow normal de respuesta lo decida.
+    });
+  }
+}
+
+async function createOrgHumanRequest(args: {
+  supabase:     ReturnType<typeof createAdminClient>;
+  org:          OrgAccountRow;
+  pivotAgentId: string;
+  msg:          { id: string; threadId?: string; from: string; subject: string; body: string };
+  dispatch:     DispatchResult;
+}) {
+  const { supabase, org, pivotAgentId, msg, dispatch } = args;
+
+  // Buscar owner de la org
+  const { data: agentInfo } = await supabase
+    .from('voice_agents')
+    .select('client_email, portal_token')
+    .eq('id', pivotAgentId)
+    .single();
+
+  const targetEmail = (agentInfo?.client_email as string | null) ?? org.portal_email;
+
+  await supabase.from('human_requests').insert({
+    agent_id:        pivotAgentId,
+    source_channel:  'email',
+    source_context:  `Correo entrante a bandeja compartida (${org.account_label ?? org.portal_email}) sin asignación clara.\n\nDe: ${msg.from}\nAsunto: ${msg.subject}\n\n${msg.body.slice(0, 500)}`,
+    request_type:    'action',
+    title:           `Asignar correo entrante: "${msg.subject.slice(0, 80)}"`,
+    description:     dispatch.metadata.escalated_reason ?? 'El dispatcher no pudo decidir a qué empleado asignar este correo.',
+    urgency:         'normal',
+    target_email:    targetEmail,
+    target_type:     'owner',
+    channels_notified: [],
+    status:          'pending',
+  });
 }

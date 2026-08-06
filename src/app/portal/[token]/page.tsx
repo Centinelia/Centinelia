@@ -45,6 +45,7 @@ import OwnerProfileEditor     from './OwnerProfileEditor';
 import WebsiteSyncButton      from './WebsiteSyncButton';
 import ReviewLinkEditor       from './ReviewLinkEditor';
 import BusinessHoursEditor    from './BusinessHoursEditor';
+import MultilingualToggle     from './MultilingualToggle';
 import OutboundSection           from './OutboundSection';
 import AutoRefillSection         from './AutoRefillSection';
 import IntegrationsHub           from './IntegrationsHub';
@@ -135,7 +136,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
@@ -1584,6 +1585,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
                     <Card padding="md">
                       <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
+                    </Card>
+                  </PageSection>
+                </div>
+
+                <div id="idioma" style={{ scrollMarginTop: 80 }}>
+                  <PageSection heading={<SectionHeader eyebrow="IDIOMA" title="Idioma de atención" as="h2" tooltip="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />}>
+                    <Card padding="md">
+                      <MultilingualToggle token={token} initial={!!(orgSettings as any)?.multilingual} />
                     </Card>
                   </PageSection>
                 </div>

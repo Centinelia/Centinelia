@@ -73,7 +73,7 @@ export default function MultilingualToggle({
         className="text-xs"
         style={{ color: 'var(--c-text-3)', lineHeight: 1.5 }}
       >
-        Por default tus empleados atienden solo en español, que es más preciso para transcribir voz en México. Activa esto si recibes llamadas en inglés. Aplica a todos los empleados de tu cuenta.
+        Por default tus empleados atienden solo en español, que es más preciso para transcribir voz en México. Activa esto si también recibes llamadas en inglés.
       </p>
     </div>
   );
