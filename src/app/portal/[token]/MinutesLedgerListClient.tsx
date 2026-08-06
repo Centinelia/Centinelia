@@ -81,42 +81,44 @@ export default function MinutesLedgerListClient({
 
   return (
     <div className="flex flex-col">
-      {/* Date filter — sticky top */}
-      <div className="flex items-center gap-2 mb-3 pb-3 sticky top-0 z-10 flex-wrap"
+      {/* Date filter — sticky top, con inputs alineados */}
+      <div className="mb-3 pb-3 sticky top-0 z-10"
         style={{ borderBottom: '1px solid var(--c-divider)', background: 'var(--c-surface)' }}>
-        <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Desde
-          <input
-            type="date"
-            value={fromDate}
-            onChange={e => setFromDate(e.target.value)}
-            className="text-xs px-2 py-1 rounded-md"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
-          />
-        </label>
-        <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
-          Hasta
-          <input
-            type="date"
-            value={toDate}
-            onChange={e => setToDate(e.target.value)}
-            className="text-xs px-2 py-1 rounded-md"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Desde</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              className="text-xs px-2 py-1.5 rounded-md w-full"
+              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Hasta</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              className="text-xs px-2 py-1.5 rounded-md w-full"
+              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
+            />
+          </div>
+        </div>
         {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-            style={{ color: 'var(--c-text-3)' }}
-          >
-            <X size={11} /> Limpiar
-          </button>
-        )}
-        {hasFilters && (
-          <span className="text-xs ml-auto tabular-nums" style={{ color: 'var(--c-text-4)' }}>
-            {filtered.length} de {entries.length} movimientos
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-4)' }}>
+              {filtered.length} de {entries.length} movimientos
+            </span>
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+              style={{ color: 'var(--c-text-3)' }}
+            >
+              <X size={11} /> Limpiar
+            </button>
+          </div>
         )}
       </div>
 
