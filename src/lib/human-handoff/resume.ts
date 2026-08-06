@@ -58,16 +58,51 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
     ? 'always' as const
     : baseAutoMode;
 
-  // Build sendReplyFn — fetch email integration for the agent so resumes can auto-send
+  // Build sendReplyFn — resolver correo per-org primero, per-agent fallback.
+  // Sin este fallback, orgs que conectaron Gmail solo a nivel organizacional
+  // caen en pending sin enviar aunque autoMode='always'. Mismo patrón que
+  // /api/cron/learn (commit f93698d9).
   let sendReplyFn: ((body: string) => Promise<void>) | undefined;
-  const { data: emailIntegration } = await supabase
-    .from('email_integrations')
-    .select('*')
-    .eq('agent_id', request.agent_id)
-    .maybeSingle();
-  if (emailIntegration) {
+
+  type IntegrationRow = Parameters<typeof getConnector>[0];
+  let integration: IntegrationRow | null = null;
+
+  if (agent.portal_email) {
+    const { data: orgAcct } = await supabase
+      .from('integration_accounts')
+      .select('provider, account_label, access_token, refresh_token, expires_at, status')
+      .eq('portal_email', agent.portal_email as string)
+      .in('provider', ['gmail', 'outlook'])
+      .maybeSingle();
+    if (orgAcct && (orgAcct as Record<string, unknown>).status !== 'needs_reauth') {
+      const o = orgAcct as Record<string, unknown>;
+      integration = {
+        id:                 `org:${agent.portal_email}:${o.provider}`,
+        agent_id:           request.agent_id,
+        provider:           o.provider as 'gmail' | 'outlook',
+        email:              (o.account_label as string | null) ?? '',
+        access_token:       (o.access_token as string | null) ?? '',
+        refresh_token:      (o.refresh_token as string | null) ?? null,
+        token_expires_at:   (o.expires_at as string | null) ?? null,
+        last_sync_at:       null,
+        needs_reauth:       false,
+        reauth_notified_at: null,
+      } as unknown as IntegrationRow;
+    }
+  }
+
+  if (!integration) {
+    const { data: perAgent } = await supabase
+      .from('email_integrations')
+      .select('*')
+      .eq('agent_id', request.agent_id)
+      .maybeSingle();
+    if (perAgent) integration = perAgent as IntegrationRow;
+  }
+
+  if (integration) {
     try {
-      const conn = await getConnector(emailIntegration as Parameters<typeof getConnector>[0], supabase);
+      const conn = await getConnector(integration, supabase);
       sendReplyFn = (body: string) => conn.email.sendReply({
         messageId: inbox.raw_message_id as string ?? '',
         threadId:  inbox.thread_id   as string | undefined,

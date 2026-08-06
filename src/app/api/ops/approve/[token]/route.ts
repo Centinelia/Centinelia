@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { transitionInboxItem } from '@/lib/state-machines/inbox-item';
 import { recordHumanDecision } from '@/lib/human-gates/record';
+import { getConnector } from '@/lib/connectors';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data: item } = await supabase
     .from('ops_inbox')
-    .select('id, agent_id, email_from, email_subject, ai_draft, item_type, status')
+    .select('id, agent_id, email_from, email_subject, ai_draft, item_type, status, raw_message_id, thread_id')
     .eq('approval_token', token)
     .single();
 
@@ -30,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   // Get agent info for sending the response
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, client_email, portal_token, agent_name')
+    .select('business_name, client_email, portal_token, agent_name, portal_email')
     .eq('id', item.agent_id)
     .single();
 
@@ -39,11 +40,71 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const agentName    = agent?.agent_name ?? 'Centinelia';
     const businessName = agent?.business_name ?? 'Negocio';
 
-    await sendEmail({
-      to:      item.email_from,
-      subject: `Re: ${item.email_subject || ''}`.trim(),
-      html:    simpleResponseHtml(businessName, agentName, item.ai_draft),
-    });
+    // Resolver connector: per-org primero, per-agent fallback. Sin esto el reply
+    // sale desde notificaciones@centinelia.mx (Resend) en lugar de la cuenta
+    // Gmail/Outlook del negocio, y el cliente ve un remitente ajeno al hilo.
+    type IntegrationRow = Parameters<typeof getConnector>[0];
+    let integration: IntegrationRow | null = null;
+
+    if (agent?.portal_email) {
+      const { data: orgAcct } = await supabase
+        .from('integration_accounts')
+        .select('provider, account_label, access_token, refresh_token, expires_at, status')
+        .eq('portal_email', agent.portal_email as string)
+        .in('provider', ['gmail', 'outlook'])
+        .maybeSingle();
+      if (orgAcct && (orgAcct as Record<string, unknown>).status !== 'needs_reauth') {
+        const o = orgAcct as Record<string, unknown>;
+        integration = {
+          id:                 `org:${agent.portal_email}:${o.provider}`,
+          agent_id:           item.agent_id as string,
+          provider:           o.provider as 'gmail' | 'outlook',
+          email:              (o.account_label as string | null) ?? '',
+          access_token:       (o.access_token as string | null) ?? '',
+          refresh_token:      (o.refresh_token as string | null) ?? null,
+          token_expires_at:   (o.expires_at as string | null) ?? null,
+          last_sync_at:       null,
+          needs_reauth:       false,
+          reauth_notified_at: null,
+        } as unknown as IntegrationRow;
+      }
+    }
+
+    if (!integration) {
+      const { data: perAgent } = await supabase
+        .from('email_integrations')
+        .select('*')
+        .eq('agent_id', item.agent_id)
+        .maybeSingle();
+      if (perAgent) integration = perAgent as IntegrationRow;
+    }
+
+    let sentViaConnector = false;
+    if (integration) {
+      try {
+        const conn = await getConnector(integration, supabase);
+        await conn.email.sendReply({
+          messageId: (item.raw_message_id as string | null) ?? '',
+          threadId:  (item.thread_id as string | null) ?? undefined,
+          to:        item.email_from as string,
+          subject:   (item.email_subject as string | null) ?? '',
+          body:      item.ai_draft as string,
+        });
+        sentViaConnector = true;
+      } catch (err) {
+        console.error('[ops/approve] connector send failed, falling back to Resend:', err);
+      }
+    }
+
+    if (!sentViaConnector) {
+      // Fallback: envía desde notificaciones@centinelia.mx si no hay connector
+      // o si el connector falló (token roto, etc). Mejor entregar que perder.
+      await sendEmail({
+        to:      item.email_from as string,
+        subject: `Re: ${item.email_subject || ''}`.trim(),
+        html:    simpleResponseHtml(businessName, agentName, item.ai_draft as string),
+      });
+    }
   }
 
   // Mark as approved + sent (via state machine)

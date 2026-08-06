@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Mail, MessageCircle } from 'lucide-react';
+import { Check, Mail } from 'lucide-react';
 
 interface Props {
   token:        string;
@@ -45,8 +45,9 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
   );
 }
 
-export default function NotificationsToggle({ token, initWhatsApp, initEmail }: Props) {
-  const [wa,     setWa]     = useState(initWhatsApp);
+export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp, initEmail }: Props) {
+  // WhatsApp está oculto en UI (2026-08-06). El backend sigue leyendo
+  // notify_whatsapp; cuando volvamos a exponerlo, re-agregar la row abajo.
   const [email,  setEmail]  = useState(initEmail);
   const [saving, setSaving] = useState<string | null>(null);
   const [saved,  setSaved]  = useState<string | null>(null);
@@ -75,14 +76,6 @@ export default function NotificationsToggle({ token, initWhatsApp, initEmail }: 
     value: boolean;
     set:   (v: boolean) => void;
   }[] = [
-    {
-      field: 'notify_whatsapp',
-      icon:  <MessageCircle size={15} color="#25D366" />,
-      label: 'Resumen por WhatsApp',
-      desc:  'Recibe un reporte semanal por WhatsApp con el resumen de llamadas, leads y pendientes de la semana.',
-      value: wa,
-      set:   (v) => { setWa(v); update('notify_whatsapp', v); },
-    },
     {
       field: 'notify_email',
       icon:  <Mail size={15} color="#6C3BFF" />,
