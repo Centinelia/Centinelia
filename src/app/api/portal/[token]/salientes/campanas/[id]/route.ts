@@ -5,6 +5,7 @@ import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
 import { checkAccount } from '@/lib/compliance/account-guard';
+import { canRunOutboundCampaign } from '@/lib/portal/outbound-gate';
 import type { VoiceAgent } from '@/types/agent';
 
 interface Params { params: Promise<{ token: string; id: string }> }
@@ -13,7 +14,7 @@ async function getAgentAndCampaign(token: string, portalEmail: string, campaignI
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('id, timezone, vapi_agent_id, phone_number, active')
+    .select('id, timezone, vapi_agent_id, phone_number, active, outbound_calls, features')
     .eq('portal_token', token)
     .eq('portal_email', portalEmail)
     .single();
@@ -41,9 +42,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body  = await req.json();
   const patch: Record<string, unknown> = {};
 
-  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','status'] as const;
+  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','status','capability'] as const;
   for (const f of fields) {
     if (f in body) patch[f] = body[f];
+  }
+
+  // Gate: si cambian capability o activan una campaña, revalidar
+  if ('capability' in patch || patch.status === 'active') {
+    const cap = (patch.capability ?? campaign.capability ?? 'custom') as string;
+    const gate = canRunOutboundCampaign(agent as any, cap);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.reason ?? 'Campaña no permitida' }, { status: 403 });
+    }
   }
 
   // Recompute next_run_at if schedule changed
@@ -105,6 +115,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const guard = await checkAccount(session.portalEmail, supabase);
   if (!guard.canOperate) {
     return NextResponse.json({ error: `Cuenta ${guard.status}. No se pueden ejecutar campañas.` }, { status: 403 });
+  }
+
+  // Capability gate: defensa en profundidad. Bloquea disparar campañas
+  // cuyo tipo no cabe en las capabilities del empleado (ej. si el rol cambió
+  // después de crear la campaña).
+  const capGate = canRunOutboundCampaign(agent as any, (campaign.capability ?? 'custom') as string);
+  if (!capGate.ok) {
+    return NextResponse.json({ error: capGate.reason ?? 'Campaña no permitida' }, { status: 403 });
   }
 
   let contactsQuery = supabase

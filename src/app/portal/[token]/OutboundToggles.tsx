@@ -2,12 +2,25 @@
 
 import { useState } from 'react';
 import { Phone, PhoneIncoming, X, Loader2 } from 'lucide-react';
+import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
+import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 interface Props {
   token:                  string;
   initOutbound:           boolean;
   initMissedCallRecovery: boolean;
+  agentCapabilities?:     string[];
+  agentName?:             string;
 }
+
+/** Meerkats que declaran cada capability, para el hover-tooltip discovery. */
+const CAPABILITY_OWNERS: Record<string, { id: string; nombre: string; imagen: string; color: string }[]> =
+  OUTBOUND_CAPABILITIES.reduce((acc, cap) => {
+    acc[cap.id] = MEERKAT_ROLES
+      .filter(m => (m.features.outbound_capabilities ?? []).includes(cap.id) && m.id !== 'custom')
+      .map(m => ({ id: m.id, nombre: m.nombre, imagen: m.imagen, color: m.color }));
+    return acc;
+  }, {} as Record<string, { id: string; nombre: string; imagen: string; color: string }[]>);
 
 function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
   return (
@@ -202,12 +215,14 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
   );
 }
 
-export default function OutboundToggles({ token, initOutbound, initMissedCallRecovery }: Props) {
+export default function OutboundToggles({ token, initOutbound, initMissedCallRecovery, agentCapabilities = [], agentName }: Props) {
   const [outbound,     setOutbound]     = useState(initOutbound);
   const [missed,       setMissed]       = useState(initMissedCallRecovery);
   const [saving,       setSaving]       = useState<string | null>(null);
   const [saved,        setSaved]        = useState<string | null>(null);
   const [showConsent,  setShowConsent]  = useState(false);
+  const [hoverCap,     setHoverCap]     = useState<string | null>(null);
+  const activeCaps = new Set(agentCapabilities);
 
   async function update(field: string, value: boolean) {
     setSaving(field);
@@ -286,24 +301,76 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
 
       <div className="flex flex-col gap-5">
 
-        {/* Delegation narrative */}
+        {/* Capability discovery: iluminados = puede este empleado, muted = otro meerkat */}
         <div className="flex flex-col gap-3">
           <div>
             <h2 className="text-sm font-bold" style={{ color: 'var(--c-text)' }}>
               Tu empleado puede salir a trabajar
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Activa las llamadas salientes para que llame a tus contactos automáticamente. Los usos disponibles dependen de su rol: no todos los empleados hacen todas las tareas.
+              {outbound
+                ? `Estas son las tareas${agentName ? ` que ${agentName}` : ' que este empleado'} puede ejecutar. Los grises los desbloquea otro empleado (pasa el mouse para ver cuál).`
+                : 'Activa las llamadas salientes abajo. Estas son las tareas que puede hacer este empleado; los grises los desbloquea otro (pasa el mouse para ver cuál).'}
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {['Seguimientos', 'Confirmaciones', 'Cobranza', 'Recordatorios', 'Promociones', 'Encuestas'].map(item => (
-              <div key={item} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#6C3BFF' }} />
-                <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>{item}</span>
-              </div>
-            ))}
+            {OUTBOUND_CAPABILITIES.map(cap => {
+              const isActive = outbound && activeCaps.has(cap.id);
+              const owners   = CAPABILITY_OWNERS[cap.id] ?? [];
+              return (
+                <div
+                  key={cap.id}
+                  onMouseEnter={() => !isActive && setHoverCap(cap.id)}
+                  onMouseLeave={() => setHoverCap(null)}
+                  className="relative flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity"
+                  style={{
+                    background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface-2)',
+                    border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)',
+                    opacity:    isActive ? 1 : 0.55,
+                    cursor:     isActive ? 'default' : 'help',
+                  }}
+                  title={isActive ? cap.description : undefined}
+                >
+                  <div
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: isActive ? '#6C3BFF' : 'var(--c-text-4)' }}
+                  />
+                  <span className="text-xs truncate" style={{ color: isActive ? 'var(--c-text)' : 'var(--c-text-3)' }}>
+                    {cap.label}
+                  </span>
+
+                  {hoverCap === cap.id && !isActive && owners.length > 0 && (
+                    <div
+                      className="absolute z-10 top-full left-0 mt-1 min-w-[180px] rounded-xl shadow-lg p-2.5"
+                      style={{
+                        background: 'var(--c-modal)',
+                        border:     '1px solid var(--c-border)',
+                        boxShadow:  '0 8px 24px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--c-text-4)' }}>
+                        Lo desbloquea
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {owners.map(o => (
+                          <div key={o.id} className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden"
+                              style={{ background: `${o.color}18`, border: `1px solid ${o.color}55` }}
+                            >
+                              <img src={o.imagen} alt={o.nombre} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>
+                              {o.nombre}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

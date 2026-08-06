@@ -5,6 +5,7 @@ import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import type { VoiceAgent } from '@/types/agent';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { canRunOutboundCampaign } from '@/lib/portal/outbound-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,15 @@ export async function GET(req: NextRequest) {
           continue;
         }
       }
+    }
+
+    // Capability gate: defensa en profundidad. Si el rol del meerkat cambió
+    // después de crear la campaña (o el toggle de outbound se desactivó),
+    // el cron rechaza el pickup silenciosamente.
+    const capGate = canRunOutboundCampaign(agent as any, (campaign.capability ?? 'custom') as string);
+    if (!capGate.ok) {
+      console.log(`[cron/outbound-campaigns] skipping campaign ${campaign.id}: ${capGate.reason}`);
+      continue;
     }
 
     // Fetch pending contacts for this campaign

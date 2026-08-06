@@ -25,6 +25,12 @@ export interface AgentFeatures {
   // Fase 2 — llamadas salientes (por activar cuando Phase 2 lance)
   outbound_calls: boolean;      // Permite disparar llamadas salientes desde el portal
 
+  // Catálogo de tipos de campaña outbound que este meerkat puede correr.
+  // Ver src/lib/portal/outbound-capabilities.ts. El backend rechaza campañas
+  // con una capability fuera de esta lista. Campañas 'custom' solo requieren
+  // outbound_calls: true (escape para casos legítimos fuera del catálogo).
+  outbound_capabilities?: string[];
+
   // Vertical del cliente — controla qué secciones de Oficina se muestran
   vertical?: 'negocio' | 'gobierno';
 

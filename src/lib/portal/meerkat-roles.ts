@@ -60,6 +60,7 @@ Cuando hay un equipo de especialistas disponible, tienes dos tareas simultáneas
       multilingual:            false,
       client_memory:           false,
       outbound_calls:          false,
+      outbound_capabilities:   ['confirmacion_citas'],
     },
   },
   {
@@ -92,6 +93,7 @@ Expresiones naturales: "Permítame hacerle una pregunta rápida.", "Con gusto le
       multilingual:            false,
       client_memory:           false,
       outbound_calls:          true,
+      outbound_capabilities:   ['seguimiento_leads', 'promociones', 'reactivacion'],
     },
   },
   {
@@ -157,6 +159,7 @@ Expresiones naturales: "Quiero ayudarle a resolver esto hoy.", "Tiene un saldo p
       multilingual:            false,
       client_memory:           false,
       outbound_calls:          true,
+      outbound_capabilities:   ['cobranza', 'recordatorios_pago'],
     },
   },
   {
@@ -221,6 +224,7 @@ Expresiones naturales: "Con gusto le ayudo.", "Entiendo perfectamente.", "Ya que
       multilingual:            false,
       client_memory:           false,
       outbound_calls:          true,
+      outbound_capabilities:   ['seguimiento_leads', 'encuestas', 'reactivacion', 'actualizacion_estatus'],
     },
   },
   {
@@ -387,6 +391,7 @@ Expresiones naturales: "Ya lo mandé a Claude Code.", "Detecté un patrón, ahí
       multilingual:            false,
       client_memory:           false,
       outbound_calls:          false,
+      outbound_capabilities:   ['seguimiento_leads', 'confirmacion_citas', 'cobranza', 'recordatorios_pago', 'promociones', 'encuestas', 'reactivacion', 'actualizacion_estatus'],
     },
   },
 ];

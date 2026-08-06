@@ -15,7 +15,7 @@ import AgentCustomization        from '../AgentCustomization';
 import AgentNameEditor           from '../AgentNameEditor';
 import ResyncButton              from '../ResyncButton';
 import PortalFooter              from '../PortalFooter';
-import { COORDINATOR_ROLE_IDS }  from '@/lib/portal/meerkat-roles';
+import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 import TeamNumbersEditor             from '../TeamNumbersEditor';
@@ -85,6 +85,12 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
   const showOutbound   = initOutbound || agent.plan === 'pro';
+  // Capabilities de outbound: agent-level override > meerkat default. Ver
+  // src/lib/portal/outbound-capabilities.ts y outbound-gate.ts.
+  const meerkatCaps = meerkatId ? (MEERKAT_MAP[meerkatId]?.features.outbound_capabilities ?? []) : [];
+  const agentOutboundCaps: string[] = Array.isArray(features.outbound_capabilities)
+    ? (features.outbound_capabilities as string[])
+    : meerkatCaps;
 
   const { data: emailIntegration } = await supabase
     .from('email_integrations')
@@ -494,6 +500,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       token={token}
                       initOutbound={initOutbound}
                       initMissedCallRecovery={initMissedCall}
+                      agentCapabilities={agentOutboundCaps}
+                      agentName={agentName}
                     />
                   </Card>
                 </div>
