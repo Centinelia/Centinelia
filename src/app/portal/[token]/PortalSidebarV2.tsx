@@ -206,9 +206,9 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
             <img
               src="/logo-icon.png"
               alt=""
-              width={56}
-              height={56}
-              style={{ width: 56, height: 56, objectFit: 'contain', flexShrink: 0 }}
+              width={72}
+              height={72}
+              style={{ width: 72, height: 72, objectFit: 'contain', flexShrink: 0 }}
               draggable={false}
             />
             <div className="flex flex-col min-w-0 flex-1">
