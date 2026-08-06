@@ -18,12 +18,17 @@ function greeting(hour: number): string {
   return 'Buenas noches';
 }
 
-function ownerFirstName(email: string | null): string | null {
-  if (!email) return null;
-  const local = email.split('@')[0] ?? '';
-  const name  = local.split(/[._-]/)[0];
-  if (!name) return null;
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+/** Extrae solo el primer nombre de un nombre completo o email. */
+function firstName(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // Si contiene @, tratar como email — tomar local part antes del @
+  const base = trimmed.includes('@') ? trimmed.split('@')[0] : trimmed;
+  // Split por espacio (para 'Nazre Assad') o por . _ - (para emails)
+  const first = base.split(/[\s._-]+/)[0];
+  if (!first) return null;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
 interface KpiCardProps {
@@ -85,10 +90,29 @@ export default async function OficinaHome({ params }: Props) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('portal_email, business_name, agent_name')
+    .select('portal_email, business_name, agent_name, client_name')
     .eq('portal_token', token)
     .maybeSingle();
   if (!agent) notFound();
+
+  // Resolver nombre a mostrar en el greeting.
+  //   Sub-usuario logueado → portal_users.name
+  //   Owner               → voice_agents.client_name (nombre completo del registro)
+  //   Fallback            → primer nombre extraído del portal_email
+  //   Final               → 'Bienvenido'
+  let displayName: string | null = null;
+  if (session?.isSubUser && session.userId) {
+    const { data: pu } = await supabase
+      .from('portal_users')
+      .select('name')
+      .eq('id', session.userId)
+      .maybeSingle();
+    displayName = firstName((pu?.name as string | null) ?? null);
+  } else {
+    displayName = firstName((agent as any).client_name as string | null)
+                ?? firstName((agent as any).portal_email as string | null);
+  }
+  const owner = displayName ?? 'Bienvenido';
 
   const access   = await getAgentAccess(token);
   const agentIds = access?.ids ?? [];
@@ -132,7 +156,6 @@ export default async function OficinaHome({ params }: Props) {
   };
 
   const totalAtender = kpis.bandeja + kpis.tareas;
-  const owner        = ownerFirstName(agent.portal_email as string | null) ?? 'Bienvenido';
   const dateLabel    = new Intl.DateTimeFormat('es-MX', {
     weekday: 'long', day: 'numeric', month: 'long',
   }).format(now);
