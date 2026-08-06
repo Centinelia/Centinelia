@@ -241,7 +241,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           // Cada item incluye el tab correcto para que ConfigurarTabs lo abra
           // y haga scroll al anchor correspondiente.
           const pending = [
-            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'tools',        anchor: 'llamadas' },
+            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'personalidad', anchor: 'llamadas' },
             !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'conocimiento', anchor: 'rol'      },
             !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'tools', anchor: 'llamadas' },
             needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
@@ -339,16 +339,20 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              {isOwner && hasVoiceJornada && (
-                <div id="passphrase" style={SCROLL_STYLE}>
+              {!isCoordinator && (
+                <div id="llamadas" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
-                      title="Frase de verificación interna"
-                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
+                      title="Llamadas entrantes"
+                      tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
                       className="mb-4"
                     />
-                    <PassphraseEditor token={token} initial={ownerPassphrase} />
+                    <AgentCustomization
+                      token={token}
+                      initGreeting={(agent as any).first_message ?? ''}
+                      initTransferRules={(agent as any).transfer_rules ?? ''}
+                    />
                   </Card>
                 </div>
               )}
@@ -436,20 +440,16 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                  Con qué canales y apps interactúa el empleado.             */}
             <div className="flex flex-col gap-5">
 
-              {!isCoordinator && (
-                <div id="llamadas" style={SCROLL_STYLE}>
+              {isOwner && hasVoiceJornada && (
+                <div id="passphrase" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
-                      title="Llamadas entrantes"
-                      tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
+                      title="Frase de verificación interna"
+                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
                       className="mb-4"
                     />
-                    <AgentCustomization
-                      token={token}
-                      initGreeting={(agent as any).first_message ?? ''}
-                      initTransferRules={(agent as any).transfer_rules ?? ''}
-                    />
+                    <PassphraseEditor token={token} initial={ownerPassphrase} />
                   </Card>
                 </div>
               )}
