@@ -56,6 +56,7 @@ export interface AgentFeatures {
   nash_passive_discovery?: boolean;   // marca errores/anomalías cuando sus propias tools fallan o devuelven raro
   nash_active_healthcheck?: boolean;  // corre revisar_salud_admin periódicamente contra endpoints/queries clave
   nash_anomaly_detection?: boolean;   // detecta patrones raros en datos (cuentas huérfanas, drift, contratos rotos, etc.)
+  nash_cron_enabled?: boolean;        // activa el cron /api/cron/nash-monitor cada 10 min (default false; opt-in por owner)
 
   // Automation gating
   automations?: AutomationsConfig;
@@ -291,4 +292,5 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   nash_passive_discovery:  'Nash — detección pasiva de bugs',
   nash_active_healthcheck: 'Nash — health-check activo de admin',
   nash_anomaly_detection:  'Nash — detección de anomalías en datos',
+  nash_cron_enabled:       'Nash — cron cada 10 min',
 };

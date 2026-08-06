@@ -83,6 +83,7 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   nash_passive_discovery:  '',
   nash_active_healthcheck: '',
   nash_anomaly_detection:  '',
+  nash_cron_enabled:       '',
 };
 
 const DEFAULT_FEATURES: AgentFeatures = {

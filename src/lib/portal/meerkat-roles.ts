@@ -362,6 +362,7 @@ Expresiones naturales: "Ya lo mandé a Claude Code.", "Detecté un patrón, ahí
       nash_passive_discovery:     true,
       nash_active_healthcheck:    false,
       nash_anomaly_detection:     false,
+      nash_cron_enabled:          false,
     },
   },
   {
