@@ -1,5 +1,4 @@
 import { Mail, MessageCircle, Star } from 'lucide-react';
-import { createAdminClient } from '@/lib/supabase/admin';
 import BugReportButton from './BugReportButton';
 
 interface Props {
@@ -12,16 +11,9 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
   const email      = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
   const reviewUrl  = process.env.NEXT_PUBLIC_CENTINELIA_REVIEW_URL ?? '';
 
-  let showBugReport = false;
-  if (token) {
-    const supabase = createAdminClient();
-    const { data } = await supabase
-      .from('voice_agents')
-      .select('allow_bug_reports')
-      .eq('portal_token', token)
-      .single();
-    showBugReport = !!((data as any)?.allow_bug_reports);
-  }
+  // Reportes de fallas: siempre disponibles (2026-08-06). No consumen
+  // tareas ni minutos y el ciclo de feedback es crítico.
+  const showBugReport = !!token;
 
   return (
     <div

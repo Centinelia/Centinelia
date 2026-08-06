@@ -15,7 +15,7 @@ export default async function TokenLayout({
   const supabase = createAdminClient();
   const { data: account } = await supabase
     .from('voice_agents')
-    .select('portal_email, allow_bug_reports')
+    .select('portal_email')
     .eq('portal_token', token)
     .single();
 

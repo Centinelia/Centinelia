@@ -20,7 +20,6 @@ import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
 import TeamNumbersEditor             from '../TeamNumbersEditor';
 import PassphraseEditor              from '../PassphraseEditor';
-import BugReportToggle               from '../BugReportToggle';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 import GoalsSection                  from '../GoalsSection';
 import GuardrailsEditor              from '../GuardrailsEditor';
@@ -665,18 +664,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
               )}
 
-              {!isCoordinator && isOwner && (
-                <div id="reportes" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Reportes de fallas"
-                      className="mb-4"
-                    />
-                    <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
-                  </Card>
-                </div>
-              )}
+              {/* Reportes de fallas: siempre disponibles, no consumen tareas
+                  ni minutos. Toggle removido 2026-08-06 — el FAB del portal
+                  siempre está visible y el endpoint /bug-report acepta
+                  siempre sin gate. */}
 
               {/* Términos de servicio viven per-cliente en /portal?tab=cuenta#terminos-servicio */}
               <Card border elevated={false} padding="sm">

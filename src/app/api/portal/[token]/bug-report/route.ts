@@ -19,14 +19,15 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, allow_bug_reports, client_name, client_email, portal_email')
+    .select('business_name, client_name, client_email, portal_email')
     .eq('portal_token', token)
     .single();
 
   if (!agent) return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-  if (!agent.allow_bug_reports) return NextResponse.json({ error: 'Función no habilitada' }, { status: 403 });
+  // Reportes de fallas siempre disponibles: no consumen tareas ni minutos y
+  // son parte fundamental del ciclo de feedback. Ver commit 2026-08-06.
 
   const { category, description } = await req.json();
   if (!description?.trim()) return NextResponse.json({ error: 'Descripción requerida' }, { status: 400 });
