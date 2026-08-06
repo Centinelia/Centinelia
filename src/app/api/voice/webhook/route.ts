@@ -300,7 +300,14 @@ export async function POST(req: NextRequest) {
           // resetDateStr se resuelve del organizations.pool_reset_date en E-mails
           // internos; el cliente annual no recibe minutesAlertHtml.
         } else {
-          await supabase.rpc('increment_account_minutes_used', { p_portal_email: agent.portal_email, minutes });
+          // Ledger event-sourced: insert debit + trigger refresca account_minutes cache.
+          // consume_pool_minutes devuelve el balance despues del debit.
+          await supabase.rpc('consume_pool_minutes', {
+            p_portal_email: agent.portal_email,
+            p_agent_id:     resolvedAgentId,
+            p_minutes:      minutes,
+            p_call_id:      call?.id ?? null,
+          });
           const { data: acct } = await supabase
             .from('account_minutes')
             .select('minutes_used, minutes_included, minutes_reset_date')

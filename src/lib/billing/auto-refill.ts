@@ -62,19 +62,21 @@ export async function executeAutoRefill(
 
   if (pi.status !== 'succeeded') return { ok: false, error: `pi_status_${pi.status}` };
 
-  // Credit the minutes
+  // Credit the minutes via ledger (respeta cap 2x, trigger refresca cache).
   if (agent.portal_email) {
-    const { data: acct } = await supabase
-      .from('account_minutes').select('minutes_included').eq('portal_email', agent.portal_email).single();
-    await supabase.from('account_minutes')
-      .update({ minutes_included: (acct?.minutes_included ?? 0) + minutes, updated_at: new Date().toISOString() })
-      .eq('portal_email', agent.portal_email);
+    await supabase.rpc('apply_ledger_entry', {
+      p_portal_email: agent.portal_email,
+      p_agent_id:     agentId,
+      p_amount:       minutes,
+      p_kind:         'auto_refill',
+      p_reference_id: pi.id ?? null,
+      p_description:  `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+    });
+    // Reactivar solo el agente que se recargó (granularidad per-empleado)
     await supabase.from('voice_agents')
-      .update({ active: true, billing_status: 'activo' }).eq('portal_email', agent.portal_email);
-    const { data: peers } = await supabase.from('voice_agents')
-      .select('phone_number, vapi_agent_id').eq('portal_email', agent.portal_email).not('phone_number', 'is', null);
-    for (const a of peers ?? []) {
-      if (a.phone_number && a.vapi_agent_id) await resumeVapiAgent(a.phone_number, a.vapi_agent_id);
+      .update({ active: true, billing_status: 'activo' }).eq('id', agentId);
+    if (agent.phone_number && agent.vapi_agent_id) {
+      await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
     }
   } else {
     const { data: cur } = await supabase.from('voice_agents').select('minutes_included').eq('id', agentId).single();
@@ -84,14 +86,14 @@ export async function executeAutoRefill(
     if (agent.phone_number && agent.vapi_agent_id) {
       await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
     }
+    await supabase.from('minutes_ledger').insert({
+      agent_id:    agentId,
+      amount:      minutes,
+      description: `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
+      source:      'auto_recarga',
+      kind:        'auto_refill',
+    });
   }
-
-  await supabase.from('minutes_ledger').insert({
-    agent_id:    agentId,
-    amount:      minutes,
-    description: `Auto-recarga ${minutes} min · $${amountMxn.toLocaleString('es-MX')} MXN`,
-    source:      'auto_recarga',
-  });
 
   return { ok: true, minutesAdded: minutes };
 }

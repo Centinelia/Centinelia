@@ -32,83 +32,62 @@ export async function POST(req: NextRequest, { params }: Params) {
   const portalEmail = agent.portal_email ?? null;
   let ledgerAmount = 0;
   let ledgerDescription = reason?.trim() || '';
-  let result = { minutes_used: 0, minutes_included: 0 };
 
-  if (portalEmail) {
-    // Account-level minutes pool
-    const { data: acct } = await supabase
-      .from('account_minutes')
-      .select('minutes_used, minutes_included')
-      .eq('portal_email', portalEmail)
-      .single();
-
-    if (!acct) return NextResponse.json({ error: 'Account minutes not found' }, { status: 404 });
-
-    let update: Record<string, number | string> = { updated_at: new Date().toISOString() };
-
-    if (action === 'credit') {
-      update.minutes_included = acct.minutes_included + amount;
-      ledgerAmount = amount;
-      if (!ledgerDescription) ledgerDescription = `Crédito manual, ${amount} min acreditados`;
-    } else if (action === 'debit') {
-      update.minutes_used = acct.minutes_used + amount;
-      ledgerAmount = -amount;
-      if (!ledgerDescription) ledgerDescription = `Descuento manual, ${amount} min descontados`;
-    } else {
-      const delta = amount - acct.minutes_used;
-      update.minutes_used = Math.max(0, amount);
-      ledgerAmount = -delta;
-      if (!ledgerDescription) ledgerDescription = `Corrección, uso ajustado a ${amount} min`;
-    }
-
-    const { data: updated, error } = await supabase
-      .from('account_minutes')
-      .update(update)
-      .eq('portal_email', portalEmail)
-      .select('minutes_used, minutes_included')
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    result = { minutes_used: updated!.minutes_used, minutes_included: updated!.minutes_included };
-
+  if (action === 'credit') {
+    ledgerAmount = amount;
+    if (!ledgerDescription) ledgerDescription = `Crédito manual: +${amount} min`;
+  } else if (action === 'debit') {
+    ledgerAmount = -amount;
+    if (!ledgerDescription) ledgerDescription = `Descuento manual: −${amount} min`;
   } else {
-    // Per-agent (demo / standalone agents without portal_email)
-    let update: Record<string, number> = {};
-
-    if (action === 'credit') {
-      update = { minutes_included: agent.minutes_included + amount };
-      ledgerAmount = amount;
-      if (!ledgerDescription) ledgerDescription = `Crédito manual, ${amount} min acreditados`;
-    } else if (action === 'debit') {
-      update = { minutes_used: agent.minutes_used + amount };
-      ledgerAmount = -amount;
-      if (!ledgerDescription) ledgerDescription = `Descuento manual, ${amount} min descontados`;
-    } else {
-      const delta = amount - agent.minutes_used;
-      update = { minutes_used: Math.max(0, amount) };
-      ledgerAmount = -delta;
-      if (!ledgerDescription) ledgerDescription = `Corrección, uso ajustado a ${amount} min`;
-    }
-
-    const { data, error } = await supabase
-      .from('voice_agents')
-      .update(update)
-      .eq('id', id)
-      .select('minutes_used, minutes_included')
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    result = { minutes_used: data!.minutes_used, minutes_included: data!.minutes_included };
+    // set_used: ajustar 'consumo total' a un valor exacto. Se traduce a delta contra
+    // el "used últimos 30d" actual del cache (representa consumo del ciclo activo).
+    const { data: acctForSet } = portalEmail
+      ? await supabase.from('account_minutes').select('minutes_used').eq('portal_email', portalEmail).single()
+      : { data: { minutes_used: agent.minutes_used } };
+    const currentUsed = acctForSet?.minutes_used ?? 0;
+    const delta = amount - currentUsed;
+    ledgerAmount = -delta; // más used = ledger negativo, menos used = ledger positivo
+    if (!ledgerDescription) ledgerDescription = `Corrección: uso ajustado a ${amount} min`;
   }
 
   if (ledgerAmount !== 0) {
-    await supabase.from('minutes_ledger').insert({
-      agent_id:    id,
-      amount:      ledgerAmount,
-      description: ledgerDescription,
-      source:      'ajuste',
-    });
+    if (portalEmail) {
+      // Via ledger event-sourced (respeta cap 2x en credits, trigger refresca cache).
+      await supabase.rpc('apply_ledger_entry', {
+        p_portal_email: portalEmail,
+        p_agent_id:     id,
+        p_amount:       ledgerAmount,
+        p_kind:         'admin_adjustment',
+        p_reference_id: null,
+        p_description:  ledgerDescription,
+      });
+    } else {
+      // Legacy standalone agent — update directo a voice_agents + ledger legacy
+      let update: Record<string, number> = {};
+      if (ledgerAmount > 0) update = { minutes_included: agent.minutes_included + ledgerAmount };
+      else                  update = { minutes_used:     agent.minutes_used     + (-ledgerAmount) };
+      await supabase.from('voice_agents').update(update).eq('id', id);
+      await supabase.from('minutes_ledger').insert({
+        agent_id:    id,
+        amount:      ledgerAmount,
+        description: ledgerDescription,
+        source:      'ajuste',
+        kind:        'admin_adjustment',
+      });
+    }
   }
 
-  return NextResponse.json(result);
+  // Devolver el estado actualizado
+  const { data: finalAcct } = portalEmail
+    ? await supabase.from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', portalEmail).single()
+    : { data: null };
+  const { data: finalAgent } = !portalEmail
+    ? await supabase.from('voice_agents').select('minutes_used, minutes_included').eq('id', id).single()
+    : { data: null };
+
+  return NextResponse.json({
+    minutes_used:     finalAcct?.minutes_used     ?? finalAgent?.minutes_used     ?? 0,
+    minutes_included: finalAcct?.minutes_included ?? finalAgent?.minutes_included ?? 0,
+  });
 }

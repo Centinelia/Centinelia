@@ -60,44 +60,44 @@ export async function POST(req: NextRequest) {
         const newMinutesCfg = MONTHLY_CONFIG[toPlan][toMinutesPlan];
         const { data: prevForUpgrade } = await supabase
           .from('voice_agents')
-          .select('minutes_used, minutes_included, portal_email')
+          .select('minutes_used, minutes_included, minutes_plan, portal_email')
           .eq('id', agentId)
           .single();
         const upgradeEmail = prevForUpgrade?.portal_email ?? null;
 
-        let usedSoFar = 0;
-        let prevIncluded = 0;
-        if (upgradeEmail) {
-          const { data: acctUpgrade } = await supabase
-            .from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', upgradeEmail).single();
-          usedSoFar    = acctUpgrade?.minutes_used     ?? 0;
-          prevIncluded = acctUpgrade?.minutes_included ?? 0;
-        } else {
-          usedSoFar    = prevForUpgrade?.minutes_used     ?? 0;
-          prevIncluded = prevForUpgrade?.minutes_included ?? 0;
-        }
-        const newIncluded = Math.max(newMinutesCfg.minutes, usedSoFar);
+        // Delta = new tier minutes - old tier minutes (solo el diferencial se acredita)
+        const prevTier    = prevForUpgrade?.minutes_plan as MinutesTier | null;
+        const prevTierMin = prevTier ? (MONTHLY_CONFIG[toPlan][prevTier]?.minutes ?? 0) : 0;
+        const delta       = Math.max(0, newMinutesCfg.minutes - prevTierMin);
 
+        // Actualizar tier del agente
         await supabase.from('voice_agents').update({
           plan:         toPlan,
           features:     PLAN_FEATURES[toPlan],
           minutes_plan: toMinutesPlan,
-          ...(upgradeEmail ? {} : { minutes_included: newIncluded }),
+          ...(upgradeEmail ? {} : { minutes_included: newMinutesCfg.minutes }),
         }).eq('id', agentId);
 
-        if (upgradeEmail) {
-          await supabase.from('account_minutes')
-            .update({ minutes_plan: toMinutesPlan, minutes_included: newIncluded, updated_at: new Date().toISOString() })
-            .eq('portal_email', upgradeEmail);
-        }
-
-        if (newIncluded > prevIncluded) {
-          await supabase.from('minutes_ledger').insert({
-            agent_id:    agentId,
-            amount:      newIncluded - prevIncluded,
-            description: `Upgrade a ${newMinutesCfg.label}, ajuste inmediato de minutos`,
-            source:      'activacion',
-          });
+        // Credit al pool via ledger (cap 2x recalculado con el nuevo tier)
+        if (delta > 0) {
+          if (upgradeEmail) {
+            await supabase.rpc('apply_ledger_entry', {
+              p_portal_email: upgradeEmail,
+              p_agent_id:     agentId,
+              p_amount:       delta,
+              p_kind:         'renewal',
+              p_reference_id: session.id ?? null,
+              p_description:  `Upgrade a ${newMinutesCfg.label}: +${delta} min de diferencial`,
+            });
+          } else {
+            await supabase.from('minutes_ledger').insert({
+              agent_id:    agentId,
+              amount:      delta,
+              description: `Upgrade a ${newMinutesCfg.label}, ajuste inmediato de minutos`,
+              source:      'activacion',
+              kind:        'renewal',
+            });
+          }
         }
         break;
       }
@@ -115,38 +115,38 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (agent?.portal_email) {
-          const { data: acctExtra } = await supabase
-            .from('account_minutes').select('minutes_included').eq('portal_email', agent.portal_email).single();
-          await supabase.from('account_minutes')
-            .update({ minutes_included: (acctExtra?.minutes_included ?? 0) + minutes, updated_at: new Date().toISOString() })
-            .eq('portal_email', agent.portal_email);
-          // Reactivate all agents in this account
+          // Credit al pool via ledger — trigger refresca cache automáticamente.
+          // apply_ledger_entry aplica cap 2x (rollover_cap si sobra).
+          await supabase.rpc('apply_ledger_entry', {
+            p_portal_email: agent.portal_email,
+            p_agent_id:     agentId,
+            p_amount:       minutes,
+            p_kind:         'extra_purchase',
+            p_reference_id: session.id ?? null,
+            p_description:  `Compra de ${minutes} min extra`,
+          });
+          // Reactivar solo este agente (granularidad per-empleado)
           await supabase.from('voice_agents')
             .update({ active: true, billing_status: 'activo' })
-            .eq('portal_email', agent.portal_email);
-          const { data: acctAgents } = await supabase
-            .from('voice_agents').select('phone_number, vapi_agent_id')
-            .eq('portal_email', agent.portal_email).not('phone_number', 'is', null);
-          if (acctAgents) {
-            for (const a of acctAgents) {
-              if (a.phone_number && a.vapi_agent_id) await resumeVapiAgent(a.phone_number, a.vapi_agent_id);
-            }
+            .eq('id', agentId);
+          if (agent.phone_number && agent.vapi_agent_id) {
+            await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
           }
         } else {
           await supabase.from('voice_agents')
             .update({ minutes_included: (agent?.minutes_included ?? 0) + minutes, active: true, billing_status: 'activo' })
             .eq('id', agentId);
+          await supabase.from('minutes_ledger').insert({
+            agent_id:    agentId,
+            amount:      minutes,
+            description: `Compra de ${minutes} minutos extra`,
+            source:      'extra_compra',
+            kind:        'extra_purchase',
+          });
           if (agent?.phone_number && agent?.vapi_agent_id) {
             await resumeVapiAgent(agent.phone_number, agent.vapi_agent_id);
           }
         }
-
-        await supabase.from('minutes_ledger').insert({
-          agent_id:    agentId,
-          amount:      minutes,
-          description: `Compra de ${minutes} minutos extra`,
-          source:      'extra_compra',
-        });
         break;
       }
 
@@ -234,13 +234,16 @@ export async function POST(req: NextRequest) {
               minutes_included:     alloc.minutes,
             }).eq('id', agentId);
 
-            if (typedAgent.portal_email) {
-              await supabase.from('account_minutes').upsert({
-                portal_email:      typedAgent.portal_email,
-                minutes_included:  alloc.minutes,
-                minutes_plan:      tierMeta,
-                updated_at:        new Date().toISOString(),
-              }, { onConflict: 'portal_email' });
+            // Sumar la contribución del agente al pool via ledger (respeta cap 2x).
+            if (typedAgent.portal_email && alloc.minutes > 0) {
+              await supabase.rpc('apply_ledger_entry', {
+                p_portal_email: typedAgent.portal_email,
+                p_agent_id:     agentId,
+                p_amount:       alloc.minutes,
+                p_kind:         'jornada_change',
+                p_reference_id: session.id ?? null,
+                p_description:  `Cambio a jornada combinada: +${alloc.minutes} min`,
+              });
             }
           } else {
             console.error('[billing-webhook] provisionPhoneNumber failed', { agentId });
@@ -333,24 +336,40 @@ export async function POST(req: NextRequest) {
         }),
       }).eq('id', agentId);
 
-      if (activationEmail) {
-        await supabase.from('account_minutes').upsert({
-          portal_email:      activationEmail,
-          minutes_included:  jornadaAlloc.minutes,
-          minutes_used:      0,
-          minutes_plan:      minutesPlan,
-          minutes_reset_date: nextResetDate(),
-          updated_at:        new Date().toISOString(),
-        }, { onConflict: 'portal_email' });
-        await setAiOpsLimit(activationEmail, jornadaAlloc.aiOps);
+      // Contribución al pool via ledger. Si es primer empleado de la cuenta, crea
+      // account_minutes vía trigger. Si ya hay otros, SUMA su contribución (respeta cap 2x).
+      if (activationEmail && jornadaAlloc.minutes > 0) {
+        // Inicializar minutes_plan del row account_minutes en el primer insert (metadata)
+        await supabase.from('account_minutes')
+          .upsert({
+            portal_email:       activationEmail,
+            minutes_plan:       minutesPlan,
+            minutes_reset_date: nextResetDate(),
+            updated_at:         new Date().toISOString(),
+          }, { onConflict: 'portal_email', ignoreDuplicates: false });
+
+        await supabase.rpc('apply_ledger_entry', {
+          p_portal_email: activationEmail,
+          p_agent_id:     agentId,
+          p_amount:       jornadaAlloc.minutes,
+          p_kind:         'setup_new_agent',
+          p_reference_id: session.id ?? null,
+          p_description:  `Activación de nuevo empleado: +${jornadaAlloc.minutes} min`,
+        });
+      } else if (!activationEmail) {
+        // Legacy standalone agent
+        await supabase.from('minutes_ledger').insert({
+          agent_id:    agentId,
+          amount:      minutesCfg.minutes,
+          description: `Activación plan, ${minutesCfg.minutes} minutos incluidos`,
+          source:      'activacion',
+          kind:        'setup_new_agent',
+        });
       }
 
-      await supabase.from('minutes_ledger').insert({
-        agent_id:    agentId,
-        amount:      minutesCfg.minutes,
-        description: `Activación plan, ${minutesCfg.minutes} minutos incluidos`,
-        source:      'activacion',
-      });
+      if (activationEmail) {
+        await setAiOpsLimit(activationEmail, jornadaAlloc.aiOps);
+      }
 
       // Re-associate Vapi assistant when reactivating
       const { data: agent } = await supabase
@@ -439,63 +458,46 @@ export async function POST(req: NextRequest) {
 
       const { tier: minutesPlan, cfg: minutesCfg } = monthlyMatch;
 
-      // Rollover: carry unused minutes (capped at 1× the plan base)
       const { data: prevAgent } = await supabase
         .from('voice_agents')
-        .select('minutes_used, minutes_included, portal_email')
+        .select('portal_email, minutes_used, minutes_included')
         .eq('id', agentId)
         .single();
       const renewalEmail = prevAgent?.portal_email ?? null;
 
-      let rollover = 0;
-      if (renewalEmail) {
-        // Pool de minutos es shared por cuenta (portal_email) — se resetea/carga aquí.
-        const { data: acctRenewal } = await supabase
-          .from('account_minutes').select('minutes_used, minutes_included').eq('portal_email', renewalEmail).single();
-        const acctUnused = acctRenewal ? Math.max(0, acctRenewal.minutes_included - acctRenewal.minutes_used) : 0;
-        rollover = Math.min(acctUnused, minutesCfg.minutes);
-        await supabase.from('account_minutes').upsert({
-          portal_email:      renewalEmail,
-          minutes_plan:      minutesPlan,
-          minutes_included:  minutesCfg.minutes + rollover,
-          minutes_used:      0,
+      // Actualizar tier + reactivar SOLO este agente (granularidad per-empleado).
+      // No tocamos minutes_included aquí — el pool vive en account_minutes vía ledger.
+      await supabase.from('voice_agents').update({
+        minutes_plan:         minutesPlan,
+        active:               true,
+        billing_status:       'activo',
+        grace_period_ends_at: null,
+        ...(renewalEmail ? {} : {
+          minutes_included:   minutesCfg.minutes,
+          minutes_used:       0,
           minutes_reset_date: nextResetDate(),
-          updated_at:        new Date().toISOString(),
-        }, { onConflict: 'portal_email' });
-        // Reactivar SOLO el agente cuya sub pagó (no todos los de la cuenta).
-        // Cada empleado tiene su propia subscription — reactivación granular.
-        await supabase.from('voice_agents').update({
-          minutes_plan:         minutesPlan,
-          active:               true,
-          billing_status:       'activo',
-          grace_period_ends_at: null,
-        }).eq('id', agentId);
-      } else {
-        const unused = prevAgent ? Math.max(0, prevAgent.minutes_included - prevAgent.minutes_used) : 0;
-        rollover     = Math.min(unused, minutesCfg.minutes);
-        await supabase.from('voice_agents').update({
-          minutes_plan:         minutesPlan,
-          minutes_included:     minutesCfg.minutes + rollover,
-          minutes_used:         0,
-          minutes_reset_date:   nextResetDate(),
-          active:               true,
-          billing_status:       'activo',
-          grace_period_ends_at: null,
-        }).eq('id', agentId);
-      }
+        }),
+      }).eq('id', agentId);
 
-      await supabase.from('minutes_ledger').insert({
-        agent_id:    agentId,
-        amount:      minutesCfg.minutes,
-        description: `Renovación mensual, ${minutesCfg.minutes} minutos`,
-        source:      'renovacion',
-      });
-      if (rollover > 0) {
+      // Renovación: insertar credit al ledger.
+      // apply_ledger_entry aplica el cap 2x automáticamente (rollover_cap si sobra).
+      if (renewalEmail) {
+        await supabase.rpc('apply_ledger_entry', {
+          p_portal_email: renewalEmail,
+          p_agent_id:     agentId,
+          p_amount:       minutesCfg.minutes,
+          p_kind:         'renewal',
+          p_reference_id: invoice.id ?? null,
+          p_description:  `Renovación mensual: ${minutesCfg.minutes} min`,
+        });
+      } else {
+        // Agente sin portal_email (legacy standalone) — mantiene ledger básico
         await supabase.from('minutes_ledger').insert({
           agent_id:    agentId,
-          amount:      rollover,
-          description: `Rollover, ${rollover} minutos del mes anterior`,
-          source:      'rollover',
+          amount:      minutesCfg.minutes,
+          description: `Renovación mensual, ${minutesCfg.minutes} minutos`,
+          source:      'renovacion',
+          kind:        'renewal',
         });
       }
 
@@ -557,12 +559,30 @@ export async function POST(req: NextRequest) {
       const agentId = sub.metadata?.agent_id;
       if (!agentId) break;
 
+      // Leer portal_email ANTES del update para expirar su contribución del pool.
+      const { data: agentPreCancel } = await supabase
+        .from('voice_agents')
+        .select('portal_email')
+        .eq('id', agentId)
+        .single();
+
       await supabase.from('voice_agents').update({
         active:                 false,
         billing_status:         'cancelado',
         stripe_subscription_id: null,
         cancelled_at:           new Date().toISOString(),
       }).eq('id', agentId);
+
+      // Expirar contribución del agente al pool via ledger.
+      // El debit resta lo equivalente a lo que este agente aportaba.
+      // Cap 2x se recalcula automáticamente (menos agentes activos = cap menor).
+      if (agentPreCancel?.portal_email) {
+        await supabase.rpc('expire_agent_contribution', {
+          p_portal_email: agentPreCancel.portal_email,
+          p_agent_id:     agentId,
+          p_reason:       'Cancelación de suscripción Stripe',
+        });
+      }
 
       const { data: agent } = await supabase
         .from('voice_agents')

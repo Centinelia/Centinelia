@@ -109,13 +109,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     minutes_included:     allocation.minutes,
   }).eq('id', agent.id);
 
-  // 4. Update account-level minutes pool
-  if (agent.portal_email) {
-    await supabase.from('account_minutes').upsert({
-      portal_email:      agent.portal_email,
-      minutes_included:  allocation.minutes,
-      updated_at:        new Date().toISOString(),
-    }, { onConflict: 'portal_email' });
+  // 4. Contribuir al pool via ledger (respeta cap 2x, trigger refresca cache).
+  if (agent.portal_email && allocation.minutes > 0) {
+    await supabase.rpc('apply_ledger_entry', {
+      p_portal_email: agent.portal_email,
+      p_agent_id:     agent.id,
+      p_amount:       allocation.minutes,
+      p_kind:         'jornada_change',
+      p_reference_id: null,
+      p_description:  `Activación de voz: +${allocation.minutes} min`,
+    });
   }
 
   return NextResponse.json({ success: true, phone_number: provisioned.phoneNumber });
