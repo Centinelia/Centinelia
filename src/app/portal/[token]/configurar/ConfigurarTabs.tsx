@@ -82,9 +82,9 @@ export default function ConfigurarTabs({ children }: Props) {
 
   return (
     <Tabs.Root value={tab} onValueChange={handleChange} variant="pill">
-      {/* Tabs en un solo renglón, centradas; sin scroll horizontal aunque desborden */}
-      <div className="flex justify-center pb-1">
-        <Tabs.List className="flex-nowrap whitespace-nowrap justify-center">
+      {/* Tabs en un solo renglón; en desktop centradas, en móvil con scroll horizontal */}
+      <div className="flex justify-start sm:justify-center pb-1 min-w-0 max-w-full">
+        <Tabs.List className="max-w-full sm:justify-center">
           {TAB_DEFS.map(t => (
             <Tabs.Trigger key={t.value} value={t.value}>
               {t.label}

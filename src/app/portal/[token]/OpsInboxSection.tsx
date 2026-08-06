@@ -728,7 +728,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       )}
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b" style={{ borderColor: 'var(--c-border)' }}>
+      <div
+        className="flex gap-0 border-b overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ borderColor: 'var(--c-border)' }}
+      >
         {TAB_CONFIG.map(tab => (
           <button
             key={tab.key}
@@ -736,7 +739,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               setActiveTab(tab.key);
               changeCategory(null);
             }}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
             style={{
               borderColor:  activeTab === tab.key ? '#6C3BFF' : 'transparent',
               color:        activeTab === tab.key ? 'var(--c-text)' : 'var(--c-text-3)',

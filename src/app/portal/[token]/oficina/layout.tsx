@@ -9,6 +9,7 @@ import BusinessSwitcher                 from '../BusinessSwitcher';
 import PortalLogout                     from '../PortalLogout';
 
 import OficinaSidebar                   from './OficinaSidebar';
+import OficinaMobileNav                 from './OficinaMobileNav';
 import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
 import Link                             from 'next/link';
@@ -156,12 +157,25 @@ export default async function OficinaLayout({
 
         {/* Header */}
         <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-            <BusinessSwitcher
-              current={{ business_name: agent.business_name, logo_url: (agent as any).logo_url ?? null, first_token: token }}
-              options={businessGroups}
-              currentBusinessName={agent.business_name}
-            />
+          <div className="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <OficinaMobileNav
+                token={token}
+                badges={badges}
+                minutesRemain={minutesRemain}
+                minutesIncluded={minutesIncluded}
+                aiOpsUsed={aiOpsUsed}
+                aiOpsLimit={aiOpsLimit}
+                hasStripe={hasStripe}
+                vertical={vertical}
+                modules={modules}
+              />
+              <BusinessSwitcher
+                current={{ business_name: agent.business_name, logo_url: (agent as any).logo_url ?? null, first_token: token }}
+                options={businessGroups}
+                currentBusinessName={agent.business_name}
+              />
+            </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <NotificationBell token={token} />
               <PortalLogout />

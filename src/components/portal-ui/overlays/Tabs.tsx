@@ -39,8 +39,8 @@ const List: React.FC<React.ComponentProps<typeof RadixTabs.List>> = ({
 }) => {
   const variant = useContext(VariantCtx);
   const base = variant === 'pill'
-    ? 'inline-flex items-center gap-1 rounded-lg bg-[var(--surface-sunken)] p-1'
-    : 'inline-flex items-center gap-1 border-b border-[var(--border-subtle)]';
+    ? 'flex items-center gap-1 rounded-lg bg-[var(--surface-sunken)] p-1 overflow-x-auto whitespace-nowrap max-w-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+    : 'flex items-center gap-1 border-b border-[var(--border-subtle)] overflow-x-auto whitespace-nowrap max-w-full [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
   return (
     <RadixTabs.List
       className={[base, className ?? ''].filter(Boolean).join(' ')}
@@ -55,8 +55,8 @@ const Trigger: React.FC<React.ComponentProps<typeof RadixTabs.Trigger>> = ({
 }) => {
   const variant = useContext(VariantCtx);
   const base = variant === 'pill'
-    ? 'inline-flex h-8 items-center rounded-md px-3 text-[var(--fs-sm)] font-medium text-[var(--text-secondary)] data-[state=active]:bg-[var(--surface-elevated)] data-[state=active]:text-[var(--text-accent)] data-[state=active]:shadow-[var(--shadow-xs)]'
-    : 'inline-flex h-9 items-center border-b-2 border-transparent px-3 text-[var(--fs-sm)] font-medium text-[var(--text-secondary)] -mb-px data-[state=active]:border-[var(--accent-default)] data-[state=active]:text-[var(--text-accent)]';
+    ? 'inline-flex h-8 shrink-0 items-center rounded-md px-3 text-[var(--fs-sm)] font-medium text-[var(--text-secondary)] data-[state=active]:bg-[var(--surface-elevated)] data-[state=active]:text-[var(--text-accent)] data-[state=active]:shadow-[var(--shadow-xs)]'
+    : 'inline-flex h-9 shrink-0 items-center border-b-2 border-transparent px-3 text-[var(--fs-sm)] font-medium text-[var(--text-secondary)] -mb-px data-[state=active]:border-[var(--accent-default)] data-[state=active]:text-[var(--text-accent)]';
   return (
     <RadixTabs.Trigger
       className={[

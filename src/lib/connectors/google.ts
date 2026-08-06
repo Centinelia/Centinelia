@@ -45,6 +45,11 @@ class GoogleEmail implements EmailConnector {
     });
   }
 
+  // Public helper para dev / re-processing endpoints — fetch by id (bypassa filtro is:unread).
+  async getMessageById(id: string): Promise<EmailMessage | null> {
+    return this.getMessage(id);
+  }
+
   private async getMessage(id: string): Promise<EmailMessage | null> {
     const res = await fetch(`${GMAIL}/messages/${id}?format=full`, { headers: this.h() });
     if (!res.ok) return null;
@@ -57,7 +62,37 @@ class GoogleEmail implements EmailConnector {
       from:     headers['from'] ?? '',
       subject:  headers['subject'] ?? '',
       body:     this.extractBody(msg.payload),
+      attachments: this.extractAttachments(msg.payload),
     };
+  }
+
+  private extractAttachments(payload: Record<string, unknown> | undefined, out: Array<{ id: string; name: string; mimeType: string; size: number }> = []): Array<{ id: string; name: string; mimeType: string; size: number }> {
+    if (!payload) return out;
+    const body = payload.body as { attachmentId?: string; size?: number } | undefined;
+    const filename = payload.filename as string | undefined;
+    if (body?.attachmentId && filename) {
+      out.push({
+        id:       body.attachmentId,
+        name:     filename,
+        mimeType: (payload.mimeType as string) ?? 'application/octet-stream',
+        size:     body.size ?? 0,
+      });
+    }
+    for (const part of (payload.parts as Record<string, unknown>[] ?? [])) {
+      this.extractAttachments(part, out);
+    }
+    return out;
+  }
+
+  async fetchAttachment(messageId: string, attachmentId: string): Promise<Buffer | null> {
+    const res = await fetch(`${GMAIL}/messages/${messageId}/attachments/${attachmentId}`, { headers: this.h() });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const b64: string = (data.data as string) ?? '';
+    if (!b64) return null;
+    // Gmail uses URL-safe base64 without padding — normalize before decode
+    const normalized = b64.replace(/-/g, '+').replace(/_/g, '/').padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
+    return Buffer.from(normalized, 'base64');
   }
 
   private extractBody(payload: Record<string, unknown>): string {

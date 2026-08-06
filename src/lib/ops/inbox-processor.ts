@@ -461,7 +461,7 @@ export async function processInboxEmail(params: {
   // Imágenes que el humano adjuntó vía pedir_a_humano response. Se pasan como
   // contenido multimodal a Claude para que el LLM las vea (Haiku/Sonnet 4.5+
   // soportan vision). Docs (PDF/DOCX) ya vienen parseados en el emailBody.
-  humanAttachmentImages?: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>;
+  attachmentImages?: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>;
   // Dispatcher metadata — set cuando el correo llegó a la bandeja compartida
   // de la org y fue asignado por el dispatcher. En flow per-agent son undefined.
   originScope?:          'per_agent' | 'org_shared';
@@ -475,7 +475,7 @@ export async function processInboxEmail(params: {
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
     autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
     fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
-    humanAttachmentImages,
+    attachmentImages,
     originScope, assignedBy, assignmentConfidence, assignmentMetadata,
   } = params;
 
@@ -620,6 +620,8 @@ Estas reglas se verifican con un safety net post-generación. Violarlas causa qu
 6. FORMATO: el draft se enviará como texto plano al cliente. NO uses markdown (nada de **negritas**, ##encabezados, [links](url), \`código\`, ni backticks). Usa puntos, saltos de línea y guiones normales. Cualquier * o # que dejes se verá crudo en el correo.
 
 7. ADJUNTOS: NUNCA menciones que "adjuntas capturas", "envías archivos", "incluyes documentos", etc. en el draft al cliente. Tú NO puedes adjuntar archivos a un correo saliente. Los archivos que llegan del humano vía pedir_a_humano son PARA TU LECTURA/CONTEXTO, no para reenviar. Si el cliente necesita ver material, invítalo a agendar una llamada o pedir el archivo específico (que un humano lo enviará).
+
+8. LECTURA DE ADJUNTOS Y LINKS ENTRANTES: si el correo entrante trae adjuntos (PDF/DOCX/imagen), estos YA vienen procesados en el body ("Contenido de documentos adjuntos") o como bloques image que puedes ver directamente. Úsalos. Si el correo tiene un LINK a un documento (típico en facturas Netsuite/Nayax: "Ver factura aquí" con URL), usa read_url para descargar y leer el contenido antes de clasificar como discrepancia. NO marques "requiere lectura manual" sin haber intentado read_url primero. Un correo de factura con link válido que no leíste es un fallo tuyo, no del sistema.
 
 Regla de oro: PEDIR AYUDA es SIEMPRE mejor que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
@@ -1011,7 +1013,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     // image para que Claude las vea. Docs (PDF/DOCX) ya vienen parseados en
     // effectiveBody vía resume.ts. Cada imagen consume ~1500 tokens.
     const initialUserContent: Anthropic.ContentBlockParam[] = [{ type: 'text', text: userPrompt }];
-    for (const img of humanAttachmentImages ?? []) {
+    for (const img of attachmentImages ?? []) {
       initialUserContent.push({
         type: 'image',
         source: { type: 'base64', media_type: img.mimeType, data: img.base64 },

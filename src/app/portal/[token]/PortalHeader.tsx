@@ -5,15 +5,19 @@ import Image from 'next/image';
 export interface PortalHeaderProps {
   businessName: string;
   logoUrl?: string | null;
+  mobileNav?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-export default function PortalHeader({ businessName, logoUrl, children }: PortalHeaderProps) {
+export default function PortalHeader({ businessName, logoUrl, mobileNav, children }: PortalHeaderProps) {
   return (
     <header
       role="banner"
-      className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/[0.08] bg-[#1A0A3B] px-4 text-white shadow-[0_1px_0_0_rgba(0,0,0,0.2)]"
+      className="sticky top-0 z-30 flex h-14 items-center gap-2 sm:gap-3 border-b border-white/[0.08] bg-[#1A0A3B] px-3 sm:px-4 text-white shadow-[0_1px_0_0_rgba(0,0,0,0.2)]"
     >
+      {/* Mobile nav trigger (hamburger) — hidden on lg+ */}
+      {mobileNav}
+
       {/* Logo (o placeholder) */}
       {logoUrl ? (
         <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-white/[0.04] ring-1 ring-white/10">

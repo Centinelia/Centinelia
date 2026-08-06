@@ -4,12 +4,20 @@ export interface Attachment {
   mimeType: string;
 }
 
+export interface EmailAttachmentMeta {
+  id:       string;
+  name:     string;
+  mimeType: string;
+  size:     number;
+}
+
 export interface EmailMessage {
   id:        string;
   threadId?: string;
   from:      string;
   subject:   string;
   body:      string;
+  attachments?: EmailAttachmentMeta[];
 }
 
 export interface FileItem {
@@ -50,6 +58,8 @@ export interface EmailConnector {
   sendReply(params: ReplyParams): Promise<void>;
   markRead(messageId: string): Promise<void>;
   unmarkSpam?(messageId: string): Promise<void>;
+  /** Descarga el binario de un attachment del mensaje. Opcional — no todos los providers lo soportan aún. */
+  fetchAttachment?(messageId: string, attachmentId: string): Promise<Buffer | null>;
 }
 
 export interface FilesConnector {

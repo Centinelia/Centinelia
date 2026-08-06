@@ -4,6 +4,34 @@ import { getConnector, type IntegrationRow } from '@/lib/connectors';
 import { dispatchEmail, type DispatchResult } from '@/lib/email/dispatcher';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { EMAIL_BODY_TRUNCATE_CHARS } from '@/lib/constants';
+import { processIncomingAttachments } from '@/lib/email/attachment-reader';
+import type { EmailConnector } from '@/lib/connectors/types';
+
+/**
+ * Enriquece el body del correo con el texto parseado de documentos adjuntos,
+ * y regresa las imágenes listas para multimodal. Tolerante a fallos: si
+ * fetchAttachment no está implementado o falla, regresa body original + [].
+ */
+async function enrichWithAttachments(
+  emailConn: EmailConnector,
+  msg: { id: string; body: string; attachments?: Array<{ id: string; name: string; mimeType: string; size: number }> },
+): Promise<{ body: string; images: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>; metas: Array<{ name: string; url: string; type: string; size: number }> }> {
+  const metas = (msg.attachments ?? []).map(a => ({
+    name: a.name, url: `gmail:${msg.id}/${a.id}`, type: a.mimeType, size: a.size,
+  }));
+  if (!msg.attachments || msg.attachments.length === 0) {
+    return { body: msg.body, images: [], metas };
+  }
+  const processed = await processIncomingAttachments(emailConn, msg.id, msg.attachments);
+  let body = msg.body;
+  if (processed.docTextBlocks.length > 0) {
+    body += `\n\n--- Contenido de documentos adjuntos ---\n${processed.docTextBlocks.join('\n\n')}`;
+  }
+  if (processed.skipped.length > 0) {
+    body += `\n\n[Adjuntos no leídos: ${processed.skipped.join(', ')}]`;
+  }
+  return { body, images: processed.images, metas };
+}
 
 type EmailIntegration = IntegrationRow & {
   agent_id:     string;
@@ -196,6 +224,8 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       console.error(`[email-sync] markRead failed for ${msg.id}:`, err)
     );
 
+    const enriched = await enrichWithAttachments(conn.email, msg);
+
     await processInboxEmail({
       agentId:           agent.id,
       source:            integration.provider,
@@ -203,8 +233,9 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
       threadId:          msg.threadId,
       emailFrom:         msg.from,
       emailSubject:      msg.subject,
-      emailBody:         msg.body,
-      attachments:       [],
+      emailBody:         enriched.body,
+      attachments:       enriched.metas,
+      attachmentImages:  enriched.images.length > 0 ? enriched.images : undefined,
       agentName:         (agent.agent_name as string | null) ?? 'Centinelia',
       businessName:      agent.business_name as string,
       knowledgeBase:     knowledge_base,
@@ -260,30 +291,33 @@ async function syncIntegration(integration: EmailIntegration, supabase: ReturnTy
 
         if (existing) continue;
 
+        const enrichedSpam = await enrichWithAttachments(conn.email, msg);
+
         await processInboxEmail({
-          agentId:       agent.id,
-          source:        integration.provider,
-          rawMessageId:  msg.id,
-          threadId:      msg.threadId,
-          emailFrom:     msg.from,
-          emailSubject:  msg.subject,
-          emailBody:     msg.body,
-          attachments:   [],
-          agentName:     (agent.agent_name as string | null) ?? 'Centinelia',
-          businessName:  agent.business_name as string,
-          knowledgeBase: knowledge_base,
-          roleKB:        agent.role_knowledge_base as string | null,
-          agentRole:     agent.role as string | null,
-          ownerEmail:    agent.client_email as string,
-          portalToken:   agent.portal_token as string,
-          portalEmail:   agent.portal_email as string | undefined,
+          agentId:          agent.id,
+          source:           integration.provider,
+          rawMessageId:     msg.id,
+          threadId:         msg.threadId,
+          emailFrom:        msg.from,
+          emailSubject:     msg.subject,
+          emailBody:        enrichedSpam.body,
+          attachments:      enrichedSpam.metas,
+          attachmentImages: enrichedSpam.images.length > 0 ? enrichedSpam.images : undefined,
+          agentName:        (agent.agent_name as string | null) ?? 'Centinelia',
+          businessName:     agent.business_name as string,
+          knowledgeBase:    knowledge_base,
+          roleKB:           agent.role_knowledge_base as string | null,
+          agentRole:        agent.role as string | null,
+          ownerEmail:       agent.client_email as string,
+          portalToken:      agent.portal_token as string,
+          portalEmail:      agent.portal_email as string | undefined,
           autoMode,
-          approvalEmail: (agent as Record<string, unknown>).approval_email as string | null | undefined,
-          fromSpamFolder: true,
-          unmarkSpamFn:  conn.email.unmarkSpam
+          approvalEmail:    (agent as Record<string, unknown>).approval_email as string | null | undefined,
+          fromSpamFolder:   true,
+          unmarkSpamFn:     conn.email.unmarkSpam
             ? (id: string) => conn.email.unmarkSpam!(id)
             : undefined,
-          sendReplyFn:   (body: string) => conn.email.sendReply({
+          sendReplyFn:      (body: string) => conn.email.sendReply({
             messageId: msg.id,
             threadId:  msg.threadId,
             to:        msg.from,
@@ -530,6 +564,7 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
     });
 
     try {
+      const enrichedOrg = await enrichWithAttachments(conn.email, msg);
       await processInboxEmail({
         agentId:              assignedAgent.id as string,
         source:               org.provider,
@@ -537,8 +572,9 @@ async function syncOrgInbox(org: OrgAccountRow, supabase: ReturnType<typeof crea
         threadId:             msg.threadId,
         emailFrom:            msg.from,
         emailSubject:         msg.subject,
-        emailBody:            msg.body,
-        attachments:          [],
+        emailBody:            enrichedOrg.body,
+        attachments:          enrichedOrg.metas,
+        attachmentImages:     enrichedOrg.images.length > 0 ? enrichedOrg.images : undefined,
         agentName:            (assignedAgent.agent_name as string | null) ?? 'Centinelia',
         businessName:         assignedAgent.business_name as string,
         knowledgeBase:        (orgData as { knowledge_base?: string | null } | null)?.knowledge_base ?? null,

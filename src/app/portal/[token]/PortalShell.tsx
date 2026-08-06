@@ -1,6 +1,7 @@
 import { isPortalV2Enabled } from '@/lib/portal/portal-v2-flag';
 import PortalHeader          from './PortalHeader';
 import PortalSidebarV2Client from './PortalSidebarV2Client';
+import PortalMobileNav       from './PortalMobileNav';
 
 export interface PortalShellProps {
   orgId: string;                          // portal_email — PK of organizations
@@ -50,26 +51,34 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
   const v2Enabled = await isPortalV2Enabled(orgId);
   if (!v2Enabled) return null;
 
+  const sidebarProps = {
+    token,
+    hasOpsAgent,
+    showOutbound,
+    isOwner: isOwner ?? true,
+    modules,
+    status: {
+      minutesRemain:   minutesRemain ?? null,
+      minutesIncluded: minutesIncluded ?? null,
+      aiOpsUsed:       aiOpsUsed ?? null,
+      aiOpsLimit:      aiOpsLimit ?? null,
+      hasStripe:       hasStripe ?? false,
+    },
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
-      <PortalHeader businessName={businessName} logoUrl={logoUrl ?? null}>
+      <PortalHeader
+        businessName={businessName}
+        logoUrl={logoUrl ?? null}
+        mobileNav={<PortalMobileNav {...sidebarProps} />}
+      >
         {headerActions}
       </PortalHeader>
       <div className="flex flex-1">
-        <PortalSidebarV2Client
-          token={token}
-          hasOpsAgent={hasOpsAgent}
-          showOutbound={showOutbound}
-          isOwner={isOwner ?? true}
-          modules={modules}
-          status={{
-            minutesRemain:   minutesRemain ?? null,
-            minutesIncluded: minutesIncluded ?? null,
-            aiOpsUsed:       aiOpsUsed ?? null,
-            aiOpsLimit:      aiOpsLimit ?? null,
-            hasStripe:       hasStripe ?? false,
-          }}
-        />
+        <div className="hidden lg:flex">
+          <PortalSidebarV2Client {...sidebarProps} />
+        </div>
         <main className="flex-1 min-w-0 flex flex-col">{main}</main>
       </div>
     </div>

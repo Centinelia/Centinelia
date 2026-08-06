@@ -212,7 +212,7 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
       existingInboxId:    inbox.id,          // ← reutiliza row existente
       originalEmailBody:  inbox.email_body as string | undefined,
       sendReplyFn,
-      humanAttachmentImages: humanImages.length > 0 ? humanImages : undefined,
+      attachmentImages: humanImages.length > 0 ? humanImages : undefined,
     });
 
     await supabase.from('human_requests').update({ resume_triggered_at: new Date().toISOString() }).eq('id', requestId);
