@@ -69,9 +69,10 @@ export default async function InicioPage() {
       .select('id')
       .gte('created_at', yestIso)
       .lt('created_at', todayIso),
+    // Solo 'escalated' es tu bola. 'pending' es cosa del cliente en su portal.
     supabase.from('ops_inbox')
       .select('id, agent_id, created_at, email_from, email_subject, category, status')
-      .in('status', ['pending', 'escalated'])
+      .eq('status', 'escalated')
       .order('created_at', { ascending: false })
       .limit(20),
     supabase.from('voice_calls')
@@ -175,8 +176,8 @@ export default async function InicioPage() {
     });
   }
 
-  const inboxPendingN = (inboxPending ?? []).length;
-  if (inboxPendingN > 0) {
+  const inboxEscalatedN = (inboxPending ?? []).length;
+  if (inboxEscalatedN > 0) {
     // Agrupar por agent_id para ver a qué empleado pertenece la mayoría
     const byAgent = new Map<string, number>();
     for (const i of (inboxPending ?? []) as { agent_id: string }[]) {
@@ -186,10 +187,10 @@ export default async function InicioPage() {
     const topNames = topAgentIds.map(id => nameOf.get(id) ?? 'empleado').join(', ');
     alerts.push({
       severity: 'high',
-      label:    `${inboxPendingN} correo${inboxPendingN > 1 ? 's' : ''} esperando aprobación`,
+      label:    `${inboxEscalatedN} correo${inboxEscalatedN > 1 ? 's' : ''} escalado${inboxEscalatedN > 1 ? 's' : ''} a ti`,
       sub:      byAgent.size === 1 ? `Del empleado ${topNames}` : `Empleados: ${topNames}${byAgent.size > 3 ? ` +${byAgent.size - 3}` : ''}`,
       href:     '/admin/human-gates?gate_type=ops_inbox',
-      count:    inboxPendingN,
+      count:    inboxEscalatedN,
     });
   }
 
@@ -230,12 +231,21 @@ export default async function InicioPage() {
     });
   }
 
+  const pctLabel = (used: number, included: number): string => {
+    const raw = (used / included) * 100;
+    if (raw > 100) {
+      const over = Math.round(raw - 100);
+      return `100% consumido, +${over}% en sobre-uso`;
+    }
+    return `${Math.round(raw)}%`;
+  };
+
   const criticalMins = agentList.filter(a => a.active && a.minutes_included && (a.minutes_used ?? 0) / a.minutes_included >= 0.9);
   if (criticalMins.length > 0) {
     alerts.push({
       severity: 'med',
       label:    criticalMins.length === 1
-                  ? `${criticalMins[0].business_name}: minutos al ${Math.round(((criticalMins[0].minutes_used ?? 0) / criticalMins[0].minutes_included!) * 100)}%`
+                  ? `${criticalMins[0].business_name}: minutos ${pctLabel(criticalMins[0].minutes_used ?? 0, criticalMins[0].minutes_included!)}`
                   : `${criticalMins.length} clientes con minutos > 90%`,
       sub:      nameList(criticalMins),
       href:     criticalMins.length === 1 ? clientLink(criticalMins[0]) : searchLink(criticalMins[0].business_name),
@@ -248,7 +258,7 @@ export default async function InicioPage() {
     alerts.push({
       severity: 'med',
       label:    criticalOps.length === 1
-                  ? `${criticalOps[0].business_name}: tareas al ${Math.round(((criticalOps[0].ai_ops_used ?? 0) / criticalOps[0].ai_ops_limit!) * 100)}%`
+                  ? `${criticalOps[0].business_name}: tareas ${pctLabel(criticalOps[0].ai_ops_used ?? 0, criticalOps[0].ai_ops_limit!)}`
                   : `${criticalOps.length} clientes con tareas > 90%`,
       sub:      nameList(criticalOps),
       href:     criticalOps.length === 1 ? clientLink(criticalOps[0]) : searchLink(criticalOps[0].business_name),
