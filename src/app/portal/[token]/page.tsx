@@ -53,7 +53,6 @@ import ContractTrackerSection   from './ContractTrackerSection';
 import ContractSection          from './ContractSection';
 import InfoTooltip              from '@/components/InfoTooltip';
 import AccountSerialBadge       from './AccountSerialBadge';
-import InsightsSection          from './InsightsSection';
 import CuentaUsageTabsCard      from './CuentaUsageTabsCard';
 import { BriefDelDiaCard }      from './BriefDelDiaCard';
 import { getOrCreateSerial }    from '@/lib/portal/serial';
@@ -640,7 +639,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
               {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -663,8 +662,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 {arrow} {m.delta}{deltaSuffix}
                               </span>
                             )}
+                          </div>
+                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+                            vs {m.prev}{m.unit} semana anterior
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-              {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
+              {/* ═══ BLOQUE 2: HOY TIENES QUE ATENDER ═══ */}
               {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -749,21 +758,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
-                          </div>
-                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
-                            vs {m.prev}{m.unit} semana anterior
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
-              {/* ═══ BLOQUE 3: INSIGHT — InsightsSection solo aparece si hay data ═══ */}
-              <InsightsSection token={token} />
-
-              {/* Fin de los 3 bloques del briefing */}
+              {/* Fin de los bloques del briefing — InsightsSection removida, vive en /oficina/aprendizajes */}
 
 
             </div>
@@ -1130,7 +1126,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
               {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -1153,8 +1149,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                 {arrow} {m.delta}{deltaSuffix}
                               </span>
                             )}
+                          </div>
+                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+                            vs {m.prev}{m.unit} semana anterior
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-              {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
+              {/* ═══ BLOQUE 2: HOY TIENES QUE ATENDER ═══ */}
               {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
@@ -1239,21 +1245,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
-                          </div>
-                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
-                            vs {m.prev}{m.unit} semana anterior
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
-              {/* ═══ BLOQUE 3: INSIGHT — InsightsSection solo aparece si hay data ═══ */}
-              <InsightsSection token={token} />
-
-              {/* Fin de los 3 bloques del briefing */}
+              {/* Fin de los bloques del briefing — InsightsSection removida, vive en /oficina/aprendizajes */}
 
 
             </div>
