@@ -39,6 +39,8 @@ const SOURCE_META: Record<string, { label: string; trigger: string }> = {
   meeting_processor:   { label: 'Procesamiento de junta',      trigger: 'schedule' },
   report_generator:    { label: 'Generación de reporte',       trigger: 'schedule' },
   tool_execution:      { label: 'Ejecución de herramienta',    trigger: 'manual' },
+  // Backfill histórico (pre-refactor): tareas de agent_tasks importadas
+  agent_task_historical: { label: 'Tarea del agente',           trigger: 'manual' },
   // Fallbacks
   unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
 };
