@@ -41,9 +41,9 @@ export default function PortalHeader({ businessName, logoUrl, mobileNav, childre
         </div>
       )}
 
-      {/* Workspace identity: eyebrow (desktop only) + business name */}
-      <div className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="hidden sm:inline text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
+      {/* Workspace identity: eyebrow + business name */}
+      <div className="flex min-w-0 flex-col leading-tight">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
           Tu oficina digital
         </span>
         <span
@@ -56,7 +56,7 @@ export default function PortalHeader({ businessName, logoUrl, mobileNav, childre
 
       {/* Right slot: user controls injected by the parent page */}
       {children && (
-        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {children}
         </div>
       )}

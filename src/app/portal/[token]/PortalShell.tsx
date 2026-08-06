@@ -17,7 +17,6 @@ export interface PortalShellProps {
   aiOpsUsed?: number | null;
   aiOpsLimit?: number | null;
   hasStripe?: boolean;
-  accountSerial?: string | null;          // shown in mobile drawer for quick copy
   headerActions?: React.ReactNode;        // right slot of V2 header
   main: React.ReactNode;                  // page content
 }
@@ -45,7 +44,6 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
     aiOpsUsed,
     aiOpsLimit,
     hasStripe,
-    accountSerial,
     headerActions,
     main,
   } = props;
@@ -73,7 +71,7 @@ export default async function PortalShell(props: PortalShellProps): Promise<Reac
       <PortalHeader
         businessName={businessName}
         logoUrl={logoUrl ?? null}
-        mobileNav={<PortalMobileNav {...sidebarProps} accountSerial={accountSerial ?? null} />}
+        mobileNav={<PortalMobileNav {...sidebarProps} />}
       >
         {headerActions}
       </PortalHeader>
