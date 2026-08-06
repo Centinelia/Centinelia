@@ -314,59 +314,63 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
         })}
       </nav>
 
-      {/* Usage widget — muestra siempre que haya algún dato de plan */}
-      {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
-        const hasMinPlan = minutesIncluded > 0;
-        const minPct  = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;
-        const opsPct  = aiOpsLimit > 0 ? Math.min(Math.round((aiOpsUsed / aiOpsLimit) * 100), 100) : 0;
-        const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
-        return (
-          <Link
-            href={`/portal/${token}?tab=cuenta#uso-del-mes`}
-            className="block px-3 py-3 mt-auto shrink-0 hover:opacity-80 transition-opacity"
-            style={{ borderTop: '1px solid var(--c-border)' }}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>Uso del mes</p>
-            {/* Minutes */}
-            <div className="mb-2">
-              <div className="flex justify-between mb-1">
-                <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
-                <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
-                  {hasMinPlan ? `${minutesRemain} restantes` : 'Sin plan'}
-                </span>
-              </div>
-              <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
-                <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999, transition: 'width 0.4s' }} />
-              </div>
-            </div>
-            {/* Tareas */}
-            {aiOpsLimit > 0 && (
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
-                  <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>
-                    {opsRemain} restantes
-                  </span>
+      {/* Bloque inferior fijo al fondo (mt-auto en el wrapper) — widget usage + button */}
+      {((minutesIncluded > 0 || aiOpsLimit > 0) || hasStripe) && (
+        <div className="mt-auto shrink-0">
+          {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
+            const hasMinPlan = minutesIncluded > 0;
+            const minPct  = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;
+            const opsPct  = aiOpsLimit > 0 ? Math.min(Math.round((aiOpsUsed / aiOpsLimit) * 100), 100) : 0;
+            const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
+            return (
+              <Link
+                href={`/portal/${token}?tab=cuenta#uso-del-mes`}
+                className="block px-3 py-3 hover:opacity-80 transition-opacity"
+                style={{ borderTop: '1px solid var(--c-border)' }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>Uso del mes</p>
+                {/* Minutes */}
+                <div className="mb-2">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
+                    <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
+                      {hasMinPlan ? `${minutesRemain} restantes` : 'Sin plan'}
+                    </span>
+                  </div>
+                  <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
+                    <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999, transition: 'width 0.4s' }} />
+                  </div>
                 </div>
-                <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
-                  <div style={{ width: `${opsPct}%`, height: '100%', background: uColor(opsPct), borderRadius: 9999, transition: 'width 0.4s' }} />
-                </div>
-              </div>
-            )}
-          </Link>
-        );
-      })()}
+                {/* Tareas */}
+                {aiOpsLimit > 0 && (
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
+                      <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>
+                        {opsRemain} restantes
+                      </span>
+                    </div>
+                    <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
+                      <div style={{ width: `${opsPct}%`, height: '100%', background: uColor(opsPct), borderRadius: 9999, transition: 'width 0.4s' }} />
+                    </div>
+                  </div>
+                )}
+              </Link>
+            );
+          })()}
 
-      {hasStripe && (
-        <div className="px-2 py-3 shrink-0" style={{ borderTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 'none' : '1px solid var(--c-border)', marginTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 0 : 'auto' }}>
-          <a
-            href={`/api/billing/portal-session?token=${token}`}
-            className="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80 w-full"
-            style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', textDecoration: 'none' }}
-          >
-            <CreditCard size={14} style={{ flexShrink: 0 }} />
-            Plan y consumo
-          </a>
+          {hasStripe && (
+            <div className="px-2 py-3" style={{ borderTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 'none' : '1px solid var(--c-border)' }}>
+              <a
+                href={`/api/billing/portal-session?token=${token}`}
+                className="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80 w-full"
+                style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', textDecoration: 'none' }}
+              >
+                <CreditCard size={14} style={{ flexShrink: 0 }} />
+                Plan y consumo
+              </a>
+            </div>
+          )}
         </div>
       )}
     </aside>
