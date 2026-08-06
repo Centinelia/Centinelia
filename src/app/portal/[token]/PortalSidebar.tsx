@@ -67,11 +67,8 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'inicio', moduleId: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
-        { label: 'Resultados',         id: 'resumen' },
-        { label: 'Tu equipo hoy',      id: 'equipo-hoy' },
-        { label: 'Actividad reciente', id: 'actividad' },
-        { label: 'Actividad horaria',  id: 'horas-pico' },
-        { label: 'Reporte mensual',    id: 'reporte-mensual' },
+        { label: 'Cómo va tu semana',    id: 'semana' },
+        { label: 'Hoy tienes que atender', id: 'hoy' },
       ],
     },
     {

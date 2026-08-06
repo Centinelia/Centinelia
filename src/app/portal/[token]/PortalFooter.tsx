@@ -25,7 +25,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
 
   return (
     <div
-      className="px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0 grid grid-cols-3 items-center"
+      className="mt-auto px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0 grid grid-cols-3 items-center"
       style={{ borderTop: '1px solid var(--c-border)' }}
     >
       {/* Left — contact */}

@@ -641,7 +641,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
               {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                <div id="semana" className="rounded-xl p-5 scroll-mt-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                     Cómo va tu semana
                   </h2>
@@ -678,7 +678,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 const pendingCount = apptsHoy.length + (bandejaCount > 0 ? 1 : 0) + (salientesEnCola > 0 ? 1 : 0) + (learningsCount > 0 ? 1 : 0) + reauthAlerts.length;
                 if (pendingCount === 0 && !hasNox && !nextTask) return null;
                 return (
-                <div className="rounded-2xl overflow-hidden"
+                <div id="hoy" className="rounded-2xl overflow-hidden scroll-mt-6"
                   style={{ background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)', border: '2px solid rgba(108,59,255,0.28)', boxShadow: '0 4px 20px rgba(108,59,255,0.08)' }}>
                   <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1195,7 +1195,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
               {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                <div id="semana" className="rounded-xl p-5 scroll-mt-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
                     Cómo va tu semana
                   </h2>
@@ -1232,7 +1232,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 const pendingCount = apptsHoy.length + (bandejaCount > 0 ? 1 : 0) + (salientesEnCola > 0 ? 1 : 0) + (learningsCount > 0 ? 1 : 0) + reauthAlerts.length;
                 if (pendingCount === 0 && !hasNox && !nextTask) return null;
                 return (
-                <div className="rounded-2xl overflow-hidden"
+                <div id="hoy" className="rounded-2xl overflow-hidden scroll-mt-6"
                   style={{ background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)', border: '2px solid rgba(108,59,255,0.28)', boxShadow: '0 4px 20px rgba(108,59,255,0.08)' }}>
                   <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
