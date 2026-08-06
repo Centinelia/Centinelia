@@ -235,6 +235,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                     strokeWidth={1.75}
                     aria-hidden
                     className={active ? 'text-[#6C3BFF]' : 'text-neutral-500'}
+                    {...(group.iconName === 'Meerkat' ? { active } as any : {})}
                   />
                   <span className="flex-1 truncate text-[14px] leading-none">
                     {group.label}

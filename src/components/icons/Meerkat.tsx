@@ -5,6 +5,9 @@ export interface MeerkatIconProps extends AriaAttributes {
   className?:   string;
   style?:       CSSProperties;
   alt?:         string;
+  /** Cuando true renderiza el isotipo lila (brand). Cuando false renderiza
+   *  la variante gris para estados inactivos. Default: false (inactivo). */
+  active?:      boolean;
   /** Ignored — el componente renderiza un PNG con relleno, sin stroke. */
   strokeWidth?: number | string;
   /** Ignored — mismo motivo. */
@@ -25,15 +28,17 @@ export default function Meerkat({
   className,
   style,
   alt       = 'Centinelia',
+  active    = false,
   strokeWidth: _strokeWidth,
   color:       _color,
   ...aria
 }: MeerkatIconProps) {
   const dim = typeof size === 'number' ? `${size}px` : size;
+  const src = active ? '/icons/meerkat-lucide.png' : '/icons/meerkat-lucide-inactive.png';
   return (
     <img
       {...aria}
-      src="/icons/meerkat-lucide.png"
+      src={src}
       alt={alt}
       width={typeof size === 'number' ? size : undefined}
       height={typeof size === 'number' ? size : undefined}
