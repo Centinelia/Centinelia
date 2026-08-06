@@ -13,7 +13,7 @@
  *   />
  */
 
-import { Info } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 export type HeadingLevel = 'h1' | 'h2' | 'h3';
 
@@ -61,27 +61,7 @@ export default function SectionHeader({
         )}
         <HeadingTag className={`${TITLE_CLASS[as]} text-[var(--text-primary)] inline-flex items-center gap-1.5`}>
           {title}
-          {tooltip && (
-            <button
-              type="button"
-              title={tooltip}
-              aria-label="Más información"
-              className="inline-flex items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6C3BFF]"
-              style={{
-                width: 16,
-                height: 16,
-                background: 'rgba(108,59,255,0.10)',
-                border: 'none',
-                padding: 0,
-                cursor: 'help',
-                color: '#9B6DFF',
-                flexShrink: 0,
-                verticalAlign: 'middle',
-              }}
-            >
-              <Info size={10} strokeWidth={2.5} />
-            </button>
-          )}
+          {tooltip && <InfoTooltip text={tooltip} />}
         </HeadingTag>
         {description && (
           <p className="text-[var(--fs-base)] text-[var(--text-secondary)]">

@@ -887,9 +887,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   />
                 </div>
 
-                <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <ContractTrackerSection token={token} />
-                </div>
+                {/* Contratos y fechas críticas — feature oculto por ahora, código preservado */}
+                {false && (
+                  <div id="contratos-internos" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+                    <ContractTrackerSection token={token} />
+                  </div>
+                )}
 
               </div>
 
@@ -947,16 +950,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </p>
               </div>
 
-              {/* Contrato de servicios */}
-              <div id="contrato">
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={contractAcceptedAt}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 
                 {/* ── Col 1: Uso + Compras + Recarga ── */}
@@ -994,24 +987,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                       <div className={isLow ? "p-5" : ""}>
                       <div className="flex flex-col gap-4">
-                        {minutesIncluded > 0 && (
-                          <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                        <div>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                            {minutesIncluded > 0 ? (
                               <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
-                            </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                              <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
-                            </div>
+                            ) : (
+                              <span style={{ color: 'var(--c-text-4)' }}>Sin plan de minutos</span>
+                            )}
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="h-2 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${minutesPct}%` : '0%', background: minutesColor }} />
+                          </div>
+                          {minutesIncluded > 0 && (
                             <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
                               <span>{minutesRemain} disponibles</span>
                               <span>Renueva el {resetDate}</span>
                             </div>
-                            {rolloverMinutes > 0 && (
-                              <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
-                            )}
-                          </div>
-                        )}
+                          )}
+                          {rolloverMinutes > 0 && (
+                            <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                          )}
+                        </div>
                         {aiOpsLimit > 0 && (
                           <div>
                             <div className="flex justify-between text-xs mb-1.5">
@@ -1121,6 +1118,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
 
+              </div>
+
+              {/* Contrato de servicios — al fondo (referencia legal, no diario) */}
+              <div id="contrato">
+                <ContractSection
+                  token={token}
+                  businessName={agent.business_name}
+                  signedAt={contractAcceptedAt}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
+                />
               </div>
             </div>
           )}
@@ -1517,16 +1524,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </p>
               </div>
 
-              {/* Contrato de servicios */}
-              <div id="contrato">
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={contractAcceptedAt}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Col 1: Uso + Compras + Recarga (fused A6) + Contratos ── */}
@@ -1535,24 +1532,28 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <CuentaUsageTabsCard
                       usoContent={
                         <>
-                          {minutesIncluded > 0 && (
-                            <div>
-                              <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                          <div>
+                            <div className="flex justify-between text-xs mb-1.5">
+                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                              {minutesIncluded > 0 ? (
                                 <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
-                              </div>
-                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-                                <div className="h-2 rounded-full transition-all" style={{ width: `${minutesPct}%`, background: minutesColor }} />
-                              </div>
+                              ) : (
+                                <span style={{ color: 'var(--c-text-4)' }}>Sin plan de minutos</span>
+                              )}
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="h-2 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${minutesPct}%` : '0%', background: minutesColor }} />
+                            </div>
+                            {minutesIncluded > 0 && (
                               <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
                                 <span>{minutesRemain} disponibles</span>
                                 <span>Renueva el {resetDate}</span>
                               </div>
-                              {rolloverMinutes > 0 && (
-                                <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
-                              )}
-                            </div>
-                          )}
+                            )}
+                            {rolloverMinutes > 0 && (
+                              <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                            )}
+                          </div>
                           {aiOpsLimit > 0 && (
                             <div>
                               <div className="flex justify-between text-xs mb-1.5">
@@ -1623,12 +1624,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     />
                   </PageSection>
 
-                  {/* ContractTrackerSection moved from /negocio */}
-                  <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
-                    <Card id="contratos-internos" padding="md">
-                      <ContractTrackerSection token={token} />
-                    </Card>
-                  </PageSection>
+                  {/* Contratos y fechas críticas — feature oculto por ahora, código preservado */}
+                  {false && (
+                    <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
+                      <Card id="contratos-internos" padding="md">
+                        <ContractTrackerSection token={token} />
+                      </Card>
+                    </PageSection>
+                  )}
                 </div>
 
                 {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
@@ -1680,6 +1683,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </PageSection>
                 </div>
 
+              </div>
+
+              {/* Contrato de servicios — al fondo (referencia legal, no diario) */}
+              <div id="contrato">
+                <ContractSection
+                  token={token}
+                  businessName={agent.business_name}
+                  signedAt={contractAcceptedAt}
+                  contractPreviewUrl={`/portal/${token}/contrato`}
+                />
               </div>
             </div>
           </PageContainer>
