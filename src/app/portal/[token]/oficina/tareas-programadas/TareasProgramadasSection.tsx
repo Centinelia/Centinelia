@@ -106,36 +106,45 @@ function DeleteConfirmModal({
   taskName, onConfirm, onClose,
 }: { taskName: string; onConfirm: () => void; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 16, maxWidth: 400, width: '100%', padding: 24 }}>
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <AlertTriangle size={18} className="text-red-400" />
-          </div>
-          <div>
-            <p style={{ color: 'var(--c-text)', fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Eliminar tarea programada</p>
-            <p style={{ color: 'var(--c-text-3)', fontSize: 13 }}>Esta acción no se puede deshacer.</p>
-          </div>
-        </div>
-        <p style={{ color: 'var(--c-text-2)', fontSize: 13, background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontStyle: 'italic' }}>
-          "{taskName}"
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'var(--c-surface-2)', color: 'var(--c-text-2)', fontSize: 14, border: 'none', cursor: 'pointer' }}
-          >
-            Cancelar
-          </button>
+    <OficinaModal
+      open
+      onClose={onClose}
+      eyebrow="Eliminar"
+      title="Eliminar tarea programada"
+      description="Esta acción no se puede deshacer."
+      size="md"
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onClose}>Cancelar</OficinaModal.SecondaryAction>
           <button
             onClick={onConfirm}
-            style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: 'rgba(239,68,68,0.12)', color: '#f87171', fontSize: 14, fontWeight: 600, border: '1px solid rgba(239,68,68,0.25)', cursor: 'pointer' }}
+            className="rounded-xl transition-all"
+            style={{
+              padding: '9px 18px', background: '#EF4444', color: '#fff',
+              fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(239,68,68,0.32)',
+            }}
           >
             Eliminar
           </button>
+        </>
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ width: 40, height: 40, background: '#FEF2F2', border: '1px solid #FECACA' }}
+        >
+          <AlertTriangle size={18} style={{ color: '#EF4444' }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] italic p-3 rounded-lg"
+            style={{ color: '#1A0A3B', background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+            &ldquo;{taskName}&rdquo;
+          </p>
         </div>
       </div>
-    </div>
+    </OficinaModal>
   );
 }
 
@@ -145,37 +154,45 @@ function RunResultModal({
   result, onClose,
 }: { result: { ok: boolean; message?: string; error?: string }; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 24 }}>
-        <div className="flex items-start gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${result.ok ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
-            {result.ok
-              ? <CheckCircle2 size={18} className="text-emerald-400" />
-              : <XCircle     size={18} className="text-red-400" />
-            }
-          </div>
-          <div>
-            <p style={{ color: 'var(--c-text)', fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
-              {result.ok ? 'Tarea enviada al agente' : 'Error al ejecutar'}
-            </p>
-            <p style={{ color: 'var(--c-text-3)', fontSize: 13 }}>
-              {result.ok ? 'El agente procesará la instrucción.' : 'Revisa la configuración del agente.'}
-            </p>
-          </div>
-        </div>
-        {(result.message ?? result.error) && (
-          <p style={{ color: 'var(--c-text-2)', fontSize: 12, background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontFamily: 'monospace', lineHeight: 1.6 }}>
-            {result.message ?? result.error}
-          </p>
-        )}
-        <button
-          onClick={onClose}
-          style={{ width: '100%', padding: '10px 0', borderRadius: 10, background: '#6C3BFF', color: '#fff', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+    <OficinaModal
+      open
+      onClose={onClose}
+      eyebrow={result.ok ? 'Ejecutada' : 'Error'}
+      title={result.ok ? 'Tarea enviada al agente' : 'Error al ejecutar'}
+      description={result.ok ? 'El agente procesará la instrucción.' : 'Revisa la configuración del agente.'}
+      size="md"
+      footer={
+        <OficinaModal.PrimaryAction onClick={onClose}>Cerrar</OficinaModal.PrimaryAction>
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{
+            width: 40, height: 40,
+            background: result.ok ? '#ECFDF5' : '#FEF2F2',
+            border:     result.ok ? '1px solid #A7F3D0' : '1px solid #FECACA',
+          }}
         >
-          Cerrar
-        </button>
+          {result.ok
+            ? <CheckCircle2 size={18} style={{ color: '#22C55E' }} />
+            : <XCircle     size={18} style={{ color: '#EF4444' }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          {(result.message ?? result.error) && (
+            <p
+              className="text-[12px] rounded-lg p-3"
+              style={{
+                color: '#1A0A3B', background: '#FAFAFB', border: '1px solid #E8E3F5',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', lineHeight: 1.6,
+              }}
+            >
+              {result.message ?? result.error}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </OficinaModal>
   );
 }
 
