@@ -40,7 +40,7 @@ export default async function HistorialConsumoSection({
     // Tareas ejecutadas — por portal_email
     supabase
       .from('agent_tasks')
-      .select('id, title, description, status, trigger_type, source_context, goal_met, completed_at, created_at, assigned_to')
+      .select('id, title, description, status, trigger_type, source_context, goal_met, completed_at, created_at, assigned_to, current_iteration')
       .eq('portal_email', portalEmail)
       .order('created_at', { ascending: false })
       .limit(500),
@@ -110,6 +110,8 @@ export default async function HistorialConsumoSection({
     status:        (t.status as string) ?? 'pending',
     goalMet:       (t.goal_met as boolean | null) ?? null,
     sourceContext: (t.source_context as string | null) ?? null,
+    // current_iteration ≈ tareas ai_ops consumidas (cada iteración del loop cuesta 1 op)
+    opsUsed:       Math.max(1, (t.current_iteration as number | null) ?? 1),
   }));
 
   if (minutes.length === 0 && tasks.length === 0) {

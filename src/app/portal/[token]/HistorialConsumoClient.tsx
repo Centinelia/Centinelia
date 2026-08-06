@@ -29,6 +29,7 @@ export interface TaskEntry {
   status:        string;             // 'pending' | 'in_progress' | 'completed' | 'failed'
   goalMet:       boolean | null;
   sourceContext: string | null;
+  opsUsed:       number;             // # de tareas (ai_ops) consumidas — típicamente current_iteration
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -248,38 +249,23 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
             const meta = TRIGGER_META[e.triggerType ?? 'manual'] ?? TRIGGER_META.manual;
             const failed  = e.status === 'failed' || e.goalMet === false;
             return (
-              <div key={e.id + i} className="flex items-start gap-2.5 py-2"
+              <div key={e.id + i} className="flex items-center gap-2.5 py-2"
                 style={{ borderTop: '1px solid var(--c-divider)' }}>
-                <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6 mt-0.5"
+                <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
                   style={{ background: `${meta.color}18`, color: meta.color }}>
                   {renderIcon(meta.iconKey)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium leading-snug" style={{ color: 'var(--c-text)' }}>
-                    {e.title || 'Tarea sin título'}
+                  <p className="text-xs font-medium leading-snug truncate" style={{ color: 'var(--c-text)' }}>
+                    {meta.label}
                   </p>
-                  {e.description && (
-                    <p className="text-xs leading-snug mt-0.5" style={{
-                      color: 'var(--c-text-3)',
-                      display:          '-webkit-box',
-                      WebkitLineClamp:  2,
-                      WebkitBoxOrient:  'vertical',
-                      overflow:         'hidden',
-                    }}>
-                      {e.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ background: `${meta.color}18`, color: meta.color }}>
-                      {meta.label}
-                    </span>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     {e.agentName && (
-                      <span className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>
+                      <span className="text-[11px]" style={{ color: '#9B6DFF' }}>
                         {e.agentName}
                       </span>
                     )}
-                    <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                    <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
                       {fmtDate(e.date)} · {fmtTime(e.date)}
                     </span>
                     {failed && (
@@ -289,6 +275,14 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                       </span>
                     )}
                   </div>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--c-text-2)' }}>
+                    −{e.opsUsed}
+                  </span>
+                  <span className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                    {e.opsUsed === 1 ? 'tarea' : 'tareas'}
+                  </span>
                 </div>
               </div>
             );

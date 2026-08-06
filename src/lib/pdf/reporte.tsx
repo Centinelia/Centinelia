@@ -15,6 +15,12 @@ export interface ReporteData {
   tasksTotal:   number;   // ai_ops_limit del período
   outcomeBreakdown: { outcome: string; label: string; count: number; color: string }[];
   topHours?:    { hour: number; count: number }[];
+  // Detalle de tareas del período (fetchea agent_tasks)
+  tasksInPeriod?:  number;
+  tasksCompleted?: number;
+  tasksFailed?:    number;
+  taskTriggerBreakdown?: { trigger: string; label: string; count: number; color: string }[];
+  tasksByAgent?:   { agentName: string; count: number; color: string }[];
 }
 
 // ─── Design tokens (editorial premium) ────────────────────────────────────────
@@ -174,10 +180,108 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
         </View>
       </View>
 
-      {/* ═══ 03 RESULTADOS ════════════════════════════════════════════════════ */}
+      {/* ═══ 03 TAREAS EJECUTADAS ════════════════════════════════════════════ */}
+      {(data.tasksInPeriod ?? 0) > 0 && (
+        <View break style={{ marginBottom: 28 }} wrap={false}>
+          <SectionOrdinal n={3} title="Tareas ejecutadas" color={accent} />
+
+          {/* Success rate + top 2 metrics */}
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+            <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED_TXT, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+                Total ejecutadas
+              </Text>
+              <Text style={{ fontSize: 24, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.6, lineHeight: 1 }}>
+                {data.tasksInPeriod ?? 0}
+              </Text>
+            </View>
+            {(data.tasksCompleted ?? 0) > 0 && (
+              <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED_TXT, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Completadas con éxito
+                </Text>
+                <Text style={{ fontSize: 24, fontFamily: 'Helvetica-Bold', color: '#22C55E', letterSpacing: -0.6, lineHeight: 1 }}>
+                  {data.tasksCompleted ?? 0}
+                  {data.tasksInPeriod ? (
+                    <Text style={{ fontSize: 12, color: MUTED_TXT }}> ({Math.round(((data.tasksCompleted ?? 0) / data.tasksInPeriod) * 100)}%)</Text>
+                  ) : null}
+                </Text>
+              </View>
+            )}
+            {(data.tasksFailed ?? 0) > 0 && (
+              <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 16, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: MUTED_TXT, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Fallidas
+                </Text>
+                <Text style={{ fontSize: 24, fontFamily: 'Helvetica-Bold', color: '#EF4444', letterSpacing: -0.6, lineHeight: 1 }}>
+                  {data.tasksFailed}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Breakdown por tipo (trigger) */}
+          {data.taskTriggerBreakdown && data.taskTriggerBreakdown.length > 0 && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+                Por origen de la tarea
+              </Text>
+              {data.taskTriggerBreakdown.map((row, i) => {
+                const rowPct = data.tasksInPeriod ? Math.round((row.count / data.tasksInPeriod) * 100) : 0;
+                return (
+                  <View key={row.trigger} style={{
+                    flexDirection: 'row',
+                    paddingVertical: 10,
+                    borderBottomWidth: i === data.taskTriggerBreakdown!.length - 1 ? 0 : 1,
+                    borderBottomColor: HAIRLINE,
+                    alignItems: 'center',
+                  }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 4, height: 18, backgroundColor: row.color, borderRadius: 2 }} />
+                      <Text style={{ fontSize: 10, color: INK }}>{row.label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: INK, width: 50, textAlign: 'right', letterSpacing: -0.2 }}>
+                      {row.count}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: SUBINK, width: 50, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
+                      {rowPct}%
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Top empleados */}
+          {data.tasksByAgent && data.tasksByAgent.length > 0 && (
+            <View>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+                Tareas por empleado
+              </Text>
+              {data.tasksByAgent.map((row, i) => {
+                const maxCount = Math.max(...data.tasksByAgent!.map(a => a.count));
+                const barPct = maxCount > 0 ? (row.count / maxCount) * 100 : 0;
+                return (
+                  <View key={row.agentName + i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: i === data.tasksByAgent!.length - 1 ? 0 : 1, borderBottomColor: HAIRLINE }}>
+                    <Text style={{ fontSize: 10, color: INK, width: 90 }}>{row.agentName}</Text>
+                    <View style={{ flex: 1, height: 6, backgroundColor: MUTED_BG, borderRadius: 3 }}>
+                      <View style={{ height: 6, width: `${barPct}%`, backgroundColor: row.color, borderRadius: 3 }} />
+                    </View>
+                    <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: INK, width: 30, textAlign: 'right' }}>
+                      {row.count}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ═══ 04 RESULTADOS DE LLAMADAS ═══════════════════════════════════════ */}
       {data.outcomeBreakdown.length > 0 && (
         <View break style={{ marginBottom: 28 }} wrap={false}>
-          <SectionOrdinal n={3} title="Resultados de llamadas" color={accent} />
+          <SectionOrdinal n={4} title="Resultados de llamadas" color={accent} />
           <View>
             {/* Table header — minimal, just uppercase labels */}
             <View style={{ flexDirection: 'row', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: INK }}>
@@ -218,10 +322,10 @@ export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData
         </View>
       )}
 
-      {/* ═══ 04 HORAS PICO ════════════════════════════════════════════════════ */}
+      {/* ═══ 05 HORAS PICO ════════════════════════════════════════════════════ */}
       {data.topHours && data.topHours.length > 0 && (
         <View style={{ marginBottom: 20 }} wrap={false}>
-          <SectionOrdinal n={4} title="Horas pico de llamadas" color={accent} />
+          <SectionOrdinal n={5} title="Horas pico de llamadas" color={accent} />
           <View style={{ paddingVertical: 6 }}>
             {data.topHours.map(({ hour, count }, i) => {
               const barPct = maxHourCount > 0 ? (count / maxHourCount) * 100 : 0;

@@ -49,7 +49,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const from = new Date(year, month - 1, 1).toISOString();
   const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-  const [callsRes, acctRes, agentsRes] = await Promise.all([
+  const [callsRes, acctRes, agentsRes, tasksRes] = await Promise.all([
     supabase.from('voice_calls')
       .select('outcome, duration_seconds, created_at')
       .eq('agent_id', ctx.agent.id as string)
@@ -60,19 +60,72 @@ export async function GET(req: NextRequest, { params }: Params) {
           .eq('portal_email', ctx.agent.portal_email as string)
           .single()
       : Promise.resolve({ data: null }),
-    // Suma de tareas (ai_ops_used) de todos los agentes de la cuenta
     ctx.agent.portal_email
       ? supabase.from('voice_agents')
-          .select('ai_ops_used, ai_ops_limit')
+          .select('id, agent_name, business_name, ai_ops_used, ai_ops_limit')
           .eq('portal_email', ctx.agent.portal_email as string)
+      : Promise.resolve({ data: [] }),
+    ctx.agent.portal_email
+      ? supabase.from('agent_tasks')
+          .select('status, trigger_type, assigned_to, goal_met, current_iteration, created_at, completed_at')
+          .eq('portal_email', ctx.agent.portal_email as string)
+          .gte('created_at', from).lte('created_at', to)
       : Promise.resolve({ data: [] }),
   ]);
 
   const calls = callsRes.data ?? [];
   const acct  = (acctRes as any).data;
-  const agentsAgg = ((agentsRes as any).data ?? []) as { ai_ops_used?: number; ai_ops_limit?: number }[];
+  const agentsAgg = ((agentsRes as any).data ?? []) as { id: string; agent_name?: string | null; business_name?: string | null; ai_ops_used?: number; ai_ops_limit?: number }[];
   const tasksUsed  = agentsAgg.reduce((s, a) => s + (a.ai_ops_used  ?? 0), 0);
   const tasksTotal = agentsAgg.reduce((s, a) => s + (a.ai_ops_limit ?? 0), 0);
+
+  // Tasks breakdown
+  const tasksData = ((tasksRes as any).data ?? []) as { status: string; trigger_type: string | null; assigned_to: string | null; goal_met: boolean | null; current_iteration: number | null }[];
+  const tasksInPeriod  = tasksData.length;
+  const tasksCompleted = tasksData.filter(t => t.status === 'completed' && t.goal_met !== false).length;
+  const tasksFailed    = tasksData.filter(t => t.status === 'failed' || t.goal_met === false).length;
+
+  const TRIGGER_LABELS: Record<string, { label: string; color: string }> = {
+    voice_call: { label: 'Desde llamada',    color: '#6C3BFF' },
+    email:      { label: 'Desde correo',     color: '#3b82f6' },
+    inbox:      { label: 'Desde bandeja',    color: '#3b82f6' },
+    schedule:   { label: 'Programada',       color: '#a855f7' },
+    scheduled:  { label: 'Programada',       color: '#a855f7' },
+    manual:     { label: 'Manual',           color: '#22c55e' },
+    chat:       { label: 'Desde chat',       color: '#22c55e' },
+    delegation: { label: 'Delegación',       color: '#0d9488' },
+    research:   { label: 'Investigación',    color: '#f59e0b' },
+    document:   { label: 'Documento',        color: '#06b6d4' },
+  };
+  const triggerCounts: Record<string, number> = {};
+  for (const t of tasksData) {
+    const k = t.trigger_type ?? 'manual';
+    triggerCounts[k] = (triggerCounts[k] ?? 0) + 1;
+  }
+  const taskTriggerBreakdown = Object.entries(triggerCounts)
+    .map(([trigger, count]) => ({
+      trigger,
+      count,
+      label: TRIGGER_LABELS[trigger]?.label ?? trigger,
+      color: TRIGGER_LABELS[trigger]?.color ?? '#9ca3af',
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const AGENT_COLORS = ['#6C3BFF', '#9B6DFF', '#3b82f6', '#f59e0b', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'];
+  const agentNameMap: Record<string, string> = {};
+  for (const a of agentsAgg) {
+    agentNameMap[a.id] = (a.agent_name?.trim() || a.business_name || 'Empleado');
+  }
+  const agentCounts: Record<string, number> = {};
+  for (const t of tasksData) {
+    if (!t.assigned_to) continue;
+    const name = agentNameMap[t.assigned_to] ?? 'Empleado';
+    agentCounts[name] = (agentCounts[name] ?? 0) + 1;
+  }
+  const tasksByAgent = Object.entries(agentCounts)
+    .map(([agentName, count], i) => ({ agentName, count, color: AGENT_COLORS[i % AGENT_COLORS.length] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
 
   // Aggregate
   const outcomeCounts: Record<string, number> = {};
@@ -112,6 +165,11 @@ export async function GET(req: NextRequest, { params }: Params) {
       minutesTotal:     acct?.minutes_included ?? 0,
       tasksUsed,
       tasksTotal,
+      tasksInPeriod,
+      tasksCompleted,
+      tasksFailed,
+      taskTriggerBreakdown,
+      tasksByAgent,
       outcomeBreakdown,
       topHours,
     },
