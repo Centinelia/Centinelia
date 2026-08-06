@@ -144,6 +144,20 @@ export async function fetchCatalogo(
     };
   }
 
+  // Envelope-aware: HTTP 200 + {exito:false, ...} = soft error del servidor.
+  const envelope = tramite.response_envelope;
+  if (envelope && result.body && typeof result.body === 'object') {
+    const record = result.body as Record<string, unknown>;
+    if (record[envelope.success_field] === false) {
+      const messageField = envelope.message_field ?? 'mensaje';
+      const message = typeof record[messageField] === 'string' ? String(record[messageField]) : '';
+      return {
+        ok:    false,
+        error: message || `El catálogo '${catalogoKey}' respondió sin éxito.`,
+      };
+    }
+  }
+
   const allItems = extractItems(result.body, catalogo.response_items_path);
   const mapped   = allItems
     .map(r => mapItem(r, catalogo.item_fields))

@@ -46,10 +46,27 @@ export interface SubmitConfig {
   response_success_status: number[];
 }
 
+/**
+ * Config para APIs que devuelven HTTP 200 con `{exito: false, ...}` (soft
+ * errors). Cuando `success_field` está en la config, TODOS los calls al
+ * trámite inspeccionan el body: si el flag es `false`, el executor deriva la
+ * causa por prefijo de mensaje (rate limit → retry, hard reject → escalate,
+ * not-found → fallback manual).
+ */
+export interface EnvelopeConfig {
+  success_field:              string;
+  message_field?:             string;
+  not_found_message_prefix?:  string;
+  rate_limit_message_prefix?: string;
+  hard_reject_flag?:          string;
+}
+
 export interface AuthConfig {
-  type:        'bearer' | 'api_key_header' | 'oauth_client_credentials' | 'none';
-  secret_key?: string;
-  header_name?: string;
+  type:            'bearer' | 'api_key_header' | 'api_key_dual_header' | 'oauth_client_credentials' | 'none';
+  secret_key?:     string;
+  header_name?:    string;
+  secret_key_2?:   string;
+  header_name_2?:  string;
   token_endpoint?: string;
 }
 
@@ -75,6 +92,7 @@ export interface Tramite {
   lookups:                Lookup[];
   submit:                 SubmitConfig;
   reglas_negocio:         ReglasNegocio;
+  response_envelope:      EnvelopeConfig | null | undefined;
   aviso_privacidad_texto: string | null;
   aviso_privacidad_url:   string | null;
   created_at:             string;

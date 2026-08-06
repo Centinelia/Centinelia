@@ -109,6 +109,36 @@ export async function fetchLookup(
     };
   }
 
+  // Envelope-aware: APIs que devuelven HTTP 200 con {exito:false, ...}
+  const envelope = tramite.response_envelope;
+  if (envelope && result.body && typeof result.body === 'object') {
+    const record = result.body as Record<string, unknown>;
+    if (record[envelope.success_field] === false) {
+      const messageField = envelope.message_field ?? 'mensaje';
+      const message = typeof record[messageField] === 'string' ? String(record[messageField]) : '';
+
+      if (envelope.hard_reject_flag && record[envelope.hard_reject_flag] === true) {
+        return {
+          ok:    false,
+          error: message || `El padrón rechazó la consulta '${lookupKey}'. No es posible continuar.`,
+        };
+      }
+      if (envelope.rate_limit_message_prefix && message.startsWith(envelope.rate_limit_message_prefix)) {
+        return {
+          ok:    false,
+          error: `El servicio de verificación '${lookupKey}' está saturado. Intenta en unos momentos.`,
+        };
+      }
+      if (envelope.not_found_message_prefix && message.startsWith(envelope.not_found_message_prefix)) {
+        return { ok: true, found: false, data: null };
+      }
+      return {
+        ok:    false,
+        error: message || `El padrón '${lookupKey}' respondió sin éxito.`,
+      };
+    }
+  }
+
   const data: Record<string, unknown> = {};
   for (const [outputKey, sourcePath] of Object.entries(lookup.response_fields)) {
     data[outputKey] = readByPath(result.body, sourcePath);

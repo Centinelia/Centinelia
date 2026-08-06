@@ -138,11 +138,35 @@ export async function submitTramite(
   }
 
   // 4. Determinar status label y folio
-  const statusLabel = resolveStatus(
+  let statusLabel = resolveStatus(
     httpResult.status,
     httpResult.timedOut,
     tramite.submit.response_success_status,
   );
+
+  // 4b. Envelope-aware: HTTP 200 con {exito:false} degrada status según causa.
+  const envelope = tramite.response_envelope;
+  let envelopeErrorMessage: string | null = null;
+  if (
+    envelope &&
+    statusLabel === 'success' &&
+    httpResult.body &&
+    typeof httpResult.body === 'object'
+  ) {
+    const record = httpResult.body as Record<string, unknown>;
+    if (record[envelope.success_field] === false) {
+      const messageField = envelope.message_field ?? 'mensaje';
+      envelopeErrorMessage = typeof record[messageField] === 'string' ? String(record[messageField]) : '';
+
+      if (envelope.rate_limit_message_prefix && envelopeErrorMessage.startsWith(envelope.rate_limit_message_prefix)) {
+        statusLabel = 'server_error';
+      } else if (envelope.hard_reject_flag && record[envelope.hard_reject_flag] === true) {
+        statusLabel = 'schema_mismatch';
+      } else {
+        statusLabel = 'error';
+      }
+    }
+  }
 
   let folio: string | null = null;
   if (statusLabel === 'success') {
@@ -221,7 +245,9 @@ export async function submitTramite(
   if (statusLabel === 'schema_mismatch') {
     return {
       ok:       false,
-      error:    `El servidor rechazó el formulario con error de validación (422). Puede haber un dato incorrecto. Verifica los datos con el usuario y vuelve a intentar.`,
+      error:    envelopeErrorMessage
+        ? `El servidor rechazó el envío: ${envelopeErrorMessage}`
+        : `El servidor rechazó el formulario con error de validación (422). Puede haber un dato incorrecto. Verifica los datos con el usuario y vuelve a intentar.`,
       escalate: true,
     };
   }
@@ -229,7 +255,9 @@ export async function submitTramite(
   if (statusLabel === 'server_error') {
     return {
       ok:       false,
-      error:    `El servidor del trámite respondió con un error interno (${httpResult.status}). No es posible completar el trámite en este momento. Informa al usuario e intenta más tarde.`,
+      error:    envelopeErrorMessage
+        ? `El servicio del trámite está saturado (${envelopeErrorMessage}). Intenta en unos minutos.`
+        : `El servidor del trámite respondió con un error interno (${httpResult.status}). No es posible completar el trámite en este momento. Informa al usuario e intenta más tarde.`,
       escalate: true,
     };
   }
@@ -237,7 +265,9 @@ export async function submitTramite(
   // Generic error (4xx etc.) — I2: escalate=true porque el agente no puede resolver esto.
   return {
     ok:       false,
-    error:    `El trámite no pudo completarse. El servidor respondió con código ${httpResult.status}. Verifica los datos o contacta a soporte.`,
+    error:    envelopeErrorMessage
+      ? `El trámite no pudo completarse: ${envelopeErrorMessage}`
+      : `El trámite no pudo completarse. El servidor respondió con código ${httpResult.status}. Verifica los datos o contacta a soporte.`,
     escalate: true,
   };
 }
