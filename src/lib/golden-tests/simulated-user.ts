@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { GoldenScenario, ConversationTurn, MeerkatId } from './types';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const client = new Anthropic();
 
@@ -53,13 +54,21 @@ export async function generateUserTurn(
     content: t.content,
   }));
 
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    temperature: TEMPERATURE,
-    system: systemPrompt,
-    messages,
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await client.messages.create({
+      model: MODEL,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      temperature: TEMPERATURE,
+      system: systemPrompt,
+      messages,
+    });
+    void logLlmCall({ source: 'golden_test_user', model: MODEL, usage: response.usage, latencyMs: Date.now() - __t, meta: { scenarioId: scenario.id } });
+  } catch (err) {
+    void logLlmCall({ source: 'golden_test_user', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { scenarioId: scenario.id } });
+    throw err;
+  }
 
   const text = response.content
     .filter(b => b.type === 'text')

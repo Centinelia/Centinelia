@@ -9,6 +9,7 @@ import { getQBClient } from '@/lib/qb/client';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
 import { classifyEmailDraft, type AutoModeVerdict } from '@/lib/tools/email-classifier';
 import { recordInboxCreation, transitionInboxItem, type InboxStatus } from '@/lib/state-machines/inbox-item';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -699,19 +700,23 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   if (autoMode === 'observador') {
     const obsOps = await consumeAiOp(agentId, 1);
     if (obsOps.ok) {
+      const __obsT = Date.now();
+      const __obsM = 'claude-haiku-4-5-20251001';
       try {
         const obsResp = await anthropic.messages.create({
-          model:      'claude-haiku-4-5-20251001',
+          model:      __obsM,
           max_tokens: 300,
           system: [{ type: 'text', text: `Eres un triador de correos para ${businessName}. Solo clasifica y resume, NUNCA redactes respuesta.`, cache_control: { type: 'ephemeral' } }],
           messages: [{ role: 'user', content: `Categorías: proveedor, cliente, urgente, factura, spam, otro.\n\nDe: ${emailFrom}\nAsunto: ${emailSubject}\nCuerpo: ${effectiveBody.slice(0, 2000)}\n\nResponde SOLO JSON: { "category": "...", "summary": "1-2 oraciones en español" }` }],
         });
+        void logLlmCall({ source: 'inbox_processor_observador', model: __obsM, usage: obsResp.usage, agentId, portalEmail, latencyMs: Date.now() - __obsT });
         const txt = obsResp.content.find(b => b.type === 'text');
         const raw = txt?.type === 'text' ? txt.text.trim() : '{}';
         const match = raw.match(/\{[\s\S]*\}/);
         const parsed = match ? JSON.parse(match[0]) as Record<string, unknown> : {};
         result = validateProcessedEmail({ ...parsed, draft: null, needs_info: false });
       } catch (err) {
+        void logLlmCall({ source: 'inbox_processor_observador', model: __obsM, usage: { input_tokens: 0, output_tokens: 0 }, agentId, portalEmail, latencyMs: Date.now() - __obsT, error: err instanceof Error ? err.message : String(err) });
         console.error('[inbox-processor] observador triage error:', err);
       }
     }
@@ -879,13 +884,22 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
           if (!midOps.ok) break;
         }
 
-        const response = await anthropic.messages.create({
-          model:      'claude-haiku-4-5-20251001',
-          max_tokens: 2048,
-          system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-          messages,
-          ...(tools.length && !isLastIter ? { tools } : {}),
-        });
+        const __ipT = Date.now();
+        const __ipM = 'claude-haiku-4-5-20251001';
+        let response;
+        try {
+          response = await anthropic.messages.create({
+            model:      __ipM,
+            max_tokens: 2048,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+            messages,
+            ...(tools.length && !isLastIter ? { tools } : {}),
+          });
+          void logLlmCall({ source: 'inbox_processor', model: __ipM, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __ipT, meta: { iter: i } });
+        } catch (err) {
+          void logLlmCall({ source: 'inbox_processor', model: __ipM, usage: { input_tokens: 0, output_tokens: 0 }, agentId, portalEmail, latencyMs: Date.now() - __ipT, error: err instanceof Error ? err.message : String(err), meta: { iter: i } });
+          throw err;
+        }
 
         const textBlock = response.content.find(b => b.type === 'text');
         if (textBlock?.type === 'text') lastText = textBlock.text.trim();
@@ -924,19 +938,23 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     }
   } else if (opsResult.ok) {
     // No portalEmail — run a simple single-shot analysis without tools
+    const __npT = Date.now();
+    const __npM = 'claude-haiku-4-5-20251001';
     try {
       const response = await anthropic.messages.create({
-        model:      'claude-haiku-4-5-20251001',
+        model:      __npM,
         max_tokens: 1024,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages:   [{ role: 'user', content: userPrompt }],
       });
+      void logLlmCall({ source: 'inbox_processor_noportal', model: __npM, usage: response.usage, agentId, latencyMs: Date.now() - __npT });
       const textBlock = response.content.find(b => b.type === 'text');
       const rawText = textBlock?.type === 'text' ? textBlock.text.trim() : '';
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
       result = validateProcessedEmail(parsed);
     } catch (err) {
+      void logLlmCall({ source: 'inbox_processor_noportal', model: __npM, usage: { input_tokens: 0, output_tokens: 0 }, agentId, latencyMs: Date.now() - __npT, error: err instanceof Error ? err.message : String(err) });
       console.error('[ops/inbox-processor] AI error (no portalEmail):', err);
     }
   }

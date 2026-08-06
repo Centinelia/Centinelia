@@ -11,6 +11,7 @@
  * (checa nox_monthly_reports por unique constraint).
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail, mdToEmailHtml } from '@/lib/email/send';
 import { findNoxAgent } from '@/lib/ops/nox-coordinator';
@@ -184,11 +185,20 @@ Reglas del formato:
 - Si no hubo actividad relevante en algún bloque, dilo explícitamente en vez de rellenar. No inventes datos.`;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const resp = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 800,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-sonnet-4-6';
+  let resp;
+  try {
+    resp = await client.messages.create({
+      model:      __m,
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({ source: 'nox_monthly_report', model: __m, usage: resp.usage, latencyMs: Date.now() - __t, meta: { businessName } });
+  } catch (err) {
+    void logLlmCall({ source: 'nox_monthly_report', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { businessName } });
+    throw err;
+  }
   const block = resp.content.find(b => b.type === 'text');
   return block?.type === 'text' ? block.text.trim() : '';
 }

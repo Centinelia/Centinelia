@@ -20,6 +20,7 @@ import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import { getAgentActivityWindow, renderActivityBlocks, LEARN_CAPS } from '@/lib/ai/activity-window';
 import type { ActivityWindow } from '@/lib/ai/activity-window';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -85,11 +86,20 @@ Responde ÚNICAMENTE con JSON válido:
 
 Máximo 8 aprendizajes. Si no hay evidencia suficiente, responde con learnings vacío.`;
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
-    messages:   [{ role: 'user', content: prompt }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      __m,
+      max_tokens: 1000,
+      messages:   [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({ source: 'learn_cron', model: __m, usage: response.usage, latencyMs: Date.now() - __t, meta: { businessName, role } });
+  } catch (err) {
+    void logLlmCall({ source: 'learn_cron', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { businessName, role } });
+    throw err;
+  }
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

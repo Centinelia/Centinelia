@@ -8,6 +8,7 @@ import { NOX_SYSTEM_PROMPT } from './prompts/nox-system';
 import { NIVA_SYSTEM_PROMPT } from './prompts/niva-system';
 import { getToolsForMeerkat } from './tools';
 import type { MeerkatId, ConversationTurn, ToolCall } from './types';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const client = new Anthropic();
 
@@ -89,14 +90,22 @@ export async function invokeMeerkat(
   let modelUsed = config.model;
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-    const response = await client.messages.create({
-      model: config.model,
-      max_tokens: config.maxTokens,
-      temperature: config.temperature,
-      system: systemPrompt,
-      messages,
-      ...(tools.length > 0 ? { tools } : {}),
-    });
+    const __t = Date.now();
+    let response;
+    try {
+      response = await client.messages.create({
+        model: config.model,
+        max_tokens: config.maxTokens,
+        temperature: config.temperature,
+        system: systemPrompt,
+        messages,
+        ...(tools.length > 0 ? { tools } : {}),
+      });
+      void logLlmCall({ source: 'golden_test', model: config.model, usage: response.usage, latencyMs: Date.now() - __t, meta: { meerkatId, version, iter } });
+    } catch (err) {
+      void logLlmCall({ source: 'golden_test', model: config.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { meerkatId, version, iter } });
+      throw err;
+    }
 
     totalTokens += response.usage.input_tokens + response.usage.output_tokens;
     modelUsed = response.model;

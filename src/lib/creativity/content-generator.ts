@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const MODEL = 'claude-sonnet-4-6' as const;
 
@@ -142,12 +143,20 @@ export async function generateStructuredContent(
   ctx: ContentContext,
 ): Promise<StructuredContent> {
   const anthropic = new Anthropic();
-  const response = await anthropic.messages.create({
-    model:      MODEL,
-    max_tokens: 2000,
-    system:     SYSTEM_PROMPTS[kind],
-    messages:   [{ role: 'user', content: buildUserPrompt(ctx) }],
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      MODEL,
+      max_tokens: 2000,
+      system:     SYSTEM_PROMPTS[kind],
+      messages:   [{ role: 'user', content: buildUserPrompt(ctx) }],
+    });
+    void logLlmCall({ source: 'content_generator', model: MODEL, usage: response.usage, latencyMs: Date.now() - __t, meta: { kind } });
+  } catch (err) {
+    void logLlmCall({ source: 'content_generator', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { kind } });
+    throw err;
+  }
 
   const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
   const jsonMatch = raw.match(/\{[\s\S]*\}/);

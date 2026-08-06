@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,12 +53,21 @@ export async function POST(req: NextRequest) {
     : text;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const response = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 300,
-    system:     systemPrompt,
-    messages:   [{ role: 'user', content: userContent }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await client.messages.create({
+      model:      __m,
+      max_tokens: 300,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userContent }],
+    });
+    void logLlmCall({ source: 'onboarding_improve', model: __m, usage: response.usage, agentId: agent.id, latencyMs: Date.now() - __t, meta: { field } });
+  } catch (err) {
+    void logLlmCall({ source: 'onboarding_improve', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { field } });
+    throw err;
+  }
 
   const improved = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

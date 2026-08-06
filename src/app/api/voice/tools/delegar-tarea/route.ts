@@ -9,6 +9,7 @@ import { planApprovalEmailHtml } from '@/lib/ops/task-plan-email';
 import { sendEmail } from '@/lib/email/send';
 import { traceVoiceCall } from '@/lib/observability/voice-trace';
 import { createAgentTask, transitionAgentTask } from '@/lib/state-machines/agent-task';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -260,12 +261,16 @@ async function evaluateGoal(
   // Es 1 llamada por intento de goal-loop (máx 3 por tarea). El juicio es
   // matiz — "¿realmente cumplió, o solo dijo que sí?" — y Haiku falla en
   // casos borderline. Cost delta absoluto muy pequeño, calidad muy notable.
-  const evalMsg = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 200,
-    messages: [{
-      role:    'user',
-      content: `Evalúa si el resultado de una tarea cumplió el criterio de éxito.
+  const __t = Date.now();
+  const __m = 'claude-sonnet-4-6';
+  let evalMsg;
+  try {
+    evalMsg = await client.messages.create({
+      model:      __m,
+      max_tokens: 200,
+      messages: [{
+        role:    'user',
+        content: `Evalúa si el resultado de una tarea cumplió el criterio de éxito.
 
 Criterio: ${successCriteria}
 
@@ -276,8 +281,13 @@ Sé estricto: si el resultado dice que hizo algo pero no hay evidencia clara, ma
 Responde ÚNICAMENTE con una de estas dos formas:
 CUMPLIDO - [razón breve de por qué sí cumplió]
 NO_CUMPLIDO - [qué faltó o falló específicamente]`,
-    }],
-  });
+      }],
+    });
+    void logLlmCall({ source: 'delegate_goal_eval', model: __m, usage: evalMsg.usage, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'delegate_goal_eval', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const text = evalMsg.content[0]?.type === 'text' ? evalMsg.content[0].text.trim() : '';
   return { met: text.startsWith('CUMPLIDO'), notes: text };
@@ -591,15 +601,24 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < MAX_TOOL_ITER; i++) {
       if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
-      const response = await client.messages.create({
-        // Sonnet 4.6 en vez de Haiku 4.5 por mismo motivo que consultar-agente:
-        // Haiku halucinaba tool use sin invocar realmente los tools.
-        model:      'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-        tools:      DELEGATION_TOOLS,
-        messages,
-      });
+      const __dtT = Date.now();
+      const __dtM = 'claude-sonnet-4-6';
+      let response;
+      try {
+        response = await client.messages.create({
+          // Sonnet 4.6 en vez de Haiku 4.5 por mismo motivo que consultar-agente:
+          // Haiku halucinaba tool use sin invocar realmente los tools.
+          model:      __dtM,
+          max_tokens: 1024,
+          system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+          tools:      DELEGATION_TOOLS,
+          messages,
+        });
+        void logLlmCall({ source: 'delegate', model: __dtM, usage: response.usage, agentId: target.id, portalEmail: caller.portal_email, latencyMs: Date.now() - __dtT, meta: { attempt, iter: i } });
+      } catch (err) {
+        void logLlmCall({ source: 'delegate', model: __dtM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: target.id, portalEmail: caller.portal_email, latencyMs: Date.now() - __dtT, error: err instanceof Error ? err.message : String(err), meta: { attempt, iter: i } });
+        throw err;
+      }
 
       messages.push({ role: 'assistant', content: response.content });
 

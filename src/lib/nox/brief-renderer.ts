@@ -1,6 +1,7 @@
 // src/lib/nox/brief-renderer.ts
 import Anthropic from '@anthropic-ai/sdk';
 import type { BriefData } from './brief-collector';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const MODEL = 'claude-sonnet-4-6' as const;
 
@@ -87,12 +88,20 @@ ${serializeData(data)}
 
 Clasifica cada dato en accion / prep / fyi y devuelve el JSON.`;
 
-  const response = await anthropic.messages.create({
-    model:      MODEL,
-    max_tokens: 1200,
-    system:     SYSTEM_PROMPT,
-    messages:   [{ role: 'user', content: userPrompt }],
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      MODEL,
+      max_tokens: 1200,
+      system:     SYSTEM_PROMPT,
+      messages:   [{ role: 'user', content: userPrompt }],
+    });
+    void logLlmCall({ source: 'brief_renderer', model: MODEL, usage: response.usage, latencyMs: Date.now() - __t, meta: { agentName: ctx.agentName } });
+  } catch (err) {
+    void logLlmCall({ source: 'brief_renderer', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { agentName: ctx.agentName } });
+    throw err;
+  }
 
   const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
 

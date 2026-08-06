@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { getKnowledgeBase } from '@/lib/knowledge-base';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -234,8 +235,10 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   const stream = client.messages.stream({
-    model:      'claude-haiku-4-5-20251001',
+    model:      __m,
     max_tokens: 1024,
     system,
     messages:   messages.slice(-20),
@@ -252,7 +255,12 @@ export async function POST(req: NextRequest) {
           }
         }
         controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
-      } catch {
+        try {
+          const finalMsg = await stream.finalMessage();
+          void logLlmCall({ source: 'portal_chat', model: __m, usage: finalMsg.usage, latencyMs: Date.now() - __t });
+        } catch { /* ignore */ }
+      } catch (err) {
+        void logLlmCall({ source: 'portal_chat', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
         controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ error: 'Error generando respuesta' })}\n\n`));
       } finally {
         controller.close();

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { saveLearnings } from '@/lib/ai/save-learning';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -48,8 +49,12 @@ export async function extractChatLearnings(opts: {
     .map((t, i) => `${i + 1}. ${t.slice(0, 200)}`)
     .join('\n');
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+    model:      __m,
     max_tokens: 400,
     system: [{
       type: 'text',
@@ -90,6 +95,11 @@ Máximo 2 aprendizajes. Si no hay reglas generalizables, responde con learnings 
 ${conversationSummary}`,
     }],
   });
+    void logLlmCall({ source: 'chat_learning', model: __m, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'chat_learning', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId, portalEmail, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

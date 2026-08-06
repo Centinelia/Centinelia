@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -109,9 +110,11 @@ async function generateRenewalDraft(opts: {
 }): Promise<string> {
   const { contractName, contractType, counterparty, daysLeft, businessName, knowledgeBase } = opts;
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 500,
       system: [{
         type: 'text',
@@ -130,8 +133,10 @@ Vence en: ${daysLeft} días
 El borrador debe ser profesional, directo y listo para editar. Máximo 150 palabras.`,
       }],
     });
+    void logLlmCall({ source: 'contracts_monitor', model: __m, usage: msg.usage, latencyMs: Date.now() - __t, meta: { contractName, contractType } });
     return msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
-  } catch {
+  } catch (err) {
+    void logLlmCall({ source: 'contracts_monitor', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { contractName } });
     return '';
   }
 }

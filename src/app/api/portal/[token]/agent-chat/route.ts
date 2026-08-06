@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 import { executeAgentTool, type ReadUrlCounter } from '@/lib/tools/executor';
 import { rateLimit, limiters } from '@/lib/ratelimit';
 import { createElement } from 'react';
@@ -1561,8 +1562,10 @@ ${context}`;
           callCount++;
           llmCalls = callCount;
 
+          const __acT = Date.now();
+          const __acM = 'claude-sonnet-4-6';
           const stream = client.messages.stream({
-            model:      'claude-sonnet-4-6',
+            model:      __acM,
             max_tokens: 2048,
             system:     callCount === 1 ? systemWithAlert : system,
             tools:      sessionTools,
@@ -1573,6 +1576,11 @@ ${context}`;
               ? { tool_choice: { type: 'tool' as const, name: 'buscar_documento_oficina' } }
               : {}),
             messages:   conversationMessages,
+          });
+          stream.finalMessage().then(finalMsg => {
+            void logLlmCall({ source: 'agent_chat', model: __acM, usage: finalMsg.usage, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, meta: { callCount } });
+          }).catch(err => {
+            void logLlmCall({ source: 'agent_chat', model: __acM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __acT, error: err instanceof Error ? err.message : String(err), meta: { callCount } });
           });
 
           const assistantBlocks: AssistantBlock[] = [];

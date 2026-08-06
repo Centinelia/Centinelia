@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -147,12 +148,21 @@ Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
       return { ok: false, error: 'ops_limit_reached' };
     }
 
-    const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages:   [{ role: 'user', content: userPrompt }],
-    });
+    const __t = Date.now();
+    const __m = 'claude-haiku-4-5-20251001';
+    let msg;
+    try {
+      msg = await anthropic.messages.create({
+        model:      __m,
+        max_tokens: 600,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages:   [{ role: 'user', content: userPrompt }],
+      });
+      void logLlmCall({ source: 'report_generator', model: __m, usage: msg.usage, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __t, meta: { reportId } });
+    } catch (err) {
+      void logLlmCall({ source: 'report_generator', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, portalEmail: (agent.portal_email as string | null) ?? null, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { reportId } });
+      throw err;
+    }
 
     const narrative = msg.content[0].type === 'text' ? msg.content[0].text.trim() : 'No se pudo generar el reporte.';
 

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -118,11 +119,20 @@ Responde ÚNICAMENTE con JSON válido en este formato exacto:
 
 Máximo: 4 items por sección. Las sugerencias deben ser texto listo para pegar en el manual del empleado, no instrucciones para el dueño.`;
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      __m,
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({ source: 'historical_synthesis', model: __m, usage: response.usage, agentId: agent.id, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'historical_synthesis', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

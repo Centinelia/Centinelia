@@ -7,6 +7,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import type { createAdminClient } from '@/lib/supabase/admin';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -61,11 +62,20 @@ export async function extractBrandVoice(args: ExtractArgs): Promise<BrandVoiceRe
   if (totalChars < MIN_CHARS_TOTAL) return { ok: false, error: `Muestras muy cortas. Junta al menos ${MIN_CHARS_TOTAL} caracteres entre todas.` };
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const resp = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 1200,
-    messages: [{ role: 'user', content: buildPrompt(cleaned) }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-sonnet-4-6';
+  let resp;
+  try {
+    resp = await client.messages.create({
+      model:      __m,
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: buildPrompt(cleaned) }],
+    });
+    void logLlmCall({ source: 'brand_voice_guide', model: __m, usage: resp.usage, portalEmail, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'brand_voice_guide', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, portalEmail, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const block = resp.content.find(b => b.type === 'text');
   const guide = block?.type === 'text' ? block.text.trim() : '';

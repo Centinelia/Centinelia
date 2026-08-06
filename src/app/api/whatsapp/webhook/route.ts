@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { buildWASystemPrompt } from '@/lib/whatsapp/prompt-builder';
 import { checkAccount } from '@/lib/compliance/account-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 import type { WAMessage, WACapturedLead } from '@/types/whatsapp-agent';
 import type { VoiceAgent } from '@/types/agent';
 
@@ -300,14 +301,23 @@ export async function POST(req: NextRequest) {
   let capturedLead: WACapturedLead | null = null;
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages: claudeMessages,
-      tools: tools.length > 0 ? tools : undefined,
-      tool_choice: tools.length > 0 ? { type: 'auto' } : undefined,
-    });
+    const __waT = Date.now();
+    const __waM = 'claude-haiku-4-5-20251001';
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model: __waM,
+        max_tokens: 1024,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages: claudeMessages,
+        tools: tools.length > 0 ? tools : undefined,
+        tool_choice: tools.length > 0 ? { type: 'auto' } : undefined,
+      });
+      void logLlmCall({ source: 'whatsapp_webhook', model: __waM, usage: response.usage, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __waT });
+    } catch (err) {
+      void logLlmCall({ source: 'whatsapp_webhook', model: __waM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __waT, error: err instanceof Error ? err.message : String(err) });
+      throw err;
+    }
 
     // Extract text reply and handle tool use
     for (const block of response.content) {
@@ -333,6 +343,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!claudeReply) {
+          const __fuT = Date.now();
           const followUp = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -347,6 +358,7 @@ export async function POST(req: NextRequest) {
             ],
             tools,
           });
+          void logLlmCall({ source: 'whatsapp_webhook_followup', model: 'claude-haiku-4-5-20251001', usage: followUp.usage, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __fuT, meta: { tool: 'agendar_cita' } });
           claudeReply = followUp.content
             .filter((b): b is Anthropic.TextBlock => b.type === 'text')
             .map(b => b.text)
@@ -357,6 +369,7 @@ export async function POST(req: NextRequest) {
 
         // If Claude used a tool, get the follow-up text response
         if (!claudeReply) {
+          const __fuT2 = Date.now();
           const followUp = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -374,6 +387,7 @@ export async function POST(req: NextRequest) {
               },
             ],
           });
+          void logLlmCall({ source: 'whatsapp_webhook_followup', model: 'claude-haiku-4-5-20251001', usage: followUp.usage, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __fuT2, meta: { tool: 'guardar_lead' } });
           claudeReply = followUp.content
             .filter((b): b is Anthropic.TextBlock => b.type === 'text')
             .map(b => b.text)
@@ -402,6 +416,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (!claudeReply) {
+          const __fuT3 = Date.now();
           const followUp = await anthropic.messages.create({
             model:   'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -416,6 +431,7 @@ export async function POST(req: NextRequest) {
             ],
             tools,
           });
+          void logLlmCall({ source: 'whatsapp_webhook_followup', model: 'claude-haiku-4-5-20251001', usage: followUp.usage, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __fuT3, meta: { tool: 'delegar_tarea' } });
           claudeReply = followUp.content
             .filter((b): b is Anthropic.TextBlock => b.type === 'text')
             .map(b => b.text)
@@ -429,6 +445,7 @@ export async function POST(req: NextRequest) {
         );
 
         if (!claudeReply) {
+          const __fuT4 = Date.now();
           const followUp = await anthropic.messages.create({
             model:      'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -440,6 +457,7 @@ export async function POST(req: NextRequest) {
             ],
             tools,
           });
+          void logLlmCall({ source: 'whatsapp_webhook_followup', model: 'claude-haiku-4-5-20251001', usage: followUp.usage, agentId: agent.id as string, portalEmail: agent.portal_email, latencyMs: Date.now() - __fuT4, meta: { tool: block.name } });
           claudeReply = followUp.content
             .filter((b): b is Anthropic.TextBlock => b.type === 'text')
             .map(b => b.text)

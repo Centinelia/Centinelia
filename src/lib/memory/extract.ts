@@ -13,6 +13,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PREDICATES } from './types';
 import type { ExtractedFact } from './types';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -87,24 +88,32 @@ export interface ExtractFromTranscriptResult {
 export async function extractFromTranscript(input: ExtractFromTranscriptInput): Promise<ExtractFromTranscriptResult> {
   const model = input.model ?? 'claude-haiku-4-5-20251001';
 
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: 2000,
-    system: [{
-      type: 'text',
-      text: EXTRACTION_SYSTEM,
-      cache_control: { type: 'ephemeral' },
-    }],
-    messages: [{
-      role: 'user',
-      content: [
-        input.callerName ? `HINT: la llamada es con "${input.callerName}".` : '',
-        '',
-        'TRANSCRIPT:',
-        input.transcript.slice(0, 8000),   // cap defensivo — llamadas muy largas se recortan
-      ].filter(Boolean).join('\n'),
-    }],
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model,
+      max_tokens: 2000,
+      system: [{
+        type: 'text',
+        text: EXTRACTION_SYSTEM,
+        cache_control: { type: 'ephemeral' },
+      }],
+      messages: [{
+        role: 'user',
+        content: [
+          input.callerName ? `HINT: la llamada es con "${input.callerName}".` : '',
+          '',
+          'TRANSCRIPT:',
+          input.transcript.slice(0, 8000),   // cap defensivo — llamadas muy largas se recortan
+        ].filter(Boolean).join('\n'),
+      }],
+    });
+    void logLlmCall({ source: 'memory_extract', model, usage: response.usage, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'memory_extract', model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const usage = response.usage as unknown as {
     input_tokens:               number;

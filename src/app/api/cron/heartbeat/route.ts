@@ -8,6 +8,7 @@ import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { sendEmail, shell, heading, infoCard, mdToEmailHtml, agentBrandedFrom } from '@/lib/email/send';
 import { maybeSendQuotaEmail } from '@/lib/ai/quota-email';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 import { getAgentActivityWindow, renderActivityBlocks, HEARTBEAT_CAPS } from '@/lib/ai/activity-window';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
 
@@ -98,14 +99,18 @@ ${activityBlocks}
 Ejecuta la tarea usando toda la información como base. Sé conciso, directo y enfocado en resultados de negocio (leads, citas, ventas, escalaciones). Máximo 400 palabras.`;
 
     let result = '';
+    const __t = Date.now();
+    const __m = 'claude-haiku-4-5-20251001';
     try {
       const response = await anthropic.messages.create({
-        model:      'claude-haiku-4-5-20251001',
+        model:      __m,
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }],
       });
+      void logLlmCall({ source: 'heartbeat', model: __m, usage: response.usage, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t });
       result = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
     } catch (err) {
+      void logLlmCall({ source: 'heartbeat', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
       console.error('Heartbeat AI error:', err);
       continue;
     }

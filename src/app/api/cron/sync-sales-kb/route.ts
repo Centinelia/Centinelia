@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyCronAuth } from '@/lib/auth/cron-auth';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 60;
@@ -47,8 +48,12 @@ export async function GET(req: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const msg = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let msg;
+  try {
+    msg = await client.messages.create({
+    model:      __m,
     max_tokens: 1400,
     messages: [{
       role: 'user',
@@ -77,6 +82,11 @@ Responde con este formato exacto:
 [bullet list de los mensajes más importantes, frases de la landing que reflejan la narrativa]`,
     }],
   });
+    void logLlmCall({ source: 'sync_sales_kb', model: __m, usage: msg.usage, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'sync_sales_kb', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const extracted = ((msg.content[0] as { type: string; text?: string }).text ?? '').trim();
   if (!extracted) {

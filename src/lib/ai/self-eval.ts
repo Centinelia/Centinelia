@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -52,14 +53,23 @@ Escala:
 2 = Deficiente: objetivo no logrado o errores importantes
 1 = Crítico: límites de autoridad violados o problemas graves generados`);
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 300,
-    messages: [{
-      role:    'user',
-      content: lines.join('\n'),
-    }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      __m,
+      max_tokens: 300,
+      messages: [{
+        role:    'user',
+        content: lines.join('\n'),
+      }],
+    });
+    void logLlmCall({ source: 'self_eval', model: __m, usage: response.usage, latencyMs: Date.now() - __t, meta: { callId } });
+  } catch (err) {
+    void logLlmCall({ source: 'self_eval', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { callId } });
+    throw err;
+  }
 
   const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

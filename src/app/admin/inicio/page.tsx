@@ -55,6 +55,7 @@ export default async function InicioPage() {
     { data: lastCallsPerAgent },
     { data: acctMinsData },
     { count: opsLogCount },
+    { data: llmCostRows },
     approvalsPending,
     vapiAccount,
     twilioBalance,
@@ -84,6 +85,12 @@ export default async function InicioPage() {
     supabase.from('account_minutes').select('portal_email, minutes_used, minutes_included'),
     supabase.from('ai_ops_log')
       .select('id', { count: 'exact', head: true })
+      .gte('created_at', monthStartIso),
+    // Real Claude spend del mes: suma cost_usd de llm_call_log (todas las llamadas
+    // reales, no estimadas por tarea). Volumen esperado < 10K rows/mes; reduce en
+    // JS es aceptable. Si crece, mover a RPC/vista materializada.
+    supabase.from('llm_call_log')
+      .select('cost_usd')
       .gte('created_at', monthStartIso),
     pendingApprovalsCount(),
     fetch('https://api.vapi.ai/account', {
@@ -131,17 +138,21 @@ export default async function InicioPage() {
   const VAPI_LOW_THRESHOLD   = 20;  // USD
   const TWILIO_LOW_THRESHOLD = 10;  // USD
 
-  // Infra: Claude estimated cost del mes.
-  // Fuente: ai_ops_log (incluye pool anual + Stripe legacy + demos).
-  // Sigue siendo estimado: no cuenta CES eval, learn cron, golden tests,
-  // admin /comando, generate-kb, ni tokens reales del prompt. Para exacto
-  // ver console.anthropic.com.
-  const opsThisMonth        = opsLogCount ?? 0;
-  const estimatedClaudeCost = opsThisMonth * 0.0024;
-  const claudeBudget        = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
-  const claudeBudgetPct     = Math.min(Math.round((estimatedClaudeCost / claudeBudget) * 100), 100);
-  const claudeOverBudget    = estimatedClaudeCost >= claudeBudget;
-  const claudeNearBudget    = !claudeOverBudget && claudeBudgetPct >= 70;
+  // Infra: Claude cost real del mes desde llm_call_log.
+  // Cada llamada a anthropic.messages.create se loguea con tokens reales +
+  // cost_usd calculado. Incluye CES eval, learn cron, golden tests, admin
+  // chat, generate-kb, inbox-processor, delegate, consult, voz (customLLM),
+  // etc. Fuente única de verdad, más precisa que estimado por tarea.
+  const opsThisMonth      = opsLogCount ?? 0;
+  const llmCallCount      = (llmCostRows ?? []).length;
+  const actualClaudeCost  = (llmCostRows ?? []).reduce(
+    (sum: number, r: { cost_usd: number | string | null }) => sum + Number(r.cost_usd ?? 0),
+    0,
+  );
+  const claudeBudget      = parseFloat(process.env.CLAUDE_MONTHLY_BUDGET ?? '50');
+  const claudeBudgetPct   = Math.min(Math.round((actualClaudeCost / claudeBudget) * 100), 100);
+  const claudeOverBudget  = actualClaudeCost >= claudeBudget;
+  const claudeNearBudget  = !claudeOverBudget && claudeBudgetPct >= 70;
 
   // Consolidated alerts (business + infra)
   interface AlertItem {
@@ -234,7 +245,7 @@ export default async function InicioPage() {
   if (claudeOverBudget) {
     alerts.push({
       severity: 'high',
-      label:    `Claude sobre presupuesto: ~$${estimatedClaudeCost.toFixed(2)} de $${claudeBudget} USD`,
+      label:    `Claude sobre presupuesto: $${actualClaudeCost.toFixed(2)} de $${claudeBudget} USD`,
       sub:      'Revisa uso real en console.anthropic.com',
       href:     'https://console.anthropic.com/settings/usage',
     });
@@ -278,7 +289,7 @@ export default async function InicioPage() {
   if (claudeNearBudget) {
     alerts.push({
       severity: 'med',
-      label:    `Claude cerca del límite: ~$${estimatedClaudeCost.toFixed(2)} (${claudeBudgetPct}%)`,
+      label:    `Claude cerca del límite: $${actualClaudeCost.toFixed(2)} (${claudeBudgetPct}%)`,
       sub:      `Presupuesto mensual $${claudeBudget} USD. Revisa uso en Anthropic.`,
       href:     'https://console.anthropic.com/settings/usage',
     });
@@ -489,11 +500,11 @@ export default async function InicioPage() {
           <InfraMini
             icon={<Zap size={15} />}
             label="Claude, gasto mensual"
-            value={`~$${estimatedClaudeCost.toFixed(2)}`}
+            value={`$${actualClaudeCost.toFixed(2)}`}
             unit="USD"
             danger={claudeOverBudget}
             warn={claudeNearBudget}
-            hint={`${opsThisMonth.toLocaleString('es-MX')} tareas del mes de $${claudeBudget} (${claudeBudgetPct}%)`}
+            hint={`${opsThisMonth.toLocaleString('es-MX')} tareas · ${llmCallCount.toLocaleString('es-MX')} llamadas Claude · ${claudeBudgetPct}% de $${claudeBudget}`}
             iconColor={claudeOverBudget ? '#EF4444' : claudeNearBudget ? '#F59E0B' : '#F59E0B'}
             iconBg={claudeOverBudget ? '#FEF2F2' : '#FFFBEB'}
           />

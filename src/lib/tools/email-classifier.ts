@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -93,6 +94,7 @@ export async function classifyEmailDraft(opts: ClassifyOpts): Promise<AutoModeVe
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CLASSIFIER_TIMEOUT_MS);
 
+  const __t = Date.now();
   try {
     const resp = await anthropic.messages.create(
       {
@@ -103,6 +105,7 @@ export async function classifyEmailDraft(opts: ClassifyOpts): Promise<AutoModeVe
       },
       { signal: controller.signal },
     );
+    void logLlmCall({ source: 'email_classifier', model: MODEL, usage: resp.usage, latencyMs: Date.now() - __t, meta: { category: opts.category } });
 
     const textBlock = resp.content.find(b => b.type === 'text');
     const raw = textBlock?.type === 'text' ? textBlock.text.trim() : '';
@@ -127,6 +130,7 @@ export async function classifyEmailDraft(opts: ClassifyOpts): Promise<AutoModeVe
     return { decision: decisionRaw, reason, signals };
 
   } catch (err: unknown) {
+    void logLlmCall({ source: 'email_classifier', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { category: opts.category } });
     const isAbort = err instanceof Error && err.name === 'AbortError';
     const anthropicErr = err as { status?: number };
     if (isAbort) return failClosed('classifier_timeout', 'Timeout');

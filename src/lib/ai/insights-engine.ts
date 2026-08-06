@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getGoalsWithProgress } from '@/lib/goals/progress';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentActivityWindow, renderActivityBlocks, WEEKLY_CAPS } from './activity-window';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -222,11 +223,20 @@ export async function generateLLMInsights(opts: {
   lines.push('Responde SOLO con un array JSON valido:');
   lines.push('[{"title":"...","body":"...","metric_key":"...","current_value":0,"priority":"high|medium|low"}]');
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 1000,
-    messages:   [{ role: 'user', content: lines.join('\n') }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      __m,
+      max_tokens: 1000,
+      messages:   [{ role: 'user', content: lines.join('\n') }],
+    });
+    void logLlmCall({ source: 'insights_engine', model: __m, usage: response.usage, agentId: opts.agentId, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'insights_engine', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: opts.agentId, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const first = response.content[0];
   const raw   = first.type === 'text' ? first.text.trim() : '';

@@ -27,6 +27,7 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { transformRequest, type OpenAIRequest } from '@/lib/voice/openai-to-anthropic';
 import { anthropicToOpenAISse } from '@/lib/voice/anthropic-to-openai-sse';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic  = 'force-dynamic';
 export const runtime  = 'nodejs';   // streaming SSE necesita nodejs (edge tiene TTFB issues con anthropic-ai/sdk)
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
     return jsonError(`Transform failed: ${err instanceof Error ? err.message : String(err)}`, 500);
   }
 
+  const __t = Date.now();
   const stream = anthropic.messages.stream({
     model:       params.model,
     max_tokens:  params.max_tokens,
@@ -104,7 +106,12 @@ export async function POST(req: NextRequest) {
         for await (const chunk of anthropicToOpenAISse(stream, model)) {
           controller.enqueue(encoder.encode(chunk));
         }
+        try {
+          const finalMsg = await stream.finalMessage();
+          void logLlmCall({ source: 'voice_llm', model: params.model, usage: finalMsg.usage, latencyMs: Date.now() - __t });
+        } catch { /* ignore usage capture errors */ }
       } catch (err) {
+        void logLlmCall({ source: 'voice_llm', model: params.model, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
         console.error('[voice/llm] stream error:', err);
         // Emit error inline como SSE para que Vapi no cuelgue esperando [DONE]
         const msg = err instanceof Error ? err.message : String(err);

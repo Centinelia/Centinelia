@@ -17,6 +17,7 @@
  * Cheap (Haiku, ~300 tokens). Fail-open ante errores del verifier.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -61,21 +62,25 @@ export async function verifyGoalResponse(opts: VerifyResponseOpts): Promise<Goal
     opts.agentResponse.slice(0, 2000),
   ].join('\n');
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const resp = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 200,
       system: [{ type: 'text', text: RESPONSE_VERIFIER_SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMsg }],
     });
+    void logLlmCall({ source: 'goal_verifier', model: __m, usage: resp.usage, latencyMs: Date.now() - __t });
     const raw = resp.content[0].type === 'text' ? resp.content[0].text.trim() : '';
-    const m   = raw.match(/\{[\s\S]*\}/);
-    if (!m) return { met: true, concern: null };
-    const parsed = JSON.parse(m[0]) as { met?: unknown; concern?: unknown };
+    const m2   = raw.match(/\{[\s\S]*\}/);
+    if (!m2) return { met: true, concern: null };
+    const parsed = JSON.parse(m2[0]) as { met?: unknown; concern?: unknown };
     const met     = typeof parsed.met === 'boolean' ? parsed.met : true;
     const concern = typeof parsed.concern === 'string' ? parsed.concern.slice(0, 300) : null;
     return { met, concern };
   } catch (err) {
+    void logLlmCall({ source: 'goal_verifier', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
     console.error('[goal-verifier] error, fail-open:', err);
     return { met: true, concern: null };
   }
