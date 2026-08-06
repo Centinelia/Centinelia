@@ -8,6 +8,7 @@ interface Props {
   businessName:     string;
   logoUrl:          string | null;
   businessOptions: { business_name: string; logo_url: string | null; first_token: string }[];
+  mobileNav?:       React.ReactNode;
 }
 
 /**
@@ -20,7 +21,7 @@ interface Props {
  * separados por '×' (colaboración). BusinessChip clickable actúa como switcher
  * cuando el owner tiene >1 organización.
  */
-export default function OficinaHeaderDark({ token, businessName, logoUrl, businessOptions }: Props) {
+export default function OficinaHeaderDark({ token, businessName, logoUrl, businessOptions, mobileNav }: Props) {
   return (
     <div
       className="sticky top-0 z-20 flex items-center justify-between gap-3 px-3 sm:px-5"
@@ -31,7 +32,8 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
       }}
     >
       {/* Left — co-brand + eyebrow */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {mobileNav}
         <Link
           href={`/portal/${token}?tab=inicio`}
           className="flex items-center gap-3 shrink-0"

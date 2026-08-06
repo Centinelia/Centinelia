@@ -160,6 +160,19 @@ export default async function OficinaLayout({
             businessName={agent.business_name}
             logoUrl={(agent as any).logo_url ?? null}
             businessOptions={businessGroups}
+            mobileNav={
+              <OficinaMobileNav
+                token={token}
+                badges={badges}
+                minutesRemain={minutesRemain}
+                minutesIncluded={minutesIncluded}
+                aiOpsUsed={aiOpsUsed}
+                aiOpsLimit={aiOpsLimit}
+                hasStripe={hasStripe}
+                vertical={vertical}
+                modules={modules}
+              />
+            }
           />
 
           <div className="flex flex-1 min-h-0">

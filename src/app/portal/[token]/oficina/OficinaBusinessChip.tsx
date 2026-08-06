@@ -13,7 +13,22 @@ import { ChevronDown, Check } from 'lucide-react';
 
 type BizOption = { business_name: string; logo_url: string | null; first_token: string };
 
-function BizAvatarDark({ name, logo_url, size = 32 }: { name: string; logo_url: string | null; size?: number }) {
+function BizAvatarDark({ name, logo_url, size = 46 }: { name: string; logo_url: string | null; size?: number }) {
+  // Con logo: <img> directo, mismo tratamiento que el Centinelia icon (sin
+  // background ni border). Sin logo: fallback círculo con inicial que sí
+  // necesita container para que se vea el placeholder.
+  if (logo_url) {
+    return (
+      <img
+        src={logo_url}
+        alt={name}
+        width={size}
+        height={size}
+        style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+        draggable={false}
+      />
+    );
+  }
   return (
     <div
       className="rounded-md flex items-center justify-center overflow-hidden flex-shrink-0"
@@ -24,12 +39,9 @@ function BizAvatarDark({ name, logo_url, size = 32 }: { name: string; logo_url: 
         border:     '1px solid rgba(255,255,255,0.12)',
       }}
     >
-      {logo_url
-        ? <img src={logo_url} alt={name} className="w-full h-full object-contain p-0.5" />
-        : <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-            {name.slice(0, 2).toUpperCase()}
-          </span>
-      }
+      <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>
+        {name.slice(0, 2).toUpperCase()}
+      </span>
     </div>
   );
 }
