@@ -14,6 +14,7 @@ import {
   CreditCard,
   type LucideIcon,
 } from 'lucide-react';
+import Meerkat from '@/components/icons/Meerkat';
 import {
   buildPortalNav,
   type BuildNavInput,
@@ -23,6 +24,8 @@ import { uColor } from '@/lib/portal/utils';
 
 // ─── Icon registry ─────────────────────────────────────────────────────────────
 
+// LucideIcon-compatible custom icons son válidos: solo requieren aceptar
+// `size`, `strokeWidth`, `className`, `style` como props de SVG.
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   Building2,
@@ -31,6 +34,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Phone,
   CircleUser,
   Users,
+  Meerkat: Meerkat as unknown as LucideIcon,
 };
 
 // ─── Public props ──────────────────────────────────────────────────────────────

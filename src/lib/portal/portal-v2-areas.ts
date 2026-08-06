@@ -92,7 +92,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
   all.push({
     id: 'agentes',
     label: 'Empleados',
-    iconName: 'Bot',
+    iconName: 'Meerkat',
     moduleId: 'agentes',
     directHref: `/portal/${t}/agentes`,
   });

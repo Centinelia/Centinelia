@@ -237,10 +237,10 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           // Cada item incluye el tab correcto para que ConfigurarTabs lo abra
           // y haga scroll al anchor correspondiente.
           const pending = [
-            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',        tab: 'tools',     anchor: 'llamadas' },
-            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'knowledge', anchor: 'rol'      },
+            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',          tab: 'tools',        anchor: 'llamadas' },
+            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'rol',          anchor: 'rol'      },
             !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'tools', anchor: 'llamadas' },
-            needsEmail       && { label: 'Conecta un correo para el empleado',                    tab: 'knowledge', anchor: 'correo'   },
+            needsEmail       && { label: 'Conecta un correo para el empleado',                      tab: 'tools',        anchor: 'correo'   },
           ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
 
           if (pending.length === 0) return null;
@@ -289,7 +289,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           <ConfigurarTabs roleColor={roleColor}>
 
-            {/* ── Tab 0: Personalidad y voz ─────────────────────────────── */}
+            {/* ── Tab 0: Personalidad ────────────────────────────────────
+                 Cómo suena y cómo se identifica el empleado.               */}
             <div className="flex flex-col gap-5">
 
               {hasVoice && (
@@ -319,6 +320,40 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   </Card>
                 </div>
               )}
+
+              {!isCoordinator && (
+                <div id="tono-de-marca" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Tono de marca"
+                      tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico."
+                      className="mb-4"
+                    />
+                    <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
+                  </Card>
+                </div>
+              )}
+
+              {isOwner && hasVoiceJornada && (
+                <div id="passphrase" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Frase de verificación interna"
+                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
+                      className="mb-4"
+                    />
+                    <PassphraseEditor token={token} initial={ownerPassphrase} />
+                  </Card>
+                </div>
+              )}
+
+            </div>
+
+            {/* ── Tab 1: Rol y conocimiento ──────────────────────────────
+                 Qué sabe y qué le toca hacer.                              */}
+            <div className="flex flex-col gap-5">
 
               <div id="rol" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
@@ -353,19 +388,21 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </Card>
               </div>
 
-              {!isCoordinator && (
-                <div id="tono-de-marca" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Tono de marca"
-                      tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Tus empleados hablarán como tu marca, no con un tono genérico."
-                      className="mb-4"
-                    />
-                    <BrandVoiceEditor token={token} initGuide={brandVoiceGuide} roleColor={roleColor} />
-                  </Card>
-                </div>
-              )}
+              <div id="aprendizaje" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Aprendizaje de plataformas"
+                    tooltip="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae."
+                    className="mb-4"
+                  />
+                  <RoleEmailLearningSection
+                    token={token}
+                    connectedEmail={connectedEmail}
+                    agentRole={agentRole || agentName}
+                  />
+                </Card>
+              </div>
 
               {['noah', 'nelia'].includes(meerkatId ?? '') && (
                 <div id="plantillas" style={SCROLL_STYLE}>
@@ -390,45 +427,86 @@ export default async function ConfigurarAgentePage({ params }: Props) {
 
             </div>
 
-            {/* ── Tab 1: Conocimiento y guardrails ──────────────────────── */}
+            {/* ── Tab 2: Herramientas ────────────────────────────────────
+                 Con qué canales y apps interactúa el empleado.             */}
             <div className="flex flex-col gap-5">
 
-              {/* Accordion: Aprendizaje */}
-              <details open>
-                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                  <span>▶</span> Aprendizaje
-                </summary>
-                <div id="aprendizaje" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h3"
-                      title="Aprendizaje de plataformas"
-                      tooltip="Tu empleado lee los correos de la organización, filtra los de su área y aprende cómo se toman decisiones reales. No almacena correos, solo las reglas que extrae."
-                      className="mb-4"
-                    />
-                    <RoleEmailLearningSection
-                      token={token}
-                      connectedEmail={connectedEmail}
-                      agentRole={agentRole || agentName}
-                    />
-                  </Card>
-                </div>
-              </details>
-
-              {/* Accordion: Correo */}
-              <details open>
-                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                  <span>▶</span> Correo (email)
-                </summary>
-                <div id="correo" style={SCROLL_STYLE}>
+              {!isCoordinator && (
+                <div id="llamadas" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
-                      title="Correo"
-                      tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
+                      title="Llamadas entrantes"
+                      tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
                       className="mb-4"
                     />
-                    {connectedEmail ? (
+                    <AgentCustomization
+                      token={token}
+                      initGreeting={(agent as any).first_message ?? ''}
+                      initTransferRules={(agent as any).transfer_rules ?? ''}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && hasVoiceJornada && !!(agent as any).phone_number && (
+                <div id="desvio" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Desvío de llamadas"
+                      tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
+                      className="mb-4"
+                    />
+                    <CallForwardingSection
+                      phoneNumber={(agent as any).phone_number as string}
+                      agentName={agentName}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              {!isCoordinator && (
+                <div id="equipo" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Números del equipo"
+                      tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
+                      className="mb-4"
+                    />
+                    <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
+                  </Card>
+                </div>
+              )}
+
+              {showOutbound && (
+                <div id="llamadas-salientes" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Llamadas salientes"
+                      tooltip="Activa o desactiva las llamadas salientes y el recovery de llamadas perdidas para este empleado."
+                      className="mb-4"
+                    />
+                    <OutboundToggles
+                      token={token}
+                      initOutbound={initOutbound}
+                      initMissedCallRecovery={initMissedCall}
+                    />
+                  </Card>
+                </div>
+              )}
+
+              <div id="correo" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Correo"
+                    tooltip="Conecta la cuenta de correo que este empleado usará para enviar y leer mensajes."
+                    className="mb-4"
+                  />
+                  {connectedEmail ? (
                       <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-2.5 rounded-xl px-4 py-3"
                           style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.18)' }}>
@@ -514,207 +592,43 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                     </div>
                   </Card>
                 </div>
-              </details>
 
-              {/* Accordion: Integraciones externas */}
-              <details open>
-                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                  <span>▶</span> Integraciones externas
-                </summary>
-                <div id="sheets-del-negocio" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SheetsMappingsSection
-                      token={token}
-                      agentId={agent.id}
-                      initialSyncLeads={syncLeadsToSheets}
-                    />
-                  </Card>
-                </div>
-              </details>
-
-              {isOwner && hasVoiceJornada && (
-                <div id="passphrase" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Frase de verificación interna"
-                      tooltip="Dila al teléfono desde cualquier número y el empleado sabrá que eres tú o alguien del equipo autorizado."
-                      className="mb-4"
-                    />
-                    <PassphraseEditor token={token} initial={ownerPassphrase} />
-                  </Card>
-                </div>
-              )}
-
-              {!isCoordinator && (
-                <div id="notificaciones" style={SCROLL_STYLE}>
-                  <Card border elevated={false} padding="sm">
-                    <SectionHeader
-                      as="h2"
-                      title="Notificaciones"
-                      tooltip="Elige cómo quieres recibir la información de cada llamada atendida por este empleado."
-                      className="mb-4"
-                    />
-                    <NotificationsToggle
-                      token={token}
-                      initWhatsApp={(agent as any).notify_whatsapp ?? false}
-                      initEmail={(agent as any).notify_email ?? true}
-                    />
-                  </Card>
-                </div>
-              )}
+              {/* Sheets del negocio — herramienta de integración externa */}
+              <div id="sheets-del-negocio" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SheetsMappingsSection
+                    token={token}
+                    agentId={agent.id}
+                    initialSyncLeads={syncLeadsToSheets}
+                  />
+                </Card>
+              </div>
 
             </div>
 
-            {/* ── Tab 2: Herramientas e integraciones ───────────────────── */}
+            {/* ── Tab 3: Autonomía y avisos ──────────────────────────────
+                 Cuánto decide solo y cómo te informa.                      */}
             <div className="flex flex-col gap-5">
 
-              {/* Accordion: Llamadas */}
-              {!isCoordinator && (
-                <details open>
-                  <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                    <span>▶</span> Llamadas
-                  </summary>
-                  <div className="flex flex-col gap-5">
-                    <div id="llamadas" style={SCROLL_STYLE}>
-                      <Card border elevated={false} padding="sm">
-                        <SectionHeader
-                          as="h2"
-                          title="Llamadas entrantes"
-                          tooltip="Ajusta cómo saluda el empleado, cuándo transfiere y cómo trata a los clientes."
-                          className="mb-4"
-                        />
-                        <AgentCustomization
-                          token={token}
-                          initGreeting={(agent as any).first_message ?? ''}
-                          initTransferRules={(agent as any).transfer_rules ?? ''}
-                        />
-                      </Card>
-                    </div>
+              <div id="autonomia" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Nivel de autonomía"
+                    tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
+                    className="mb-4"
+                  />
+                  <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
+                </Card>
+              </div>
 
-                    {hasVoiceJornada && !!(agent as any).phone_number && (
-                      <div id="desvio" style={SCROLL_STYLE}>
-                        <Card border elevated={false} padding="sm">
-                          <SectionHeader
-                            as="h2"
-                            title="Desvío de llamadas"
-                            tooltip="Redirige las llamadas de tu número actual al número Centinelia para que tu empleado las atienda automáticamente."
-                            className="mb-4"
-                          />
-                          <CallForwardingSection
-                            phoneNumber={(agent as any).phone_number as string}
-                            agentName={agentName}
-                          />
-                        </Card>
-                      </div>
-                    )}
-
-                    <div id="equipo" style={SCROLL_STYLE}>
-                      <Card border elevated={false} padding="sm">
-                        <SectionHeader
-                          as="h2"
-                          title="Números del equipo"
-                          tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
-                          className="mb-4"
-                        />
-                        <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
-                      </Card>
-                    </div>
-                  </div>
-                </details>
-              )}
-
-              {/* Accordion: Autonomía y aprobaciones */}
-              <details open>
-                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                  <span>▶</span> Autonomía y aprobaciones
-                </summary>
-                <div className="flex flex-col gap-5">
-                  <div id="autonomia" style={SCROLL_STYLE}>
-                    <Card border elevated={false} padding="sm">
-                      <SectionHeader
-                        as="h2"
-                        title="Nivel de autonomía"
-                        tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
-                        className="mb-4"
-                      />
-                      <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
-                    </Card>
-                  </div>
-
-                  {isOwner && (
-                    <div id="aprobaciones" style={SCROLL_STYLE}>
-                      <Card border elevated={false} padding="sm">
-                        <ApprovalSettingsSection token={token} roleColor={roleColor} />
-                      </Card>
-                    </div>
-                  )}
+              {isOwner && (
+                <div id="aprobaciones" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <ApprovalSettingsSection token={token} roleColor={roleColor} />
+                  </Card>
                 </div>
-              </details>
-
-              {/* Accordion: Iniciativa proactiva */}
-              <details open>
-                <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                  <span>▶</span> Iniciativa proactiva
-                </summary>
-                <div className="flex flex-col gap-5">
-                  <div id="checkin" style={SCROLL_STYLE}>
-                    <Card border elevated={false} padding="sm">
-                      <SectionHeader
-                        as="h2"
-                        title="Check-in automático"
-                        tooltip="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo."
-                        className="mb-4"
-                      />
-                      <HeartbeatEditor
-                        token={token}
-                        initConfig={(agent as any).heartbeat_config ?? null}
-                        isCoordinator={isCoordinator}
-                      />
-                    </Card>
-                  </div>
-
-                  {meerkatId === 'nox' && (
-                    <div id="brief-del-dia" style={SCROLL_STYLE}>
-                      <Card border elevated={false} padding="sm">
-                        <SectionHeader
-                          as="h2"
-                          title="Brief del día"
-                          tooltip="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana."
-                          className="mb-4"
-                        />
-                        <BriefDelDiaSection agentId={agent.id} />
-                      </Card>
-                    </div>
-                  )}
-                </div>
-              </details>
-
-              {/* Accordion: Diagnóstico */}
-              {!isCoordinator && isOwner && (
-                <details open>
-                  <summary className="cursor-pointer font-medium text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--c-text)' }}>
-                    <span>▶</span> Diagnóstico
-                  </summary>
-                  <div className="flex flex-col gap-5">
-                    <div id="reportes" style={SCROLL_STYLE}>
-                      <Card border elevated={false} padding="sm">
-                        <SectionHeader
-                          as="h2"
-                          title="Reportes de fallas"
-                          className="mb-4"
-                        />
-                        <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
-                      </Card>
-                    </div>
-                  </div>
-                </details>
               )}
-
-            </div>
-
-            {/* ── Tab 3: Horarios y automatizaciones ────────────────────── */}
-            <div className="flex flex-col gap-5">
 
               <div id="metas" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
@@ -744,6 +658,36 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </Card>
               </div>
 
+              <div id="checkin" style={SCROLL_STYLE}>
+                <Card border elevated={false} padding="sm">
+                  <SectionHeader
+                    as="h2"
+                    title="Check-in automático"
+                    tooltip="Tu empleado ejecuta una tarea proactiva en el horario que configures y te envía el resultado. Sin que tengas que pedírselo."
+                    className="mb-4"
+                  />
+                  <HeartbeatEditor
+                    token={token}
+                    initConfig={(agent as any).heartbeat_config ?? null}
+                    isCoordinator={isCoordinator}
+                  />
+                </Card>
+              </div>
+
+              {meerkatId === 'nox' && (
+                <div id="brief-del-dia" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Brief del día"
+                      tooltip="Nox prepara un resumen diario con lo que requiere tu atención, lo que necesita preparación y lo que ya está en orden. Puedes recibirlo automáticamente cada mañana."
+                      className="mb-4"
+                    />
+                    <BriefDelDiaSection agentId={agent.id} />
+                  </Card>
+                </div>
+              )}
+
               <div id="automatizaciones" style={SCROLL_STYLE}>
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
@@ -756,33 +700,38 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </Card>
               </div>
 
-              {/* Llamadas salientes + Missed call recovery (moved from /llamadas tabs) */}
-              {showOutbound && (
-                <div id="llamadas-salientes" style={SCROLL_STYLE}>
+              {!isCoordinator && (
+                <div id="notificaciones" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
-                      title="Llamadas salientes"
-                      tooltip="Activa o desactiva las llamadas salientes y el recovery de llamadas perdidas para este empleado."
+                      title="Notificaciones"
+                      tooltip="Elige cómo quieres recibir la información de cada llamada atendida por este empleado."
                       className="mb-4"
                     />
-                    <OutboundToggles
+                    <NotificationsToggle
                       token={token}
-                      initOutbound={initOutbound}
-                      initMissedCallRecovery={initMissedCall}
+                      initWhatsApp={(agent as any).notify_whatsapp ?? false}
+                      initEmail={(agent as any).notify_email ?? true}
                     />
                   </Card>
                 </div>
               )}
 
-            </div>
+              {!isCoordinator && isOwner && (
+                <div id="reportes" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <SectionHeader
+                      as="h2"
+                      title="Reportes de fallas"
+                      className="mb-4"
+                    />
+                    <BugReportToggle token={token} initial={!!(agent as any).allow_bug_reports} />
+                  </Card>
+                </div>
+              )}
 
-            {/* ── Tab 4: Marca y ajustes ────────────────────────────────── */}
-            {/* Los términos de servicio ya no viven aquí: son per-cliente y se
-                gestionan en /portal/[token]?tab=cuenta#terminos-servicio. Ver
-                [[contract-at-organization-level]]. */}
-            <div className="flex flex-col gap-5">
-
+              {/* Términos de servicio viven per-cliente en /portal?tab=cuenta#terminos-servicio */}
               <Card border elevated={false} padding="sm">
                 <ResyncButton token={token} />
               </Card>

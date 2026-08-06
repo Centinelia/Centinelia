@@ -11,24 +11,38 @@ interface Props {
 }
 
 const TAB_DEFS = [
-  { value: 'voz',        label: 'Personalidad y voz' },
-  { value: 'knowledge',  label: 'Conocimiento y guardrails' },
-  { value: 'tools',      label: 'Herramientas e integraciones' },
-  { value: 'horarios',   label: 'Horarios y automatizaciones' },
-  { value: 'marca',      label: 'Marca y ajustes' },
+  { value: 'personalidad', label: 'Personalidad' },
+  { value: 'rol',          label: 'Rol y conocimiento' },
+  { value: 'tools',        label: 'Herramientas' },
+  { value: 'autonomia',    label: 'Autonomía y avisos' },
 ] as const;
 
+// Retrocompat: legacy ?tab=knowledge / ?tab=voz / ?tab=horarios / ?tab=marca
+const LEGACY_MAP: Record<string, string> = {
+  voz:       'personalidad',
+  knowledge: 'rol',
+  horarios:  'autonomia',
+  marca:     'autonomia',
+};
+
 const VALID_TABS = new Set<string>(TAB_DEFS.map(t => t.value));
+
+function resolveTab(raw: string): string {
+  if (VALID_TABS.has(raw)) return raw;
+  const mapped = LEGACY_MAP[raw];
+  if (mapped && VALID_TABS.has(mapped)) return mapped;
+  return 'personalidad';
+}
 
 /**
  * ConfigurarTabs
  *
- * 5-tab layout sincronizado con URL. Lee `?tab=knowledge` para saber cuál abrir.
+ * 4-tab layout sincronizado con URL. Lee `?tab=rol` para saber cuál abrir.
  * Al cambiar tab actualiza la URL sin recargar (router.replace). También detecta
- * anchors `#rol`, `#correo`, etc. y hace scroll cuando el tab correspondiente
+ * anchors `#voz`, `#correo`, etc. y hace scroll cuando el tab correspondiente
  * está activo.
  *
- * children[0..4] map to the 5 tab panels in order.
+ * children[0..3] map to the 4 tab panels in order.
  */
 export default function ConfigurarTabs({ children }: Props) {
   const searchParams = useSearchParams();
@@ -36,14 +50,13 @@ export default function ConfigurarTabs({ children }: Props) {
   const pathname     = usePathname();
 
   const tabFromUrl = searchParams?.get('tab') ?? '';
-  const initialTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'voz';
+  const initialTab = resolveTab(tabFromUrl);
   const [tab, setTab] = useState<string>(initialTab);
 
-  // Sync URL → tab when user pastes a link with ?tab=x
+  // Sync URL → tab when user pastes a link with ?tab=x (con retrocompat)
   useEffect(() => {
-    if (VALID_TABS.has(tabFromUrl) && tabFromUrl !== tab) {
-      setTab(tabFromUrl);
-    }
+    const resolved = resolveTab(tabFromUrl);
+    if (resolved !== tab) setTab(resolved);
   }, [tabFromUrl, tab]);
 
   // Cuando cambia el tab O al montar con hash, scroll al anchor
@@ -68,9 +81,9 @@ export default function ConfigurarTabs({ children }: Props) {
 
   return (
     <Tabs.Root value={tab} onValueChange={handleChange} variant="pill">
-      {/* Tabs centradas — todas visibles sin scroll horizontal */}
+      {/* Tabs en un solo renglón, centradas; sin scroll horizontal aunque desborden */}
       <div className="flex justify-center pb-1">
-        <Tabs.List className="flex-wrap justify-center">
+        <Tabs.List className="flex-nowrap whitespace-nowrap justify-center">
           {TAB_DEFS.map(t => (
             <Tabs.Trigger key={t.value} value={t.value}>
               {t.label}

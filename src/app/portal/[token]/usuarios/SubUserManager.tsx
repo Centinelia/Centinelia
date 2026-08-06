@@ -210,6 +210,34 @@ function ModuleToggle({ id, label, selected, onToggle }: {
   );
 }
 
+// ── Initials avatar ────────────────────────────────────────────────────────────
+
+const AVATAR_HUES = [265, 210, 155, 25, 340, 190];
+
+function InitialsAvatar({ name, email, isOwner }: { name: string | null; email: string; isOwner: boolean }) {
+  const source = (name?.trim() || email).replace(/[^a-zA-Z0-9\s]/g, ' ');
+  const initials = source.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || email[0]?.toUpperCase() || '?';
+  // Deterministic color from email
+  const h = AVATAR_HUES[Math.abs(email.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % AVATAR_HUES.length];
+  return (
+    <div
+      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+      style={{
+        background: isOwner
+          ? 'linear-gradient(135deg, rgba(108,59,255,0.16), rgba(108,59,255,0.06))'
+          : `hsl(${h} 70% 96%)`,
+        color:      isOwner ? '#6C3BFF' : `hsl(${h} 55% 42%)`,
+        border:     isOwner ? '1px solid rgba(108,59,255,0.28)' : `1px solid hsl(${h} 60% 88%)`,
+        fontSize:   12,
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 // ── Module chips (compact view) ────────────────────────────────────────────────
 
 function ModuleChips({ modules }: { modules: string[] }) {
@@ -444,52 +472,65 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
         {/* Search bar */}
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-4)' }} />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-4)' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nombre, correo o número de cuenta…"
-            className="w-full pl-8 pr-3 py-2 rounded-lg text-xs outline-none"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+            className="w-full pl-10 pr-3 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.4)]"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
           />
         </div>
 
         {/* Empty state */}
         {users.length === 0 && (
-          <div className="text-center py-14" style={{ color: 'var(--c-text-4)' }}>
-            <Users size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Sin usuarios aún.</p>
-            <p className="text-xs mt-1">Añade colaboradores desde el panel de la izquierda.</p>
+          <div className="flex flex-col items-center text-center py-16 px-4 rounded-2xl"
+            style={{ background: 'rgba(108,59,255,0.03)', border: '1px dashed rgba(108,59,255,0.2)' }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.16)' }}>
+              <Users size={22} style={{ color: '#9B6DFF' }} />
+            </div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin colaboradores aún</p>
+            <p className="text-xs mt-1.5 max-w-[280px]" style={{ color: 'var(--c-text-3)' }}>
+              Añade a tu equipo desde el panel de la izquierda. Cada persona inicia sesión con su propio correo.
+            </p>
           </div>
         )}
 
         {users.length > 0 && filteredUsers.length === 0 && (
           <div className="text-center py-10 text-xs" style={{ color: 'var(--c-text-4)' }}>
-            Sin resultados para "{search}"
+            Sin resultados para &ldquo;{search}&rdquo;
           </div>
         )}
 
         {/* User cards */}
         {filteredUsers.map(u => (
-          <div key={u.id} className="rounded-xl overflow-hidden"
-            style={{ border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)', background: 'var(--c-surface)' }}>
+          <div key={u.id} className="user-card rounded-xl overflow-hidden transition-all"
+            style={{
+              border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)',
+              background: 'var(--c-surface)',
+              boxShadow: editId === u.id ? '0 8px 24px rgba(108,59,255,0.08)' : '0 1px 2px rgba(26,10,59,0.04)',
+            }}>
 
             {/* User header */}
-            <div className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                    {u.name ?? u.email}
-                  </p>
-                  {u.is_owner && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                      style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}>
-                      Propietario
-                    </span>
-                  )}
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+              <div className="flex-1 min-w-0 flex items-center gap-3">
+                <InitialsAvatar name={u.name} email={u.email} isOwner={u.is_owner} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)', letterSpacing: '-0.005em' }}>
+                      {u.name ?? u.email}
+                    </p>
+                    {u.is_owner && (
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider"
+                        style={{ background: 'rgba(245,158,11,0.10)', color: '#c2820a', border: '1px solid rgba(245,158,11,0.22)' }}>
+                        Propietario
+                      </span>
+                    )}
+                  </div>
+                  {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
                 </div>
-                {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
               </div>
               {!u.is_owner && (
                 <div className="flex items-center gap-1 shrink-0">

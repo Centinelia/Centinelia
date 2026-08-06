@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, Phone, PhoneCall, PhoneOutgoing, Briefcase,
-  Building2, Link2, CircleUser, ChevronDown, ChevronRight, Bot, CreditCard, Users,
+  Building2, Link2, CircleUser, ChevronDown, ChevronRight, CreditCard, Users,
 } from 'lucide-react';
+import Meerkat from '@/components/icons/Meerkat';
 import { uColor } from '@/lib/portal/utils';
 
 type SubItem    = { label: string; id: string; ids?: string[]; href?: string; icon?: React.ReactNode; anchorId?: string };
@@ -85,7 +86,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       ],
     },
     {
-      id: 'agentes', moduleId: 'agentes', label: 'Empleados', icon: <Bot size={14} />,
+      id: 'agentes', moduleId: 'agentes', label: 'Empleados', icon: <Meerkat size={14} />,
       directHref: `/portal/${token}/agentes`,
       items: [
         { label: 'Lista de empleados', id: 'lista-agentes', href: `/portal/${token}/agentes`, anchorId: 'lista-agentes' },
