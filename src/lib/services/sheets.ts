@@ -262,7 +262,7 @@ export async function hasAnyMapping(portalEmail: string): Promise<boolean> {
  */
 export async function syncLeadToSheets(
   portalEmail: string,
-  _agentId: string,
+  agentId: string,
   args: Record<string, string | undefined>,
 ): Promise<void> {
   try {
