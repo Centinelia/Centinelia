@@ -952,8 +952,33 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
 
-                {/* ── Col 1: Uso + Compras + Recarga ── */}
+                {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga ── */}
                 <div className="flex flex-col gap-5" id="minutos">
+
+                  {/* ── Consumo promedio (arriba, contexto antes del saldo) ── */}
+                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
+                    <div id="consumo-promedio" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                      <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Consumo promedio</h2>
+                      <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                        {allCalls.length > 0 && (
+                          <div className="flex flex-col gap-2">
+                            {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                            <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                            <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                            <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                          </div>
+                        )}
+                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                          <div className="flex flex-col gap-2">
+                            {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                            <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                            <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                            <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── Uso del mes: bloque destacado cuando saldo bajo, normal cuando no ── */}
                   {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
@@ -1526,8 +1551,35 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
-                {/* ── Col 1: Uso + Compras + Recarga (fused A6) + Contratos ── */}
+                {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga + Contratos ── */}
                 <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+
+                  {/* Consumo promedio — arriba, contexto antes del saldo actual */}
+                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
+                    <PageSection heading={<SectionHeader eyebrow="PROMEDIO" title="Consumo promedio" as="h2" />}>
+                      <Card id="consumo-promedio" padding="md">
+                        <div className={allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                          {allCalls.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
+                            </div>
+                          )}
+                          {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    </PageSection>
+                  )}
+
                   <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Consumo, compras y recarga" as="h2" />}>
                     <CuentaUsageTabsCard
                       usoContent={
@@ -1638,33 +1690,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
                   <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de minutos" as="h2" />}>
                     <Card id="historial" padding="md">
-                      {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                        <details className="mb-4" style={{ color: 'var(--c-text-2)' }}>
-                          <summary className="text-xs font-semibold cursor-pointer select-none py-1"
-                            style={{ color: 'var(--c-text-3)', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 10 }}>&#9654;</span>
-                            Ver promedios de consumo
-                          </summary>
-                          <div className={`mt-3 ${allCalls.length > 0 && aiOpsLimit > 0 && aiOpsUsed > 0 ? 'grid grid-cols-2 gap-4' : ''}`}>
-                            {allCalls.length > 0 && (
-                              <div className="flex flex-col gap-2">
-                                {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
-                                <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                                <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                                <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                              </div>
-                            )}
-                            {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                              <div className="flex flex-col gap-2">
-                                {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-1" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
-                                <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                                <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                                <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      )}
                       <div className="relative">
                         <div className="overflow-y-auto" style={{ maxHeight: '420px', paddingRight: 12 }}>
                           <MinutesLedgerSection agentId={agent.id} minutesIncluded={minutesIncluded} minutesUsed={minutesUsed} callerNames={callerNames} />
