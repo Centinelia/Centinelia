@@ -56,7 +56,7 @@ export default function TrustStageSelector({ token, initStage }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        A medida que confías en cómo trabaja tu empleado, puedes darle más autonomía. Empieza en Supervisado hasta que veas su desempeño.
+        Cuánta independencia tiene en las acciones que ejecuta por su cuenta (llamadas, correos, captura de leads). A medida que confías en su desempeño, súbelo de Supervisado a Autónomo.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

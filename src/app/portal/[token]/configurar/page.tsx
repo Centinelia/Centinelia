@@ -615,8 +615,8 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 <Card border elevated={false} padding="sm">
                   <SectionHeader
                     as="h2"
-                    title="Nivel de autonomía"
-                    tooltip="Controla cuánta independencia tiene tu empleado. Empieza en Supervisado y pásalo a Autónomo cuando le tengas confianza."
+                    title="Nivel de autonomía propia"
+                    tooltip="Controla cuánta independencia tiene el empleado en las tareas que hace por su cuenta (atender llamadas, responder correos, capturar leads). No aplica cuando delega a otro empleado, para eso está el bloque de abajo."
                     className="mb-4"
                   />
                   <TrustStageSelector token={token} initStage={(agent as any).trust_stage ?? 3} />
