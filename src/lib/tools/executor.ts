@@ -2203,5 +2203,56 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Tags de contactos (Fase E parte 2: canal correo/chat/oficina)
+  // Empleado agrega tag a un contacto de outbound_contacts durante o después
+  // de una interacción no-voz (chat con owner, procesamiento de correo).
+  // Match por sufijo de 10 dígitos; sanitiza tag (lowercase, cap 40 chars,
+  // dedup, cap 20 tags totales).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (toolName === 'agregar_tag_contacto') {
+    const telefono = String(toolInput.telefono ?? '').trim();
+    const rawTag   = String(toolInput.tag      ?? '').trim();
+    const cleanTag = rawTag.toLowerCase().slice(0, 40);
+    if (!telefono || !cleanTag) return { ok: false, error: 'Falta teléfono o tag.' };
+
+    const suffix = telefono.replace(/\D+/g, '').slice(-10);
+    if (suffix.length < 10) return { ok: false, error: 'Teléfono inválido.' };
+
+    const { data: matches } = await supabase
+      .from('outbound_contacts')
+      .select('id, telefono, tags')
+      .eq('agent_id', agentId);
+
+    const targets = (matches ?? []).filter(r =>
+      (r.telefono as string ?? '').replace(/\D+/g, '').endsWith(suffix)
+    );
+
+    if (targets.length === 0) {
+      return { ok: false, error: `Sin contacto que coincida con ${telefono} en el CRM.` };
+    }
+
+    let touched = 0;
+    for (const c of targets) {
+      const existing = (c.tags as string[] | null) ?? [];
+      if (existing.includes(cleanTag)) continue;
+      const next = [...existing, cleanTag].slice(0, 20);
+      const { error } = await supabase
+        .from('outbound_contacts')
+        .update({ tags: next })
+        .eq('id', c.id as string);
+      if (!error) touched++;
+    }
+
+    return {
+      ok: true,
+      touched,
+      tag: cleanTag,
+      message: touched > 0
+        ? `Tag "${cleanTag}" agregado al contacto ${telefono}.`
+        : `El contacto ${telefono} ya tenía el tag "${cleanTag}".`,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   return { ok: false, error: `Herramienta desconocida: ${toolName}` };
 }

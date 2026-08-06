@@ -260,6 +260,20 @@ const BASE_EMAIL_TOOLS: Anthropic.Tool[] = [
     description: 'Reporta una falla técnica inesperada al equipo de soporte.',
     input_schema: { type: 'object' as const, properties: { tipo: { type: 'string' }, descripcion: { type: 'string' }, contexto: { type: 'string' } }, required: ['tipo', 'descripcion'] },
   },
+  // ── Tags de contactos (CRM) ────────────────────────────────────────────────
+  {
+    name:        'agregar_tag_contacto',
+    description: 'Agrega una etiqueta (tag) a un contacto de outbound_contacts según lo aprendido en este hilo de correo. Los tags alimentan la segmentación de campañas futuras. Sugeridos: compró, cotizó, interesado, no interesado, seguimiento, vencido, nuevo, vip. Puedes crear tags nuevos si aplican. Usa el teléfono del remitente si lo capturaste antes o lo menciona en el correo.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        telefono: { type: 'string', description: 'Teléfono del contacto (con o sin lada). Match por sufijo 10 dígitos.' },
+        tag:      { type: 'string', description: 'Tag a agregar. Lowercase, max 40 chars.' },
+        motivo:   { type: 'string', description: 'Motivo breve del tag (opcional).' },
+      },
+      required: ['telefono', 'tag'],
+    },
+  },
   // ── Data capture (voz+chat+email según regla de 3 canales) ────────────────
   {
     name:        'crear_lead',
@@ -1318,6 +1332,34 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
           urgent:  false,
           payload: { to: emailFrom, subject: emailSubject, category: result.category ?? null },
         });
+      }
+      // Auto-tag por category (paridad con voice/webhook): si el correo vino
+      // de un contacto conocido en outbound_contacts, agrega tag según categoría.
+      // Match por sufijo del teléfono si el remitente lo dio o si su email
+      // matches nombre en la base. Simple: solo si el remitente ya tiene un
+      // teléfono en el CRM (no intentamos parsear teléfonos del email).
+      try {
+        const autoTag = result.category === 'factura'  ? 'solicitó_factura'
+                      : result.category === 'cliente'  ? 'activo_email'
+                      : result.category === 'urgente'  ? 'urgente'
+                      : null;
+        if (autoTag) {
+          const { data: contactByEmail } = await supabase
+            .from('outbound_contacts')
+            .select('id, telefono, tags')
+            .eq('agent_id', agentId)
+            .or(`nombre.ilike.%${emailFrom.split('@')[0] ?? ''}%,motivo.ilike.%${emailFrom}%`)
+            .limit(5);
+          for (const c of contactByEmail ?? []) {
+            const existing = (c.tags as string[] | null) ?? [];
+            if (existing.includes(autoTag)) continue;
+            await supabase.from('outbound_contacts')
+              .update({ tags: [...existing, autoTag].slice(0, 20) })
+              .eq('id', c.id as string);
+          }
+        }
+      } catch (err) {
+        console.error('[inbox-processor auto-tag]', err);
       }
     } catch (err) {
       console.error('[ops/inbox-processor] auto_reply send failed:', err);

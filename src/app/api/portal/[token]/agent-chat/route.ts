@@ -230,6 +230,20 @@ const ENVIAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
   },
 };
 
+const AGREGAR_TAG_CONTACTO_TOOL: Anthropic.Tool = {
+  name: 'agregar_tag_contacto',
+  description: 'Agrega una etiqueta (tag) a un contacto de outbound_contacts según lo aprendido en la interacción (llamada, correo, chat). Los tags alimentan la segmentación de campañas futuras. Sugeridos: compró, cotizó, interesado, no interesado, seguimiento, vencido, nuevo, vip. Puedes crear tags nuevos si aplican al negocio. Match del contacto por sufijo de 10 dígitos del teléfono.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      telefono: { type: 'string', description: 'Teléfono del contacto (con o sin lada). Se normaliza por sufijo de 10 dígitos.' },
+      tag:      { type: 'string', description: 'Tag a agregar. Guardado en lowercase, max 40 chars.' },
+      motivo:   { type: 'string', description: 'Motivo breve por el que agregas este tag (opcional).' },
+    },
+    required: ['telefono', 'tag'],
+  },
+};
+
 const SOLICITAR_FACTURA_TOOL: Anthropic.Tool = {
   name: 'solicitar_factura',
   description: 'Regístra una solicitud de factura CFDI cuando el cliente pide su comprobante fiscal. Recolecta primero TODOS los datos por voz/chat, confirma con el cliente, y luego invoca esta herramienta. El equipo de facturación humano emitirá el CFDI en el sistema fiscal del negocio (Solución Factible, CONTPAQ, Aspel, etc.) — NO lo timbramos aquí. NO uses create_document con template_type=factura para esto: eso genera un PDF sin validez fiscal.',
@@ -1072,6 +1086,7 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   revisar_desempeno_equipo:  'revisar_desempeno_equipo',
   aprobar_gasto:             'aprobar_gasto',
   marcar_no_llamar:          null,  // voice-only (no aplica a chat)
+  agregar_tag_contacto:      'agregar_tag_contacto',
 };
 
 // Chat tool name → Anthropic.Tool object
@@ -1087,6 +1102,7 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   consultar_factura:         CONSULTAR_FACTURA_TOOL,
   revisar_desempeno_equipo:  REVISAR_DESEMPENO_EQUIPO_TOOL,
   aprobar_gasto:             APROBAR_GASTO_TOOL,
+  agregar_tag_contacto:      AGREGAR_TAG_CONTACTO_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,
   organize_files:            ORGANIZE_FILES_TOOL,
