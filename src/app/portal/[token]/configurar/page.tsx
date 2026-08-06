@@ -234,12 +234,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           const hasTransferRules = !!((agent as any).transfer_rules as string | null)?.trim();
           const needsEmail      = !isCoordinator && !connectedEmail;
 
+          // Cada item incluye el tab correcto para que ConfigurarTabs lo abra
+          // y haga scroll al anchor correspondiente.
           const pending = [
-            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',        anchor: 'llamadas' },
-            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', anchor: 'conocimiento-puesto' },
-            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', anchor: 'llamadas' },
-            needsEmail       && { label: 'Conecta un correo para el empleado',                    anchor: 'correo' },
-          ].filter(Boolean) as { label: string; anchor: string }[];
+            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',        tab: 'tools',     anchor: 'llamadas' },
+            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', tab: 'knowledge', anchor: 'rol'      },
+            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', tab: 'tools', anchor: 'llamadas' },
+            needsEmail       && { label: 'Conecta un correo para el empleado',                    tab: 'knowledge', anchor: 'correo'   },
+          ].filter(Boolean) as { label: string; tab: string; anchor: string }[];
 
           if (pending.length === 0) return null;
 
@@ -267,7 +269,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 </div>
                 <div className="p-5 flex flex-col gap-2">
                   {pending.map((p, idx) => (
-                    <a key={idx} href={`#${p.anchor}`}
+                    <a key={idx} href={`?tab=${p.tab}#${p.anchor}`}
                       className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
                       style={{ color: 'var(--c-text)' }}>
                       <span>
