@@ -792,6 +792,282 @@ async function executeAgentToolInner(
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Nash F3 — tools de acción sobre platform_incidents
+  // Todas gated por meerkat_role_id === 'nash' (defense in depth).
+  // ─────────────────────────────────────────────────────────────────────────
+  if ([
+    'crear_incidente',
+    'responder_cliente_afectado',
+    'enviar_a_claude_code',
+    'escalar_al_owner',
+    'verificar_fix',
+  ].includes(toolName)) {
+    const features = (agent.features as Record<string, unknown> | null) ?? {};
+    if (features.meerkat_role_id !== 'nash') {
+      return { ok: false, error: `Solo Nash puede usar ${toolName}.` };
+    }
+
+    if (toolName === 'crear_incidente') {
+      const title       = String(toolInput.title       ?? '').trim();
+      const description = String(toolInput.description ?? '').trim();
+      const priority    = String(toolInput.priority    ?? 'med');
+      const source      = String(toolInput.source      ?? 'nash_self_discovery');
+      const sourceId    = toolInput.source_id             != null ? String(toolInput.source_id)             : null;
+      const affectedId  = toolInput.affected_agent_id     != null ? String(toolInput.affected_agent_id)     : null;
+      const affectedEm  = toolInput.affected_portal_email != null ? String(toolInput.affected_portal_email) : null;
+      if (!title || !description) return { ok: false, error: 'title y description son obligatorios' };
+      if (!['low', 'med', 'high', 'critical'].includes(priority)) return { ok: false, error: `priority inválida: ${priority}` };
+      if (!['bug_report', 'error_log', 'escalated_inbox', 'failed_handoff', 'agent_task', 'nash_self_discovery', 'manual'].includes(source)) {
+        return { ok: false, error: `source inválida: ${source}` };
+      }
+      if (sourceId) {
+        const { data: existing } = await supabase
+          .from('platform_incidents')
+          .select('id, status')
+          .eq('source', source)
+          .eq('source_id', sourceId)
+          .not('status', 'in', '(resolved,closed)')
+          .limit(1)
+          .maybeSingle();
+        if (existing?.id) {
+          return { ok: true, incident_id: existing.id as string, deduped: true, existing_status: existing.status as string };
+        }
+      }
+      const { data, error } = await supabase
+        .from('platform_incidents')
+        .insert({
+          title, description, priority, source,
+          source_id: sourceId, affected_agent_id: affectedId, affected_portal_email: affectedEm,
+          status: 'open', assigned_to: 'nash',
+        })
+        .select('id')
+        .single();
+      if (error) return { ok: false, error: error.message };
+      return { ok: true, incident_id: data.id as string, deduped: false };
+    }
+
+    if (toolName === 'responder_cliente_afectado') {
+      const affectedId = String(toolInput.agent_id ?? '').trim();
+      const mensaje    = String(toolInput.mensaje  ?? '').trim();
+      const canal      = String(toolInput.canal    ?? 'email');
+      if (!affectedId || !mensaje) return { ok: false, error: 'agent_id y mensaje son obligatorios' };
+      if (!['email', 'whatsapp'].includes(canal)) return { ok: false, error: `canal inválido: ${canal}` };
+      const { data: target } = await supabase
+        .from('voice_agents')
+        .select('client_email, transfer_whatsapp, business_name, portal_email')
+        .eq('id', affectedId)
+        .maybeSingle();
+      if (!target) return { ok: false, error: `no encontré voice_agent con id ${affectedId}` };
+      if (canal === 'whatsapp') {
+        const to = target.transfer_whatsapp as string | null;
+        if (!to) return { ok: false, error: 'el cliente no tiene transfer_whatsapp configurado, prueba con email' };
+        const { sendWhatsApp } = await import('@/lib/whatsapp/send');
+        const okWa = await sendWhatsApp(to, `Centinelia — Nash:\n\n${mensaje}`);
+        if (!okWa) return { ok: false, error: 'sendWhatsApp devolvió false — revisa TWILIO_*' };
+        return { ok: true, delivered_to: to, channel: 'whatsapp', business: target.business_name };
+      }
+      const to = target.client_email as string | null;
+      if (!to) return { ok: false, error: 'el cliente no tiene client_email configurado' };
+      await sendEmail({
+        to,
+        subject: `Centinelia — Actualización de Nash sobre ${target.business_name ?? 'tu cuenta'}`,
+        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p><p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">— Nash, meerkat interno de Centinelia</p>`,
+      });
+      return { ok: true, delivered_to: to, channel: 'email', business: target.business_name };
+    }
+
+    if (toolName === 'enviar_a_claude_code') {
+      const incidentId = String(toolInput.incidente_id ?? '').trim();
+      const prompt     = String(toolInput.prompt       ?? '').trim();
+      const labelsIn   = Array.isArray(toolInput.labels) ? (toolInput.labels as unknown[]).map(l => String(l)) : [];
+      if (!incidentId || !prompt) return { ok: false, error: 'incidente_id y prompt son obligatorios' };
+      const { data: incident, error: readErr } = await supabase
+        .from('platform_incidents')
+        .select('id, title, description, priority, source, meta, github_issue_url')
+        .eq('id', incidentId)
+        .maybeSingle();
+      if (readErr) return { ok: false, error: readErr.message };
+      if (!incident) return { ok: false, error: `incidente ${incidentId} no encontrado` };
+      if (incident.github_issue_url) {
+        return { ok: true, github_issue_url: incident.github_issue_url as string, already_sent: true };
+      }
+      const token  = process.env.NASH_GITHUB_TOKEN;
+      const repo   = process.env.NASH_GITHUB_REPO ?? 'Centinelia/Centinelia';
+      const labels = ['bug', 'from-nash', `priority-${incident.priority}`, ...labelsIn];
+      const prevMeta: Record<string, unknown> = (incident.meta as Record<string, unknown> | null) ?? {};
+      const patch: Record<string, unknown> = {
+        status: 'sent_to_claude_code',
+        meta:   { ...prevMeta, claude_code_prompt: prompt, sent_to_cc_at: new Date().toISOString() },
+      };
+      let deliveredVia: 'github' | 'email_fallback' = 'email_fallback';
+      let issueUrl:     string | null               = null;
+      if (token) {
+        try {
+          const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+            method:  'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept':        'application/vnd.github+json',
+              'Content-Type':  'application/json',
+              'User-Agent':    'nash-meerkat',
+            },
+            body: JSON.stringify({
+              title: `[Nash] ${incident.title}`,
+              body:  `${prompt}\n\n---\n\n_Incidente:_ \`${incident.id}\`\n_Prioridad:_ ${incident.priority}\n_Fuente:_ ${incident.source}\n\n_Creado automáticamente por Nash desde /admin/soporte._`,
+              labels,
+            }),
+          });
+          if (!res.ok) {
+            const errBody = await res.text();
+            patch.meta = { ...(patch.meta as Record<string, unknown>), github_error: `${res.status}: ${errBody.slice(0, 500)}` };
+          } else {
+            const data = await res.json() as { html_url?: string };
+            issueUrl = data.html_url ?? null;
+            deliveredVia = 'github';
+            patch.github_issue_url = issueUrl;
+          }
+        } catch (e) {
+          patch.meta = { ...(patch.meta as Record<string, unknown>), github_error: e instanceof Error ? e.message : String(e) };
+        }
+      } else {
+        patch.meta = { ...(patch.meta as Record<string, unknown>), github_error: 'NASH_GITHUB_TOKEN no configurado' };
+      }
+      if (!issueUrl) {
+        const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
+        await sendEmail({
+          to,
+          subject: `[Nash → Claude Code fallback] ${incident.title}`,
+          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px"><strong>Incidente:</strong> ${incident.id}<br><strong>Prioridad:</strong> ${incident.priority}<br><strong>Fuente:</strong> ${incident.source}</p><h3 style="font-family:system-ui,-apple-system,sans-serif;font-size:14px">Prompt para Claude Code:</h3><pre style="background:#f3f4f6;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">${prompt.replace(/</g, '&lt;')}</pre>`,
+        });
+      }
+      const { error: updateErr } = await supabase
+        .from('platform_incidents')
+        .update(patch)
+        .eq('id', incidentId);
+      if (updateErr) return { ok: false, error: updateErr.message };
+      return { ok: true, github_issue_url: issueUrl, delivered_via: deliveredVia };
+    }
+
+    if (toolName === 'escalar_al_owner') {
+      const razon      = String(toolInput.razon      ?? '').trim();
+      const urgencia   = String(toolInput.urgencia   ?? 'high');
+      const incidentId = toolInput.incidente_id != null ? String(toolInput.incidente_id) : null;
+      if (!razon) return { ok: false, error: 'razon es obligatoria' };
+      if (!['low', 'med', 'high', 'critical'].includes(urgencia)) {
+        return { ok: false, error: `urgencia inválida: ${urgencia}` };
+      }
+      const flag     = urgencia === 'critical' ? '[CRITICO]' : urgencia === 'high' ? '[URGENTE]' : '[INFO]';
+      const linkNote = incidentId ? `\n\nVer /admin/soporte (id ${incidentId.slice(0, 8)}...)` : '';
+      const body     = `${flag} Nash escala (${urgencia}):\n\n${razon}${linkNote}`;
+      const owner = process.env.OWNER_WHATSAPP;
+      let deliveredVia: 'whatsapp' | 'email_fallback' = 'email_fallback';
+      if (owner) {
+        const { sendWhatsApp } = await import('@/lib/whatsapp/send');
+        const okWa = await sendWhatsApp(owner, body);
+        if (okWa) deliveredVia = 'whatsapp';
+      }
+      if (deliveredVia !== 'whatsapp') {
+        const to = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
+        await sendEmail({
+          to,
+          subject: `${flag} Nash escala (${urgencia})`,
+          html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${razon.replace(/\n/g, '<br>')}</p>${incidentId ? `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280">Incidente <code>${incidentId}</code></p>` : ''}`,
+        });
+      }
+      if (incidentId) {
+        const { data: inc } = await supabase
+          .from('platform_incidents')
+          .select('meta')
+          .eq('id', incidentId)
+          .maybeSingle();
+        const prevMeta = (inc?.meta as Record<string, unknown> | null) ?? {};
+        await supabase
+          .from('platform_incidents')
+          .update({
+            assigned_to: 'owner',
+            meta: { ...prevMeta, escalated_at: new Date().toISOString(), escalation_reason: razon, urgency: urgencia, delivered_via: deliveredVia },
+          })
+          .eq('id', incidentId);
+      }
+      return { ok: true, delivered_via: deliveredVia, urgency: urgencia };
+    }
+
+    if (toolName === 'verificar_fix') {
+      const incidentId = String(toolInput.incidente_id ?? '').trim();
+      if (!incidentId) return { ok: false, error: 'incidente_id es obligatorio' };
+      const { data: incident } = await supabase
+        .from('platform_incidents')
+        .select('id, source, source_id, status')
+        .eq('id', incidentId)
+        .maybeSingle();
+      if (!incident) return { ok: false, error: `incidente ${incidentId} no encontrado` };
+      if (incident.status === 'resolved' || incident.status === 'closed') {
+        return { ok: true, verified: true, new_status: incident.status as string, notes: 'ya estaba cerrado' };
+      }
+      const source   = incident.source    as string;
+      const sourceId = incident.source_id as string | null;
+      let verified = false;
+      let notes    = '';
+      if (!sourceId && source !== 'error_log') {
+        return { ok: true, verified: false, new_status: incident.status as string, notes: 'incidente sin source_id no puede auto-verificarse; requiere validación manual' };
+      }
+      if (source === 'agent_task' && sourceId) {
+        const { data: task } = await supabase
+          .from('agent_tasks')
+          .select('status, goal_met, completed_at')
+          .eq('id', sourceId)
+          .maybeSingle();
+        if (!task) { verified = true; notes = 'agent_task ya no existe (borrado)'; }
+        else if (task.status === 'completed' || task.goal_met === true) { verified = true; notes = `agent_task ahora status=${task.status}, goal_met=${task.goal_met}`; }
+        else notes = `agent_task sigue con status=${task.status}, goal_met=${task.goal_met}`;
+      }
+      else if (source === 'escalated_inbox' && sourceId) {
+        const { data: item } = await supabase.from('ops_inbox').select('status').eq('id', sourceId).maybeSingle();
+        if (!item) { verified = true; notes = 'ops_inbox ya no existe'; }
+        else if (item.status !== 'escalated') { verified = true; notes = `ops_inbox ahora status=${item.status}`; }
+        else notes = 'ops_inbox sigue en status=escalated';
+      }
+      else if (source === 'failed_handoff' && sourceId) {
+        const { data: hf } = await supabase.from('handoff_failed_responses').select('resolved_at').eq('id', sourceId).maybeSingle();
+        if (!hf) { verified = true; notes = 'handoff row ya no existe'; }
+        else if (hf.resolved_at) { verified = true; notes = `handoff resuelto en ${hf.resolved_at}`; }
+        else notes = 'handoff sigue sin resolver';
+      }
+      else if (source === 'error_log') {
+        const cutoff = new Date(Date.now() - 24 * 3_600_000).toISOString();
+        const { data: recent } = await supabase
+          .from('llm_call_log')
+          .select('id')
+          .not('error', 'is', null)
+          .gte('created_at', cutoff)
+          .limit(1);
+        if (!recent || recent.length === 0) { verified = true; notes = 'sin errores nuevos en LLM log en 24h'; }
+        else notes = `siguen apareciendo errores en LLM log (${recent.length}+ en últimas 24h)`;
+      }
+      else if (source === 'bug_report') {
+        notes = 'bug_report no es auto-verificable; requiere validación manual del owner';
+      }
+      else {
+        notes = `source '${source}' sin verificación automática implementada`;
+      }
+      if (verified) {
+        const { error: updErr } = await supabase
+          .from('platform_incidents')
+          .update({ status: 'resolved', resolution: `Auto-verificado por Nash: ${notes}` })
+          .eq('id', incidentId);
+        if (updErr) return { ok: false, error: updErr.message };
+        return { ok: true, verified: true, new_status: 'resolved', notes };
+      }
+      const { error: updErr } = await supabase
+        .from('platform_incidents')
+        .update({ status: 'awaiting_verification' })
+        .eq('id', incidentId);
+      if (updErr) return { ok: false, error: updErr.message };
+      return { ok: true, verified: false, new_status: 'awaiting_verification', notes };
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Mercado Libre — require portal cookie (not available in email context)
   // ─────────────────────────────────────────────────────────────────────────
   if (['analizar_publicaciones_ml', 'crear_publicacion_ml', 'actualizar_publicacion_ml', 'ver_metricas_ml'].includes(toolName)) {

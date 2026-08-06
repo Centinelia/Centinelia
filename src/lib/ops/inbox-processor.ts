@@ -764,7 +764,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       });
     }
 
-    // Nash (meerkat interno) — tool exclusiva de monitoreo pasivo.
+    // Nash (meerkat interno) — tools de monitoreo pasivo + acciones sobre incidentes.
     if (inboxMeerkatId === 'nash') {
       tools.push({
         name: 'revisar_incidentes_plataforma',
@@ -776,6 +776,73 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
             limit_per_source: { type: 'number', description: 'Máximo de filas por fuente. Default 25. Máximo 100.' },
           },
           required: [],
+        },
+      });
+      tools.push({
+        name: 'crear_incidente',
+        description: 'Uso exclusivo de Nash. Crea fila en platform_incidents con dedupe por (source, source_id). Úsala tras revisar_incidentes_plataforma para trackear señales nuevas.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            title:                 { type: 'string' },
+            description:           { type: 'string' },
+            priority:              { type: 'string', enum: ['low', 'med', 'high', 'critical'] },
+            source:                { type: 'string', enum: ['bug_report', 'error_log', 'escalated_inbox', 'failed_handoff', 'agent_task', 'nash_self_discovery', 'manual'] },
+            source_id:             { type: 'string' },
+            affected_agent_id:     { type: 'string' },
+            affected_portal_email: { type: 'string' },
+          },
+          required: ['title', 'description', 'priority'],
+        },
+      });
+      tools.push({
+        name: 'responder_cliente_afectado',
+        description: 'Uso exclusivo de Nash. Envía WhatsApp o email al cliente cuyo voice_agent está afectado por un incidente.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            agent_id: { type: 'string' },
+            mensaje:  { type: 'string' },
+            canal:    { type: 'string', enum: ['email', 'whatsapp'] },
+          },
+          required: ['agent_id', 'mensaje'],
+        },
+      });
+      tools.push({
+        name: 'enviar_a_claude_code',
+        description: 'Uso exclusivo de Nash. Crea GitHub issue con el prompt de trabajo (NASH_GITHUB_TOKEN). Fallback email cuando el token no está configurado. Marca el incidente como sent_to_claude_code.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            incidente_id: { type: 'string' },
+            prompt:       { type: 'string' },
+            labels:       { type: 'array', items: { type: 'string' } },
+          },
+          required: ['incidente_id', 'prompt'],
+        },
+      });
+      tools.push({
+        name: 'escalar_al_owner',
+        description: 'Uso exclusivo de Nash. Notifica al owner por WhatsApp (env OWNER_WHATSAPP) con fallback email hola@. Solo para lo crítico.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            razon:        { type: 'string' },
+            urgencia:     { type: 'string', enum: ['low', 'med', 'high', 'critical'] },
+            incidente_id: { type: 'string' },
+          },
+          required: ['razon'],
+        },
+      });
+      tools.push({
+        name: 'verificar_fix',
+        description: 'Uso exclusivo de Nash. Re-lee la señal fuente del incidente. Si desapareció → resolved. Si sigue → awaiting_verification.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            incidente_id: { type: 'string' },
+          },
+          required: ['incidente_id'],
         },
       });
     }

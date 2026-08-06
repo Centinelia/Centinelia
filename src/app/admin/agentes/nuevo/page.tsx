@@ -80,6 +80,9 @@ const FEATURE_SHORT: Record<keyof AgentFeatures, string> = {
   contract_drafts:         '',
   automations:             '',
   human_handoff_enabled:   '',
+  nash_passive_discovery:  '',
+  nash_active_healthcheck: '',
+  nash_anomaly_detection:  '',
 };
 
 const DEFAULT_FEATURES: AgentFeatures = {

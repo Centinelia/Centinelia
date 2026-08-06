@@ -643,6 +643,78 @@ const REVISAR_INCIDENTES_PLATAFORMA_TOOL: Anthropic.Tool = {
   },
 };
 
+const CREAR_INCIDENTE_TOOL: Anthropic.Tool = {
+  name: 'crear_incidente',
+  description: 'Uso exclusivo de Nash. Crea una fila en platform_incidents. Si (source, source_id) ya existe abierto, devuelve el id existente sin duplicar. Úsala cuando decidas trackear una señal encontrada por revisar_incidentes_plataforma o al descubrir un bug propio en admin (source="nash_self_discovery").',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      title:                 { type: 'string', description: 'Título corto y accionable.' },
+      description:           { type: 'string', description: 'Descripción con contexto, evidencia y pasos para reproducir si aplica.' },
+      priority:              { type: 'string', enum: ['low', 'med', 'high', 'critical'] },
+      source:                { type: 'string', enum: ['bug_report', 'error_log', 'escalated_inbox', 'failed_handoff', 'agent_task', 'nash_self_discovery', 'manual'], description: 'Fuente del incidente. Default nash_self_discovery.' },
+      source_id:             { type: 'string', description: 'ID de la fila origen (para dedupe). Ej: id de agent_tasks o ops_inbox.' },
+      affected_agent_id:     { type: 'string', description: 'UUID del voice_agent afectado (si aplica).' },
+      affected_portal_email: { type: 'string', description: 'Email del portal cliente afectado (si aplica).' },
+    },
+    required: ['title', 'description', 'priority'],
+  },
+};
+
+const RESPONDER_CLIENTE_AFECTADO_TOOL: Anthropic.Tool = {
+  name: 'responder_cliente_afectado',
+  description: 'Uso exclusivo de Nash. Envía un mensaje al cliente cuyo voice_agent está afectado por un incidente. Canal email (default) usa client_email; canal whatsapp usa transfer_whatsapp. Úsala cuando quieras darle visibilidad al cliente sobre un problema que Nash está atacando (ej: "detectamos que tu bandeja no procesó correos desde ayer, ya lo estoy arreglando").',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      agent_id: { type: 'string', description: 'UUID del voice_agent del cliente afectado.' },
+      mensaje:  { type: 'string', description: 'Texto claro dirigido al dueño del negocio. Firma se agrega automáticamente.' },
+      canal:    { type: 'string', enum: ['email', 'whatsapp'], description: 'Canal de entrega. Default email.' },
+    },
+    required: ['agent_id', 'mensaje'],
+  },
+};
+
+const ENVIAR_A_CLAUDE_CODE_TOOL: Anthropic.Tool = {
+  name: 'enviar_a_claude_code',
+  description: 'Uso exclusivo de Nash. Escala un incidente a Claude Code creando un GitHub issue con el prompt de trabajo. Si NASH_GITHUB_TOKEN no está seteado, cae a email con el prompt para que el owner lo pegue manual en Claude Code. Actualiza status=sent_to_claude_code y guarda github_issue_url. Úsala solo cuando el incidente requiera cambio de código (no para bugs de datos que puedes arreglar tú mismo con otras tools).',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      incidente_id: { type: 'string', description: 'UUID del platform_incidents row.' },
+      prompt:       { type: 'string', description: 'Prompt completo para Claude Code: contexto + evidencia + hipótesis + pasos sugeridos. Se prepende [Nash] al título del issue.' },
+      labels:       { type: 'array', items: { type: 'string' }, description: 'Labels adicionales (bug, from-nash, priority-<x> se agregan automáticamente).' },
+    },
+    required: ['incidente_id', 'prompt'],
+  },
+};
+
+const ESCALAR_AL_OWNER_TOOL: Anthropic.Tool = {
+  name: 'escalar_al_owner',
+  description: 'Uso exclusivo de Nash. Notifica al owner (Nazre) por WhatsApp (env OWNER_WHATSAPP) con fallback a email hola@centinelia.mx. Marca el incidente como assigned_to=owner. Úsala SOLO para lo crítico donde Nash no puede decidir solo: acciones destructivas sin precedente, cobro mal aplicado, datos de cliente en riesgo, o cuando el mismo incidente ha regresado 3+ veces.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      razon:        { type: 'string', description: 'Razón clara y accionable. El owner debe poder decidir sin abrir el portal.' },
+      urgencia:     { type: 'string', enum: ['low', 'med', 'high', 'critical'], description: 'Nivel de urgencia. Default high.' },
+      incidente_id: { type: 'string', description: 'UUID del incidente relacionado (opcional pero recomendado).' },
+    },
+    required: ['razon'],
+  },
+};
+
+const VERIFICAR_FIX_TOOL: Anthropic.Tool = {
+  name: 'verificar_fix',
+  description: 'Uso exclusivo de Nash. Re-lee la señal fuente del incidente (agent_task, ops_inbox, handoff, error_log) y decide si el problema ya desapareció. Si desapareció → status=resolved con nota. Si sigue → status=awaiting_verification para que el owner lo revise manual. Úsala después de que Claude Code haya cerrado un issue para confirmar que el fix realmente funcionó en la data.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      incidente_id: { type: 'string', description: 'UUID del platform_incidents row.' },
+    },
+    required: ['incidente_id'],
+  },
+};
+
 const REPORT_ISSUE_TOOL: Anthropic.Tool = {
   name: 'reportar_falla',
   description: 'Reporta una falla técnica inesperada al equipo de Centinelia. Úsala cuando encuentres un error real del sistema: timeout de API, falla al escribir archivo, herramienta con comportamiento incorrecto, resultado corrupto, etc. NO la uses para errores de autenticación o sesión expirada — esos se resuelven pidiéndole al dueño que reconecte la integración. No consume ops del cliente.',
@@ -1047,12 +1119,22 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   ...Object.fromEntries(QB_TOOLS.map(t => [t.name, t])),
   buscar_producto: BUSCAR_PRODUCTO_TOOL,
   revisar_incidentes_plataforma: REVISAR_INCIDENTES_PLATAFORMA_TOOL,
+  crear_incidente:               CREAR_INCIDENTE_TOOL,
+  responder_cliente_afectado:    RESPONDER_CLIENTE_AFECTADO_TOOL,
+  enviar_a_claude_code:          ENVIAR_A_CLAUDE_CODE_TOOL,
+  escalar_al_owner:              ESCALAR_AL_OWNER_TOOL,
+  verificar_fix:                 VERIFICAR_FIX_TOOL,
 };
 
 // Nash-only tools — nunca en ALL_TOOLS, se agregan condicionalmente cuando
 // getToolsForRole detecta meerkat_role_id === 'nash'.
 const NASH_TOOLS: Anthropic.Tool[] = [
   REVISAR_INCIDENTES_PLATAFORMA_TOOL,
+  CREAR_INCIDENTE_TOOL,
+  RESPONDER_CLIENTE_AFECTADO_TOOL,
+  ENVIAR_A_CLAUDE_CODE_TOOL,
+  ESCALAR_AL_OWNER_TOOL,
+  VERIFICAR_FIX_TOOL,
 ];
 
 function getToolsForRole(meerkatId: string | null, qbConnected: boolean, notionProductsConnected: boolean): Anthropic.Tool[] {
