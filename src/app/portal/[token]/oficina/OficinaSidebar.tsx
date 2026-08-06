@@ -206,9 +206,10 @@ export default function OficinaSidebar({
       </nav>
 
 
-      {/* Usage widget */}
-      {minutesIncluded > 0 && (() => {
-        const minPct    = Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100);
+      {/* Usage widget — muestra si hay algún plan (minutos O tareas) */}
+      {(minutesIncluded > 0 || aiOpsLimit > 0) && (() => {
+        const hasMinPlan = minutesIncluded > 0;
+        const minPct    = hasMinPlan ? Math.min(Math.round((1 - minutesRemain / minutesIncluded) * 100), 100) : 0;
         const opsPct    = aiOpsLimit > 0 ? Math.min(Math.round((aiOpsUsed / aiOpsLimit) * 100), 100) : 0;
         const opsRemain = Math.max(0, aiOpsLimit - aiOpsUsed);
         return (
@@ -221,7 +222,9 @@ export default function OficinaSidebar({
             <div className="mb-2">
               <div className="flex justify-between mb-1">
                 <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
-                <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(minPct) }}>{minutesRemain} rest.</span>
+                <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
+                  {hasMinPlan ? `${minutesRemain} rest.` : 'Sin plan'}
+                </span>
               </div>
               <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
                 <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999 }} />
@@ -245,7 +248,7 @@ export default function OficinaSidebar({
       {hasStripe && (
         <div
           className="px-2 py-3 shrink-0"
-          style={{ borderTop: minutesIncluded > 0 ? 'none' : '1px solid var(--c-border)', marginTop: minutesIncluded > 0 ? 0 : 'auto' }}
+          style={{ borderTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 'none' : '1px solid var(--c-border)', marginTop: (minutesIncluded > 0 || aiOpsLimit > 0) ? 0 : 'auto' }}
         >
           <a
             href={`/api/billing/portal-session?token=${token}`}
@@ -253,7 +256,7 @@ export default function OficinaSidebar({
             style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', textDecoration: 'none' }}
           >
             <CreditCard size={14} style={{ flexShrink: 0 }} />
-            Suscripción
+            Plan y consumo
           </a>
         </div>
       )}

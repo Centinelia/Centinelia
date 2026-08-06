@@ -64,8 +64,8 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'inicio',
     tabParam: 'inicio',
     items: [
-      { label: 'Cómo va tu semana',      anchor: 'semana' },
-      { label: 'Hoy tienes que atender', anchor: 'hoy' },
+      { label: 'Resumen',    anchor: 'semana' },
+      { label: 'Pendientes', anchor: 'hoy' },
     ],
   });
 
