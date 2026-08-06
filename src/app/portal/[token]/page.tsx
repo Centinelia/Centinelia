@@ -281,7 +281,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     showLeads  ? supabase.from('leads_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     showOrders ? supabase.from('orders_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     showAppts  ? supabase.from('appointments_voice').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-    supabase.from('voice_calls').select('duration_seconds, created_at').in('agent_id', agentIdsForCalls).order('created_at', { ascending: true }),
+    supabase.from('voice_calls').select('duration_seconds, created_at, outcome').in('agent_id', agentIdsForCalls).order('created_at', { ascending: true }),
     showOutbound ? supabase.from('outbound_calls').select('*').eq('agent_id', agent.id).order('scheduled_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] }),
     supabase.from('outbound_contacts').select('id, nombre, telefono, motivo, source, status, fail_count, created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(500),
     supabase.from('outbound_campaigns').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }),
@@ -449,6 +449,61 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     token:  a.portal_token as string,
   }));
 
+  // ─── Briefing ejecutivo: HOY y COMPARACIÓN SEMANAL ──────────────────────
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const week1Start = new Date(now.getTime() - 7 * 86400000);
+  const week2Start = new Date(now.getTime() - 14 * 86400000);
+  const endOfToday = new Date(startOfToday.getTime() + 86400000);
+
+  const apptsHoy = (appts as any[]).filter(a => {
+    if (!a.fecha) return false;
+    const d = new Date(a.fecha as string);
+    return d >= startOfToday && d < endOfToday;
+  }).sort((a, b) => ((a.hora as string) ?? '').localeCompare((b.hora as string) ?? ''));
+
+  const salientesEnCola = showOutbound ? pendingOutboundCount : 0;
+
+  const allCallsTyped = (allCalls as any[]);
+  const callsW1 = allCallsTyped.filter(c => new Date(c.created_at as string) >= week1Start);
+  const callsW2 = allCallsTyped.filter(c => {
+    const d = new Date(c.created_at as string);
+    return d >= week2Start && d < week1Start;
+  });
+  const leadsW1 = (leads as any[]).filter(l => new Date(l.created_at as string) >= week1Start).length;
+  const leadsW2 = (leads as any[]).filter(l => {
+    const d = new Date(l.created_at as string);
+    return d >= week2Start && d < week1Start;
+  }).length;
+  const ordersW1 = (orders as any[]).filter(o => new Date(o.created_at as string) >= week1Start).length;
+  const ordersW2 = (orders as any[]).filter(o => {
+    const d = new Date(o.created_at as string);
+    return d >= week2Start && d < week1Start;
+  }).length;
+  const apptsW1 = (appts as any[]).filter(a => new Date(a.created_at as string) >= week1Start).length;
+  const apptsW2 = (appts as any[]).filter(a => {
+    const d = new Date(a.created_at as string);
+    return d >= week2Start && d < week1Start;
+  }).length;
+  const RESOLVED_SET = new Set(['info_provided', 'lead_created', 'appointment_booked', 'order_taken', 'escalated_whatsapp', 'other']);
+  const autoW1 = callsW1.length > 0 ? Math.round(callsW1.filter(c => RESOLVED_SET.has((c.outcome as string) ?? '')).length / callsW1.length * 100) : 0;
+  const autoW2 = callsW2.length > 0 ? Math.round(callsW2.filter(c => RESOLVED_SET.has((c.outcome as string) ?? '')).length / callsW2.length * 100) : 0;
+
+  const trend = (curr: number, prev: number): { delta: number | null; dir: 'up' | 'down' | 'flat' } => {
+    if (prev === 0 && curr === 0) return { delta: null, dir: 'flat' };
+    if (prev === 0) return { delta: null, dir: 'up' };
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    return { delta: Math.abs(pct), dir: pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat' };
+  };
+
+  const weeklyMetrics = [
+    { label: 'Conversaciones',      curr: callsW1.length, prev: callsW2.length, ...trend(callsW1.length, callsW2.length), unit: '' },
+    ...(showLeads   ? [{ label: 'Leads capturados',   curr: leadsW1,  prev: leadsW2,  ...trend(leadsW1, leadsW2),  unit: '' }] : []),
+    ...(showAppts   ? [{ label: 'Citas agendadas',    curr: apptsW1,  prev: apptsW2,  ...trend(apptsW1, apptsW2),  unit: '' }] : []),
+    ...(showOrders  ? [{ label: 'Pedidos tomados',    curr: ordersW1, prev: ordersW2, ...trend(ordersW1, ordersW2), unit: '' }] : []),
+    { label: 'Resolución autónoma', curr: autoW1,         prev: autoW2,         ...trend(autoW1, autoW2),          unit: '%' },
+  ];
+
   // Últimas 3 conversaciones — respondidas, en orden reverso cronológico
   const latestCalls = (calls as any[])
     .filter(c => (c.outcome as string) !== 'unanswered' && (c.outcome as string) !== 'missed')
@@ -585,492 +640,132 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
-              {actionTotal > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Requieren tu acción
+              {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
+              {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Hoy tienes que atender
                   </h2>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col gap-3">
+                    {apptsHoy.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-1.5" style={{ color: 'var(--c-text)' }}>
+                          <span style={{ color: '#3b82f6', marginRight: 6 }}>●</span>
+                          {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
+                        </p>
+                        <div className="pl-4 flex flex-col gap-1">
+                          {apptsHoy.slice(0, 5).map((a: any) => (
+                            <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                              <span className="font-semibold">{(a.hora as string) ?? '—'}</span>
+                              {'  '}{(a.nombre as string)?.trim() || 'Sin nombre'}
+                              {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {bandejaCount > 0 && (
                       <Link href={`/portal/${token}/oficina/bandeja`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: (learningsCount > 0 || reauthAlerts.length > 0) ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(108,59,255,0.1)' }}>
-                          <Inbox size={14} style={{ color: '#6C3BFF' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {bandejaCount} {bandejaCount === 1 ? 'correo pendiente' : 'correos pendientes'} en la bandeja
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Revisa borradores, escalaciones y solicitudes.</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#6C3BFF', marginRight: 6 }}>●</span>
+                          {bandejaCount} {bandejaCount === 1 ? 'correo espera' : 'correos esperan'} tu aprobación
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Ver bandeja →</span>
+                      </Link>
+                    )}
+                    {salientesEnCola > 0 && (
+                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#a855f7', marginRight: 6 }}>●</span>
+                          {salientesEnCola} {salientesEnCola === 1 ? 'contacto' : 'contactos'} en cola de campaña saliente
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Ver campañas →</span>
                       </Link>
                     )}
                     {learningsCount > 0 && (
                       <Link href={`/portal/${token}/oficina/aprendizajes`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: reauthAlerts.length > 0 ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(34,197,94,0.1)' }}>
-                          <Lightbulb size={14} style={{ color: '#22c55e' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu equipo propuso reglas nuevas para tu organización.</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#22c55e', marginRight: 6 }}>●</span>
+                          {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Revisar →</span>
                       </Link>
                     )}
-                    {reauthAlerts.map((alert, idx) => (
-                      <Link key={alert.provider}
-                        href={`/portal/${token}/oficina/integraciones`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: idx < reauthAlerts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(245,158,11,0.1)' }}>
-                          <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
-                          </p>
-                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                    {reauthAlerts.map(alert => (
+                      <Link key={alert.provider} href={`/portal/${token}/oficina/integraciones`}
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#f59e0b', marginRight: 6 }}>●</span>
+                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
+                          <span className="text-xs ml-1" style={{ color: 'var(--c-text-3)' }}>({alert.email})</span>
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#f59e0b' }}>Resolver →</span>
                       </Link>
                     ))}
+                    {hasNox && (
+                      <div className="mt-1">
+                        <p className="text-[11px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+                          Brief del día
+                        </p>
+                        <BriefDelDiaCard />
+                      </div>
+                    )}
+                    {nextTask && (
+                      <p className="text-xs pt-1" style={{ color: 'var(--c-text-3)' }}>
+                        Próxima tarea automática: <span style={{ color: 'var(--c-text-2)' }}>{nextTask.name}</span> · {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Period filter */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
-                <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
-                    const active = (period ?? '') === param;
-                    return (
-                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Two-column layout from KPIs down */}
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 items-start">
-
-              {/* ── Main column ── */}
-              <div className="flex flex-col gap-5">
-
-                {/* KPI cards */}
-                <div id="resumen" className={`grid ${kpiGridClass} gap-3`}>
-                  <KpiCard icon={<PhoneCall size={16} color="#6C3BFF" />}    value={String(calls.length)}   label="Conversaciones"   sub={`prom. ${avgDuration} min`}                                                                                   valueColor="#6C3BFF"  accentColor="#6C3BFF"  />
-                  <KpiCard icon={<CheckCircle size={16} color="#22c55e" />}  value={String(resolvedCount)}  label="Sin intervención" sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}                                                valueColor="#22c55e"  accentColor="#22c55e"  />
-                  {showLeads   && leads.length  > 0 && <KpiCard icon={<Users size={16} color="#22c55e" />}         value={String(leads.length)}  label="Leads"    sub={calls.length > 0 ? `${Math.round((leads.length / calls.length) * 100)}% conv.` : undefined} valueColor="#22c55e"  accentColor="#22c55e"  />}
-                  {showOrders  && orders.length > 0 && <KpiCard icon={<ShoppingBag size={16} color="#f59e0b" />}   value={String(orders.length)} label="Pedidos"  sub={pendingOrders > 0 ? `${pendingOrders} pendientes` : undefined}                      valueColor="#f59e0b"  accentColor="#f59e0b"  />}
-                  {showAppts   && appts.length  > 0 && <KpiCard icon={<CalendarDays size={16} color="#3b82f6" />}  value={String(appts.length)}  label="Citas"    sub={confirmedAppts > 0 ? `${confirmedAppts} confirmadas` : undefined}                   valueColor="#3b82f6"  accentColor="#3b82f6"  />}
-                  {showOutbound && outboundCallCount > 0 && <KpiCard icon={<PhoneOutgoing size={16} color="#a855f7" />} value={String(outboundCallCount)} label="Salientes"                                                                                 valueColor="#a855f7"  accentColor="#a855f7"  />}
-                  {showOps && <KpiCard icon={<Zap size={16} color="#06b6d4" />} value={String(aiOpsUsed)} label="Tareas" sub={`de ${aiOpsLimit} disponibles`} valueColor="#06b6d4" accentColor="#06b6d4" />}
-                </div>
-
-                {/* Autonomous resolution rate */}
-                {calls.length > 0 && (
-                  <p className="text-sm -mt-1" style={{ color: 'var(--c-text-2)' }}>
-                    Tu oficina resolvió el{' '}
-                    <span className="font-semibold" style={{ color: '#22c55e' }}>{autonomousRate}%</span>
-                    {' '}de las solicitudes sin intervención humana.
-                  </p>
-                )}
-
-                {/* Brief del día — solo cuando hay Nox activo en el equipo */}
-                {hasNox && <BriefDelDiaCard />}
-
-                {/* Tu equipo hoy */}
-                {teamToday.length > 0 && (
-                  <div id="equipo-hoy" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Tu equipo hoy</h2>
-                    <div className="flex flex-col">
-                      {teamToday.map((m, idx) => (
-                        <div key={m.token}
-                          className="flex items-center gap-3 py-2.5"
-                          style={{ borderBottom: idx < teamToday.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                          <div className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: m.active ? '#22c55e' : '#9ca3af', boxShadow: m.active ? '0 0 5px #22c55e' : 'none' }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{m.name}</p>
-                            {m.role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{m.role}</p>}
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0 text-xs" style={{ color: 'var(--c-text-3)' }}>
-                            {m.calls > 0 && (
-                              <span className="flex items-center gap-1">
-                                <PhoneCall size={11} style={{ color: '#6C3BFF' }} /> {m.calls}
-                              </span>
-                            )}
-                            {m.ops > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Zap size={11} style={{ color: '#06b6d4' }} /> {m.ops}
-                              </span>
-                            )}
-                          </div>
-                          <Link href={`/portal/${m.token}/configurar`}
-                            className="text-xs transition-opacity hover:opacity-70 flex-shrink-0"
-                            style={{ color: '#9B6DFF' }}>
-                            Ver →
-                          </Link>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Últimas conversaciones con recap */}
-                {latestCalls.length > 0 && (
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                        Últimas conversaciones
-                      </h2>
-                      <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                        className="text-xs transition-opacity hover:opacity-70"
-                        style={{ color: '#9B6DFF' }}>
-                        Ver todas →
-                      </Link>
-                    </div>
-                    <div className="flex flex-col">
-                      {latestCalls.map((c: any, idx: number) => {
-                        const cfg = FEED_OUTCOME[c.outcome as string] ?? FEED_OUTCOME.other;
-                        const normNumber = (c.caller_number ?? '').toString().replace(/\D/g, '').slice(-10);
-                        const callerName = callerNames[normNumber];
-                        const displayName = (callerName as string | undefined) ?? 'Cliente anónimo';
-                        const durMin = Math.max(1, Math.round(((c.duration_seconds as number) ?? 0) / 60));
-                        return (
-                          <div key={c.id as string}
-                            className="flex items-start gap-3 py-3"
-                            style={{ borderBottom: idx < latestCalls.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ background: cfg.bg, color: cfg.color }}>
-                              <Phone size={14} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{displayName}</span>
-                                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                                  style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                              </div>
-                              {c.summary && (
-                                <p className="text-xs mt-1 leading-relaxed" style={{
-                                  color: 'var(--c-text-2)',
-                                  display:          '-webkit-box',
-                                  WebkitLineClamp:  2,
-                                  WebkitBoxOrient:  'vertical',
-                                  overflow:         'hidden',
-                                }}>
-                                  {c.summary as string}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-2 mt-1.5 text-[11px]" style={{ color: 'var(--c-text-4)' }}>
-                                <span>{fmtRelative(c.created_at as string)}</span>
-                                <span>•</span>
-                                <span>{durMin} min</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pipeline snapshot — leads + citas + pedidos */}
-                {(latestLeads.length > 0 || upcomingAppts.length > 0 || latestOrders.length > 0) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {showLeads && latestLeads.length > 0 && (
-                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Users size={13} style={{ color: '#22c55e' }} />
-                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                              Últimos leads
-                            </h3>
-                          </div>
-                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
-                            Ver →
-                          </Link>
-                        </div>
-                        <div className="flex flex-col">
-                          {latestLeads.map((l: any, idx: number) => (
-                            <div key={l.id} className="py-2"
-                              style={{ borderBottom: idx < latestLeads.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                              <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                {(l.nombre as string)?.trim() || 'Sin nombre'}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {l.servicio && (
-                                  <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{l.servicio}</span>
-                                )}
-                                <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
-                                  {fmtRelative(l.created_at as string)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {showAppts && upcomingAppts.length > 0 && (
-                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <CalendarDays size={13} style={{ color: '#3b82f6' }} />
-                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                              Próximas citas
-                            </h3>
-                          </div>
-                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
-                            Ver →
-                          </Link>
-                        </div>
-                        <div className="flex flex-col">
-                          {upcomingAppts.map((a: any, idx: number) => {
-                            const fecha = new Date(a.fecha as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-                            return (
-                              <div key={a.id} className="py-2"
-                                style={{ borderBottom: idx < upcomingAppts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                  {(a.nombre as string)?.trim() || 'Sin nombre'}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: '#3b82f6' }}>
-                                    {fecha}{a.hora ? ` · ${a.hora}` : ''}
-                                  </span>
-                                  {a.servicio && (
-                                    <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.servicio}</span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {showOrders && latestOrders.length > 0 && (
-                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <ShoppingBag size={13} style={{ color: '#f59e0b' }} />
-                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                              Últimos pedidos
-                            </h3>
-                          </div>
-                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
-                            Ver →
-                          </Link>
-                        </div>
-                        <div className="flex flex-col">
-                          {latestOrders.map((o: any, idx: number) => (
-                            <div key={o.id} className="py-2"
-                              style={{ borderBottom: idx < latestOrders.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                              <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                {(o.nombre as string)?.trim() || 'Sin nombre'}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {o.notas && (
-                                  <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{o.notas}</span>
-                                )}
-                                <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
-                                  {fmtRelative(o.created_at as string)}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Snapshot salientes — visible en /inicio (antes solo /negocio desktop) */}
-                {outboundSnapshot && (
-                  <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
-                    className="rounded-xl p-5 no-underline transition-opacity hover:opacity-90"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <PhoneOutgoing size={13} style={{ color: '#a855f7' }} />
-                        <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                          Llamadas salientes
-                        </h3>
-                      </div>
-                      <span className="text-[11px]" style={{ color: '#9B6DFF' }}>Ver →</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.active}</p>
-                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Campañas activas</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.pending}</p>
-                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Contactos por llamar</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                          {outboundSnapshot.lastRun ? fmtRelative(outboundSnapshot.lastRun as string) : '—'}
-                        </p>
-                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Última ejecución</p>
-                      </div>
-                    </div>
-                  </Link>
-                )}
-
-                {/* Insights de la semana */}
-                <InsightsSection token={token} />
-
-                {/* Activity feed */}
-                <div id="actividad" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
                   <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Actividad reciente
+                    Cómo va tu semana
                   </h2>
-                  {resumenFeed.length === 0 ? (
-                    <div className="flex flex-col items-center py-8 gap-0">
-                      <div className="relative" style={{ width: 96, height: 132 }}>
-                        <Image src="/agent-f2.png" alt="" fill sizes="96px"
-                          style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                      </div>
-                      <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col">
-                      {resumenFeed.map((item, idx) => {
-                        const cfg = item.type === 'call'
-                          ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
-                          : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
-                        return (
-                          <div key={`${item.type}-${item.id}`}
-                            className="flex items-center gap-3 py-2.5"
-                            style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                              style={{ background: cfg.bg, color: cfg.color }}>
-                              {item.type === 'call'  && <Phone        size={12} />}
-                              {item.type === 'lead'  && <Users        size={12} />}
-                              {item.type === 'order' && <ShoppingBag  size={12} />}
-                              {item.type === 'appt'  && <CalendarDays size={12} />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
-                                {item.label}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {weeklyMetrics.map(m => {
+                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
+                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
+                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
+                      return (
+                        <div key={m.label}>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
+                              {m.curr}{m.unit}
+                            </p>
+                            {m.delta !== null && (
+                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
+                                {arrow} {m.delta}{deltaSuffix}
                               </span>
-                              {item.sub && (
-                                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
-                              )}
-                            </div>
-                            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                              style={{ background: cfg.bg, color: cfg.color }}>
-                              {cfg.label}
-                            </span>
-                            <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
-                              {fmtRelative(item.created_at)}
-                            </span>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+                            vs {m.prev}{m.unit} semana anterior
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+              )}
 
-                {/* Actividad de tu oficina — chart, after feed */}
-                {calls.length > 0 && (
-                  <div id="horas-pico" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                      Actividad de tu oficina
-                    </h2>
-                    <PeakHoursChart hourCounts={hourCounts} />
-                  </div>
-                )}
+              {/* ═══ BLOQUE 3: INSIGHT — InsightsSection solo aparece si hay data ═══ */}
+              <InsightsSection token={token} />
 
-                {/* Próxima tarea automática — footer discreto */}
-                {nextTask && (
-                  <Link href={`/portal/${token}/oficina/tareas?tab=programadas`}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-80"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(108,59,255,0.1)' }}>
-                      <Clock size={14} style={{ color: '#6C3BFF' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                        Próxima tarea automática
-                      </p>
-                      <p className="text-sm font-medium truncate mt-0.5" style={{ color: 'var(--c-text)' }}>
-                        {nextTask.name}
-                      </p>
-                      <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>
-                        {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
-                      </p>
-                    </div>
-                    <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                  </Link>
-                )}
+              {/* Fin de los 3 bloques del briefing */}
 
-                {/* Reporte mensual — visible en mobile al final de la columna principal */}
-                <div className="lg:hidden rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                    <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
-                  </div>
-                  <MonthReportPicker token={token} />
-                </div>
 
-              </div>{/* end main column */}
-
-              {/* ── Right column (desktop only) ── */}
-              <div className="hidden lg:flex flex-col gap-4">
-
-                {showOutbound && (
-                  <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
-                        <PhoneOutgoing size={13} /> Salientes
-                      </h2>
-                      <Link href={`/portal/${token}/llamadas/salientes`}
-                        className="text-xs transition-opacity hover:opacity-70"
-                        style={{ color: '#9B6DFF' }}>
-                        Ver →
-                      </Link>
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      <StatBox label="Campañas activas"     value={String(activeOutboundCampaigns)} />
-                      <StatBox label="Contactos pendientes" value={String(pendingOutboundCount)}    />
-                      <StatBox label="Última ejecución"     value={lastCampaignRunAt ? fmtRelative(lastCampaignRunAt) : 'Nunca'} />
-                    </div>
-                  </div>
-                )}
-
-                {/* Reporte mensual — desktop sidebar */}
-                <div id="reporte-mensual" className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <div className="flex items-center gap-1.5 mb-4">
-                    <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reporte mensual</h2>
-                    <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
-                  </div>
-                  <MonthReportPicker token={token} />
-                </div>
-
-              </div>
-
-              </div>
             </div>
           )}
 
@@ -1435,422 +1130,132 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* Requieren tu acción — bandeja + aprendizajes + reauth consolidados */}
-              {actionTotal > 0 && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  <h2 className="text-xs font-semibold mb-3 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Requieren tu acción
+              {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
+              {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Hoy tienes que atender
                   </h2>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col gap-3">
+                    {apptsHoy.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-1.5" style={{ color: 'var(--c-text)' }}>
+                          <span style={{ color: '#3b82f6', marginRight: 6 }}>●</span>
+                          {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
+                        </p>
+                        <div className="pl-4 flex flex-col gap-1">
+                          {apptsHoy.slice(0, 5).map((a: any) => (
+                            <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                              <span className="font-semibold">{(a.hora as string) ?? '—'}</span>
+                              {'  '}{(a.nombre as string)?.trim() || 'Sin nombre'}
+                              {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {bandejaCount > 0 && (
                       <Link href={`/portal/${token}/oficina/bandeja`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: (learningsCount > 0 || reauthAlerts.length > 0) ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(108,59,255,0.1)' }}>
-                          <Inbox size={14} style={{ color: '#6C3BFF' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {bandejaCount} {bandejaCount === 1 ? 'correo pendiente' : 'correos pendientes'} en la bandeja
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Revisa borradores, escalaciones y solicitudes.</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#6C3BFF', marginRight: 6 }}>●</span>
+                          {bandejaCount} {bandejaCount === 1 ? 'correo espera' : 'correos esperan'} tu aprobación
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Ver bandeja →</span>
+                      </Link>
+                    )}
+                    {salientesEnCola > 0 && (
+                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#a855f7', marginRight: 6 }}>●</span>
+                          {salientesEnCola} {salientesEnCola === 1 ? 'contacto' : 'contactos'} en cola de campaña saliente
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Ver campañas →</span>
                       </Link>
                     )}
                     {learningsCount > 0 && (
                       <Link href={`/portal/${token}/oficina/aprendizajes`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: reauthAlerts.length > 0 ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(34,197,94,0.1)' }}>
-                          <Lightbulb size={14} style={{ color: '#22c55e' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu equipo propuso reglas nuevas para tu organización.</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#22c55e', marginRight: 6 }}>●</span>
+                          {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Revisar →</span>
                       </Link>
                     )}
-                    {reauthAlerts.map((alert, idx) => (
-                      <Link key={alert.provider}
-                        href={`/portal/${token}/oficina/integraciones`}
-                        className="flex items-center gap-3 py-2.5 no-underline transition-opacity hover:opacity-80"
-                        style={{ borderBottom: idx < reauthAlerts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(245,158,11,0.1)' }}>
-                          <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                            {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
-                          </p>
-                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email}</p>
-                        </div>
-                        <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+                    {reauthAlerts.map(alert => (
+                      <Link key={alert.provider} href={`/portal/${token}/oficina/integraciones`}
+                        className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                        style={{ color: 'var(--c-text)' }}>
+                        <span>
+                          <span style={{ color: '#f59e0b', marginRight: 6 }}>●</span>
+                          {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
+                          <span className="text-xs ml-1" style={{ color: 'var(--c-text-3)' }}>({alert.email})</span>
+                        </span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: '#f59e0b' }}>Resolver →</span>
                       </Link>
                     ))}
+                    {hasNox && (
+                      <div className="mt-1">
+                        <p className="text-[11px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
+                          Brief del día
+                        </p>
+                        <BriefDelDiaCard />
+                      </div>
+                    )}
+                    {nextTask && (
+                      <p className="text-xs pt-1" style={{ color: 'var(--c-text-3)' }}>
+                        Próxima tarea automática: <span style={{ color: 'var(--c-text-2)' }}>{nextTask.name}</span> · {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Period filter */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Período:</span>
-                <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                  {[{ label: '7 días', param: '7' }, { label: '30 días', param: '30' }, { label: 'Todo', param: '' }].map(({ label, param }) => {
-                    const active = (period ?? '') === param;
-                    return (
-                      <Link key={param} href={param ? `/portal/${token}?tab=inicio&period=${param}` : `/portal/${token}?tab=inicio`}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                        style={{ background: active ? '#6C3BFF' : 'transparent', color: active ? '#fff' : 'var(--c-text-3)' }}>
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Single-column layout (right col removed: MonthReport moved to /cuenta, Contexto removed) */}
-              <div className="flex flex-col gap-5">
-
-                  {/* KPI section — Tier 1 (3 primary) + Tier 2 (4 secondary chips) */}
-                  <PageSection
-                    heading={
-                      <SectionHeader
-                        eyebrow="HOY"
-                        title="Resumen de actividad"
-                        as="h2"
-                      />
-                    }
-                  >
-                    {/* Tier 1 — 3 primary KPIs */}
-                    <GridStretch cols={{ base: 1, md: 3 }} gap={4}>
-                      <KpiCard
-                        icon={<PhoneCall size={16} color="#6C3BFF" />}
-                        value={String(calls.length)}
-                        label="Conversaciones"
-                        sub={`prom. ${avgDuration} min`}
-                        valueColor="#6C3BFF"
-                        accentColor="#6C3BFF"
-                      />
-                      <KpiCard
-                        icon={<CheckCircle size={16} color="#22c55e" />}
-                        value={String(resolvedCount)}
-                        label="Sin intervención"
-                        sub={calls.length > 0 ? `${autonomousRate}% del total` : undefined}
-                        valueColor="#22c55e"
-                        accentColor="#22c55e"
-                      />
-                      <KpiCard
-                        icon={<Zap size={16} color="#06b6d4" />}
-                        value={showOps ? String(aiOpsUsed) : '—'}
-                        label="Tareas"
-                        sub={showOps ? `de ${aiOpsLimit} disponibles` : undefined}
-                        valueColor="#06b6d4"
-                        accentColor="#06b6d4"
-                      />
-                    </GridStretch>
-
-                    {/* Tier 2 — 3 secondary stat chips (Autonomía removed: redundant with "Sin intervención" KPI) */}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <StatChip
-                        icon={Phone}
-                        label="Tasa contestada"
-                        value={calls.length > 0 ? `${answeredRate}%` : '—'}
-                        tone="accent"
-                      />
-                      <StatChip
-                        icon={Users}
-                        label="Leads"
-                        value={showLeads ? String(leads.length) : '—'}
-                        tone="neutral"
-                      />
-                      <StatChip
-                        icon={CalendarDays}
-                        label="Citas"
-                        value={showAppts ? String(appts.length) : '—'}
-                        tone="neutral"
-                      />
-                    </div>
-                  </PageSection>
-
-                  {/* Brief del día — solo cuando hay Nox activo en el equipo */}
-                  {hasNox && <BriefDelDiaCard />}
-
-                  {/* Últimas conversaciones con recap */}
-                  {latestCalls.length > 0 && (
-                    <PageSection heading={
-                      <SectionHeader
-                        eyebrow="CONVERSACIONES"
-                        title="Últimas atendidas"
-                        as="h2"
-                        right={
-                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                            className="text-xs transition-opacity hover:opacity-70"
-                            style={{ color: '#9B6DFF' }}>
-                            Ver todas →
-                          </Link>
-                        }
-                      />
-                    }>
-                      <Card padding="md">
-                        <div className="flex flex-col">
-                          {latestCalls.map((c: any, idx: number) => {
-                            const cfg = FEED_OUTCOME[c.outcome as string] ?? FEED_OUTCOME.other;
-                            const normNumber = (c.caller_number ?? '').toString().replace(/\D/g, '').slice(-10);
-                            const callerName = callerNames[normNumber];
-                            const displayName = (callerName as string | undefined) ?? 'Cliente anónimo';
-                            const durMin = Math.max(1, Math.round(((c.duration_seconds as number) ?? 0) / 60));
-                            return (
-                              <div key={c.id as string}
-                                className="flex items-start gap-3 py-3"
-                                style={{ borderBottom: idx < latestCalls.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                                  style={{ background: cfg.bg, color: cfg.color }}>
-                                  <Phone size={14} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{displayName}</span>
-                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                                      style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                                  </div>
-                                  {c.summary && (
-                                    <p className="text-xs mt-1 leading-relaxed" style={{
-                                      color: 'var(--c-text-2)',
-                                      display:          '-webkit-box',
-                                      WebkitLineClamp:  2,
-                                      WebkitBoxOrient:  'vertical',
-                                      overflow:         'hidden',
-                                    }}>
-                                      {c.summary as string}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-1.5 text-[11px]" style={{ color: 'var(--c-text-4)' }}>
-                                    <span>{fmtRelative(c.created_at as string)}</span>
-                                    <span>•</span>
-                                    <span>{durMin} min</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </Card>
-                    </PageSection>
-                  )}
-
-                  {/* Pipeline snapshot — leads + citas + pedidos */}
-                  {(latestLeads.length > 0 || upcomingAppts.length > 0 || latestOrders.length > 0) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {showLeads && latestLeads.length > 0 && (
-                        <Card padding="md">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Users size={13} style={{ color: '#22c55e' }} />
-                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Últimos leads</h3>
-                            </div>
-                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
-                          </div>
-                          <div className="flex flex-col">
-                            {latestLeads.map((l: any, idx: number) => (
-                              <div key={l.id} className="py-2"
-                                style={{ borderBottom: idx < latestLeads.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                  {(l.nombre as string)?.trim() || 'Sin nombre'}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {l.servicio && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{l.servicio}</span>}
-                                  <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
-                                    {fmtRelative(l.created_at as string)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </Card>
-                      )}
-                      {showAppts && upcomingAppts.length > 0 && (
-                        <Card padding="md">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <CalendarDays size={13} style={{ color: '#3b82f6' }} />
-                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Próximas citas</h3>
-                            </div>
-                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
-                          </div>
-                          <div className="flex flex-col">
-                            {upcomingAppts.map((a: any, idx: number) => {
-                              const fecha = new Date(a.fecha as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-                              return (
-                                <div key={a.id} className="py-2"
-                                  style={{ borderBottom: idx < upcomingAppts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                  <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                    {(a.nombre as string)?.trim() || 'Sin nombre'}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: '#3b82f6' }}>
-                                      {fecha}{a.hora ? ` · ${a.hora}` : ''}
-                                    </span>
-                                    {a.servicio && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.servicio}</span>}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </Card>
-                      )}
-                      {showOrders && latestOrders.length > 0 && (
-                        <Card padding="md">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <ShoppingBag size={13} style={{ color: '#f59e0b' }} />
-                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Últimos pedidos</h3>
-                            </div>
-                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
-                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
-                          </div>
-                          <div className="flex flex-col">
-                            {latestOrders.map((o: any, idx: number) => (
-                              <div key={o.id} className="py-2"
-                                style={{ borderBottom: idx < latestOrders.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                                  {(o.nombre as string)?.trim() || 'Sin nombre'}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {o.notas && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{o.notas}</span>}
-                                  <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
-                                    {fmtRelative(o.created_at as string)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </Card>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Snapshot salientes */}
-                  {outboundSnapshot && (
-                    <Card padding="md">
-                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
-                        className="block no-underline">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <PhoneOutgoing size={13} style={{ color: '#a855f7' }} />
-                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Llamadas salientes</h3>
-                          </div>
-                          <span className="text-[11px]" style={{ color: '#9B6DFF' }}>Ver →</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.active}</p>
-                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Campañas activas</p>
-                          </div>
-                          <div>
-                            <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.pending}</p>
-                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Contactos por llamar</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
-                              {outboundSnapshot.lastRun ? fmtRelative(outboundSnapshot.lastRun as string) : '—'}
+              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Cómo va tu semana
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {weeklyMetrics.map(m => {
+                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
+                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
+                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
+                      return (
+                        <div key={m.label}>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
+                              {m.curr}{m.unit}
                             </p>
-                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Última ejecución</p>
+                            {m.delta !== null && (
+                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
+                                {arrow} {m.delta}{deltaSuffix}
+                              </span>
+                            )}
                           </div>
+                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+                            vs {m.prev}{m.unit} semana anterior
+                          </p>
                         </div>
-                      </Link>
-                    </Card>
-                  )}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-                  {/* Actividad — reciente + horaria (fused with tabs) */}
-                  <PageSection heading={<SectionHeader eyebrow="ACTIVIDAD" title="Ver por..." as="h2" />}>
-                    <Card padding="md">
-                      <ActivityTabsCard
-                        recientes={
-                          resumenFeed.length === 0 ? (
-                            <div className="flex flex-col items-center py-8 gap-0">
-                              <div className="relative" style={{ width: 96, height: 132 }}>
-                                <Image src="/agent-f2.png" alt="" fill sizes="96px"
-                                  style={{ objectFit: 'contain', objectPosition: 'bottom' }} />
-                              </div>
-                              <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin actividad en este período</p>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col">
-                              {resumenFeed.map((item, idx) => {
-                                const cfg = item.type === 'call'
-                                  ? (FEED_OUTCOME[item.badge] ?? FEED_OUTCOME.other)
-                                  : (FEED_TYPE_CFG[item.badge] ?? FEED_TYPE_CFG.lead);
-                                return (
-                                  <div key={`${item.type}-${item.id}`}
-                                    className="flex items-center gap-3 py-2.5"
-                                    style={{ borderBottom: idx < resumenFeed.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
-                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                                      style={{ background: cfg.bg, color: cfg.color }}>
-                                      {item.type === 'call'  && <Phone        size={12} />}
-                                      {item.type === 'lead'  && <Users        size={12} />}
-                                      {item.type === 'order' && <ShoppingBag  size={12} />}
-                                      {item.type === 'appt'  && <CalendarDays size={12} />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium truncate block" style={{ color: 'var(--c-text)' }}>
-                                        {item.label}
-                                      </span>
-                                      {item.sub && (
-                                        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{item.sub}</span>
-                                      )}
-                                    </div>
-                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                                      style={{ background: cfg.bg, color: cfg.color }}>
-                                      {cfg.label}
-                                    </span>
-                                    <span className="text-xs flex-shrink-0 hidden sm:block" style={{ color: 'var(--c-text-3)' }}>
-                                      {fmtRelative(item.created_at)}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )
-                        }
-                        horaria={calls.length > 0 ? <PeakHoursChart hourCounts={hourCounts} /> : undefined}
-                      />
-                    </Card>
-                  </PageSection>
+              {/* ═══ BLOQUE 3: INSIGHT — InsightsSection solo aparece si hay data ═══ */}
+              <InsightsSection token={token} />
 
-                  {/* Próxima tarea automática — footer discreto */}
-                  {nextTask && (
-                    <Link href={`/portal/${token}/oficina/tareas?tab=programadas`}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3 no-underline transition-opacity hover:opacity-80"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(108,59,255,0.1)' }}>
-                        <Clock size={14} style={{ color: '#6C3BFF' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                          Próxima tarea automática
-                        </p>
-                        <p className="text-sm font-medium truncate mt-0.5" style={{ color: 'var(--c-text)' }}>
-                          {nextTask.name}
-                        </p>
-                        <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>
-                          {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
-                        </p>
-                      </div>
-                      <ChevronRight size={14} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                    </Link>
-                  )}
+              {/* Fin de los 3 bloques del briefing */}
 
-              </div>{/* end single-column layout */}
+
             </div>
           </PageContainer>
         )}
