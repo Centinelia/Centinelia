@@ -106,8 +106,34 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
     .filter(a => !!((a.features as any)?.outbound_calls))
     .map(a => ({ id: a.id, agent_name: (a as any).agent_name ?? null, business_name: a.business_name }));
 
+  // ── Counters para el hero (server-side) ────────────────────────────────
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const weekAgo    = new Date(Date.now() - 7 * 86400000);
+
+  const [hoyRes, semanaRes, leadsRes, outConnectRes] = agentIds.length > 0
+    ? await Promise.all([
+        supabase.from('voice_calls').select('id', { count: 'exact', head: true })
+          .in('agent_id', agentIds).gte('created_at', todayStart.toISOString()),
+        supabase.from('voice_calls').select('id', { count: 'exact', head: true })
+          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString()),
+        supabase.from('leads_voice').select('id', { count: 'exact', head: true })
+          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
+          .then(r => r).catch(() => ({ count: 0 })),
+        supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
+          .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
+          .then(r => r).catch(() => ({ count: 0 })),
+      ])
+    : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
+
+  const counters = {
+    hoy:      hoyRes?.count       ?? 0,
+    semana:   semanaRes?.count    ?? 0,
+    leads:    leadsRes?.count     ?? 0,
+    outbound: outConnectRes?.count ?? 0,
+  };
+
   return (
-    <div id="of-llamadas" className="flex flex-col gap-5 p-4 md:p-6">
+    <div id="of-llamadas">
       <LlamadasTabs
         token={token}
         filtro={filtro}
@@ -129,6 +155,7 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
         outboundAgents={outboundAgents}
         callerNames={callerNames}
         agentNameById={agentNameById}
+        counters={counters}
       />
     </div>
   );

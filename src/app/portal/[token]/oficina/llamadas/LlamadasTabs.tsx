@@ -15,6 +15,13 @@ import OutboundSection  from '../../OutboundSection';
 
 interface OutboundAgent { id: string; agent_name: string | null; business_name: string }
 
+interface Counters {
+  hoy:      number;
+  semana:   number;
+  leads:    number;
+  outbound: number;
+}
+
 interface Props {
   token:             string;
   filtro:            LlamadasFiltro;
@@ -36,6 +43,7 @@ interface Props {
   outboundAgents:    OutboundAgent[];
   callerNames:       Record<string, string>;
   agentNameById?:    Record<string, string>;
+  counters?:         Counters;
 }
 
 type PillDef = {
@@ -46,6 +54,22 @@ type PillDef = {
   color:    string; // active bg color
 };
 
+function KpiInline({ label, value, accent }: { label: string; value: number; accent: string }) {
+  return (
+    <div
+      className="flex flex-col gap-0.5 px-4 py-2.5 rounded-xl min-w-0"
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] truncate" style={{ color: '#6B6480' }}>
+        {label}
+      </p>
+      <p className="text-[20px] font-bold leading-none tabular-nums" style={{ color: accent }}>
+        {value.toLocaleString('es-MX')}
+      </p>
+    </div>
+  );
+}
+
 export default function LlamadasTabs({
   token, filtro,
   isPro, businessName, agentName,
@@ -53,7 +77,7 @@ export default function LlamadasTabs({
   showLeads, showOrders, showAppts,
   showOutbound, initOutbound, initMissedCall,
   contactOutbound, outboundCampaigns, outboundAgents,
-  callerNames, agentNameById,
+  callerNames, agentNameById, counters,
 }: Props) {
   const router   = useRouter();
   const pathname = usePathname();
@@ -79,28 +103,59 @@ export default function LlamadasTabs({
     return `${agentName} atendió su última llamada hace ${Math.floor(minsAgo / 60)}h`;
   }, [calls, agentName]);
 
-  return (
-    <div className="flex flex-col gap-5">
+  const c = counters ?? { hoy: 0, semana: 0, leads: 0, outbound: 0 };
 
-      {/* Top-level pill filter */}
+  return (
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
+
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <header className="flex flex-col gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
+          Llamadas
+        </p>
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+          Actividad de voz
+        </h1>
+        <p className="text-[14px]" style={{ color: '#6B6480' }}>
+          {c.hoy > 0 ? (
+            <>
+              <strong style={{ color: '#1A0A3B' }}>{c.hoy}</strong> {c.hoy === 1 ? 'llamada' : 'llamadas'} hoy
+              {c.leads > 0 && <> · <strong style={{ color: '#22C55E' }}>{c.leads}</strong> {c.leads === 1 ? 'lead' : 'leads'} captados esta semana</>}
+              {' · '}{c.semana} atendidas en los últimos 7 días
+            </>
+          ) : (
+            <>Sin llamadas hoy. {c.semana} atendidas en los últimos 7 días.</>
+          )}
+        </p>
+      </header>
+
+      {/* ── KPI strip ─────────────────────────────────────────────────────── */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiInline label="Hoy"                value={c.hoy}      accent="#6C3BFF" />
+        <KpiInline label="7 días"             value={c.semana}   accent="#3B82F6" />
+        <KpiInline label="Leads 7 días"       value={c.leads}    accent="#22C55E" />
+        <KpiInline label="Salientes 7 días"   value={c.outbound} accent="#A855F7" />
+      </section>
+
+      {/* ── Pills workspace-style ─────────────────────────────────────────── */}
       {pills.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {pills.map(pill => {
-            const Icon    = pill.icon;
-            const active  = filtro === pill.id;
+            const Icon   = pill.icon;
+            const active = filtro === pill.id;
             return (
               <button
                 key={pill.id}
                 onClick={() => setFiltro(pill.id)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all"
                 style={active
-                  ? { background: pill.color, color: '#fff', border: 'none' }
-                  : { background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)', cursor: 'pointer' }}
+                  ? { background: '#1A0A3B', color: '#ffffff', border: '1px solid #1A0A3B' }
+                  : { background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5', cursor: 'pointer' }}
               >
-                <Icon size={14} />
+                <Icon size={14} strokeWidth={1.75} />
                 {pill.label}
                 {pill.id === 'entrantes' && calls.length > 0 && (
-                  <span className="text-xs tabular-nums" style={{ opacity: 0.8 }}>
+                  <span className="text-[11px] tabular-nums" style={{ opacity: 0.7 }}>
                     {calls.length >= 200 ? '200+' : calls.length}
                   </span>
                 )}
