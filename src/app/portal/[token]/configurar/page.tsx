@@ -89,14 +89,31 @@ export default async function ConfigurarAgentePage({ params }: Props) {
     ? (features.outbound_capabilities as string[])
     : meerkatCaps;
 
+  // Email connection: primero per-agent (email_integrations), fallback per-org
+  // (integration_accounts). Necesario porque el owner puede conectar Gmail
+  // desde IntegrationsHub (Oficina) — queda en integration_accounts — y no
+  // aparecía aquí. Ver [[email-oauth-dual-scope]].
   const { data: emailIntegration } = await supabase
     .from('email_integrations')
     .select('email, needs_reauth, provider, send_as_email')
     .eq('agent_id', agent.id)
     .maybeSingle();
-  const connectedEmail = emailIntegration && !emailIntegration.needs_reauth
+
+  let connectedEmail: string | null = (emailIntegration && !emailIntegration.needs_reauth)
     ? (emailIntegration.email as string)
     : null;
+
+  if (!connectedEmail && agent.portal_email) {
+    const { data } = await supabase
+      .from('integration_accounts')
+      .select('email, needs_reauth')
+      .eq('portal_email', agent.portal_email)
+      .in('provider', ['gmail', 'outlook'])
+      .maybeSingle();
+    if (data && !(data as any).needs_reauth) {
+      connectedEmail = (data as any).email as string;
+    }
+  }
 
   const { data: orgRow } = agent.portal_email
     ? await supabase.from('organizations').select('owner_passphrase').eq('portal_email', agent.portal_email).maybeSingle()
