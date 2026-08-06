@@ -1333,28 +1333,25 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
           payload: { to: emailFrom, subject: emailSubject, category: result.category ?? null },
         });
       }
-      // Auto-tag por category (paridad con voice/webhook): si el correo vino
-      // de un contacto conocido en outbound_contacts, agrega tag según categoría.
-      // Match por sufijo del teléfono si el remitente lo dio o si su email
-      // matches nombre en la base. Simple: solo si el remitente ya tiene un
-      // teléfono en el CRM (no intentamos parsear teléfonos del email).
+      // Auto-tag SOLO para señales accionables que ayuden a segmentar
+      // campañas futuras. 'activo_email' o 'urgente' son ruido — no dicen
+      // qué hacer con el contacto. 'solicitó_factura' sí: la próxima campaña
+      // de facturación pendiente puede filtrar por este tag.
+      // Si el empleado necesita agregar otro tag por contexto del hilo, tiene
+      // la tool agregar_tag_contacto disponible.
       try {
-        const autoTag = result.category === 'factura'  ? 'solicitó_factura'
-                      : result.category === 'cliente'  ? 'activo_email'
-                      : result.category === 'urgente'  ? 'urgente'
-                      : null;
-        if (autoTag) {
+        if (result.category === 'factura') {
           const { data: contactByEmail } = await supabase
             .from('outbound_contacts')
-            .select('id, telefono, tags')
+            .select('id, tags')
             .eq('agent_id', agentId)
             .or(`nombre.ilike.%${emailFrom.split('@')[0] ?? ''}%,motivo.ilike.%${emailFrom}%`)
             .limit(5);
           for (const c of contactByEmail ?? []) {
             const existing = (c.tags as string[] | null) ?? [];
-            if (existing.includes(autoTag)) continue;
+            if (existing.includes('solicitó_factura')) continue;
             await supabase.from('outbound_contacts')
-              .update({ tags: [...existing, autoTag].slice(0, 20) })
+              .update({ tags: [...existing, 'solicitó_factura'].slice(0, 20) })
               .eq('id', c.id as string);
           }
         }
