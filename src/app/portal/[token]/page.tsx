@@ -1456,11 +1456,76 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
         {/* ── NEGOCIO (V2 design system shells) ───────────────────── */}
         {tab === 'negocio' && (
           <PageContainer>
-            <div className="flex flex-col lg:flex-row gap-5 items-start">
+            <div className="flex flex-col gap-5">
+
+              {/* Header — patrón consistente con /inicio, /agentes, /cuenta */}
+              <div>
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+                  TU ORGANIZACIÓN
+                </p>
+                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Configuración del negocio</h1>
+                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  Toda la información que tus empleados usan como contexto: perfil, identidad visual, manual y datos de contacto.
+                </p>
+              </div>
+
+              {(() => {
+                // Bloque destacado "Configuración pendiente" — patrón HOY del /inicio.
+                // Solo aparece si hay setup crítico sin completar.
+                const hasLogo        = !!(agent as any).logo_url;
+                const hasDescription = !!(orgSettings?.business_description ?? (agent as any).business_description)?.trim();
+                const hasKb          = !!(orgSettings?.knowledge_base ?? (agent as any).knowledge_base)?.trim();
+                const hasWebsite     = !!(orgSettings?.brand_website ?? (agent as any).brand_website)?.trim();
+                const pending = [
+                  !hasLogo        && { label: 'Sube el logo de tu negocio',           anchor: 'organizacion' },
+                  !hasDescription && { label: 'Escribe una descripción del negocio',  anchor: 'organizacion' },
+                  !hasKb          && { label: 'Redacta el manual de la organización', anchor: 'conocimiento' },
+                  !hasWebsite     && { label: 'Agrega tu sitio web',                  anchor: 'sitio'         },
+                ].filter(Boolean) as { label: string; anchor: string }[];
+                if (pending.length === 0) return null;
+                return (
+                  <div className="rounded-2xl overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)',
+                      border:     '2px solid rgba(108,59,255,0.28)',
+                      boxShadow:  '0 4px 20px rgba(108,59,255,0.08)',
+                    }}>
+                    <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
+                        <AlertTriangle size={18} color="#fff" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
+                          Configuración pendiente
+                        </h2>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                          {pending.length} {pending.length === 1 ? 'ajuste' : 'ajustes'} para completar el perfil del negocio. Tus empleados trabajan mejor con contexto completo.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-5 flex flex-col gap-2">
+                      {pending.map((p, idx) => (
+                        <a key={idx} href={`#${p.anchor}`}
+                          className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                          style={{ color: 'var(--c-text)' }}>
+                          <span>
+                            <span style={{ color: '#6C3BFF', marginRight: 6 }}>●</span>
+                            {p.label}
+                          </span>
+                          <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Configurar →</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-col lg:flex-row gap-5 items-start">
 
               {/* Col 1 (main, flex-1) — Organización, Branding, Conocimiento, Perfil */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil de tu negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
+                <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
                   <div id="organizacion">
                     {agent.portal_email && (
                       <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
@@ -1468,7 +1533,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </PageSection>
 
-                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Branding de documentos y correos" as="h2" tooltip="Define los colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que genera tu empleado." />}>
+                <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
                   <Card id="branding" padding="md">
                     <BrandKitEditor
                       token={token}
@@ -1531,6 +1596,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </Card>
                 </PageSection>
               </div>
+
+              </div>{/* end wrapper flex-row */}
 
             </div>
           </PageContainer>
