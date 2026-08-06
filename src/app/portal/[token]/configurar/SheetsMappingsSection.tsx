@@ -503,9 +503,11 @@ export default function SheetsMappingsSection({ token, agentId, initialSyncLeads
       <SectionHeader
         as="h2"
         title="Sheets del negocio"
-        description="Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes."
-        className="mb-4"
+        className="mb-2"
       />
+      <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
+        Conecta un Google Sheet a cada tipo de dato. El empleado escribirá y leerá directamente en tus hojas existentes, respetando los encabezados que ya tienes.
+      </p>
 
       {/* Mapping list */}
       {loading ? (
