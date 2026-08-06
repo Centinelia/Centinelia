@@ -131,8 +131,8 @@ export default function OficinaSidebarV2({
         background:  '#1A0A3B',
         borderRight: '1px solid rgba(255,255,255,0.08)',
         position:    'sticky',
-        top:         48,
-        height:      'calc(100vh - 48px)',
+        top:         60,
+        height:      'calc(100vh - 60px)',
         overflow:    'hidden',
         color:       '#fff',
       }}

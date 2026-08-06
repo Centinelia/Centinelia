@@ -22,7 +22,7 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
     <div
       className="sticky top-0 z-20 flex items-center justify-between gap-3 px-3 sm:px-5"
       style={{
-        height:       48,
+        height:       60,
         background:   '#1A0A3B',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
       }}
@@ -37,9 +37,9 @@ export default function OficinaHeaderDark({ token, businessName, logoUrl, busine
           <img
             src="/logo-icon.png"
             alt="Centinelia"
-            width={36}
-            height={36}
-            style={{ width: 36, height: 36, objectFit: 'contain', display: 'block' }}
+            width={46}
+            height={46}
+            style={{ width: 46, height: 46, objectFit: 'contain', display: 'block' }}
             draggable={false}
           />
           <span
