@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Consumir 5 ops; si se agotaron, avisar por email y continuar al siguiente agente
-    const opsResult = await consumeAiOp(agent.id as string, 5);
+    const opsResult = await consumeAiOp(agent.id as string, 5, { source: 'nox_brief', label: 'Brief del día generado por Nox' });
     if (!opsResult.ok) {
       await maybeSendQuotaEmail(
         {

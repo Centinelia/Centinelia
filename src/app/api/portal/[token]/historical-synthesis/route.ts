@@ -43,7 +43,7 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   // Consume 6 ops for batch analysis
-  const opsResult = await consumeAiOp(agent.id, 6);
+  const opsResult = await consumeAiOp(agent.id, 6, { source: 'historical_synthesis', label: 'Síntesis del historial de llamadas' });
   if (!opsResult.ok) {
     return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
   }

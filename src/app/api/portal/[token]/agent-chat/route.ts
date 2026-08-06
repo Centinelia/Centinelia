@@ -1574,7 +1574,7 @@ ${kbPortal ? `\n## Guía de marca y terminología\n${kbPortal}` : ''}
 ${context}`;
 
   // 3 ops per initial Sonnet call
-  const opsResult = await consumeAiOp(agent.id as string, 3);
+  const opsResult = await consumeAiOp(agent.id as string, 3, { source: 'agent_chat', label: 'Consulta con empleado desde chat' });
   if (!opsResult.ok) {
     return NextResponse.json({ error: 'ops_limit_reached', used: opsResult.used, limit: opsResult.limit }, { status: 429 });
   }
@@ -1662,7 +1662,7 @@ ${context}`;
         while (callCount < MAX_CALLS) {
           // Charge 2 ops for every call after the first (first was charged above)
           if (callCount > 0) {
-            const midOps = await consumeAiOp(agent.id as string, 2);
+            const midOps = await consumeAiOp(agent.id as string, 2, { source: 'agent_chat_loop', label: 'Iteración de chat (continuación)' });
             if (!midOps.ok) break;
           }
           callCount++;

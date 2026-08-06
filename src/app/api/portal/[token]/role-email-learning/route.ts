@@ -59,7 +59,7 @@ export async function POST(
   }
 
   // Consume 5 ops
-  const opsResult = await consumeAiOp(agent.id, 5);
+  const opsResult = await consumeAiOp(agent.id, 5, { source: 'role_email_learning', label: 'Aprendizaje del rol desde correos' });
   if (!opsResult.ok) {
     return NextResponse.json({ error: 'Sin tareas disponibles para esta operación.' }, { status: 402 });
   }

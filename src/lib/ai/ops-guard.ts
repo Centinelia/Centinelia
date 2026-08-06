@@ -8,13 +8,25 @@ export interface OpsResult {
   limit: number;
 }
 
+export interface OpsMeta {
+  source?:       string;   // 'heartbeat' | 'learn' | 'weekly_insights' | 'nox_brief' | 'agent_chat' | etc.
+  reference_id?: string;   // task_id, report_id, meeting_id, etc.
+  label?:        string;   // Texto legible para historial de consumo (fallback: source)
+}
+
 // Atomically checks and consumes AI ops from the account pool.
 // 3 paths:
 //   (a) annual_prepaid: descuenta del pool en organizations (nunca falla, tracks overage).
 //   (b) stripe con portal_email: consume_ai_ops RPC con FOR UPDATE lock.
 //   (c) stripe standalone: mismo RPC, account_email=null.
-export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult> {
+export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): Promise<OpsResult> {
   const supabase = createAdminClient();
+  const logPayload = {
+    source:       meta?.source       ?? 'unknown',
+    reference_id: meta?.reference_id ?? null,
+    label:        meta?.label        ?? null,
+    count,
+  };
 
   // Path (a): pool anual. Resolve org email primero, luego branch.
   const { data: agentRow } = await supabase
@@ -37,7 +49,7 @@ export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult
       // clientes con pool anual).
       void supabase
         .from('ai_ops_log')
-        .insert({ agent_id: agentId, portal_email: portalEmail });
+        .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
       return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
     }
   }
@@ -55,7 +67,7 @@ export async function consumeAiOp(agentId: string, count = 1): Promise<OpsResult
     // Fire-and-forget audit log
     void supabase
       .from('ai_ops_log')
-      .insert({ agent_id: agentId, portal_email: row.account_email });
+      .insert({ agent_id: agentId, portal_email: row.account_email, ...logPayload });
 
     // Fire-and-forget ops auto-refill: trigger when remaining just dropped below threshold
     const remaining = row.ops_limit - row.ops_used;

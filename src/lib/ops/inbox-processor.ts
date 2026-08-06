@@ -698,7 +698,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
   // Observador (Trust Stage 1): triage-only. Sin borrador, sin tools, sin classifier.
   // Categoría + resumen para que el humano lo lea y responda desde cero.
   if (autoMode === 'observador') {
-    const obsOps = await consumeAiOp(agentId, 1);
+    const obsOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
     if (obsOps.ok) {
       const __obsT = Date.now();
       const __obsM = 'claude-haiku-4-5-20251001';
@@ -725,7 +725,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
   const opsResult = autoMode === 'observador'
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
-    : await consumeAiOp(agentId, 1);
+    : await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
 
   if (opsResult.ok && portalEmail) {
     // Fetch full agent row for executor context
@@ -963,7 +963,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
         // Charge 1 op per iteration after the first (first was charged above)
         if (i > 0) {
-          const midOps = await consumeAiOp(agentId, 1);
+          const midOps = await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
           if (!midOps.ok) break;
         }
 

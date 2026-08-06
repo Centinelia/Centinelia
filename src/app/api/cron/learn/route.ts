@@ -187,7 +187,7 @@ export async function GET(req: NextRequest) {
     if (!agent?.active || !agent.portal_email) continue;
 
     try {
-      const ops = await consumeAiOp(agent.id, 40); // learn is heavy (multi-source); refine post-launch with prod data
+      const ops = await consumeAiOp(agent.id, 40, { source: 'learn', label: 'Aprendizaje continuo del negocio' }); // learn is heavy (multi-source)
       if (!ops.ok) {
         await maybeSendQuotaEmail(agent, 'learn');
         continue;

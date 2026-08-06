@@ -142,7 +142,7 @@ ${customInstructions ? `INSTRUCCIONES ADICIONALES:\n${customInstructions}\n\n` :
 
 Sé directo, ejecutivo y sin relleno. Máximo 400 palabras.`;
 
-    const opsResult = await consumeAiOp(agent.id as string, 1);
+    const opsResult = await consumeAiOp(agent.id as string, 1, { source: 'report_generator', label: 'Generación de reporte automatizado' });
     if (!opsResult.ok) {
       await supabase.from('ops_report_runs').update({ status: 'error', error: 'ops_limit_reached' }).eq('id', run.id);
       return { ok: false, error: 'ops_limit_reached' };

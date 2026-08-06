@@ -49,7 +49,7 @@ export async function checkExpiringContracts(): Promise<{ alerted: number }> {
     // Generate renewal draft if not already present
     let renewalDraft = contract.renewal_draft as string | null;
     if (!renewalDraft) {
-      const opsResult = await consumeAiOp(contract.agent_id as string, 1);
+      const opsResult = await consumeAiOp(contract.agent_id as string, 1, { source: 'contracts_monitor', label: 'Monitoreo de contratos' });
       if (opsResult.ok) {
         renewalDraft = await generateRenewalDraft({
           contractName:  contract.name as string,

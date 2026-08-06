@@ -5,10 +5,44 @@ import HistorialConsumoClient, {
   type TaskEntry,
 } from './HistorialConsumoClient';
 
-/**
- * Server component: fetch minutes ledger + agent_tasks and pass to
- * HistorialConsumoClient which handles the toggle Minutos/Tareas + filter.
- */
+// ─── Label + trigger config para cada source de ai_ops_log ────────────────────
+// Cualquier consumeAiOp() debe llegar aquí. Si algún source no está mapeado,
+// se muestra tal cual + label 'manual' — pero eso indica un bug (source
+// missing en el caller).
+const SOURCE_META: Record<string, { label: string; trigger: string }> = {
+  // Cron (automatizaciones periódicas)
+  heartbeat:            { label: 'Check-in automático diario',   trigger: 'schedule' },
+  learn:                { label: 'Aprendizaje continuo del negocio', trigger: 'schedule' },
+  nox_brief:            { label: 'Brief del día generado por Nox',   trigger: 'schedule' },
+  nox_brief_manual:     { label: 'Brief del día bajo demanda',       trigger: 'manual' },
+  weekly_insights:      { label: 'Insights semanales (cron)',        trigger: 'schedule' },
+  insights_manual:      { label: 'Insights generados manualmente',   trigger: 'manual' },
+  // Chat / consultas
+  agent_chat:           { label: 'Consulta con empleado desde chat', trigger: 'chat' },
+  agent_chat_loop:      { label: 'Iteración de chat (continuación)', trigger: 'chat' },
+  // KB / setup
+  generate_kb:            { label: 'Generación de manual con IA',    trigger: 'manual' },
+  generate_kb_tournament: { label: 'Generación KB (modo torneo)',    trigger: 'manual' },
+  role_email_learning:    { label: 'Aprendizaje del rol desde correos', trigger: 'schedule' },
+  historical_synthesis:   { label: 'Síntesis del historial de llamadas', trigger: 'manual' },
+  // Herramientas de voz (durante llamada)
+  tool_crear_documento:          { label: 'Documento creado en llamada', trigger: 'voice_call' },
+  tool_enviar_correo:            { label: 'Correo enviado desde llamada', trigger: 'voice_call' },
+  tool_enviar_documento_oficina: { label: 'Documento enviado (oficina)',  trigger: 'voice_call' },
+  tool_llamar_a:                 { label: 'Llamada saliente iniciada',    trigger: 'voice_call' },
+  tool_qb_crear_factura:         { label: 'Factura creada en QuickBooks', trigger: 'voice_call' },
+  tool_qb_registrar_pago:        { label: 'Pago registrado en QuickBooks', trigger: 'voice_call' },
+  // Ops (bandeja / juntas / contratos / reportes)
+  extract_learnings:   { label: 'Extracción de aprendizajes de conversación', trigger: 'schedule' },
+  contracts_monitor:   { label: 'Monitoreo de contratos',      trigger: 'schedule' },
+  inbox_processor:     { label: 'Procesamiento de bandeja',    trigger: 'inbox' },
+  meeting_processor:   { label: 'Procesamiento de junta',      trigger: 'schedule' },
+  report_generator:    { label: 'Generación de reporte',       trigger: 'schedule' },
+  tool_execution:      { label: 'Ejecución de herramienta',    trigger: 'manual' },
+  // Fallbacks
+  unknown:             { label: 'Consumo sin identificar',     trigger: 'manual' },
+};
+
 export default async function HistorialConsumoSection({
   portalEmail,
   agentIds,
@@ -22,29 +56,26 @@ export default async function HistorialConsumoSection({
 }) {
   const supabase = createAdminClient();
 
-  const [ledgerRes, callsRes, tasksRes, agentsRes] = await Promise.all([
-    // Minutes ledger — todos los agentes de la cuenta
+  const [ledgerRes, callsRes, opsLogRes, agentsRes] = await Promise.all([
     supabase
       .from('minutes_ledger')
       .select('id, agent_id, created_at, amount, description, source')
       .in('agent_id', agentIds)
       .order('created_at', { ascending: false })
       .limit(500),
-    // Calls (debits) — todos los agentes de la cuenta
     supabase
       .from('voice_calls')
       .select('id, agent_id, created_at, duration_seconds, caller_number')
       .in('agent_id', agentIds)
       .order('created_at', { ascending: false })
       .limit(500),
-    // Tareas ejecutadas — por portal_email
+    // Fuente unificada de consumo de tareas — cualquier consumeAiOp() escribe aquí.
     supabase
-      .from('agent_tasks')
-      .select('id, title, description, status, trigger_type, source_context, goal_met, completed_at, created_at, assigned_to, current_iteration')
+      .from('ai_ops_log')
+      .select('id, agent_id, created_at, source, count, reference_id, label')
       .eq('portal_email', portalEmail)
       .order('created_at', { ascending: false })
       .limit(500),
-    // Mapa agent_id → agent_name para las tareas
     supabase
       .from('voice_agents')
       .select('id, agent_name, business_name')
@@ -56,7 +87,7 @@ export default async function HistorialConsumoSection({
     agentNameMap[(a as any).id as string] = ((a as any).agent_name as string | null)?.trim() || ((a as any).business_name as string) || 'Empleado';
   }
 
-  // Build minutes entries (credits + debits) with running balance
+  // ─── Minutos ────────────────────────────────────────────────────────────
   const credits: Omit<MinutesEntry, 'balance'>[] = (ledgerRes.data ?? []).map((r: any) => ({
     id:          r.id as string,
     date:        r.created_at as string,
@@ -77,7 +108,6 @@ export default async function HistorialConsumoSection({
     };
   });
 
-  // Seed activation entry if empty
   if (credits.length === 0 && minutesIncluded > 0) {
     const firstDate = debits.length > 0 ? debits[debits.length - 1].date : new Date().toISOString();
     credits.push({
@@ -99,20 +129,23 @@ export default async function HistorialConsumoSection({
   });
   const minutes = withBalance.reverse();
 
-  // Build task entries
-  const tasks: TaskEntry[] = ((tasksRes.data ?? []) as any[]).map(t => ({
-    id:            t.id as string,
-    date:          (t.completed_at ?? t.created_at) as string,
-    title:         (t.title as string) ?? 'Sin título',
-    description:   (t.description as string | null) ?? null,
-    agentName:     (t.assigned_to as string | null) ? (agentNameMap[t.assigned_to as string] ?? null) : null,
-    triggerType:   (t.trigger_type as string | null) ?? null,
-    status:        (t.status as string) ?? 'pending',
-    goalMet:       (t.goal_met as boolean | null) ?? null,
-    sourceContext: (t.source_context as string | null) ?? null,
-    // current_iteration ≈ tareas ai_ops consumidas (cada iteración del loop cuesta 1 op)
-    opsUsed:       Math.max(1, (t.current_iteration as number | null) ?? 1),
-  }));
+  // ─── Tareas (fuente unificada: ai_ops_log) ─────────────────────────────
+  const tasks: TaskEntry[] = ((opsLogRes.data ?? []) as any[]).map(o => {
+    const sourceKey = (o.source as string | null) ?? 'unknown';
+    const meta      = SOURCE_META[sourceKey] ?? { label: (o.label as string | null) ?? sourceKey, trigger: 'manual' };
+    return {
+      id:            o.id as string,
+      date:          o.created_at as string,
+      title:         (o.label as string | null) ?? meta.label,
+      description:   null,
+      agentName:     (o.agent_id as string | null) ? (agentNameMap[o.agent_id as string] ?? null) : null,
+      triggerType:   meta.trigger,
+      status:        'completed',
+      goalMet:       null,
+      sourceContext: null,
+      opsUsed:       Math.max(1, (o.count as number | null) ?? 1),
+    };
+  });
 
   if (minutes.length === 0 && tasks.length === 0) {
     return (

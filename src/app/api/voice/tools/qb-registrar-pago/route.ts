@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   if (!agent?.portal_email) return NextResponse.json({ result: 'Error: agente no encontrado.' });
 
-  const opsResult = await consumeAiOp(agent_id, 1);
+  const opsResult = await consumeAiOp(agent_id, 1, { source: 'tool_qb_registrar_pago', label: 'Pago registrado en QuickBooks' });
   if (!opsResult.ok) return NextResponse.json({ result: 'Sin tareas disponibles para registrar el pago.' });
 
   const qb = await getQBClient(agent.portal_email, supabase);

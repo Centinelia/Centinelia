@@ -157,7 +157,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
   if (mode === 'llm') {
     let failedAgent: string | null = null;
     for (let i = 0; i < agents.length && failedAgent === null; i++) {
-      const result = await consumeAiOp(agents[i].id, 2);
+      const result = await consumeAiOp(agents[i].id, 2, { source: 'insights_manual', label: 'Insights generados manualmente' });
       if (!result.ok) failedAgent = agents[i].business_name;
     }
     if (failedAgent !== null) {

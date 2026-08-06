@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     // Ops guard — LLM costs 3 ops, rules costs 0
     const cost = mode === 'rules' ? 0 : 3;
     if (cost > 0) {
-      const ops = await consumeAiOp(agent.id, cost);
+      const ops = await consumeAiOp(agent.id, cost, { source: 'weekly_insights', label: 'Insights semanales (cron)' });
       if (!ops.ok) {
         await maybeSendQuotaEmail(agent, 'weekly_insights');
         continue;

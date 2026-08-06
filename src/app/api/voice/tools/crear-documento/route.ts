@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     .single();
   if (!agent) return NextResponse.json({ result: 'Error: agente no encontrado' });
 
-  const opsResult = await consumeAiOp(agent_id, 2);
+  const opsResult = await consumeAiOp(agent_id, 2, { source: 'tool_crear_documento', label: 'Documento creado durante llamada' });
   if (!opsResult.ok) {
     return NextResponse.json({ result: 'No tienes operaciones IA disponibles este mes para crear documentos.' });
   }

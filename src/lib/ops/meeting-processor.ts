@@ -70,7 +70,7 @@ export async function processMeetingAudio(opts: {
 
     // Ops cost scales with transcript length (1 op per ~2,500 chars, max 6)
     const meetingOps = Math.min(6, Math.max(1, Math.ceil((transcript.length || 1) / 2500)));
-    const opsResult  = await consumeAiOp(agentId, meetingOps);
+    const opsResult  = await consumeAiOp(agentId, meetingOps, { source: 'meeting_processor', label: 'Procesamiento de junta/reunión' });
 
     if (!opsResult.ok) {
       await supabase.from('ops_meetings').update({

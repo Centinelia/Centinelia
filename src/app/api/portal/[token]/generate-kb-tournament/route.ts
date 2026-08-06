@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (session.portalEmail && agent.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
 
-  const ops = await consumeAiOp(agent.id, OPS_COST);
+  const ops = await consumeAiOp(agent.id, OPS_COST, { source: 'generate_kb_tournament', label: 'Generación KB (modo torneo)' });
   if (!ops.ok)
     return NextResponse.json(
       { error: `Sin tareas disponibles (${ops.used}/${ops.limit} usadas)` },

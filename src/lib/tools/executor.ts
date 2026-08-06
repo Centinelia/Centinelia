@@ -287,13 +287,13 @@ async function executeAgentToolInner(
       let content    = (toolInput.content as string | undefined) ?? '';
 
       const isDataDriven = templateType === 'factura' || templateType === 'orden_compra';
-      const enhOps = !isDataDriven ? await consumeAiOp(agentId, 1) : { ok: false };
+      const enhOps = !isDataDriven ? await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }) : { ok: false };
       if (enhOps.ok) {
         content = await enhanceTextContent({ format: 'pdf', templateType, content, userInstruction: uInst, businessName, businessContext: bCtx });
         if (isCriticalDocument('pdf', templateType)) {
           const peer = await fetchPeerAgent(agentId, portalEmail, supabase);
           if (peer) {
-            const revOps = await consumeAiOp(agentId, 1);
+            const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
             if (revOps.ok) {
               const peerKb = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string;
               content = await peerReviewText({ content, format: 'pdf', templateType, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb });
@@ -476,23 +476,23 @@ async function executeAgentToolInner(
       } else if (format === 'word') {
         const tpl = (toolInput.template_type as 'general' | 'proposal' | 'letter' | undefined) ?? 'general';
         let wc    = (toolInput.content as string | null) ?? '';
-        const enhOps = await consumeAiOp(agentId, 1);
+        const enhOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
         if (enhOps.ok) {
           wc = await enhanceTextContent({ format: 'word', templateType: tpl, content: wc, userInstruction: uInst, businessName, businessContext: bCtx });
           if (isCriticalDocument('word', tpl)) {
             const peer = await fetchPeerAgent(agentId, portalEmail, supabase);
-            if (peer) { const revOps = await consumeAiOp(agentId, 1); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; wc = await peerReviewText({ content: wc, format: 'word', templateType: tpl, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
+            if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; wc = await peerReviewText({ content: wc, format: 'word', templateType: tpl, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
           }
         }
         buf = await generateWord({ title: fileTitle, content: wc, templateType: tpl, businessName, accentColor: accent, clientName: toolInput.client_name as string | undefined, clientEmail: toolInput.client_email as string | undefined, totalPrice: toolInput.total_price as string | undefined, validityDays: toolInput.validity_days as number | undefined, recipientName: toolInput.recipient_name as string | undefined, recipientEmail: toolInput.recipient_email as string | undefined });
         ext = 'docx'; mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; label = 'Word';
       } else {
         let slides = (toolInput.slides as Slide[] | null) ?? [{ title: 'Contenido', content: 'El agente no proporcionó diapositivas.' }];
-        const enhOps = await consumeAiOp(agentId, 1);
+        const enhOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
         if (enhOps.ok) {
           slides = await enhanceSlidesContent({ slides, userInstruction: uInst, businessName, businessContext: bCtx });
           const peer = await fetchPeerAgent(agentId, portalEmail, supabase);
-          if (peer) { const revOps = await consumeAiOp(agentId, 1); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; slides = await peerReviewSlides({ slides, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
+          if (peer) { const revOps = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' }); if (revOps.ok) { const pk = [peer.knowledge_base, peer.role_knowledge_base].filter(Boolean).join('\n') as string; slides = await peerReviewSlides({ slides, userInstruction: uInst, businessName, peerName: (peer.agent_name as string | null) ?? 'Agente', peerKb: pk }); } }
         }
         buf = await generateSlides({ title: fileTitle, slides, businessName, accentColor: accent });
         ext = 'pptx'; mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'; label = 'PowerPoint';
@@ -1306,7 +1306,7 @@ async function executeAgentToolInner(
   }
 
   if (toolName === 'qb_crear_factura') {
-    const opsCheck = await consumeAiOp(agentId, 1);
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para crear la factura.' };
     const qb = await getQBClient(portalEmail, supabase);
     if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
@@ -1332,7 +1332,7 @@ async function executeAgentToolInner(
   }
 
   if (toolName === 'qb_registrar_pago') {
-    const opsCheck = await consumeAiOp(agentId, 1);
+    const opsCheck = await consumeAiOp(agentId, 1, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsCheck.ok) return { ok: false, error: 'Sin tareas disponibles para registrar el pago.' };
     const qb = await getQBClient(portalEmail, supabase);
     if (!qb) return { ok: false, error: 'QuickBooks no está conectado.' };
@@ -2003,7 +2003,7 @@ async function executeAgentToolInner(
                   : toolName === 'generar_pitch_deck' ? 6
                   : toolName === 'generar_reporte_metricas_excel' ? 4
                   : 2;
-    const opsResult = await consumeAiOp(agentId, opsCost);
+    const opsResult = await consumeAiOp(agentId, opsCost, { source: 'tool_execution', label: 'Ejecución de herramienta interna' });
     if (!opsResult.ok) {
       return { ok: false, error: 'Sin operaciones disponibles este mes. Compra más o espera al ciclo siguiente.' };
     }

@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Consume ops
-    const opsResult = await consumeAiOp(agent.id, 5);
+    const opsResult = await consumeAiOp(agent.id, 5, { source: 'heartbeat', label: 'Check-in automático diario' });
     if (!opsResult.ok) {
       await maybeSendQuotaEmail(agent, 'heartbeat');
       continue;
