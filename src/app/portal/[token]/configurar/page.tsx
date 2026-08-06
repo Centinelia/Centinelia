@@ -227,6 +227,62 @@ export default async function ConfigurarAgentePage({ params }: Props) {
           );
         })()}
 
+        {/* Configuración pendiente — bloque destacado si falta setup crítico */}
+        {(() => {
+          const hasFirstMessage = !!((agent as any).first_message as string | null)?.trim();
+          const hasRoleKb       = !!((agent as any).role_knowledge_base as string | null)?.trim();
+          const hasTransferRules = !!((agent as any).transfer_rules as string | null)?.trim();
+          const needsEmail      = !isCoordinator && !connectedEmail;
+
+          const pending = [
+            !hasFirstMessage && hasVoice && { label: 'Configura el saludo de bienvenida',        anchor: 'llamadas' },
+            !hasRoleKb       && !isCoordinator && { label: 'Redacta las instrucciones del puesto', anchor: 'conocimiento-puesto' },
+            !hasTransferRules && hasVoiceJornada && !!(agent as any).phone_number && { label: 'Define las reglas de transferencia', anchor: 'llamadas' },
+            needsEmail       && { label: 'Conecta un correo para el empleado',                    anchor: 'correo' },
+          ].filter(Boolean) as { label: string; anchor: string }[];
+
+          if (pending.length === 0) return null;
+
+          return (
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
+              <div className="rounded-2xl overflow-hidden"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)',
+                  border:     '2px solid rgba(108,59,255,0.28)',
+                  boxShadow:  '0 4px 20px rgba(108,59,255,0.08)',
+                }}>
+                <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: roleColor, boxShadow: `0 4px 12px ${roleColor}55` }}>
+                    <AlertTriangle size={18} color="#fff" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
+                      Configuración pendiente de {agentName}
+                    </h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                      {pending.length} {pending.length === 1 ? 'ajuste' : 'ajustes'} para que este empleado trabaje al 100%.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-5 flex flex-col gap-2">
+                  {pending.map((p, idx) => (
+                    <a key={idx} href={`#${p.anchor}`}
+                      className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
+                      style={{ color: 'var(--c-text)' }}>
+                      <span>
+                        <span style={{ color: roleColor, marginRight: 6 }}>●</span>
+                        {p.label}
+                      </span>
+                      <span className="text-xs whitespace-nowrap" style={{ color: roleColor }}>Configurar →</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Full-width content with 5-tab layout */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
           <ConfigurarTabs roleColor={roleColor}>
