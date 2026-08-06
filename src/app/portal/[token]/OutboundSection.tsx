@@ -1094,13 +1094,10 @@ export default function OutboundSection({
                             {c.telefono}
                           </span>
                         )}
-                        {c.status !== 'pending' && <StatusPill status={c.status} />}
-                        {c.fail_count > 0 && c.status !== 'completed' && c.status !== 'cancelled' && (
-                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums"
-                            style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
-                            ×{c.fail_count}
-                          </span>
-                        )}
+                        {/* Sin pills de status ni fail_count: son estados
+                            transitorios de llamada, no info del contacto.
+                            El historial completo vive en Salientes dentro
+                            de /oficina/llamadas. */}
                       </div>
                       {(c.tags ?? []).length > 0 && (
                         <div className="mt-1" onClick={e => e.stopPropagation()}>
