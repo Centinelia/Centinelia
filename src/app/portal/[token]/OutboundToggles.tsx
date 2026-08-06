@@ -293,7 +293,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
               Tu empleado puede salir a trabajar
             </h2>
             <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
-              Activa las llamadas salientes para que llame a tus contactos automáticamente.
+              Activa las llamadas salientes para que llame a tus contactos automáticamente. Los usos disponibles dependen de su rol: no todos los empleados hacen todas las tareas.
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
