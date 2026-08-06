@@ -454,6 +454,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     .filter(c => (c.outcome as string) !== 'unanswered' && (c.outcome as string) !== 'missed')
     .slice(0, 3);
 
+  // Pipeline snapshot: últimos leads, próximas citas, últimos pedidos
+  const latestLeads = (leads as any[]).slice(0, 3);
+  const upcomingAppts = (appts as any[])
+    .filter(a => {
+      if (!a.fecha) return false;
+      const apptDate = new Date(a.fecha as string);
+      return apptDate >= new Date();
+    })
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+    .slice(0, 3);
+  const latestOrders = (orders as any[]).slice(0, 3);
+
+  // Snapshot salientes (visible en /inicio si aplica — antes solo en /negocio desktop)
+  const outboundSnapshot = showOutbound ? {
+    active:  activeOutboundCampaigns,
+    pending: pendingOutboundCount,
+    lastRun: lastCampaignRunAt,
+  } : null;
+
   const RESOLVED_OUTCOMES = new Set(['info_provided', 'lead_created', 'appointment_booked', 'order_taken', 'escalated_whatsapp', 'other']);
   const resolvedCount  = calls.filter(c => RESOLVED_OUTCOMES.has((c.outcome as string) ?? '')).length;
   const autonomousRate = calls.length > 0 ? Math.round((resolvedCount / calls.length) * 100) : 0;
@@ -769,6 +788,152 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       })}
                     </div>
                   </div>
+                )}
+
+                {/* Pipeline snapshot — leads + citas + pedidos */}
+                {(latestLeads.length > 0 || upcomingAppts.length > 0 || latestOrders.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {showLeads && latestLeads.length > 0 && (
+                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Users size={13} style={{ color: '#22c55e' }} />
+                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                              Últimos leads
+                            </h3>
+                          </div>
+                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
+                            Ver →
+                          </Link>
+                        </div>
+                        <div className="flex flex-col">
+                          {latestLeads.map((l: any, idx: number) => (
+                            <div key={l.id} className="py-2"
+                              style={{ borderBottom: idx < latestLeads.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                              <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                {(l.nombre as string)?.trim() || 'Sin nombre'}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {l.servicio && (
+                                  <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{l.servicio}</span>
+                                )}
+                                <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
+                                  {fmtRelative(l.created_at as string)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {showAppts && upcomingAppts.length > 0 && (
+                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays size={13} style={{ color: '#3b82f6' }} />
+                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                              Próximas citas
+                            </h3>
+                          </div>
+                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
+                            Ver →
+                          </Link>
+                        </div>
+                        <div className="flex flex-col">
+                          {upcomingAppts.map((a: any, idx: number) => {
+                            const fecha = new Date(a.fecha as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+                            return (
+                              <div key={a.id} className="py-2"
+                                style={{ borderBottom: idx < upcomingAppts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                  {(a.nombre as string)?.trim() || 'Sin nombre'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: '#3b82f6' }}>
+                                    {fecha}{a.hora ? ` · ${a.hora}` : ''}
+                                  </span>
+                                  {a.servicio && (
+                                    <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.servicio}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {showOrders && latestOrders.length > 0 && (
+                      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <ShoppingBag size={13} style={{ color: '#f59e0b' }} />
+                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                              Últimos pedidos
+                            </h3>
+                          </div>
+                          <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                            className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>
+                            Ver →
+                          </Link>
+                        </div>
+                        <div className="flex flex-col">
+                          {latestOrders.map((o: any, idx: number) => (
+                            <div key={o.id} className="py-2"
+                              style={{ borderBottom: idx < latestOrders.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                              <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                {(o.nombre as string)?.trim() || 'Sin nombre'}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {o.notas && (
+                                  <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{o.notas}</span>
+                                )}
+                                <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
+                                  {fmtRelative(o.created_at as string)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Snapshot salientes — visible en /inicio (antes solo /negocio desktop) */}
+                {outboundSnapshot && (
+                  <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
+                    className="rounded-xl p-5 no-underline transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <PhoneOutgoing size={13} style={{ color: '#a855f7' }} />
+                        <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                          Llamadas salientes
+                        </h3>
+                      </div>
+                      <span className="text-[11px]" style={{ color: '#9B6DFF' }}>Ver →</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.active}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Campañas activas</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.pending}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Contactos por llamar</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                          {outboundSnapshot.lastRun ? fmtRelative(outboundSnapshot.lastRun as string) : '—'}
+                        </p>
+                        <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Última ejecución</p>
+                      </div>
+                    </div>
+                  </Link>
                 )}
 
                 {/* Insights de la semana */}
@@ -1478,6 +1643,131 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </div>
                       </Card>
                     </PageSection>
+                  )}
+
+                  {/* Pipeline snapshot — leads + citas + pedidos */}
+                  {(latestLeads.length > 0 || upcomingAppts.length > 0 || latestOrders.length > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {showLeads && latestLeads.length > 0 && (
+                        <Card padding="md">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Users size={13} style={{ color: '#22c55e' }} />
+                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Últimos leads</h3>
+                            </div>
+                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
+                          </div>
+                          <div className="flex flex-col">
+                            {latestLeads.map((l: any, idx: number) => (
+                              <div key={l.id} className="py-2"
+                                style={{ borderBottom: idx < latestLeads.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                  {(l.nombre as string)?.trim() || 'Sin nombre'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {l.servicio && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{l.servicio}</span>}
+                                  <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
+                                    {fmtRelative(l.created_at as string)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </Card>
+                      )}
+                      {showAppts && upcomingAppts.length > 0 && (
+                        <Card padding="md">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <CalendarDays size={13} style={{ color: '#3b82f6' }} />
+                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Próximas citas</h3>
+                            </div>
+                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
+                          </div>
+                          <div className="flex flex-col">
+                            {upcomingAppts.map((a: any, idx: number) => {
+                              const fecha = new Date(a.fecha as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+                              return (
+                                <div key={a.id} className="py-2"
+                                  style={{ borderBottom: idx < upcomingAppts.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                  <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                    {(a.nombre as string)?.trim() || 'Sin nombre'}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: '#3b82f6' }}>
+                                      {fecha}{a.hora ? ` · ${a.hora}` : ''}
+                                    </span>
+                                    {a.servicio && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{a.servicio}</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </Card>
+                      )}
+                      {showOrders && latestOrders.length > 0 && (
+                        <Card padding="md">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <ShoppingBag size={13} style={{ color: '#f59e0b' }} />
+                              <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Últimos pedidos</h3>
+                            </div>
+                            <Link href={`/portal/${token}/oficina/llamadas?filtro=entrantes`}
+                              className="text-[11px] transition-opacity hover:opacity-70" style={{ color: '#9B6DFF' }}>Ver →</Link>
+                          </div>
+                          <div className="flex flex-col">
+                            {latestOrders.map((o: any, idx: number) => (
+                              <div key={o.id} className="py-2"
+                                style={{ borderBottom: idx < latestOrders.length - 1 ? '1px solid var(--c-divider)' : 'none' }}>
+                                <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                                  {(o.nombre as string)?.trim() || 'Sin nombre'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {o.notas && <span className="text-[11px] truncate" style={{ color: 'var(--c-text-3)' }}>{o.notas}</span>}
+                                  <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--c-text-4)' }}>
+                                    {fmtRelative(o.created_at as string)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </Card>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Snapshot salientes */}
+                  {outboundSnapshot && (
+                    <Card padding="md">
+                      <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
+                        className="block no-underline">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <PhoneOutgoing size={13} style={{ color: '#a855f7' }} />
+                            <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Llamadas salientes</h3>
+                          </div>
+                          <span className="text-[11px]" style={{ color: '#9B6DFF' }}>Ver →</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.active}</p>
+                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Campañas activas</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold" style={{ color: 'var(--c-text)' }}>{outboundSnapshot.pending}</p>
+                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Contactos por llamar</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+                              {outboundSnapshot.lastRun ? fmtRelative(outboundSnapshot.lastRun as string) : '—'}
+                            </p>
+                            <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Última ejecución</p>
+                          </div>
+                        </div>
+                      </Link>
+                    </Card>
                   )}
 
                   {/* Actividad — reciente + horaria (fused with tabs) */}
