@@ -459,8 +459,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const endOfToday = new Date(startOfToday.getTime() + 86400000);
 
   const apptsHoy = (appts as any[]).filter(a => {
-    if (!a.fecha) return false;
-    const d = new Date(a.fecha as string);
+    // Prioridad: starts_at (timestamp real) > fecha_iso (YYYY-MM-DD) > fecha (texto libre)
+    const raw = (a.starts_at as string | null) ?? (a.fecha_iso as string | null) ?? (a.fecha as string | null);
+    if (!raw) return false;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return false;
     return d >= startOfToday && d < endOfToday;
   }).sort((a, b) => ((a.hora as string) ?? '').localeCompare((b.hora as string) ?? ''));
 
@@ -734,15 +737,53 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
                           </p>
                         </div>
-                        <div className="pl-12 flex flex-col gap-1">
-                          {apptsHoy.slice(0, 5).map((a: any) => (
-                            <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                              <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
-                              <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
-                              <span className="font-medium">{(a.nombre as string)?.trim() || 'Sin nombre'}</span>
-                              {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
-                            </p>
-                          ))}
+                        <div className="pl-12 flex flex-col gap-1.5">
+                          {apptsHoy.slice(0, 5).map((a: any) => {
+                            const nombre = (a.nombre as string | null)?.trim();
+                            const telefono = (a.telefono as string | null)?.trim();
+                            const displayName = nombre || telefono || 'Sin nombre';
+                            const ubicacion = (a.location as string | null)?.trim();
+                            const eventId = (a.calendar_event_id as string | null)?.trim();
+                            const provider = (a.calendar_provider as string | null)?.trim();
+                            // Deep-link al evento del calendario si existe, o al día si no
+                            let calUrl: string | null = null;
+                            if (eventId && provider === 'gmail') {
+                              // Google Calendar acepta el eventId directo (base64url-safe)
+                              calUrl = `https://calendar.google.com/calendar/u/0/r/eventedit/${eventId}`;
+                            } else if (eventId && provider === 'outlook') {
+                              calUrl = `https://outlook.office.com/calendar/item/${encodeURIComponent(eventId)}`;
+                            } else if (a.starts_at || a.fecha_iso) {
+                              // Fallback: abrir el día en el proveedor conectado (default Google)
+                              const d = new Date((a.starts_at as string) ?? (a.fecha_iso as string));
+                              if (!isNaN(d.getTime())) {
+                                const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+                                calUrl = provider === 'outlook'
+                                  ? `https://outlook.office.com/calendar/view/day/${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                                  : `https://calendar.google.com/calendar/u/0/r/day/${y}/${m}/${day}`;
+                              }
+                            }
+                            const content = (
+                              <>
+                                <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
+                                <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
+                                <span className="font-medium">{displayName}</span>
+                                {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
+                                {ubicacion ? <span style={{ color: 'var(--c-text-3)' }}> · 📍 {ubicacion}</span> : null}
+                                {nombre && telefono ? <span style={{ color: 'var(--c-text-4)' }}> · {telefono}</span> : null}
+                              </>
+                            );
+                            return calUrl ? (
+                              <a key={a.id} href={calUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-xs no-underline transition-opacity hover:opacity-70"
+                                style={{ color: 'var(--c-text-2)' }}>
+                                {content}
+                              </a>
+                            ) : (
+                              <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                                {content}
+                              </p>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -1353,15 +1394,53 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
                           </p>
                         </div>
-                        <div className="pl-12 flex flex-col gap-1">
-                          {apptsHoy.slice(0, 5).map((a: any) => (
-                            <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                              <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
-                              <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
-                              <span className="font-medium">{(a.nombre as string)?.trim() || 'Sin nombre'}</span>
-                              {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
-                            </p>
-                          ))}
+                        <div className="pl-12 flex flex-col gap-1.5">
+                          {apptsHoy.slice(0, 5).map((a: any) => {
+                            const nombre = (a.nombre as string | null)?.trim();
+                            const telefono = (a.telefono as string | null)?.trim();
+                            const displayName = nombre || telefono || 'Sin nombre';
+                            const ubicacion = (a.location as string | null)?.trim();
+                            const eventId = (a.calendar_event_id as string | null)?.trim();
+                            const provider = (a.calendar_provider as string | null)?.trim();
+                            // Deep-link al evento del calendario si existe, o al día si no
+                            let calUrl: string | null = null;
+                            if (eventId && provider === 'gmail') {
+                              // Google Calendar acepta el eventId directo (base64url-safe)
+                              calUrl = `https://calendar.google.com/calendar/u/0/r/eventedit/${eventId}`;
+                            } else if (eventId && provider === 'outlook') {
+                              calUrl = `https://outlook.office.com/calendar/item/${encodeURIComponent(eventId)}`;
+                            } else if (a.starts_at || a.fecha_iso) {
+                              // Fallback: abrir el día en el proveedor conectado (default Google)
+                              const d = new Date((a.starts_at as string) ?? (a.fecha_iso as string));
+                              if (!isNaN(d.getTime())) {
+                                const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+                                calUrl = provider === 'outlook'
+                                  ? `https://outlook.office.com/calendar/view/day/${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                                  : `https://calendar.google.com/calendar/u/0/r/day/${y}/${m}/${day}`;
+                              }
+                            }
+                            const content = (
+                              <>
+                                <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
+                                <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
+                                <span className="font-medium">{displayName}</span>
+                                {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
+                                {ubicacion ? <span style={{ color: 'var(--c-text-3)' }}> · 📍 {ubicacion}</span> : null}
+                                {nombre && telefono ? <span style={{ color: 'var(--c-text-4)' }}> · {telefono}</span> : null}
+                              </>
+                            );
+                            return calUrl ? (
+                              <a key={a.id} href={calUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-xs no-underline transition-opacity hover:opacity-70"
+                                style={{ color: 'var(--c-text-2)' }}>
+                                {content}
+                              </a>
+                            ) : (
+                              <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                                {content}
+                              </p>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

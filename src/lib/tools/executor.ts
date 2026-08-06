@@ -1565,17 +1565,20 @@ async function executeAgentToolInner(
         }
       }
 
-      // Insert principal en appointments_voice
-      await supabase.from('appointments_voice').insert({
+      // Insert principal en appointments_voice — devuelve id para poder linkear
+      // el evento de calendario después.
+      const { data: insertedAppt } = await supabase.from('appointments_voice').insert({
         agent_id: agentId, nombre: nombre ?? null, telefono: telefono ?? null,
         servicio: servicio ?? null, fecha: fecha ?? null, hora: hora ?? null,
         starts_at: startsAt ? startsAt.toISOString() : null,
         status: 'confirmada',
-      });
+        location: ubicacion ?? null,
+      }).select('id').single();
 
       // Sync a Google/Outlook Calendar si esta conectado. Fire and log — si falla
       // no revertimos la cita en DB (la cita interna es la fuente de verdad para
-      // outbound reminders del cron).
+      // outbound reminders del cron). Si el evento se crea OK, guardamos el ID
+      // + provider en la row para que el portal pueda deep-link al evento.
       if (startsAt && endsAt) {
         const title = `Cita ${servicio ? `— ${servicio} ` : ''}${nombre ? `(${nombre})` : ''}`.trim();
         const created = await executeCreateCalendarEvent(agentId, {
@@ -1583,8 +1586,39 @@ async function executeAgentToolInner(
           start: startsAt.toISOString(),
           end:   endsAt.toISOString(),
           description: telefono ? `Tel: ${telefono}` : undefined,
+          location: ubicacion,
         }, supabase);
-        if (!created.ok) {
+        if (created.ok && insertedAppt?.id) {
+          const event = (created as { event?: { id?: string } }).event;
+          const eventId = event?.id;
+          // Determinar provider: gmail o outlook. Lo inferimos de la integration
+          // activa del agente (per-agent primero, org fallback).
+          const { data: perAgent } = await supabase
+            .from('email_integrations')
+            .select('provider')
+            .eq('agent_id', agentId)
+            .eq('needs_reauth', false)
+            .maybeSingle();
+          let provider: string | null = (perAgent?.provider as string | null) ?? null;
+          if (!provider) {
+            const { data: agentRow } = await supabase
+              .from('voice_agents').select('portal_email').eq('id', agentId).maybeSingle();
+            if (agentRow?.portal_email) {
+              const { data: orgAcct } = await supabase
+                .from('integration_accounts')
+                .select('provider')
+                .eq('portal_email', agentRow.portal_email as string)
+                .in('provider', ['gmail', 'outlook'])
+                .maybeSingle();
+              provider = (orgAcct?.provider as string | null) ?? null;
+            }
+          }
+          if (eventId) {
+            await supabase.from('appointments_voice')
+              .update({ calendar_event_id: eventId, calendar_provider: provider })
+              .eq('id', insertedAppt.id);
+          }
+        } else if (!created.ok) {
           console.warn('[agendar_cita] calendar sync skipped', { agentId, error: created.error });
         }
       }
