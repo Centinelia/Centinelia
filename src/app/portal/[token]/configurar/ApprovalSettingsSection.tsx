@@ -77,10 +77,11 @@ export default function ApprovalSettingsSection({ token, roleColor }: { token: s
       <SectionHeader
         as="h2"
         title="Aprobación entre empleados"
+        tooltip="Aplica solo cuando un empleado le pide a otro hacer algo (por ejemplo Sofía le pide a Noah que envíe un correo). El nivel de autonomía de arriba controla las acciones que cada empleado hace por su cuenta."
         className="mb-2"
       />
       <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
-        Aplica solo cuando un empleado le pide a otro hacer algo (por ejemplo Sofía le pide a Noah que envíe un correo). ¿Quieres aprobar esas delegaciones antes de que se ejecuten? El nivel de autonomía de arriba controla las acciones que cada empleado hace por su cuenta.
+        ¿Quieres aprobar cada delegación entre empleados antes de que se ejecute?
       </p>
 
       {!settings && <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>}
