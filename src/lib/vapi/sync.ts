@@ -180,7 +180,7 @@ async function enrichWithOrgData(agent: VoiceAgent): Promise<VoiceAgent> {
 // generar transferir_a_<coordinador> apunta a assistantName que Vapi puede o no
 // resolver segun estado; en cualquier caso son cuentas que no atienden por
 // telefono y no deberian estar en tools de transferCall en vivo.
-const NON_VOICE_ROLES = new Set(['nox', 'niva']);
+const NON_VOICE_ROLES = new Set(['nox', 'niva', 'nash']);
 
 async function fetchTeamPeers(agent: VoiceAgent): Promise<TeamPeer[]> {
   if (!agent.portal_email) return [];

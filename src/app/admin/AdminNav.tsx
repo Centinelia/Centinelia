@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network } from 'lucide-react';
+import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network, LifeBuoy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
@@ -17,6 +17,7 @@ const groups: NavGroup[] = [
       { href: '/admin/clientes',     icon: Users,      label: 'Clientes' },
       { href: '/admin/llamadas',     icon: Phone,      label: 'Llamadas' },
       { href: '/admin/analytics',    icon: BarChart3,  label: 'Analytics' },
+      { href: '/admin/soporte',      icon: LifeBuoy,   label: 'Soporte' },
     ],
   },
   {

@@ -12,7 +12,7 @@ import {
 import LandingNav       from '@/app/LandingNav';
 import AnimatedSection  from '@/app/AnimatedSection';
 import IndustryFooter   from '@/app/industrias/IndustryFooter';
-import { MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
+import { PUBLIC_MEERKAT_ROLES } from '@/lib/portal/meerkat-roles';
 
 export const metadata: Metadata = {
   title: { absolute: 'Empleados digitales | Centinelia' },
@@ -281,8 +281,8 @@ function CapabilityChips({ features, color, isCoordinator }: {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function EmpleadosPage() {
-  const directors   = MEERKAT_ROLES.filter(r => !!(r.features as Record<string, unknown>)?.is_coordinator);
-  const specialists = MEERKAT_ROLES.filter(r => !(r.features as Record<string, unknown>)?.is_coordinator);
+  const directors   = PUBLIC_MEERKAT_ROLES.filter(r => !!(r.features as Record<string, unknown>)?.is_coordinator);
+  const specialists = PUBLIC_MEERKAT_ROLES.filter(r => !(r.features as Record<string, unknown>)?.is_coordinator);
   const meerkats    = [...directors, ...specialists];
 
   return (

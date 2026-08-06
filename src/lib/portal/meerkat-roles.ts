@@ -3,9 +3,13 @@ import type { AgentFeatures } from '@/types/agent';
 export type MeerkatRoleId =
   | 'nia' | 'noah' | 'nico' | 'nelia'
   | 'neo' | 'nara' | 'naia' | 'nova'
-  | 'nox' | 'niva' | 'custom';
+  | 'nox' | 'niva' | 'nash' | 'custom';
 
-export const COORDINATOR_ROLE_IDS: readonly MeerkatRoleId[] = ['nox', 'niva'];
+export const COORDINATOR_ROLE_IDS: readonly MeerkatRoleId[] = ['nox', 'niva', 'nash'];
+
+// Meerkats internos: no visibles en pickers públicos (registro, portal, empleados landing).
+// Solo se crean vía /admin/agentes/nuevo por owners de Centinelia.
+export const INTERNAL_MEERKAT_IDS: ReadonlySet<MeerkatRoleId> = new Set(['nash']);
 
 export interface MeerkatRole {
   id:                 MeerkatRoleId;
@@ -333,6 +337,34 @@ Expresiones naturales: "Déjame entender el contexto primero.", "Veo un patrón 
     },
   },
   {
+    id:          'nash',
+    nombre:      'Nash',
+    rol:         'Operaciones internas',
+    descripcion: 'Meerkat interno de Centinelia. Duplica al owner en soporte y admin.',
+    imagen:      '/meerkats/nash.png',
+    color:       '#0891B2',
+    genero:      'M',
+    tagline:     'Duplica al owner en operación.',
+    voiceId:     null,
+    personalidad:
+      'Chaleco gris grafito y radio en la cadera: Nash escucha todo lo que pasa en la plataforma, mueve fichas antes de que nadie note el problema, y sabe exactamente cuándo despertar al equipo humano. Es el clon operativo del dueño de Centinelia.',
+    promptPersonalidad:
+      `PENSAMIENTO RECTOR:
+"Necesito que Centinelia opere igual que si el dueño estuviera despierto."
+Todo lo que dices, revisas y decides responde a este principio.
+
+CARÁCTER Y ESTILO:
+Eres proactivo, ejecutivo y meticuloso. No preguntas si puedes actuar: actúas y reportas. Cuando un cliente reporta algo, ya tienes contexto listo antes de responder. Cuando detectas un bug en la plataforma, ya redactaste el issue para Claude Code antes de escalarlo. Cuando algo huele raro en los datos, investigas primero y presentas hipótesis después. Tu tono es sereno y directo: la gente confía en ti porque siempre presentas causa raíz + acción sugerida, no solo síntomas.
+Expresiones naturales: "Ya lo mandé a Claude Code.", "Detecté un patrón, ahí va el issue.", "Está resuelto, aquí va la verificación."`,
+    features: {
+      is_coordinator:             true,
+      helpdesk:                   true,
+      nash_passive_discovery:     true,
+      nash_active_healthcheck:    false,
+      nash_anomaly_detection:     false,
+    },
+  },
+  {
     id:          'custom',
     nombre:      'Define su rol',
     rol:         '¿Que necesitas?',
@@ -361,3 +393,9 @@ Expresiones naturales: "Déjame entender el contexto primero.", "Veo un patrón 
 export const MEERKAT_MAP = Object.fromEntries(
   MEERKAT_ROLES.map(r => [r.id, r])
 ) as Record<MeerkatRoleId, MeerkatRole>;
+
+// Roster visible para clientes (registro, portal, empleados landing).
+// Excluye meerkats internos de Centinelia como Nash.
+export const PUBLIC_MEERKAT_ROLES: MeerkatRole[] = MEERKAT_ROLES.filter(
+  r => !INTERNAL_MEERKAT_IDS.has(r.id)
+);

@@ -10,7 +10,7 @@ import {
   type LucideProps,
 } from 'lucide-react';
 import Image from 'next/image';
-import { MEERKAT_ROLES, MEERKAT_MAP, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_MAP, PUBLIC_MEERKAT_ROLES, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import { FEATURE_LABELS } from '@/types/agent';
 import { JORNADA_CONFIG } from '@/lib/billing/plans';
 
@@ -172,7 +172,7 @@ const NOX_TIERS: NoxTierDef[] = [
 ];
 
 // Roles for the 3×3 grid — excludes coordinator (Nox gets its own card above)
-const GRID_ROLES = MEERKAT_ROLES.filter(r => !(r.features as Record<string, unknown>)?.is_coordinator);
+const GRID_ROLES = PUBLIC_MEERKAT_ROLES.filter(r => !(r.features as Record<string, unknown>)?.is_coordinator);
 
 const GIROS: { id: Giro; label: string; icon: React.FC<LucideProps> }[] = [
   { id: 'retail',         label: 'Tienda / Comercio',        icon: ShoppingBag    },
@@ -633,7 +633,7 @@ function RegistroInner() {
 
   const validPlans: FormPlan[] = ['pro', 'empresarial'];
   const validTiers: FormTier[] = ['starter', 'growth', 'scale'];
-  const validRoles             = MEERKAT_ROLES.map(r => r.id) as MeerkatRoleId[];
+  const validRoles             = PUBLIC_MEERKAT_ROLES.map(r => r.id) as MeerkatRoleId[];
   const rawPlan  = params.get('plan') as FormPlan | null;
   const rawTier  = params.get('tier') as FormTier | null;
   const rawRole  = params.get('role') as MeerkatRoleId | null;

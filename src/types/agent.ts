@@ -51,6 +51,12 @@ export interface AgentFeatures {
   // Human handoff — pedir_a_humano tool
   human_handoff_enabled?: boolean;
 
+  // Nash (meerkat interno) — modos de descubrimiento de bugs en admin.
+  // Solo aplican al agente Nash de la cuenta interna de Centinelia; ignorados en otros.
+  nash_passive_discovery?: boolean;   // marca errores/anomalías cuando sus propias tools fallan o devuelven raro
+  nash_active_healthcheck?: boolean;  // corre revisar_salud_admin periódicamente contra endpoints/queries clave
+  nash_anomaly_detection?: boolean;   // detecta patrones raros en datos (cuentas huérfanas, drift, contratos rotos, etc.)
+
   // Automation gating
   automations?: AutomationsConfig;
 }
@@ -282,4 +288,7 @@ export const FEATURE_LABELS: Record<keyof AgentFeatures, string> = {
   contract_drafts:         '',
   automations:             '',
   human_handoff_enabled:   '',
+  nash_passive_discovery:  'Nash — detección pasiva de bugs',
+  nash_active_healthcheck: 'Nash — health-check activo de admin',
+  nash_anomaly_detection:  'Nash — detección de anomalías en datos',
 };

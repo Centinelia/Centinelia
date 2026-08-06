@@ -3,7 +3,7 @@
 import { useState }                                              from 'react';
 import { useRouter }                                             from 'next/navigation';
 import { Plus, X, Check, ArrowLeft, Clock, Zap, Phone }         from 'lucide-react';
-import { MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
+import { PUBLIC_MEERKAT_ROLES, type MeerkatRole, type MeerkatRoleId }  from '@/lib/portal/meerkat-roles';
 import { JORNADA_CONFIG }                                        from '@/lib/billing/plans';
 import type { JornadaType }                                      from '@/types/agent';
 
@@ -99,10 +99,10 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
   }
   const smartMode    = !!recommendations && recommendations.length > 0;
   const displayRoles = smartMode
-    ? MEERKAT_ROLES
+    ? PUBLIC_MEERKAT_ROLES
         .filter(r => recMap[r.id])
         .sort((a, b) => (recMap[b.id]?.newCats.length ?? 0) - (recMap[a.id]?.newCats.length ?? 0))
-    : MEERKAT_ROLES;
+    : PUBLIC_MEERKAT_ROLES;
 
   const reset = () => { setSelected(null); setExpandedRole(null); setAgentName(''); setError(''); setTier(defaultTier); setJornada('combinada'); };
 
@@ -110,7 +110,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
     setOpen(true);
     reset();
     if (preselect) {
-      const role = MEERKAT_ROLES.find(r => r.id === preselect);
+      const role = PUBLIC_MEERKAT_ROLES.find(r => r.id === preselect);
       if (role) {
         setSelected(role);
         setAgentName(role.id === 'custom' ? '' : role.nombre);
