@@ -1,5 +1,5 @@
 import { View, Text } from '@react-pdf/renderer';
-import { BrandedDoc, SectionTitle, S } from './doc';
+import { BrandedDoc, S } from './doc';
 import type { BrandKit } from '@/lib/brand/kit';
 
 export interface ReporteData {
@@ -14,111 +14,209 @@ export interface ReporteData {
   topHours?:    { hour: number; count: number }[];
 }
 
-function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
+// ─── Design tokens (editorial premium) ────────────────────────────────────────
+const INK       = '#0F0A24';   // very dark ink
+const SUBINK    = '#3E3654';   // secondary text
+const HAIRLINE  = '#EAE7F0';   // dividers
+const MUTED_BG  = '#F7F5FA';   // subtle bg
+const MUTED_TXT = '#8A8299';
+
+// ─── Section header with number ordinal ───────────────────────────────────────
+function SectionOrdinal({ n, title, color }: { n: number; title: string; color: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 14, gap: 10 }}>
+      <Text style={{ fontSize: 28, fontFamily: 'Helvetica-Bold', color, lineHeight: 1 }}>
+        0{n}
+      </Text>
+      <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1.4, textTransform: 'uppercase', paddingBottom: 3 }}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Big KPI card — number huge, minimal decoration ───────────────────────────
+function KpiCard({ label, value, isPrimary }: { label: string; value: number; isPrimary?: boolean }) {
   return (
     <View style={{
       flex: 1,
-      borderWidth: 1,
-      borderColor: '#e5e7eb',
-      borderRadius: 8,
-      overflow: 'hidden',
+      paddingVertical: 18,
+      paddingHorizontal: 14,
+      borderWidth: isPrimary ? 0 : 1,
+      borderColor: HAIRLINE,
+      backgroundColor: isPrimary ? INK : '#FFFFFF',
+      borderRadius: 6,
     }}>
-      {/* colored top accent */}
-      <View style={{ height: 3, backgroundColor: color }} />
-      <View style={{ paddingVertical: 14, paddingHorizontal: 10, alignItems: 'center' }}>
-        <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color, lineHeight: 1 }}>
-          {value}
-        </Text>
-        <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginTop: 5, letterSpacing: 0.5 }}>
-          {label.toUpperCase()}
-        </Text>
-      </View>
+      <Text style={{
+        fontSize: 38,
+        fontFamily: 'Helvetica-Bold',
+        color: isPrimary ? '#FFFFFF' : INK,
+        lineHeight: 1,
+        letterSpacing: -1.2,
+      }}>
+        {value}
+      </Text>
+      <Text style={{
+        fontSize: 8,
+        fontFamily: 'Helvetica-Bold',
+        color: isPrimary ? '#B8ACD4' : MUTED_TXT,
+        marginTop: 8,
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
+      }}>
+        {label}
+      </Text>
     </View>
   );
 }
 
 export function ReportePdf({ brand, data }: { brand: BrandKit; data: ReporteData }) {
-  const accent  = brand.color || '#6C3BFF';
-  const pct     = data.minutesTotal > 0 ? Math.min(Math.round((data.minutesUsed / data.minutesTotal) * 100), 100) : 0;
-  const barCol  = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e';
+  const accent = brand.color || '#6C3BFF';
+  const pct    = data.minutesTotal > 0 ? Math.min(Math.round((data.minutesUsed / data.minutesTotal) * 100), 100) : 0;
+  const barCol = pct >= 90 ? '#EF4444' : pct >= 70 ? '#F59E0B' : '#22C55E';
+
+  // Executive summary: 1-2 sentences narrating what happened
+  const summarize = () => {
+    if (data.totalCalls === 0) return 'Este período no registró actividad.';
+    const parts = [];
+    parts.push(`${data.totalCalls} ${data.totalCalls === 1 ? 'llamada atendida' : 'llamadas atendidas'}`);
+    if (data.leads > 0)        parts.push(`${data.leads} ${data.leads === 1 ? 'lead capturado' : 'leads capturados'}`);
+    if (data.appointments > 0) parts.push(`${data.appointments} ${data.appointments === 1 ? 'cita agendada' : 'citas agendadas'}`);
+    if (data.orders > 0)       parts.push(`${data.orders} ${data.orders === 1 ? 'pedido tomado' : 'pedidos tomados'}`);
+    return `Este período tu equipo digital gestionó ${parts.join(', ')}.`;
+  };
+
+  const maxHourCount = data.topHours && data.topHours.length > 0
+    ? Math.max(...data.topHours.map(h => h.count))
+    : 0;
 
   return (
     <BrandedDoc brand={brand} docType="Reporte Mensual" subtitle={data.period}>
 
-      {/* KPI Grid */}
-      <View style={S.section}>
-        <SectionTitle title="Actividad del período" color={accent} />
-        <View style={[S.row, { gap: 10 }]}>
-          <StatBox label="Llamadas"  value={data.totalCalls}   color={accent} />
-          <StatBox label="Leads"     value={data.leads}        color="#6C3BFF" />
-          <StatBox label="Citas"     value={data.appointments} color="#3b82f6" />
-          <StatBox label="Pedidos"   value={data.orders}       color="#f59e0b" />
+      {/* ═══ HERO — período grande estilo editorial ═══════════════════════════ */}
+      <View style={{ marginBottom: 32, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: HAIRLINE }}>
+        <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: accent, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
+          Reporte de actividad
+        </Text>
+        <Text style={{ fontSize: 32, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.5, lineHeight: 1.1 }}>
+          {data.period}
+        </Text>
+        <Text style={{ fontSize: 11, color: SUBINK, marginTop: 14, lineHeight: 1.6, maxWidth: 460 }}>
+          {summarize()}
+        </Text>
+      </View>
+
+      {/* ═══ 01 ACTIVIDAD ══════════════════════════════════════════════════════ */}
+      <View style={{ marginBottom: 28 }}>
+        <SectionOrdinal n={1} title="Actividad del período" color={accent} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <KpiCard label="Llamadas"  value={data.totalCalls} isPrimary />
+          <KpiCard label="Leads"     value={data.leads} />
+          <KpiCard label="Citas"     value={data.appointments} />
+          <KpiCard label="Pedidos"   value={data.orders} />
         </View>
       </View>
 
-      {/* Minutes */}
-      <View style={S.section}>
-        <SectionTitle title="Consumo de minutos" color={accent} />
-        <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 16 }}>
-          <View style={[S.row, { justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }]}>
-            <Text style={S.value}>{data.minutesUsed} de {data.minutesTotal} minutos usados</Text>
-            <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: barCol }}>{pct}%</Text>
+      {/* ═══ 02 CONSUMO ═══════════════════════════════════════════════════════ */}
+      <View style={{ marginBottom: 28 }}>
+        <SectionOrdinal n={2} title="Consumo de minutos" color={accent} />
+        <View style={{ paddingVertical: 18, paddingHorizontal: 20, backgroundColor: MUTED_BG, borderRadius: 6 }}>
+          <View style={[S.spaceBetween, { alignItems: 'baseline', marginBottom: 14 }]}>
+            <View>
+              <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: -0.8, lineHeight: 1 }}>
+                {data.minutesUsed}
+                <Text style={{ fontSize: 14, color: MUTED_TXT }}> / {data.minutesTotal} min</Text>
+              </Text>
+              <Text style={{ fontSize: 8, color: MUTED_TXT, marginTop: 6, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                Consumido este período
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ fontSize: 26, fontFamily: 'Helvetica-Bold', color: barCol, letterSpacing: -0.8, lineHeight: 1 }}>
+                {pct}%
+              </Text>
+              <Text style={{ fontSize: 8, color: MUTED_TXT, marginTop: 6, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                Del plan mensual
+              </Text>
+            </View>
           </View>
-          <View style={{ height: 7, backgroundColor: '#f3f4f6', borderRadius: 4 }}>
-            <View style={{ height: 7, width: `${pct}%`, backgroundColor: barCol, borderRadius: 4 }} />
+          <View style={{ height: 6, backgroundColor: '#FFFFFF', borderRadius: 3 }}>
+            <View style={{ height: 6, width: `${pct}%`, backgroundColor: barCol, borderRadius: 3 }} />
           </View>
-          <Text style={[S.muted, { marginTop: 6 }]}>
-            {data.minutesTotal - data.minutesUsed} minutos disponibles
+          <Text style={{ fontSize: 9, color: SUBINK, marginTop: 12 }}>
+            Te quedan <Text style={{ fontFamily: 'Helvetica-Bold', color: INK }}>{Math.max(0, data.minutesTotal - data.minutesUsed)} minutos</Text> disponibles para el resto del período.
           </Text>
         </View>
       </View>
 
-      {/* Outcome breakdown */}
+      {/* ═══ 03 RESULTADOS ════════════════════════════════════════════════════ */}
       {data.outcomeBreakdown.length > 0 && (
-        <View style={S.section}>
-          <SectionTitle title="Resultados de llamadas" color={accent} />
-          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-            <View style={[S.tableHead, { backgroundColor: `${accent}0F` }]}>
-              <Text style={[S.label, { flex: 1, marginBottom: 0 }]}>Resultado</Text>
-              <Text style={[S.label, { width: 60, textAlign: 'right', marginBottom: 0 }]}>Total</Text>
-              <Text style={[S.label, { width: 60, textAlign: 'right', marginBottom: 0 }]}>%</Text>
+        <View style={{ marginBottom: 28 }}>
+          <SectionOrdinal n={3} title="Resultados de llamadas" color={accent} />
+          <View>
+            {/* Table header — minimal, just uppercase labels */}
+            <View style={{ flexDirection: 'row', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: INK }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1, textTransform: 'uppercase', flex: 1 }}>
+                Resultado
+              </Text>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1, textTransform: 'uppercase', width: 60, textAlign: 'right' }}>
+                Total
+              </Text>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, letterSpacing: 1, textTransform: 'uppercase', width: 60, textAlign: 'right' }}>
+                Share
+              </Text>
             </View>
-            {data.outcomeBreakdown.map((row, i) => (
-              <View key={row.outcome} style={[S.tableRow, { borderBottomWidth: i === data.outcomeBreakdown.length - 1 ? 0 : 1 }]}>
-                <View style={[S.row, { flex: 1, alignItems: 'center', gap: 6 }]}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: row.color }} />
-                  <Text style={S.value}>{row.label}</Text>
+            {data.outcomeBreakdown.map((row, i) => {
+              const rowPct = data.totalCalls > 0 ? Math.round((row.count / data.totalCalls) * 100) : 0;
+              return (
+                <View key={row.outcome} style={{
+                  flexDirection: 'row',
+                  paddingVertical: 12,
+                  borderBottomWidth: i === data.outcomeBreakdown.length - 1 ? 0 : 1,
+                  borderBottomColor: HAIRLINE,
+                  alignItems: 'center',
+                }}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 4, height: 20, backgroundColor: row.color, borderRadius: 2 }} />
+                    <Text style={{ fontSize: 11, color: INK }}>{row.label}</Text>
+                  </View>
+                  <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: INK, width: 60, textAlign: 'right', letterSpacing: -0.3 }}>
+                    {row.count}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: SUBINK, width: 60, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>
+                    {rowPct}%
+                  </Text>
                 </View>
-                <Text style={[S.valueBold, { width: 60, textAlign: 'right' }]}>{row.count}</Text>
-                <Text style={[S.muted, { width: 60, textAlign: 'right' }]}>
-                  {data.totalCalls > 0 ? Math.round((row.count / data.totalCalls) * 100) : 0}%
-                </Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}
 
-      {/* Top hours */}
+      {/* ═══ 04 HORAS PICO ════════════════════════════════════════════════════ */}
       {data.topHours && data.topHours.length > 0 && (
-        <View style={S.section}>
-          <SectionTitle title="Horas pico de llamadas" color={accent} />
-          <View style={[S.row, { gap: 8, flexWrap: 'wrap' }]}>
-            {data.topHours.map(({ hour, count }) => (
-              <View key={hour} style={{
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: '#e5e7eb',
-                borderRadius: 6,
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                minWidth: 52,
-                backgroundColor: `${accent}06`,
-              }}>
-                <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: accent, lineHeight: 1 }}>{count}</Text>
-                <Text style={[S.muted, { marginTop: 4 }]}>{String(hour).padStart(2, '0')}:00</Text>
-              </View>
-            ))}
+        <View style={{ marginBottom: 20 }}>
+          <SectionOrdinal n={4} title="Horas pico de llamadas" color={accent} />
+          <View style={{ paddingVertical: 6 }}>
+            {data.topHours.map(({ hour, count }, i) => {
+              const barPct = maxHourCount > 0 ? (count / maxHourCount) * 100 : 0;
+              return (
+                <View key={hour} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: i === data.topHours!.length - 1 ? 0 : 1, borderBottomColor: HAIRLINE }}>
+                  <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: INK, width: 46, letterSpacing: -0.3 }}>
+                    {String(hour).padStart(2, '0')}:00
+                  </Text>
+                  <View style={{ flex: 1, height: 8, backgroundColor: MUTED_BG, borderRadius: 4 }}>
+                    <View style={{ height: 8, width: `${barPct}%`, backgroundColor: accent, borderRadius: 4 }} />
+                  </View>
+                  <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: INK, width: 30, textAlign: 'right' }}>
+                    {count}
+                  </Text>
+                  <Text style={{ fontSize: 9, color: MUTED_TXT, width: 50 }}>
+                    llamadas
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
