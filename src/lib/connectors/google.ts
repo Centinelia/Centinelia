@@ -128,7 +128,6 @@ class GoogleEmail implements EmailConnector {
   async sendReply({ messageId, threadId, to = '', subject = '', body, fromDisplay }: ReplyParams): Promise<void> {
     const replySubject = subject.startsWith('Re:') ? subject : `Re: ${subject}`;
     const encodedSubject = encodeHeaderRFC2047(replySubject);
-    const refId = threadId ?? messageId;
     // From con display name: "Noah - Pneuma Studio <cuenta@gmail.com>". Gmail
     // acepta cambios de nombre visible pero la dirección debe ser la cuenta
     // autenticada. Si no podemos obtener el email autenticado, omitimos From.
@@ -137,21 +136,57 @@ class GoogleEmail implements EmailConnector {
       const authEmail = await this.getAuthenticatedEmail();
       if (authEmail) fromHeader = `${encodeHeaderRFC2047(fromDisplay.trim())} <${authEmail}>`;
     }
+    // In-Reply-To/References requieren el Message-ID RFC 5322 (formato
+    // <xxx@dominio>) del correo original, NO el Gmail internal id. Obtenemos
+    // el header Message-Id del mensaje original vía API antes de responder,
+    // y si falla omitimos ambos headers. El threading en Gmail se mantiene
+    // por el threadId en el JSON body, no por estos headers.
+    let refHeaders: string[] = [];
+    if (messageId) {
+      try {
+        const msgRes = await fetch(`${GMAIL}/messages/${messageId}?format=metadata&metadataHeaders=Message-Id`, { headers: this.h() });
+        if (msgRes.ok) {
+          const msgJson = await msgRes.json();
+          const headers: Array<{ name: string; value: string }> = msgJson.payload?.headers ?? [];
+          const rfcMsgId = headers.find(h => h.name.toLowerCase() === 'message-id')?.value;
+          if (rfcMsgId) refHeaders = [`In-Reply-To: ${rfcMsgId}`, `References: ${rfcMsgId}`];
+        }
+      } catch { /* omit headers on failure — threadId alone still threads in Gmail */ }
+    }
     const raw = [
       `To: ${to}`,
       ...(fromHeader ? [`From: ${fromHeader}`] : []),
       `Subject: ${encodedSubject}`,
-      `In-Reply-To: ${refId}`,
-      `References: ${refId}`,
+      ...refHeaders,
       'Content-Type: text/plain; charset=utf-8',
       '',
       body,
     ].join('\r\n');
-    await fetch(`${GMAIL}/messages/send`, {
+    const sendRes = await fetch(`${GMAIL}/messages/send`, {
       method:  'POST',
       headers: { ...this.h(), 'Content-Type': 'application/json' },
       body:    JSON.stringify({ raw: Buffer.from(raw).toString('base64url'), threadId: threadId ?? undefined }),
     });
+    if (sendRes.ok) return;
+
+    // Cross-account fallback: si el threadId original vive en la cuenta org
+    // (nazre@) pero el sender es per-agent (verdantis@), Gmail devuelve 404
+    // porque el thread no existe en la cuenta autenticada. Reintenta sin
+    // threadId — el cliente recibe el correo en un hilo nuevo con el mismo
+    // subject "Re: ...", que es aceptable UX.
+    if (sendRes.status === 404 && threadId) {
+      const retryRes = await fetch(`${GMAIL}/messages/send`, {
+        method:  'POST',
+        headers: { ...this.h(), 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ raw: Buffer.from(raw).toString('base64url') }),
+      });
+      if (retryRes.ok) return;
+      const retryErr = await retryRes.text().catch(() => '');
+      throw new Error(`Gmail sendReply retry (no thread) failed: ${retryRes.status} ${retryErr.slice(0, 500)}`);
+    }
+
+    const errText = await sendRes.text().catch(() => '');
+    throw new Error(`Gmail sendReply failed: ${sendRes.status} ${errText.slice(0, 500)}`);
   }
 
   async markRead(messageId: string): Promise<void> {

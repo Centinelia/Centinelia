@@ -62,6 +62,22 @@ async function fetchConversationalLearningsForEmail(): Promise<{ general: string
   }
 }
 
+/**
+ * Strip markdown syntax común del draft antes de enviar como text/plain.
+ * Sonnet a veces mete **bold**, ##headings, [links](url) aunque el prompt le
+ * pide no hacerlo. Sin esta limpieza el cliente ve asteriscos y hashes crudos.
+ */
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '$1')      // **bold** → bold
+    .replace(/__(.+?)__/g, '$1')          // __bold__ → bold
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)\*(?!\*)/g, '$1') // *italic* → italic
+    .replace(/(?<!_)_(?!_)([^_\n]+?)_(?!_)/g, '$1')      // _italic_ → italic
+    .replace(/^#{1,6}\s+/gm, '')          // ## heading → heading
+    .replace(/`([^`]+)`/g, '$1')          // `code` → code
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)'); // [text](url) → text (url)
+}
+
 function isStr(v: unknown): v is string { return typeof v === 'string'; }
 function isBool(v: unknown): v is boolean { return typeof v === 'boolean'; }
 function strOrNull(v: unknown, max = 5000): string | null {
@@ -442,6 +458,10 @@ export async function processInboxEmail(params: {
   fromSpamFolder?:   boolean;        // true when fetched from provider spam/junk folder
   unmarkSpamFn?:     (messageId: string) => Promise<void>; // best-effort: move out of spam in provider
   sendReplyFn?:      (body: string) => Promise<void>;
+  // Imágenes que el humano adjuntó vía pedir_a_humano response. Se pasan como
+  // contenido multimodal a Claude para que el LLM las vea (Haiku/Sonnet 4.5+
+  // soportan vision). Docs (PDF/DOCX) ya vienen parseados en el emailBody.
+  humanAttachmentImages?: Array<{ name: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' }>;
   // Dispatcher metadata — set cuando el correo llegó a la bandeja compartida
   // de la org y fue asignado por el dispatcher. En flow per-agent son undefined.
   originScope?:          'per_agent' | 'org_shared';
@@ -455,6 +475,7 @@ export async function processInboxEmail(params: {
     knowledgeBase, roleKB, agentRole, ownerEmail, portalToken, portalEmail,
     autoMode = 'off', approvalEmail, existingInboxId, originalEmailBody,
     fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
+    humanAttachmentImages,
     originScope, assignedBy, assignmentConfidence, assignmentMetadata,
   } = params;
 
@@ -595,6 +616,10 @@ Estas reglas se verifican con un safety net post-generación. Violarlas causa qu
 4. CASOS DE ÉXITO, TESTIMONIOS, REFERENCIAS: si search_files no los encuentra, usa pedir_a_humano({type:'info', description:'Cliente pide casos de éxito de X. Drive no tiene. ¿Cuáles puedo compartir?'}).
 
 5. COMPROMISOS QUE EXCEDEN TU AUTORIDAD: descuentos, plazos especiales, condiciones no estándar → pedir_a_humano({type:'approval', ...}).
+
+6. FORMATO: el draft se enviará como texto plano al cliente. NO uses markdown (nada de **negritas**, ##encabezados, [links](url), \`código\`, ni backticks). Usa puntos, saltos de línea y guiones normales. Cualquier * o # que dejes se verá crudo en el correo.
+
+7. ADJUNTOS: NUNCA menciones que "adjuntas capturas", "envías archivos", "incluyes documentos", etc. en el draft al cliente. Tú NO puedes adjuntar archivos a un correo saliente. Los archivos que llegan del humano vía pedir_a_humano son PARA TU LECTURA/CONTEXTO, no para reenviar. Si el cliente necesita ver material, invítalo a agendar una llamada o pedir el archivo específico (que un humano lo enviará).
 
 Regla de oro: PEDIR AYUDA es SIEMPRE mejor que INVENTAR. Un correo con "voy a verificar y te contesto pronto" es MEJOR que un correo con datos fabricados. Fabricar rompe la confianza; verificar la construye.
 
@@ -982,7 +1007,18 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       sourceInboxId:  reservedInboxId,
     };
 
-    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
+    // Content multimodal: si el humano adjuntó imágenes, incluirlas como bloques
+    // image para que Claude las vea. Docs (PDF/DOCX) ya vienen parseados en
+    // effectiveBody vía resume.ts. Cada imagen consume ~1500 tokens.
+    const initialUserContent: Anthropic.ContentBlockParam[] = [{ type: 'text', text: userPrompt }];
+    for (const img of humanAttachmentImages ?? []) {
+      initialUserContent.push({
+        type: 'image',
+        source: { type: 'base64', media_type: img.mimeType, data: img.base64 },
+      });
+      initialUserContent.push({ type: 'text', text: `(Imagen adjunta del equipo humano: ${img.name})` });
+    }
+    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: initialUserContent }];
 
     try {
       let lastText = '{}';
@@ -1258,7 +1294,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
   if (finalStatus === 'info_requested' && result.requestToSender && sendReplyFn) {
     try {
-      await sendReplyFn(result.requestToSender);
+      await sendReplyFn(stripMarkdown(result.requestToSender));
       if (item?.id) {
         await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
       }
@@ -1268,8 +1304,19 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
 
   } else if (finalStatus === 'auto_replied' && result.draft && sendReplyFn && item) {
     try {
-      await sendReplyFn(result.draft);
+      await sendReplyFn(stripMarkdown(result.draft));
       await supabase.from('ops_inbox').update({ sent_at: new Date().toISOString() }).eq('id', item.id);
+      // Encola al digest diario (no urgente).
+      if (portalEmail) {
+        const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+        await queueNotificationEvent({
+          portalEmail,
+          agentId,
+          kind:    'email_replied',
+          urgent:  false,
+          payload: { to: emailFrom, subject: emailSubject, category: result.category ?? null },
+        });
+      }
     } catch (err) {
       console.error('[ops/inbox-processor] auto_reply send failed:', err);
       // Degrade to pending so a human sees it

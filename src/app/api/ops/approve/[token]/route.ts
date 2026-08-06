@@ -79,6 +79,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       }
     }
 
+    // Strip markdown antes de enviar como text/plain (Sonnet a veces mete
+    // **bold** o ##headings; el cliente ve asteriscos crudos).
+    const draftPlain = stripMarkdown(item.ai_draft as string);
+
     let sentViaConnector = false;
     if (integration) {
       try {
@@ -89,7 +93,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           threadId:  (item.thread_id as string | null) ?? undefined,
           to:        item.email_from as string,
           subject:   (item.email_subject as string | null) ?? '',
-          body:      item.ai_draft as string,
+          body:      draftPlain,
           fromDisplay,
         });
         sentViaConnector = true;
@@ -104,10 +108,22 @@ export async function GET(_req: NextRequest, { params }: Params) {
       await sendEmail({
         to:      item.email_from as string,
         subject: `Re: ${item.email_subject || ''}`.trim(),
-        html:    simpleResponseHtml(businessName, agentName, item.ai_draft as string),
+        html:    simpleResponseHtml(businessName, agentName, draftPlain),
       });
     }
   }
+
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/(?<!\*)\*(?!\*)([^*\n]+?)\*(?!\*)/g, '$1')
+    .replace(/(?<!_)_(?!_)([^_\n]+?)_(?!_)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+}
+
 
   // Mark as approved + sent (via state machine)
   await transitionInboxItem({

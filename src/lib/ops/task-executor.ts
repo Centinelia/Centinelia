@@ -466,6 +466,34 @@ export async function executeTask(params: {
       metadata: { result_preview: String(finalResult ?? '').slice(0, 300) },
       extraFields: { result: finalResult, completed_at: now },
     });
+    // Encola al digest diario. Kind depende de trigger_type — si vino por
+    // delegar_tarea (empleado→empleado) es 'delegation_completed'; si vino
+    // por otra vía (scheduler, api directa) es 'task_completed'.
+    if (targetAgent.portal_email) {
+      try {
+        const { data: taskMeta } = await supabase
+          .from('agent_tasks')
+          .select('title, trigger_type')
+          .eq('id', taskId)
+          .maybeSingle();
+        const kind = taskMeta?.trigger_type === 'delegation'
+          ? 'delegation_completed' as const
+          : 'task_completed' as const;
+        const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+        await queueNotificationEvent({
+          portalEmail: targetAgent.portal_email,
+          agentId:     targetAgent.id,
+          kind,
+          urgent:      false,
+          payload:     {
+            title:  taskMeta?.title ?? tarea,
+            result: String(finalResult ?? '').slice(0, 400),
+          },
+        });
+      } catch (err) {
+        console.error('[task-executor] queue notification failed', err);
+      }
+    }
   } else {
     const failReason = qaExhausted
       ? `Rechazado por el coordinador tras ${MAX_QA_CYCLES} intentos. Último entregable guardado.`

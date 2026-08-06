@@ -109,6 +109,31 @@ export async function POST(req: NextRequest) {
         metadata: { ended_reason: endedReason },
       });
     }
+
+    // Encola al digest diario (no urgente). Solo cuando la saliente conectó.
+    try {
+      const { data: agent } = await supabase
+        .from('voice_agents')
+        .select('portal_email')
+        .eq('id', outboundCall.agent_id)
+        .maybeSingle();
+      if (agent?.portal_email) {
+        const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+        await queueNotificationEvent({
+          portalEmail: agent.portal_email as string,
+          agentId:     outboundCall.agent_id as string,
+          kind:        'outbound_success',
+          urgent:      false,
+          payload: {
+            to:      outboundCall.telefono ?? null,
+            nombre:  outboundCall.nombre   ?? null,
+            motivo:  outboundCall.motivo   ?? null,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[outbound webhook] queue notification failed', err);
+    }
   }
 
   return NextResponse.json({ ok: true });

@@ -87,6 +87,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (ownerEmail) {
+      const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+      await queueNotificationEvent({
+        portalEmail: ownerEmail,
+        agentId:     agent_id,
+        kind:        'document_created',
+        urgent:      false,
+        payload:     { title, doc_type: (template_type as string) ?? 'general' },
+      });
+    }
+
     return NextResponse.json({
       result: `Documento "${title}" generado y enviado a tu correo${ownerEmail ? ` ${ownerEmail}` : ''}. Puedes descargarlo desde el enlace que te enviamos.`,
     });

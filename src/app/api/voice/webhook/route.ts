@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { VoiceAgent } from '@/types/agent';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
-import { sendEmail, minutesAlertHtml, newLeadHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
+import { sendEmail, minutesAlertHtml, appointmentConfirmationToClientHtml, leadFollowUpToClientHtml } from '@/lib/email/send';
 import { consumePoolMinutes, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
 import { pauseVapiAgent } from '@/lib/vapi/control';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
@@ -501,29 +501,26 @@ export async function POST(req: NextRequest) {
         const callerIsInternal = callerNumberIsInternal || passphraseUsed;
 
         if (agent?.client_email && (agent.notify_email ?? true) && notifyOutcomes.includes(outcome) && !callerIsInternal) {
-          const portalUrl = `${appUrl}/portal/${agent.portal_token}`;
-          const outcomeSubjects: Record<string, string> = {
-            lead_created:       '🎯 Nuevo lead capturado',
-            appointment_booked: '📅 Cita agendada',
-            order_taken:        '🛒 Nuevo pedido',
-            transferred:        '📞 Llamada transferida',
-            info_provided:      'ℹ️ Llamada informativa',
-          };
-          await sendEmail({
-            to:      agent.client_email,
-            subject: `${outcomeSubjects[outcome] ?? '📱 Llamada'}, ${agent.business_name}`,
-            html:    newLeadHtml({
-              businessName:  agent.business_name,
-              callerNumber,
-              nombre:        structured?.nombre   ?? null,
-              servicio:      structured?.servicio ?? structured?.pedido_items ?? null,
-              whatsapp:      structured?.whatsapp ?? null,
-              email:         structured?.email    ?? null,
-              summary,
+          // Encolamos al digest diario. Marca urgent=true para lead_created
+          // y transferred (el owner querría enterarse en el momento); el resto
+          // agrupa al cierre del día. Ver src/lib/notifications/queue.ts.
+          const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+          const isUrgent = outcome === 'lead_created' || outcome === 'transferred';
+          await queueNotificationEvent({
+            portalEmail: agent.portal_email as string,
+            agentId:     agent.id as string,
+            kind:        'call_outcome',
+            urgent:      isUrgent,
+            payload: {
               outcome,
-              portalUrl,
-            }),
-          }).catch(console.error);
+              callerNumber,
+              nombre:   structured?.nombre   ?? null,
+              servicio: structured?.servicio ?? structured?.pedido_items ?? null,
+              whatsapp: structured?.whatsapp ?? null,
+              email:    structured?.email    ?? null,
+              summary,
+            },
+          });
 
           // E. Email to caller when they provided their email during the call
           if (structured?.email && ['appointment_booked', 'lead_created'].includes(outcome)) {

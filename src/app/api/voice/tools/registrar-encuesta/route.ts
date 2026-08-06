@@ -71,6 +71,27 @@ export async function POST(req: NextRequest) {
 
   if (error) return fail('Error al guardar respuestas.');
 
+  // Encola al digest diario. portal_email lo resolvemos por agent_id.
+  try {
+    const { data: agent } = await supabase
+      .from('voice_agents')
+      .select('portal_email')
+      .eq('id', agentId)
+      .maybeSingle();
+    if (agent?.portal_email) {
+      const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+      await queueNotificationEvent({
+        portalEmail: agent.portal_email as string,
+        agentId,
+        kind:        'survey_completed',
+        urgent:      false,
+        payload:     { contact: caller_number ?? null, survey_id, answers: Object.keys(mapped).length },
+      });
+    }
+  } catch (err) {
+    console.error('[survey] queue notification failed', err);
+  }
+
   // ── Evaluate automated actions (fire-and-forget) ───────────────────────────
   const actions = survey?.actions as SurveyActions | null;
   const anyEnabled = !!(actions && (

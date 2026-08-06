@@ -2,6 +2,45 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { getConnector } from '@/lib/connectors';
 import { resolveAutoMode } from '@/lib/email/email-sync';
+import { parseFileToText } from '@/lib/connectors/parse';
+
+const SUPPORTED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
+type SupportedImageMime = typeof SUPPORTED_IMAGE_MIMES[number];
+
+interface HumanResponseFile { name: string; url: string; mime_type?: string; size?: number }
+
+async function processHumanAttachments(
+  files: HumanResponseFile[],
+): Promise<{ docTextBlocks: string[]; images: Array<{ name: string; base64: string; mimeType: SupportedImageMime }> }> {
+  const docTextBlocks: string[] = [];
+  const images: Array<{ name: string; base64: string; mimeType: SupportedImageMime }> = [];
+
+  await Promise.all(files.map(async (f) => {
+    try {
+      const res = await fetch(f.url);
+      if (!res.ok) {
+        docTextBlocks.push(`[No pude descargar ${f.name}: HTTP ${res.status}]`);
+        return;
+      }
+      const buffer = Buffer.from(await res.arrayBuffer());
+      const mime = (f.mime_type ?? res.headers.get('content-type') ?? 'application/octet-stream').split(';')[0].trim().toLowerCase();
+
+      if (SUPPORTED_IMAGE_MIMES.includes(mime as SupportedImageMime)) {
+        images.push({ name: f.name, base64: buffer.toString('base64'), mimeType: mime as SupportedImageMime });
+        return;
+      }
+
+      // Docs (PDF/DOCX/XLSX/TXT/CSV/JSON) → texto plano
+      const text = await parseFileToText(buffer, mime);
+      const truncated = text.length > 5000 ? text.slice(0, 5000) + '\n[...truncado a 5000 chars]' : text;
+      docTextBlocks.push(`### Archivo: ${f.name}\n${truncated}`);
+    } catch (err) {
+      docTextBlocks.push(`[Error leyendo ${f.name}: ${err instanceof Error ? err.message : String(err)}]`);
+    }
+  }));
+
+  return { docTextBlocks, images };
+}
 
 export async function resumeAgentAfterHumanResponse(requestId: string): Promise<void> {
   const supabase = createAdminClient();
@@ -120,14 +159,27 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
     }
   }
 
-  // Build enriched context
+  // Build enriched context — descarga y procesa adjuntos del humano.
+  // Docs (PDF/DOCX/XLSX/TXT) → texto en humanBlock. Imágenes → base64 para
+  // pasar como multimodal a Claude vision.
   let humanBlock = '';
+  let humanImages: Array<{ name: string; base64: string; mimeType: SupportedImageMime }> = [];
+
   if (request.status === 'responded') {
     humanBlock = `\n\n--- Info adicional del equipo humano ---\nSolicitud: ${request.title}\nRespuesta de ${request.target_email}:\n${request.response_text ?? '(sin texto)'}`;
+
     if (request.response_files && Array.isArray(request.response_files) && request.response_files.length > 0) {
-      const filesList = (request.response_files as Array<{name: string; url: string}>).map(f => `- ${f.name}: ${f.url}`).join('\n');
-      humanBlock += `\nArchivos adjuntos:\n${filesList}`;
+      const files = request.response_files as HumanResponseFile[];
+      const { docTextBlocks, images } = await processHumanAttachments(files);
+      humanImages = images;
+      if (docTextBlocks.length > 0) {
+        humanBlock += `\n\n--- Contenido de documentos adjuntos ---\n${docTextBlocks.join('\n\n')}`;
+      }
+      if (images.length > 0) {
+        humanBlock += `\n\nImágenes adjuntas (visibles como bloques image): ${images.map(i => i.name).join(', ')}`;
+      }
     }
+
     if (request.response_action) humanBlock += `\nAcción confirmada: ${request.response_action}`;
   } else if (request.status === 'cancelled') {
     humanBlock = `\n\n--- El humano NO pudo ayudar ---\nSolicitud original: ${request.title}\nRazón: ${request.cancellation_reason ?? 'no puedo ayudar'}\nProcede con lo que tienes o cancela la respuesta al cliente.`;
@@ -160,6 +212,7 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
       existingInboxId:    inbox.id,          // ← reutiliza row existente
       originalEmailBody:  inbox.email_body as string | undefined,
       sendReplyFn,
+      humanAttachmentImages: humanImages.length > 0 ? humanImages : undefined,
     });
 
     await supabase.from('human_requests').update({ resume_triggered_at: new Date().toISOString() }).eq('id', requestId);

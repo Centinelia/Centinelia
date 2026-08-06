@@ -83,6 +83,14 @@ export async function POST(req: NextRequest) {
       confidence:   1.0,
       category:     'guardrails',
     });
+    const { queueNotificationEvent } = await import('@/lib/notifications/queue');
+    await queueNotificationEvent({
+      portalEmail: agent.portal_email,
+      agentId:     agent_id,
+      kind:        'dnc_marked',
+      urgent:      false,
+      payload:     { number: telefono, motivo: motivo ?? null, marked },
+    });
   }
 
   const msg = `Registrado. El número ${telefono} no recibirá más llamadas de este empleado. Actualicé ${marked} registro${marked === 1 ? '' : 's'} de contacto.`;
