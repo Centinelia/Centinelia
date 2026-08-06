@@ -45,10 +45,18 @@ export async function resumeAgentAfterHumanResponse(requestId: string): Promise<
   // Comparte helper con email-sync.ts para que el kill switch env se comporte igual
   // en el flujo de sync inicial y en el resume post-handoff.
   const orgDisabled = !!(orgData as Record<string, unknown> | null)?.auto_mode_disabled_at;
-  const autoMode = resolveAutoMode({
+  const baseAutoMode = resolveAutoMode({
     trust_stage: (agent as Record<string, unknown>).trust_stage as number | null,
     orgDisabled,
   });
+
+  // Cuando el humano YA respondió con info via pedir_a_humano, esa respuesta
+  // ES el approval implícito. Forzar autoMode='always' para que el draft
+  // resultante salga en ese momento y no requiera otra aprobación redundante
+  // en la bandeja. Kill switches (orgDisabled) siguen respetándose.
+  const autoMode = (request.status === 'responded' && !orgDisabled)
+    ? 'always' as const
+    : baseAutoMode;
 
   // Build sendReplyFn — fetch email integration for the agent so resumes can auto-send
   let sendReplyFn: ((body: string) => Promise<void>) | undefined;

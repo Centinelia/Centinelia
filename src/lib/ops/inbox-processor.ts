@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { randomUUID } from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { approvalEmailHtml } from '@/lib/ops/approval-email';
@@ -456,6 +457,12 @@ export async function processInboxEmail(params: {
     fromSpamFolder = false, unmarkSpamFn, sendReplyFn,
     originScope, assignedBy, assignmentConfidence, assignmentMetadata,
   } = params;
+
+  // Reserva el id de la row de ops_inbox ANTES de correr el LLM. Necesario para que
+  // pedir_a_humano (llamado durante el loop de tools) pueda linkear human_requests
+  // al inbox correcto. Sin esto, la row se crea después del LLM y las solicitudes
+  // quedan con source_inbox_id=null, rompiendo el resume flow.
+  const reservedInboxId = existingInboxId ?? randomUUID();
 
   // Metadata común de asignación — se aplica a AMBOS inserts (quick-classify y LLM).
   const dispatcherCols = {
@@ -970,8 +977,9 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
       userContext:    effectiveBody.slice(0, 500),
       readUrlCount:   { value: 0 } as ReadUrlCounter,
       channel:        'email' as const,
-      // existingInboxId is set when resuming a thread — anti-loop counter applies here
-      sourceInboxId:  existingInboxId,
+      // Reserva id: si es fresh, es el UUID pre-generado (que se usará al INSERT
+      // después del LLM); si es resume, es el existingInboxId real.
+      sourceInboxId:  reservedInboxId,
     };
 
     const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
@@ -1184,6 +1192,7 @@ ${looksLikeInvoice ? '+ los campos invoice_data, invoice_valid, invoice_discrepa
     const { data } = await supabase
       .from('ops_inbox')
       .insert({
+        id:                  reservedInboxId, // pre-generado para que pedir_a_humano lo referencie
         agent_id:            agentId,
         source,
         raw_message_id:      rawMessageId ?? null,

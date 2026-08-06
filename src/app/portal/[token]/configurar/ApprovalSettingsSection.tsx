@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Zap } from 'lucide-react';
+import { ShieldCheck, Zap, Sparkles } from 'lucide-react';
 import { SectionHeader } from '@/components/portal-ui';
 
 type Mode = 'auto' | 'always' | 'default';
@@ -13,16 +13,16 @@ interface Settings {
 
 const OPTIONS: { key: Mode; label: string; desc: string; icon: typeof ShieldCheck }[] = [
   {
-    key:   'default',
-    label: 'Automático inteligente',
-    desc:  'Los empleados ejecutan tareas cortas sin pedir permiso. Tareas grandes o con palabras como "campaña", "lanzamiento" o "múltiples" piden aprobación por correo antes de ejecutar.',
-    icon:  Zap,
-  },
-  {
     key:   'always',
     label: 'Modo supervisado',
     desc:  'TODA tarea que un empleado delegue a otro requiere tu aprobación por correo antes de ejecutarse. Ideal cuando quieres máximo control sobre lo que se envía o se hace en nombre del negocio.',
     icon:  ShieldCheck,
+  },
+  {
+    key:   'default',
+    label: 'Automático inteligente',
+    desc:  'Los empleados ejecutan tareas cortas sin pedir permiso. Tareas grandes o con palabras como "campaña", "lanzamiento" o "múltiples" piden aprobación por correo antes de ejecutar.',
+    icon:  Sparkles,
   },
   {
     key:   'auto',
