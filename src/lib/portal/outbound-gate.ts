@@ -51,8 +51,9 @@ export function canRunOutboundCampaign(
     return { ok: false, reason: 'Este empleado no puede correr campañas de este tipo.' };
   }
 
-  if (meerkatId && MEERKAT_MAP[meerkatId]) {
-    const meerkatCaps = MEERKAT_MAP[meerkatId].features.outbound_capabilities ?? [];
+  const meerkatMap = MEERKAT_MAP as Record<string, { features: { outbound_capabilities?: string[] } }>;
+  if (meerkatId && meerkatMap[meerkatId]) {
+    const meerkatCaps = meerkatMap[meerkatId].features.outbound_capabilities ?? [];
     if (meerkatCaps.includes(capability)) return { ok: true };
     return { ok: false, reason: 'Este empleado no puede correr campañas de este tipo.' };
   }
