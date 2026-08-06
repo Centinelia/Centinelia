@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -57,13 +58,16 @@ export async function verifyDestructiveAction(opts: VerifyOpts): Promise<VerifyV
     opts.currentIsoDate ? `\nMOMENTO: ${opts.currentIsoDate}` : '',
   ].filter(Boolean).join('\n');
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const resp = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 200,
       system: [{ type: 'text', text: VERIFIER_SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userContent }],
     });
+    void logLlmCall({ source: 'verifier', model: __m, usage: resp.usage, latencyMs: Date.now() - __t, meta: { action: opts.action } });
     const raw = resp.content[0].type === 'text' ? resp.content[0].text.trim() : '';
     const m   = raw.match(/\{[\s\S]*\}/);
     if (!m) return { safe: true, concern: null };  // fail-open si judge no responde JSON
@@ -72,6 +76,7 @@ export async function verifyDestructiveAction(opts: VerifyOpts): Promise<VerifyV
     const concern = typeof parsed.concern === 'string' ? parsed.concern.slice(0, 300) : null;
     return { safe, concern };
   } catch (err) {
+    void logLlmCall({ source: 'verifier', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { action: opts.action } });
     console.error('[verifier] error, fail-open:', err);
     return { safe: true, concern: null };  // fail-open ante error del verifier
   }

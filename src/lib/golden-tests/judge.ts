@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { GoldenScenario, ConversationTurn, JudgeOutput, MeerkatId } from './types';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 /**
  * Etiqueta legible del rol del meerkat para el juez.
@@ -58,15 +59,23 @@ export async function judgeTranscript(
   let lastError: string | undefined;
 
   for (let attempt = 0; attempt <= MAX_PARSE_RETRIES; attempt++) {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.1,
-      system: systemPrompt,
-      tools: [JUDGE_TOOL],
-      tool_choice: { type: 'tool', name: 'submit_verdict' },
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    const __t = Date.now();
+    let response;
+    try {
+      response = await client.messages.create({
+        model: MODEL,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.1,
+        system: systemPrompt,
+        tools: [JUDGE_TOOL],
+        tool_choice: { type: 'tool', name: 'submit_verdict' },
+        messages: [{ role: 'user', content: userMessage }],
+      });
+      void logLlmCall({ source: 'golden_test_judge', model: MODEL, usage: response.usage, latencyMs: Date.now() - __t, meta: { scenarioId: scenario.id, attempt } });
+    } catch (err) {
+      void logLlmCall({ source: 'golden_test_judge', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { scenarioId: scenario.id, attempt } });
+      throw err;
+    }
 
     totalTokens += response.usage.input_tokens + response.usage.output_tokens;
 

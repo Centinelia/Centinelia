@@ -28,6 +28,7 @@ import { scrapeWebsite } from '@/lib/scrape/website';
 import { checkPolicy, TOOL_CAPABILITIES } from '@/lib/policies/engine';
 import { getQBClient } from '@/lib/qb/client';
 import { generateExcel, type ExcelSheet } from '@/lib/documents/excel';
+import { logLlmCall } from '@/lib/observability/llm-log';
 import { generateWord } from '@/lib/documents/word';
 import { generateSlides, type Slide } from '@/lib/documents/slides';
 import { fillDocxTemplate, convertDocxToPdf } from '@/lib/documents/template-fill';
@@ -773,7 +774,16 @@ async function executeAgentToolInner(
 
     try {
       for (let ct = 0; ct < 5; ct++) {
-        const resp = await anth.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, system: [{ type: 'text', text: sysParts.filter(Boolean).join('\n'), cache_control: { type: 'ephemeral' } }], tools: INNER, messages: msgs });
+        const __t = Date.now();
+        const __m = 'claude-haiku-4-5-20251001';
+        let resp;
+        try {
+          resp = await anth.messages.create({ model: __m, max_tokens: 1024, system: [{ type: 'text', text: sysParts.filter(Boolean).join('\n'), cache_control: { type: 'ephemeral' } }], tools: INNER, messages: msgs });
+          void logLlmCall({ source: 'consult', model: __m, usage: resp.usage, agentId: target.id as string, latencyMs: Date.now() - __t });
+        } catch (err) {
+          void logLlmCall({ source: 'consult', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: target.id as string, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+          throw err;
+        }
         if (resp.stop_reason === 'end_turn') { const txt = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('').trim(); answer = `[${target.agent_name || cRol}]: ${txt}`; break; }
         if (resp.stop_reason !== 'tool_use') break;
         msgs.push({ role: 'assistant', content: resp.content });

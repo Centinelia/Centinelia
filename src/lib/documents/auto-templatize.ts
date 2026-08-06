@@ -17,6 +17,7 @@
 import PizZip from 'pizzip';
 import mammoth from 'mammoth';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export type DocType = 'factura' | 'orden' | 'cotizacion' | 'nota_venta';
 
@@ -327,17 +328,21 @@ export async function autoTemplatize(
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   let llmRaw = '';
   let parsed: LLMResult | null = null;
+  const __t = Date.now();
+  const __m = 'claude-sonnet-4-5-20250929';
   try {
     const res = await client.messages.create({
-      model:      'claude-sonnet-4-5-20250929',
+      model:      __m,
       max_tokens: 1500,
       messages:   [{ role: 'user', content: `${PROMPTS[docType]}\n\nDOCUMENTO:\n${text.slice(0, 8000)}\n\nResponde SOLO con JSON válido.` }],
     });
+    void logLlmCall({ source: 'auto_templatize', model: __m, usage: res.usage, latencyMs: Date.now() - __t, meta: { docType } });
     llmRaw = res.content[0]?.type === 'text' ? res.content[0].text.trim() : '';
     const match = llmRaw.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('Sonnet no devolvió JSON');
     parsed = JSON.parse(match[0]) as LLMResult;
   } catch (err) {
+    void logLlmCall({ source: 'auto_templatize', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { docType } });
     return { ok: false, docxBuffer, placeholders: [], identifiedFields: [], llmRawResponse: llmRaw, error: `LLM falló: ${String(err)}` };
   }
 

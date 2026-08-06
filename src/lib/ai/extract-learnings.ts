@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -25,8 +26,12 @@ export async function extractAndSaveLearnings(opts: {
   const opsResult = await consumeAiOp(agentId, 1);
   if (!opsResult.ok) return;
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+    model:      __m,
     max_tokens: 600,
     system: [{
       type: 'text',
@@ -56,6 +61,11 @@ TRANSCRIPT DE LA LLAMADA:
 ${transcript.slice(0, 4000)}`,
     }],
   });
+    void logLlmCall({ source: 'extract_learnings', model: __m, usage: response.usage, agentId, portalEmail, latencyMs: Date.now() - __t, meta: { vapiCallId } });
+  } catch (err) {
+    void logLlmCall({ source: 'extract_learnings', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId, portalEmail, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { vapiCallId } });
+    throw err;
+  }
 
   const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '[]';
 

@@ -7,6 +7,7 @@ import PizZip from 'pizzip';
 import { scanPlaceholders, TEMPLATE_SPECS } from '@/lib/documents/template-spec';
 import { autoTemplatize, type DocType } from '@/lib/documents/auto-templatize';
 import { generatePreviewPdf } from '@/lib/documents/template-preview';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const AUTO_TEMPLATIZE_DOCTYPES: Set<string> = new Set(['factura', 'orden', 'cotizacion', 'nota_venta']);
 
@@ -74,16 +75,19 @@ async function extractFields(buffer: Buffer, docType: string): Promise<Record<st
   if (!process.env.ANTHROPIC_API_KEY) return {};
   const prompt = EXTRACT_PROMPTS[docType] ?? EXTRACT_PROMPTS.factura;
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const { value: text } = await mammoth.extractRawText({ buffer });
     const content = `DOCUMENTO:\n${text.slice(0, 6000)}\n\n${prompt}`;
 
     const res = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 300,
       messages:   [{ role: 'user', content }],
     });
+    void logLlmCall({ source: 'template_upload_extract', model: __m, usage: res.usage, latencyMs: Date.now() - __t, meta: { docType } });
 
     const raw   = res.content[0]?.type === 'text' ? res.content[0].text.trim() : '';
     const match = raw.match(/\{[\s\S]*\}/);
@@ -92,7 +96,10 @@ async function extractFields(buffer: Buffer, docType: string): Promise<Record<st
     return Object.fromEntries(
       Object.entries(parsed).filter(([, v]) => typeof v === 'string' && (v as string).trim() !== '')
     );
-  } catch { return {}; }
+  } catch (err) {
+    void logLlmCall({ source: 'template_upload_extract', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { docType } });
+    return {};
+  }
 }
 
 export async function POST(req: NextRequest, { params }: Params) {

@@ -10,6 +10,7 @@ import type { IntegrationRow } from '@/lib/connectors';
 import { fetchRecentGmail, fetchRecentOutlook } from '@/lib/email/fetch-recent';
 import { saveLearnings } from '@/lib/ai/save-learning';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -120,11 +121,20 @@ Responde ÚNICAMENTE con JSON válido:
 
 Máximo 8 aprendizajes. Las reglas deben ser aplicables, no observaciones vagas.`;
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 800,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      __m,
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({ source: 'role_email_learning', model: __m, usage: response.usage, agentId: agent.id as string, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'role_email_learning', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id as string, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const raw   = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -65,8 +66,12 @@ export async function cesEvalCall(opts: {
 }): Promise<void> {
   const { callId, transcript } = opts;
 
-  const response = await anthropic.messages.create({
-    model:      'claude-haiku-4-5-20251001',
+  const __llmStart = Date.now();
+  const __llmModel = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await anthropic.messages.create({
+    model:      __llmModel,
     max_tokens: 600,
     messages: [{
       role: 'user',
@@ -128,6 +133,11 @@ Responde ÚNICAMENTE con JSON válido:
 }`,
     }],
   });
+    void logLlmCall({ source: 'ces_eval', model: __llmModel, usage: response.usage, latencyMs: Date.now() - __llmStart, meta: { callId } });
+  } catch (err) {
+    void logLlmCall({ source: 'ces_eval', model: __llmModel, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __llmStart, error: err instanceof Error ? err.message : String(err), meta: { callId } });
+    throw err;
+  }
 
   const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
   const match = raw.match(/\{[\s\S]*\}/);

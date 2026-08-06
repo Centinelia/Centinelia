@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { agentInboxAddressFor } from '@/lib/email/inbox';
 import { findNoxAgent } from '@/lib/ops/nox-coordinator';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const APP_URL        = process.env.NEXT_PUBLIC_APP_URL!;
 const MAX_ITER       = 6;
@@ -243,21 +244,25 @@ async function noxQAReview(params: {
   ].filter(Boolean).join('\n');
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const __qaT = Date.now();
+  const __qaM = 'claude-haiku-4-5-20251001';
   try {
     const resp = await client.messages.create({
-      model:       'claude-haiku-4-5-20251001',
+      model:       __qaM,
       max_tokens:  512,
       system:      systemPrompt,
       tools:       QA_TOOLS,
       tool_choice: { type: 'any' },
       messages:    [{ role: 'user', content: userMsg }],
     });
+    void logLlmCall({ source: 'task_qa_review', model: __qaM, usage: resp.usage, latencyMs: Date.now() - __qaT });
 
     const toolUse = resp.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
     if (!toolUse || toolUse.name === 'aprobar') return { approved: true, feedback: '' };
 
     return { approved: false, feedback: (toolUse.input as { feedback: string }).feedback };
-  } catch {
+  } catch (err) {
+    void logLlmCall({ source: 'task_qa_review', model: __qaM, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __qaT, error: err instanceof Error ? err.message : String(err) });
     return { approved: true, feedback: '' };
   }
 }
@@ -362,13 +367,22 @@ export async function executeTask(params: {
   outer: for (let i = 0; i < MAX_ITER * (MAX_QA_CYCLES + 1); i++) {
     if (Date.now() - loopStart > TIME_BUDGET_MS) break;
 
-    const response = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system:     systemPrompt,
-      tools:      DELEGATION_TOOLS,
-      messages,
-    });
+    const __tetT = Date.now();
+    const __tetM = 'claude-haiku-4-5-20251001';
+    let response;
+    try {
+      response = await client.messages.create({
+        model:      __tetM,
+        max_tokens: 1024,
+        system:     systemPrompt,
+        tools:      DELEGATION_TOOLS,
+        messages,
+      });
+      void logLlmCall({ source: 'task', model: __tetM, usage: response.usage, agentId: targetAgent.id, portalEmail: targetAgent.portal_email ?? null, latencyMs: Date.now() - __tetT, meta: { taskId, iter: i } });
+    } catch (err) {
+      void logLlmCall({ source: 'task', model: __tetM, usage: { input_tokens: 0, output_tokens: 0 }, agentId: targetAgent.id, portalEmail: targetAgent.portal_email ?? null, latencyMs: Date.now() - __tetT, error: err instanceof Error ? err.message : String(err), meta: { taskId, iter: i } });
+      throw err;
+    }
 
     messages.push({ role: 'assistant', content: response.content });
 

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getDocumentSkill, isCriticalDocument } from './document-skills';
 import type { Slide } from './slides';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -15,9 +16,11 @@ export async function enhanceTextContent(opts: {
   userInstruction: string;
 }): Promise<string> {
   const skill = getDocumentSkill(opts.format, opts.templateType);
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 2500,
       system: [{
         type: 'text',
@@ -39,9 +42,11 @@ ${opts.content}
 Devuelve el contenido mejorado:`,
       }],
     });
+    void logLlmCall({ source: 'doc_quality_enhancer', model: __m, usage: msg.usage, latencyMs: Date.now() - __t, meta: { format: opts.format, kind: 'text' } });
     const result = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
     return result.length > 50 ? result : opts.content;
-  } catch {
+  } catch (err) {
+    void logLlmCall({ source: 'doc_quality_enhancer', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { format: opts.format, kind: 'text' } });
     return opts.content;
   }
 }
@@ -61,9 +66,11 @@ export async function enhanceSlidesContent(opts: {
     `SLIDE ${i + 1}\ntitle: ${s.title}\ncontent: ${s.content}${s.notes ? `\nnotes: ${s.notes}` : ''}`
   ).join('\n\n');
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 3000,
       system: [{
         type: 'text',
@@ -85,10 +92,12 @@ ${slidesTxt}
 Devuelve las diapositivas mejoradas en el mismo formato:`,
       }],
     });
+    void logLlmCall({ source: 'doc_quality_enhancer', model: __m, usage: msg.usage, latencyMs: Date.now() - __t, meta: { kind: 'slides' } });
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
     return parseSlides(raw, opts.slides);
-  } catch {
+  } catch (err) {
+    void logLlmCall({ source: 'doc_quality_enhancer', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { kind: 'slides' } });
     return opts.slides;
   }
 }
@@ -123,9 +132,11 @@ export async function peerReviewText(opts: {
   peerKb:          string;
   userInstruction: string;
 }): Promise<string> {
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 2500,
       system: [{
         type: 'text',
@@ -145,9 +156,11 @@ ${opts.content}
 Devuelve el documento revisado:`,
       }],
     });
+    void logLlmCall({ source: 'doc_peer_review', model: __m, usage: msg.usage, latencyMs: Date.now() - __t, meta: { format: opts.format, peer: opts.peerName } });
     const result = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
     return result.length > 50 ? result : opts.content;
-  } catch {
+  } catch (err) {
+    void logLlmCall({ source: 'doc_peer_review', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { format: opts.format } });
     return opts.content;
   }
 }
@@ -164,19 +177,28 @@ export async function peerReviewSlides(opts: {
       `SLIDE ${i + 1}\ntitle: ${s.title}\ncontent: ${s.content}${s.notes ? `\nnotes: ${s.notes}` : ''}`
     ).join('\n\n');
 
-    const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 3000,
-      system: [{
-        type: 'text',
-        text: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Revisa estas diapositivas verificando que la información sea correcta y el nivel sea profesional. Devuelve ÚNICAMENTE las diapositivas en el mismo formato (SLIDE N / title: / content: / notes:), sin texto adicional.`,
-        cache_control: { type: 'ephemeral' },
-      }],
-      messages: [{
-        role:    'user',
-        content: `Lo que sabes del negocio:\n${opts.peerKb.slice(0, 800)}\n\nSOLICITUD ORIGINAL:\n${opts.userInstruction.slice(0, 400)}\n\nDIAPOSITIVAS:\n${slidesTxt}\n\nDevuelve las diapositivas revisadas:`,
-      }],
-    });
+    const __t = Date.now();
+    const __m = 'claude-haiku-4-5-20251001';
+    let msg;
+    try {
+      msg = await anthropic.messages.create({
+        model:      __m,
+        max_tokens: 3000,
+        system: [{
+          type: 'text',
+          text: `Eres ${opts.peerName}, agente IA del negocio ${opts.businessName}. Revisa estas diapositivas verificando que la información sea correcta y el nivel sea profesional. Devuelve ÚNICAMENTE las diapositivas en el mismo formato (SLIDE N / title: / content: / notes:), sin texto adicional.`,
+          cache_control: { type: 'ephemeral' },
+        }],
+        messages: [{
+          role:    'user',
+          content: `Lo que sabes del negocio:\n${opts.peerKb.slice(0, 800)}\n\nSOLICITUD ORIGINAL:\n${opts.userInstruction.slice(0, 400)}\n\nDIAPOSITIVAS:\n${slidesTxt}\n\nDevuelve las diapositivas revisadas:`,
+        }],
+      });
+      void logLlmCall({ source: 'doc_peer_review', model: __m, usage: msg.usage, latencyMs: Date.now() - __t, meta: { kind: 'slides', peer: opts.peerName } });
+    } catch (err) {
+      void logLlmCall({ source: 'doc_peer_review', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { kind: 'slides' } });
+      throw err;
+    }
 
     const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
     return parseSlides(raw, opts.slides);

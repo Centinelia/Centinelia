@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWhatsApp } from '@/lib/whatsapp/send';
 import { sendEmail } from '@/lib/email/send';
 import { quickClassifyEmail } from '@/lib/ops/email-quick-classify';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -126,13 +127,22 @@ ${emailBody.slice(0, 1500)}`;
   };
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const response = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 512,
-    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-    tools:      [delegationTool, noActionTool],
-    messages:   [{ role: 'user', content: userMsg }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
+  let response;
+  try {
+    response = await client.messages.create({
+      model:      __m,
+      max_tokens: 512,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+      tools:      [delegationTool, noActionTool],
+      messages:   [{ role: 'user', content: userMsg }],
+    });
+    void logLlmCall({ source: 'nox_coordinator', model: __m, usage: response.usage, agentId: noxAgent.id, portalEmail, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'nox_coordinator', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: noxAgent.id, portalEmail, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
   if (!toolUse || toolUse.name !== 'delegar_a_agente') return;

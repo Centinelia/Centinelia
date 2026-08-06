@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/send';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -82,8 +83,12 @@ export async function processMeetingAudio(opts: {
     }
 
     // Extract structured data with Claude
-    const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+    const __t = Date.now();
+    const __m = 'claude-haiku-4-5-20251001';
+    let msg;
+    try {
+      msg = await anthropic.messages.create({
+      model:      __m,
       max_tokens: 1500,
       system: [{
         type: 'text',
@@ -116,6 +121,11 @@ Responde ÚNICAMENTE con JSON válido con esta estructura exacta:
 }`,
       }],
     });
+      void logLlmCall({ source: 'meeting_processor', model: __m, usage: msg.usage, agentId, latencyMs: Date.now() - __t, meta: { meetingId } });
+    } catch (err) {
+      void logLlmCall({ source: 'meeting_processor', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { meetingId } });
+      throw err;
+    }
 
     let extracted: Omit<MeetingData, 'title' | 'date' | 'participants'>;
     try {

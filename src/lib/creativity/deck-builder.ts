@@ -3,6 +3,7 @@ import { imageSize } from 'image-size';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { brandKitFromAgent } from '@/lib/brand/kit';
 import { generateSlides, type Slide, type LogoAsset } from '@/lib/documents/slides';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 const MODEL = 'claude-sonnet-4-6' as const;
@@ -122,12 +123,20 @@ ${ctx.servicesKb ? `\nSERVICIOS DEL NEGOCIO:\n${ctx.servicesKb}\n` : ''}${ctx.ex
 Genera el plan de slides.`;
 
   const anthropic = new Anthropic();
-  const response = await anthropic.messages.create({
-    model:      MODEL,
-    max_tokens: 2500,
-    system:     SYSTEM_PROMPT,
-    messages:   [{ role: 'user', content: userPrompt }],
-  });
+  const __t = Date.now();
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model:      MODEL,
+      max_tokens: 2500,
+      system:     SYSTEM_PROMPT,
+      messages:   [{ role: 'user', content: userPrompt }],
+    });
+    void logLlmCall({ source: 'deck_builder', model: MODEL, usage: response.usage, agentId: ctx.agentId, portalEmail: ctx.portalEmail, latencyMs: Date.now() - __t });
+  } catch (err) {
+    void logLlmCall({ source: 'deck_builder', model: MODEL, usage: { input_tokens: 0, output_tokens: 0 }, agentId: ctx.agentId, portalEmail: ctx.portalEmail, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
+    throw err;
+  }
 
   const raw = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
   const jsonMatch = raw.match(/\{[\s\S]*\}/);

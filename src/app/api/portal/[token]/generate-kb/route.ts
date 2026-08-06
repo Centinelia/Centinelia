@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { KB_LIMITS } from '@/lib/portal/kb-limits';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,8 +184,10 @@ LÍMITES
   // se sienta con licencia para expandirse.
   const maxTokens = type === 'business' ? 1_100 : 950;
 
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   const stream = client.messages.stream({
-    model:      'claude-haiku-4-5-20251001',
+    model:      __m,
     max_tokens: maxTokens,
     messages:   [{ role: 'user', content: prompt }],
   });
@@ -199,7 +202,12 @@ LÍMITES
           }
         }
         controller.enqueue(enc.encode('data: [DONE]\n\n'));
-      } catch {
+        try {
+          const finalMsg = await stream.finalMessage();
+          void logLlmCall({ source: 'generate_kb', model: __m, usage: finalMsg.usage, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, meta: { type } });
+        } catch { /* ignore */ }
+      } catch (err) {
+        void logLlmCall({ source: 'generate_kb', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { type } });
         controller.enqueue(enc.encode(`data: ${JSON.stringify({ error: 'Error generando la base de conocimiento' })}\n\n`));
       } finally {
         controller.close();

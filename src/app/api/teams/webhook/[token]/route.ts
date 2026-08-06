@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import Anthropic from '@anthropic-ai/sdk';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 const anthropic = new Anthropic();
 
@@ -89,15 +90,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   ].filter(Boolean).join('\n');
 
   let reply = '';
+  const __t = Date.now();
+  const __m = 'claude-haiku-4-5-20251001';
   try {
     const msg = await anthropic.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      __m,
       max_tokens: 600,
       system: [{ type: 'text', text: systemParts, cache_control: { type: 'ephemeral' } }],
       messages:   [{ role: 'user', content: userContent }],
     });
+    void logLlmCall({ source: 'teams_webhook', model: __m, usage: msg.usage, agentId: agent.id, latencyMs: Date.now() - __t });
     reply = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
   } catch (err) {
+    void logLlmCall({ source: 'teams_webhook', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err) });
     console.error('[teams-webhook] Claude error:', err);
     return NextResponse.json({ error: 'Error generando respuesta' }, { status: 500 });
   }

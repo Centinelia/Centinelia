@@ -11,6 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { randomBytes } from 'crypto';
 import type { createAdminClient } from '@/lib/supabase/admin';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -79,11 +80,20 @@ Reglas:
 - Si el plan implica llamar a un cliente real o mover dinero, ponlo explícitamente en risks.
 - Responde SOLO JSON válido, sin markdown.`;
 
-  const resp = await client.messages.create({
-    model:      'claude-sonnet-4-6',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const __t = Date.now();
+  const __m = 'claude-sonnet-4-6';
+  let resp;
+  try {
+    resp = await client.messages.create({
+      model:      __m,
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    void logLlmCall({ source: 'task_plan', model: __m, usage: resp.usage, latencyMs: Date.now() - __t, meta: { businessName, targetAgentName } });
+  } catch (err) {
+    void logLlmCall({ source: 'task_plan', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { businessName, targetAgentName } });
+    throw err;
+  }
 
   const block = resp.content.find(b => b.type === 'text');
   const raw   = block?.type === 'text' ? block.text.trim() : '';

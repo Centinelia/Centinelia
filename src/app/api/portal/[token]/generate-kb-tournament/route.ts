@@ -18,6 +18,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { consumeAiOp } from '@/lib/ai/ops-guard';
 import { KB_LIMITS } from '@/lib/portal/kb-limits';
+import { logLlmCall } from '@/lib/observability/llm-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,11 +210,20 @@ LÍMITES
   const results = await Promise.allSettled(
     styles.map(async (style) => {
       const prompt = type === 'business' ? buildBusinessPrompt(style) : buildRolePrompt(style);
-      const res = await client.messages.create({
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: maxTokens,
-        messages:   [{ role: 'user', content: prompt }],
-      });
+      const __t = Date.now();
+      const __m = 'claude-haiku-4-5-20251001';
+      let res;
+      try {
+        res = await client.messages.create({
+          model:      __m,
+          max_tokens: maxTokens,
+          messages:   [{ role: 'user', content: prompt }],
+        });
+        void logLlmCall({ source: 'generate_kb_tournament', model: __m, usage: res.usage, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, meta: { type, style } });
+      } catch (err) {
+        void logLlmCall({ source: 'generate_kb_tournament', model: __m, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __t, error: err instanceof Error ? err.message : String(err), meta: { type, style } });
+        throw err;
+      }
       const text = res.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map(b => b.text)
@@ -256,12 +266,15 @@ Responde SOLO en JSON con esta forma exacta, sin markdown ni texto adicional:
 
     let winnerIdx = 1;
     let winnerReason = 'Evaluación automática de calidad.';
+    const __jt = Date.now();
+    const __jm = 'claude-sonnet-4-6';
     try {
       const judgeRes = await client.messages.create({
-        model:      'claude-sonnet-4-6',
+        model:      __jm,
         max_tokens: 200,
         messages:   [{ role: 'user', content: judgePrompt }],
       });
+      void logLlmCall({ source: 'generate_kb_tournament_judge', model: __jm, usage: judgeRes.usage, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __jt, meta: { type } });
       const judgeText = judgeRes.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')
         .map(b => b.text)
@@ -274,7 +287,8 @@ Responde SOLO en JSON con esta forma exacta, sin markdown ni texto adicional:
       if (typeof parsed.reason === 'string' && parsed.reason.trim()) {
         winnerReason = parsed.reason.trim().slice(0, 200);
       }
-    } catch {
+    } catch (err) {
+      void logLlmCall({ source: 'generate_kb_tournament_judge', model: __jm, usage: { input_tokens: 0, output_tokens: 0 }, agentId: agent.id, portalEmail: agent.portal_email ?? null, latencyMs: Date.now() - __jt, error: err instanceof Error ? err.message : String(err) });
       // Judge falló; fallback: la variante más cercana al soft limit sin excederlo
       const softLimit = type === 'business' ? KB_LIMITS.business.soft : KB_LIMITS.role.soft;
       let bestScore = -Infinity;
