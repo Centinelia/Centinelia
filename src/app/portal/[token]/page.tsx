@@ -640,6 +640,30 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
+              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Cómo va tu semana
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {weeklyMetrics.map(m => {
+                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
+                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
+                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
+                      return (
+                        <div key={m.label}>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
+                              {m.curr}{m.unit}
+                            </p>
+                            {m.delta !== null && (
+                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
+                                {arrow} {m.delta}{deltaSuffix}
+                              </span>
+                            )}
+
               {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
               {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
@@ -725,30 +749,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
-
-              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
-              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Cómo va tu semana
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {weeklyMetrics.map(m => {
-                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
-                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
-                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
-                      return (
-                        <div key={m.label}>
-                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
-                              {m.curr}{m.unit}
-                            </p>
-                            {m.delta !== null && (
-                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
-                                {arrow} {m.delta}{deltaSuffix}
-                              </span>
-                            )}
                           </div>
                           <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
                             vs {m.prev}{m.unit} semana anterior
@@ -1130,6 +1130,30 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
+              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
+              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
+                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+                    Cómo va tu semana
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {weeklyMetrics.map(m => {
+                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
+                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
+                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
+                      return (
+                        <div key={m.label}>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
+                              {m.curr}{m.unit}
+                            </p>
+                            {m.delta !== null && (
+                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
+                                {arrow} {m.delta}{deltaSuffix}
+                              </span>
+                            )}
+
               {/* ═══ BLOQUE 1: HOY TIENES QUE ATENDER ═══ */}
               {(apptsHoy.length > 0 || bandejaCount > 0 || salientesEnCola > 0 || learningsCount > 0 || reauthAlerts.length > 0 || hasNox || nextTask) && (
                 <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
@@ -1215,30 +1239,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                 </div>
               )}
-
-              {/* ═══ BLOQUE 2: CÓMO VA TU SEMANA ═══ */}
-              {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Cómo va tu semana
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {weeklyMetrics.map(m => {
-                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
-                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
-                      const deltaSuffix = m.unit === '%' ? 'pp' : '%';
-                      return (
-                        <div key={m.label}>
-                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
-                              {m.curr}{m.unit}
-                            </p>
-                            {m.delta !== null && (
-                              <span className="text-xs font-semibold" style={{ color: dirColor }}>
-                                {arrow} {m.delta}{deltaSuffix}
-                              </span>
-                            )}
                           </div>
                           <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
                             vs {m.prev}{m.unit} semana anterior
