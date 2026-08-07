@@ -149,17 +149,19 @@ function ContactRowInner({
   onToggle: (id: string) => void;
   onTagsChange: (id: string, tags: string[]) => void | Promise<void>;
 }) {
+  const hasTags = (c.tags ?? []).length > 0;
   return (
     <div
-      className="rounded-xl overflow-hidden transition-colors"
+      className="group transition-colors"
       style={{
-        background: isSelected ? 'rgba(108,59,255,0.06)' : 'var(--c-surface-2)',
-        border:     isSelected ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+        background: isSelected ? 'rgba(108,59,255,0.06)' : 'transparent',
         cursor:     c.status === 'pending' ? 'pointer' : 'default',
       }}
+      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(108,59,255,0.03)'; }}
+      onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
       onClick={() => c.status === 'pending' && onToggle(c.id)}
     >
-      <div className="px-3 py-2 flex items-center gap-2.5">
+      <div className="px-4 py-2.5 flex items-center gap-3 min-h-[48px]">
         {c.status === 'pending' && (
           <input type="checkbox" checked={isSelected}
             onChange={() => onToggle(c.id)} onClick={e => e.stopPropagation()}
@@ -167,29 +169,32 @@ function ContactRowInner({
             style={{ accentColor: '#6C3BFF' }} />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[13px] font-semibold" style={{ color: 'var(--c-text)' }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>
               {c.nombre ?? c.telefono}
             </span>
             {c.nombre && (
-              <span className="text-[11px] tabular-nums" style={{ color: 'var(--c-text-4)' }}>
+              <span className="text-[11px] tabular-nums" style={{ color: '#9B8FB5' }}>
                 {c.telefono}
               </span>
             )}
             {c.email && (
-              <span className="text-[11px] truncate max-w-[180px]" style={{ color: 'var(--c-text-4)' }}>
+              <span className="text-[11px] truncate max-w-[200px]" style={{ color: '#9B8FB5' }}>
                 · {c.email}
               </span>
             )}
           </div>
-          {(c.tags ?? []).length > 0 && (
+          {hasTags && (
             <div className="mt-1" onClick={e => e.stopPropagation()}>
               <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
             </div>
           )}
         </div>
-        {(c.tags ?? []).length === 0 && (
-          <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+        {!hasTags && (
+          <div
+            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={e => e.stopPropagation()}
+          >
             <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
           </div>
         )}
@@ -247,7 +252,7 @@ function VirtualContactList({
                 left:     0,
                 right:    0,
                 transform: `translateY(${vi.start}px)`,
-                paddingBottom: 6,
+                borderBottom: vi.index === contacts.length - 1 ? 'none' : '1px solid #F0EDF9',
               }}
             >
               <ContactRowInner
@@ -977,20 +982,30 @@ export default function OutboundSection({
 
         {/* ── CONTACTOS ── */}
         {show !== 'campanas' && (
-        <div id="contactos" className="flex flex-col gap-4 order-2">
+        <div id="contactos" className="order-2">
+        <div
+          className="flex flex-col rounded-2xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
+            boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+          }}
+        >
 
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Header — dentro del surface, con padding generoso */}
+          <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
             <div>
-              <h2 className="text-[15px] font-bold" style={{ color: '#1A0A3B' }}>
-                Contactos
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                  Contactos
+                </h2>
                 {contacts.length > 0 && (
-                  <span className="ml-2 text-[13px] font-normal tabular-nums" style={{ color: '#9B8FB5' }}>
+                  <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
                     {contacts.length}
                   </span>
                 )}
-              </h2>
-              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+              </div>
+              <p className="text-[12px] mt-1 max-w-[380px]" style={{ color: '#6B6480' }}>
                 Tu base de contactos. Agrégales tags para que las campañas los llamen por segmento.
               </p>
             </div>
@@ -998,19 +1013,19 @@ export default function OutboundSection({
               <button type="button" onClick={refresh} disabled={refreshing}
                 aria-label="Actualizar"
                 className="flex items-center justify-center rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
-                style={{ width: 32, height: 32, background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                style={{ width: 32, height: 32, background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
               </button>
               <button type="button" onClick={() => fileRef.current?.click()} disabled={contactSaving}
                 className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
-                style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <Upload size={12} />
                 CSV
               </button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSV} />
               <button type="button" onClick={() => { setShowContactForm(true); setContactError(''); }}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-80"
-                style={{ background: '#6C3BFF', color: '#fff' }}>
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                 <Plus size={12} />
                 Nuevo
               </button>
@@ -1070,235 +1085,219 @@ export default function OutboundSection({
             </OficinaModal>
           )}
 
-          {/* Buscar (source filter obsoleto — tags reemplazó la segmentación) */}
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: '#9B8FB5' }} />
-            <input
-              type="text"
-              value={contactSearch}
-              onChange={e => setContactSearch(e.target.value)}
-              placeholder="Buscar por nombre o teléfono…"
-              className="w-full pl-9 pr-9 py-2 rounded-xl text-[13px] outline-none"
-              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
-            />
-            {contactSearch && (
-              <button onClick={() => setContactSearch('')}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:opacity-70"
-                style={{ color: '#9B8FB5', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <X size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* Tag filter chips (segmentación) */}
-          {allTagsFromContacts.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] mr-1" style={{ color: '#6B6480' }}>Tags:</span>
-              <button
-                onClick={() => setTagFilter(null)}
-                className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
-                style={{
-                  background: tagFilter === null ? '#1A0A3B' : '#ffffff',
-                  color:      tagFilter === null ? '#ffffff' : '#6B6480',
-                  border:     tagFilter === null ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
-                }}
-              >
-                Todos
-              </button>
-              {allTagsFromContacts.map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTagFilter(t)}
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
-                  style={{
-                    background: tagFilter === t ? '#6C3BFF' : '#ffffff',
-                    color:      tagFilter === t ? '#ffffff' : '#6B6480',
-                    border:     tagFilter === t ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Work queue panel */}
-          {pendingContacts.length > 0 && (
-            <div className="rounded-xl p-3 flex flex-col gap-2"
-              style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-              <span className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>
-                {agentLabel} — {pendingContacts.length} pendiente{pendingContacts.length !== 1 ? 's' : ''}
-              </span>
-              <div className="flex flex-col gap-1">
-                {pendingContacts.slice(0, 5).map(c => (
-                  <div key={c.id} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#6C3BFF' }} />
-                    <span className="text-xs" style={{ color: 'var(--c-text-2)' }}>
-                      {c.nombre ? `Llamar a ${c.nombre}` : c.telefono}
-                      {c.motivo && <span style={{ color: 'var(--c-text-3)' }}> · {c.motivo}</span>}
-                    </span>
-                  </div>
-                ))}
-                {pendingContacts.length > 5 && (
-                  <span className="text-xs pl-3.5" style={{ color: 'var(--c-text-4)' }}>
-                    +{pendingContacts.length - 5} más
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Selection + action bar */}
+          {/* Buscar + tag chips (mismo bloque, dentro del surface con divider) */}
           {contacts.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-2 text-xs cursor-pointer flex-shrink-0"
-                  style={{ color: 'var(--c-text-3)' }}>
-                  <input type="checkbox"
-                    checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
-                    onChange={toggleAll} disabled={visiblePending.length === 0}
-                    style={{ accentColor: '#6C3BFF' }} />
-                  {selectedPending.length > 0
-                    ? `${selectedPending.length} de ${pendingContacts.length} seleccionados`
-                    : `${pendingContacts.length} pendiente${pendingContacts.length !== 1 ? 's' : ''}`}
-                </label>
-
-                {selectedPending.length > 0 && (
-                  <>
-                    {agents.length > 1 ? (
-                      <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                        <SelectTrigger className="w-auto rounded-xl py-1.5 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {agents.map(a => (
-                            <SelectItem key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : agents.length === 1 ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                        {agents[0].agent_name ?? agents[0].business_name}
-                      </span>
-                    ) : null}
-
-                    <button type="button"
-                      onClick={() => !showCallConfirm && setShowCallConfirm(true)}
-                      disabled={calling}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-40"
-                      style={{ background: '#6C3BFF', color: '#fff' }}>
-                      {calling ? <Loader2 size={12} className="animate-spin" /> : <Phone size={12} />}
-                      {calling ? 'Llamando…' : `Llamar (${selectedPending.length})`}
-                    </button>
-
-                    {!showCallConfirm && (
-                      <>
-                        <button type="button" onClick={handleBulkTag}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
-                          style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}>
-                          <Plus size={12} />
-                          Aplicar tag
-                        </button>
-                        <button type="button" onClick={handleDelete} disabled={deleting}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                          style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                          {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </>
-                )}
-
-                {/* Sort selector — solo cuando NO hay selección (evita clutter) */}
-                {selectedPending.length === 0 && contacts.length > 5 && (
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
-                      Orden
-                    </span>
-                    <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
-                      <SelectTrigger className="w-auto rounded-lg py-1 text-[11px]"
-                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="recent">Recientes</SelectItem>
-                        <SelectItem value="alpha">Alfabético</SelectItem>
-                        <SelectItem value="tags_desc">Más tags</SelectItem>
-                        <SelectItem value="has_email">Con correo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {callResult && (
-                  <span className="text-xs flex items-center gap-1.5"
-                    style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
-                    <Check size={12} />
-                    {callResult.triggered} llamada{callResult.triggered !== 1 ? 's' : ''} iniciada{callResult.triggered !== 1 ? 's' : ''}
-                    {callResult.failed > 0 && `, ${callResult.failed} fallida${callResult.failed !== 1 ? 's' : ''}`}
-                  </span>
+            <div className="px-5 py-3 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: '#9B8FB5' }} />
+                <input
+                  type="text"
+                  value={contactSearch}
+                  onChange={e => setContactSearch(e.target.value)}
+                  placeholder="Buscar por nombre, teléfono o correo…"
+                  className="w-full pl-9 pr-9 py-2 rounded-lg text-[13px] outline-none transition-all focus:ring-2"
+                  style={{
+                    background: '#FAFAFB',
+                    border:     '1px solid #E8E3F5',
+                    color:      '#1A0A3B',
+                    boxShadow:  contactSearch ? '0 0 0 2px rgba(108,59,255,0.1)' : 'none',
+                  }}
+                />
+                {contactSearch && (
+                  <button onClick={() => setContactSearch('')}
+                    aria-label="Limpiar búsqueda"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:opacity-70"
+                    style={{ color: '#9B8FB5', background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <X size={12} />
+                  </button>
                 )}
               </div>
 
-              {showCallConfirm && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl flex-wrap"
-                  style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-                  <AlertTriangle size={14} style={{ color: '#9B6DFF', flexShrink: 0 }} />
-                  <p className="text-sm flex-1" style={{ color: 'var(--c-text-2)' }}>
-                    ¿Iniciar <strong style={{ color: 'var(--c-text)' }}>{selectedPending.length} llamada{selectedPending.length !== 1 ? 's' : ''}</strong> reales ahora?
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={handleCall}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-                      style={{ background: '#6C3BFF', color: '#fff' }}>
-                      <Phone size={12} /> Confirmar
+              {allTagsFromContacts.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    onClick={() => setTagFilter(null)}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                    style={{
+                      background: tagFilter === null ? '#1A0A3B' : '#FAFAFB',
+                      color:      tagFilter === null ? '#ffffff' : '#6B6480',
+                      border:     tagFilter === null ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
+                    }}
+                  >
+                    Todos
+                  </button>
+                  {allTagsFromContacts.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTagFilter(t)}
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                      style={{
+                        background: tagFilter === t ? '#6C3BFF' : '#FAFAFB',
+                        color:      tagFilter === t ? '#ffffff' : '#6B6480',
+                        border:     tagFilter === t ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                      }}
+                    >
+                      {t}
                     </button>
-                    <button type="button" onClick={() => setShowCallConfirm(false)}
-                      className="px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-                      style={{ color: 'var(--c-text-3)' }}>
-                      Cancelar
-                    </button>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* Contact cards */}
-          {contacts.length === 0 ? (
-            <div className="rounded-2xl"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-              <EmptyState
-                icon={PhoneCall}
-                title="No hay contactos aún"
-                description="Agrega uno o sube un CSV"
-              />
+          {/* Toolbar — selection count + sort + bulk actions */}
+          {contacts.length > 0 && (
+            <div className="px-5 py-2.5 flex items-center gap-3 flex-wrap"
+              style={{
+                borderTop: '1px solid #F0EDF9',
+                background: selectedPending.length > 0 ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
+              }}>
+              <label className="flex items-center gap-2 text-[12px] cursor-pointer flex-shrink-0 font-medium"
+                style={{ color: '#6B6480' }}>
+                <input type="checkbox"
+                  checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
+                  onChange={toggleAll} disabled={visiblePending.length === 0}
+                  style={{ accentColor: '#6C3BFF' }} />
+                {selectedPending.length > 0
+                  ? <span style={{ color: '#6C3BFF' }}>{selectedPending.length} seleccionados</span>
+                  : `${pendingContacts.length} pendiente${pendingContacts.length !== 1 ? 's' : ''}`}
+              </label>
+
+              {selectedPending.length > 0 && (
+                <>
+                  {agents.length > 1 ? (
+                    <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                      <SelectTrigger className="w-auto rounded-lg h-7 text-[11px]"
+                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agents.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.agent_name ?? a.business_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : agents.length === 1 ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>
+                      {agents[0].agent_name ?? agents[0].business_name}
+                    </span>
+                  ) : null}
+
+                  <button type="button"
+                    onClick={() => !showCallConfirm && setShowCallConfirm(true)}
+                    disabled={calling}
+                    className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                    style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                    {calling ? <Loader2 size={11} className="animate-spin" /> : <Phone size={11} />}
+                    {calling ? 'Llamando…' : `Llamar (${selectedPending.length})`}
+                  </button>
+
+                  {!showCallConfirm && (
+                    <>
+                      <button type="button" onClick={handleBulkTag}
+                        className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70"
+                        style={{ background: '#ffffff', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                        <Plus size={11} />
+                        Aplicar tag
+                      </button>
+                      <button type="button" onClick={handleDelete} disabled={deleting}
+                        className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
+                        style={{ background: '#ffffff', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+                        {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Sort — sólo cuando no hay selección */}
+              {selectedPending.length === 0 && contacts.length > 5 && (
+                <div className="ml-auto flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+                    Orden
+                  </span>
+                  <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
+                    <SelectTrigger className="w-auto rounded-lg h-7 text-[11px]"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent">Recientes</SelectItem>
+                      <SelectItem value="alpha">Alfabético</SelectItem>
+                      <SelectItem value="tags_desc">Más tags</SelectItem>
+                      <SelectItem value="has_email">Con correo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {callResult && (
+                <span className="text-[11px] flex items-center gap-1.5 font-medium"
+                  style={{ color: callResult.failed > 0 ? '#f59e0b' : '#22c55e' }}>
+                  <Check size={11} />
+                  {callResult.triggered} iniciada{callResult.triggered !== 1 ? 's' : ''}
+                  {callResult.failed > 0 && `, ${callResult.failed} fallida${callResult.failed !== 1 ? 's' : ''}`}
+                </span>
+              )}
             </div>
+          )}
+
+          {showCallConfirm && (
+            <div className="mx-5 mt-3 flex items-center gap-3 px-4 py-3 rounded-xl flex-wrap"
+              style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+              <AlertTriangle size={14} style={{ color: '#9B6DFF', flexShrink: 0 }} />
+              <p className="text-[13px] flex-1" style={{ color: '#1A0A3B' }}>
+                ¿Iniciar <strong>{selectedPending.length} llamada{selectedPending.length !== 1 ? 's' : ''}</strong> reales ahora?
+              </p>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleCall}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: '#6C3BFF', color: '#fff' }}>
+                  <Phone size={12} /> Confirmar
+                </button>
+                <button type="button" onClick={() => setShowCallConfirm(false)}
+                  className="px-3 py-2 rounded-lg text-[12px] transition-opacity hover:opacity-70"
+                  style={{ color: '#6B6480' }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Listado */}
+          {contacts.length === 0 ? (
+            <EmptyState
+              icon={PhoneCall}
+              title="No hay contactos aún"
+              description="Agrega uno o sube un CSV"
+            />
           ) : visibleContacts.length === 0 ? (
-            <p className="text-xs text-center py-6" style={{ color: '#6B6480' }}>
+            <p className="text-[12px] text-center py-8" style={{ color: '#9B8FB5', borderTop: '1px solid #F0EDF9' }}>
               {contactSearch.trim() ? 'Sin resultados con esta búsqueda' :
                tagFilter                 ? `Sin contactos con tag "${tagFilter}"` :
                                           'Sin resultados'}
             </p>
           ) : (
-            <VirtualContactList
-              contacts={visibleContacts}
-              selected={selected}
-              onToggle={toggle}
-              onTagsChange={handleTagsChange}
-            />
+            <div style={{ borderTop: '1px solid #F0EDF9' }}>
+              <VirtualContactList
+                contacts={visibleContacts}
+                selected={selected}
+                onToggle={toggle}
+                onTagsChange={handleTagsChange}
+              />
+            </div>
           )}
 
           {contactError && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+            <div className="mx-5 my-3 flex items-center gap-2 px-4 py-3 rounded-xl text-[13px]"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
               <X size={14} />{contactError}
             </div>
           )}
+        </div>
         </div>
         )}
 
