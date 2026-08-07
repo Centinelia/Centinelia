@@ -75,74 +75,98 @@ export default function OpsContractsSection({ token }: { token: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-          Contratos con clientes
-        </p>
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Contratos con clientes
+            </h2>
+            {drafts.length > 0 && (
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {drafts.length}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Borradores redactados por tu empleado, listos para revisar y enviar.
+          </p>
+        </div>
         <button onClick={() => setShowNew(v => !v)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF' }}>
+          className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
           <Plus size={12} /> Nuevo borrador
         </button>
       </div>
 
-      {showNew && <NewDraftForm token={token} templateClauses={templateClauses} onCreated={() => { setShowNew(false); load(); }} />}
+      {showNew && (
+        <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+          <NewDraftForm token={token} templateClauses={templateClauses} onCreated={() => { setShowNew(false); load(); }} />
+        </div>
+      )}
 
       {loading ? (
-        <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+        <p className="text-[12px] py-8 text-center" style={{ color: '#6B6480', borderTop: '1px solid #F0EDF9' }}>Cargando...</p>
       ) : drafts.length === 0 ? (
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+        <div className="flex flex-col gap-4 px-5 py-8" style={{ borderTop: '1px solid #F0EDF9' }}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
-              <FileText size={16} style={{ color: '#9B6DFF' }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
+              <FileText size={18} style={{ color: '#6C3BFF' }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin contratos aún</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Tu empleado puede redactar contratos desde cero o a partir de una conversación con un cliente.</p>
+              <p className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>Sin contratos aún</p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>Tu empleado puede redactar contratos desde cero o a partir de una conversación con un cliente.</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2 pl-12">
+          <div className="flex flex-col gap-2 pl-13" style={{ paddingLeft: 52 }}>
             {[
               'Contrato de servicios para un nuevo cliente',
               'Renovación de un contrato existente con nuevas condiciones',
               'Carta de confidencialidad para un proveedor',
             ].map(ex => (
               <div key={ex} className="flex items-start gap-2">
-                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
-                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: '#9B8FB5' }} />
+                <p className="text-[12px]" style={{ color: '#9B8FB5' }}>{ex}</p>
               </div>
             ))}
           </div>
-          <div className="pl-12">
+          <div style={{ paddingLeft: 52 }}>
             <button
               onClick={() => setShowNew(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-              style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
             >
               <Plus size={12} /> Crear primer borrador
             </button>
           </div>
-          <div className="flex items-start gap-3 rounded-xl px-4 py-3.5 mt-2" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-            <FileText size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0, marginTop: 1 }} />
+          <div className="flex items-start gap-3 rounded-xl px-4 py-3.5 mt-2"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+            <FileText size={14} style={{ color: '#6B6480', flexShrink: 0, marginTop: 1 }} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>Configura tu plantilla de contrato</p>
-              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>Configura tu plantilla de contrato</p>
+              <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: '#9B8FB5' }}>
                 Sube tu formato y define las cláusulas para que el empleado siempre use el mismo diseño.
               </p>
             </div>
             <Link
               href={`/portal/${token}/oficina/plantillas`}
-              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-              style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)', textDecoration: 'none' }}
+              className="shrink-0 text-[11px] font-medium px-3 h-8 flex items-center rounded-lg transition-opacity hover:opacity-70"
+              style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5', textDecoration: 'none' }}
             >
               Ir a Plantillas
             </Link>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {drafts.map(draft => {
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {drafts.map((draft, idx) => {
             const isOpen   = expanded.has(draft.id);
             const statusCf = DRAFT_STATUS[draft.status] ?? DRAFT_STATUS.borrador;
             const canSend  = draft.status !== 'enviado' && draft.status !== 'cancelado' && !!draft.client_email;
@@ -150,27 +174,28 @@ export default function OpsContractsSection({ token }: { token: string }) {
             const isSending = sending === draft.id;
 
             return (
-              <div key={draft.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <button onClick={() => setExpanded(prev => { const next = new Set(prev); next.has(draft.id) ? next.delete(draft.id) : next.add(draft.id); return next; })}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left">
+              <div key={draft.id}
+                style={{ borderBottom: idx === drafts.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                <button onClick={() => setExpanded(prev => { const next = new Set(prev); if (next.has(draft.id)) next.delete(draft.id); else next.add(draft.id); return next; })}
+                  className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{draft.client_name || 'Sin nombre'}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: statusCf.bg, color: statusCf.color }}>{statusCf.label}</span>
+                      <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{draft.client_name || 'Sin nombre'}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: statusCf.bg, color: statusCf.color }}>{statusCf.label}</span>
                       {draft.source_type && draft.source_type !== 'manual' && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--c-text-4)' }}>vía {draft.source_type}</span>
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: '#F0EDF9', color: '#9B8FB5' }}>vía {draft.source_type}</span>
                       )}
                     </div>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                    <p className="text-[11px] mt-0.5" style={{ color: '#9B8FB5' }}>
                       {draft.client_email || 'Sin email'}{draft.client_rfc ? ` · RFC: ${draft.client_rfc}` : ''}
                       {' · '}{new Date(draft.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
-                  {isOpen ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                  {isOpen ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />}
                 </button>
 
                 {isOpen && (
-                  <div className="px-4 pb-4 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                  <div className="px-5 pb-4 flex flex-col gap-4" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
                     <div className="pt-3 grid grid-cols-2 gap-3">
                       {[
                         { label: 'Nombre', field: 'client_name', value: draft.client_name },
@@ -179,37 +204,38 @@ export default function OpsContractsSection({ token }: { token: string }) {
                         { label: 'Tel.',   field: 'client_phone', value: draft.client_phone  },
                       ].map(({ label, field, value }) => (
                         <div key={field}>
-                          <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>{label}</p>
+                          <p className="text-[11px] mb-1" style={{ color: '#6B6480' }}>{label}</p>
                           <input
                             defaultValue={value ?? ''}
                             onBlur={e => updateDraftField(draft.id, { [field]: e.target.value || null })}
                             disabled={draft.status === 'enviado'}
-                            className="w-full px-2 py-1.5 rounded-lg text-xs"
-                            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                            className="w-full px-2 py-1.5 rounded-lg text-[12px]"
+                            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
                           />
                         </div>
                       ))}
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Cláusulas</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Cláusulas</p>
                       {(draft.clauses as Clause[]).map((clause, ci) => (
-                        <div key={clause.id} className="rounded-lg overflow-hidden" style={{ border: `1px solid ${clause.enabled ? 'var(--c-border)' : 'rgba(255,255,255,0.04)'}`, opacity: clause.enabled ? 1 : 0.45 }}>
+                        <div key={clause.id} className="rounded-lg overflow-hidden"
+                          style={{ background: '#ffffff', border: `1px solid ${clause.enabled ? '#E8E3F5' : '#F0EDF9'}`, opacity: clause.enabled ? 1 : 0.55 }}>
                           <div className="flex items-center gap-2 px-3 py-2">
-                            <span className="text-xs font-bold uppercase flex-1" style={{ color: 'var(--c-text-2)' }}>{ci + 1}. {clause.title}</span>
+                            <span className="text-[11px] font-bold uppercase flex-1" style={{ color: '#1A0A3B' }}>{ci + 1}. {clause.title}</span>
                             {!clause.required && draft.status !== 'enviado' && (
                               <button onClick={() => {
                                 const updated = (draft.clauses as Clause[]).map(c => c.id === clause.id ? { ...c, enabled: !c.enabled } : c);
                                 updateDraftField(draft.id, { clauses: updated });
                                 setDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, clauses: updated } : d));
                               }}>
-                                {clause.enabled ? <ToggleRight size={16} style={{ color: '#22c55e' }} /> : <ToggleLeft size={16} style={{ color: 'var(--c-text-4)' }} />}
+                                {clause.enabled ? <ToggleRight size={16} style={{ color: '#22c55e' }} /> : <ToggleLeft size={16} style={{ color: '#9B8FB5' }} />}
                               </button>
                             )}
-                            {clause.required && <span className="text-xs" style={{ color: '#f87171' }}>Requerida</span>}
+                            {clause.required && <span className="text-[11px]" style={{ color: '#ef4444' }}>Requerida</span>}
                           </div>
                           {clause.enabled && (
-                            <div className="px-3 pb-2" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                            <div className="px-3 pb-2" style={{ borderTop: '1px solid #F0EDF9' }}>
                               {draft.status !== 'enviado' ? (
                                 <textarea
                                   defaultValue={clause.body}
@@ -219,11 +245,11 @@ export default function OpsContractsSection({ token }: { token: string }) {
                                     updateDraftField(draft.id, { clauses: updated });
                                     setDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, clauses: updated } : d));
                                   }}
-                                  className="w-full mt-2 px-2 py-1.5 rounded text-xs resize-none"
-                                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit', lineHeight: 1.65, outline: 'none' }}
+                                  className="w-full mt-2 px-2 py-1.5 rounded text-[12px] resize-none"
+                                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'inherit', lineHeight: 1.65, outline: 'none' }}
                                 />
                               ) : (
-                                <p className="text-xs mt-2 leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{clause.body}</p>
+                                <p className="text-[12px] mt-2 leading-relaxed whitespace-pre-wrap" style={{ color: '#1A0A3B' }}>{clause.body}</p>
                               )}
                             </div>
                           )}
@@ -232,9 +258,9 @@ export default function OpsContractsSection({ token }: { token: string }) {
                     </div>
 
                     {draft.notes && (
-                      <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                        <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Notas del empleado</p>
-                        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{draft.notes}</p>
+                      <div className="rounded-lg p-3" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+                        <p className="text-[11px] mb-1 font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Notas del empleado</p>
+                        <p className="text-[12px] leading-relaxed" style={{ color: '#1A0A3B' }}>{draft.notes}</p>
                       </div>
                     )}
 
@@ -243,28 +269,29 @@ export default function OpsContractsSection({ token }: { token: string }) {
                         <button
                           onClick={() => sendDraft(draft.id)}
                           disabled={!canSend || !!sending}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                          className="flex items-center gap-1.5 px-4 h-8 rounded-lg text-[12px] font-semibold transition-all"
                           style={{
-                            background: isSent ? 'rgba(34,197,94,0.15)' : canSend ? '#6C3BFF' : 'var(--c-surface-2)',
-                            color: isSent ? '#22c55e' : canSend ? '#fff' : 'var(--c-text-4)',
-                            border: isSent ? '1px solid rgba(34,197,94,0.3)' : 'none',
-                            cursor: canSend ? 'pointer' : 'not-allowed',
+                            background: isSent ? 'rgba(34,197,94,0.15)' : canSend ? '#6C3BFF' : '#F0EDF9',
+                            color:      isSent ? '#22c55e' : canSend ? '#fff' : '#9B8FB5',
+                            border:     isSent ? '1px solid rgba(34,197,94,0.3)' : 'none',
+                            boxShadow:  canSend && !isSent ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+                            cursor:     canSend ? 'pointer' : 'not-allowed',
                           }}>
                           {isSent ? <><Check size={12} /> Enviado</> : isSending ? <><RefreshCw size={12} className="animate-spin" /> Enviando...</> : <><Mail size={12} /> Aprobar y enviar</>}
                         </button>
                         {!canSend && !draft.client_email && (
-                          <span className="text-xs" style={{ color: '#f59e0b' }}>Agrega el email del cliente para enviar</span>
+                          <span className="text-[11px]" style={{ color: '#b45309' }}>Agrega el email del cliente para enviar</span>
                         )}
                         <button onClick={() => cancelDraft(draft.id)}
-                          className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium"
-                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                          className="flex items-center gap-1 px-3 h-8 rounded-lg text-[11px] font-medium"
+                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
                           <X size={11} /> Cancelar
                         </button>
                       </div>
                     )}
 
                     {draft.status === 'enviado' && draft.sent_at && (
-                      <p className="text-xs flex items-center gap-1" style={{ color: '#22c55e' }}>
+                      <p className="text-[11px] flex items-center gap-1" style={{ color: '#16a34a' }}>
                         <Send size={11} /> Enviado el {new Date(draft.sent_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </p>
                     )}
@@ -296,8 +323,8 @@ function NewDraftForm({ token, templateClauses, onCreated }: { token: string; te
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl p-4 flex flex-col gap-4" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-      <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo borrador de contrato</p>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#6C3BFF' }}>Nuevo borrador de contrato</p>
       <div className="grid grid-cols-2 gap-3">
         {[
           { label: 'Nombre del cliente *', field: 'client_name', required: true, placeholder: 'Nombre completo o razón social' },
@@ -306,14 +333,14 @@ function NewDraftForm({ token, templateClauses, onCreated }: { token: string; te
           { label: 'Teléfono',             field: 'client_phone', required: false, placeholder: '+52 81 1234 5678' },
         ].map(({ label, field, required, placeholder }) => (
           <div key={field}>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>{label}</label>
+            <label className="text-[11px] block mb-1" style={{ color: '#6B6480' }}>{label}</label>
             <input
               required={required}
               value={form[field as keyof typeof form]}
               onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
               placeholder={placeholder}
-              className="w-full px-3 py-2 rounded-lg text-xs"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+              className="w-full px-3 py-2 rounded-lg text-[12px]"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
             />
           </div>
         ))}
@@ -321,14 +348,14 @@ function NewDraftForm({ token, templateClauses, onCreated }: { token: string; te
 
       {clauses.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Cláusulas a incluir</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Cláusulas a incluir</p>
           {clauses.map((c, i) => (
-            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-              <span className="text-xs flex-1 font-medium" style={{ color: c.enabled ? 'var(--c-text)' : 'var(--c-text-4)' }}>{i + 1}. {c.title}</span>
+            <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+              <span className="text-[12px] flex-1 font-medium" style={{ color: c.enabled ? '#1A0A3B' : '#9B8FB5' }}>{i + 1}. {c.title}</span>
               {c.required
-                ? <span className="text-xs" style={{ color: '#f87171' }}>Requerida</span>
+                ? <span className="text-[11px]" style={{ color: '#ef4444' }}>Requerida</span>
                 : <button type="button" onClick={() => setClauses(prev => prev.map(cl => cl.id === c.id ? { ...cl, enabled: !cl.enabled } : cl))}>
-                    {c.enabled ? <ToggleRight size={16} style={{ color: '#22c55e' }} /> : <ToggleLeft size={16} style={{ color: 'var(--c-text-4)' }} />}
+                    {c.enabled ? <ToggleRight size={16} style={{ color: '#22c55e' }} /> : <ToggleLeft size={16} style={{ color: '#9B8FB5' }} />}
                   </button>
               }
             </div>
@@ -337,18 +364,22 @@ function NewDraftForm({ token, templateClauses, onCreated }: { token: string; te
       )}
 
       <div>
-        <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Notas (lo que se acordó en llamada o correo)</label>
+        <label className="text-[11px] block mb-1" style={{ color: '#6B6480' }}>Notas (lo que se acordó en llamada o correo)</label>
         <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
           placeholder="Ej: cliente solicitó cambio en cláusula de pago a 30 días, vigencia de 12 meses..."
-          className="w-full px-3 py-2 rounded-lg text-xs resize-none"
-          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit', lineHeight: 1.65, outline: 'none' }} />
+          className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'inherit', lineHeight: 1.65, outline: 'none' }} />
       </div>
 
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: '#6C3BFF', color: '#fff' }}>
+        <button type="submit" disabled={saving}
+          className="flex items-center gap-1.5 px-4 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
           {saving ? 'Creando...' : 'Crear borrador'}
         </button>
-        <button type="button" onClick={onCreated} className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+        <button type="button" onClick={onCreated}
+          className="px-4 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70"
+          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
           Cancelar
         </button>
       </div>
