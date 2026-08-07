@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import ContactTags from './oficina/ContactTags';
 import OficinaModal from './oficina/OficinaModal';
 import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
-import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+import { MEERKAT_MAP, INTERNAL_MEERKAT_IDS, type MeerkatRole, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 
 /**
  * Devuelve las capabilities que un agente puede ejecutar.
@@ -476,15 +476,23 @@ function CampaignForm({
     return Array.from(bag).sort();
   }, [contacts]);
 
+  // Cuenta TODOS los contactos que matchean los filtros — no filtramos por
+  // status='pending' porque las campañas llaman a lo que matchea sin importar
+  // si un contacto ya fue llamado antes.
   const previewCount = useMemo(() => {
     if (!contacts?.length) return 0;
     return contacts.filter(c => {
-      if (c.status !== 'pending') return false;
       if (legacyContactFilter && c.source !== legacyContactFilter) return false;
       if (tagFilter.length && !tagFilter.every(t => (c.tags ?? []).includes(t))) return false;
       return true;
     }).length;
   }, [contacts, legacyContactFilter, tagFilter]);
+
+  // Dropdown state for capability picker
+  const [capOpen, setCapOpen] = useState(false);
+  const capLabel = capability === 'custom'
+    ? 'Otra personalizada'
+    : (OUTBOUND_CAPABILITIES.find(c => c.id === capability)?.label ?? 'Otra personalizada');
 
   const toggleTag = (t: string) =>
     setTagFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
@@ -560,44 +568,61 @@ function CampaignForm({
     >
       <div className="flex flex-col gap-5">
 
-        {/* Tipo de campaña — chip grid + escape 'Otra personalizada' */}
+        {/* Tipo de campaña — botón que expande chip picker */}
         <OficinaModal.Field
           label="Tipo de campaña"
           hint="filtra los empleados que pueden ejecutarla"
         >
-          <div className="flex flex-wrap gap-1.5">
-            {OUTBOUND_CAPABILITIES.map(cap => {
-              const active = capability === cap.id;
-              return (
-                <button
-                  key={cap.id}
-                  type="button"
-                  onClick={() => setCapability(cap.id)}
-                  title={cap.description}
-                  className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
-                  style={{
-                    background: active ? '#6C3BFF' : '#ffffff',
-                    color:      active ? '#ffffff' : '#6B6480',
-                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
-                  }}
-                >
-                  {cap.label}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setCapability('custom')}
-              className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
-              style={{
-                background: capability === 'custom' ? '#1A0A3B' : '#ffffff',
-                color:      capability === 'custom' ? '#ffffff' : '#6B6480',
-                border:     capability === 'custom' ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
-              }}
-            >
-              Otra personalizada
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setCapOpen(o => !o)}
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-[#FAFAFB]"
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+          >
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full"
+                style={{ background: capability === 'custom' ? '#1A0A3B' : '#6C3BFF' }} />
+              {capLabel}
+            </span>
+            {capOpen ? <ChevronUp size={14} style={{ color: '#9B8FB5' }} /> : <ChevronDown size={14} style={{ color: '#9B8FB5' }} />}
+          </button>
+
+          {capOpen && (
+            <div className="mt-2 p-3 rounded-lg flex flex-wrap gap-1.5"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+              {OUTBOUND_CAPABILITIES.map(cap => {
+                const active = capability === cap.id;
+                return (
+                  <button
+                    key={cap.id}
+                    type="button"
+                    onClick={() => { setCapability(cap.id); setCapOpen(false); }}
+                    title={cap.description}
+                    className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
+                    style={{
+                      background: active ? '#6C3BFF' : '#ffffff',
+                      color:      active ? '#ffffff' : '#6B6480',
+                      border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                    }}
+                  >
+                    {cap.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => { setCapability('custom'); setCapOpen(false); }}
+                className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
+                style={{
+                  background: capability === 'custom' ? '#1A0A3B' : '#ffffff',
+                  color:      capability === 'custom' ? '#ffffff' : '#6B6480',
+                  border:     capability === 'custom' ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
+                }}
+              >
+                Otra personalizada
+              </button>
+            </div>
+          )}
         </OficinaModal.Field>
 
         {/* Empleado asignado — filtrado por capability */}
@@ -605,15 +630,38 @@ function CampaignForm({
           label="Empleado que la ejecuta"
           hint={
             eligibleAgents.length === 0
-              ? 'ningún empleado puede este tipo de campaña — cambia el tipo o activa la capability en el empleado'
+              ? undefined
               : `${eligibleAgents.length} empleado${eligibleAgents.length !== 1 ? 's' : ''} elegible${eligibleAgents.length !== 1 ? 's' : ''}`
           }
         >
           {eligibleAgents.length === 0 ? (
-            <p className="text-[12px] px-3 py-2 rounded-lg"
-              style={{ color: '#EF4444', background: '#FEF2F2', border: '1px solid #FECACA' }}>
-              Ninguno de tus empleados con llamadas salientes puede ejecutar campañas de este tipo.
-            </p>
+            (() => {
+              // Sugerir qué meerkats sí pueden — pista de upsell.
+              // Excluye meerkats internos (Nash) que no son contratables por clientes.
+              const suggested = Object.entries(MEERKAT_MAP as Record<MeerkatRoleId, MeerkatRole>)
+                .filter(([id, m]) =>
+                  !INTERNAL_MEERKAT_IDS.has(id as MeerkatRoleId) &&
+                  (m.features?.outbound_capabilities ?? []).includes(capability)
+                )
+                .map(([, m]) => `${m.nombre} (${m.rol})`);
+              return (
+                <div className="text-[12px] px-3 py-2.5 rounded-lg flex flex-col gap-1.5"
+                  style={{ color: '#6B6480', background: '#FEF6E7', border: '1px solid #FCE4B0' }}>
+                  <p style={{ color: '#B45309' }}>
+                    <strong>Ninguno de tus empleados actuales</strong> puede ejecutar este tipo de campaña.
+                  </p>
+                  {suggested.length > 0 ? (
+                    <p>
+                      Este tipo lo puede hacer:{' '}
+                      <strong style={{ color: '#1A0A3B' }}>{suggested.join(', ')}</strong>.
+                      Contrata alguno o cambia el tipo de campaña.
+                    </p>
+                  ) : (
+                    <p>Elige otro tipo de campaña o usa &quot;Otra personalizada&quot;.</p>
+                  )}
+                </div>
+              );
+            })()
           ) : (
             <Select value={assignedAgentId} onValueChange={setAssignedAgentId}>
               <SelectTrigger className="w-full rounded-lg text-[13px]"
@@ -687,7 +735,7 @@ function CampaignForm({
           )}
           {contacts && contacts.length > 0 && (
             <p className="text-[12px] mt-1" style={{ color: previewCount === 0 ? '#EF4444' : '#6B6480' }}>
-              <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto' : 'contactos'} pendientes con estos filtros
+              <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto' : 'contactos'} con estos filtros
             </p>
           )}
         </OficinaModal.Field>

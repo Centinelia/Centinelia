@@ -153,11 +153,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: capGate.reason ?? 'Campaña no permitida' }, { status: 403 });
   }
 
+  // Campañas llaman a los contactos que matcheen filtros — no se restringe a
+  // status='pending'. La selección del tag/source es la que manda.
   let contactsQuery = supabase
     .from('outbound_contacts')
     .select('id, nombre, telefono, motivo, tags')
-    .eq('agent_id', agent.id)
-    .eq('status', 'pending');
+    .eq('agent_id', agent.id);
 
   if (campaign.contact_filter?.length) {
     contactsQuery = contactsQuery.in('source', campaign.contact_filter);

@@ -71,12 +71,13 @@ export async function GET(req: NextRequest) {
       continue;
     }
 
-    // Fetch pending contacts for this campaign
+    // Fetch contacts matching the campaign filters. NO filtramos por
+    // status='pending' — la campaña llama a lo que matchea (tag/source),
+    // el status es informativo del último intento de llamada.
     let q = supabase
       .from('outbound_contacts')
       .select('id, nombre, telefono, motivo, tags')
-      .eq('agent_id', campaign.agent_id)
-      .eq('status', 'pending');
+      .eq('agent_id', campaign.agent_id);
 
     if (campaign.contact_filter?.length) {
       q = q.in('source', campaign.contact_filter);
