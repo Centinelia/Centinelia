@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, BarChart2, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Check, Loader2, Search, Send, SearchX } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SectionHeader, EmptyState } from '@/components/portal-ui';
+import { EmptyState } from '@/components/portal-ui';
+import InfoTooltip from '@/components/InfoTooltip';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import CheckinsSection, { type CheckinsSectionAgent } from './reportes/CheckinsSection';
 
@@ -57,21 +58,21 @@ const empty = (): Partial<OpsReport & { recipientInput: string }> => ({
 function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full shadow-xl"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Eliminar reporte</p>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+      <div className="rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 8px 24px rgba(26,10,59,0.12)' }}>
+        <p className="text-[15px] font-bold" style={{ color: '#1A0A3B' }}>Eliminar reporte</p>
+        <p className="text-[12px]" style={{ color: '#6B6480' }}>
           Esta acción no se puede deshacer. El historial de envíos también se eliminará.
         </p>
         <div className="flex gap-2">
           <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+            className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
             Eliminar
           </button>
           <button onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl text-sm transition-opacity hover:opacity-80"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+            className="flex-1 py-2.5 rounded-xl text-[13px] transition-opacity hover:opacity-80"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
             Cancelar
           </button>
         </div>
@@ -83,13 +84,13 @@ function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; on
 function SendResultModal({ message, onClose }: { message: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full shadow-xl"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-        <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Resultado</p>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{message}</p>
+      <div className="rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 8px 24px rgba(26,10,59,0.12)' }}>
+        <p className="text-[15px] font-bold" style={{ color: '#1A0A3B' }}>Resultado</p>
+        <p className="text-[12px]" style={{ color: '#6B6480' }}>{message}</p>
         <button onClick={onClose}
-          className="py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: '#6C3BFF', color: '#fff' }}>
+          className="py-2.5 rounded-xl text-[13px] font-semibold transition-opacity hover:opacity-80"
+          style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
           Cerrar
         </button>
       </div>
@@ -253,9 +254,11 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
   if (loading) return (
     <div className="flex items-center justify-center py-10">
-      <Loader2 size={18} className="animate-spin" style={{ color: 'var(--c-text-4)' }} />
+      <Loader2 size={18} className="animate-spin" style={{ color: '#9B8FB5' }} />
     </div>
   );
+
+  const filteredReports = reports.filter(r => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <>
@@ -264,16 +267,16 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
       <div className="flex flex-col gap-4">
         {/* Hero banner */}
-        <div className="rounded-xl p-4 flex items-end gap-4 overflow-hidden"
+        <div className="rounded-2xl p-4 flex items-end gap-4 overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${acColor}15 0%, ${acColor}08 100%)`, border: `1px solid ${acColor}25` }}>
           <div className="flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: acColor }}>
               Reportes automáticos
             </p>
-            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text)' }}>
+            <p className="text-[14px] font-semibold mb-1" style={{ color: '#1A0A3B' }}>
               {agentDisplayName} {isCoordinator ? 'redactan y envían' : 'redacta y envía'} reportes de forma autónoma.
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
               Elige qué datos incluir, con qué frecuencia y a quién enviarlos.
             </p>
           </div>
@@ -285,7 +288,7 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                     width: 80, height: 80, objectFit: 'cover', objectPosition: '50% 10%',
                     borderRadius: '50%', flexShrink: 0,
                     border: `2px solid ${(m.color ?? acColor)}30`,
-                    background: 'var(--c-surface)',
+                    background: '#ffffff',
                     marginLeft: i > 0 ? -20 : 0,
                     zIndex: bannerMeerkats.length - i,
                   }} />
@@ -296,309 +299,355 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
 
         {/* Check-ins de coordinadores */}
         {hasCoordinator && checkinsAgents && (
-          <>
-            <CheckinsSection token={token} agents={checkinsAgents} />
-            <div className="h-px w-full" style={{ background: 'var(--c-border)' }} />
-          </>
+          <CheckinsSection token={token} agents={checkinsAgents} />
         )}
 
-        {/* Header */}
-        <SectionHeader
-          as="h2"
-          title="Reportes automáticos"
-          tooltip={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."}
-          right={
-            <div className="flex items-center gap-2">
+        {/* Surface único con dividers */}
+        <div className="flex flex-col rounded-2xl overflow-hidden"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                  Reportes automáticos
+                </h2>
+                {reports.length > 0 && (
+                  <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                    {reports.length}
+                  </span>
+                )}
+                <InfoTooltip text={"Configura resúmenes periódicos que tu empleado genera y envía por correo de forma automática.\n\nElige qué datos incluir (llamadas, leads, pedidos, citas), con qué frecuencia enviarlo y a quién. El empleado redacta el reporte y lo despacha sin que tengas que pedírselo."} />
+              </div>
+              <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                Tu empleado los redacta y los despacha por correo.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span
                 className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: 'var(--c-text-4)' }}>
-                1 tarea / reporte
+                style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: '#6B6480' }}>
+                1 tarea por reporte
               </span>
               {!creating && (
                 <button onClick={() => setCreating(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                  style={{ background: `${acColor}15`, border: `1px solid ${acColor}35`, color: acColor }}>
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                   <Plus size={12} />Nuevo reporte
                 </button>
               )}
             </div>
-          }
-        />
+          </div>
 
-        {/* Create form */}
-        {creating && (
-          <div className="rounded-xl p-4 flex flex-col gap-4" style={{ background: `${acColor}08`, border: `1px solid ${acColor}25` }}>
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: acColor }}>Nuevo reporte</p>
+          {/* Create form (inside surface) */}
+          {creating && (
+            <div className="px-5 py-4 flex flex-col gap-4" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#6C3BFF' }}>Nuevo reporte</p>
 
-            <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Nombre del reporte</label>
-              <input value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Ej: Resumen semanal, Reporte mensual de ventas…"
-                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Frecuencia</label>
-                <div className="flex gap-1.5">
-                  {(['weekly', 'monthly'] as const).map(f => (
-                    <button key={f} onClick={() => setForm(p => ({
-                      ...p, frequency: f,
-                      schedule: f === 'weekly' ? { day_of_week: 1, hour: 8 } : { day_of_month: 1, hour: 8 },
-                    }))}
-                      className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
-                      style={{ background: form.frequency === f ? acColor : 'var(--c-surface)', color: form.frequency === f ? '#fff' : 'var(--c-text-3)', border: `1px solid ${form.frequency === f ? acColor : 'var(--c-border)'}` }}>
-                      {f === 'weekly' ? 'Semanal' : 'Mensual'}
-                    </button>
-                  ))}
-                </div>
+              <div>
+                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Nombre del reporte</label>
+                <input value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Ej: Resumen semanal, Reporte mensual de ventas"
+                  className="w-full rounded-lg px-3 py-2.5 text-[13px] outline-none"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
               </div>
-              <div className="flex-1">
-                <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>
-                  {form.frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}
-                </label>
-                {form.frequency === 'weekly' ? (
-                  <Select value={String(form.schedule?.day_of_week ?? 1)}
-                    onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(v) } }))}>
-                    <SelectTrigger className="rounded-xl py-2.5 text-xs">
+
+              <div className="flex gap-3 flex-wrap">
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Frecuencia</label>
+                  <div className="flex gap-1.5">
+                    {(['weekly', 'monthly'] as const).map(f => (
+                      <button key={f} onClick={() => setForm(p => ({
+                        ...p, frequency: f,
+                        schedule: f === 'weekly' ? { day_of_week: 1, hour: 8 } : { day_of_month: 1, hour: 8 },
+                      }))}
+                        className="flex-1 py-2 rounded-lg text-[12px] font-medium transition-all"
+                        style={{
+                          background: form.frequency === f ? '#6C3BFF' : '#ffffff',
+                          color:      form.frequency === f ? '#fff' : '#6B6480',
+                          border:     `1px solid ${form.frequency === f ? '#6C3BFF' : '#E8E3F5'}`,
+                          boxShadow:  form.frequency === f ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+                        }}>
+                        {f === 'weekly' ? 'Semanal' : 'Mensual'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
+                    {form.frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}
+                  </label>
+                  {form.frequency === 'weekly' ? (
+                    <Select value={String(form.schedule?.day_of_week ?? 1)}
+                      onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(v) } }))}>
+                      <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
+                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <input type="number" min={1} max={28} value={form.schedule?.day_of_month ?? 1}
+                      onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_month: Number(e.target.value) } }))}
+                      className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                  )}
+                </div>
+                <div style={{ width: 110 }}>
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Hora</label>
+                  <Select value={String(form.schedule?.hour ?? 8)}
+                    onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(v) } }))}>
+                    <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {DAYS_OF_WEEK.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                      {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                ) : (
-                  <input type="number" min={1} max={28} value={form.schedule?.day_of_month ?? 1}
-                    onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_month: Number(e.target.value) } }))}
-                    className="w-full rounded-xl px-3 py-2.5 text-xs outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium mb-2" style={{ color: '#6B6480' }}>Datos a incluir</label>
+                <div className="flex flex-wrap gap-2">
+                  {DATA_SOURCE_OPTIONS.map(s => {
+                    const active = (form.data_sources ?? []).includes(s.id);
+                    return (
+                      <button key={s.id} onClick={() => toggleSource(s.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
+                        style={{
+                          background: active ? 'rgba(108,59,255,0.1)' : '#ffffff',
+                          border:     `1px solid ${active ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                          color:      active ? '#6C3BFF' : '#6B6480',
+                        }}>
+                        {active && <Check size={10} />}{s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
+                  Destinatarios (además del email del cliente)
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input value={form.recipientInput ?? ''}
+                    onChange={e => setForm(f => ({ ...f, recipientInput: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addRecipient()}
+                    placeholder="email@empresa.com"
+                    className="flex-1 rounded-lg px-3 py-2.5 text-[12px] outline-none"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                  <button onClick={addRecipient}
+                    className="px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                    Agregar
+                  </button>
+                </div>
+                {(form.recipients ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(form.recipients ?? []).map(r => (
+                      <span key={r.email} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px]"
+                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                        {r.email}
+                        <button onClick={() => removeRecipient(r.email)} style={{ color: '#9B8FB5', lineHeight: 1 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div style={{ width: 100 }}>
-                <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Hora</label>
-                <Select value={String(form.schedule?.hour ?? 8)}
-                  onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(v) } }))}>
-                  <SelectTrigger className="rounded-xl py-2.5 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Datos a incluir</label>
-              <div className="flex flex-wrap gap-2">
-                {DATA_SOURCE_OPTIONS.map(s => {
-                  const active = (form.data_sources ?? []).includes(s.id);
-                  return (
-                    <button key={s.id} onClick={() => toggleSource(s.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={{ background: active ? `${acColor}15` : 'var(--c-surface)', border: `1px solid ${active ? acColor + '40' : 'var(--c-border)'}`, color: active ? acColor : 'var(--c-text-3)' }}>
-                      {active && <Check size={10} />}{s.label}
-                    </button>
-                  );
-                })}
+              <div>
+                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
+                  Instrucciones adicionales (opcional)
+                </label>
+                <textarea value={form.report_instructions ?? ''}
+                  onChange={e => setForm(f => ({ ...f, report_instructions: e.target.value }))}
+                  rows={3}
+                  placeholder="Ej: Destaca los leads de mayor presupuesto. Compara con el período anterior si es posible."
+                  className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none resize-none"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Destinatarios (además del email del cliente)</label>
-              <div className="flex gap-2 mb-2">
-                <input value={form.recipientInput ?? ''}
-                  onChange={e => setForm(f => ({ ...f, recipientInput: e.target.value }))}
-                  onKeyDown={e => e.key === 'Enter' && addRecipient()}
-                  placeholder="email@empresa.com"
-                  className="flex-1 rounded-xl px-3 py-2.5 text-xs outline-none"
-                  style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
-                <button onClick={addRecipient}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold"
-                  style={{ background: `${acColor}12`, border: `1px solid ${acColor}30`, color: acColor }}>
-                  Agregar
+              {createError && (
+                <p className="text-[12px] px-3 py-2 rounded-lg"
+                  style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
+                  {createError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button onClick={handleCreate} disabled={saving || !form.name?.trim()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                  {saving ? <><Loader2 size={13} className="animate-spin" />Guardando…</> : 'Crear reporte'}
+                </button>
+                <button onClick={() => { setCreating(false); setForm(empty()); setCreateError(null); }}
+                  className="px-4 py-2.5 rounded-lg text-[13px] transition-opacity hover:opacity-80"
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                  Cancelar
                 </button>
               </div>
-              {(form.recipients ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {(form.recipients ?? []).map(r => (
-                    <span key={r.email} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-                      {r.email}
-                      <button onClick={() => removeRecipient(r.email)} style={{ color: 'var(--c-text-4)', lineHeight: 1 }}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Instrucciones adicionales (opcional)</label>
-              <textarea value={form.report_instructions ?? ''}
-                onChange={e => setForm(f => ({ ...f, report_instructions: e.target.value }))}
-                rows={3}
-                placeholder="Ej: Destaca los leads de mayor presupuesto. Compara con el período anterior si es posible."
-                className="w-full rounded-xl px-3 py-2.5 text-xs outline-none resize-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
-            </div>
-
-            {createError && (
-              <p className="text-xs" style={{ color: '#f87171' }}>{createError}</p>
-            )}
-            <div className="flex gap-2">
-              <button onClick={handleCreate} disabled={saving || !form.name?.trim()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-40"
-                style={{ background: acColor, color: '#fff' }}>
-                {saving ? <><Loader2 size={13} className="animate-spin" />Guardando…</> : 'Crear reporte'}
-              </button>
-              <button onClick={() => { setCreating(false); setForm(empty()); setCreateError(null); }}
-                className="px-4 py-2.5 rounded-xl text-sm"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        {!creating && (
-          <div className="relative">
-            <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-text-4)', pointerEvents: 'none' }} />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar reporte..."
-              className="w-full text-xs rounded-xl"
-              style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
-            />
-          </div>
-        )}
-
-        {/* Empty state */}
-        {reports.length === 0 && !creating && (
-          <div className="rounded-xl p-6 flex flex-col gap-4"
-            style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${acColor}12` }}>
-                <BarChart2 size={16} style={{ color: acColor }} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin reportes configurados</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Tu empleado puede generar y enviar resúmenes periódicos de forma automática.</p>
+          {/* Search bar */}
+          {!creating && reports.length > 0 && (
+            <div className="px-5 py-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: '#9B8FB5' }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar reporte..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg text-[13px] outline-none"
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+                />
               </div>
             </div>
-            <div className="flex flex-col gap-2 pl-12">
-              {[
-                'Resumen semanal: llamadas y leads, cada lunes a las 8:00 am',
-                'Reporte mensual de pedidos y citas, el día 1 de cada mes',
-                'Actividad del viernes, para cerrar la semana con visibilidad total',
-              ].map(ex => (
-                <div key={ex} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
-                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+          )}
+
+          {/* Empty state (no reports) */}
+          {reports.length === 0 && !creating && (
+            <div className="px-5 py-6 flex flex-col gap-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(108,59,255,0.1)' }}>
+                  <BarChart2 size={16} style={{ color: '#6C3BFF' }} />
                 </div>
-              ))}
-            </div>
-            <div className="pl-12">
-              <button
-                onClick={() => setCreating(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                style={{ background: `${acColor}12`, border: `1px solid ${acColor}30`, color: acColor }}>
-                <Plus size={12} />Crear primer reporte
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Reports list */}
-        {reports.length > 0 && search.trim() && reports.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
-          <div className="rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-            <EmptyState
-              icon={SearchX}
-              title={`Sin resultados para "${search}"`}
-              description="Prueba con otro nombre de reporte"
-              size="sm"
-            />
-          </div>
-        )}
-        {reports.filter(r => !search.trim() || r.name.toLowerCase().includes(search.toLowerCase())).map(r => {
-          const isExpanded = expandedId === r.id;
-          const lastRun    = lastRunFor(r.id);
-          const isSending  = sending === r.id;
-
-          return (
-            <div key={r.id} className="rounded-xl overflow-hidden"
-              style={{ border: `1px solid ${isExpanded ? acColor + '40' : 'var(--c-border)'}`, background: isExpanded ? `${acColor}06` : 'var(--c-surface-2)' }}>
-
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                onClick={() => setExpanded(isExpanded ? null : r.id)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                <BarChart2 size={14} style={{ color: r.active ? acColor : 'var(--c-text-4)', flexShrink: 0 }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: r.active ? 'var(--c-text)' : 'var(--c-text-3)' }}>{r.name}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>{scheduleLabel(r)}</p>
+                <div>
+                  <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Sin reportes configurados</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+                    Tu empleado puede generar y enviar resúmenes periódicos de forma automática.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {lastRun && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full" style={{
-                      background: lastRun.status === 'sent' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                      color:      lastRun.status === 'sent' ? '#22c55e' : '#ef4444',
-                    }}>
-                      {lastRun.status === 'sent' ? 'Enviado' : 'Error'}
-                    </span>
-                  )}
-                  <button onClick={e => { e.stopPropagation(); toggleActive(r); }}
-                    style={{ color: r.active ? acColor : 'var(--c-text-4)' }}>
-                    {r.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                  </button>
-                  {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--c-text-4)' }} /> : <ChevronDown size={13} style={{ color: 'var(--c-text-4)' }} />}
-                </div>
-              </button>
-
-              {isExpanded && (
-                <div className="px-4 pb-4" style={{ borderTop: `1px solid ${acColor}20` }}>
-                  <div className="mt-3 flex flex-col gap-2">
-                    <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                      <span style={{ color: 'var(--c-text-4)' }}>Datos:</span>{' '}
-                      {r.data_sources.map(s => DATA_SOURCE_OPTIONS.find(o => o.id === s)?.label ?? s).join(', ') || 'Ninguno'}
-                    </p>
-                    {r.recipients.length > 0 && (
-                      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                        <span style={{ color: 'var(--c-text-4)' }}>Destinatarios adicionales:</span>{' '}
-                        {r.recipients.map(rc => rc.email).join(', ')}
-                      </p>
-                    )}
-                    {r.next_run_at && (
-                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                        Próximo envío: {new Date(r.next_run_at).toLocaleDateString('es-MX', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                    {r.last_run_at && (
-                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-                        Último envío: {new Date(r.last_run_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                    <div className="mt-2 flex items-center gap-2">
-                      <button onClick={() => sendNow(r.id)} disabled={isSending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-70 disabled:opacity-40"
-                        style={{ background: `${acColor}10`, border: `1px solid ${acColor}30`, color: acColor }}>
-                        {isSending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-                        {isSending ? 'Enviando…' : 'Enviar ahora'}
-                      </button>
-                      <button onClick={() => setDeleteId(r.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-70"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
-                        <Trash2 size={11} />Eliminar
-                      </button>
-                    </div>
+              </div>
+              <div className="flex flex-col gap-2 pl-12">
+                {[
+                  'Resumen semanal: llamadas y leads, cada lunes a las 8:00 am',
+                  'Reporte mensual de pedidos y citas, el día 1 de cada mes',
+                  'Actividad del viernes, para cerrar la semana con visibilidad total',
+                ].map(ex => (
+                  <div key={ex} className="flex items-start gap-2">
+                    <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: '#9B8FB5' }} />
+                    <p className="text-[12px]" style={{ color: '#6B6480' }}>{ex}</p>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+              <div className="pl-12">
+                <button
+                  onClick={() => setCreating(true)}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                  <Plus size={12} />Crear primer reporte
+                </button>
+              </div>
             </div>
-          );
-        })}
+          )}
+
+          {/* Filtered empty (search no results) */}
+          {reports.length > 0 && search.trim() && filteredReports.length === 0 && (
+            <div style={{ borderTop: '1px solid #F0EDF9' }}>
+              <EmptyState
+                icon={SearchX}
+                title={`Sin resultados para "${search}"`}
+                description="Prueba con otro nombre de reporte"
+                size="sm"
+              />
+            </div>
+          )}
+
+          {/* Reports rows */}
+          {filteredReports.length > 0 && (
+            <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+              {filteredReports.map((r, idx) => {
+                const isExpanded = expandedId === r.id;
+                const lastRun    = lastRunFor(r.id);
+                const isSending  = sending === r.id;
+                const isLast     = idx === filteredReports.length - 1;
+
+                return (
+                  <div key={r.id}
+                    style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9' }}>
+
+                    <button className="w-full flex items-center gap-3 px-5 py-4 text-left"
+                      onClick={() => setExpanded(isExpanded ? null : r.id)}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                      <BarChart2 size={14} style={{ color: r.active ? '#6C3BFF' : '#9B8FB5', flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold truncate"
+                          style={{ color: r.active ? '#1A0A3B' : '#6B6480' }}>{r.name}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: '#9B8FB5' }}>{scheduleLabel(r)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {lastRun && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{
+                            background: lastRun.status === 'sent' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                            color:      lastRun.status === 'sent' ? '#22c55e' : '#ef4444',
+                          }}>
+                            {lastRun.status === 'sent' ? 'Enviado' : 'Error'}
+                          </span>
+                        )}
+                        <button onClick={e => { e.stopPropagation(); toggleActive(r); }}
+                          style={{ color: r.active ? '#6C3BFF' : '#9B8FB5', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          {r.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                        </button>
+                        {isExpanded
+                          ? <ChevronUp size={13} style={{ color: '#9B8FB5' }} />
+                          : <ChevronDown size={13} style={{ color: '#9B8FB5' }} />}
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-5 pb-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                        <div className="mt-3 flex flex-col gap-2">
+                          <p className="text-[12px]" style={{ color: '#6B6480' }}>
+                            <span style={{ color: '#9B8FB5' }}>Datos:</span>{' '}
+                            {r.data_sources.map(s => DATA_SOURCE_OPTIONS.find(o => o.id === s)?.label ?? s).join(', ') || 'Ninguno'}
+                          </p>
+                          {r.recipients.length > 0 && (
+                            <p className="text-[12px]" style={{ color: '#6B6480' }}>
+                              <span style={{ color: '#9B8FB5' }}>Destinatarios adicionales:</span>{' '}
+                              {r.recipients.map(rc => rc.email).join(', ')}
+                            </p>
+                          )}
+                          {r.next_run_at && (
+                            <p className="text-[12px]" style={{ color: '#9B8FB5' }}>
+                              Próximo envío: {new Date(r.next_run_at).toLocaleDateString('es-MX', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          {r.last_run_at && (
+                            <p className="text-[12px]" style={{ color: '#9B8FB5' }}>
+                              Último envío: {new Date(r.last_run_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <button onClick={() => sendNow(r.id)} disabled={isSending}
+                              className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+                              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                              {isSending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+                              {isSending ? 'Enviando…' : 'Enviar ahora'}
+                            </button>
+                            <button onClick={() => setDeleteId(r.id)}
+                              className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70"
+                              style={{ background: '#ffffff', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+                              <Trash2 size={11} />Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
