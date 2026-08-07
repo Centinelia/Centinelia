@@ -8,6 +8,7 @@ import {
   Play, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/empty-state';
 import OficinaModal from '../OficinaModal';
 
 interface Agent {
@@ -411,15 +412,14 @@ function CreateModal({ agents, token, onSaved, onClose }: CreateModalProps) {
   );
 }
 
-// ── TaskCard ──────────────────────────────────────────────────────────────────
+// ── TaskRow ───────────────────────────────────────────────────────────────────
 
-function TaskCard({
-  task, agents, token, running,
+function TaskRow({
+  task, agents, running,
   onToggle, onDelete, onRun,
 }: {
   task:     ScheduledTask;
   agents:   Agent[];
-  token:    string;
   running:  string | null;
   onToggle: (id: string, active: boolean) => void;
   onDelete: (id: string) => void;
@@ -437,24 +437,19 @@ function TaskCard({
     ? nextRun.toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
 
+  const hasDetails = Boolean(task.description || task.success_criteria || task.last_result);
+
   return (
-    <div style={{
-      background:    'var(--c-surface)',
-      border:        `1px solid ${task.active ? acColor + '30' : 'var(--c-border-2)'}`,
-      borderRadius:  16,
-      overflow:      'hidden',
-      opacity:       task.active ? 1 : 0.6,
-      transition:    'opacity 0.2s, border-color 0.2s',
-    }}>
-      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+    <div style={{ opacity: task.active ? 1 : 0.6, transition: 'opacity 0.2s' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         {agent && <AgentAvatar agent={agent} size={36} />}
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ color: 'var(--c-text)', fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{task.name}</p>
+              <p style={{ color: '#1A0A3B', fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>{task.name}</p>
               {agent && (
-                <p style={{ color: 'var(--c-text-4)', fontSize: 12, marginTop: 2 }}>
+                <p style={{ color: '#9B8FB5', fontSize: 12, marginTop: 2 }}>
                   {agentDisplayName(agent)}{agent.role ? ` · ${agent.role}` : ''}
                 </p>
               )}
@@ -480,13 +475,13 @@ function TaskCard({
               <button
                 onClick={() => onToggle(task.id, !task.active)}
                 title={task.active ? 'Pausar' : 'Activar'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: task.active ? acColor : 'var(--c-text-4)', padding: 2 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: task.active ? acColor : '#9B8FB5', padding: 2 }}
               >
                 {task.active ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
               </button>
               <button
                 onClick={() => onDelete(task.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--c-text-4)', padding: 2 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#9B8FB5', padding: 2 }}
               >
                 <Trash2 size={14} />
               </button>
@@ -500,7 +495,7 @@ function TaskCard({
               {scheduleLabel(task.frequency, task.schedule)}
             </span>
             {task.success_criteria && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.18)', borderRadius: 20, padding: '3px 10px', color: '#9B6DFF', fontSize: 11 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(108,59,255,0.07)', border: '1px solid rgba(108,59,255,0.18)', borderRadius: 20, padding: '3px 10px', color: '#6C3BFF', fontSize: 11 }}>
                 {task.max_iterations} reintento{task.max_iterations !== 1 ? 's' : ''}
               </span>
             )}
@@ -516,51 +511,52 @@ function TaskCard({
 
           {/* Next run */}
           {nextLabel && (
-            <p style={{ color: 'var(--c-text-4)', fontSize: 11, marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <p style={{ color: '#9B8FB5', fontSize: 11, marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
               <Clock size={10} />
               Próxima: {nextLabel}
             </p>
           )}
-        </div>
-      </div>
 
-      {/* Expandable details */}
-      {(task.description || task.success_criteria || task.last_result) && (
-        <div style={{ borderTop: '1px solid var(--c-border-2)' }}>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{ width: '100%', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)', fontSize: 12 }}
-          >
-            <span>Detalles</span>
-            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </button>
+          {/* Expandable details */}
+          {hasDetails && (
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-center gap-1.5 text-[11px] transition-opacity hover:opacity-70"
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#9B8FB5' }}
+              >
+                {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                <span>Detalles</span>
+              </button>
 
-          {expanded && (
-            <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {task.description && (
-                <div>
-                  <p style={{ color: 'var(--c-text-4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 4 }}>Instrucción</p>
-                  <p style={{ color: 'var(--c-text-2)', fontSize: 13, lineHeight: 1.6 }}>{task.description}</p>
-                </div>
-              )}
-              {task.success_criteria && (
-                <div>
-                  <p style={{ color: 'var(--c-text-4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 4 }}>Criterio de listo</p>
-                  <p style={{ color: 'var(--c-text-2)', fontSize: 13, lineHeight: 1.6 }}>{task.success_criteria}</p>
-                </div>
-              )}
-              {task.last_result && (
-                <div>
-                  <p style={{ color: 'var(--c-text-4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 4 }}>Ultimo resultado</p>
-                  <p style={{ color: 'var(--c-text-3)', fontSize: 12, lineHeight: 1.6, fontFamily: 'monospace', background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 12px' }}>
-                    {task.last_result}
-                  </p>
+              {expanded && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {task.description && (
+                    <div>
+                      <p style={{ color: '#9B8FB5', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Instrucción</p>
+                      <p style={{ color: '#1A0A3B', fontSize: 12, lineHeight: 1.6 }}>{task.description}</p>
+                    </div>
+                  )}
+                  {task.success_criteria && (
+                    <div>
+                      <p style={{ color: '#9B8FB5', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Criterio de listo</p>
+                      <p style={{ color: '#1A0A3B', fontSize: 12, lineHeight: 1.6 }}>{task.success_criteria}</p>
+                    </div>
+                  )}
+                  {task.last_result && (
+                    <div>
+                      <p style={{ color: '#9B8FB5', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>Último resultado</p>
+                      <p style={{ color: '#6B6480', fontSize: 12, lineHeight: 1.6, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', background: '#FAFAFB', border: '1px solid #E8E3F5', borderRadius: 10, padding: '10px 12px' }}>
+                        {task.last_result}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -634,32 +630,54 @@ export default function TareasProgramadasSection({ token, agents }: Props) {
   const deleteTask = tasks.find(t => t.id === deleteId);
   const active     = tasks.filter(t =>  t.active);
   const paused     = tasks.filter(t => !t.active);
+  const ordered    = [...active, ...paused];
+  const firstPausedIdx = active.length;
 
   return (
-    <div style={{ padding: 24, maxWidth: 680, margin: '0 auto' }}>
-
-      {/* Hero banner */}
-      <div style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', borderRadius: 14, overflow: 'hidden', display: 'flex', marginBottom: 24 }}>
-        <img
-          src="/meerkats/nox.png"
-          alt="Nox"
-          style={{ width: 90, height: 90, objectFit: 'contain', objectPosition: 'bottom center', flexShrink: 0, alignSelf: 'flex-end' }}
-        />
-        <div style={{ flex: 1, padding: '16px 12px 16px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <p style={{ color: 'var(--c-text-4)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
-            Tareas programadas
-          </p>
-          <p style={{ color: 'var(--c-text)', fontSize: 14, fontWeight: 500, lineHeight: 1.45 }}>
-            Nox, tu director, coordina a todo el equipo en automático. Define qué hacer, cuándo y con qué criterio.
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Tareas programadas
+            </h2>
+            {tasks.length > 0 && (
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {tasks.length}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Nox coordina a todo el equipo en automático. Define qué, cuándo y con qué criterio.
           </p>
         </div>
         {agents.length > 0 && (
-          <div style={{ padding: '16px 16px 16px 8px', display: 'flex', alignItems: 'center' }}>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
-              onClick={() => setShowCreate(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#6C3BFF', color: '#fff', padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              aria-label="Actualizar"
+              className="flex items-center justify-center rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
+              style={{ width: 32, height: 32, background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
             >
-              <Plus size={15} />
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
+            >
+              <Plus size={12} />
               Nueva
             </button>
           </div>
@@ -667,70 +685,73 @@ export default function TareasProgramadasSection({ token, agents }: Props) {
       </div>
 
       {/* Loading */}
-      {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 160 }}>
-          <div className="w-6 h-6 border-2 border-[#6C3BFF]/30 border-t-[#6C3BFF] rounded-full animate-spin" />
+      {loading && tasks.length === 0 && (
+        <div
+          className="px-5 py-8 flex items-center justify-center"
+          style={{ borderTop: '1px solid #F0EDF9' }}
+        >
+          <Loader2 size={16} className="animate-spin" style={{ color: '#9B8FB5' }} />
         </div>
       )}
 
       {/* Empty state */}
       {!loading && tasks.length === 0 && (
-        <div style={{ border: '1px dashed var(--c-border-2)', borderRadius: 16, padding: '52px 24px', textAlign: 'center' }}>
-          <CalendarClock size={36} style={{ color: 'var(--c-text-4)', margin: '0 auto 12px', display: 'block' }} />
-          <p style={{ color: 'var(--c-text-2)', fontSize: 15, fontWeight: 500, marginBottom: 6 }}>Sin tareas programadas</p>
-          <p style={{ color: 'var(--c-text-4)', fontSize: 13, lineHeight: 1.6, maxWidth: 300, margin: '0 auto 20px' }}>
-            Crea tareas para que tu equipo ejecute reportes, seguimientos o revisiones automáticamente.
-          </p>
-          {agents.length > 0 && (
-            <button
-              onClick={() => setShowCreate(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#6C3BFF', color: '#fff', padding: '9px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
-            >
-              <Plus size={15} />
-              Crear primera tarea
-            </button>
-          )}
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
+          <EmptyState
+            icon={CalendarClock}
+            title="Sin tareas programadas"
+            description="Crea tareas para que tu equipo ejecute reportes, seguimientos o revisiones automáticamente."
+            action={agents.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
+              >
+                <Plus size={12} />
+                Crear primera tarea
+              </button>
+            ) : undefined}
+          />
         </div>
       )}
 
-      {/* Active tasks */}
-      {!loading && active.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: paused.length > 0 ? 24 : 0 }}>
-          {active.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              agents={agents}
-              token={token}
-              running={running}
-              onToggle={handleToggle}
-              onDelete={id => setDeleteId(id)}
-              onRun={handleRun}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Paused tasks */}
-      {!loading && paused.length > 0 && (
-        <div>
-          <p style={{ color: 'var(--c-text-4)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10 }}>
-            Pausadas
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {paused.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                agents={agents}
-                token={token}
-                running={running}
-                onToggle={handleToggle}
-                onDelete={id => setDeleteId(id)}
-                onRun={handleRun}
-              />
-            ))}
-          </div>
+      {/* Rows */}
+      {!loading && tasks.length > 0 && (
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {ordered.map((task, idx) => {
+            const isFirstPaused = paused.length > 0 && idx === firstPausedIdx;
+            return (
+              <div key={task.id}>
+                {isFirstPaused && (
+                  <div
+                    className="px-5 py-2"
+                    style={{
+                      borderTop:  '1px solid #F0EDF9',
+                      background: '#FAFAFB',
+                    }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#9B8FB5' }}>
+                      Pausadas
+                    </p>
+                  </div>
+                )}
+                <div
+                  className="px-5 py-4"
+                  style={{ borderBottom: idx === ordered.length - 1 ? 'none' : '1px solid #F0EDF9' }}
+                >
+                  <TaskRow
+                    task={task}
+                    agents={agents}
+                    running={running}
+                    onToggle={handleToggle}
+                    onDelete={id => setDeleteId(id)}
+                    onRun={handleRun}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
