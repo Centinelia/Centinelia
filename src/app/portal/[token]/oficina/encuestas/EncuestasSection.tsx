@@ -8,7 +8,7 @@ import {
   Pencil, ArrowLeft, Zap, Bell, PhoneCall, AlertTriangle, ClipboardList,
   Download, List, PlayCircle,
 } from 'lucide-react';
-import { SectionHeader, Card, EmptyState as PortalEmptyState } from '@/components/portal-ui';
+import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 import MeerkatPicker from '../../agentes/MeerkatPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -1073,10 +1073,10 @@ function SurveyCard({
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+    <div>
 
       {/* Header */}
-      <div className="flex items-start gap-3 px-4 py-3">
+      <div className="flex items-start gap-3 px-5 py-4">
         <button
           onClick={() => setOpen(v => !v)}
           className="flex-1 text-left min-w-0"
@@ -1084,19 +1084,20 @@ function SurveyCard({
         >
           {/* Name row */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{survey.nombre}</span>
+            <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>{survey.nombre}</span>
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
+              className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium"
               style={{
-                background: survey.activa ? 'rgba(34,197,94,0.12)' : 'rgba(107,114,128,0.12)',
-                color:      survey.activa ? '#22c55e'               : 'var(--c-text-4)',
+                background: survey.activa ? 'rgba(34,197,94,0.12)' : '#FAFAFB',
+                color:      survey.activa ? '#22c55e'               : '#9B8FB5',
+                border:     survey.activa ? 'none'                  : '1px solid #E8E3F5',
               }}
             >
               {survey.activa ? 'Activa' : 'Inactiva'}
             </span>
             {results !== null && results.total > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0"
-                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF' }}>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium"
+                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
                 {results.total} resp.
               </span>
             )}
@@ -1110,12 +1111,12 @@ function SurveyCard({
                 {primaryTrend.delta > 0 ? '↑' : '↓'} {Math.abs(primaryTrend.delta).toFixed(1)}
               </span>
             )}
-            {loadingRes && <Loader2 size={10} className="animate-spin shrink-0" style={{ color: 'var(--c-text-4)' }} />}
+            {loadingRes && <Loader2 size={10} className="animate-spin shrink-0" style={{ color: '#9B8FB5' }} />}
           </div>
 
           {/* Objetivo subtitle */}
           {survey.objetivo && (
-            <p className="text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px] mt-1 line-clamp-1" style={{ color: '#6B6480' }}>
               {survey.objetivo}
             </p>
           )}
@@ -1124,8 +1125,8 @@ function SurveyCard({
           {triggerLabels.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {triggerLabels.map(label => (
-                <span key={label} className="text-[10px] px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-4)' }}>
+                <span key={label} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                   {label}
                 </span>
               ))}
@@ -1134,13 +1135,13 @@ function SurveyCard({
         </button>
 
         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-          <div className="flex items-center" style={{ color: 'var(--c-text-4)' }}>
-            {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          <div className="flex items-center" style={{ color: '#9B8FB5' }}>
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </div>
           <button
             onClick={() => onDelete(survey.id)}
             className="p-1 rounded-lg transition-opacity hover:opacity-60"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9B8FB5' }}
             title="Eliminar"
           >
             <Trash2 size={13} />
@@ -1149,7 +1150,7 @@ function SurveyCard({
       </div>
 
       {open && (
-        <div style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
 
           {/* Agent context row */}
           {surveyAgents !== null && (
@@ -1522,7 +1523,7 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
 
       {showWizard && (
         <WizardModal
@@ -1532,39 +1533,33 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
         />
       )}
 
-      {/* Header */}
-      <SectionHeader
-        as="h2"
-        eyebrow="Calidad"
-        title="Cada llamada hace más inteligente a tu negocio."
-        description="Define una vez las preguntas y tus empleados las aplicarán automáticamente cuando corresponda. Mide satisfacción, calidad, entregas o cualquier proceso sin depender de que alguien recuerde preguntar."
-      />
-
       {/* No survey agent banner */}
       {!hasSurveyAgent && (
-        <div className="flex rounded-xl overflow-hidden"
-          style={{ background: 'linear-gradient(to right, rgba(108,59,255,0.07), rgba(245,158,11,0.07))', border: '1px solid rgba(108,59,255,0.25)' }}>
+        <div className="flex overflow-hidden rounded-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E8E3F5',
+            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+          }}>
           <img src="/meerkats/nia.png" alt="Nia"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
-          <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center gap-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(108,59,255,0.7)' }}>
+          <div className="flex-1 min-w-0 py-4 pr-5 pl-3 flex flex-col justify-center gap-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
               Calidad
             </p>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold leading-snug" style={{ color: '#6C3BFF' }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-[14px] font-semibold leading-snug" style={{ color: '#1A0A3B' }}>
                 Nia no está en tu equipo.
               </p>
-              <div style={{ marginRight: 30 }}>
-                <MeerkatPicker
-                  token={token}
-                  plan={plan as 'pro'}
-                  defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
-                  preselect="nia"
-                  triggerLabel="Contratar"
-                />
-              </div>
+              <MeerkatPicker
+                token={token}
+                plan={plan as 'pro'}
+                defaultTier={defaultTier as 'starter' | 'growth' | 'scale'}
+                preselect="nia"
+                triggerLabel="Contratar"
+              />
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
               Sin Nia, Nelia o Naia las encuestas se aplican solo de forma manual. Estos empleados las realizan automáticamente al terminar cada llamada y registran las respuestas sin intervención.
             </p>
           </div>
@@ -1573,89 +1568,147 @@ export default function EncuestasSection({ token, agentName, hasSurveyAgent = tr
 
       {/* Activity block */}
       {activeSurveys.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-          <MessageSquare size={15} style={{ color: '#9B6DFF' }} />
-          <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E8E3F5',
+            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+          }}>
+          <MessageSquare size={15} style={{ color: '#6C3BFF' }} />
+          <p className="text-[13px]" style={{ color: '#1A0A3B' }}>
             <span className="font-semibold">{employeeName}</span>{' '}
             {activeSurveys.length === 1
-              ? <>aplica la encuesta <span className="font-semibold">"{activeSurveys[0].nombre}"</span> en sus llamadas.</>
+              ? <>aplica la encuesta <span className="font-semibold">&quot;{activeSurveys[0].nombre}&quot;</span> en sus llamadas.</>
               : <>aplica {activeSurveys.length} encuestas activas en sus llamadas.</>
             }
           </p>
         </div>
       )}
 
-      {/* Surveys section */}
-      <div className="flex flex-col gap-4">
-
-        {/* Section header */}
-        <SectionHeader
-          as="h3"
-          title={activeSurveys.length > 0 ? `Activas · ${activeSurveys.length}` : 'Encuestas'}
-          right={
+      {/* Surveys surface (activas) */}
+      <div className="flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+        }}>
+        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                Encuestas activas
+              </h2>
+              {activeSurveys.length > 0 && (
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                  {activeSurveys.length}
+                </span>
+              )}
+            </div>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+              {employeeName} aplica cada encuesta al terminar la llamada y registra las respuestas automáticamente.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => setShowWizard(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF', cursor: 'pointer' }}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
             >
               <Plus size={12} /> Nueva encuesta
             </button>
-          }
-        />
+          </div>
+        </div>
 
-        {loading    && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
-        {loadError  && <p className="text-xs" style={{ color: '#f87171' }}>No se pudieron cargar las encuestas.</p>}
-
-        {/* Empty state */}
-        {!loading && surveys.length === 0 && (
-          <Card padding="md">
-            <PortalEmptyState
-              icon={BarChart2}
-              title="Aún no hay encuestas"
-              description={`Crea una y actívala para que ${employeeName} la aplique en cada llamada.`}
-              action={
-                <button
-                  onClick={() => setShowWizard(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                  style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF', cursor: 'pointer' }}
-                >
-                  <Plus size={12} /> Crear primera encuesta
-                </button>
-              }
-            />
-          </Card>
+        {loading && (
+          <div className="px-5 py-4 text-[12px]" style={{ borderTop: '1px solid #F0EDF9', color: '#9B8FB5' }}>
+            Cargando...
+          </div>
         )}
-
-        {/* Active surveys */}
-        {activeSurveys.map(s => (
-          <SurveyCard
-            key={s.id} survey={s} token={token} agents={agents}
-            onToggle={handleToggle} onDelete={handleDelete}
-          />
-        ))}
-
-        {/* Inactive surveys — collapsible */}
-        {inactiveSurveys.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setShowInactive(v => !v)}
-              className="flex items-center gap-2 text-xs transition-opacity hover:opacity-70"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)', padding: 0 }}
-            >
-              {showInactive ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              Inactivas ({inactiveSurveys.length})
-            </button>
-            {showInactive && inactiveSurveys.map(s => (
-              <SurveyCard
-                key={s.id} survey={s} token={token} agents={agents}
-                onToggle={handleToggle} onDelete={handleDelete}
-              />
-            ))}
+        {loadError && (
+          <div className="px-5 py-4 text-[12px]" style={{ borderTop: '1px solid #F0EDF9', color: '#ef4444' }}>
+            No se pudieron cargar las encuestas.
           </div>
         )}
 
+        {!loading && surveys.length === 0 && (
+          <PortalEmptyState
+            icon={BarChart2}
+            title="Aún no hay encuestas"
+            description={`Crea una y actívala para que ${employeeName} la aplique en cada llamada.`}
+            action={
+              <button
+                onClick={() => setShowWizard(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
+              >
+                <Plus size={12} /> Crear primera encuesta
+              </button>
+            }
+          />
+        )}
+
+        {!loading && activeSurveys.length > 0 && (
+          <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+            {activeSurveys.map((s, idx) => (
+              <div key={s.id}
+                style={{ borderBottom: idx === activeSurveys.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                <SurveyCard
+                  survey={s} token={token} agents={agents}
+                  onToggle={handleToggle} onDelete={handleDelete}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Inactive surveys surface */}
+      {inactiveSurveys.length > 0 && (
+        <div className="flex flex-col rounded-2xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E8E3F5',
+            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+          }}>
+          <button
+            onClick={() => setShowInactive(v => !v)}
+            className="w-full flex items-start justify-between gap-3 px-5 pt-5 pb-4 text-left"
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                  Inactivas
+                </h2>
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                  {inactiveSurveys.length}
+                </span>
+              </div>
+              <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                Encuestas pausadas. Reactívalas cuando quieras volver a aplicarlas.
+              </p>
+            </div>
+            <div className="flex items-center shrink-0 mt-1" style={{ color: '#9B8FB5' }}>
+              {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </button>
+
+          {showInactive && (
+            <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+              {inactiveSurveys.map((s, idx) => (
+                <div key={s.id}
+                  style={{ borderBottom: idx === inactiveSurveys.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                  <SurveyCard
+                    survey={s} token={token} agents={agents}
+                    onToggle={handleToggle} onDelete={handleDelete}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
