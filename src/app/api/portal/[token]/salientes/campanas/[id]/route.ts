@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
+import { getAgentAccess } from '@/lib/portal/agent-access';
 import { computeNextRunAt } from '@/lib/voice/campaign-scheduler';
 import type { ScheduleType } from '@/lib/voice/campaign-scheduler';
 import { triggerOutboundCall } from '@/lib/vapi/outbound';
@@ -10,24 +11,33 @@ import type { VoiceAgent } from '@/types/agent';
 
 interface Params { params: Promise<{ token: string; id: string }> }
 
-async function getAgentAndCampaign(token: string, portalEmail: string, campaignId: string) {
-  const supabase = createAdminClient();
-  const { data: agent } = await supabase
-    .from('voice_agents')
-    .select('id, timezone, vapi_agent_id, phone_number, active, outbound_calls, features')
-    .eq('portal_token', token)
-    .eq('portal_email', portalEmail)
-    .single();
-  if (!agent) return { agent: null, campaign: null };
+/**
+ * Resuelve la campaña dentro del scope del portal (access.ids) y devuelve
+ * también el empleado dueño (el que la ejecutará). Antes usábamos el
+ * portal_token para pinnear la campaña a un solo agente; ahora las
+ * campañas pueden pertenecer a cualquier peer del portal_email.
+ */
+async function getAgentAndCampaign(req: NextRequest, token: string, portalEmail: string, campaignId: string) {
+  const access = await getAgentAccess(token, req);
+  if (!access) return { agent: null, campaign: null };
+  if (portalEmail && access.portalEmail !== portalEmail) return { agent: null, campaign: null };
 
+  const supabase = createAdminClient();
   const { data: campaign } = await supabase
     .from('outbound_campaigns')
     .select('*')
     .eq('id', campaignId)
-    .eq('agent_id', agent.id)
+    .in('agent_id', access.ids)
+    .single();
+  if (!campaign) return { agent: null, campaign: null };
+
+  const { data: agent } = await supabase
+    .from('voice_agents')
+    .select('id, timezone, vapi_agent_id, phone_number, active, outbound_calls, features')
+    .eq('id', campaign.agent_id)
     .single();
 
-  return { agent, campaign };
+  return { agent, campaign, access };
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -36,21 +46,39 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token, id } = await params;
-  const { agent, campaign } = await getAgentAndCampaign(token, session.portalEmail, id);
+  const { agent, campaign, access } = await getAgentAndCampaign(req, token, session.portalEmail, id);
   if (!agent || !campaign) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
 
   const body  = await req.json();
   const patch: Record<string, unknown> = {};
 
-  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','tag_filter','status','capability'] as const;
+  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','tag_filter','status','capability','agent_id'] as const;
   for (const f of fields) {
     if (f in body) patch[f] = body[f];
   }
 
-  // Gate: si cambian capability o activan una campaña, revalidar
-  if ('capability' in patch || patch.status === 'active') {
+  // Si cambia agent_id, valida que esté en scope y regatea contra el nuevo agente.
+  let gateAgent = agent;
+  if ('agent_id' in patch) {
+    const newId = patch.agent_id as string;
+    if (!access?.ids.includes(newId)) {
+      return NextResponse.json({ error: 'Empleado no válido para este portal.' }, { status: 403 });
+    }
+    if (newId !== campaign.agent_id) {
+      const supabaseC = createAdminClient();
+      const { data: newAgent } = await supabaseC
+        .from('voice_agents')
+        .select('id, timezone, vapi_agent_id, phone_number, active, outbound_calls, features')
+        .eq('id', newId).single();
+      if (!newAgent) return NextResponse.json({ error: 'Empleado no encontrado.' }, { status: 404 });
+      gateAgent = newAgent;
+    }
+  }
+
+  // Gate: si cambian capability/agent_id o activan una campaña, revalidar
+  if ('capability' in patch || 'agent_id' in patch || patch.status === 'active') {
     const cap = (patch.capability ?? campaign.capability ?? 'custom') as string;
-    const gate = canRunOutboundCampaign(agent as any, cap);
+    const gate = canRunOutboundCampaign(gateAgent as any, cap);
     if (!gate.ok) {
       return NextResponse.json({ error: gate.reason ?? 'Campaña no permitida' }, { status: 403 });
     }
@@ -61,8 +89,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const schedTime = (patch.run_at_time  ?? campaign.run_at_time)  as string;
   const schedDays = (patch.run_on_days  ?? campaign.run_on_days)  as number[];
 
-  if ('schedule_type' in patch || 'run_at_time' in patch || 'run_on_days' in patch) {
-    const tz = agent.timezone ?? 'America/Monterrey';
+  if ('schedule_type' in patch || 'run_at_time' in patch || 'run_on_days' in patch || 'agent_id' in patch) {
+    const tz = (gateAgent as any).timezone ?? 'America/Monterrey';
     const next = computeNextRunAt(tz, schedTime, schedType, schedDays);
     patch.next_run_at = next?.toISOString() ?? null;
   }
@@ -85,7 +113,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token, id } = await params;
-  const { agent, campaign } = await getAgentAndCampaign(token, session.portalEmail, id);
+  const { agent, campaign } = await getAgentAndCampaign(req, token, session.portalEmail, id);
   if (!agent || !campaign) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
 
   const supabase = createAdminClient();
@@ -105,7 +133,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token, id } = await params;
-  const { agent, campaign } = await getAgentAndCampaign(token, session.portalEmail, id);
+  const { agent, campaign } = await getAgentAndCampaign(req, token, session.portalEmail, id);
   if (!agent || !campaign) return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
   if (!agent.vapi_agent_id) return NextResponse.json({ error: 'El agente no está sincronizado con Vapi' }, { status: 400 });
 

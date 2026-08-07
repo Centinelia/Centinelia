@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Phone, Plus, Upload, Trash2, Loader2, Check, X, PhoneCall, RefreshCw,
@@ -12,6 +12,23 @@ import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
 import ContactTags from './oficina/ContactTags';
 import OficinaModal from './oficina/OficinaModal';
+import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
+import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
+
+/**
+ * Devuelve las capabilities que un agente puede ejecutar.
+ * Prioridad: features.outbound_capabilities (override explícito) > meerkat default.
+ * 'custom' siempre es válido si tiene outbound_calls.
+ */
+function agentCapabilities(a: Agent): string[] {
+  if (Array.isArray(a.features?.outbound_capabilities)) return a.features!.outbound_capabilities!;
+  const mid = a.meerkat_role_id ?? a.features?.meerkat_role_id ?? null;
+  if (mid) {
+    const meerkat = (MEERKAT_MAP as Record<string, { features?: { outbound_capabilities?: string[] } }>)[mid];
+    return meerkat?.features?.outbound_capabilities ?? [];
+  }
+  return [];
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +49,12 @@ interface Agent {
   id:            string;
   agent_name:    string | null;
   business_name: string;
+  features?: {
+    outbound_capabilities?: string[];
+    meerkat_role_id?: string;
+    outbound_calls?: boolean;
+  } | null;
+  meerkat_role_id?: string | null;
 }
 
 type ScheduleType   = 'once' | 'daily' | 'weekly';
@@ -39,6 +62,8 @@ type SourceFilter   = 'all' | 'llamada_entrante' | 'csv' | 'manual';
 
 interface Campaign {
   id:             string;
+  agent_id:       string;
+  capability?:    string | null;
   nombre:         string;
   instrucciones:  string | null;
   motivo:         string | null;
@@ -409,7 +434,9 @@ interface CampaignFormProps {
   onCancel:    () => void;
 }
 
-function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignFormProps & { contacts?: Contact[] }) {
+function CampaignForm({
+  token, initial, contacts, outboundAgents, onSaved, onCancel,
+}: CampaignFormProps & { contacts?: Contact[]; outboundAgents: Agent[] }) {
   const [nombre,        setNombre]        = useState(initial?.nombre        ?? '');
   const [motivo,        setMotivo]        = useState(initial?.motivo        ?? '');
   const [instrucciones, setInstrucciones] = useState(initial?.instrucciones ?? '');
@@ -417,13 +444,30 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
   const [runAtTime,     setRunAtTime]     = useState(initial?.run_at_time   ?? '09:00');
   const [runAtDate,     setRunAtDate]     = useState(initial?.run_at_date   ?? '');
   const [runOnDays,     setRunOnDays]     = useState<number[]>(initial?.run_on_days ?? [1]);
-  // contactFilter por source (llamada_entrante/csv/manual) fue obsoletado:
-  // tags reemplazan la segmentación. Preservamos el valor de campañas viejas
-  // si el modelo lo trae, para no perder filtro al editar.
+
+  // Capability + empleado asignado (nuevo — antes no se seleccionaban)
+  const [capability,      setCapability]      = useState<string>(initial?.capability ?? 'custom');
+  const [assignedAgentId, setAssignedAgentId] = useState<string>(initial?.agent_id ?? outboundAgents[0]?.id ?? '');
+
   const legacyContactFilter = initial?.contact_filter?.[0] ?? null;
   const [tagFilter, setTagFilter] = useState<string[]>(initial?.tag_filter ?? []);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
+
+  // Empleados elegibles según la capability elegida.
+  // 'custom' → cualquier empleado con outbound_calls activo.
+  // catálogo → filtra por agentCapabilities().
+  const eligibleAgents = useMemo(() => {
+    if (capability === 'custom') return outboundAgents;
+    return outboundAgents.filter(a => agentCapabilities(a).includes(capability));
+  }, [capability, outboundAgents]);
+
+  // Si el empleado asignado deja de ser elegible al cambiar capability, elige el primero.
+  useEffect(() => {
+    if (!eligibleAgents.find(a => a.id === assignedAgentId) && eligibleAgents.length > 0) {
+      setAssignedAgentId(eligibleAgents[0].id);
+    }
+  }, [eligibleAgents, assignedAgentId]);
 
   // Tags disponibles (extraídos de contactos) + preview de cuántos matchean
   const allTags = useMemo(() => {
@@ -451,9 +495,12 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); return; }
+    if (!assignedAgentId) { setError('Selecciona el empleado que ejecutará la campaña.'); return; }
     if (scheduleType === 'weekly' && runOnDays.length === 0) { setError('Selecciona al menos un día.'); return; }
 
     const payload = {
+      agent_id:       assignedAgentId,
+      capability:     capability,
       nombre:         nombre.trim(),
       motivo:         motivo.trim() || null,
       instrucciones:  instrucciones.trim() || null,
@@ -504,7 +551,7 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
           <OficinaModal.PrimaryAction
             onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
             loading={saving}
-            disabled={!nombre.trim()}
+            disabled={!nombre.trim() || !assignedAgentId}
           >
             {initial ? 'Guardar cambios' : 'Crear campaña'}
           </OficinaModal.PrimaryAction>
@@ -512,6 +559,77 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
       }
     >
       <div className="flex flex-col gap-5">
+
+        {/* Tipo de campaña — chip grid + escape 'Otra personalizada' */}
+        <OficinaModal.Field
+          label="Tipo de campaña"
+          hint="filtra los empleados que pueden ejecutarla"
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {OUTBOUND_CAPABILITIES.map(cap => {
+              const active = capability === cap.id;
+              return (
+                <button
+                  key={cap.id}
+                  type="button"
+                  onClick={() => setCapability(cap.id)}
+                  title={cap.description}
+                  className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
+                  style={{
+                    background: active ? '#6C3BFF' : '#ffffff',
+                    color:      active ? '#ffffff' : '#6B6480',
+                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                  }}
+                >
+                  {cap.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setCapability('custom')}
+              className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
+              style={{
+                background: capability === 'custom' ? '#1A0A3B' : '#ffffff',
+                color:      capability === 'custom' ? '#ffffff' : '#6B6480',
+                border:     capability === 'custom' ? '1px solid #1A0A3B' : '1px solid #E8E3F5',
+              }}
+            >
+              Otra personalizada
+            </button>
+          </div>
+        </OficinaModal.Field>
+
+        {/* Empleado asignado — filtrado por capability */}
+        <OficinaModal.Field
+          label="Empleado que la ejecuta"
+          hint={
+            eligibleAgents.length === 0
+              ? 'ningún empleado puede este tipo de campaña — cambia el tipo o activa la capability en el empleado'
+              : `${eligibleAgents.length} empleado${eligibleAgents.length !== 1 ? 's' : ''} elegible${eligibleAgents.length !== 1 ? 's' : ''}`
+          }
+        >
+          {eligibleAgents.length === 0 ? (
+            <p className="text-[12px] px-3 py-2 rounded-lg"
+              style={{ color: '#EF4444', background: '#FEF2F2', border: '1px solid #FECACA' }}>
+              Ninguno de tus empleados con llamadas salientes puede ejecutar campañas de este tipo.
+            </p>
+          ) : (
+            <Select value={assignedAgentId} onValueChange={setAssignedAgentId}>
+              <SelectTrigger className="w-full rounded-lg text-[13px]"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                <SelectValue placeholder="Selecciona un empleado…" />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibleAgents.map(a => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.agent_name ?? a.business_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </OficinaModal.Field>
 
         {/* Nombre */}
         <OficinaModal.Field label="Nombre" hint="requerido">
@@ -1441,6 +1559,7 @@ export default function OutboundSection({
               token={token}
               initial={null}
               contacts={contacts}
+              outboundAgents={agents}
               onSaved={handleCampaignSaved}
               onCancel={() => setShowCampForm(false)}
             />
@@ -1450,6 +1569,7 @@ export default function OutboundSection({
               token={token}
               initial={editCampaign}
               contacts={contacts}
+              outboundAgents={agents}
               onSaved={handleCampaignSaved}
               onCancel={() => setEditCampaign(null)}
             />
@@ -1592,6 +1712,33 @@ export default function OutboundSection({
                         </button>
                       </div>
                     )}
+                  </div>
+
+                  {/* Empleado asignado + capability + schedule */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    {(() => {
+                      const a = agents.find(x => x.id === c.agent_id);
+                      const empName = a ? (a.agent_name ?? a.business_name) : null;
+                      const capLabel = c.capability && c.capability !== 'custom'
+                        ? OUTBOUND_CAPABILITIES.find(cap => cap.id === c.capability)?.label
+                        : null;
+                      return (
+                        <>
+                          {empName && (
+                            <span className="flex items-center gap-1" style={{ color: '#6C3BFF' }}>
+                              <span style={{ color: '#9B8FB5' }}>Ejecuta:</span>
+                              <strong>{empName}</strong>
+                            </span>
+                          )}
+                          {capLabel && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                              style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
+                              {capLabel}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Schedule description */}

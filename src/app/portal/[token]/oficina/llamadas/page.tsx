@@ -111,7 +111,13 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
 
   const outboundAgents = allPeers
     .filter(a => !!((a.features as any)?.outbound_calls))
-    .map(a => ({ id: a.id, agent_name: (a as any).agent_name ?? null, business_name: a.business_name }));
+    .map(a => ({
+      id:              a.id,
+      agent_name:      (a as any).agent_name ?? null,
+      business_name:   a.business_name,
+      features:        (a.features as any) ?? null,
+      meerkat_role_id: (a as any).meerkat_role_id ?? (a.features as any)?.meerkat_role_id ?? null,
+    }));
 
   // ── Counters para el hero (server-side) ────────────────────────────────
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);

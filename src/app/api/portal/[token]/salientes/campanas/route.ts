@@ -46,17 +46,41 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { token } = await params;
-  const agent = await getAgent(token, session.portalEmail);
-  if (!agent) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  const access = await getAgentAccess(token, req);
+  if (!access) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  if (session.portalEmail && access.portalEmail !== session.portalEmail)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const body = await req.json();
   const {
+    agent_id,
     nombre, instrucciones, motivo,
     schedule_type, run_at_time, run_on_days, run_at_date,
     contact_filter,
     tag_filter,
     capability,
   } = body;
+
+  // Resuelve empleado asignado: viene del body (multi-agent) o fallback al
+  // agente primario del portal (retrocompat con clientes viejos).
+  const supabaseA = createAdminClient();
+  const chosenAgentId =
+    typeof agent_id === 'string' && access.ids.includes(agent_id)
+      ? agent_id
+      : null;
+  const fallback = chosenAgentId
+    ? null
+    : await getAgent(token, session.portalEmail);
+  if (!chosenAgentId && !fallback) {
+    return NextResponse.json({ error: 'No se pudo determinar el empleado que ejecutará la campaña.' }, { status: 400 });
+  }
+  const agent = chosenAgentId
+    ? (await supabaseA.from('voice_agents')
+        .select('id, timezone, outbound_calls, features')
+        .eq('id', chosenAgentId)
+        .single()).data
+    : fallback;
+  if (!agent) return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
 
   // Sanitiza tag_filter: array de strings, trim + lowercase + dedup, cap 10
   const cleanTagFilter = Array.isArray(tag_filter)
@@ -83,8 +107,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const tz = agent.timezone ?? 'America/Monterrey';
   const next = computeNextRunAt(tz, run_at_time, schedule_type as ScheduleType, run_on_days ?? []);
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data, error } = await supabaseA
     .from('outbound_campaigns')
     .insert({
       agent_id:       agent.id,
