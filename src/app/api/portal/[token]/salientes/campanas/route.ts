@@ -58,8 +58,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     schedule_type, run_at_time, run_on_days, run_at_date,
     contact_filter,
     tag_filter,
+    contact_ids,
     capability,
   } = body;
+
+  // Sanitiza contact_ids: array de uuids no vacíos, dedupe, cap 500
+  const cleanContactIds = Array.isArray(contact_ids)
+    ? Array.from(new Set(
+        (contact_ids as unknown[])
+          .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      )).slice(0, 500)
+    : [];
 
   // Resuelve empleado asignado: viene del body (multi-agent) o fallback al
   // agente primario del portal (retrocompat con clientes viejos).
@@ -120,6 +129,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       run_at_date:    run_at_date  ?? null,
       contact_filter: contact_filter ?? null,
       tag_filter:     cleanTagFilter,
+      contact_ids:    cleanContactIds,
       capability:     cap,
       status:         'active',
       next_run_at:    next?.toISOString() ?? null,

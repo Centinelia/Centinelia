@@ -52,9 +52,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body  = await req.json();
   const patch: Record<string, unknown> = {};
 
-  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','tag_filter','status','capability','agent_id'] as const;
+  const fields = ['nombre','instrucciones','motivo','schedule_type','run_at_time','run_on_days','run_at_date','contact_filter','tag_filter','contact_ids','status','capability','agent_id'] as const;
   for (const f of fields) {
     if (f in body) patch[f] = body[f];
+  }
+
+  // Sanitiza contact_ids si viene en el patch
+  if (Array.isArray(patch.contact_ids)) {
+    patch.contact_ids = Array.from(new Set(
+      (patch.contact_ids as unknown[])
+        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    )).slice(0, 500);
   }
 
   // Si cambia agent_id, valida que esté en scope y regatea contra el nuevo agente.
@@ -155,18 +163,25 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Campañas llaman a los contactos que matcheen filtros — no se restringe a
   // status='pending'. La selección del tag/source es la que manda.
+  //
+  // Prioridad: contact_ids (selección explícita) > tag_filter > todos los
+  // contactos del agente.
   let contactsQuery = supabase
     .from('outbound_contacts')
     .select('id, nombre, telefono, motivo, tags')
     .eq('agent_id', agent.id);
 
-  if (campaign.contact_filter?.length) {
-    contactsQuery = contactsQuery.in('source', campaign.contact_filter);
-  }
-
-  const campTagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
-  if (campTagFilter.length > 0) {
-    contactsQuery = contactsQuery.contains('tags', campTagFilter);
+  const campContactIds = ((campaign as any).contact_ids as string[] | null) ?? [];
+  if (campContactIds.length > 0) {
+    contactsQuery = contactsQuery.in('id', campContactIds);
+  } else {
+    if (campaign.contact_filter?.length) {
+      contactsQuery = contactsQuery.in('source', campaign.contact_filter);
+    }
+    const campTagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
+    if (campTagFilter.length > 0) {
+      contactsQuery = contactsQuery.contains('tags', campTagFilter);
+    }
   }
 
   const { data: contacts } = await contactsQuery.limit(100);

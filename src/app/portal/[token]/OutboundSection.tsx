@@ -74,6 +74,7 @@ interface Campaign {
   run_at_date:    string | null;
   contact_filter: string[] | null;
   tag_filter:     string[];
+  contact_ids?:   string[] | null;
   status:         'active' | 'paused' | 'completed';
   last_run_at:    string | null;
   next_run_at:    string | null;
@@ -452,6 +453,12 @@ function CampaignForm({
 
   const legacyContactFilter = initial?.contact_filter?.[0] ?? null;
   const [tagFilter, setTagFilter] = useState<string[]>(initial?.tag_filter ?? []);
+  // Selección explícita de contactos. Al editar campaña vieja con tag_filter
+  // y sin contact_ids, arranca vacío (la campaña sigue usando tag_filter en backend).
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
+    new Set(initial?.contact_ids ?? [])
+  );
+  const [contactPickerSearch, setContactPickerSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
 
@@ -477,17 +484,44 @@ function CampaignForm({
     return Array.from(bag).sort();
   }, [contacts]);
 
-  // Cuenta TODOS los contactos que matchean los filtros — no filtramos por
-  // status='pending' porque las campañas llaman a lo que matchea sin importar
-  // si un contacto ya fue llamado antes.
-  const previewCount = useMemo(() => {
-    if (!contacts?.length) return 0;
+  // Vista filtrada del picker (por search y tag chips) — sólo afecta lo que
+  // se ve, la selección real vive en selectedContactIds.
+  const visiblePickerContacts = useMemo(() => {
+    if (!contacts?.length) return [];
+    const q = contactPickerSearch.trim().toLowerCase();
     return contacts.filter(c => {
       if (legacyContactFilter && c.source !== legacyContactFilter) return false;
       if (tagFilter.length && !tagFilter.every(t => (c.tags ?? []).includes(t))) return false;
+      if (q) {
+        const hay =
+          (c.nombre ?? '').toLowerCase().includes(q) ||
+          c.telefono.toLowerCase().includes(q) ||
+          (c.email ?? '').toLowerCase().includes(q);
+        if (!hay) return false;
+      }
       return true;
-    }).length;
-  }, [contacts, legacyContactFilter, tagFilter]);
+    });
+  }, [contacts, legacyContactFilter, tagFilter, contactPickerSearch]);
+
+  const previewCount = selectedContactIds.size;
+
+  const toggleContactPick = (id: string) => {
+    setSelectedContactIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const toggleAllVisible = () => {
+    const visibleIds = visiblePickerContacts.map(c => c.id);
+    const allChecked = visibleIds.length > 0 && visibleIds.every(id => selectedContactIds.has(id));
+    setSelectedContactIds(prev => {
+      const next = new Set(prev);
+      if (allChecked) visibleIds.forEach(id => next.delete(id));
+      else visibleIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
 
   // Dropdown state for capability picker
   const [capOpen, setCapOpen] = useState(false);
@@ -523,6 +557,7 @@ function CampaignForm({
     e.preventDefault();
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); return; }
     if (!assignedAgentId) { setError('Selecciona el empleado que ejecutará la campaña.'); return; }
+    if (selectedContactIds.size === 0) { setError('Selecciona al menos un contacto.'); return; }
     if (scheduleType === 'weekly' && runOnDays.length === 0) { setError('Selecciona al menos un día.'); return; }
 
     const payload = {
@@ -537,6 +572,7 @@ function CampaignForm({
       run_on_days:    scheduleType === 'weekly' ? runOnDays           : [],
       contact_filter: legacyContactFilter ? [legacyContactFilter] : null,
       tag_filter:     tagFilter,
+      contact_ids:    [...selectedContactIds],
     };
 
     setSaving(true);
@@ -578,7 +614,7 @@ function CampaignForm({
           <OficinaModal.PrimaryAction
             onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
             loading={saving}
-            disabled={!nombre.trim() || !assignedAgentId}
+            disabled={!nombre.trim() || !assignedAgentId || selectedContactIds.size === 0}
           >
             {initial ? 'Guardar cambios' : 'Crear campaña'}
           </OficinaModal.PrimaryAction>
@@ -737,42 +773,139 @@ function CampaignForm({
             style={{ ...inputSty, resize: 'none', lineHeight: 1.55 }} />
         </OficinaModal.Field>
 
-        {/* ── Segmentación ────────────────────────────────────────────── */}
+        {/* ── A quién llamar — picker con checkboxes ─────────────────── */}
         <OficinaModal.Field
           label="A quién llamar"
-          hint={tagFilter.length > 0 ? 'contactos que tengan TODOS los tags' : 'todos los contactos pendientes'}
+          hint={`${previewCount} seleccionado${previewCount !== 1 ? 's' : ''}`}
         >
-          {allTags.length === 0 ? (
+          {!contacts?.length ? (
             <p className="text-[12px] px-3 py-2 rounded-lg"
               style={{ color: '#6B6480', background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
-              No hay tags aún en tus contactos. Sin filtro, la campaña llamará a todos los pendientes. Agrega tags para segmentar.
+              Aún no tienes contactos. Agrega uno o sube un CSV desde la lista de contactos.
             </p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {allTags.map(t => {
-                const active = tagFilter.includes(t);
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => toggleTag(t)}
-                    className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
-                    style={{
-                      background: active ? '#6C3BFF' : '#ffffff',
-                      color:      active ? '#ffffff' : '#6B6480',
-                      border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
-                    }}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-2">
+              {/* Search + tag chips como filtros del picker */}
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: '#9B8FB5' }} />
+                <input
+                  type="text"
+                  value={contactPickerSearch}
+                  onChange={e => setContactPickerSearch(e.target.value)}
+                  placeholder="Buscar por nombre, teléfono o correo…"
+                  className="w-full pl-9 pr-3 py-2 rounded-lg text-[13px] outline-none"
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+                />
+              </div>
+
+              {allTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest self-center"
+                    style={{ color: '#9B8FB5' }}>Filtrar por tag:</span>
+                  {allTags.map(t => {
+                    const active = tagFilter.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => toggleTag(t)}
+                        className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                        style={{
+                          background: active ? '#6C3BFF' : '#ffffff',
+                          color:      active ? '#ffffff' : '#6B6480',
+                          border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                        }}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                  {tagFilter.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTagFilter([])}
+                      className="text-[11px] px-2 py-1 rounded-full transition-opacity hover:opacity-70"
+                      style={{ color: '#9B8FB5' }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Lista de contactos con checkboxes (scrollable) */}
+              <div className="rounded-lg overflow-hidden"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+                {/* Header: seleccionar todos los visibles */}
+                <label className="flex items-center gap-2 px-3 py-2 cursor-pointer text-[11px] font-medium sticky top-0"
+                  style={{ background: '#FAFAFB', borderBottom: '1px solid #F0EDF9', color: '#6B6480' }}>
+                  <input
+                    type="checkbox"
+                    checked={visiblePickerContacts.length > 0 &&
+                      visiblePickerContacts.every(c => selectedContactIds.has(c.id))}
+                    onChange={toggleAllVisible}
+                    disabled={visiblePickerContacts.length === 0}
+                    style={{ accentColor: '#6C3BFF' }} />
+                  Seleccionar todos los visibles ({visiblePickerContacts.length})
+                </label>
+
+                {visiblePickerContacts.length === 0 ? (
+                  <p className="text-[12px] text-center py-6" style={{ color: '#9B8FB5' }}>
+                    Sin resultados con estos filtros
+                  </p>
+                ) : (
+                  <div className="max-h-[240px] overflow-y-auto">
+                    {visiblePickerContacts.map((c, idx) => {
+                      const checked = selectedContactIds.has(c.id);
+                      return (
+                        <label
+                          key={c.id}
+                          className="flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors hover:bg-[#FAFAFB]"
+                          style={{
+                            background: checked ? 'rgba(108,59,255,0.04)' : 'transparent',
+                            borderBottom: idx === visiblePickerContacts.length - 1 ? 'none' : '1px solid #F5F2FB',
+                          }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleContactPick(c.id)}
+                            style={{ accentColor: '#6C3BFF' }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[12px] font-semibold truncate" style={{ color: '#1A0A3B' }}>
+                                {c.nombre ?? c.telefono}
+                              </span>
+                              {c.nombre && (
+                                <span className="text-[10px] tabular-nums" style={{ color: '#9B8FB5' }}>
+                                  {c.telefono}
+                                </span>
+                              )}
+                            </div>
+                            {(c.tags ?? []).length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {(c.tags ?? []).slice(0, 4).map(t => (
+                                  <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full"
+                                    style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {previewCount === 0 && (
+                <p className="text-[11px]" style={{ color: '#EF4444' }}>
+                  Selecciona al menos un contacto para continuar.
+                </p>
+              )}
             </div>
-          )}
-          {contacts && contacts.length > 0 && (
-            <p className="text-[12px] mt-1" style={{ color: previewCount === 0 ? '#EF4444' : '#6B6480' }}>
-              <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto' : 'contactos'} con estos filtros
-            </p>
           )}
         </OficinaModal.Field>
 

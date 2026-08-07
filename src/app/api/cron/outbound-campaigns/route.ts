@@ -72,22 +72,27 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch contacts matching the campaign filters. NO filtramos por
-    // status='pending' — la campaña llama a lo que matchea (tag/source),
-    // el status es informativo del último intento de llamada.
+    // status='pending' — la campaña llama a lo que matchea, el status es
+    // informativo del último intento de llamada.
+    //
+    // Prioridad: contact_ids (selección explícita) > tag_filter > todos los
+    // contactos del agente.
     let q = supabase
       .from('outbound_contacts')
       .select('id, nombre, telefono, motivo, tags')
       .eq('agent_id', campaign.agent_id);
 
-    if (campaign.contact_filter?.length) {
-      q = q.in('source', campaign.contact_filter);
-    }
-
-    // tag_filter: contactos que tengan TODOS los tags requeridos (AND).
-    // Vacío = todos los contactos pasan.
-    const tagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
-    if (tagFilter.length > 0) {
-      q = q.contains('tags', tagFilter);
+    const campContactIds = ((campaign as any).contact_ids as string[] | null) ?? [];
+    if (campContactIds.length > 0) {
+      q = q.in('id', campContactIds);
+    } else {
+      if (campaign.contact_filter?.length) {
+        q = q.in('source', campaign.contact_filter);
+      }
+      const tagFilter = ((campaign as any).tag_filter as string[] | null) ?? [];
+      if (tagFilter.length > 0) {
+        q = q.contains('tags', tagFilter);
+      }
     }
 
     const { data: contacts } = await q.limit(100);
