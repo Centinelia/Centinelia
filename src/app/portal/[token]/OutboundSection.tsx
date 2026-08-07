@@ -673,7 +673,7 @@ function CampaignForm({
                   </p>
                   {suggested.length > 0 ? (
                     <>
-                      <p>Este tipo lo puede hacer — click para contratar:</p>
+                      <p>Este empleado lo puede hacer. Da click para contratarlo:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {suggested.map(([id, m]) => (
                           <MeerkatPicker
