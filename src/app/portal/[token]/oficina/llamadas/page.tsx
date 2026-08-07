@@ -117,18 +117,22 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const weekAgo    = new Date(Date.now() - 7 * 86400000);
 
+  // Fallback graceful: si CUALQUIER count falla (RLS, tabla missing, timeout)
+  // caemos a { count: 0 } en vez de que Promise.all rechace y tumbe la página.
   const [hoyRes, semanaRes, leadsCountRes, outConnectRes] = agentIds.length > 0
     ? await Promise.all([
         supabase.from('voice_calls').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', todayStart.toISOString()),
+          .in('agent_id', agentIds).gte('created_at', todayStart.toISOString())
+          .then(r => r).catch(() => ({ count: 0 })),
         supabase.from('voice_calls').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString()),
+          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
+          .then(r => r).catch(() => ({ count: 0 })),
         supabase.from('leads_voice').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
-,
+          .then(r => r).catch(() => ({ count: 0 })),
         supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
           .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
-,
+          .then(r => r).catch(() => ({ count: 0 })),
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 
