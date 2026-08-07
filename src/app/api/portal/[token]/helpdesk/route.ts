@@ -61,6 +61,12 @@ export async function POST(
   const body = await req.json() as {
     titulo: string; categoria?: string; prioridad?: string;
     descripcion?: string; asignado_a?: string; asignado_tel?: string; caller_number?: string;
+    /** Si true, crea un it_incidents linkeado y lo anuncia en llamadas. */
+    anunciar_en_llamadas?: boolean;
+    /** Mensaje que dice el empleado al inicio de la llamada. Requerido si anunciar_en_llamadas=true. */
+    mensaje_voz?: string;
+    /** Keywords para detectar cuando el caller pregunta por el tema. Opcional. */
+    incident_keywords?: string[];
   };
   if (!body.titulo) return NextResponse.json({ error: 'Título requerido' }, { status: 400 });
 
@@ -71,6 +77,27 @@ export async function POST(
   const createdBy = session.isSubUser
     ? (session.portalEmail ?? 'sub_user')
     : 'owner';
+
+  // Si el usuario pidió anunciar en llamadas, crea el it_incident PRIMERO
+  // y linkea el ticket. Al resolver el ticket auto-cerramos el incident (ver PATCH).
+  let incidentId: string | null = null;
+  if (body.anunciar_en_llamadas && body.mensaje_voz?.trim()) {
+    const { data: incRow, error: incErr } = await supabase
+      .from('it_incidents')
+      .insert({
+        agent_id:    access.primaryId,
+        titulo:      body.titulo,
+        descripcion: body.descripcion ?? '',
+        mensaje_voz: body.mensaje_voz.trim(),
+        keywords:    body.incident_keywords ?? [],
+        activo:      true,
+      })
+      .select('id')
+      .single();
+    if (incErr) return NextResponse.json({ error: `Incident: ${incErr.message}` }, { status: 500 });
+    incidentId = (incRow as { id: string }).id;
+  }
+
   const { data, error } = await supabase
     .from('helpdesk_tickets')
     .insert({
@@ -84,6 +111,7 @@ export async function POST(
       asignado_tel:  body.asignado_tel ?? null,
       caller_number: body.caller_number ?? null,
       created_by:    createdBy,
+      incident_id:   incidentId,
     })
     .select()
     .single();

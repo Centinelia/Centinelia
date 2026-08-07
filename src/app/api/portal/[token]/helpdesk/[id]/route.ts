@@ -33,6 +33,19 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Al resolver/cerrar un ticket con anuncio linkeado, apagamos el aviso
+  // global. Cuando se reabre, lo re-activamos (para que Nia vuelva a
+  // anunciarlo si el problema volvió).
+  try {
+    if (data?.incident_id && (update.status === 'resuelto' || update.status === 'cerrado')) {
+      await supabase.from('it_incidents').update({ activo: false }).eq('id', data.incident_id as string);
+    } else if (data?.incident_id && update.status === 'abierto') {
+      await supabase.from('it_incidents').update({ activo: true }).eq('id', data.incident_id as string);
+    }
+  } catch {
+    // silent — el ticket ya se guardó, el aviso se puede sincronizar a mano
+  }
+
   if (update.status === 'resuelto' && data?.caller_number && data?.agent_id) {
     schedulePostTicketSurvey(
       data.agent_id as string,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy, Phone, User, RotateCcw } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy, Phone, User, RotateCcw, Megaphone } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -23,6 +23,7 @@ export interface Ticket {
   descripcion: string | null; resolucion: string | null;
   caller_number: string | null; created_at: string;
   created_by: string | null;
+  incident_id: string | null;
 }
 
 const CAT_COLOR: Record<string, string> = {
@@ -107,11 +108,15 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
   const [showAdd, setShowAdd]   = useState(false);
   const [saving, setSaving]     = useState(false);
 
-  const [newTitulo, setNewTitulo] = useState('');
-  const [newCat,    setNewCat]    = useState('otro');
-  const [newPri,    setNewPri]    = useState('normal');
-  const [newDesc,   setNewDesc]   = useState('');
-  const [newAsig,   setNewAsig]   = useState('');
+  const [newTitulo,   setNewTitulo]   = useState('');
+  const [newCat,      setNewCat]      = useState('otro');
+  const [newPri,      setNewPri]      = useState('normal');
+  const [newDesc,     setNewDesc]     = useState('');
+  const [newAsig,     setNewAsig]     = useState('');
+  // Anuncio en llamadas (crea it_incidents linkeado al ticket)
+  const [newAnuncio,  setNewAnuncio]  = useState(false);
+  const [newVoz,      setNewVoz]      = useState('');
+  const [newKw,       setNewKw]       = useState('');
 
   // Cargamos todos los tickets una sola vez; los filtros se aplican en cliente
   // para que cambiar de tab no dispare refetch. Sub-user sí filtra en backend
@@ -147,6 +152,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
 
   const handleAdd = async () => {
     if (!newTitulo.trim()) return;
+    if (newAnuncio && !newVoz.trim()) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/portal/${token}/helpdesk`, {
@@ -154,12 +160,17 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
         body: JSON.stringify({
           titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc,
           asignado_a: newAsig || subUserName || undefined,
+          anunciar_en_llamadas: newAnuncio,
+          mensaje_voz:          newAnuncio ? newVoz.trim() : undefined,
+          incident_keywords:    newAnuncio ? newKw.split(',').map(k => k.trim()).filter(Boolean) : undefined,
         }),
       });
       if (res.ok) {
         const d = await res.json();
         setTickets(t => [d.ticket, ...t]);
-        setShowAdd(false); setNewTitulo(''); setNewDesc(''); setNewAsig('');
+        setShowAdd(false);
+        setNewTitulo(''); setNewDesc(''); setNewAsig('');
+        setNewAnuncio(false); setNewVoz(''); setNewKw('');
       }
     } finally {
       setSaving(false);
@@ -311,8 +322,51 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
               placeholder="Asignar a (opcional)"
               className="w-full px-3 py-2 rounded-lg text-[12px]"
               style={inputStyle} />
+
+            {/* Anuncio en llamadas — crea un it_incident linkeado al ticket */}
+            <div className="rounded-lg px-3 py-2.5"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={newAnuncio}
+                  onChange={e => setNewAnuncio(e.target.checked)}
+                  className="mt-0.5 flex-shrink-0"
+                  style={{ accentColor: '#6C3BFF' }} />
+                <div className="flex-1">
+                  <p className="text-[12px] font-medium flex items-center gap-1.5" style={{ color: '#1A0A3B' }}>
+                    <Megaphone size={12} style={{ color: '#6C3BFF' }} />
+                    También avisar a todos los que llamen
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>
+                    El empleado anuncia esto al inicio de cada llamada para evitar que otros reporten lo mismo. Se apaga automáticamente al resolver la solicitud.
+                  </p>
+                </div>
+              </label>
+
+              {newAnuncio && (
+                <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid #F0EDF9' }}>
+                  <div>
+                    <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Mensaje que dice el empleado</label>
+                    <textarea value={newVoz} onChange={e => setNewVoz(e.target.value)} rows={2}
+                      placeholder="Ej: Hola, quiero avisarte que no hay internet en la oficina desde las 10am. Ya lo estamos resolviendo, no necesitas abrir un ticket nuevo."
+                      className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
+                      style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Keywords a detectar (opcional)</label>
+                    <input value={newKw} onChange={e => setNewKw(e.target.value)}
+                      placeholder="internet, wifi, conexión"
+                      className="w-full px-3 py-2 rounded-lg text-[12px]"
+                      style={inputStyle} />
+                    <p className="text-[10px] mt-1" style={{ color: '#9B8FB5' }}>
+                      Palabras separadas por coma. Si el caller las menciona, el empleado sabe que ya está enterado del problema.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={saving || !newTitulo.trim()}
+              <button onClick={handleAdd} disabled={saving || !newTitulo.trim() || (newAnuncio && !newVoz.trim())}
                 className="px-4 py-2 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                 {saving ? 'Guardando...' : 'Crear'}
@@ -371,6 +425,13 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                           style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                           {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? ticket.status.replace('_',' ')}
                         </span>
+                        {ticket.incident_id && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                            title="Este ticket también se anuncia a todos los que llamen"
+                            style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.25)' }}>
+                            <Megaphone size={9} /> Anunciado
+                          </span>
+                        )}
                       </div>
                       <p className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>{ticket.titulo}</p>
                       <div className="flex items-center gap-3 flex-wrap mt-0.5">
