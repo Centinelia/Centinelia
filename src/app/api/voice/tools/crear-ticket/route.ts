@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getNextTicketFolio, getCurrentOnCall } from '@/lib/helpdesk/folio';
-import type { GuardiaSchedule, DirectorioContacto } from '@/lib/helpdesk/folio';
+import type { GuardiaSchedule } from '@/lib/helpdesk/folio';
+import { loadOrgDirectory, getHelpdeskExperts } from '@/lib/portal/directory';
 import { sendEmail } from '@/lib/email/send';
 import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { requireVapiAuth } from '@/lib/vapi/auth';
@@ -33,24 +34,36 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('transfer_whatsapp, wa_phone_number, timezone, guardia_schedule, directorio_interno, client_email, portal_token, agent_name')
+    .select('transfer_whatsapp, wa_phone_number, timezone, portal_email, client_email, portal_token, agent_name')
     .eq('id', agentId)
     .single();
 
-  // Auto-assign: check directorio first, then guardia
+  // Directorio + horario de guardia viven en organizations.
+  const { data: org } = agent?.portal_email
+    ? await supabase.from('organizations')
+        .select('directory, guardia_schedule')
+        .eq('portal_email', agent.portal_email)
+        .single()
+    : { data: null };
+
+  const directory = ((org as any)?.directory ?? []) as Awaited<ReturnType<typeof loadOrgDirectory>>;
+  const experts   = getHelpdeskExperts(directory);
+
+  // Auto-assign: match expert por keywords en helpdesk_expertise
   let asignadoA:   string | null = null;
   let asignadoTel: string | null = null;
 
-  const directorio = (agent?.directorio_interno ?? []) as DirectorioContacto[];
-  if (directorio.length > 0) {
+  if (experts.length > 0) {
     const q = `${categoria} ${titulo} ${descripcion ?? ''}`.toLowerCase();
-    const match = directorio.find(c => c.atiende.toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw)));
-    if (match) { asignadoA = match.nombre; asignadoTel = match.telefono || null; }
+    const match = experts.find(p =>
+      (p.helpdesk_expertise ?? '').toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw))
+    );
+    if (match) { asignadoA = match.name; asignadoTel = match.phone || null; }
   }
 
-  // On-call overrides directorio for alta/critica
+  // On-call overrides expert match para alta/critica
   if (prioridad === 'alta' || prioridad === 'critica') {
-    const guardia = (agent?.guardia_schedule as GuardiaSchedule | null)?.areas ?? [];
+    const guardia = ((org as any)?.guardia_schedule as GuardiaSchedule | null)?.areas ?? [];
     const q = `${categoria} ${titulo}`.toLowerCase();
     const area = guardia.find(a => q.includes(a.nombre.toLowerCase().split(' ')[0].toLowerCase())) ?? guardia[0];
     if (area) {
@@ -73,6 +86,7 @@ export async function POST(req: NextRequest) {
     asignado_a:   asignadoA,
     asignado_tel: asignadoTel,
     status:       'abierto',
+    created_by:   'voice',
   });
 
   // WhatsApp notification to assigned tech (if critica/alta) or transfer_whatsapp

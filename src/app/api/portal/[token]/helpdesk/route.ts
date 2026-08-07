@@ -66,6 +66,11 @@ export async function POST(
 
   // Nuevos tickets se crean bajo el agente primario del portal
   const folio = await getNextTicketFolio(access.primaryId, supabase);
+  // Captura quién registra: sub-user usa su portal_email; owner usa "owner"
+  // (para distinguir de sub-users sin exponer el email personal).
+  const createdBy = session.isSubUser
+    ? (session.portalEmail ?? 'sub_user')
+    : 'owner';
   const { data, error } = await supabase
     .from('helpdesk_tickets')
     .insert({
@@ -78,6 +83,7 @@ export async function POST(
       asignado_a:    body.asignado_a   ?? null,
       asignado_tel:  body.asignado_tel ?? null,
       caller_number: body.caller_number ?? null,
+      created_by:    createdBy,
     })
     .select()
     .single();

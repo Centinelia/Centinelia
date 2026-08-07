@@ -490,7 +490,9 @@ export async function POST(req: NextRequest) {
         //       Se detecta por presencia fuzzy del passphrase en el transcript.
         const notifyOutcomes = ['lead_created', 'appointment_booked', 'order_taken', 'transferred', 'info_provided'];
         const normCallerD  = (callerNumber ?? '').replace(/\D/g, '').slice(-10);
-        const teamNumbersD = (agent?.team_numbers ?? []) as Array<{ number: string; is_owner?: boolean; name?: string }>;
+        const { loadOrgDirectory, toTeamNumbers } = await import('@/lib/portal/directory');
+        const directoryD   = await loadOrgDirectory(agent?.portal_email as string | null, supabase);
+        const teamNumbersD = toTeamNumbers(directoryD);
         const normTransferD = (agent?.transfer_number   ?? '').replace(/\D/g, '').slice(-10);
         const normWaD       = (agent?.transfer_whatsapp ?? '').replace(/\D/g, '').slice(-10);
         const callerNumberIsInternal = normCallerD.length >= 7 && (

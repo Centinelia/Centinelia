@@ -162,7 +162,7 @@ export interface VoiceAgent {
   // Calendar integration
   calendar_type?: string | null;
   calendar_api_key?: string | null;
-  // Team numbers (owner bypass + team member identification)
+  /** @deprecated Migrado a organizations.directory (2026-08-07). La columna sigue existiendo por retrocompat pero no debe leerse/escribirse. Ver src/lib/portal/directory.ts. */
   team_numbers?: Array<{ number: string; name?: string; is_owner?: boolean }> | null;
 
   // Heartbeat cron tracking

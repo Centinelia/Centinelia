@@ -1431,8 +1431,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     sections.push(`# Llamadas recientes (últimas 20)\n${lines.join('\n')}`);
   }
 
-  // Team numbers — persistent memory for specific team members, account-wide
-  const teamNumbers = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
+  // Team numbers — persistent memory for specific team members (directorio unificado en organizations.directory)
+  const { loadOrgDirectory, toTeamNumbers } = await import('@/lib/portal/directory');
+  const directory   = await loadOrgDirectory((agent as any).portal_email, supabase);
+  const teamNumbers = toTeamNumbers(directory);
   const teamCtx = await loadTeamCallContext(acctAgentIds, teamNumbers, supabase);
   if (teamCtx) sections.push(teamCtx);
 

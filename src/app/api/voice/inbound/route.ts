@@ -138,9 +138,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Team member identification
+  // Team member identification (directorio unificado en organizations.directory)
   const normCaller   = phoneNumber.replace(/\D/g, '').slice(-10);
-  const teamNumbers  = typedAgent.team_numbers ?? [];
+  const { loadOrgDirectory, toTeamNumbers } = await import('@/lib/portal/directory');
+  const directory    = await loadOrgDirectory(typedAgent.portal_email as string | null, supabase);
+  const teamNumbers  = toTeamNumbers(directory);
   const callerTeamEntry = normCaller.length >= 7
     ? teamNumbers.find(t => t.number.replace(/\D/g, '').slice(-10) === normCaller) ?? null
     : null;

@@ -55,7 +55,20 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
   };
 
   const updateAreaNombre = (areaId: string, nombre: string) => {
-    setSchedule(s => ({ areas: s.areas.map(a => a.id === areaId ? { ...a, nombre } : a) }));
+    setSchedule(s => ({
+      areas: s.areas.map(a =>
+        a.id === areaId
+          ? { ...a, nombre, ...(nombre === 'otro' ? {} : { alias: undefined }) }
+          : a
+      ),
+    }));
+    mark();
+  };
+
+  const updateAreaAlias = (areaId: string, alias: string) => {
+    setSchedule(s => ({
+      areas: s.areas.map(a => a.id === areaId ? { ...a, alias } : a),
+    }));
     mark();
   };
 
@@ -171,6 +184,9 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
                         <SelectContent>
                           {AREA_OPTIONS
                             .filter(opt =>
+                              // "Otro" siempre disponible (permite múltiples con alias distintos).
+                              // Los demás solo si no se han usado ya.
+                              opt.value === 'otro' ||
                               opt.value === area.nombre ||
                               !schedule.areas.some(a => a.id !== area.id && a.nombre === opt.value)
                             )
@@ -190,6 +206,13 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
                       <Trash2 size={13} />
                     </button>
                   </div>
+
+                  {area.nombre === 'otro' && (
+                    <input value={area.alias ?? ''} onChange={e => updateAreaAlias(area.id, e.target.value)}
+                      placeholder="Nombre descriptivo (ej: Impresoras, Aire acondicionado)"
+                      className="px-3 py-2 rounded-lg text-[12px]"
+                      style={inputStyle} />
+                  )}
 
                   {area.turnos.map(turno => (
                     <div key={turno.id} className="flex flex-col gap-2 rounded-lg p-3"
@@ -248,7 +271,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
           {/* Footer actions */}
           <div className="px-5 py-3 flex items-center gap-2"
             style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
-            {schedule.areas.length > 0 && schedule.areas.length < AREA_OPTIONS.length && (
+            {schedule.areas.length > 0 && (
               <button onClick={addArea}
                 className="flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
                 style={{ background: 'none', border: 'none', color: '#6C3BFF', cursor: 'pointer', padding: 0 }}>

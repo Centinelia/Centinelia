@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentOnCall } from '@/lib/helpdesk/folio';
-import type { GuardiaSchedule, DirectorioContacto, GuardiaArea } from '@/lib/helpdesk/folio';
+import type { GuardiaSchedule, GuardiaArea } from '@/lib/helpdesk/folio';
+import { getHelpdeskExperts } from '@/lib/portal/directory';
 import { requireVapiAuth } from '@/lib/vapi/auth';
 
 export async function POST(req: NextRequest) {
@@ -17,32 +18,43 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('directorio_interno, guardia_schedule, timezone')
+    .select('portal_email, timezone')
     .eq('id', agentId)
     .single();
 
-  const directorio = (agent?.directorio_interno ?? []) as DirectorioContacto[];
-  const guardia    = (agent?.guardia_schedule as GuardiaSchedule | null)?.areas ?? [];
-  const tz         = (agent?.timezone as string | null) ?? 'America/Monterrey';
+  const { data: org } = agent?.portal_email
+    ? await supabase.from('organizations')
+        .select('directory, guardia_schedule')
+        .eq('portal_email', agent.portal_email)
+        .single()
+    : { data: null };
+
+  const directory = ((org as any)?.directory ?? []);
+  const experts   = getHelpdeskExperts(directory);
+  const guardia   = (((org as any)?.guardia_schedule) as GuardiaSchedule | null)?.areas ?? [];
+  const tz        = (agent?.timezone as string | null) ?? 'America/Monterrey';
 
   const lines: string[] = [];
 
-  // Match from static directory
-  if (directorio.length > 0 && q) {
-    const match = directorio.find(c =>
-      c.atiende.toLowerCase().split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw)) ||
-      c.area.toLowerCase().split(/\s+/).some(kw => q.includes(kw))
-    );
+  // Match desde el directorio
+  if (experts.length > 0 && q) {
+    const match = experts.find(p => {
+      const expertise = (p.helpdesk_expertise ?? '').toLowerCase();
+      const dept      = (p.department ?? '').toLowerCase();
+      return expertise.split(/[\s,]+/).some(kw => kw.length > 3 && q.includes(kw))
+          || dept.split(/\s+/).some(kw => q.includes(kw));
+    });
     if (match) {
       const ext = match.extension ? ` (ext. ${match.extension})` : '';
-      const tel = match.telefono  ? `, ${match.telefono}` : '';
-      lines.push(`${match.nombre} se encarga de ${match.area}${ext}${tel}.`);
-    } else if (directorio.length > 0) {
+      const tel = match.phone     ? `, ${match.phone}` : '';
+      const dep = match.department ? ` se encarga de ${match.department}` : '';
+      lines.push(`${match.name}${dep}${ext}${tel}.`);
+    } else {
       lines.push('No encontré un especialista exacto para eso en el directorio.');
     }
   }
 
-  // Who is on call right now for the matching area
+  // Quién está de guardia ahora para el área correspondiente
   if (guardia.length > 0) {
     const area: GuardiaArea | undefined = q
       ? guardia.find(a => q.includes(a.nombre.toLowerCase().split(' ')[0].toLowerCase()))

@@ -18,7 +18,7 @@ import PortalFooter              from '../PortalFooter';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 
 import AgentKnowledgeBaseEditor      from '../AgentKnowledgeBaseEditor';
-import TeamNumbersEditor             from '../TeamNumbersEditor';
+import DirectorioEditor              from '../DirectorioEditor';
 import PassphraseEditor              from '../PassphraseEditor';
 import DefinitionOfDoneEditor        from '../DefinitionOfDoneEditor';
 import GoalsSection                  from '../GoalsSection';
@@ -77,7 +77,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const jornadaType    = ((agent as any).jornada_type as string) ?? 'combinada';
   const hasVoice       = !isCoordinator && agent.plan === 'pro' && (!meerkatId || meerkatId === 'custom');
   const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
-  const teamNumbers    = ((agent as any).team_numbers ?? []) as { number: string; name?: string }[];
+  // Directorio unificado — org-scoped (reemplaza team_numbers per-agente).
+  const { data: orgDir } = agent.portal_email
+    ? await supabase.from('organizations').select('directory').eq('portal_email', agent.portal_email).single()
+    : { data: null };
+  const directory = ((orgDir as any)?.directory ?? []) as import('@/lib/helpdesk/folio').DirectoryPerson[];
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
   const showOutbound   = initOutbound || agent.plan === 'pro';
@@ -527,11 +531,11 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                   <Card border elevated={false} padding="sm">
                     <SectionHeader
                       as="h2"
-                      title="Números del equipo"
-                      tooltip="Los números que agregues aquí tendrán memoria persistente entre sesiones. El empleado recordará el historial de llamadas de cada miembro del equipo."
+                      title="Directorio de la organización"
+                      tooltip="Dueño y equipo comparten un solo directorio a nivel organización. Todos los empleados lo consultan: para identificar llamadas internas, para referir contactos y para asignar tickets del helpdesk."
                       className="mb-4"
                     />
-                    <TeamNumbersEditor token={token} initialNumbers={teamNumbers} isOwner={isOwner} />
+                    <DirectorioEditor token={token} initial={directory} isOwner={isOwner} />
                   </Card>
                 </div>
               )}

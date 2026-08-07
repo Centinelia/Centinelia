@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy, Phone, User, RotateCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -22,17 +22,24 @@ export interface Ticket {
   prioridad: string; status: string; asignado_a: string | null;
   descripcion: string | null; resolucion: string | null;
   caller_number: string | null; created_at: string;
+  created_by: string | null;
 }
 
 const CAT_COLOR: Record<string, string> = {
   red: '#3b82f6', servidores: '#8b5cf6', usuario: '#22c55e',
   software: '#f59e0b', hardware: '#ef4444', accesos: '#ec4899', otro: '#6b7280',
 };
+const CAT_LABELS: Record<string, string> = {
+  red: 'Red', servidores: 'Servidores', usuario: 'Usuario',
+  software: 'Software', hardware: 'Hardware', accesos: 'Accesos', otro: 'Otro',
+};
 const PRI_COLOR: Record<string, string> = {
   baja: '#6b7280', normal: '#3b82f6', alta: '#f59e0b', critica: '#ef4444',
 };
+const PRI_LABELS: Record<string, string> = {
+  baja: 'Baja', normal: 'Normal', alta: 'Alta', critica: 'Crítica',
+};
 const STATUS_LABELS: Record<string, string> = {
-  '':         'Todos',
   abierto:    'Abierto',
   en_proceso: 'En proceso',
   pendiente:  'En espera',
@@ -50,14 +57,40 @@ const STA_ICON: Record<string, React.ReactNode> = {
 const CATEGORIAS = ['red','servidores','usuario','software','hardware','accesos','otro'];
 const PRIORIDADES = ['baja','normal','alta','critica'];
 const STATUSES    = ['abierto','en_proceso','pendiente','resuelto','cerrado'];
-const FILTERS     = ['', 'abierto', 'en_proceso', 'pendiente', 'resuelto'] as const;
-const FILTER_LABELS: Record<string, string> = {
-  '':         'Todos',
+
+// Filtros del toolbar. Todos client-side: cargamos todo el pool y filtramos
+// en cliente para evitar refetch al cambiar de tab. 'activos' es default y
+// agrupa abierto+en_proceso+pendiente (lo que realmente necesita atención).
+type FilterKey = 'activos' | 'abierto' | 'en_proceso' | 'pendiente' | 'resueltos';
+const FILTERS: FilterKey[] = ['activos', 'abierto', 'en_proceso', 'pendiente', 'resueltos'];
+const FILTER_LABELS: Record<FilterKey, string> = {
+  activos:    'Activos',
   abierto:    'Abiertos',
   en_proceso: 'En proceso',
   pendiente:  'En espera',
-  resuelto:   'Resueltos',
+  resueltos:  'Resueltos',
 };
+const ACTIVE_STATUS_SET   = new Set(['abierto', 'en_proceso', 'pendiente']);
+const RESOLVED_STATUS_SET = new Set(['resuelto', 'cerrado']);
+
+function ticketOrigin(t: Ticket): { icon: React.ReactNode; label: string } {
+  if (t.caller_number) {
+    return { icon: <Phone size={11} />, label: `Llamada de ${t.caller_number}` };
+  }
+  if (t.created_by === 'voice') {
+    return { icon: <Phone size={11} />, label: 'Por llamada' };
+  }
+  if (t.created_by === 'owner') {
+    return { icon: <User size={11} />, label: 'Registrado por el dueño' };
+  }
+  if (t.created_by && t.created_by !== 'sub_user') {
+    return { icon: <User size={11} />, label: `Registrado por ${t.created_by}` };
+  }
+  if (t.created_by === 'sub_user') {
+    return { icon: <User size={11} />, label: 'Registrado por un usuario' };
+  }
+  return { icon: <User size={11} />, label: 'Origen desconocido' };
+}
 
 const inputStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -69,7 +102,7 @@ const inputStyle: React.CSSProperties = {
 export default function HelpdeskSection({ token, subUserName }: { token: string; subUserName?: string | null }) {
   const [tickets, setTickets]   = useState<Ticket[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [filter, setFilter]     = useState('');
+  const [filter, setFilter]     = useState<FilterKey>('activos');
   const [expandId, setExpandId] = useState<string | null>(null);
   const [showAdd, setShowAdd]   = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -80,11 +113,13 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
   const [newDesc,   setNewDesc]   = useState('');
   const [newAsig,   setNewAsig]   = useState('');
 
+  // Cargamos todos los tickets una sola vez; los filtros se aplican en cliente
+  // para que cambiar de tab no dispare refetch. Sub-user sí filtra en backend
+  // por asignado_a (privacidad: no debe ver tickets de otros).
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
-      if (filter)      qs.set('status',     filter);
       if (subUserName) qs.set('asignado_a', subUserName);
       const url = `/api/portal/${token}/helpdesk${qs.toString() ? `?${qs}` : ''}`;
       const res = await fetch(url);
@@ -95,7 +130,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
     } finally {
       setLoading(false);
     }
-  }, [token, filter, subUserName]);
+  }, [token, subUserName]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -131,12 +166,19 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
     }
   };
 
-  const pendientes = tickets.filter(t => ['abierto', 'en_proceso', 'pendiente'].includes(t.status)).length;
+  const pendientes = tickets.filter(t => ACTIVE_STATUS_SET.has(t.status)).length;
   const enAtencion = tickets.filter(t => t.status === 'en_proceso').length;
-  const criticos   = tickets.filter(t => t.prioridad === 'critica' && !['resuelto','cerrado'].includes(t.status)).length;
-  const resueltos  = tickets.filter(t => ['resuelto','cerrado'].includes(t.status)).length;
+  const criticos   = tickets.filter(t => t.prioridad === 'critica' && ACTIVE_STATUS_SET.has(t.status)).length;
+  const resueltos  = tickets.filter(t => RESOLVED_STATUS_SET.has(t.status)).length;
   const overdue    = tickets.filter(isOverdue);
-  const display    = filter ? tickets : tickets.slice(0, 50);
+
+  // Client-side filter según el tab activo
+  const filtered = tickets.filter(t => {
+    if (filter === 'activos')   return ACTIVE_STATUS_SET.has(t.status);
+    if (filter === 'resueltos') return RESOLVED_STATUS_SET.has(t.status);
+    return t.status === filter;
+  });
+  const display = filtered.slice(0, 100);
 
   const subtitle = subUserName
     ? 'Tus solicitudes asignadas.'
@@ -293,7 +335,11 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
               const isOpen    = expandId === ticket.id;
               const catColor  = CAT_COLOR[ticket.categoria] ?? '#6b7280';
               const priColor  = PRI_COLOR[ticket.prioridad] ?? '#6b7280';
+              const catLabel  = CAT_LABELS[ticket.categoria] ?? ticket.categoria;
+              const priLabel  = PRI_LABELS[ticket.prioridad] ?? ticket.prioridad;
               const overdueTk = isOverdue(ticket);
+              const isResolved = RESOLVED_STATUS_SET.has(ticket.status);
+              const origin    = ticketOrigin(ticket);
               return (
                 <div key={ticket.id}
                   style={{ borderBottom: idx === display.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
@@ -309,11 +355,11 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                         <span className="text-[10px] font-mono" style={{ color: '#9B8FB5' }}>{ticket.folio}</span>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                           style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}>
-                          {ticket.categoria}
+                          {catLabel}
                         </span>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                           style={{ background: `${priColor}15`, color: priColor, border: `1px solid ${priColor}30` }}>
-                          {ticket.prioridad}
+                          {priLabel}
                         </span>
                         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
                           style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
@@ -321,24 +367,42 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                         </span>
                       </div>
                       <p className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>{ticket.titulo}</p>
-                      {ticket.asignado_a && (
-                        <p className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>Asignado a {ticket.asignado_a}</p>
-                      )}
+                      <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                        <span className="text-[11px] flex items-center gap-1" style={{ color: '#6B6480' }}>
+                          {origin.icon}{origin.label}
+                        </span>
+                        {ticket.asignado_a && (
+                          <span className="text-[11px]" style={{ color: '#6B6480' }}>
+                            · Asignado a <strong style={{ color: '#1A0A3B' }}>{ticket.asignado_a}</strong>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-shrink-0" style={{ color: '#9B8FB5' }}>
-                      {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isResolved && (
+                        <button
+                          onClick={e => { e.stopPropagation(); updateTicket(ticket.id, { status: 'abierto', resolucion: null }); }}
+                          title="Reabrir ticket"
+                          className="flex items-center gap-1 px-2 h-7 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-80"
+                          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                          <RotateCcw size={11} /> Reabrir
+                        </button>
+                      )}
+                      <div style={{ color: '#9B8FB5' }}>
+                        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </div>
                     </div>
                   </button>
 
                   {isOpen && (
-                    <div className="px-5 pb-4 flex flex-col gap-3"
+                    <div className="px-5 pb-4 flex flex-col gap-4"
                       style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
                       {ticket.descripcion && (
                         <p className="text-[12px] pt-3" style={{ color: '#1A0A3B' }}>{ticket.descripcion}</p>
                       )}
                       <div className="flex flex-wrap gap-3">
                         <div>
-                          <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Estatus</label>
+                          <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Estatus</label>
                           <Select value={ticket.status} onValueChange={v => updateTicket(ticket.id, { status: v })}>
                             <SelectTrigger className="w-auto py-1 px-2 text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                               <SelectValue />
@@ -349,7 +413,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                           </Select>
                         </div>
                         <div>
-                          <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Asignado a</label>
+                          <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Asignado a</label>
                           <input defaultValue={ticket.asignado_a ?? ''} placeholder="Nombre"
                             onBlur={e => updateTicket(ticket.id, { asignado_a: e.target.value || null })}
                             className="px-2 py-1 rounded-lg text-[12px] w-36"
@@ -357,15 +421,31 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Resolución o notas</label>
+                        <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Notas de resolución</label>
                         <textarea defaultValue={ticket.resolucion ?? ''} rows={2}
+                          placeholder="¿Qué se hizo para resolverlo?"
                           onBlur={e => updateTicket(ticket.id, { resolucion: e.target.value || null })}
                           className="w-full px-2 py-1 rounded-lg text-[12px] resize-none"
                           style={inputStyle} />
                       </div>
-                      <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
-                        {new Date(ticket.created_at).toLocaleString('es-MX', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-                      </p>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                          Creado {new Date(ticket.created_at).toLocaleString('es-MX', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                        </p>
+                        {isResolved ? (
+                          <button onClick={() => updateTicket(ticket.id, { status: 'abierto', resolucion: null })}
+                            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-80"
+                            style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                            <RotateCcw size={12} /> Reabrir
+                          </button>
+                        ) : (
+                          <button onClick={() => updateTicket(ticket.id, { status: 'resuelto' })}
+                            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                            style={{ background: '#22c55e', color: '#fff', boxShadow: '0 1px 2px rgba(34,197,94,0.24)' }}>
+                            <CheckCircle size={12} /> Marcar como resuelto
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

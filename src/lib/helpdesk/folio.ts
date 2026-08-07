@@ -25,6 +25,7 @@ export interface GuardiaTurno {
 export interface GuardiaArea {
   id:     string;
   nombre: string;
+  alias?: string; // Opcional. Solo aplica cuando nombre='otro' — permite al usuario dar un nombre descriptivo (ej: "Impresoras").
   turnos: GuardiaTurno[];
 }
 
@@ -32,6 +33,23 @@ export interface GuardiaSchedule {
   areas: GuardiaArea[];
 }
 
+// Persona unificada del directorio de la organización. Un solo registro
+// puede ser dueño, miembro del equipo, y/o especialista consultable por Neo
+// para tickets del helpdesk. Vive en organizations.directory.
+export interface DirectoryPerson {
+  id:                  string;
+  name:                string;
+  phone:               string;
+  extension?:          string;
+  department?:         string;         // ej: "Sistemas", "RRHH"
+  role?:               string;         // ej: "Coordinador de red"
+  is_owner?:           boolean;        // dueño de la cuenta (bypass 24/7)
+  is_team?:            boolean;        // miembro del equipo interno (identificación de llamadas)
+  helpdesk_expertise?: string;         // palabras clave para búsqueda en Neo (ej: "vpn, wifi, switches")
+  on_call?:            boolean;        // aparece como candidato en horario de guardia
+}
+
+/** @deprecated usar DirectoryPerson (organizations.directory) */
 export interface DirectorioContacto {
   id:        string;
   nombre:    string;

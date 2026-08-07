@@ -4,10 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies } from 'next/headers';
-import type { GuardiaSchedule, DirectorioContacto } from '@/lib/helpdesk/folio';
+import type { GuardiaSchedule, DirectoryPerson } from '@/lib/helpdesk/folio';
 import HelpdeskSection   from './HelpdeskSection';
 import IncidentesSection from './IncidentesSection';
-import DirectorioEditor  from './DirectorioEditor';
+import DirectorioEditor  from '../../DirectorioEditor';
 import GuardiaEditor     from './GuardiaEditor';
 import MeerkatPicker     from '../../agentes/MeerkatPicker';
 import { Card }          from '@/components/portal-ui';
@@ -34,9 +34,20 @@ export default async function HelpdeskPage({ params }: Props) {
   }
 
   const [{ data: agent }, access] = await Promise.all([
-    supabase.from('voice_agents').select('id, agent_name, features, guardia_schedule, directorio_interno, portal_email, plan, minutes_plan').eq('portal_token', token).single(),
+    supabase.from('voice_agents').select('id, agent_name, features, portal_email, plan, minutes_plan').eq('portal_token', token).single(),
     getAgentAccess(token),
   ]);
+
+  // Directorio + guardia viven en organizations (org-scoped, no por agente).
+  const { data: org } = agent?.portal_email
+    ? await supabase.from('organizations')
+        .select('directory, guardia_schedule')
+        .eq('portal_email', agent.portal_email as string)
+        .single()
+    : { data: null };
+
+  const directory: DirectoryPerson[] = ((org as any)?.directory ?? []);
+  const isOwnerSession = !session?.isSubUser;
 
   let hasNeo = false;
   if (!isItSubUser && agent?.portal_email) {
@@ -56,8 +67,7 @@ export default async function HelpdeskPage({ params }: Props) {
   const plan        = (agent as any)?.plan         ?? 'pro';
   const defaultTier = (agent as any)?.minutes_plan ?? 'starter';
 
-  const guardia:    GuardiaSchedule       = (agent?.guardia_schedule as GuardiaSchedule)    ?? { areas: [] };
-  const directorio: DirectorioContacto[]  = (agent?.directorio_interno as DirectorioContacto[]) ?? [];
+  const guardia: GuardiaSchedule = ((org as any)?.guardia_schedule as GuardiaSchedule) ?? { areas: [] };
 
   const employeeName    = ((agent as any)?.agent_name as string | null)?.trim() || 'Tu empleado';
   const totalTurnos     = guardia.areas.reduce((n, a) => n + a.turnos.length, 0);
@@ -150,11 +160,11 @@ export default async function HelpdeskPage({ params }: Props) {
       <HelpdeskSection token={token} subUserName={subUserName} />
 
       {!isItSubUser && (
-        <div className="flex flex-col gap-3 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="flex flex-col gap-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-            Configuración del empleado
+            Directorio de la organización
           </p>
-          <DirectorioEditor token={token} initial={directorio} />
+          <DirectorioEditor token={token} initial={directory} isOwner={isOwnerSession} showHelpdeskFields />
           <GuardiaEditor    token={token} initial={guardia} />
         </div>
       )}
