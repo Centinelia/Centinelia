@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient } from '@/lib/supabase/admin';
 import OnboardingSection     from '../../OnboardingSection';
 import MeerkatPicker         from '../../agentes/MeerkatPicker';
-import { Card }              from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -31,38 +30,49 @@ export default async function OnboardingPage({ params }: Props) {
   return (
     <div id="of-onboarding" className="flex flex-col gap-6 p-4 md:p-6">
 
-      {/* Banner — Naia present or not */}
+      {/* Banner: Naia present or not */}
       {hasNaia ? (
-        <Card padding="none" border elevated={false} className="flex overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
+        <div className="flex overflow-hidden rounded-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E8E3F5',
+            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+          }}>
           <img src="/meerkats/naia.png" alt="Naia"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
-          <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center">
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>
+          <div className="flex-1 min-w-0 py-4 pr-5 pl-3 flex flex-col justify-center">
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>
               Onboarding
             </p>
-            <p className="text-sm font-medium leading-snug" style={{ color: 'var(--c-text)' }}>
+            <p className="text-[14px] font-semibold leading-snug" style={{ color: '#1A0A3B' }}>
               Naia gestiona el onboarding de nuevos empleados, clientes y proveedores.
             </p>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: '#22c55e' }}>
+              <span className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: '#22c55e' }}>
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#22c55e' }} />
                 Disponible
               </span>
-              <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puede iniciar onboardings por teléfono, chat y correo</span>
+              <span className="text-[12px]" style={{ color: '#6B6480' }}>
+                Puede iniciar onboardings por teléfono, chat y correo
+              </span>
             </div>
           </div>
-        </Card>
+        </div>
       ) : (
-        <Card padding="none" border elevated={false} className="flex overflow-hidden"
-          style={{ background: 'linear-gradient(to right, rgba(236,72,153,0.07), rgba(245,158,11,0.07))', border: '1px solid rgba(236,72,153,0.25)' }}>
+        <div className="flex overflow-hidden rounded-2xl"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #E8E3F5',
+            boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+          }}>
           <img src="/meerkats/naia.png" alt="Naia"
             className="w-32 h-32 object-contain object-bottom shrink-0 self-end" />
-          <div className="flex-1 min-w-0 py-4 pr-4 pl-3 flex flex-col justify-center gap-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(236,72,153,0.7)' }}>
+          <div className="flex-1 min-w-0 py-4 pr-5 pl-3 flex flex-col justify-center gap-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
               Onboarding
             </p>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold leading-snug" style={{ color: '#ec4899' }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-[14px] font-semibold leading-snug" style={{ color: '#1A0A3B' }}>
                 Naia no está en tu equipo.
               </p>
               <MeerkatPicker
@@ -73,11 +83,11 @@ export default async function OnboardingPage({ params }: Props) {
                 triggerLabel="Contratar"
               />
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
               Sin Naia los onboardings se gestionan solo de forma manual. Naia puede iniciar y dar seguimiento al proceso de incorporación por teléfono, chat y correo.
             </p>
           </div>
-        </Card>
+        </div>
       )}
 
       <OnboardingSection token={token} />

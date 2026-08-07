@@ -173,7 +173,7 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
       {/* Body */}
       <div className="px-5 pb-5 flex flex-col gap-5" style={{ borderTop: '1px solid #F0EDF9', paddingTop: 16 }}>
 
-        {/* Step 1 — Type */}
+        {/* Step 1: Type */}
         <div className="flex flex-col gap-2.5">
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
             1 · ¿Qué quieres investigar?
@@ -213,7 +213,7 @@ export default function InvestigacionSection({ token, agentName, meerkatRoleId }
           </div>
         </div>
 
-        {/* Step 2 — Query */}
+        {/* Step 2: Query */}
         <div className="flex flex-col gap-2.5">
           <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
             2 · Da instrucciones a tu empleado
