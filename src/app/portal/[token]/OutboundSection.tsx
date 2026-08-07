@@ -156,19 +156,17 @@ function ContactRowInner({
       className="group transition-colors"
       style={{
         background: isSelected ? 'rgba(108,59,255,0.06)' : 'transparent',
-        cursor:     c.status === 'pending' ? 'pointer' : 'default',
+        cursor:     'pointer',
       }}
       onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(108,59,255,0.03)'; }}
       onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-      onClick={() => c.status === 'pending' && onToggle(c.id)}
+      onClick={() => onToggle(c.id)}
     >
       <div className="px-4 py-2.5 flex items-center gap-3 min-h-[48px]">
-        {c.status === 'pending' && (
-          <input type="checkbox" checked={isSelected}
-            onChange={() => onToggle(c.id)} onClick={e => e.stopPropagation()}
-            className="flex-shrink-0"
-            style={{ accentColor: '#6C3BFF' }} />
-        )}
+        <input type="checkbox" checked={isSelected}
+          onChange={() => onToggle(c.id)} onClick={e => e.stopPropagation()}
+          className="flex-shrink-0"
+          style={{ accentColor: '#6C3BFF' }} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>
@@ -797,11 +795,13 @@ export default function OutboundSection({
   const visiblePending = visibleContacts.filter(c => c.status === 'pending');
 
   const toggleAll = () => {
-    const allVisibleSelected = visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id));
+    // Selecciona TODOS los visibles (no solo pending) — bulk-tag y eliminar
+    // aplican a cualquier estado; Llamar filtra internamente por pending.
+    const allVisibleSelected = visibleContacts.length > 0 && visibleContacts.every(c => selected.has(c.id));
     if (allVisibleSelected) {
-      setSelected(prev => { const next = new Set(prev); visiblePending.forEach(c => next.delete(c.id)); return next; });
+      setSelected(prev => { const next = new Set(prev); visibleContacts.forEach(c => next.delete(c.id)); return next; });
     } else {
-      setSelected(prev => { const next = new Set(prev); visiblePending.forEach(c => next.add(c.id)); return next; });
+      setSelected(prev => { const next = new Set(prev); visibleContacts.forEach(c => next.add(c.id)); return next; });
     }
   };
 
@@ -1276,20 +1276,20 @@ export default function OutboundSection({
             <div className="px-5 py-2.5 flex items-center gap-3 flex-wrap"
               style={{
                 borderTop: '1px solid #F0EDF9',
-                background: selectedPending.length > 0 ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
+                background: selected.size > 0 ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
               }}>
               <label
                 className="flex items-center gap-2 text-[12px] cursor-pointer flex-shrink-0 font-medium"
                 style={{ color: '#6B6480' }}
-                title={`${pendingContacts.length} contacto${pendingContacts.length !== 1 ? 's' : ''} sin llamar aún (elegibles)`}
+                title="Selecciona todos los contactos visibles (respeta filtros de búsqueda y tags)"
               >
                 <input type="checkbox"
-                  checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
-                  onChange={toggleAll} disabled={visiblePending.length === 0}
+                  checked={visibleContacts.length > 0 && visibleContacts.every(c => selected.has(c.id))}
+                  onChange={toggleAll} disabled={visibleContacts.length === 0}
                   style={{ accentColor: '#6C3BFF' }} />
-                {selectedPending.length > 0
-                  ? <span style={{ color: '#6C3BFF' }}>{selectedPending.length} seleccionados</span>
-                  : `Seleccionar todos${pendingContacts.length > 0 ? ` (${pendingContacts.length})` : ''}`}
+                {selected.size > 0
+                  ? <span style={{ color: '#6C3BFF' }}>{selected.size} seleccionados</span>
+                  : `Seleccionar todos${visibleContacts.length > 0 ? ` (${visibleContacts.length})` : ''}`}
               </label>
 
               {selectedPending.length > 0 && (
@@ -1321,28 +1321,29 @@ export default function OutboundSection({
                     {calling ? <Loader2 size={11} className="animate-spin" /> : <Phone size={11} />}
                     {calling ? 'Llamando…' : `Llamar (${selectedPending.length})`}
                   </button>
+                </>
+              )}
 
-                  {!showCallConfirm && (
-                    <>
-                      <button type="button" onClick={handleBulkTag}
-                        className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70"
-                        style={{ background: '#ffffff', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)' }}>
-                        <Plus size={11} />
-                        Aplicar tag
-                      </button>
-                      <button type="button" onClick={handleDelete} disabled={deleting}
-                        className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
-                        style={{ background: '#ffffff', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-                        {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                        Eliminar
-                      </button>
-                    </>
-                  )}
+              {/* Bulk actions — aplican a CUALQUIER selección (pending o no) */}
+              {selected.size > 0 && !showCallConfirm && (
+                <>
+                  <button type="button" onClick={handleBulkTag}
+                    className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70"
+                    style={{ background: '#ffffff', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                    <Plus size={11} />
+                    Aplicar tag
+                  </button>
+                  <button type="button" onClick={handleDelete} disabled={deleting}
+                    className="flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
+                    style={{ background: '#ffffff', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+                    {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                    Eliminar
+                  </button>
                 </>
               )}
 
               {/* Sort — sólo cuando no hay selección */}
-              {selectedPending.length === 0 && contacts.length > 5 && (
+              {selected.size === 0 && contacts.length > 5 && (
                 <div className="ml-auto flex items-center gap-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
                     Orden
