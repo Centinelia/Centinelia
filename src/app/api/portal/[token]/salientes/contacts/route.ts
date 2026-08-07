@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data, error } = await createAdminClient()
     .from('outbound_contacts')
-    .select('id,nombre,telefono,motivo,source,status,fail_count,created_at,tags')
+    .select('id,nombre,telefono,email,motivo,source,status,fail_count,created_at,tags')
     .in('agent_id', access.ids)
     .order('created_at', { ascending: false });
 
@@ -49,11 +49,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const supabase = createAdminClient();
 
-  // Supports single { nombre, telefono, motivo } or batch { contacts: [...] }
+  // Supports single { nombre, telefono, email, motivo } or batch { contacts: [...] }
   const isBatch = Array.isArray(body.contacts);
   const rows = isBatch
-    ? (body.contacts as Array<{ nombre?: string; telefono: string; motivo?: string }>)
-    : [{ nombre: body.nombre, telefono: body.telefono, motivo: body.motivo }];
+    ? (body.contacts as Array<{ nombre?: string; telefono: string; email?: string; motivo?: string }>)
+    : [{ nombre: body.nombre, telefono: body.telefono, email: body.email, motivo: body.motivo }];
 
   const valid = rows.filter(r => r.telefono?.trim());
   if (!valid.length) return NextResponse.json({ error: 'Se requiere al menos un teléfono válido' }, { status: 400 });
@@ -64,7 +64,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     agent_id: agent.id,
     nombre:   r.nombre?.trim() || null,
     telefono: r.telefono.trim(),
-    motivo:   r.motivo?.trim()  || null,
+    email:    r.email?.trim()  || null,
+    motivo:   r.motivo?.trim() || null,
     source,
   }));
 

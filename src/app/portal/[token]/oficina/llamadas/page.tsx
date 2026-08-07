@@ -119,20 +119,30 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
 
   // Fallback graceful: si CUALQUIER count falla (RLS, tabla missing, timeout)
   // caemos a { count: 0 } en vez de que Promise.all rechace y tumbe la página.
+  const safeCount = <T,>(p: PromiseLike<T>): Promise<{ count: number | null }> =>
+    Promise.resolve(p).then(
+      (r: any) => ({ count: r?.count ?? 0 }),
+      () => ({ count: 0 }),
+    );
+
   const [hoyRes, semanaRes, leadsCountRes, outConnectRes] = agentIds.length > 0
     ? await Promise.all([
-        supabase.from('voice_calls').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', todayStart.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
-        supabase.from('voice_calls').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
-        supabase.from('leads_voice').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
-        supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
-          .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
-          .then(r => r).catch(() => ({ count: 0 })),
+        safeCount(
+          supabase.from('voice_calls').select('id', { count: 'exact', head: true })
+            .in('agent_id', agentIds).gte('created_at', todayStart.toISOString())
+        ),
+        safeCount(
+          supabase.from('voice_calls').select('id', { count: 'exact', head: true })
+            .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
+        ),
+        safeCount(
+          supabase.from('leads_voice').select('id', { count: 'exact', head: true })
+            .in('agent_id', agentIds).gte('created_at', weekAgo.toISOString())
+        ),
+        safeCount(
+          supabase.from('outbound_calls').select('id', { count: 'exact', head: true })
+            .in('agent_id', agentIds).eq('status', 'completed').gte('called_at', weekAgo.toISOString())
+        ),
       ])
     : [{ count: 0 }, { count: 0 }, { count: 0 }, { count: 0 }];
 

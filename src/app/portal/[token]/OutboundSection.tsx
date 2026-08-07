@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Phone, Plus, Upload, Trash2, Loader2, Check, X, PhoneCall, RefreshCw,
   Pencil, PhoneOutgoing, Pause, Play, CalendarClock, Search, AlertTriangle,
@@ -18,6 +19,7 @@ interface Contact {
   id:         string;
   nombre:     string | null;
   telefono:   string;
+  email?:     string | null;
   motivo:     string | null;
   source:     'llamada_entrante' | 'csv' | 'manual';
   status:     'pending' | 'calling' | 'completed' | 'failed' | 'cancelled';
@@ -107,7 +109,7 @@ function fmtShort(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
-function parseCSV(text: string): Array<{ nombre?: string; telefono: string; motivo?: string }> {
+function parseCSV(text: string): Array<{ nombre?: string; telefono: string; email?: string; motivo?: string }> {
   const lines = text.trim().split('\n').filter(Boolean);
   if (!lines.length) return [];
   const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/['"]/g, ''));
@@ -115,6 +117,7 @@ function parseCSV(text: string): Array<{ nombre?: string; telefono: string; moti
   const dataLines = hasHeader ? lines.slice(1) : lines;
   const iNombre   = hasHeader ? header.findIndex(h => ['nombre', 'name'].includes(h)) : 0;
   const iTelefono = hasHeader ? header.findIndex(h => ['telefono', 'phone', 'tel'].includes(h)) : (hasHeader ? 1 : 0);
+  const iEmail    = hasHeader ? header.findIndex(h => ['email', 'correo', 'mail', 'e-mail'].includes(h)) : -1;
   const iMotivo   = hasHeader ? header.findIndex(h => ['motivo', 'reason', 'nota'].includes(h)) : -1;
   return dataLines
     .map(line => {
@@ -124,6 +127,7 @@ function parseCSV(text: string): Array<{ nombre?: string; telefono: string; moti
       return {
         nombre:  iNombre  >= 0 ? cols[iNombre]?.trim()  || undefined : undefined,
         telefono,
+        email:   iEmail   >= 0 ? cols[iEmail]?.trim()   || undefined : undefined,
         motivo:  iMotivo  >= 0 ? cols[iMotivo]?.trim()  || undefined : undefined,
       };
     })
@@ -131,6 +135,134 @@ function parseCSV(text: string): Array<{ nombre?: string; telefono: string; moti
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+/**
+ * ContactRowInner — el contenido de un row de contacto (extraído para virtualización).
+ * Height ~48px sin tags, ~72px con tags. El virtualizer usa measureElement para
+ * ajuste dinámico.
+ */
+function ContactRowInner({
+  c, isSelected, onToggle, onTagsChange,
+}: {
+  c: Contact;
+  isSelected: boolean;
+  onToggle: (id: string) => void;
+  onTagsChange: (id: string, tags: string[]) => void | Promise<void>;
+}) {
+  return (
+    <div
+      className="rounded-xl overflow-hidden transition-colors"
+      style={{
+        background: isSelected ? 'rgba(108,59,255,0.06)' : 'var(--c-surface-2)',
+        border:     isSelected ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+        cursor:     c.status === 'pending' ? 'pointer' : 'default',
+      }}
+      onClick={() => c.status === 'pending' && onToggle(c.id)}
+    >
+      <div className="px-3 py-2 flex items-center gap-2.5">
+        {c.status === 'pending' && (
+          <input type="checkbox" checked={isSelected}
+            onChange={() => onToggle(c.id)} onClick={e => e.stopPropagation()}
+            className="flex-shrink-0"
+            style={{ accentColor: '#6C3BFF' }} />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--c-text)' }}>
+              {c.nombre ?? c.telefono}
+            </span>
+            {c.nombre && (
+              <span className="text-[11px] tabular-nums" style={{ color: 'var(--c-text-4)' }}>
+                {c.telefono}
+              </span>
+            )}
+            {c.email && (
+              <span className="text-[11px] truncate max-w-[180px]" style={{ color: 'var(--c-text-4)' }}>
+                · {c.email}
+              </span>
+            )}
+          </div>
+          {(c.tags ?? []).length > 0 && (
+            <div className="mt-1" onClick={e => e.stopPropagation()}>
+              <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
+            </div>
+          )}
+        </div>
+        {(c.tags ?? []).length === 0 && (
+          <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+            <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * VirtualContactList — virtualiza rows para escalar a 500+ contactos.
+ * Altura visible fija (min 400px, max 60vh) con scroll interno. Solo renderiza
+ * los rows que están en viewport + overscan. Cada row usa measureElement para
+ * altura dinámica (por tags).
+ */
+function VirtualContactList({
+  contacts, selected, onToggle, onTagsChange,
+}: {
+  contacts:     Contact[];
+  selected:     Set<string>;
+  onToggle:     (id: string) => void;
+  onTagsChange: (id: string, tags: string[]) => void | Promise<void>;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count:          contacts.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize:   () => 56,   // altura promedio row (48-72 según tags)
+    overscan:       8,
+    getItemKey:     i => contacts[i]?.id ?? i,
+  });
+  const items = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={parentRef}
+      className="overflow-y-auto"
+      style={{
+        minHeight: 400,
+        maxHeight: '60vh',
+        contain: 'strict',
+      }}
+    >
+      <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+        {items.map(vi => {
+          const c = contacts[vi.index];
+          if (!c) return null;
+          return (
+            <div
+              key={vi.key}
+              ref={virtualizer.measureElement}
+              data-index={vi.index}
+              style={{
+                position: 'absolute',
+                top:      0,
+                left:     0,
+                right:    0,
+                transform: `translateY(${vi.start}px)`,
+                paddingBottom: 6,
+              }}
+            >
+              <ContactRowInner
+                c={c}
+                isSelected={selected.has(c.id)}
+                onToggle={onToggle}
+                onTagsChange={onTagsChange}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function StatusPill({ status }: { status: Contact['status'] }) {
   return (
@@ -540,6 +672,7 @@ export default function OutboundSection({
 
   const [nombre,    setNombre]    = useState('');
   const [telefono,  setTelefono]  = useState('');
+  const [emailNew,  setEmailNew]  = useState('');
   const [motivo,    setMotivo]    = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -559,6 +692,7 @@ export default function OutboundSection({
   const selectedPending = [...selected].filter(id => contacts.find(c => c.id === id && c.status === 'pending'));
 
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'recent' | 'alpha' | 'tags_desc' | 'has_email'>('recent');
 
   const allTagsFromContacts = useMemo(() => {
     const bag = new Set<string>();
@@ -568,11 +702,23 @@ export default function OutboundSection({
 
   const visibleContacts = useMemo(() => {
     const q = contactSearch.trim().toLowerCase();
-    return contacts
+    const filtered = contacts
       .filter(c => sourceFilter === 'all' || c.source === sourceFilter)
       .filter(c => !tagFilter || (c.tags ?? []).includes(tagFilter))
-      .filter(c => !q || c.nombre?.toLowerCase().includes(q) || c.telefono.includes(q));
-  }, [contacts, sourceFilter, contactSearch, tagFilter]);
+      .filter(c => !q || c.nombre?.toLowerCase().includes(q) || c.telefono.includes(q) || (c.email ?? '').toLowerCase().includes(q));
+
+    // Sort a los ya filtrados
+    const sorted = [...filtered];
+    if (sortBy === 'alpha') {
+      sorted.sort((a, b) => (a.nombre ?? a.telefono).localeCompare(b.nombre ?? b.telefono, 'es'));
+    } else if (sortBy === 'tags_desc') {
+      sorted.sort((a, b) => (b.tags?.length ?? 0) - (a.tags?.length ?? 0));
+    } else if (sortBy === 'has_email') {
+      sorted.sort((a, b) => (b.email ? 1 : 0) - (a.email ? 1 : 0));
+    }
+    // default 'recent': ya viene por created_at desc del server
+    return sorted;
+  }, [contacts, sourceFilter, contactSearch, tagFilter, sortBy]);
 
   const visiblePending = visibleContacts.filter(c => c.status === 'pending');
 
@@ -633,12 +779,17 @@ export default function OutboundSection({
       const res = await fetch(`/api/portal/${token}/salientes/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nombre || undefined, telefono, motivo: motivo || undefined }),
+        body: JSON.stringify({
+          nombre:   nombre   || undefined,
+          telefono,
+          email:    emailNew || undefined,
+          motivo:   motivo   || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setContactError(data.error ?? 'Error al guardar'); return; }
       setContacts(prev => [...(Array.isArray(data) ? data : [data]), ...prev]);
-      setNombre(''); setTelefono(''); setMotivo('');
+      setNombre(''); setTelefono(''); setEmailNew(''); setMotivo('');
       setShowContactForm(false);
     } finally { setContactSaving(false); }
   };
@@ -681,6 +832,50 @@ export default function OutboundSection({
       setContactError('No se pudieron guardar los tags');
       const res = await fetch(`/api/portal/${token}/salientes/contacts`);
       if (res.ok) setContacts(await res.json());
+    }
+  };
+
+  const handleBulkTag = async () => {
+    if (!selected.size) return;
+    const raw = window.prompt(
+      `Aplicar tags a ${selected.size} contacto${selected.size !== 1 ? 's' : ''}.\n\nIngresa los tags separados por coma (ej: cotizó, seguimiento):`
+    );
+    if (raw === null) return;
+    const newTags = Array.from(new Set(
+      raw.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0 && t.length <= 40)
+    )).slice(0, 20);
+    if (!newTags.length) return;
+
+    // Fuse con existentes por contacto (no reemplaza)
+    const ids = [...selected];
+    setContactError('');
+    const updates = ids.map(id => {
+      const current = contacts.find(c => c.id === id);
+      const merged = Array.from(new Set([...(current?.tags ?? []), ...newTags])).slice(0, 20);
+      return { id, tags: merged };
+    });
+
+    // Optimistic
+    setContacts(prev => prev.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, tags: u.tags } : c;
+    }));
+
+    // Fire in parallel; revert on any failure by re-fetching
+    const results = await Promise.allSettled(updates.map(u =>
+      fetch(`/api/portal/${token}/salientes/contacts/${u.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ tags: u.tags }),
+      }).then(r => { if (!r.ok) throw new Error('save failed'); })
+    ));
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      setContactError(`No se pudieron aplicar tags a ${failed} contacto${failed !== 1 ? 's' : ''}`);
+      const res = await fetch(`/api/portal/${token}/salientes/contacts`);
+      if (res.ok) setContacts(await res.json());
+    } else {
+      setSelected(new Set());
     }
   };
 
@@ -826,7 +1021,7 @@ export default function OutboundSection({
           {showContactForm && (
             <OficinaModal
               open
-              onClose={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setMotivo(''); setContactError(''); }}
+              onClose={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setEmailNew(''); setMotivo(''); setContactError(''); }}
               eyebrow="Nuevo contacto"
               title="Agrega un contacto"
               description="Este contacto queda disponible para futuras campañas segmentadas por tags."
@@ -834,7 +1029,7 @@ export default function OutboundSection({
               footer={
                 <>
                   <OficinaModal.SecondaryAction
-                    onClick={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setMotivo(''); setContactError(''); }}
+                    onClick={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setEmailNew(''); setMotivo(''); setContactError(''); }}
                   >
                     Cancelar
                   </OficinaModal.SecondaryAction>
@@ -855,6 +1050,10 @@ export default function OutboundSection({
                 </OficinaModal.Field>
                 <OficinaModal.Field label="Teléfono" hint="requerido">
                   <input placeholder="Ej: +52 811 234 5678" value={telefono} onChange={e => setTelefono(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Correo" hint="opcional — para campañas futuras de correo">
+                  <input type="email" placeholder="Ej: juan@empresa.mx" value={emailNew} onChange={e => setEmailNew(e.target.value)}
                     style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
                 </OficinaModal.Field>
                 <OficinaModal.Field label="Motivo" hint="opcional">
@@ -996,14 +1195,43 @@ export default function OutboundSection({
                     </button>
 
                     {!showCallConfirm && (
-                      <button type="button" onClick={handleDelete} disabled={deleting}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                        style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                        {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        Eliminar
-                      </button>
+                      <>
+                        <button type="button" onClick={handleBulkTag}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
+                          style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+                          <Plus size={12} />
+                          Aplicar tag
+                        </button>
+                        <button type="button" onClick={handleDelete} disabled={deleting}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
+                          style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                          {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                          Eliminar
+                        </button>
+                      </>
                     )}
                   </>
+                )}
+
+                {/* Sort selector — solo cuando NO hay selección (evita clutter) */}
+                {selectedPending.length === 0 && contacts.length > 5 && (
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+                      Orden
+                    </span>
+                    <Select value={sortBy} onValueChange={v => setSortBy(v as typeof sortBy)}>
+                      <SelectTrigger className="w-auto rounded-lg py-1 text-[11px]"
+                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recent">Recientes</SelectItem>
+                        <SelectItem value="alpha">Alfabético</SelectItem>
+                        <SelectItem value="tags_desc">Más tags</SelectItem>
+                        <SelectItem value="has_email">Con correo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
 
                 {callResult && (
@@ -1057,60 +1285,12 @@ export default function OutboundSection({
                                           'Sin resultados'}
             </p>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {visibleContacts.map(c => (
-                <div key={c.id}
-                  className="rounded-xl overflow-hidden transition-colors"
-                  style={{
-                    background: selected.has(c.id) ? 'rgba(108,59,255,0.06)' : 'var(--c-surface-2)',
-                    border:     selected.has(c.id) ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
-                    cursor:     c.status === 'pending' ? 'pointer' : 'default',
-                  }}
-                  onClick={() => c.status === 'pending' && toggle(c.id)}
-                >
-                  <div className="px-3 py-2 flex items-center gap-2.5">
-                    {c.status === 'pending' && (
-                      <input type="checkbox" checked={selected.has(c.id)}
-                        onChange={() => toggle(c.id)} onClick={e => e.stopPropagation()}
-                        className="flex-shrink-0"
-                        style={{ accentColor: '#6C3BFF' }} />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[13px] font-semibold" style={{ color: 'var(--c-text)' }}>
-                          {c.nombre ?? c.telefono}
-                        </span>
-                        {c.nombre && (
-                          <span className="text-[11px] tabular-nums" style={{ color: 'var(--c-text-4)' }}>
-                            {c.telefono}
-                          </span>
-                        )}
-                        {/* Sin pills de status ni fail_count: son estados
-                            transitorios de llamada, no info del contacto.
-                            El historial completo vive en Salientes dentro
-                            de /oficina/llamadas. */}
-                      </div>
-                      {(c.tags ?? []).length > 0 && (
-                        <div className="mt-1" onClick={e => e.stopPropagation()}>
-                          <ContactTags
-                            tags={c.tags ?? []}
-                            onChange={tags => handleTagsChange(c.id, tags)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    {(c.tags ?? []).length === 0 && (
-                      <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <ContactTags
-                          tags={c.tags ?? []}
-                          onChange={tags => handleTagsChange(c.id, tags)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <VirtualContactList
+              contacts={visibleContacts}
+              selected={selected}
+              onToggle={toggle}
+              onTagsChange={handleTagsChange}
+            />
           )}
 
           {contactError && (

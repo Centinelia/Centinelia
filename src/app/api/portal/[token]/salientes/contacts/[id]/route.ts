@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (session.portalEmail && access.portalEmail !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const body = await req.json() as { tags?: unknown; motivo?: string; nombre?: string };
+  const body = await req.json() as { tags?: unknown; motivo?: string; nombre?: string; email?: string };
 
   const update: Record<string, unknown> = {};
 
@@ -39,6 +39,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (typeof body.motivo === 'string') update.motivo = body.motivo.trim() || null;
   if (typeof body.nombre === 'string') update.nombre = body.nombre.trim() || null;
+  if (typeof body.email  === 'string') update.email  = body.email.trim().toLowerCase() || null;
 
   if (!Object.keys(update).length) {
     return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 });

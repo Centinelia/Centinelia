@@ -38,7 +38,7 @@ export default async function OficinaCampanasPage({ params }: Props) {
   const [contactsRes, campaignsRes] = showOutbound
     ? await Promise.all([
         supabase.from('outbound_contacts')
-          .select('id,nombre,telefono,motivo,source,status,fail_count,created_at,tags')
+          .select('id,nombre,telefono,email,motivo,source,status,fail_count,created_at,tags')
           .in('agent_id', agentIds).order('created_at', { ascending: false }).limit(500),
         supabase.from('outbound_campaigns')
           .select('*').in('agent_id', agentIds).order('created_at', { ascending: false }),
