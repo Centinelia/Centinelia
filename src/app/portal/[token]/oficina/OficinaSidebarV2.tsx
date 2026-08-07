@@ -18,7 +18,7 @@ import { usePathname } from 'next/navigation';
 import {
   Activity, BarChart2, Mic, UserCheck,
   ArrowLeft, Search, CreditCard, FolderOpen,
-  ClipboardList, Gavel, Headphones, PieChart, Brain, Plug,
+  ClipboardList, Gavel, Headphones, PieChart, Brain,
   ChevronDown, ChevronRight, Phone, LayoutTemplate, CalendarClock,
   Inbox, FileSignature, Receipt, Megaphone,
 } from 'lucide-react';
@@ -76,7 +76,9 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'SISTEMA',
     items: [
       { href: '/helpdesk',      moduleId: 'of_helpdesk',   label: 'Mesa de ayuda', icon: Headphones, badgeKey: '' },
-      { href: '/integraciones', moduleId: 'integraciones', label: 'Integraciones', icon: Plug,       badgeKey: '' },
+      // Integraciones se movió a la pestaña Organización (2026-08-07) —
+      // los conectores son configuración one-time del owner, no trabajo del
+      // empleado. Ver /portal/[token]?tab=negocio#integraciones.
     ],
   },
 ];

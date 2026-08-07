@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb, Clock } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
-import type { BusinessHours } from '@/types/agent';
+import type { BusinessHours, Plan } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
 import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
 import type { MinutesTier } from '@/lib/billing/plans';
@@ -1716,6 +1716,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     del negocio, no una integración de terceros más. */}
                 <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
                   <SheetsMappingsSection token={token} />
+                </div>
+
+                {/* Integraciones — conectores de terceros (Gmail/Cal/Drive/Notion/Meta).
+                    Movido de Oficina el 2026-08-07 porque son configuración one-time
+                    del owner, no trabajo del empleado día a día. */}
+                <div id="integraciones" style={{ scrollMarginTop: 80 }}>
+                  <IntegrationsHub
+                    token={token}
+                    plan={agent.plan as Plan}
+                    hasOpsAgent={hasOpsAgent}
+                    hasNotion={
+                      !!(agent as any).notion_access_token ||
+                      (allClientAgents as any[]).some((a: any) => !!a.notion_access_token)
+                    }
+                  />
                 </div>
               </div>
 
