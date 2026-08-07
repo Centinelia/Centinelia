@@ -280,22 +280,28 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
               className="w-full px-3 py-2 rounded-lg text-[13px]"
               style={inputStyle} />
             <div className="grid grid-cols-2 gap-2">
-              <Select value={newCat} onValueChange={setNewCat}>
-                <SelectTrigger className="text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={newPri} onValueChange={setNewPri}>
-                <SelectTrigger className="text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div>
+                <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Categoría</label>
+                <Select value={newCat} onValueChange={setNewCat}>
+                  <SelectTrigger className="text-[13px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{CAT_LABELS[c] ?? c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Prioridad</label>
+                <Select value={newPri} onValueChange={setNewPri}>
+                  <SelectTrigger className="text-[13px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{PRI_LABELS[p] ?? p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
               placeholder="Descripción (opcional)"
