@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const OVERDUE_MS: Record<string, number> = {
   critica: 4  * 60 * 60 * 1000,
@@ -58,6 +59,13 @@ const FILTER_LABELS: Record<string, string> = {
   resuelto:   'Resueltos',
 };
 
+const inputStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #E8E3F5',
+  color: '#1A0A3B',
+  outline: 'none',
+};
+
 export default function HelpdeskSection({ token, subUserName }: { token: string; subUserName?: string | null }) {
   const [tickets, setTickets]   = useState<Ticket[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -98,7 +106,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
       });
       if (res.ok) { const d = await res.json(); setTickets(t => t.map(x => x.id === id ? d.ticket : x)); }
     } catch {
-      // silent — ticket stays unchanged
+      // silent, ticket stays unchanged
     }
   };
 
@@ -130,6 +138,10 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
   const overdue    = tickets.filter(isOverdue);
   const display    = filter ? tickets : tickets.slice(0, 50);
 
+  const subtitle = subUserName
+    ? 'Tus solicitudes asignadas.'
+    : 'Solicitudes de tu equipo, ordenadas por urgencia.';
+
   return (
     <div className="flex flex-col gap-4" id="of-helpdesk">
 
@@ -138,7 +150,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
         <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
           <Siren size={14} className="shrink-0 animate-pulse" style={{ color: '#ef4444' }} />
-          <p className="text-xs font-medium" style={{ color: '#fca5a5' }}>
+          <p className="text-[13px] font-medium" style={{ color: '#b91c1c' }}>
             {overdue.length === 1
               ? `1 solicitud requiere atención inmediata (${overdue[0].folio})`
               : `${overdue.length} solicitudes requieren atención inmediata`}
@@ -146,7 +158,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
         </div>
       )}
 
-      {/* Stats — owner only */}
+      {/* Stats, owner only */}
       {!subUserName && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[
@@ -155,195 +167,213 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
             { label: 'Críticos',    value: criticos,   color: '#ef4444' },
             { label: 'Resueltos',   value: resueltos,  color: '#22c55e' },
           ].map(s => (
-            <div key={s.label} className="rounded-xl p-3 text-center"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
-              <div className="text-xl font-bold tabular-nums" style={{ color: s.value > 0 ? s.color : 'var(--c-text-3)' }}>{s.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{s.label}</div>
+            <div key={s.label} className="rounded-2xl p-3 text-center"
+              style={{
+                background: '#ffffff',
+                border: '1px solid #E8E3F5',
+                boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+              }}>
+              <div className="text-xl font-bold tabular-nums" style={{ color: s.value > 0 ? s.color : '#9B8FB5' }}>{s.value}</div>
+              <div className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>{s.label}</div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Filters + action */}
-      <div className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Surface único */}
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border:     '1px solid #E8E3F5',
+          boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                Solicitudes
+              </h2>
+              {tickets.length > 0 && (
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                  {tickets.length}
+                </span>
+              )}
+            </div>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{subtitle}</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button onClick={() => setShowAdd(v => !v)}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+              <Plus size={12} /> Registrar solicitud
+            </button>
+          </div>
+        </div>
+
+        {/* Filters bar */}
+        <div className="px-5 py-2.5 flex items-center gap-1.5 flex-wrap"
+          style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
           {FILTERS.map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors"
               style={{
-                background: filter === s ? '#6C3BFF' : 'var(--c-surface-2)',
-                color:      filter === s ? '#fff' : 'var(--c-text-3)',
-                border:     '1px solid ' + (filter === s ? '#6C3BFF' : 'var(--c-border)'),
+                background: filter === s ? '#6C3BFF' : '#ffffff',
+                color:      filter === s ? '#fff' : '#6B6480',
+                border:     '1px solid ' + (filter === s ? '#6C3BFF' : '#E8E3F5'),
               }}>
               {FILTER_LABELS[s]}
             </button>
           ))}
         </div>
-        <button onClick={() => setShowAdd(v => !v)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-          style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          <Plus size={12} /> Registrar solicitud
-        </button>
-      </div>
 
-      {/* Add form */}
-      {showAdd && (
-        <div className="rounded-xl p-4 flex flex-col gap-3"
-          style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.2)' }}>
-          <input value={newTitulo} onChange={e => setNewTitulo(e.target.value)}
-            placeholder="Título de la solicitud *"
-            className="w-full px-3 py-2 rounded-lg text-sm"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={newCat} onValueChange={setNewCat}>
-              <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={newPri} onValueChange={setNewPri}>
-              <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        {/* Add form */}
+        {showAdd && (
+          <div className="px-5 py-4 flex flex-col gap-3"
+            style={{ borderTop: '1px solid #F0EDF9', background: 'rgba(108,59,255,0.04)' }}>
+            <input value={newTitulo} onChange={e => setNewTitulo(e.target.value)}
+              placeholder="Título de la solicitud *"
+              className="w-full px-3 py-2 rounded-lg text-[13px]"
+              style={inputStyle} />
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={newCat} onValueChange={setNewCat}>
+                <SelectTrigger className="text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={newPri} onValueChange={setNewPri}>
+                <SelectTrigger className="text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
+              placeholder="Descripción (opcional)"
+              className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
+              style={inputStyle} />
+            <input value={newAsig} onChange={e => setNewAsig(e.target.value)}
+              placeholder="Asignar a (opcional)"
+              className="w-full px-3 py-2 rounded-lg text-[12px]"
+              style={inputStyle} />
+            <div className="flex gap-2">
+              <button onClick={handleAdd} disabled={saving || !newTitulo.trim()}
+                className="px-4 py-2 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                {saving ? 'Guardando...' : 'Crear'}
+              </button>
+              <button onClick={() => setShowAdd(false)}
+                className="px-4 py-2 rounded-lg text-[12px] transition-opacity hover:opacity-70"
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                Cancelar
+              </button>
+            </div>
           </div>
-          <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
-            placeholder="Descripción (opcional)"
-            className="w-full px-3 py-2 rounded-lg text-xs resize-none"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-          <input value={newAsig} onChange={e => setNewAsig(e.target.value)}
-            placeholder="Asignar a (opcional)"
-            className="w-full px-3 py-2 rounded-lg text-xs"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-          <div className="flex gap-2">
-            <button onClick={handleAdd} disabled={saving || !newTitulo.trim()}
-              className="px-4 py-2 rounded-lg text-xs font-semibold"
-              style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Guardando...' : 'Crear'}
-            </button>
-            <button onClick={() => setShowAdd(false)}
-              className="px-4 py-2 rounded-lg text-xs"
-              style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Ticket list */}
-      {loading ? (
-        <div className="text-center py-8" style={{ color: 'var(--c-text-4)' }}>Cargando...</div>
-      ) : display.length === 0 ? (
-        <div className="flex flex-col items-center py-12 gap-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
-            <CheckCircle size={22} style={{ color: '#22c55e' }} />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Todo está bajo control</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
-              {filter ? 'No hay solicitudes con este estado.' : 'No hay solicitudes pendientes en este momento.'}
-            </p>
-          </div>
-          {!filter && !showAdd && (
-            <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mt-1"
-              style={{ background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)', cursor: 'pointer' }}>
-              <Plus size={12} /> Registrar solicitud
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {display.map(ticket => {
-            const isOpen    = expandId === ticket.id;
-            const catColor  = CAT_COLOR[ticket.categoria] ?? '#6b7280';
-            const priColor  = PRI_COLOR[ticket.prioridad] ?? '#6b7280';
-            const overdueTk = isOverdue(ticket);
-            return (
-              <div key={ticket.id} className="rounded-xl overflow-hidden"
-                style={{ border: `1px solid ${overdueTk ? 'rgba(239,68,68,0.5)' : ticket.prioridad === 'critica' ? 'rgba(239,68,68,0.3)' : 'var(--c-border-2)'}`, background: 'var(--c-surface)' }}>
-                <button
-                  onClick={() => setExpandId(isOpen ? null : ticket.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      {overdueTk && (
-                        <span className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: '#ef4444' }} />
+        {/* Ticket list */}
+        {loading ? (
+          <div className="text-center py-8 text-[13px]" style={{ color: '#9B8FB5', borderTop: '1px solid #F0EDF9' }}>Cargando...</div>
+        ) : display.length === 0 ? (
+          <EmptyState
+            icon={LifeBuoy}
+            title="Todo está bajo control"
+            description={filter ? 'No hay solicitudes con este estado.' : 'No hay solicitudes pendientes en este momento.'}
+          />
+        ) : (
+          <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+            {display.map((ticket, idx) => {
+              const isOpen    = expandId === ticket.id;
+              const catColor  = CAT_COLOR[ticket.categoria] ?? '#6b7280';
+              const priColor  = PRI_COLOR[ticket.prioridad] ?? '#6b7280';
+              const overdueTk = isOverdue(ticket);
+              return (
+                <div key={ticket.id}
+                  style={{ borderBottom: idx === display.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                  <button
+                    onClick={() => setExpandId(isOpen ? null : ticket.id)}
+                    className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {overdueTk && (
+                          <span className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: '#ef4444' }} />
+                        )}
+                        <span className="text-[10px] font-mono" style={{ color: '#9B8FB5' }}>{ticket.folio}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                          style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}>
+                          {ticket.categoria}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                          style={{ background: `${priColor}15`, color: priColor, border: `1px solid ${priColor}30` }}>
+                          {ticket.prioridad}
+                        </span>
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
+                          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                          {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? ticket.status.replace('_',' ')}
+                        </span>
+                      </div>
+                      <p className="text-[13px] font-medium truncate" style={{ color: '#1A0A3B' }}>{ticket.titulo}</p>
+                      {ticket.asignado_a && (
+                        <p className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>Asignado a {ticket.asignado_a}</p>
                       )}
-                      <span className="text-[10px] font-mono" style={{ color: 'var(--c-text-4)' }}>{ticket.folio}</span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                        style={{ background: `${catColor}15`, color: catColor, border: `1px solid ${catColor}30` }}>
-                        {ticket.categoria}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                        style={{ background: `${priColor}15`, color: priColor, border: `1px solid ${priColor}30` }}>
-                        {ticket.prioridad}
-                      </span>
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
-                        style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>
-                        {STA_ICON[ticket.status]} {STATUS_LABELS[ticket.status] ?? ticket.status.replace('_',' ')}
-                      </span>
                     </div>
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{ticket.titulo}</p>
-                    {ticket.asignado_a && (
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Asignado a {ticket.asignado_a}</p>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
-                    {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </div>
-                </button>
+                    <div className="flex-shrink-0" style={{ color: '#9B8FB5' }}>
+                      {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                  </button>
 
-                {isOpen && (
-                  <div className="px-4 pb-4 flex flex-col gap-3"
-                    style={{ borderTop: '1px solid var(--c-border)' }}>
-                    {ticket.descripcion && (
-                      <p className="text-xs pt-3" style={{ color: 'var(--c-text-2)' }}>{ticket.descripcion}</p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <div>
-                        <label className="block text-[10px] mb-1" style={{ color: 'var(--c-text-4)' }}>Estatus</label>
-                        <Select value={ticket.status} onValueChange={v => updateTicket(ticket.id, { status: v })}>
-                          <SelectTrigger className="w-auto py-1 px-2 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                  {isOpen && (
+                    <div className="px-5 pb-4 flex flex-col gap-3"
+                      style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+                      {ticket.descripcion && (
+                        <p className="text-[12px] pt-3" style={{ color: '#1A0A3B' }}>{ticket.descripcion}</p>
+                      )}
+                      <div className="flex flex-wrap gap-3">
+                        <div>
+                          <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Estatus</label>
+                          <Select value={ticket.status} onValueChange={v => updateTicket(ticket.id, { status: v })}>
+                            <SelectTrigger className="w-auto py-1 px-2 text-[12px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s.replace('_',' ')}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Asignado a</label>
+                          <input defaultValue={ticket.asignado_a ?? ''} placeholder="Nombre"
+                            onBlur={e => updateTicket(ticket.id, { asignado_a: e.target.value || null })}
+                            className="px-2 py-1 rounded-lg text-[12px] w-36"
+                            style={inputStyle} />
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] mb-1" style={{ color: 'var(--c-text-4)' }}>Asignado a</label>
-                        <input defaultValue={ticket.asignado_a ?? ''} placeholder="—"
-                          onBlur={e => updateTicket(ticket.id, { asignado_a: e.target.value || null })}
-                          className="px-2 py-1 rounded-lg text-xs w-36"
-                          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                        <label className="block text-[10px] mb-1 font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Resolución o notas</label>
+                        <textarea defaultValue={ticket.resolucion ?? ''} rows={2}
+                          onBlur={e => updateTicket(ticket.id, { resolucion: e.target.value || null })}
+                          className="w-full px-2 py-1 rounded-lg text-[12px] resize-none"
+                          style={inputStyle} />
                       </div>
+                      <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
+                        {new Date(ticket.created_at).toLocaleString('es-MX', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-[10px] mb-1" style={{ color: 'var(--c-text-4)' }}>Resolución / notas</label>
-                      <textarea defaultValue={ticket.resolucion ?? ''} rows={2}
-                        onBlur={e => updateTicket(ticket.id, { resolucion: e.target.value || null })}
-                        className="w-full px-2 py-1 rounded-lg text-xs resize-none"
-                        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-                    </div>
-                    <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
-                      {new Date(ticket.created_at).toLocaleString('es-MX', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
