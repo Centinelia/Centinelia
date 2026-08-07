@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Gavel } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Gavel } from 'lucide-react';
 import type { CabildoTemplate } from '@/lib/civic/cabildo';
 
 interface Props {
@@ -42,30 +42,47 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)' }}>
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-[var(--c-surface-2)]"
-        style={{ background: 'var(--c-surface)' }}
+        className="w-full flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4 text-left transition-colors hover:bg-[#FAFAFB]"
       >
-        <div className="flex items-center gap-2">
-          <Gavel size={13} style={{ color: 'var(--c-text-3)' }} />
-          <span className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>Plantillas de Cabildo</span>
-          {cfg.municipio && cfg.municipio !== 'Municipio' && (
-            <span className="text-[10px] px-2 py-0.5 rounded-md"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-              {cfg.municipio}
-            </span>
-          )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Plantillas de Cabildo
+            </h2>
+            {cfg.municipio && cfg.municipio !== 'Municipio' && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                {cfg.municipio}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Define el formato de Punto de Acuerdo y Acta de Sesión que genera tu empleado.
+          </p>
         </div>
-        <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{open ? '▲' : '▼'}</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Gavel size={14} style={{ color: '#9B8FB5' }} />
+          {open
+            ? <ChevronDown size={14} style={{ color: '#9B8FB5' }} />
+            : <ChevronRight size={14} style={{ color: '#9B8FB5' }} />}
+        </div>
       </button>
 
       {open && (
-        <div className="px-4 pb-4 pt-3 flex flex-col gap-4" style={{ background: 'var(--c-surface)', borderTop: '1px solid var(--c-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            Define el formato de los documentos que tu empleado genera. Usa{' '}
-            <span className="font-mono text-[11px] px-1 rounded" style={{ background: 'var(--c-bg)', color: '#9B6DFF' }}>
+        <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+          <p className="text-[12px]" style={{ color: '#6B6480' }}>
+            Usa{' '}
+            <span className="font-mono text-[11px] px-1 rounded" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6C3BFF' }}>
               {'{variable}'}
             </span>{' '}
             para los campos que se rellenan automáticamente.
@@ -73,28 +90,28 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
 
           {/* Municipio */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--c-text-3)' }}>Nombre del municipio</label>
+            <label className="text-[12px] font-medium" style={{ color: '#6B6480' }}>Nombre del municipio</label>
             <input
               type="text"
               value={cfg.municipio}
               onChange={e => setCfg(c => ({ ...c, municipio: e.target.value }))}
               placeholder="H. Ayuntamiento de Monterrey"
-              className="px-3 py-2 rounded-lg text-sm"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+              className="px-3 py-2 rounded-lg text-[13px] outline-none"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 flex-wrap">
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
                 style={{
-                  background: tab === t.key ? 'rgba(108,59,255,0.15)' : 'var(--c-surface-2)',
-                  border:     tab === t.key ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
-                  color:      tab === t.key ? '#9B6DFF' : 'var(--c-text-2)',
+                  background: tab === t.key ? '#6C3BFF' : '#ffffff',
+                  border:     tab === t.key ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                  color:      tab === t.key ? '#ffffff' : '#6B6480',
                 }}
               >
                 {t.label}
@@ -104,9 +121,9 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
 
           {/* Variables hint */}
           <div className="px-3 py-2 rounded-lg text-[11px] flex flex-wrap gap-x-3 gap-y-1"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-4)' }}>
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#9B8FB5' }}>
             {(TAB_VARS[tab] ?? []).map(v => (
-              <span key={v} className="font-mono" style={{ color: '#9B6DFF' }}>{v}</span>
+              <span key={v} className="font-mono" style={{ color: '#6C3BFF' }}>{v}</span>
             ))}
           </div>
 
@@ -115,18 +132,18 @@ export default function CabildoTemplateEditor({ token, initial }: Props) {
             value={tab === 'punto_acuerdo' ? cfg.punto_acuerdo : cfg.acta_sesion}
             onChange={e => setCfg(c => ({ ...c, [tab]: e.target.value }))}
             rows={16}
-            className="w-full text-xs font-mono px-3 py-3 rounded-lg resize-y"
+            className="w-full text-[12px] font-mono px-3 py-3 rounded-lg resize-y outline-none"
             style={{
-              background: 'var(--c-surface-2)', border: '1px solid var(--c-border)',
-              color: 'var(--c-text)', outline: 'none', lineHeight: 1.6,
+              background: '#ffffff', border: '1px solid #E8E3F5',
+              color: '#1A0A3B', lineHeight: 1.6,
             }}
           />
 
           <button
             onClick={save}
             disabled={saving}
-            className="self-start flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
-            style={{ background: '#6C3BFF', color: '#fff' }}
+            className="self-start flex items-center gap-1.5 px-4 h-9 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
           >
             {saved ? <><Check size={13} /> Guardado</> : saving ? 'Guardando...' : 'Guardar plantillas'}
           </button>
