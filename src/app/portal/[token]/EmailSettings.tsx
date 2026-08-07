@@ -61,118 +61,185 @@ export default function EmailSettings({ token }: { token: string }) {
     setVerifying(false);
   }
 
-  if (loading) return <p className="text-sm" style={{ color: 'var(--c-text-sub)' }}>Cargando...</p>;
+  if (loading) {
+    return (
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden px-5 py-4"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+        }}
+      >
+        <p className="text-sm" style={{ color: '#9B8FB5' }}>Cargando...</p>
+      </div>
+    );
+  }
 
   const isVerified = settings?.email_domain_verified;
   const isPending  = settings?.resend_domain_id && !isVerified;
   const domain     = settings?.email_from ? settings.email_from.split('@')[1] : null;
 
   return (
-    <div className="flex flex-col gap-6">
-
-      {/* ── Domain setup ── */}
-      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-        <div className="flex items-center gap-2 mb-4">
-          <Globe size={16} style={{ color: '#9B6DFF' }} />
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Dominio de envío</h3>
-          <InfoTooltip text={'Haz que los correos automáticos a tus clientes lleguen desde tu propio correo en lugar de centinelia.mx.'} />
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border: '1px solid #E8E3F5',
+        boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <Globe size={15} style={{ color: '#6C3BFF', alignSelf: 'center' }} />
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Dominio de envío
+            </h2>
+            <InfoTooltip text={'Haz que los correos automáticos a tus clientes lleguen desde tu propio correo en lugar de centinelia.mx.'} />
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Configura el remitente de los correos automáticos que Centinelia envía a tus clientes.
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
           {isVerified && (
-            <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"
-              style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+            <span
+              className="text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1"
+              style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}
+            >
               <CheckCircle size={11} /> Verificado
             </span>
           )}
           {isPending && (
-            <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }}>
+            <span
+              className="text-[11px] font-semibold px-2 py-1 rounded-full"
+              style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)' }}
+            >
               Pendiente de verificación
             </span>
           )}
         </div>
+      </div>
 
+      {/* Body */}
+      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
         {isVerified ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <CheckCircle size={14} style={{ color: '#22c55e' }} />
-            <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{settings?.email_from}</span>
-            <span className="text-sm" style={{ color: 'var(--c-text-sub)' }}>los correos salen desde este dominio</span>
+            <span className="text-[13px] font-medium" style={{ color: '#1A0A3B' }}>{settings?.email_from}</span>
+            <span className="text-[13px]" style={{ color: '#6B6480' }}>los correos salen desde este dominio</span>
           </div>
         ) : (
           <>
             {!isPending && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <input
                   type="email"
                   placeholder="hola@tuempresa.com"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
-                  className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  className="flex-1 min-w-[220px] text-[13px] px-3 py-2 rounded-lg outline-none transition-all focus:ring-2"
+                  style={{
+                    background: '#FAFAFB',
+                    border: '1px solid #E8E3F5',
+                    color: '#1A0A3B',
+                    boxShadow: emailInput ? '0 0 0 2px rgba(108,59,255,0.1)' : 'none',
+                  }}
                 />
                 <button
                   onClick={registerDomain}
                   disabled={registering}
-                  className="text-sm font-semibold px-4 py-2 rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#6C3BFF', color: '#fff' }}
+                  className="text-[13px] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    background: '#6C3BFF',
+                    color: '#fff',
+                    boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+                  }}
                 >
                   {registering ? <Loader2 size={14} className="animate-spin" /> : 'Registrar'}
                 </button>
               </div>
             )}
-            {registerError && <p className="text-xs mt-2" style={{ color: '#ef4444' }}>{registerError}</p>}
-
-            {isPending && settings?.dns_records && settings.dns_records.length > 0 && (
-              <div className="mt-3">
-                <p className="text-sm font-semibold mb-2" style={{ color: 'var(--c-text)' }}>
-                  Agrega estos registros DNS a <strong>{domain}</strong>:
-                </p>
-                <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                    <thead>
-                      <tr style={{ background: 'var(--c-bg)' }}>
-                        {['Tipo', 'Nombre', 'Valor'].map(h => (
-                          <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--c-text-sub)', fontWeight: 600, borderBottom: '1px solid var(--c-border)' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {settings.dns_records.map((r, i) => (
-                        <tr key={i} style={{ borderBottom: i < settings.dns_records.length - 1 ? '1px solid var(--c-border)' : undefined }}>
-                          <td style={{ padding: '6px 10px', color: '#9B6DFF', fontWeight: 600, whiteSpace: 'nowrap' }}>{r.type}</td>
-                          <td style={{ padding: '6px 10px', color: 'var(--c-text)', fontFamily: 'monospace', wordBreak: 'break-all', maxWidth: 120 }}>{r.name}</td>
-                          <td style={{ padding: '6px 10px', color: 'var(--c-text-sub)', fontFamily: 'monospace', wordBreak: 'break-all', maxWidth: 180 }}>{r.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex items-center gap-2 mt-3">
-                  <button
-                    onClick={verifyDomain}
-                    disabled={verifying}
-                    className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg transition-opacity disabled:opacity-50"
-                    style={{ background: 'rgba(108,59,255,0.12)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)' }}
-                  >
-                    {verifying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                    Verificar configuración DNS
-                  </button>
-                  <span className="text-sm" style={{ color: 'var(--c-text-sub)' }}>
-                    Puede tardar hasta 24h en propagarse.
-                  </span>
-                </div>
-              </div>
-            )}
+            {registerError && <p className="text-[12px] mt-2" style={{ color: '#ef4444' }}>{registerError}</p>}
           </>
         )}
       </div>
 
-      {/* Info box */}
-      <div className="flex gap-3 rounded-xl p-4" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.15)' }}>
-        <AlertCircle size={15} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-sub)' }}>
-          Estos correos los envía Centinelia automáticamente al cliente, no tu empleado. El contenido es fijo según el resultado de la llamada; el branding (logo, color, pie) se personaliza en <strong>Organización</strong>.
+      {/* DNS records sub-section */}
+      {isPending && settings?.dns_records && settings.dns_records.length > 0 && (
+        <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+          <p className="text-[13px] font-semibold mb-3" style={{ color: '#1A0A3B' }}>
+            Agrega estos registros DNS a <strong>{domain}</strong>:
+          </p>
+          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E8E3F5' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <thead>
+                <tr style={{ background: '#FAFAFB' }}>
+                  {['Tipo', 'Nombre', 'Valor'].map(h => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: '8px 10px',
+                        textAlign: 'left',
+                        color: '#6B6480',
+                        fontWeight: 600,
+                        borderBottom: '1px solid #F0EDF9',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {settings.dns_records.map((r, i) => (
+                  <tr
+                    key={i}
+                    style={{
+                      borderBottom: i < settings.dns_records.length - 1 ? '1px solid #F0EDF9' : undefined,
+                    }}
+                  >
+                    <td style={{ padding: '8px 10px', color: '#6C3BFF', fontWeight: 600, whiteSpace: 'nowrap' }}>{r.type}</td>
+                    <td style={{ padding: '8px 10px', color: '#1A0A3B', fontFamily: 'monospace', wordBreak: 'break-all', maxWidth: 120 }}>{r.name}</td>
+                    <td style={{ padding: '8px 10px', color: '#6B6480', fontFamily: 'monospace', wordBreak: 'break-all', maxWidth: 180 }}>{r.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <button
+              onClick={verifyDomain}
+              disabled={verifying}
+              className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: '#6C3BFF',
+                color: '#fff',
+                boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+              }}
+            >
+              {verifying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              Verificar configuración DNS
+            </button>
+            <span className="text-[12px]" style={{ color: '#6B6480' }}>
+              Puede tardar hasta 24h en propagarse.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Info footer */}
+      <div
+        className="px-5 py-4 flex gap-3"
+        style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
+      >
+        <AlertCircle size={15} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
+        <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+          Estos correos los envía Centinelia automáticamente al cliente, no tu empleado. El contenido es fijo según el resultado de la llamada; el branding (logo, color, pie) se personaliza en <strong style={{ color: '#1A0A3B' }}>Organización</strong>.
         </p>
       </div>
-
     </div>
   );
 }
