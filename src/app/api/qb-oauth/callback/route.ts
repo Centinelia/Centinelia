@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}?error=qb_denied`);
   }
 
-  const portalUrl = `${appUrl}/portal/${token}/oficina/integraciones`;
+  const to = (extra: string) => `${appUrl}/portal/${token}?tab=negocio&${extra}#integraciones`;
 
   const clientId     = process.env.INTUIT_CLIENT_ID!;
   const clientSecret = process.env.INTUIT_CLIENT_SECRET!;
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   if (!tokenRes.ok) {
     console.error('QB token exchange failed', await tokenRes.text());
-    return NextResponse.redirect(`${portalUrl}?error=qb_token`);
+    return NextResponse.redirect(to('error=qb_token'));
   }
 
   const { access_token, refresh_token, expires_in } = await tokenRes.json();
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
     .single();
 
   if (!agent?.portal_email) {
-    return NextResponse.redirect(`${portalUrl}?error=qb_agent`);
+    return NextResponse.redirect(to('error=qb_agent'));
   }
 
   await supabase
@@ -84,5 +84,5 @@ export async function GET(req: NextRequest) {
       updated_at:       new Date().toISOString(),
     }, { onConflict: 'portal_email' });
 
-  return NextResponse.redirect(`${portalUrl}?success=qb`);
+  return NextResponse.redirect(to('success=qb'));
 }

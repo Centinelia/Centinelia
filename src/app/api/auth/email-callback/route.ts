@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
 
   if (!provider || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}/oficina/integraciones?email=error`);
+    return NextResponse.redirect(`${appUrl}/portal/${state ?? ''}?tab=negocio&email=error#integraciones`);
   }
 
   try {
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (!agent) {
-      return NextResponse.redirect(`${appUrl}/portal/${state}/oficina/integraciones?email=error`);
+      return NextResponse.redirect(`${appUrl}/portal/${state}?tab=negocio&email=error#integraciones`);
     }
 
     const expiresAt       = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
@@ -83,11 +83,11 @@ export async function GET(req: NextRequest) {
 
     const successUrl = isAgentScope
       ? `${appUrl}/portal/${state}/configurar?email=connected&provider=${provider}`
-      : `${appUrl}/portal/${state}/oficina/integraciones?email=connected&provider=${provider}`;
+      : `${appUrl}/portal/${state}?tab=negocio&email=connected&provider=${provider}#integraciones`;
 
     return NextResponse.redirect(successUrl);
   } catch (err) {
     console.error('[email-callback] error:', err);
-    return NextResponse.redirect(`${appUrl}/portal/${state}/oficina/integraciones?email=error`);
+    return NextResponse.redirect(`${appUrl}/portal/${state}?tab=negocio&email=error#integraciones`);
   }
 }

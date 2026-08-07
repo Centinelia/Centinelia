@@ -53,6 +53,9 @@ import AutoRefillSection         from './AutoRefillSection';
 import IntegrationsHub           from './IntegrationsHub';
 import PoliciesSection          from './PoliciesSection';
 import OrgCard                  from './OrgCard';
+import NegocioTabs              from './NegocioTabs';
+import DirectorioEditor         from './DirectorioEditor';
+import type { DirectoryPerson } from '@/lib/helpdesk/folio';
 import ContractTrackerSection   from './ContractTrackerSection';
 import ContractSection          from './ContractSection';
 import InfoTooltip              from '@/components/InfoTooltip';
@@ -97,7 +100,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   if (tab === 'oficina')                          redirect(`/portal/${token}/oficina`);
   if (tab === 'agentes')                          redirect(`/portal/${token}/agentes`);
   if (tab === 'llamadas' || tab === 'salientes')  redirect(`/portal/${token}/llamadas`);
-  if (tab === 'integraciones')                    redirect(`/portal/${token}/oficina/integraciones`);
+  if (tab === 'integraciones')                    redirect(`/portal/${token}?tab=negocio#integraciones`);
   if (tab === 'equipo')                           redirect(`/portal/${token}/usuarios`);
 
   // ── Auth: verify session owns this portal ─────────────────────────────────
@@ -138,10 +141,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide')
+        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
+
+  const orgDirectory: DirectoryPerson[] = ((orgSettings as any)?.directory ?? []);
 
   // Términos de servicio: fuente de verdad = organizations.contract_accepted_at.
   // Fallback a voice_agents.contract_accepted_at para demos sin portal_email.
@@ -707,7 +712,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div className="p-5 flex flex-col gap-2.5">
                     {/* URGENTE: integraciones caídas */}
                     {reauthAlerts.map(alert => (
-                      <Link key={alert.provider} href={`/portal/${token}/oficina/integraciones`}
+                      <Link key={alert.provider} href={`/portal/${token}?tab=negocio#integraciones`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
                         style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -1364,7 +1369,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div className="p-5 flex flex-col gap-2.5">
                     {/* URGENTE: integraciones caídas */}
                     {reauthAlerts.map(alert => (
-                      <Link key={alert.provider} href={`/portal/${token}/oficina/integraciones`}
+                      <Link key={alert.provider} href={`/portal/${token}?tab=negocio#integraciones`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
                         style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -1603,138 +1608,143 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 );
               })()}
 
-              <div className="flex flex-col lg:flex-row gap-5 items-start">
+              <NegocioTabs>
+                {/* ── 1. PERFIL ────────────────────────────────────────── */}
+                <>
+                  <div id="organizacion" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
+                      {agent.portal_email && (
+                        <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                      )}
+                    </PageSection>
+                  </div>
 
-              {/* Col 1 (main, flex-1) — Organización, Branding, Conocimiento, Perfil */}
-              <div className="flex-1 min-w-0 flex flex-col gap-5">
-                <div id="organizacion" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
-                    {agent.portal_email && (
-                      <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
-                    )}
-                  </PageSection>
-                </div>
+                  <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
+                      <Card padding="md">
+                        <KnowledgeBaseEditor
+                          token={token}
+                          initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
+                          websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
+                          hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
+                        />
+                      </Card>
+                    </PageSection>
+                  </div>
 
-                <div id="branding" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
-                    <Card padding="md">
-                      <BrandKitEditor
-                        token={token}
-                        logoUrl={(agent as any).logo_url ?? null}
-                        businessName={agent.business_name}
-                        agentName={agent.agent_name ?? agent.business_name}
-                        initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
-                        initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
-                        initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
-                        initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
-                        initialPhone={orgSettings?.brand_phone ?? ''}
-                        initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
-                      />
-                    </Card>
-                  </PageSection>
-                </div>
+                  <div id="perfil-dueno" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
+                      <Card padding="md">
+                        <OwnerProfileEditor
+                          token={token}
+                          initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
+                        />
+                      </Card>
+                    </PageSection>
+                  </div>
+                </>
 
-                <div id="tono-de-marca" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Tono de marca" as="h2" tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Todos tus empleados hablarán como tu marca, no con un tono genérico." />}>
-                    <Card padding="md">
-                      <BrandVoiceEditor token={token} initGuide={(orgSettings as any)?.brand_voice_guide ?? ''} />
-                    </Card>
-                  </PageSection>
-                </div>
+                {/* ── 2. IDENTIDAD ────────────────────────────────────── */}
+                <>
+                  <div id="branding" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
+                      <Card padding="md">
+                        <BrandKitEditor
+                          token={token}
+                          logoUrl={(agent as any).logo_url ?? null}
+                          businessName={agent.business_name}
+                          agentName={agent.agent_name ?? agent.business_name}
+                          initialColor={orgSettings?.email_brand_color ?? (agent as any).email_brand_color ?? '#6C3BFF'}
+                          initialColorSecondary={orgSettings?.brand_color_secondary ?? (agent as any).brand_color_secondary ?? ''}
+                          initialWebsite={orgSettings?.brand_website ?? (agent as any).brand_website ?? ''}
+                          initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
+                          initialPhone={orgSettings?.brand_phone ?? ''}
+                          initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                        />
+                      </Card>
+                    </PageSection>
+                  </div>
 
-                <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
-                    <Card padding="md">
-                      <KnowledgeBaseEditor
-                        token={token}
-                        initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
-                        websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
-                        hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
-                      />
-                    </Card>
-                  </PageSection>
-                </div>
+                  <div id="tono-de-marca" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Tono de marca" as="h2" tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Todos tus empleados hablarán como tu marca, no con un tono genérico." />}>
+                      <Card padding="md">
+                        <BrandVoiceEditor token={token} initGuide={(orgSettings as any)?.brand_voice_guide ?? ''} />
+                      </Card>
+                    </PageSection>
+                  </div>
 
-                <div id="perfil-dueno" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
-                    <Card padding="md">
-                      <OwnerProfileEditor
-                        token={token}
-                        initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
-                      />
-                    </Card>
-                  </PageSection>
-                </div>
+                  <div id="sitio" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
+                      <Card padding="md">
+                        <div className="flex items-center gap-1.5 mb-4">
+                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                          <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
+                        </div>
+                        <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
+                        <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
+                          <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
+                        </div>
+                        <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
+                      </Card>
+                    </PageSection>
+                  </div>
+                </>
 
-              </div>
+                {/* ── 3. OPERACIÓN ────────────────────────────────────── */}
+                <>
+                  <div id="horarios" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
+                      <Card padding="md">
+                        <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
+                      </Card>
+                    </PageSection>
+                  </div>
 
-              {/* Col 2 (side, ~360px) — Horario, Sitio web, Reseñas */}
-              <div className="flex flex-col gap-5 w-full" style={{ flexBasis: 360, flexShrink: 0 }}>
-                <div id="horarios" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
-                    <Card padding="md">
-                      <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-                    </Card>
-                  </PageSection>
-                </div>
+                  <div id="idioma" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="IDIOMA" title="Idioma de atención" as="h2" tooltip="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />}>
+                      <Card padding="md">
+                        <MultilingualToggle token={token} initial={!!(orgSettings as any)?.multilingual} />
+                      </Card>
+                    </PageSection>
+                  </div>
 
-                <div id="idioma" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="IDIOMA" title="Idioma de atención" as="h2" tooltip="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />}>
-                    <Card padding="md">
-                      <MultilingualToggle token={token} initial={!!(orgSettings as any)?.multilingual} />
-                    </Card>
-                  </PageSection>
-                </div>
+                  <div id="dominio-correo" style={{ scrollMarginTop: 80 }}>
+                    <EmailSettings token={token} />
+                  </div>
 
-                <div id="sitio" style={{ scrollMarginTop: 80 }}>
-                  <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
-                    <Card padding="md">
-                    <div className="flex items-center gap-1.5 mb-4">
-                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
-                      <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
-                    </div>
-                    <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                    <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
-                    <div className="flex items-center gap-1.5 mb-3">
-                      <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
-                      <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
-                    </div>
-                    <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
-                  </Card>
-                </PageSection>
-                </div>{/* end #sitio */}
+                  <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
+                    <SheetsMappingsSection token={token} />
+                  </div>
+                </>
 
-                {/* Notificaciones automáticas al cliente — remitente de emails
-                    post-llamada. Movido de Integraciones el 2026-08-06 porque
-                    es config del negocio (dominio propio), no de conectores. */}
-                <div id="dominio-correo" style={{ scrollMarginTop: 80 }}>
-                  <EmailSettings token={token} />
-                </div>
+                {/* ── 4. DIRECTORIO ───────────────────────────────────── */}
+                <>
+                  <div id="directorio" style={{ scrollMarginTop: 80 }}>
+                    <PageSection heading={<SectionHeader eyebrow="DIRECTORIO" title="Personas de la organización" as="h2" tooltip="Dueño, equipo y especialistas. Todos tus empleados comparten este directorio: para identificar llamadas internas, referir contactos y asignar tickets del helpdesk." />}>
+                      <Card padding="md">
+                        <DirectorioEditor token={token} initial={orgDirectory} isOwner={isOwner} showHelpdeskFields />
+                      </Card>
+                    </PageSection>
+                  </div>
+                </>
 
-                {/* CRM en Google Sheets — data sync donde caen leads/citas/pedidos.
-                    Movido de Integraciones el 2026-08-06 porque es config org-wide
-                    del negocio, no una integración de terceros más. */}
-                <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
-                  <SheetsMappingsSection token={token} />
-                </div>
-
-                {/* Integraciones — conectores de terceros (Gmail/Cal/Drive/Notion/Meta).
-                    Movido de Oficina el 2026-08-07 porque son configuración one-time
-                    del owner, no trabajo del empleado día a día. */}
-                <div id="integraciones" style={{ scrollMarginTop: 80 }}>
-                  <IntegrationsHub
-                    token={token}
-                    plan={agent.plan as Plan}
-                    hasOpsAgent={hasOpsAgent}
-                    hasNotion={
-                      !!(agent as any).notion_access_token ||
-                      (allClientAgents as any[]).some((a: any) => !!a.notion_access_token)
-                    }
-                  />
-                </div>
-              </div>
-
-              </div>{/* end wrapper flex-row */}
+                {/* ── 5. INTEGRACIONES ────────────────────────────────── */}
+                <>
+                  <div id="integraciones" style={{ scrollMarginTop: 80 }}>
+                    <IntegrationsHub
+                      token={token}
+                      plan={agent.plan as Plan}
+                      hasOpsAgent={hasOpsAgent}
+                      hasNotion={
+                        !!(agent as any).notion_access_token ||
+                        (allClientAgents as any[]).some((a: any) => !!a.notion_access_token)
+                      }
+                    />
+                  </div>
+                </>
+              </NegocioTabs>
 
             </div>
           </PageContainer>

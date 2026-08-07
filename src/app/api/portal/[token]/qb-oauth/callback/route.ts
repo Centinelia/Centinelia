@@ -12,10 +12,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   const error   = searchParams.get('error');
 
   const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  const portalUrl = `${appUrl}/portal/${token}/oficina/integraciones`;
+  const to = (extra: string) => `${appUrl}/portal/${token}?tab=negocio&${extra}#integraciones`;
 
   if (error || !code || !realmId) {
-    return NextResponse.redirect(`${portalUrl}?error=qb_denied`);
+    return NextResponse.redirect(to('error=qb_denied'));
   }
 
   const clientId     = process.env.INTUIT_CLIENT_ID!;
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 
   if (!tokenRes.ok) {
     console.error('QB token exchange failed', await tokenRes.text());
-    return NextResponse.redirect(`${portalUrl}?error=qb_token`);
+    return NextResponse.redirect(to('error=qb_token'));
   }
 
   const { access_token, refresh_token, expires_in } = await tokenRes.json();
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     .single();
 
   if (!agent?.portal_email) {
-    return NextResponse.redirect(`${portalUrl}?error=qb_agent`);
+    return NextResponse.redirect(to('error=qb_agent'));
   }
 
   await supabase
@@ -85,5 +85,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
       updated_at:       new Date().toISOString(),
     }, { onConflict: 'portal_email' });
 
-  return NextResponse.redirect(`${portalUrl}?success=qb`);
+  return NextResponse.redirect(to('success=qb'));
 }

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const state        = isAgentScope ? rawState.replace(/__agent$/, '') : rawState;
 
   const errorUrl = state
-    ? `${appUrl}/portal/${state}/oficina/integraciones?email=error`
+    ? `${appUrl}/portal/${state}?tab=negocio&email=error#integraciones`
     : `${appUrl}/portal/login`;
 
   if (!code || !state) return NextResponse.redirect(errorUrl);
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 
     const successUrl = isAgentScope
       ? `${appUrl}/portal/${state}/configurar?email=connected&provider=outlook`
-      : `${appUrl}/portal/${state}/oficina/integraciones?email=connected&provider=outlook`;
+      : `${appUrl}/portal/${state}?tab=negocio&email=connected&provider=outlook#integraciones`;
 
     return NextResponse.redirect(successUrl);
   } catch (err) {

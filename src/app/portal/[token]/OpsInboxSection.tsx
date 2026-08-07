@@ -718,7 +718,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             </p>
           </div>
           <a
-            href={`/portal/${token}/oficina/integraciones`}
+            href={`/portal/${token}?tab=negocio#integraciones`}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-opacity hover:opacity-80"
             style={{ background: '#f59e0b', color: '#fff', textDecoration: 'none' }}
           >
