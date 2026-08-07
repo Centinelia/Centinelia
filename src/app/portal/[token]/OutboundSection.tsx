@@ -1303,26 +1303,9 @@ export default function OutboundSection({
 
         {/* ── CAMPAÑAS ── */}
         {show !== 'contactos' && (
-        <div id="campanas" className="flex flex-col gap-5 order-1">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Campañas</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                Programa llamadas automáticas recurrentes o únicas a tus contactos.
-              </p>
-            </div>
-            {!showCampForm && !editCampaign && (
-              <button type="button" onClick={() => setShowCampForm(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 flex-shrink-0"
-                style={{ background: '#6C3BFF', color: '#fff' }}>
-                <Plus size={12} />
-                Nueva campaña
-              </button>
-            )}
-          </div>
+        <div id="campanas" className="order-1">
 
-          {/* Campaign create form */}
+          {/* Campaign form modals (fuera del surface — flotan) */}
           {showCampForm && !editCampaign && (
             <CampaignForm
               token={token}
@@ -1332,8 +1315,6 @@ export default function OutboundSection({
               onCancel={() => setShowCampForm(false)}
             />
           )}
-
-          {/* Campaign edit form */}
           {editCampaign && (
             <CampaignForm
               token={token}
@@ -1344,8 +1325,43 @@ export default function OutboundSection({
             />
           )}
 
+        <div
+          className="flex flex-col rounded-2xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
+            boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+          }}
+        >
+          {/* Header — mismo layout que Contactos */}
+          <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                  Campañas
+                </h2>
+                {campaigns.length > 0 && (
+                  <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                    {campaigns.length}
+                  </span>
+                )}
+              </div>
+              <p className="text-[12px] mt-1 max-w-[380px]" style={{ color: '#6B6480' }}>
+                Programa llamadas automáticas recurrentes o únicas a tus contactos.
+              </p>
+            </div>
+            {!showCampForm && !editCampaign && (
+              <button type="button" onClick={() => setShowCampForm(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90 flex-shrink-0"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                <Plus size={12} />
+                Nueva campaña
+              </button>
+            )}
+          </div>
+
           {campError && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+            <div className="mx-5 mb-3 flex items-center gap-2 px-4 py-3 rounded-xl text-[13px]"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
               <X size={14} />{campError}
             </div>
@@ -1353,28 +1369,30 @@ export default function OutboundSection({
 
           {/* Campaign list */}
           {campaigns.length === 0 && !showCampForm ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4 rounded-2xl"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div
+              className="flex flex-col items-center justify-center py-16 gap-4"
+              style={{ borderTop: '1px solid #F0EDF9' }}
+            >
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
                 style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
                 <CalendarClock size={22} style={{ color: '#6C3BFF', opacity: 0.6 }} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>No hay campañas</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>Crea la primera para empezar a automatizar llamadas.</p>
+                <p className="text-[13px] font-medium" style={{ color: '#1A0A3B' }}>No hay campañas</p>
+                <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>Crea la primera para empezar a automatizar llamadas.</p>
               </div>
               <button type="button" onClick={() => setShowCampForm(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-                style={{ background: '#6C3BFF', color: '#fff' }}>
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                 <Plus size={14} />
                 Nueva campaña
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {campaigns.map(c => (
-                <div key={c.id} className="rounded-2xl p-4 flex flex-col gap-3"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+              {campaigns.map((c, idx) => (
+                <div key={c.id} className="px-5 py-4 flex flex-col gap-3"
+                  style={{ borderBottom: idx === campaigns.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
 
                   {/* Top row: name + status + actions */}
                   <div className="flex items-start justify-between gap-3">
@@ -1476,7 +1494,7 @@ export default function OutboundSection({
                   )}
 
                   {/* Results toggle */}
-                  <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: 10, marginTop: 2 }}>
+                  <div style={{ borderTop: '1px solid #F0EDF9', paddingTop: 10, marginTop: 2 }}>
                     <button type="button" onClick={() => fetchCampaignResults(c.id)}
                       className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
                       style={{ color: '#9B6DFF', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -1506,6 +1524,7 @@ export default function OutboundSection({
               ))}
             </div>
           )}
+        </div>
         </div>
         )}
 
