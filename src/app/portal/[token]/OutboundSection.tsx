@@ -14,6 +14,7 @@ import ContactTags from './oficina/ContactTags';
 import OficinaModal from './oficina/OficinaModal';
 import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
 import { MEERKAT_MAP, INTERNAL_MEERKAT_IDS, type MeerkatRole, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
+import MeerkatPicker from './agentes/MeerkatPicker';
 
 /**
  * Devuelve las capabilities que un agente puede ejecutar.
@@ -663,20 +664,34 @@ function CampaignForm({
                   !INTERNAL_MEERKAT_IDS.has(id as MeerkatRoleId) &&
                   id !== 'custom' &&
                   (m.features?.outbound_capabilities ?? []).includes(capability)
-                )
-                .map(([, m]) => `${m.nombre} (${m.rol})`);
+                );
               return (
-                <div className="text-[12px] px-3 py-2.5 rounded-lg flex flex-col gap-1.5"
+                <div className="text-[12px] px-3 py-2.5 rounded-lg flex flex-col gap-2"
                   style={{ color: '#6B6480', background: '#FEF6E7', border: '1px solid #FCE4B0' }}>
                   <p style={{ color: '#B45309' }}>
                     <strong>Ninguno de tus empleados actuales</strong> puede ejecutar este tipo de campaña.
                   </p>
                   {suggested.length > 0 ? (
-                    <p>
-                      Este tipo lo puede hacer:{' '}
-                      <strong style={{ color: '#1A0A3B' }}>{suggested.join(', ')}</strong>.
-                      Contrata alguno o cambia el tipo de campaña.
-                    </p>
+                    <>
+                      <p>Este tipo lo puede hacer — click para contratar:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {suggested.map(([id, m]) => (
+                          <MeerkatPicker
+                            key={id}
+                            token={token}
+                            preselect={id as MeerkatRoleId}
+                            triggerLabel={
+                              <span className="flex items-center gap-1.5">
+                                <span className="inline-block w-2 h-2 rounded-full"
+                                  style={{ background: m.color }} />
+                                {m.nombre}
+                                <span style={{ opacity: 0.7 }}>({m.rol})</span>
+                              </span>
+                            }
+                          />
+                        ))}
+                      </div>
+                    </>
                   ) : (
                     <p>Elige otro tipo de campaña o usa &quot;Otra personalizada&quot;.</p>
                   )}
