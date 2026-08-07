@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, ChevronDown, ChevronUp, Trash2, Upload, Clock, Users, Search, Pencil, Check, X, Plus, Zap, SearchX } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import { SectionHeader, Card } from '@/components/portal-ui';
 
 interface ActionItem {
   task:     string;
@@ -200,7 +199,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
     }
   }
 
-  // G3 — search also covers summary, decisions, transcript
+  // G3: search also covers summary, decisions, transcript
   const filtered = meetings.filter(m => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -215,64 +214,88 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
       {/* Header */}
-      <SectionHeader
-        as="h2"
-        title="Juntas e inteligencia"
-        right={
-          <button onClick={() => setShowForm(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF' }}>
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Juntas e inteligencia
+            </h2>
+            {meetings.length > 0 && (
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {meetings.length}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Sube el audio de una reunión y tu empleado genera el acta con decisiones y compromisos.
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowForm(v => !v)}
+            className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+            style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
+          >
             <Upload size={12} /> Subir audio
           </button>
-        }
-      />
+        </div>
+      </div>
 
       {/* Upload form */}
       {showForm && (
-        <form onSubmit={handleUpload} className="rounded-xl p-4 flex flex-col gap-3"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-          <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nueva junta</p>
+        <form onSubmit={handleUpload}
+          className="px-5 py-4 flex flex-col gap-3"
+          style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: '#6C3BFF' }}>Nueva junta</p>
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Título *</label>
+            <label className="text-[11px] block mb-1 font-medium" style={{ color: '#6B6480' }}>Título *</label>
             <input required value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
               placeholder="Ej. Revisión semanal del equipo"
-              className="w-full px-3 py-2 rounded-lg text-sm"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
           </div>
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Participantes (separados por coma)</label>
+            <label className="text-[11px] block mb-1 font-medium" style={{ color: '#6B6480' }}>Participantes (separados por coma)</label>
             <input value={form.participants} onChange={e => setForm(p => ({ ...p, participants: e.target.value }))}
               placeholder="Ana García, Luis Mendoza, ..."
-              className="w-full px-3 py-2 rounded-lg text-sm"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
           </div>
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Indicaciones para el análisis (opcional)</label>
+            <label className="text-[11px] block mb-1 font-medium" style={{ color: '#6B6480' }}>Indicaciones para el análisis (opcional)</label>
             <textarea value={form.instructions} onChange={e => setForm(p => ({ ...p, instructions: e.target.value }))}
               placeholder="Ej. Esta es una junta de ventas, prioriza los acuerdos de precio."
-              rows={3} className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              rows={3} className="w-full px-3 py-2 rounded-lg text-[13px] resize-none outline-none"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
           </div>
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Audio de la junta *</label>
+            <label className="text-[11px] block mb-1 font-medium" style={{ color: '#6B6480' }}>Audio de la junta *</label>
             <input ref={fileRef} required type="file" accept="audio/*,video/mp4,.m4a,.mp3,.wav,.ogg,.webm"
-              style={{ color: 'var(--c-text-2)', fontSize: 13 }} />
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>MP3, MP4, M4A, WAV, OGG — sin límite de tamaño</p>
+              style={{ color: '#1A0A3B', fontSize: 13 }} />
+            <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>MP3, MP4, M4A, WAV, OGG. Sin límite de tamaño.</p>
           </div>
           {uploadError && (
-            <p className="text-xs" style={{ color: '#f87171' }}>{uploadError}</p>
+            <p className="text-[12px]" style={{ color: '#EF4444' }}>{uploadError}</p>
           )}
           <div className="flex gap-2">
             <button type="submit" disabled={uploading}
-              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ background: '#6C3BFF', color: '#fff' }}>
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
               {uploading ? 'Subiendo y procesando...' : 'Procesar junta'}
             </button>
             <button type="button" onClick={() => { setShowForm(false); setUploadError(null); }}
-              className="px-4 py-2 rounded-lg text-xs font-semibold"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+              className="flex items-center px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70"
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
               Cancelar
             </button>
           </div>
@@ -280,85 +303,107 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
       )}
 
       {/* Search */}
-      <div className="relative">
-        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-text-4)', pointerEvents: 'none' }} />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por título, participante, resumen o decisiones..."
-          className="w-full text-xs rounded-xl"
-          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
-      </div>
+      {meetings.length > 0 && (
+        <div className="px-5 py-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: '#9B8FB5' }} />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por título, participante, resumen o decisiones..."
+              className="w-full pl-9 pr-9 py-2 rounded-lg text-[13px] outline-none transition-all focus:ring-2"
+              style={{
+                background: '#FAFAFB',
+                border:     '1px solid #E8E3F5',
+                color:      '#1A0A3B',
+                boxShadow:  search ? '0 0 0 2px rgba(108,59,255,0.1)' : 'none',
+              }} />
+            {search && (
+              <button onClick={() => setSearch('')}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:opacity-70"
+                style={{ color: '#9B8FB5', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
-        <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+        <div className="px-5 py-8 flex items-center justify-center" style={{ borderTop: '1px solid #F0EDF9' }}>
+          <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: '#E8E3F5', borderTopColor: '#6C3BFF' }} />
+        </div>
       ) : meetings.length === 0 ? (
-        <Card padding="md">
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
           <EmptyState
             icon={Mic}
             title="Sin juntas registradas"
             description="Sube el audio de una reunión y tu empleado genera el acta automáticamente."
             action={
               <button onClick={() => setShowForm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}>
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                 <Upload size={12} /> Subir primer audio
               </button>
             }
           />
-        </Card>
+        </div>
       ) : filtered.length === 0 ? (
-        <Card padding="sm">
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
           <EmptyState
             icon={SearchX}
             title={`Sin resultados para "${search}"`}
             description="Prueba con otro título, participante o decisión"
             size="sm"
           />
-        </Card>
+        </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map(m => {
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {filtered.map((m, idx) => {
             const isOpen   = expanded.has(m.id);
             const stCfg    = STATUS_CFG[m.status] ?? STATUS_CFG.pending;
             const data     = m.meeting_data;
             const isEditing = editId === m.id;
 
             return (
-              <div key={m.id} className="rounded-xl overflow-hidden"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <button onClick={() => toggle(m.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80">
+              <div
+                key={m.id}
+                style={{ borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F0EDF9' }}
+              >
+                <button onClick={() => toggle(m.id)} className="w-full flex items-center gap-3 px-5 py-4 text-left transition-opacity hover:opacity-80">
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${m.status === 'processing' ? 'animate-pulse' : ''}`}
                     style={{ background: stCfg.color }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{m.title}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                      <span className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>{m.title}</span>
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium"
                         style={{ background: `${stCfg.color}18`, color: stCfg.color }}>
                         {stCfg.label}
                       </span>
                       {data?.degraded && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                          style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                          style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}>
                           Sin análisis
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                      <p className="text-[11px] flex items-center gap-1" style={{ color: '#9B8FB5' }}>
                         <Clock size={10} />
                         {new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                       {m.participants?.length > 0 && (
-                        <p className="text-xs flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                        <p className="text-[11px] flex items-center gap-1" style={{ color: '#9B8FB5' }}>
                           <Users size={10} /> {m.participants.length}
                         </p>
                       )}
                     </div>
                   </div>
-                  {isOpen ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                  {isOpen ? <ChevronUp size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#9B8FB5', flexShrink: 0 }} />}
                 </button>
 
                 {isOpen && (
-                  <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                  <div className="px-5 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
 
                     {m.status === 'processing' && (
                       <div className="flex items-center gap-2 pt-3">
@@ -420,7 +465,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                           )}
                         </div>
 
-                        {/* Resumen tab — view or edit mode */}
+                        {/* Resumen tab: view or edit mode */}
                         {tab === 'data' && (
                           isEditing && editData ? (
                             <div className="flex flex-col gap-3">
