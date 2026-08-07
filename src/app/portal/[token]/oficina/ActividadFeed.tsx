@@ -50,16 +50,20 @@ function fmtTime(iso: string): string {
   return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
 }
 
-// ── Event card ────────────────────────────────────────────────────────────────
+// ── Event row (con divider) ───────────────────────────────────────────────────
 
-function EventCard({ event }: { event: ActivityEvent }) {
+function EventRow({ event, isLast }: { event: ActivityEvent; isLast: boolean }) {
   const cfg  = TYPE_CFG[event.type];
   const Icon = cfg.icon;
 
   return (
     <div
-      className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--c-surface-2)]"
-      style={{ borderBottom: '1px solid var(--c-border)' }}
+      className="flex items-start gap-3 px-5 py-4 transition-colors"
+      style={{
+        borderBottom: isLast ? 'none' : '1px solid #F0EDF9',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#FAFAFB'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
     >
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
@@ -77,20 +81,20 @@ function EventCard({ event }: { event: ActivityEvent }) {
             >
               {cfg.label}
             </span>
-            <span className="text-xs font-medium truncate max-w-[260px]" style={{ color: 'var(--c-text)' }}>
+            <span className="text-xs font-medium truncate max-w-[260px]" style={{ color: '#1A0A3B' }}>
               {event.title}
             </span>
           </div>
-          <span className="text-[10px] shrink-0 tabular-nums" style={{ color: 'var(--c-text-4)' }}>
+          <span className="text-[10px] shrink-0 tabular-nums" style={{ color: '#9B8FB5' }}>
             {fmtTime(event.created_at)}
           </span>
         </div>
         {event.subtitle && (
-          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs mt-0.5 truncate" style={{ color: '#6B6480' }}>
             {event.subtitle}
           </p>
         )}
-        <p className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-[10px] mt-0.5" style={{ color: '#9B8FB5' }}>
           {event.agent_name}
         </p>
       </div>
@@ -132,24 +136,40 @@ export default function ActividadFeed({ token }: { token: string }) {
   if (type !== 'all') counts[type as EventType] = total;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border: '1px solid #E8E3F5',
+        boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
         <div>
-          <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
-            Registro de actividades
-          </h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {total} evento{total !== 1 ? 's' : ''} en los últimos {days === 1 ? 'hoy' : `${days} días`}
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Registro de actividades
+            </h2>
+            {total > 0 && (
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {total}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            {total} evento{total !== 1 ? 's' : ''} en {days === 1 ? 'hoy' : `los últimos ${days} días`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Days selector */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Select
             value={String(days)}
             onValueChange={v => { setDays(Number(v)); setLimit(15); }}
           >
-            <SelectTrigger className="w-auto py-1.5 px-3 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+            <SelectTrigger
+              className="w-auto rounded-lg h-8 text-[12px]"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -162,7 +182,12 @@ export default function ActividadFeed({ token }: { token: string }) {
             onClick={() => load(days, type, limit)}
             disabled={loading}
             className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', cursor: 'pointer' }}
+            style={{
+              background: '#FAFAFB',
+              border: '1px solid #E8E3F5',
+              color: '#6B6480',
+              cursor: 'pointer',
+            }}
           >
             <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           </button>
@@ -170,7 +195,7 @@ export default function ActividadFeed({ token }: { token: string }) {
       </div>
 
       {/* Type filter chips */}
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="px-5 pb-4 flex gap-1.5 flex-wrap">
         {(['all', ...EVENT_TYPES] as (EventType | 'all')[]).map(t => {
           const cfg    = t === 'all' ? null : TYPE_CFG[t];
           const active = type === t;
@@ -181,9 +206,9 @@ export default function ActividadFeed({ token }: { token: string }) {
               onClick={() => { setType(t); setLimit(15); }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
               style={{
-                background: active ? (cfg?.bg ?? 'rgba(108,59,255,0.12)') : 'var(--c-surface-2)',
-                border:     `1px solid ${active ? (cfg?.color ?? '#6C3BFF') + '60' : 'var(--c-border)'}`,
-                color:      active ? (cfg?.color ?? '#9B6DFF') : 'var(--c-text-3)',
+                background: active ? (cfg?.bg ?? 'rgba(108,59,255,0.12)') : '#FAFAFB',
+                border:     `1px solid ${active ? (cfg?.color ?? '#6C3BFF') + '60' : '#E8E3F5'}`,
+                color:      active ? (cfg?.color ?? '#6C3BFF') : '#6B6480',
                 cursor:     'pointer',
               }}
             >
@@ -197,39 +222,51 @@ export default function ActividadFeed({ token }: { token: string }) {
       </div>
 
       {/* Feed */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ border: '1px solid var(--c-border-2)', background: 'var(--c-surface)' }}
-      >
-        {loading && events.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-sm" style={{ color: 'var(--c-text-4)' }}>Cargando actividad...</p>
-          </div>
-        ) : events.length === 0 ? (
+      {loading && events.length === 0 ? (
+        <div
+          className="flex items-center justify-center py-12"
+          style={{ borderTop: '1px solid #F0EDF9' }}
+        >
+          <p className="text-sm" style={{ color: '#9B8FB5' }}>Cargando actividad...</p>
+        </div>
+      ) : events.length === 0 ? (
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
           <EmptyState
             icon={Activity}
             title="Sin actividad en este período"
             description="Prueba ampliar el rango de fechas"
           />
-        ) : (
-          <>
-            {events.map(ev => <EventCard key={ev.id} event={ev} />)}
+        </div>
+      ) : (
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {events.map((ev, idx) => {
+            const hasMore = total > events.length;
+            const isLast = idx === events.length - 1 && !hasMore;
+            return <EventRow key={ev.id} event={ev} isLast={isLast} />;
+          })}
 
-            {total > events.length && (
-              <div className="px-4 py-3 flex justify-center" style={{ borderTop: '1px solid var(--c-border)' }}>
-                <button
-                  onClick={() => setLimit(l => l + 15)}
-                  disabled={loading}
-                  className="text-xs font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-70"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
-                >
-                  {loading ? 'Cargando...' : `Ver más (${total - events.length} restantes)`}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          {total > events.length && (
+            <div
+              className="px-5 py-3 flex justify-center"
+              style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
+            >
+              <button
+                onClick={() => setLimit(l => l + 15)}
+                disabled={loading}
+                className="text-[12px] font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-70"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #E8E3F5',
+                  color: '#6B6480',
+                  cursor: 'pointer',
+                }}
+              >
+                {loading ? 'Cargando...' : `Ver más (${total - events.length} restantes)`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
