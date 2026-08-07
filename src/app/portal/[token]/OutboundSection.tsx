@@ -656,10 +656,12 @@ function CampaignForm({
           {eligibleAgents.length === 0 ? (
             (() => {
               // Sugerir qué meerkats sí pueden — pista de upsell.
-              // Excluye meerkats internos (Nash) que no son contratables por clientes.
+              // Excluye internos (Nash) y 'custom' (empleado sin rol asignado —
+              // no aplica como recomendación específica).
               const suggested = Object.entries(MEERKAT_MAP as Record<MeerkatRoleId, MeerkatRole>)
                 .filter(([id, m]) =>
                   !INTERNAL_MEERKAT_IDS.has(id as MeerkatRoleId) &&
+                  id !== 'custom' &&
                   (m.features?.outbound_capabilities ?? []).includes(capability)
                 )
                 .map(([, m]) => `${m.nombre} (${m.rol})`);
