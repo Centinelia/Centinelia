@@ -15,13 +15,14 @@ interface Counters {
 }
 
 interface Props {
-  token:          string;
-  showOutbound:   boolean;
-  initOutbound:   boolean;
-  contacts:       any[];
-  campaigns:      any[];
-  outboundAgents: OutboundAgent[];
-  counters:       Counters;
+  token:            string;
+  showOutbound:     boolean;
+  initOutbound:     boolean;
+  contacts:         any[];
+  campaigns:        any[];
+  outboundAgents:   OutboundAgent[];
+  counters:         Counters;
+  minutesRemaining: number;
 }
 
 function KpiInline({ label, value, accent }: { label: string; value: number; accent: string }) {
@@ -42,7 +43,7 @@ function KpiInline({ label, value, accent }: { label: string; value: number; acc
 
 export default function CampanasClient({
   token, showOutbound, initOutbound,
-  contacts, campaigns, outboundAgents, counters,
+  contacts, campaigns, outboundAgents, counters, minutesRemaining,
 }: Props) {
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
@@ -103,6 +104,7 @@ export default function CampanasClient({
           agents={outboundAgents}
           initialTab="contactos"
           show="both"
+          minutesRemaining={minutesRemaining}
         />
       )}
     </div>

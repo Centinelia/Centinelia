@@ -70,6 +70,17 @@ export default async function OficinaCampanasPage({ params }: Props) {
 
   const contactosCount = (contactsRes.data ?? []).length;
 
+  // Minutos disponibles del pool para warning en modal de campañas
+  const lookupEmailForMins = (agent as any).portal_email as string | null;
+  const { data: acctMins } = lookupEmailForMins
+    ? await supabase.from('account_minutes')
+        .select('minutes_used, minutes_included')
+        .eq('portal_email', lookupEmailForMins).single()
+    : { data: null };
+  const minutesIncluded = (acctMins?.minutes_included ?? (agent as any).minutes_included ?? 0) as number;
+  const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
+  const minutesRemaining = Math.max(0, minutesIncluded - minutesUsed);
+
   const counters = {
     campanasActivas: activasRes?.count      ?? 0,
     contactos:       contactosCount,
@@ -87,6 +98,7 @@ export default async function OficinaCampanasPage({ params }: Props) {
         campaigns={campaignsRes.data ?? []}
         outboundAgents={outboundAgents}
         counters={counters}
+        minutesRemaining={minutesRemaining}
       />
     </div>
   );

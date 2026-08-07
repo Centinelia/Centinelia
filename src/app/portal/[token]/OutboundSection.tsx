@@ -437,8 +437,8 @@ interface CampaignFormProps {
 }
 
 function CampaignForm({
-  token, initial, contacts, outboundAgents, onSaved, onCancel,
-}: CampaignFormProps & { contacts?: Contact[]; outboundAgents: Agent[] }) {
+  token, initial, contacts, outboundAgents, minutesRemaining, onSaved, onCancel,
+}: CampaignFormProps & { contacts?: Contact[]; outboundAgents: Agent[]; minutesRemaining?: number }) {
   const [nombre,        setNombre]        = useState(initial?.nombre        ?? '');
   const [motivo,        setMotivo]        = useState(initial?.motivo        ?? '');
   const [instrucciones, setInstrucciones] = useState(initial?.instrucciones ?? '');
@@ -971,6 +971,40 @@ function CampaignForm({
           </div>
         </OficinaModal.Field>
 
+        {/* Pool warning: costo estimado 2 min/llamada. Advertimos si excede. */}
+        {(() => {
+          if (typeof minutesRemaining !== 'number') return null;
+          const estimated = selectedContactIds.size * 2;
+          if (estimated === 0 || estimated <= minutesRemaining) return null;
+          const shortfall = estimated - minutesRemaining;
+          return (
+            <div className="text-[12px] px-3 py-2.5 rounded-lg flex flex-col gap-1.5"
+              style={{ background: '#FEF6E7', border: '1px solid #FCE4B0', color: '#6B6480' }}>
+              <p style={{ color: '#B45309' }}>
+                <strong>Podrías quedarte sin minutos a mitad de la campaña.</strong>
+              </p>
+              <p>
+                Estimamos ~<strong style={{ color: '#1A0A3B' }}>{estimated} min</strong>{' '}
+                ({selectedContactIds.size} contacto{selectedContactIds.size !== 1 ? 's' : ''} × 2 min).
+                Tienes <strong style={{ color: '#1A0A3B' }}>{minutesRemaining} min</strong>{' '}
+                disponibles: te faltan ~{shortfall} min.
+              </p>
+              <p>
+                <a
+                  href={`/portal/${token}?tab=cuenta#comprar`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold underline"
+                  style={{ color: '#6C3BFF' }}
+                >
+                  Comprar más minutos
+                </a>
+                {' '}para no dejar la campaña inconclusa.
+              </p>
+            </div>
+          );
+        })()}
+
         {error && (
           <p className="text-[13px] px-3 py-2 rounded-lg"
             style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
@@ -992,17 +1026,15 @@ export default function OutboundSection({
   agents,
   initialTab = 'contactos',
   show = 'both',
+  minutesRemaining,
 }: {
   token:             string;
   initialContacts:   Contact[];
   initialCampaigns:  Campaign[];
   agents:            Agent[];
   initialTab?:       'contactos' | 'campanas';
-  /** Controla qué columnas se renderizan.
-   *  'both' (default): contactos + campañas lado a lado (legacy)
-   *  'contactos':      solo la columna de contactos (usado en /oficina/llamadas?filtro=salientes)
-   *  'campanas':       solo la columna de campañas   (usado en /oficina/campanas) */
   show?:             'contactos' | 'campanas' | 'both';
+  minutesRemaining?: number;
 }) {
   // ── Contacts state ────────────────────────────────────────────────────────────
   const [contacts,        setContacts]        = useState<Contact[]>(initialContacts);
@@ -1777,6 +1809,7 @@ export default function OutboundSection({
               initial={null}
               contacts={contacts}
               outboundAgents={agents}
+              minutesRemaining={minutesRemaining}
               onSaved={handleCampaignSaved}
               onCancel={() => setShowCampForm(false)}
             />
@@ -1787,6 +1820,7 @@ export default function OutboundSection({
               initial={editCampaign}
               contacts={contacts}
               outboundAgents={agents}
+              minutesRemaining={minutesRemaining}
               onSaved={handleCampaignSaved}
               onCancel={() => setEditCampaign(null)}
             />
