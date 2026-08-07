@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { FileText, Clock, CheckCircle, XCircle, AlertTriangle, Copy, Check, ExternalLink } from 'lucide-react';
-import { SectionHeader, EmptyState as PortalEmptyState } from '@/components/portal-ui';
+import { FileText, Clock, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
+import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 
 interface Item {
   descripcion:     string;
@@ -138,44 +138,32 @@ export default function FacturasPage() {
     cancelled:   rows.filter(r => r.status === 'cancelled').length,
   };
 
+  const PILLS: { id: 'all' | FacturaRequest['status']; label: string; count: number }[] = [
+    { id: 'all',         label: 'Todas',       count: counts.all         },
+    { id: 'pending',     label: 'Pendientes',  count: counts.pending     },
+    { id: 'in_progress', label: 'En proceso',  count: counts.in_progress },
+    { id: 'issued',      label: 'Emitidas',    count: counts.issued      },
+    { id: 'cancelled',   label: 'Canceladas',  count: counts.cancelled   },
+  ];
+
   return (
     <div id="of-facturas" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
-      <SectionHeader
-        as="h2"
-        eyebrow="Facturación"
-        title="Facturas por emitir"
-        description="Solicitudes que tus empleados recolectaron. Cuando timbres cada una en tu sistema fiscal (Solución Factible u otro PAC), márcala como emitida aquí."
-      />
-
-      {!loading && rows.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Metric value={counts.pending}     label="Pendientes"  color="#f59e0b" />
-          <Metric value={counts.in_progress} label="En proceso"  color="#3b82f6" />
-          <Metric value={counts.issued}      label="Emitidas"    color="#22c55e" />
-          <Metric value={counts.cancelled}   label="Canceladas"  color="#ef4444" />
-        </div>
-      )}
 
       {!loading && (
         <div className="flex gap-1 flex-wrap">
-          {([
-            { id: 'all' as const,         label: 'Todas',       count: counts.all },
-            { id: 'pending' as const,     label: 'Pendientes',  count: counts.pending },
-            { id: 'in_progress' as const, label: 'En proceso',  count: counts.in_progress },
-            { id: 'issued' as const,      label: 'Emitidas',    count: counts.issued },
-            { id: 'cancelled' as const,   label: 'Canceladas',  count: counts.cancelled },
-          ]).map(p => (
+          {PILLS.map(p => (
             <button key={p.id} onClick={() => setFilter(p.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              className="flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-medium transition-all"
               style={{
-                background: filter === p.id ? '#6C3BFF' : 'var(--c-surface)',
-                color:      filter === p.id ? '#fff'    : 'var(--c-text-3)',
-                border:     filter === p.id ? 'none'    : '1px solid var(--c-border)',
+                background: filter === p.id ? '#6C3BFF' : '#FAFAFB',
+                color:      filter === p.id ? '#fff'    : '#6B6480',
+                border:     filter === p.id ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                boxShadow:  filter === p.id ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
               }}>
               {p.label}
               {p.count > 0 && (
                 <span className="text-[10px] font-bold tabular-nums rounded-full px-1.5"
-                  style={{ background: filter === p.id ? 'rgba(255,255,255,0.2)' : 'var(--c-surface-2)', color: filter === p.id ? '#fff' : 'var(--c-text-4)' }}>{p.count}</span>
+                  style={{ background: filter === p.id ? 'rgba(255,255,255,0.2)' : '#F0EDF9', color: filter === p.id ? '#fff' : '#9B8FB5' }}>{p.count}</span>
               )}
             </button>
           ))}
@@ -183,46 +171,77 @@ export default function FacturasPage() {
       )}
 
       {loading ? (
-        <p className="text-xs py-10 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando solicitudes...</p>
-      ) : filtered.length === 0 ? (
-        <PortalEmptyState
-          icon={FileText}
-          title="Sin solicitudes de factura"
-          description="Cuando tu empleado registre una solicitud de un cliente (por teléfono, chat o correo), aparecerá aquí lista para que la emitas en tu sistema fiscal."
-        />
+        <p className="text-[12px] py-10 text-center" style={{ color: '#6B6480' }}>Cargando solicitudes...</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map(r => {
-            const cfg = STATUS_LABEL[r.status];
-            const Icon = cfg.icon;
-            return (
-              <button key={r.id} onClick={() => openDetail(r.id)}
-                className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-colors hover:opacity-90"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
-                  <Icon size={16} style={{ color: cfg.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{r.cliente_nombre}</p>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs" style={{ color: 'var(--c-text-4)' }}>
-                    <span className="font-mono">{r.cliente_rfc}</span>
-                    <span>·</span>
-                    <span>{r.uso_cfdi}</span>
-                    <span>·</span>
-                    <span>{r.metodo_pago}</span>
-                    {agentNames[r.agent_id] && (<><span>·</span><span>por {agentNames[r.agent_id]}</span></>)}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className="text-sm font-semibold tabular-nums" style={{ color: 'var(--c-text)' }}>{mxn(r.total, r.currency)}</span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: cfg.color }}>
-                    <span className="font-medium">{cfg.label}</span>
-                    <span style={{ color: 'var(--c-text-4)' }}>· {timeAgo(r.requested_at)}</span>
+        <div
+          className="flex flex-col rounded-2xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
+            boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+          }}
+        >
+          <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                  Facturas por emitir
+                </h2>
+                {filtered.length > 0 && (
+                  <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                    {filtered.length}
                   </span>
-                </div>
-              </button>
-            );
-          })}
+                )}
+              </div>
+              <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                Timbra cada solicitud en tu PAC y márcala como emitida aquí.
+              </p>
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div style={{ borderTop: '1px solid #F0EDF9' }}>
+              <PortalEmptyState
+                icon={FileText}
+                title="Sin solicitudes de factura"
+                description="Cuando tu empleado registre una solicitud (por teléfono, chat o correo), aparecerá aquí lista para emitir."
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+              {filtered.map((r, idx) => {
+                const cfg = STATUS_LABEL[r.status];
+                const Icon = cfg.icon;
+                return (
+                  <button key={r.id} onClick={() => openDetail(r.id)}
+                    className="flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]"
+                    style={{ borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${cfg.color}15` }}>
+                      <Icon size={16} style={{ color: cfg.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>{r.cliente_nombre}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px]" style={{ color: '#9B8FB5' }}>
+                        <span className="font-mono">{r.cliente_rfc}</span>
+                        <span>·</span>
+                        <span>{r.uso_cfdi}</span>
+                        <span>·</span>
+                        <span>{r.metodo_pago}</span>
+                        {agentNames[r.agent_id] && (<><span>·</span><span>por {agentNames[r.agent_id]}</span></>)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="text-[13px] font-semibold tabular-nums" style={{ color: '#1A0A3B' }}>{mxn(r.total, r.currency)}</span>
+                      <span className="flex items-center gap-1 text-[11px]" style={{ color: cfg.color }}>
+                        <span className="font-medium">{cfg.label}</span>
+                        <span style={{ color: '#9B8FB5' }}>· {timeAgo(r.requested_at)}</span>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -235,15 +254,6 @@ export default function FacturasPage() {
           onCancel={cancelRequest}
         />
       )}
-    </div>
-  );
-}
-
-function Metric({ value, label, color }: { value: number; label: string; color?: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5 px-4 py-3 rounded-xl" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-      <span className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--c-text)' }}>{value}</span>
-      <span className="text-[10px] uppercase tracking-widest font-semibold text-center" style={{ color: 'var(--c-text-4)' }}>{label}</span>
     </div>
   );
 }
