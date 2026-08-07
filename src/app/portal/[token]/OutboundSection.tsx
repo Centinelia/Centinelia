@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
 import ContactTags from './oficina/ContactTags';
+import OficinaModal from './oficina/OficinaModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -269,9 +270,10 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
   const [runAtTime,     setRunAtTime]     = useState(initial?.run_at_time   ?? '09:00');
   const [runAtDate,     setRunAtDate]     = useState(initial?.run_at_date   ?? '');
   const [runOnDays,     setRunOnDays]     = useState<number[]>(initial?.run_on_days ?? [1]);
-  const [contactFilter, setContactFilter] = useState<'all' | 'llamada_entrante' | 'csv' | 'manual'>(
-    !initial?.contact_filter ? 'all' : (initial.contact_filter[0] as 'llamada_entrante' | 'csv' | 'manual') ?? 'all'
-  );
+  // contactFilter por source (llamada_entrante/csv/manual) fue obsoletado:
+  // tags reemplazan la segmentación. Preservamos el valor de campañas viejas
+  // si el modelo lo trae, para no perder filtro al editar.
+  const legacyContactFilter = initial?.contact_filter?.[0] ?? null;
   const [tagFilter, setTagFilter] = useState<string[]>(initial?.tag_filter ?? []);
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
@@ -287,11 +289,11 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
     if (!contacts?.length) return 0;
     return contacts.filter(c => {
       if (c.status !== 'pending') return false;
-      if (contactFilter !== 'all' && c.source !== contactFilter) return false;
+      if (legacyContactFilter && c.source !== legacyContactFilter) return false;
       if (tagFilter.length && !tagFilter.every(t => (c.tags ?? []).includes(t))) return false;
       return true;
     }).length;
-  }, [contacts, contactFilter, tagFilter]);
+  }, [contacts, legacyContactFilter, tagFilter]);
 
   const toggleTag = (t: string) =>
     setTagFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
@@ -312,7 +314,7 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
       run_at_time:    runAtTime,
       run_at_date:    scheduleType === 'once'   ? (runAtDate || null) : null,
       run_on_days:    scheduleType === 'weekly' ? runOnDays           : [],
-      contact_filter: contactFilter === 'all'   ? null                : [contactFilter],
+      contact_filter: legacyContactFilter ? [legacyContactFilter] : null,
       tag_filter:     tagFilter,
     };
 
@@ -335,194 +337,167 @@ function CampaignForm({ token, initial, contacts, onSaved, onCancel }: CampaignF
     }
   };
 
-  const inputCls = 'w-full rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-[#6C3BFF]';
-  const inputSty = { background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' };
+  const inputSty: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    background: '#ffffff', border: '1px solid #E8E3F5',
+    borderRadius: 10, padding: '10px 14px', color: '#1A0A3B', fontSize: 14, outline: 'none',
+  };
 
   return (
-    <form onSubmit={handleSubmit}
-      className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+    <OficinaModal
+      open
+      onClose={onCancel}
+      eyebrow={initial ? 'Editar' : 'Nueva campaña'}
+      title={initial ? 'Ajusta tu campaña' : 'Programa una campaña de llamadas'}
+      description="El empleado marcará automáticamente en el horario que definas."
+      size="lg"
+      footer={
+        <>
+          <OficinaModal.SecondaryAction onClick={onCancel}>Cancelar</OficinaModal.SecondaryAction>
+          <OficinaModal.PrimaryAction
+            onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+            loading={saving}
+            disabled={!nombre.trim()}
+          >
+            {initial ? 'Guardar cambios' : 'Crear campaña'}
+          </OficinaModal.PrimaryAction>
+        </>
+      }
     >
-      <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
-        {initial ? 'Editar campaña' : 'Nueva campaña'}
-      </p>
+      <div className="flex flex-col gap-5">
 
-      {/* Nombre */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Nombre <span style={{ color: '#ef4444' }}>*</span>
-        </label>
-        <input value={nombre} onChange={e => setNombre(e.target.value)}
-          placeholder="Ej: Recordatorios de pago julio"
-          className={inputCls} style={inputSty} />
-      </div>
+        {/* Nombre */}
+        <OficinaModal.Field label="Nombre" hint="requerido">
+          <input value={nombre} onChange={e => setNombre(e.target.value)}
+            placeholder="Ej: Recordatorios de pago julio"
+            style={inputSty} />
+        </OficinaModal.Field>
 
-      {/* Motivo */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Motivo de la llamada
-        </label>
-        <input value={motivo} onChange={e => setMotivo(e.target.value)}
-          placeholder="Ej: Recordatorio de vencimiento el 31 de julio"
-          className={inputCls} style={inputSty} />
-      </div>
+        {/* Motivo */}
+        <OficinaModal.Field label="Motivo de la llamada">
+          <input value={motivo} onChange={e => setMotivo(e.target.value)}
+            placeholder="Ej: Recordatorio de vencimiento el 31 de julio"
+            style={inputSty} />
+        </OficinaModal.Field>
 
-      {/* Instrucciones */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Instrucciones especiales para el empleado
-        </label>
-        <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)}
-          rows={3}
-          placeholder="Ej: Si el cliente ya pagó, agradécele y termina la llamada. Si no, ofrece un link de pago."
-          className={`${inputCls} resize-none`} style={inputSty} />
-      </div>
+        {/* Instrucciones */}
+        <OficinaModal.Field label="Instrucciones para el empleado" hint="opcional">
+          <textarea value={instrucciones} onChange={e => setInstrucciones(e.target.value)}
+            rows={3}
+            placeholder="Ej: Si el cliente ya pagó, agradécele y termina. Si no, ofrece link de pago."
+            style={{ ...inputSty, resize: 'none', lineHeight: 1.55 }} />
+        </OficinaModal.Field>
 
-      <div className="w-full" style={{ height: 1, background: 'var(--c-border)' }} />
-
-      {/* Schedule type */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Tipo de programación
-        </label>
-        <Select value={scheduleType} onValueChange={v => setScheduleType(v as ScheduleType)}>
-          <SelectTrigger className="rounded-xl py-2.5">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="once">Una vez</SelectItem>
-            <SelectItem value="daily">Diario</SelectItem>
-            <SelectItem value="weekly">Semanal</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Conditional schedule fields */}
-      {scheduleType === 'once' && (
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Fecha</label>
-          <DatePicker value={runAtDate} onChange={setRunAtDate}
-            min={new Date().toISOString().slice(0, 10)} />
-        </div>
-      )}
-
-      {scheduleType === 'weekly' && (
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>Días</label>
-          <div className="flex gap-1.5 flex-wrap">
-            {WEEK_DAYS.map(({ label, value }) => {
-              const active = runOnDays.includes(value);
-              return (
-                <button key={value} type="button" onClick={() => toggleDay(value)}
-                  className="w-9 h-9 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: active ? '#6C3BFF'          : 'var(--c-surface-2)',
-                    color:      active ? '#fff'             : 'var(--c-text-3)',
-                    border:     active ? 'none'             : '1px solid var(--c-border)',
-                  }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Time */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Hora de ejecución
-        </label>
-        <TimeInput value={runAtTime} onChange={setRunAtTime} className="max-w-[160px]" />
-        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>
-          El cron corre cada 10 min, la hora exacta puede variar hasta 10 min.
-        </p>
-      </div>
-
-      <div className="w-full" style={{ height: 1, background: 'var(--c-border)' }} />
-
-      {/* Contact filter */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Contactos a llamar
-        </label>
-        <Select value={contactFilter} onValueChange={v => setContactFilter(v as typeof contactFilter)}>
-          <SelectTrigger className="rounded-xl py-2.5">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los pendientes</SelectItem>
-            <SelectItem value="llamada_entrante">Solo llamadas entrantes</SelectItem>
-            <SelectItem value="csv">Solo CSV</SelectItem>
-            <SelectItem value="manual">Solo manuales</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Tag filter — segmentación */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
-          Segmentar por tags
-          {tagFilter.length > 0 && (
-            <span className="ml-2 text-[10px] font-normal" style={{ color: 'var(--c-text-3)' }}>
-              (contactos que tengan todos los tags seleccionados)
-            </span>
+        {/* ── Segmentación ────────────────────────────────────────────── */}
+        <OficinaModal.Field
+          label="A quién llamar"
+          hint={tagFilter.length > 0 ? 'contactos que tengan TODOS los tags' : 'todos los contactos pendientes'}
+        >
+          {allTags.length === 0 ? (
+            <p className="text-[12px] px-3 py-2 rounded-lg"
+              style={{ color: '#6B6480', background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+              No hay tags aún en tus contactos. Sin filtro, la campaña llamará a todos los pendientes. Agrega tags para segmentar.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {allTags.map(t => {
+                const active = tagFilter.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTag(t)}
+                    className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-colors"
+                    style={{
+                      background: active ? '#6C3BFF' : '#ffffff',
+                      color:      active ? '#ffffff' : '#6B6480',
+                      border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                    }}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </label>
-        {allTags.length === 0 ? (
-          <p className="text-[11px] px-3 py-2 rounded-lg" style={{ color: 'var(--c-text-3)', background: 'var(--c-surface-2)' }}>
-            No hay tags aún. Agrega tags a tus contactos en la lista de arriba y podrás segmentarlos aquí.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {allTags.map(t => {
-              const active = tagFilter.includes(t);
-              return (
+          {contacts && contacts.length > 0 && (
+            <p className="text-[12px] mt-1" style={{ color: previewCount === 0 ? '#EF4444' : '#6B6480' }}>
+              <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto' : 'contactos'} pendientes con estos filtros
+            </p>
+          )}
+        </OficinaModal.Field>
+
+        {/* ── Cuándo ──────────────────────────────────────────────────── */}
+        <OficinaModal.Field label="Cuándo">
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-3 gap-2">
+              {(['once', 'daily', 'weekly'] as ScheduleType[]).map(st => (
                 <button
-                  key={t}
+                  key={st}
                   type="button"
-                  onClick={() => toggleTag(t)}
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                  onClick={() => setScheduleType(st)}
+                  className="rounded-lg text-[13px] font-semibold transition-all"
                   style={{
-                    background: active ? '#6C3BFF' : '#ffffff',
-                    color:      active ? '#ffffff' : '#6B6480',
-                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                    padding:    '9px 0',
+                    background: scheduleType === st ? '#1A0A3B' : '#ffffff',
+                    color:      scheduleType === st ? '#ffffff' : '#6B6480',
+                    border:     scheduleType === st ? 'none' : '1px solid #E8E3F5',
                   }}
                 >
-                  {t}
+                  {st === 'once' ? 'Una vez' : st === 'daily' ? 'Diario' : 'Semanal'}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+
+            {scheduleType === 'once' && (
+              <div>
+                <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Fecha</label>
+                <DatePicker value={runAtDate} onChange={setRunAtDate}
+                  min={new Date().toISOString().slice(0, 10)} />
+              </div>
+            )}
+
+            {scheduleType === 'weekly' && (
+              <div>
+                <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Días</label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {WEEK_DAYS.map(({ label, value }) => {
+                    const active = runOnDays.includes(value);
+                    return (
+                      <button key={value} type="button" onClick={() => toggleDay(value)}
+                        className="w-9 h-9 rounded-lg text-xs font-semibold transition-all"
+                        style={{
+                          background: active ? '#6C3BFF' : '#ffffff',
+                          color:      active ? '#ffffff' : '#6B6480',
+                          border:     active ? 'none' : '1px solid #E8E3F5',
+                        }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="text-[10px] block mb-1" style={{ color: '#9B8FB5' }}>Hora</label>
+              <TimeInput value={runAtTime} onChange={setRunAtTime} className="max-w-[160px]" />
+              <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>
+                El cron corre cada 10 min; la hora exacta puede variar ±10 min.
+              </p>
+            </div>
           </div>
-        )}
-        {contacts && contacts.length > 0 && (
-          <p className="text-[11px] mt-1" style={{ color: previewCount === 0 ? '#EF4444' : '#6B6480' }}>
-            <strong style={{ color: previewCount === 0 ? '#EF4444' : '#1A0A3B' }}>{previewCount}</strong> {previewCount === 1 ? 'contacto pendiente' : 'contactos pendientes'} con estos filtros
+        </OficinaModal.Field>
+
+        {error && (
+          <p className="text-[13px] px-3 py-2 rounded-lg"
+            style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
+            {error}
           </p>
         )}
-      </div>
 
-      {error && (
-        <p className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-          {error}
-        </p>
-      )}
-
-      <div className="flex items-center gap-2 pt-1">
-        <button type="submit" disabled={saving || !nombre.trim()}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
-          style={{ background: '#6C3BFF', color: '#fff' }}>
-          {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-          {initial ? 'Guardar cambios' : 'Crear campaña'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-          style={{ color: 'var(--c-text-3)' }}>
-          Cancelar
-        </button>
       </div>
-    </form>
+    </OficinaModal>
   );
 }
 
