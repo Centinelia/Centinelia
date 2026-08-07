@@ -8,7 +8,6 @@ import {
 } from '@/lib/civic/folio';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
-import { SectionHeader } from '@/components/portal-ui';
 
 interface CivicReport {
   id:               string;
@@ -63,19 +62,19 @@ function StatusSelect({ folio, current, token, onChange }: {
       <button
         onClick={() => setOpen(o => !o)}
         disabled={saving}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg transition-opacity disabled:opacity-50"
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+        className="flex items-center gap-1.5 text-[11px] px-2.5 h-7 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
+        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
       >
         <StatusBadge status={current} />
         <ChevronDown size={11} style={{ flexShrink: 0 }} />
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 flex flex-col rounded-xl overflow-hidden shadow-xl"
-          style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border)', minWidth: 130 }}>
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', minWidth: 140 }}>
           {STATUS_ORDER.map(s => (
             <button key={s} onClick={() => pick(s)}
-              className="flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[var(--c-surface-2)]"
-              style={{ color: s === current ? '#9B6DFF' : 'var(--c-text-2)' }}>
+              className="flex items-center gap-2 px-3 py-2 text-[12px] text-left transition-colors hover:bg-[#FAFAFB]"
+              style={{ color: s === current ? '#6C3BFF' : '#1A0A3B' }}>
               {s === current && <Check size={11} />}
               <span className={s === current ? 'ml-0' : 'ml-[15px]'}>{STATUS_LABELS[s]}</span>
             </button>
@@ -113,12 +112,12 @@ function DocsChecklist({ report, token, tramiteDocs, onUpdate }: {
   const doneCount = required.filter(d => received.includes(d)).length;
 
   return (
-    <div className="flex flex-col gap-2 pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+    <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[12px] font-semibold flex items-center gap-1.5" style={{ color: '#6B6480' }}>
           <FileCheck2 size={12} /> Documentos: {tipo}
         </p>
-        <span className="text-[11px]" style={{ color: doneCount === required.length ? '#22c55e' : 'var(--c-text-4)' }}>
+        <span className="text-[11px] font-medium" style={{ color: doneCount === required.length ? '#22c55e' : '#9B8FB5' }}>
           {doneCount}/{required.length}
         </span>
       </div>
@@ -129,18 +128,18 @@ function DocsChecklist({ report, token, tramiteDocs, onUpdate }: {
             <button
               key={doc}
               onClick={() => toggle(doc)}
-              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-colors hover:bg-[var(--c-surface-2)]"
-              style={{ border: '1px solid var(--c-border)', background: done ? 'rgba(34,197,94,0.06)' : 'var(--c-bg)' }}
+              className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-left transition-colors hover:bg-[#FAFAFB]"
+              style={{ border: '1px solid #E8E3F5', background: done ? 'rgba(34,197,94,0.06)' : '#ffffff' }}
             >
               <div className="flex-shrink-0 flex items-center justify-center rounded"
                 style={{
                   width: 16, height: 16,
-                  background: done ? '#22c55e' : 'var(--c-surface)',
-                  border: done ? 'none' : '1.5px solid var(--c-border-2)',
+                  background: done ? '#22c55e' : '#ffffff',
+                  border: done ? 'none' : '1.5px solid #E8E3F5',
                 }}>
                 {done && <Check size={10} color="#fff" />}
               </div>
-              <span className="text-xs" style={{ color: done ? 'var(--c-text-3)' : 'var(--c-text-2)', textDecoration: done ? 'line-through' : 'none' }}>
+              <span className="text-[12px]" style={{ color: done ? '#6B6480' : '#1A0A3B', textDecoration: done ? 'line-through' : 'none' }}>
                 {doc}
               </span>
             </button>
@@ -151,8 +150,8 @@ function DocsChecklist({ report, token, tramiteDocs, onUpdate }: {
   );
 }
 
-function ReportCard({ report: initialReport, token, tramiteDocs, onUpdate }: {
-  report: CivicReport; token: string; tramiteDocs: TramiteDocsConfig;
+function ReportRow({ report: initialReport, token, tramiteDocs, isLast, onUpdate }: {
+  report: CivicReport; token: string; tramiteDocs: TramiteDocsConfig; isLast: boolean;
   onUpdate: (folio: string, patch: Partial<CivicReport>) => void;
 }) {
   const [report,   setReport]   = useState(initialReport);
@@ -184,29 +183,27 @@ function ReportCard({ report: initialReport, token, tramiteDocs, onUpdate }: {
   const hasDocs = report.tramite_tipo && tramiteDocs[report.tramite_tipo]?.length;
 
   return (
-    <div className="rounded-xl overflow-hidden transition-all"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+    <div style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9' }}>
       <div
-        className="flex items-start gap-3 p-4 cursor-pointer"
+        className="flex items-start gap-3 px-5 py-4 cursor-pointer transition-colors hover:bg-[#FAFAFB]"
         onClick={() => setExpanded(e => !e)}
       >
-        {/* Folio + category */}
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-xs font-bold" style={{ color: '#9B6DFF' }}>{report.folio}</span>
-            <span className="text-[11px] px-1.5 py-0.5 rounded-md"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+            <span className="font-mono text-[12px] font-bold" style={{ color: '#6C3BFF' }}>{report.folio}</span>
+            <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
               {CATEGORY_LABELS[report.category] ?? report.category}
             </span>
             {report.area_responsable && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded-md"
-                style={{ background: 'rgba(34,197,94,0.08)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                style={{ background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.2)' }}>
                 {report.area_responsable}
               </span>
             )}
             {report.tramite_tipo && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded-md"
-                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.2)' }}>
+              <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.2)' }}>
                 {report.tramite_tipo}
               </span>
             )}
@@ -215,34 +212,33 @@ function ReportCard({ report: initialReport, token, tramiteDocs, onUpdate }: {
               const done = (report.docs_received ?? []).filter(d => req.includes(d)).length;
               const all  = done === req.length;
               return (
-                <span className="text-[11px] px-1.5 py-0.5 rounded-md"
-                  style={{ background: all ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: all ? '#22c55e' : '#f59e0b' }}>
+                <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium"
+                  style={{ background: all ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: all ? '#16a34a' : '#d97706' }}>
                   {done}/{req.length} docs
                 </span>
               );
             })()}
           </div>
           {report.description && (
-            <p className="text-sm leading-snug line-clamp-2" style={{ color: 'var(--c-text)' }}>{report.description}</p>
+            <p className="text-[13px] leading-snug line-clamp-2" style={{ color: '#1A0A3B' }}>{report.description}</p>
           )}
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             {report.location_text && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <span className="flex items-center gap-1 text-[11px]" style={{ color: '#6B6480' }}>
                 <MapPin size={11} />{report.location_text}
               </span>
             )}
             {report.caller_number && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <span className="flex items-center gap-1 text-[11px]" style={{ color: '#6B6480' }}>
                 <Phone size={11} />{report.caller_name ? `${report.caller_name} · ` : ''}{report.caller_number}
               </span>
             )}
-            <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-3)' }}>
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: '#9B8FB5' }}>
               <Calendar size={11} />{date}
             </span>
           </div>
         </div>
 
-        {/* Status control */}
         <div onClick={e => e.stopPropagation()}>
           <StatusSelect
             folio={report.folio} current={report.status} token={token}
@@ -251,33 +247,33 @@ function ReportCard({ report: initialReport, token, tramiteDocs, onUpdate }: {
         </div>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="px-5 pb-4 pt-3 flex flex-col gap-4"
+          style={{ background: '#FAFAFB', borderTop: '1px solid #F0EDF9' }}>
           <DocsChecklist
             report={report}
             token={token}
             tramiteDocs={tramiteDocs}
             onUpdate={patch => applyPatch(patch)}
           />
-          <div className="pt-3">
-            <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>Notas internas</p>
+          <div>
+            <p className="text-[12px] font-semibold mb-1.5" style={{ color: '#6B6480' }}>Notas internas</p>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={3}
               placeholder="Agrega notas de seguimiento..."
-              className="w-full text-sm px-3 py-2 rounded-lg resize-none"
+              className="w-full text-[13px] px-3 py-2 rounded-lg resize-none outline-none"
               style={{
-                background: 'var(--c-surface-2)', border: '1px solid var(--c-border)',
-                color: 'var(--c-text)', outline: 'none',
+                background: '#ffffff', border: '1px solid #E8E3F5',
+                color: '#1A0A3B',
               }}
             />
             <button
               onClick={saveNotes}
               disabled={saving || notes === (report.notes ?? '')}
-              className="mt-2 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity disabled:opacity-40"
-              style={{ background: '#6C3BFF', color: '#fff' }}
+              className="mt-2 flex items-center gap-1.5 text-[12px] px-3 h-8 rounded-lg font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
             >
               {saved ? <><Check size={12} /> Guardado</> : saving ? 'Guardando...' : 'Guardar notas'}
             </button>
@@ -321,39 +317,61 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
   const openCount      = displayReports.filter(r => r.status === 'abierto').length;
   const inProcessCount = displayReports.filter(r => r.status === 'en_proceso').length;
 
-  return (
-    <div className="flex flex-col gap-5">
+  const subtitle = openCount > 0 || inProcessCount > 0
+    ? [
+        openCount > 0 ? `${openCount} abierto${openCount !== 1 ? 's' : ''}` : '',
+        inProcessCount > 0 ? `${inProcessCount} en proceso` : '',
+      ].filter(Boolean).join(' · ')
+    : 'Sin reportes pendientes';
 
+  return (
+    <div
+      className="flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
       {/* Header */}
-      <SectionHeader
-        as="h2"
-        title="Reportes ciudadanos"
-        description={
-          openCount > 0 || inProcessCount > 0
-            ? [
-                openCount > 0 ? `${openCount} abierto${openCount !== 1 ? 's' : ''}` : '',
-                inProcessCount > 0 ? `${inProcessCount} en proceso` : '',
-              ].filter(Boolean).join(' · ')
-            : 'Sin reportes pendientes'
-        }
-      />
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Reportes ciudadanos
+            </h2>
+            {reports.length > 0 && (
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {displayReports.length}
+              </span>
+            )}
+          </div>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>{subtitle}</p>
+        </div>
+      </div>
 
       {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-1 min-w-[180px] px-3 py-2 rounded-lg"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-          <Search size={13} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
+      <div className="px-5 pb-3 flex gap-2 flex-wrap"
+        style={{ borderTop: '1px solid #F0EDF9', paddingTop: 12 }}>
+        <div className="flex items-center gap-2 flex-1 min-w-[200px] px-3 h-9 rounded-lg"
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+          <Search size={13} style={{ color: '#9B8FB5', flexShrink: 0 }} />
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por folio, descripción, teléfono..."
-            className="flex-1 text-sm bg-transparent outline-none"
-            style={{ color: 'var(--c-text)' }}
+            className="flex-1 text-[13px] bg-transparent outline-none"
+            style={{ color: '#1A0A3B' }}
           />
-          {search && <button onClick={() => setSearch('')}><X size={12} style={{ color: 'var(--c-text-3)' }} /></button>}
+          {search && (
+            <button onClick={() => setSearch('')} aria-label="Limpiar búsqueda">
+              <X size={12} style={{ color: '#9B8FB5' }} />
+            </button>
+          )}
         </div>
 
         <Select value={statusF || '__all'} onValueChange={v => setStatusF(v === '__all' ? '' : (v as CivicStatus))}>
-          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+          <SelectTrigger className="w-auto rounded-lg h-9 text-[12px]"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -363,7 +381,8 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
         </Select>
 
         <Select value={categoryF || '__all'} onValueChange={v => setCategoryF(v === '__all' ? '' : v)}>
-          <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+          <SelectTrigger className="w-auto rounded-lg h-9 text-[12px]"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -374,7 +393,8 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
 
         {allAreas.length > 0 && (
           <Select value={areaF || '__all'} onValueChange={v => setAreaF(v === '__all' ? '' : v)}>
-            <SelectTrigger className="w-auto text-xs bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectTrigger className="w-auto rounded-lg h-9 text-[12px]"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -387,23 +407,34 @@ export default function CivicReportsSection({ token, tramiteDocs }: { token: str
 
       {/* List */}
       {loading ? (
-        <div className="flex flex-col gap-2">
-          {[1,2,3].map(i => (
-            <div key={i} className="rounded-xl p-4 h-20 animate-pulse"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }} />
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {[1,2,3].map((i, idx) => (
+            <div key={i} className="px-5 py-4 h-20 animate-pulse"
+              style={{ borderBottom: idx === 2 ? 'none' : '1px solid #F0EDF9', background: '#FAFAFB' }} />
           ))}
         </div>
       ) : reports.length === 0 ? (
-        <EmptyState
-          icon={MapPin}
-          title={search || statusF || categoryF ? 'Sin resultados para ese filtro' : 'No hay reportes ciudadanos aún'}
-        />
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
+          <EmptyState
+            icon={MapPin}
+            title={search || statusF || categoryF ? 'Sin resultados para ese filtro' : 'No hay reportes ciudadanos aún'}
+          />
+        </div>
       ) : displayReports.length === 0 ? (
-        <EmptyState icon={MapPin} title="Sin resultados para ese filtro" />
+        <div style={{ borderTop: '1px solid #F0EDF9' }}>
+          <EmptyState icon={MapPin} title="Sin resultados para ese filtro" />
+        </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {displayReports.map(r => (
-            <ReportCard key={r.id} report={r} token={token} tramiteDocs={tramiteDocs} onUpdate={handleUpdate} />
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {displayReports.map((r, idx) => (
+            <ReportRow
+              key={r.id}
+              report={r}
+              token={token}
+              tramiteDocs={tramiteDocs}
+              isLast={idx === displayReports.length - 1}
+              onUpdate={handleUpdate}
+            />
           ))}
         </div>
       )}
