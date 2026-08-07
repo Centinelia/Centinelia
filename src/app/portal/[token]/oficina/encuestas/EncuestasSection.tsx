@@ -211,11 +211,11 @@ function ResultBar({ label, count, total, color = '#6C3BFF' }: { label: string; 
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="w-6 text-right tabular-nums shrink-0" style={{ color: 'var(--c-text-3)' }}>{label}</span>
-      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 10, background: 'var(--c-border)' }}>
+      <span className="w-6 text-right tabular-nums shrink-0" style={{ color: '#6B6480' }}>{label}</span>
+      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 10, background: '#E8E3F5' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 9999, transition: 'width 0.4s' }} />
       </div>
-      <span className="w-8 text-right tabular-nums shrink-0" style={{ color: 'var(--c-text-3)' }}>{count}</span>
+      <span className="w-8 text-right tabular-nums shrink-0" style={{ color: '#6B6480' }}>{count}</span>
     </div>
   );
 }
@@ -235,7 +235,7 @@ function TrendChip({ trend, isSiNo = false }: { trend: Trend; isSiNo?: boolean }
 }
 
 function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Question; trend?: Trend | null }) {
-  if (!agg.count) return <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas aún.</p>;
+  if (!agg.count) return <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin respuestas aún.</p>;
 
   if (agg.tipo === 'rating_5' || agg.tipo === 'rating_10') {
     const max  = agg.tipo === 'rating_5' ? 5 : 10;
@@ -243,14 +243,14 @@ function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Qu
     return (
       <div className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline gap-2">
-          <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
-            Promedio: <span style={{ color: '#9B6DFF' }}>{agg.avg?.toFixed(1) ?? '—'}</span>
-            <span className="font-normal ml-1" style={{ color: 'var(--c-text-4)' }}>/ {max} · {agg.count} resp.</span>
+          <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>
+            Promedio: <span style={{ color: '#6C3BFF' }}>{agg.avg?.toFixed(1) ?? 'sin datos'}</span>
+            <span className="font-normal ml-1" style={{ color: '#9B8FB5' }}>/ {max} · {agg.count} resp.</span>
           </p>
           {trend && <TrendChip trend={trend} />}
         </div>
         {trend?.current_count != null && trend.current_count < agg.count && (
-          <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
             Últimos 30d: {trend.current_count} resp.{trend.prev_count > 0 ? ` · Per. anterior: ${trend.prev_count}` : ''}
           </p>
         )}
@@ -267,7 +267,7 @@ function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Qu
     return (
       <div className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline gap-2">
-          <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+          <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>
             {agg.count} respuestas · <span style={{ color: '#22c55e' }}>{agg.pct_si ?? 0}% sí</span>
           </p>
           {trend && <TrendChip trend={trend} isSiNo />}
@@ -284,7 +284,7 @@ function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Qu
     const dist = agg.distribution ?? {};
     return (
       <div className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{agg.count} respuestas</p>
+        <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{agg.count} respuestas</p>
         <div className="flex flex-col gap-1 mt-1">
           {Object.entries(dist).map(([opt, cnt]) => (
             <ResultBar key={opt} label={opt} count={cnt} total={agg.count} />
@@ -296,10 +296,10 @@ function AggregateBlock({ agg, question, trend }: { agg: Aggregate; question: Qu
 
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{agg.count} respuestas</p>
+      <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{agg.count} respuestas</p>
       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto mt-1">
         {(agg.texts ?? []).map((t, i) => (
-          <p key={i} className="text-xs px-2 py-1.5 rounded-lg" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)' }}>{t}</p>
+          <p key={i} className="text-xs px-2 py-1.5 rounded-lg" style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}>{t}</p>
         ))}
       </div>
     </div>
@@ -395,7 +395,7 @@ function ConditionEditor({
     return (
       <button
         onClick={() => setOpen(true)}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-text-4)', fontSize: 11, marginTop: 4, display: 'block' }}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#9B8FB5', fontSize: 11, marginTop: 4, display: 'block' }}
       >
         + Añadir reacción
       </button>
@@ -404,13 +404,13 @@ function ConditionEditor({
 
   return (
     <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 8, background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.12)' }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-3)', margin: '0 0 6px' }}>Reacción del empleado</p>
+      <p style={{ fontSize: 11, fontWeight: 600, color: '#6B6480', margin: '0 0 6px' }}>Reacción del empleado</p>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>Si el cliente responde</span>
+        <span style={{ fontSize: 11, color: '#9B8FB5' }}>Si el cliente responde</span>
         {isRating ? (
           <Select value={String(threshold)} onValueChange={v => setThreshold(Number(v))}>
-            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -421,7 +421,7 @@ function ConditionEditor({
           </Select>
         ) : (
           <Select value={ifAnswer} onValueChange={setIfAnswer}>
-            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+            <SelectTrigger className="w-auto py-0.5 px-1.5 text-[11px] rounded-md" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -430,7 +430,7 @@ function ConditionEditor({
             </SelectContent>
           </Select>
         )}
-        <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>el empleado dice:</span>
+        <span style={{ fontSize: 11, color: '#9B8FB5' }}>el empleado dice:</span>
       </div>
 
       <textarea
@@ -438,14 +438,15 @@ function ConditionEditor({
         onChange={e => setScript(e.target.value)}
         rows={2}
         placeholder='Ej: "Lamento mucho escuchar eso. ¿Hay algo específico que podríamos mejorar?"'
-        style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface)', color: 'var(--c-text)', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+        style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '1px solid #E8E3F5', background: '#ffffff', color: '#1A0A3B', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
       />
 
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
         <button
           onClick={save}
           disabled={saving || !script.trim()}
-          style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving || !script.trim() ? 'not-allowed' : 'pointer', opacity: saving || !script.trim() ? 0.6 : 1 }}
+          className="transition-all hover:opacity-90"
+          style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: '#6C3BFF', color: '#fff', border: 'none', boxShadow: '0 1px 2px rgba(108,59,255,0.24)', cursor: saving || !script.trim() ? 'not-allowed' : 'pointer', opacity: saving || !script.trim() ? 0.6 : 1 }}
         >
           {saving ? 'Guardando...' : 'Guardar'}
         </button>
@@ -453,14 +454,14 @@ function ConditionEditor({
           <button
             onClick={remove}
             disabled={saving}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', cursor: 'pointer' }}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer' }}
           >
             Quitar
           </button>
         ) : (
           <button
             onClick={() => setOpen(false)}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: 'none', border: 'none', color: 'var(--c-text-4)', cursor: 'pointer' }}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}
           >
             Cancelar
           </button>
@@ -530,7 +531,7 @@ function ActionsTab({
 
   return (
     <div className="px-4 pb-4 flex flex-col gap-4">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
         Cuando la calificación caiga por debajo del umbral, el empleado ejecuta estas acciones automáticamente al terminar la llamada. Todas vienen desactivadas por defecto.
       </p>
 
@@ -543,14 +544,14 @@ function ActionsTab({
 
       {hasPrimaryRating && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Umbral</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Umbral</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Activar cuando la calificación sea</span>
+            <span className="text-xs" style={{ color: '#6B6480' }}>Activar cuando la calificación sea</span>
             <Select
               value={String(actions.threshold)}
               onValueChange={v => { setActions(prev => ({ ...prev, threshold: Number(v) })); setSaved(false); }}
             >
-              <SelectTrigger className="w-auto py-1 px-2 text-xs rounded-md bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectTrigger className="w-auto py-1 px-2 text-xs rounded-md" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -565,13 +566,13 @@ function ActionsTab({
 
       {hasSiNo && !hasPrimaryRating && (
         <p className="text-xs px-3 py-2 rounded-lg"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
           Se activa cuando el cliente responde <strong>No</strong>.
         </p>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Acciones automáticas</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Acciones automáticas</p>
         <div className="flex flex-col gap-2">
           {ACTION_DEFS.map(({ key, label, desc, Icon }) => {
             const on = actions[key];
@@ -580,26 +581,26 @@ function ActionsTab({
                 key={key}
                 onClick={() => toggle(key)}
                 disabled={!hasEligible}
-                className="flex items-start gap-3 p-3 rounded-xl text-left transition-all"
+                className="flex items-start gap-3 p-3 rounded-lg text-left transition-all"
                 style={{
-                  background: on ? 'rgba(108,59,255,0.07)' : 'var(--c-surface-2)',
-                  border:     on ? '1px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+                  background: on ? 'rgba(108,59,255,0.07)' : '#FAFAFB',
+                  border:     on ? '1px solid rgba(108,59,255,0.3)' : '1px solid #E8E3F5',
                   cursor:     hasEligible ? 'pointer' : 'not-allowed',
                   opacity:    hasEligible ? 1 : 0.45,
                 }}
               >
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                  style={{ background: on ? 'rgba(108,59,255,0.15)' : 'var(--c-bg)' }}>
-                  <Icon size={13} style={{ color: on ? '#9B6DFF' : 'var(--c-text-3)' }} />
+                  style={{ background: on ? 'rgba(108,59,255,0.15)' : '#ffffff', border: on ? 'none' : '1px solid #E8E3F5' }}>
+                  <Icon size={13} style={{ color: on ? '#6C3BFF' : '#6B6480' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold" style={{ color: on ? 'var(--c-text)' : 'var(--c-text-2)' }}>{label}</p>
-                  <p className="text-[11px] mt-0.5 leading-snug" style={{ color: 'var(--c-text-4)' }}>{desc}</p>
+                  <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{label}</p>
+                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: '#9B8FB5' }}>{desc}</p>
                 </div>
                 <div className="shrink-0 mt-1">
                   {on
                     ? <ToggleRight size={18} style={{ color: '#6C3BFF' }} />
-                    : <ToggleLeft  size={18} style={{ color: 'var(--c-text-4)' }} />
+                    : <ToggleLeft  size={18} style={{ color: '#9B8FB5' }} />
                   }
                 </div>
               </button>
@@ -612,11 +613,12 @@ function ActionsTab({
         <button
           onClick={save}
           disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold self-end transition-all hover:opacity-90"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold self-end transition-all hover:opacity-90"
           style={{
             background: saved ? 'rgba(34,197,94,0.1)' : '#6C3BFF',
             color:      saved ? '#22c55e'              : '#fff',
             border:     saved ? '1px solid rgba(34,197,94,0.3)' : 'none',
+            boxShadow:  saved ? 'none' : '0 1px 2px rgba(108,59,255,0.24)',
             cursor:     saving ? 'wait' : 'pointer',
             opacity:    saving ? 0.7 : 1,
           }}
@@ -703,32 +705,33 @@ function WizardModal({
   const btnBase: React.CSSProperties = {
     padding: '8px 18px', borderRadius: 10, fontSize: 13, fontWeight: 600,
     cursor: 'pointer', border: 'none', color: '#fff', background: '#6C3BFF',
+    boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
     display: 'flex', alignItems: 'center', gap: 6,
   };
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,5,34,0.62)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ width: '100%', maxWidth: 520, borderRadius: 20, background: 'var(--c-modal)', border: '1px solid var(--c-border)', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: 520, borderRadius: 16, background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 24px 64px rgba(26,10,59,0.18)', overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--c-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #F0EDF9' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {step > 1 && (
               <button
                 onClick={() => setStep(s => (s - 1) as 1 | 2)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-3)', display: 'flex', padding: 4, borderRadius: 6 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B6480', display: 'flex', padding: 4, borderRadius: 6 }}
               >
                 <ArrowLeft size={14} />
               </button>
             )}
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text)', margin: 0 }}>Nueva encuesta</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#1A0A3B', margin: 0 }}>Nueva encuesta</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 11, color: 'var(--c-text-4)' }}>Paso {step} de 3</span>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-3)', display: 'flex', padding: 4 }}>
+            <span style={{ fontSize: 11, color: '#9B8FB5' }}>Paso {step} de 3</span>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B6480', display: 'flex', padding: 4 }}>
               <X size={14} />
             </button>
           </div>
@@ -737,7 +740,7 @@ function WizardModal({
         {/* Progress bar */}
         <div style={{ display: 'flex', gap: 4, padding: '12px 20px 0' }}>
           {[1, 2, 3].map(s => (
-            <div key={s} style={{ flex: 1, height: 3, borderRadius: 9999, background: s <= step ? '#6C3BFF' : 'var(--c-border)', transition: 'background 0.25s' }} />
+            <div key={s} style={{ flex: 1, height: 3, borderRadius: 9999, background: s <= step ? '#6C3BFF' : '#E8E3F5', transition: 'background 0.25s' }} />
           ))}
         </div>
 
@@ -747,7 +750,7 @@ function WizardModal({
           {/* Step 1 — Categoría */}
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: 0 }}>¿Qué quieres medir?</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: 0 }}>¿Qué quieres medir?</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {CATEGORIES.map(cat => {
                   const Icon = cat.icon;
@@ -758,13 +761,13 @@ function WizardModal({
                       onClick={() => setCategoryId(cat.id)}
                       style={{
                         padding: '10px 10px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
-                        border:     sel ? '1px solid rgba(108,59,255,0.5)' : '1px solid var(--c-border)',
-                        background: sel ? 'rgba(108,59,255,0.1)' : 'var(--c-surface)',
+                        border:     sel ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                        background: sel ? 'rgba(108,59,255,0.1)' : '#ffffff',
                         transition: 'all 0.15s',
                       }}
                     >
-                      <Icon size={14} style={{ color: sel ? '#9B6DFF' : 'var(--c-text-3)' }} />
-                      <p style={{ fontSize: 11, fontWeight: 600, color: sel ? '#9B6DFF' : 'var(--c-text)', margin: '6px 0 0', lineHeight: 1.35 }}>
+                      <Icon size={14} style={{ color: sel ? '#6C3BFF' : '#6B6480' }} />
+                      <p style={{ fontSize: 11, fontWeight: 600, color: sel ? '#6C3BFF' : '#1A0A3B', margin: '6px 0 0', lineHeight: 1.35 }}>
                         {cat.label}
                       </p>
                     </button>
@@ -779,13 +782,13 @@ function WizardModal({
                     value={customNombre}
                     onChange={e => setCustomNombre(e.target.value)}
                     placeholder="Nombre de la encuesta *"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid #E8E3F5', background: '#ffffff', color: '#1A0A3B', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
                   <input
                     value={customObjetivo}
                     onChange={e => setCustomObjetivo(e.target.value)}
                     placeholder="Objetivo de la encuesta (opcional)"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--c-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid #E8E3F5', background: '#ffffff', color: '#1A0A3B', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
               )}
@@ -796,8 +799,8 @@ function WizardModal({
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: '0 0 2px' }}>¿Cuándo debe aplicarse?</p>
-                <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: 0 }}>Selecciona uno o más momentos.</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: '0 0 2px' }}>¿Cuándo debe aplicarse?</p>
+                <p style={{ fontSize: 12, color: '#6B6480', margin: 0 }}>Selecciona uno o más momentos.</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {TRIGGERS.map(t => {
@@ -808,8 +811,8 @@ function WizardModal({
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
                         padding: '10px 12px', borderRadius: 10,
-                        background: checked ? 'rgba(108,59,255,0.07)' : 'var(--c-surface)',
-                        border: `1px solid ${checked ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+                        background: checked ? 'rgba(108,59,255,0.07)' : '#ffffff',
+                        border: `1px solid ${checked ? 'rgba(108,59,255,0.3)' : '#E8E3F5'}`,
                         transition: 'all 0.15s',
                       }}
                     >
@@ -817,7 +820,7 @@ function WizardModal({
                         type="checkbox" checked={checked} onChange={() => toggleTrigger(t.id)}
                         style={{ accentColor: '#6C3BFF', width: 15, height: 15, flexShrink: 0 }}
                       />
-                      <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>{t.label}</span>
+                      <span style={{ fontSize: 13, color: '#1A0A3B' }}>{t.label}</span>
                     </label>
                   );
                 })}
@@ -829,16 +832,16 @@ function WizardModal({
           {step === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: '0 0 2px' }}>¿Quién la aplica?</p>
-                <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: 0 }}>Puedes asignársela a un empleado específico o a todo el equipo.</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: '0 0 2px' }}>¿Quién la aplica?</p>
+                <p style={{ fontSize: 12, color: '#6B6480', margin: 0 }}>Puedes asignársela a un empleado específico o a todo el equipo.</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
                     padding: '10px 12px', borderRadius: 10,
-                    background: allTeam ? 'rgba(108,59,255,0.07)' : 'var(--c-surface)',
-                    border: `1px solid ${allTeam ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+                    background: allTeam ? 'rgba(108,59,255,0.07)' : '#ffffff',
+                    border: `1px solid ${allTeam ? 'rgba(108,59,255,0.3)' : '#E8E3F5'}`,
                     transition: 'all 0.15s',
                   }}
                 >
@@ -847,7 +850,7 @@ function WizardModal({
                     onChange={() => { setAllTeam(v => !v); setSelAgents([]); }}
                     style={{ accentColor: '#6C3BFF', width: 15, height: 15, flexShrink: 0 }}
                   />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-2)' }}>Todo el equipo</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B' }}>Todo el equipo</span>
                 </label>
 
                 {agents.map(a => {
@@ -860,8 +863,8 @@ function WizardModal({
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, cursor: allTeam ? 'default' : 'pointer',
                         padding: '10px 12px', borderRadius: 10, opacity: allTeam ? 0.45 : 1,
-                        background: checked ? `${color}12` : 'var(--c-surface)',
-                        border: `1px solid ${checked ? `${color}40` : 'var(--c-border)'}`,
+                        background: checked ? `${color}12` : '#ffffff',
+                        border: `1px solid ${checked ? `${color}40` : '#E8E3F5'}`,
                         transition: 'all 0.15s',
                       }}
                     >
@@ -874,8 +877,8 @@ function WizardModal({
                         {name.charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>{name}</span>
-                        {a.role && <span style={{ fontSize: 11, color: 'var(--c-text-4)', marginLeft: 6 }}>{a.role}</span>}
+                        <span style={{ fontSize: 13, color: '#1A0A3B' }}>{name}</span>
+                        {a.role && <span style={{ fontSize: 11, color: '#9B8FB5', marginLeft: 6 }}>{a.role}</span>}
                       </div>
                     </label>
                   );
@@ -889,7 +892,7 @@ function WizardModal({
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 20px' }}>
           <button
             onClick={onClose}
-            style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+            style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
           >
             Cancelar
           </button>
@@ -898,6 +901,7 @@ function WizardModal({
             <button
               onClick={() => setStep(s => (s + 1) as 2 | 3)}
               disabled={(step === 1 && !canNext1) || (step === 2 && !canNext2)}
+              className="transition-all hover:opacity-90"
               style={{ ...btnBase, opacity: (step === 1 && !canNext1) || (step === 2 && !canNext2) ? 0.4 : 1 }}
             >
               Siguiente
@@ -906,6 +910,7 @@ function WizardModal({
             <button
               onClick={handleCreate}
               disabled={saving || !canCreate}
+              className="transition-all hover:opacity-90"
               style={{ ...btnBase, opacity: saving || !canCreate ? 0.6 : 1 }}
             >
               {saving && <Loader2 size={12} className="animate-spin" />}
@@ -1155,7 +1160,7 @@ function SurveyCard({
           {/* Agent context row */}
           {surveyAgents !== null && (
             <div className="flex items-center gap-2 px-4 pt-3 flex-wrap">
-              <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>Aplica:</span>
+              <span className="text-[10px]" style={{ color: '#9B8FB5' }}>Aplica:</span>
               {surveyAgents.map(a => {
                 const color = a.role_color ?? '#6C3BFF';
                 const name  = a.agent_name?.trim() || 'Empleado';
@@ -1174,7 +1179,7 @@ function SurveyCard({
             <button
               onClick={() => onToggle(survey.id, 'activa', !survey.activa)}
               className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.activa ? '#22c55e' : 'var(--c-text-3)', padding: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.activa ? '#22c55e' : '#6B6480', padding: 0 }}
             >
               {survey.activa ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
               Activa
@@ -1182,7 +1187,7 @@ function SurveyCard({
             <button
               onClick={() => onToggle(survey.id, 'auto_apply', !survey.auto_apply)}
               className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.auto_apply ? '#6C3BFF' : 'var(--c-text-3)', padding: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: survey.auto_apply ? '#6C3BFF' : '#6B6480', padding: 0 }}
             >
               {survey.auto_apply ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
               Aplicar automáticamente
@@ -1210,7 +1215,7 @@ function SurveyCard({
                   onChange={e => setManualPhone(e.target.value)}
                   placeholder="Número del cliente (ej. +528112345678)"
                   className="flex-1 px-3 py-1.5 rounded-lg text-xs"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
                 />
                 <button
                   onClick={dispatchManual}
@@ -1227,7 +1232,7 @@ function SurveyCard({
                   {manualSent ? 'Tarea creada' : 'Crear tarea'}
                 </button>
               </div>
-              <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
                 Se crea una tarea para que el empleado llame a este número y aplique la encuesta.
               </p>
             </div>
@@ -1242,7 +1247,7 @@ function SurveyCard({
                 className="px-3 py-1 rounded-lg text-xs font-medium"
                 style={{
                   background: view === v ? 'rgba(108,59,255,0.12)' : 'transparent',
-                  color:      view === v ? '#9B6DFF'               : 'var(--c-text-3)',
+                  color:      view === v ? '#6C3BFF'               : '#6B6480',
                   border: 'none', cursor: 'pointer',
                 }}
               >
@@ -1261,9 +1266,9 @@ function SurveyCard({
           {/* Hallazgos */}
           {view === 'hallazgos' && (
             <div className="px-4 pb-4 flex flex-col gap-4">
-              {loadingRes && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando resultados...</p>}
+              {loadingRes && <p className="text-xs" style={{ color: '#9B8FB5' }}>Cargando resultados...</p>}
               {!loadingRes && !results && !survey.activa && (
-                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                <p className="text-xs" style={{ color: '#9B8FB5' }}>
                   Activa la encuesta para que el empleado la aplique y ver resultados aquí.
                 </p>
               )}
@@ -1271,7 +1276,7 @@ function SurveyCard({
                 <>
                   {hallazgos.length > 0 && (
                     <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
                         Hallazgos
                       </p>
                       {hallazgos.map(({ question, insight }) => (
@@ -1279,19 +1284,19 @@ function SurveyCard({
                           style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.12)' }}>
                           <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ background: '#6C3BFF' }} />
                           <div>
-                            <p className="text-[10px] leading-snug" style={{ color: 'var(--c-text-4)' }}>{question.texto}</p>
-                            <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--c-text-2)' }}>{insight}</p>
+                            <p className="text-[10px] leading-snug" style={{ color: '#9B8FB5' }}>{question.texto}</p>
+                            <p className="text-xs font-medium mt-0.5" style={{ color: '#1A0A3B' }}>{insight}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                   <div className="flex flex-col gap-4">
-                    <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <p className="text-xs" style={{ color: '#6B6480' }}>
                       {results.total} respuesta{results.total !== 1 ? 's' : ''} recopilada{results.total !== 1 ? 's' : ''}
                     </p>
                     {results.questions.length === 0 && (
-                      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-xs" style={{ color: '#9B8FB5' }}>
                         Sin preguntas configuradas. Ve a Preguntas para agregarlas.
                       </p>
                     )}
@@ -1300,10 +1305,10 @@ function SurveyCard({
                       const trend = results.trends?.[q.id] ?? null;
                       return (
                         <div key={q.id} className="flex flex-col gap-2">
-                          <p className="text-xs font-semibold" style={{ color: 'var(--c-text)' }}>{q.orden}. {q.texto}</p>
+                          <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{q.orden}. {q.texto}</p>
                           {agg
                             ? <AggregateBlock agg={agg} question={q} trend={trend} />
-                            : <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas.</p>
+                            : <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin respuestas.</p>
                           }
                         </div>
                       );
@@ -1322,28 +1327,28 @@ function SurveyCard({
           {/* Respuestas individuales */}
           {view === 'respuestas' && (
             <div className="px-4 pb-4 flex flex-col gap-3">
-              {loadingRes && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando...</p>}
+              {loadingRes && <p className="text-xs" style={{ color: '#9B8FB5' }}>Cargando...</p>}
               {!loadingRes && (!results || results.total === 0) && (
-                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin respuestas registradas aún.</p>
+                <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin respuestas registradas aún.</p>
               )}
               {results && results.total > 0 && (
                 <>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{results.total} respuesta{results.total !== 1 ? 's' : ''}</p>
+                    <p className="text-xs" style={{ color: '#6B6480' }}>{results.total} respuesta{results.total !== 1 ? 's' : ''}</p>
                     <button
                       onClick={exportCSV}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)', color: '#9B6DFF', cursor: 'pointer' }}
+                      style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.2)', color: '#6C3BFF', cursor: 'pointer' }}
                     >
                       <Download size={11} /> Exportar CSV
                     </button>
                   </div>
                   <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
                     {(results.responses ?? []).map((r, i) => (
-                      <div key={r.id ?? i} className="rounded-xl p-3 flex flex-col gap-1.5"
-                        style={{ background: 'var(--c-surface-2)', border: `1px solid ${r.churn_risk ? 'rgba(239,68,68,0.3)' : 'var(--c-border)'}` }}>
+                      <div key={r.id ?? i} className="rounded-lg p-3 flex flex-col gap-1.5"
+                        style={{ background: '#FAFAFB', border: `1px solid ${r.churn_risk ? 'rgba(239,68,68,0.3)' : '#E8E3F5'}` }}>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-medium" style={{ color: 'var(--c-text-3)' }}>
+                          <span className="text-[10px] font-medium" style={{ color: '#6B6480' }}>
                             {r.caller_number ?? 'Número desconocido'}
                           </span>
                           <div className="flex items-center gap-1.5">
@@ -1353,7 +1358,7 @@ function SurveyCard({
                                 Churn risk
                               </span>
                             )}
-                            <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+                            <span className="text-[10px]" style={{ color: '#9B8FB5' }}>
                               {new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
@@ -1363,8 +1368,8 @@ function SurveyCard({
                           if (!val) return null;
                           return (
                             <div key={q.id} className="flex gap-2">
-                              <span className="text-[10px] leading-snug shrink-0" style={{ color: 'var(--c-text-4)', minWidth: 0, maxWidth: '50%' }}>{q.texto}</span>
-                              <span className="text-[10px] font-semibold leading-snug" style={{ color: 'var(--c-text-2)' }}>{val}</span>
+                              <span className="text-[10px] leading-snug shrink-0" style={{ color: '#9B8FB5', minWidth: 0, maxWidth: '50%' }}>{q.texto}</span>
+                              <span className="text-[10px] font-semibold leading-snug" style={{ color: '#1A0A3B' }}>{val}</span>
                             </div>
                           );
                         })}
@@ -1380,23 +1385,23 @@ function SurveyCard({
           {view === 'preguntas' && (
             <div className="px-4 pb-4 flex flex-col gap-2">
               {questions.length === 0 && !addOpen && (
-                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin preguntas. Agrega la primera.</p>
+                <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin preguntas. Agrega la primera.</p>
               )}
               {questions.map((q, idx) => (
                 <div key={q.id} className="flex flex-col px-3 py-2.5 rounded-lg"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                   <div className="flex items-start gap-3">
-                    <span className="text-[10px] font-bold tabular-nums mt-0.5 shrink-0" style={{ color: 'var(--c-text-4)', minWidth: 16 }}>{idx + 1}</span>
+                    <span className="text-[10px] font-bold tabular-nums mt-0.5 shrink-0" style={{ color: '#9B8FB5', minWidth: 16 }}>{idx + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>{q.texto}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-xs font-medium" style={{ color: '#1A0A3B' }}>{q.texto}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#9B8FB5' }}>
                         {QUESTION_TYPE_LABELS[q.tipo]}
                         {q.tipo === 'multiple' && q.opciones?.length ? `: ${q.opciones.join(', ')}` : ''}
                       </p>
                     </div>
                     <button onClick={() => deleteQuestion(q.id)}
                       className="p-1 transition-opacity hover:opacity-60 shrink-0"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-4)' }}>
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9B8FB5' }}>
                       <X size={12} />
                     </button>
                   </div>
@@ -1417,10 +1422,10 @@ function SurveyCard({
                     value={qTexto} onChange={e => setQTexto(e.target.value)}
                     rows={2} placeholder="Texto de la pregunta *"
                     className="w-full px-3 py-2 rounded-lg text-xs resize-none"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
                   />
                   <Select value={qTipo} onValueChange={v => setQTipo(v as QuestionType)}>
-                    <SelectTrigger className="text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]">
+                    <SelectTrigger className="text-xs" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1433,18 +1438,18 @@ function SurveyCard({
                     <input value={qOpciones} onChange={e => setQOpciones(e.target.value)}
                       placeholder="Opciones separadas por coma"
                       className="w-full px-3 py-2 rounded-lg text-xs"
-                      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
                     />
                   )}
                   <div className="flex gap-2">
                     <button onClick={addQuestion} disabled={saving || !qTexto.trim()}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+                      style={{ background: '#6C3BFF', color: '#fff', border: 'none', boxShadow: '0 1px 2px rgba(108,59,255,0.24)', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                       {saving ? 'Guardando...' : 'Agregar pregunta'}
                     </button>
                     <button onClick={() => setAddOpen(false)}
                       className="px-3 py-1.5 rounded-lg text-xs"
-                      style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}>
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}>
                       Cancelar
                     </button>
                   </div>
@@ -1452,7 +1457,7 @@ function SurveyCard({
               ) : (
                 <button onClick={() => setAddOpen(true)}
                   className="flex items-center gap-1.5 text-xs self-start mt-1 transition-opacity hover:opacity-70"
-                  style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', padding: 0 }}>
+                  style={{ background: 'none', border: 'none', color: '#6C3BFF', cursor: 'pointer', padding: 0 }}>
                   <Plus size={12} /> Agregar pregunta
                 </button>
               )}
