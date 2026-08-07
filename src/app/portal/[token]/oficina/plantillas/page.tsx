@@ -9,8 +9,7 @@ import {
   Plus, Check, Edit2, GripVertical, ToggleLeft, ToggleRight, X,
   Copy, AlertTriangle, ExternalLink,
 } from 'lucide-react';
-import { TEMPLATE_SPECS, type PlaceholderSpec } from '@/lib/documents/template-spec';
-import { Card, SectionHeader } from '@/components/portal-ui';
+import { TEMPLATE_SPECS } from '@/lib/documents/template-spec';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -573,72 +572,70 @@ function AutoTemplatizePreviewModal({ data, color, docType, onConfirm, onReject 
 
 // ─── Template card ────────────────────────────────────────────────────────────
 
-function TemplateCard({
-  id, icon: Icon, title, subtitle, color, stats, configured, children, token,
+function TemplateRow({
+  icon: Icon, title, subtitle, color, stats, configured, children, token, isLast,
 }: {
   id: string; icon: React.ElementType; title: string; subtitle: string;
   color: string; stats: TemplateStats; configured: boolean;
-  children: React.ReactNode; token: string;
+  children: React.ReactNode; token: string; isLast: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Card padding="none" border className="overflow-hidden">
-      {/* Header — always visible */}
+    <div style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9' }}>
       <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--c-surface-2)]">
+        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}12` }}>
           <Icon size={18} style={{ color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{title}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{title}</p>
             {configured
               ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>Lista</span>
-              : <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-4)' }}>Sin configurar</span>
+              : <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#F0EDF9', color: '#9B8FB5' }}>Sin configurar</span>
             }
           </div>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{subtitle}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-[11px]" style={{ color: '#9B8FB5' }}>{subtitle}</p>
             {stats.count > 0 && (
               <>
-                <span style={{ color: 'var(--c-border)' }}>·</span>
-                <span className="text-xs font-medium" style={{ color: 'var(--c-text-3)' }}>
+                <span style={{ color: '#E8E3F5' }}>·</span>
+                <span className="text-[11px] font-medium" style={{ color: '#6B6480' }}>
                   {stats.count} documento{stats.count !== 1 ? 's' : ''} generado{stats.count !== 1 ? 's' : ''}
                 </span>
                 {stats.lastUsed && (
                   <>
-                    <span style={{ color: 'var(--c-border)' }}>·</span>
-                    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Ultimo uso {timeAgo(stats.lastUsed)}</span>
+                    <span style={{ color: '#E8E3F5' }}>·</span>
+                    <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Ultimo uso {timeAgo(stats.lastUsed)}</span>
                   </>
                 )}
               </>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {configured && (
             <Link
               href={`/portal/${token}?tab=chat`}
               onClick={e => e.stopPropagation()}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ background: `${color}12`, color, textDecoration: 'none' }}
+              className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-medium transition-opacity hover:opacity-70"
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5', textDecoration: 'none' }}
             >
               <MessageSquare size={11} />
               Usar
             </Link>
           )}
-          {open ? <ChevronDown size={14} style={{ color: 'var(--c-text-4)' }} /> : <ChevronRight size={14} style={{ color: 'var(--c-text-4)' }} />}
+          {open ? <ChevronDown size={14} style={{ color: '#9B8FB5' }} /> : <ChevronRight size={14} style={{ color: '#9B8FB5' }} />}
         </div>
       </button>
 
-      {/* Config panel */}
       {open && (
-        <div className="px-5 pb-6 pt-2 flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="px-5 pb-6 pt-4 flex flex-col gap-5" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
           {children}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -1165,78 +1162,92 @@ export default function PlantillasPage() {
   }, [token]);
 
   return (
-    <div id="of-plantillas" className="flex flex-col gap-6 p-5 sm:p-7 w-full">
+    <div id="of-plantillas" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
 
-      {/* Hero */}
-      <SectionHeader
-        as="h1"
-        eyebrow="Plantillas"
-        title="Ensenale a tu equipo como se hacen los documentos de tu negocio."
-        description="Sube tu formato de factura, orden de compra o cualquier documento membretado. Tus empleados respetaran el formato y lo usaran cada vez que se los pidas, sin importar cuantos documentos generen."
-      />
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border:     '1px solid #E8E3F5',
+          boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+        }}
+      >
+        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div>
+            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+              Plantillas de documentos
+            </h2>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+              Sube tu formato Word y tus empleados lo usan igual cada vez.
+            </p>
+          </div>
+        </div>
 
-      {/* How it works */}
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          <TemplateRow
+            id="factura" icon={FileText} title="Factura"
+            subtitle="Documento de cobro con conceptos, subtotal e IVA"
+            color="#f59e0b" stats={facturaStats} configured={isConfigured(facturaCfg)} token={token}
+            isLast={false}
+          >
+            <FacturaConfig token={token} onStatsLoad={setFacturaCfg} />
+          </TemplateRow>
+
+          <TemplateRow
+            id="orden" icon={ShoppingCart} title="Orden de compra"
+            subtitle="Solicitud formal de productos o servicios a proveedores"
+            color="#3b82f6" stats={ordenStats} configured={isConfigured(ordenCfg)} token={token}
+            isLast={false}
+          >
+            <OrdenConfig token={token} onStatsLoad={setOrdenCfg} />
+          </TemplateRow>
+
+          <TemplateRow
+            id="cotizacion" icon={FileText} title="Cotización"
+            subtitle="Propuesta de precio al cliente antes de vender (no es factura fiscal)"
+            color="#10b981" stats={cotizacionStats} configured={isConfigured(cotizacionCfg as unknown as FacturaConfig)} token={token}
+            isLast={false}
+          >
+            <CotizacionConfigSection token={token} onStatsLoad={setCotizacionCfg} />
+          </TemplateRow>
+
+          <TemplateRow
+            id="nota-venta" icon={FileText} title="Nota de venta"
+            subtitle="Comprobante simple post-venta (NO sustituye una factura fiscal)"
+            color="#ec4899" stats={notaVentaStats} configured={isConfigured(notaVentaCfg as unknown as FacturaConfig)} token={token}
+            isLast={false}
+          >
+            <NotaVentaConfigSection token={token} onStatsLoad={setNotaVentaCfg} />
+          </TemplateRow>
+
+          <TemplateRow
+            id="contrato" icon={FileText} title="Contrato"
+            subtitle="Contrato de prestacion de servicios con clausulas editables"
+            color="#8b5cf6" stats={contratoStats} configured={contratoConfigured} token={token}
+            isLast={true}
+          >
+            <ContratoConfig token={token} onConfiguredLoad={setContratoConfigured} />
+          </TemplateRow>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3">
         {[
           { n: '1', t: 'Prepara tu plantilla Word', d: 'Toma tu documento actual, agrega marcadores como {{cliente_nombre}} donde deben aparecer los datos.' },
           { n: '2', t: 'Sube el .docx', d: 'Solo Word. Detectamos qué marcadores usaste y avisamos si falta alguno.' },
           { n: '3', t: 'El empleado produce', d: 'Pídele "genera una factura para..." y sale con tu diseño exacto en PDF.' },
         ].map(s => (
-          <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1" style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.1)' }}>
+          <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
             <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"
               style={{ background: 'rgba(108,59,255,0.12)', color: '#6C3BFF' }}>{s.n}</span>
             <div>
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{s.t}</p>
-              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-4)' }}>{s.d}</p>
+              <p className="text-[12px] font-semibold" style={{ color: '#1A0A3B' }}>{s.t}</p>
+              <p className="text-[11px] mt-0.5 leading-relaxed" style={{ color: '#9B8FB5' }}>{s.d}</p>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Factura */}
-      <TemplateCard
-        id="factura" icon={FileText} title="Factura"
-        subtitle="Documento de cobro con conceptos, subtotal e IVA"
-        color="#f59e0b" stats={facturaStats} configured={isConfigured(facturaCfg)} token={token}
-      >
-        <FacturaConfig token={token} onStatsLoad={setFacturaCfg} />
-      </TemplateCard>
-
-      {/* Orden de compra */}
-      <TemplateCard
-        id="orden" icon={ShoppingCart} title="Orden de compra"
-        subtitle="Solicitud formal de productos o servicios a proveedores"
-        color="#3b82f6" stats={ordenStats} configured={isConfigured(ordenCfg)} token={token}
-      >
-        <OrdenConfig token={token} onStatsLoad={setOrdenCfg} />
-      </TemplateCard>
-
-      {/* Cotización */}
-      <TemplateCard
-        id="cotizacion" icon={FileText} title="Cotización"
-        subtitle="Propuesta de precio al cliente antes de vender (no es factura fiscal)"
-        color="#10b981" stats={cotizacionStats} configured={isConfigured(cotizacionCfg as unknown as FacturaConfig)} token={token}
-      >
-        <CotizacionConfigSection token={token} onStatsLoad={setCotizacionCfg} />
-      </TemplateCard>
-
-      {/* Nota de venta */}
-      <TemplateCard
-        id="nota-venta" icon={FileText} title="Nota de venta"
-        subtitle="Comprobante simple post-venta (NO sustituye una factura fiscal)"
-        color="#ec4899" stats={notaVentaStats} configured={isConfigured(notaVentaCfg as unknown as FacturaConfig)} token={token}
-      >
-        <NotaVentaConfigSection token={token} onStatsLoad={setNotaVentaCfg} />
-      </TemplateCard>
-
-      {/* Contrato */}
-      <TemplateCard
-        id="contrato" icon={FileText} title="Contrato"
-        subtitle="Contrato de prestacion de servicios con clausulas editables"
-        color="#8b5cf6" stats={contratoStats} configured={contratoConfigured} token={token}
-      >
-        <ContratoConfig token={token} onConfiguredLoad={setContratoConfigured} />
-      </TemplateCard>
 
     </div>
   );
