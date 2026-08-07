@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/portal-ui';
 import InfoTooltip from '@/components/InfoTooltip';
 import { MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
 import CheckinsSection, { type CheckinsSectionAgent } from './reportes/CheckinsSection';
+import OficinaModal from './oficina/OficinaModal';
 
 interface OpsReport {
   id:                  string;
@@ -330,168 +331,170 @@ export default function OpsReportsSection({ token, agents, meerkatRoleId, report
                 style={{ background: `${acColor}10`, border: `1px solid ${acColor}25`, color: '#6B6480' }}>
                 1 tarea por reporte
               </span>
-              {!creating && (
-                <button onClick={() => setCreating(true)}
-                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
-                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
-                  <Plus size={12} />Nuevo reporte
-                </button>
-              )}
+              <button onClick={() => setCreating(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                <Plus size={12} />Nuevo reporte
+              </button>
             </div>
           </div>
 
-          {/* Create form (inside surface) */}
+          {/* Create modal (OficinaModal — mismo patrón que CampaignForm) */}
           {creating && (
-            <div className="px-5 py-4 flex flex-col gap-4" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#6C3BFF' }}>Nuevo reporte</p>
-
-              <div>
-                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Nombre del reporte</label>
-                <input value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Ej: Resumen semanal, Reporte mensual de ventas"
-                  className="w-full rounded-lg px-3 py-2.5 text-[13px] outline-none"
-                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
-              </div>
-
-              <div className="flex gap-3 flex-wrap">
-                <div className="flex-1 min-w-[140px]">
-                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Frecuencia</label>
-                  <div className="flex gap-1.5">
-                    {(['weekly', 'monthly'] as const).map(f => (
-                      <button key={f} onClick={() => setForm(p => ({
-                        ...p, frequency: f,
-                        schedule: f === 'weekly' ? { day_of_week: 1, hour: 8 } : { day_of_month: 1, hour: 8 },
-                      }))}
-                        className="flex-1 py-2 rounded-lg text-[12px] font-medium transition-all"
-                        style={{
-                          background: form.frequency === f ? '#6C3BFF' : '#ffffff',
-                          color:      form.frequency === f ? '#fff' : '#6B6480',
-                          border:     `1px solid ${form.frequency === f ? '#6C3BFF' : '#E8E3F5'}`,
-                          boxShadow:  form.frequency === f ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
-                        }}>
-                        {f === 'weekly' ? 'Semanal' : 'Mensual'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex-1 min-w-[160px]">
-                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
-                    {form.frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}
-                  </label>
-                  {form.frequency === 'weekly' ? (
-                    <Select value={String(form.schedule?.day_of_week ?? 1)}
-                      onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(v) } }))}>
-                      <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
-                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DAYS_OF_WEEK.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <input type="number" min={1} max={28} value={form.schedule?.day_of_month ?? 1}
-                      onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_month: Number(e.target.value) } }))}
-                      className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
-                  )}
-                </div>
-                <div style={{ width: 110 }}>
-                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>Hora</label>
-                  <Select value={String(form.schedule?.hour ?? 8)}
-                    onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(v) } }))}>
-                    <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium mb-2" style={{ color: '#6B6480' }}>Datos a incluir</label>
-                <div className="flex flex-wrap gap-2">
-                  {DATA_SOURCE_OPTIONS.map(s => {
-                    const active = (form.data_sources ?? []).includes(s.id);
-                    return (
-                      <button key={s.id} onClick={() => toggleSource(s.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
-                        style={{
-                          background: active ? 'rgba(108,59,255,0.1)' : '#ffffff',
-                          border:     `1px solid ${active ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                          color:      active ? '#6C3BFF' : '#6B6480',
-                        }}>
-                        {active && <Check size={10} />}{s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
-                  Destinatarios (además del email del cliente)
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input value={form.recipientInput ?? ''}
-                    onChange={e => setForm(f => ({ ...f, recipientInput: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && addRecipient()}
-                    placeholder="email@empresa.com"
-                    className="flex-1 rounded-lg px-3 py-2.5 text-[12px] outline-none"
+            <OficinaModal
+              open
+              onClose={() => { setCreating(false); setForm(empty()); setCreateError(null); }}
+              eyebrow="Nuevo reporte"
+              title="Programa un reporte automático"
+              description="Tu empleado lo redacta y lo envía por correo en el horario que definas."
+              size="lg"
+              footer={
+                <>
+                  <OficinaModal.SecondaryAction
+                    onClick={() => { setCreating(false); setForm(empty()); setCreateError(null); }}
+                  >
+                    Cancelar
+                  </OficinaModal.SecondaryAction>
+                  <OficinaModal.PrimaryAction
+                    onClick={handleCreate}
+                    loading={saving}
+                    disabled={!form.name?.trim()}
+                  >
+                    Crear reporte
+                  </OficinaModal.PrimaryAction>
+                </>
+              }
+            >
+              <div className="flex flex-col gap-5">
+                <OficinaModal.Field label="Nombre del reporte" hint="requerido">
+                  <input value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Ej: Resumen semanal, Reporte mensual de ventas"
+                    className="w-full rounded-lg px-3 py-2.5 text-[13px] outline-none"
                     style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
-                  <button onClick={addRecipient}
-                    className="px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
-                    style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
-                    Agregar
-                  </button>
-                </div>
-                {(form.recipients ?? []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {(form.recipients ?? []).map(r => (
-                      <span key={r.email} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px]"
-                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
-                        {r.email}
-                        <button onClick={() => removeRecipient(r.email)} style={{ color: '#9B8FB5', lineHeight: 1 }}>×</button>
-                      </span>
-                    ))}
+                </OficinaModal.Field>
+
+                <OficinaModal.Field label="Cuándo enviarlo">
+                  <div className="flex gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[140px]">
+                      <label className="block text-[10px] mb-1" style={{ color: '#9B8FB5' }}>Frecuencia</label>
+                      <div className="flex gap-1.5">
+                        {(['weekly', 'monthly'] as const).map(f => (
+                          <button key={f} type="button" onClick={() => setForm(p => ({
+                            ...p, frequency: f,
+                            schedule: f === 'weekly' ? { day_of_week: 1, hour: 8 } : { day_of_month: 1, hour: 8 },
+                          }))}
+                            className="flex-1 py-2 rounded-lg text-[12px] font-medium transition-all"
+                            style={{
+                              background: form.frequency === f ? '#1A0A3B' : '#ffffff',
+                              color:      form.frequency === f ? '#fff' : '#6B6480',
+                              border:     form.frequency === f ? 'none' : '1px solid #E8E3F5',
+                            }}>
+                            {f === 'weekly' ? 'Semanal' : 'Mensual'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-[10px] mb-1" style={{ color: '#9B8FB5' }}>
+                        {form.frequency === 'weekly' ? 'Día de la semana' : 'Día del mes'}
+                      </label>
+                      {form.frequency === 'weekly' ? (
+                        <Select value={String(form.schedule?.day_of_week ?? 1)}
+                          onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_week: Number(v) } }))}>
+                          <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
+                            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DAYS_OF_WEEK.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <input type="number" min={1} max={28} value={form.schedule?.day_of_month ?? 1}
+                          onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, day_of_month: Number(e.target.value) } }))}
+                          className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none"
+                          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                      )}
+                    </div>
+                    <div style={{ width: 110 }}>
+                      <label className="block text-[10px] mb-1" style={{ color: '#9B8FB5' }}>Hora</label>
+                      <Select value={String(form.schedule?.hour ?? 8)}
+                        onValueChange={v => setForm(f => ({ ...f, schedule: { ...f.schedule, hour: Number(v) } }))}>
+                        <SelectTrigger className="rounded-lg py-2.5 text-[12px]"
+                          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HOURS.map(h => <SelectItem key={h} value={String(h)}>{fmtH(h)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                </OficinaModal.Field>
+
+                <OficinaModal.Field label="Datos a incluir">
+                  <div className="flex flex-wrap gap-2">
+                    {DATA_SOURCE_OPTIONS.map(s => {
+                      const active = (form.data_sources ?? []).includes(s.id);
+                      return (
+                        <button key={s.id} type="button" onClick={() => toggleSource(s.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
+                          style={{
+                            background: active ? 'rgba(108,59,255,0.1)' : '#ffffff',
+                            border:     `1px solid ${active ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                            color:      active ? '#6C3BFF' : '#6B6480',
+                          }}>
+                          {active && <Check size={10} />}{s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </OficinaModal.Field>
+
+                <OficinaModal.Field label="Destinatarios" hint="además del email del cliente">
+                  <div className="flex gap-2 mb-2">
+                    <input value={form.recipientInput ?? ''}
+                      onChange={e => setForm(f => ({ ...f, recipientInput: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && addRecipient()}
+                      placeholder="email@empresa.com"
+                      className="flex-1 rounded-lg px-3 py-2.5 text-[12px] outline-none"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                    <button type="button" onClick={addRecipient}
+                      className="px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+                      style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                      Agregar
+                    </button>
+                  </div>
+                  {(form.recipients ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {(form.recipients ?? []).map(r => (
+                        <span key={r.email} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px]"
+                          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                          {r.email}
+                          <button type="button" onClick={() => removeRecipient(r.email)} style={{ color: '#9B8FB5', lineHeight: 1 }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </OficinaModal.Field>
+
+                <OficinaModal.Field label="Instrucciones adicionales" hint="opcional">
+                  <textarea value={form.report_instructions ?? ''}
+                    onChange={e => setForm(f => ({ ...f, report_instructions: e.target.value }))}
+                    rows={3}
+                    placeholder="Ej: Destaca los leads de mayor presupuesto. Compara con el período anterior si es posible."
+                    className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none resize-none"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+                </OficinaModal.Field>
+
+                {createError && (
+                  <p className="text-[13px] px-3 py-2 rounded-lg"
+                    style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
+                    {createError}
+                  </p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-[11px] font-medium mb-1.5" style={{ color: '#6B6480' }}>
-                  Instrucciones adicionales (opcional)
-                </label>
-                <textarea value={form.report_instructions ?? ''}
-                  onChange={e => setForm(f => ({ ...f, report_instructions: e.target.value }))}
-                  rows={3}
-                  placeholder="Ej: Destaca los leads de mayor presupuesto. Compara con el período anterior si es posible."
-                  className="w-full rounded-lg px-3 py-2.5 text-[12px] outline-none resize-none"
-                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
-              </div>
-
-              {createError && (
-                <p className="text-[12px] px-3 py-2 rounded-lg"
-                  style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
-                  {createError}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <button onClick={handleCreate} disabled={saving || !form.name?.trim()}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
-                  {saving ? <><Loader2 size={13} className="animate-spin" />Guardando…</> : 'Crear reporte'}
-                </button>
-                <button onClick={() => { setCreating(false); setForm(empty()); setCreateError(null); }}
-                  className="px-4 py-2.5 rounded-lg text-[13px] transition-opacity hover:opacity-80"
-                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
+            </OficinaModal>
           )}
 
           {/* Search bar */}
