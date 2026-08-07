@@ -494,6 +494,24 @@ function CampaignForm({
     ? 'Otra personalizada'
     : (OUTBOUND_CAPABILITIES.find(c => c.id === capability)?.label ?? 'Otra personalizada');
 
+  // Color del puntito = color del meerkat del empleado asignado.
+  // Fallback: primer meerkat elegible → gris neutral.
+  const dotColor = useMemo(() => {
+    const meerkatColor = (id: string | null | undefined) => {
+      if (!id) return null;
+      const m = (MEERKAT_MAP as Record<string, MeerkatRole>)[id];
+      return m?.color ?? null;
+    };
+    const assigned = outboundAgents.find(a => a.id === assignedAgentId);
+    const assignedColor = meerkatColor(assigned?.meerkat_role_id ?? assigned?.features?.meerkat_role_id ?? null);
+    if (assignedColor) return assignedColor;
+    // Nadie asignado o sin meerkat → toma el primer elegible
+    const firstEligible = eligibleAgents[0];
+    const eligibleColor = meerkatColor(firstEligible?.meerkat_role_id ?? firstEligible?.features?.meerkat_role_id ?? null);
+    if (eligibleColor) return eligibleColor;
+    return capability === 'custom' ? '#1A0A3B' : '#9B8FB5';
+  }, [assignedAgentId, outboundAgents, eligibleAgents, capability]);
+
   const toggleTag = (t: string) =>
     setTagFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
@@ -581,7 +599,8 @@ function CampaignForm({
           >
             <span className="flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full"
-                style={{ background: capability === 'custom' ? '#1A0A3B' : '#6C3BFF' }} />
+                style={{ background: dotColor }}
+                title="Color del empleado que ejecuta este tipo de campaña" />
               {capLabel}
             </span>
             {capOpen ? <ChevronUp size={14} style={{ color: '#9B8FB5' }} /> : <ChevronDown size={14} style={{ color: '#9B8FB5' }} />}
