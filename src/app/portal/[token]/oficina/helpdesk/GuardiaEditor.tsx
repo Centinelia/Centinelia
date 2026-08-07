@@ -6,11 +6,28 @@ import { v4 as uuid } from 'uuid';
 import type { GuardiaSchedule, GuardiaTurno } from '@/lib/helpdesk/folio';
 import { TimeInput } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'] as const;
 const DIA_LABEL: Record<string, string> = {
   lun: 'L', mar: 'Ma', mie: 'Mi', jue: 'J', vie: 'V', sab: 'S', dom: 'D',
 };
+
+// Categorías reales de tickets (ver HelpdeskSection.tsx). El nombre del área
+// debe coincidir con la primera palabra de la categoría para que crear-ticket
+// enrute automáticamente. Por eso lo forzamos a un slug fijo.
+const AREA_OPTIONS: { value: string; label: string }[] = [
+  { value: 'red',        label: 'Red' },
+  { value: 'servidores', label: 'Servidores' },
+  { value: 'usuario',    label: 'Usuario' },
+  { value: 'software',   label: 'Software' },
+  { value: 'hardware',   label: 'Hardware' },
+  { value: 'accesos',    label: 'Accesos' },
+  { value: 'otro',       label: 'Otro' },
+];
+const AREA_LABEL: Record<string, string> = Object.fromEntries(
+  AREA_OPTIONS.map(o => [o.value, o.label])
+);
 
 const inputStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -117,7 +134,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
             )}
           </div>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Define quién está de guardia por área y horario. Tu empleado lo consulta para escalar tickets urgentes.
+            Define quién está de guardia por categoría de ticket y horario. Al llegar un ticket urgente, tu empleado lo asigna automáticamente al técnico en turno de esa categoría.
           </p>
         </div>
         <div className="flex items-center shrink-0 mt-1" style={{ color: '#9B8FB5' }}>
@@ -146,10 +163,27 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
                 <div key={area.id} className="px-5 py-4 flex flex-col gap-3"
                   style={{ borderBottom: idx === schedule.areas.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
                   <div className="flex items-center gap-2">
-                    <input value={area.nombre} onChange={e => updateAreaNombre(area.id, e.target.value)}
-                      placeholder="Nombre del área (ej: Redes, Servidores)"
-                      className="flex-1 px-3 py-2 rounded-lg text-[13px] font-semibold"
-                      style={inputStyle} />
+                    <div className="flex-1 min-w-0">
+                      <Select value={area.nombre} onValueChange={v => updateAreaNombre(area.id, v)}>
+                        <SelectTrigger className="text-[13px] font-semibold" style={inputStyle}>
+                          <SelectValue placeholder="Selecciona un área" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AREA_OPTIONS
+                            .filter(opt =>
+                              opt.value === area.nombre ||
+                              !schedule.areas.some(a => a.id !== area.id && a.nombre === opt.value)
+                            )
+                            .map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))
+                          }
+                          {area.nombre && !AREA_LABEL[area.nombre] && (
+                            <SelectItem value={area.nombre}>{area.nombre} (legado)</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <button onClick={() => removeArea(area.id)}
                       className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.08)]"
                       style={{ background: 'none', border: 'none', color: '#9B8FB5', cursor: 'pointer' }}>
@@ -214,7 +248,7 @@ export default function GuardiaEditor({ token, initial }: { token: string; initi
           {/* Footer actions */}
           <div className="px-5 py-3 flex items-center gap-2"
             style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
-            {schedule.areas.length > 0 && (
+            {schedule.areas.length > 0 && schedule.areas.length < AREA_OPTIONS.length && (
               <button onClick={addArea}
                 className="flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
                 style={{ background: 'none', border: 'none', color: '#6C3BFF', cursor: 'pointer', padding: 0 }}>

@@ -12,6 +12,7 @@ import { DatePicker, TimeInput } from '@/components/ui/date-picker';
 import { EmptyState } from '@/components/ui/empty-state';
 import ContactTags from './oficina/ContactTags';
 import OficinaModal from './oficina/OficinaModal';
+import ImportContactsModal from './oficina/ImportContactsModal';
 import { OUTBOUND_CAPABILITIES } from '@/lib/portal/outbound-capabilities';
 import { MEERKAT_MAP, INTERNAL_MEERKAT_IDS, type MeerkatRole, type MeerkatRoleId } from '@/lib/portal/meerkat-roles';
 import MeerkatPicker from './agentes/MeerkatPicker';
@@ -1046,6 +1047,8 @@ export default function OutboundSection({
   const [showCallConfirm, setShowCallConfirm] = useState(false);
   const [contactSearch,   setContactSearch]   = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
+  const [showImport,      setShowImport]      = useState(false);
+  const [importSource,    setImportSource]    = useState<'notion' | 'sheets' | null>(null);
   const [contactSaving,   setContactSaving]   = useState(false);
   const [deleting,        setDeleting]        = useState(false);
   const [refreshing,      setRefreshing]      = useState(false);
@@ -1115,6 +1118,24 @@ export default function OutboundSection({
   };
 
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Detecta qué fuente conectada tiene el usuario para pintar el botón dinámico
+  // ('Importar desde Notion' / 'Sheets' / oculto si no hay ninguna).
+  // Prioridad: Notion > Sheets (por orden de importancia esperado). Silent-fail
+  // en error, el botón simplemente no aparece.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/portal/${token}/contacts/import/sources`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data) return;
+        if (data.notion?.connected) setImportSource('notion');
+        else if (data.sheets?.connected) setImportSource('sheets');
+        else setImportSource(null);
+      })
+      .catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [token]);
 
   // ── Campaign state ────────────────────────────────────────────────────────────
   const [campaigns,     setCampaigns]     = useState<Campaign[]>(initialCampaigns);
@@ -1459,6 +1480,14 @@ export default function OutboundSection({
                 CSV
               </button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSV} />
+              {importSource && (
+                <button type="button" onClick={() => setShowImport(true)}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70"
+                  style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                  <Upload size={12} />
+                  Importar desde {importSource === 'notion' ? 'Notion' : 'Sheets'}
+                </button>
+              )}
               <button type="button" onClick={() => { setShowContactForm(true); setContactError(''); }}
                 className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-all hover:opacity-90"
                 style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
@@ -1467,6 +1496,15 @@ export default function OutboundSection({
               </button>
             </div>
           </div>
+
+          {/* Import from connected sources modal */}
+          <ImportContactsModal
+            open={showImport}
+            token={token}
+            agents={agents}
+            onClose={() => setShowImport(false)}
+            onImported={refresh}
+          />
 
           {/* Add contact modal */}
           {showContactForm && (

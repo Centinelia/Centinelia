@@ -223,3 +223,88 @@ export async function getAccessiblePages(accessToken: string): Promise<{ id: str
       return { id: page.id, title };
     });
 }
+
+/**
+ * Lista las databases a las que la integración tiene acceso. Usado para
+ * import de contactos: el usuario elige de qué DB jalar.
+ */
+export async function getAccessibleDatabases(accessToken: string): Promise<{
+  id:         string;
+  title:      string;
+  properties: Record<string, { type: string; name: string }>;
+}[]> {
+  const notion = notionClient(accessToken);
+  // SDK types don't expose 'database' filter directly (usa page|data_source),
+  // pero la API HTTP sí lo acepta. Cast + filter runtime por object='database'.
+  const { results } = await (notion.search as any)({
+    filter:   { value: 'database', property: 'object' },
+    page_size: 50,
+    sort:      { direction: 'descending', timestamp: 'last_edited_time' },
+  }) as { results: Array<{ object: string; id: string; [k: string]: unknown }> };
+
+  return results
+    .filter(r => r.object === 'database')
+    .map(db => {
+      const title = ((db as any).title as Array<{ plain_text?: string }> | undefined)?.[0]?.plain_text ?? 'Database sin título';
+      const props: Record<string, { type: string; name: string }> = {};
+      const rawProps = ((db as any).properties as Record<string, { type: string }> | undefined) ?? {};
+      for (const [name, def] of Object.entries(rawProps)) {
+        props[name] = { type: def.type, name };
+      }
+      return { id: db.id, title, properties: props };
+    });
+}
+
+/**
+ * Query rows de una database. Retorna hasta N filas con properties normalizadas
+ * a { name → primitive }. Usado para preview e import de contactos.
+ */
+export async function queryDatabaseRows(
+  accessToken: string,
+  databaseId: string,
+  pageSize = 100,
+): Promise<{ id: string; properties: Record<string, unknown> }[]> {
+  const notion = notionClient(accessToken);
+  const rows: { id: string; properties: Record<string, unknown> }[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const res = await (notion.databases as any).query({
+      database_id: databaseId,
+      page_size:   Math.min(100, pageSize - rows.length),
+      start_cursor: cursor,
+    });
+    for (const page of res.results ?? []) {
+      const props: Record<string, unknown> = {};
+      for (const [name, val] of Object.entries((page as any).properties ?? {})) {
+        props[name] = extractPropertyValue(val as any);
+      }
+      rows.push({ id: page.id, properties: props });
+    }
+    cursor = res.has_more ? res.next_cursor : undefined;
+  } while (cursor && rows.length < pageSize);
+
+  return rows;
+}
+
+function extractPropertyValue(prop: { type: string; [k: string]: unknown }): unknown {
+  switch (prop.type) {
+    case 'title':        return (prop.title as any[])?.[0]?.plain_text ?? null;
+    case 'rich_text':    return (prop.rich_text as any[])?.map(r => r.plain_text).join('') ?? null;
+    case 'phone_number': return prop.phone_number ?? null;
+    case 'email':        return prop.email ?? null;
+    case 'url':          return prop.url ?? null;
+    case 'number':       return prop.number ?? null;
+    case 'select':       return (prop.select as any)?.name ?? null;
+    case 'multi_select': return ((prop.multi_select as any[]) ?? []).map(o => o.name);
+    case 'status':       return (prop.status as any)?.name ?? null;
+    case 'checkbox':     return !!prop.checkbox;
+    case 'date':         return (prop.date as any)?.start ?? null;
+    case 'people':       return ((prop.people as any[]) ?? []).map(p => p.name ?? p.id);
+    case 'formula':      {
+      const f = prop.formula as any;
+      return f?.string ?? f?.number ?? f?.boolean ?? f?.date?.start ?? null;
+    }
+    default: return null;
+  }
+}
