@@ -95,12 +95,12 @@ export default function EmailSettings({ token }: { token: string }) {
           <div className="flex items-baseline gap-2">
             <Globe size={15} style={{ color: '#6C3BFF', alignSelf: 'center' }} />
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-              Dominio de envío
+              Correos automáticos a tus clientes
             </h2>
-            <InfoTooltip text={'Haz que los correos automáticos a tus clientes lleguen desde tu propio correo en lugar de centinelia.mx.'} />
+            <InfoTooltip text={'Cuando tu empleado agenda una cita o captura un lead por teléfono, Centinelia envía un correo de confirmación al cliente. Aquí eliges desde qué correo salen esos avisos. Los correos que tu empleado escribe manualmente (Gmail/Outlook conectado) NO pasan por aquí: usan tu correo real.'} />
           </div>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Configura el remitente de los correos automáticos que Centinelia envía a tus clientes.
+            Por default salen desde <strong style={{ color: '#1A0A3B' }}>notificaciones@centinelia.mx</strong>. Registra tu dominio para que lleguen desde <strong style={{ color: '#1A0A3B' }}>tuempresa.com</strong> y luzcan profesionales.
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -237,7 +237,7 @@ export default function EmailSettings({ token }: { token: string }) {
       >
         <AlertCircle size={15} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
         <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
-          Estos correos los envía Centinelia automáticamente al cliente, no tu empleado. El contenido es fijo según el resultado de la llamada; el branding (logo, color, pie) se personaliza en <strong style={{ color: '#1A0A3B' }}>Organización</strong>.
+          Aplica solo a correos automáticos post-llamada (confirmación de cita, acuse de lead, seguimientos programados). Las respuestas que tu empleado escribe a mano usan tu Gmail/Outlook conectado, no este dominio. El logo, color y pie de página vienen de <strong style={{ color: '#1A0A3B' }}>Identidad visual</strong> arriba.
         </p>
       </div>
     </div>

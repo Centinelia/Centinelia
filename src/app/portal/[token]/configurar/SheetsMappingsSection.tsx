@@ -484,7 +484,7 @@ export default function SheetsMappingsSection({ token }: Props) {
           <div>
             <div className="flex items-baseline gap-2">
               <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-                Sheets del negocio
+                Tu CRM en Google Sheets
               </h2>
               {mappings.length > 0 && (
                 <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
@@ -493,7 +493,7 @@ export default function SheetsMappingsSection({ token }: Props) {
               )}
             </div>
             <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-              Conecta un Google Sheet a cada tipo de dato. Tus empleados escribirán y leerán directamente en tus hojas existentes.
+              Cada lead, cita o pedido que tu empleado capture se guarda automáticamente en la hoja de Google que le indiques. También lee de ahí cuando el cliente pregunta por su pedido o cita agendada. Es como conectar Centinelia a tu CRM sin migrar nada.
             </p>
           </div>
           {!loading && mappings.length > 0 && !showAddForm && (

@@ -83,8 +83,9 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
       { label: 'Perfil del responsable',       anchor: 'perfil-dueno' },
       { label: 'Contratos internos',           anchor: 'contratos-internos' },
       { label: 'Sitio web y reseñas',          anchor: 'sitio' },
-      { label: 'Notificaciones al cliente',    anchor: 'dominio-correo' },
-      { label: 'Horarios',                     anchor: 'horarios' },
+      { label: 'Correos automáticos al cliente', anchor: 'dominio-correo' },
+      { label: 'CRM en Google Sheets',           anchor: 'sheets-crm' },
+      { label: 'Horarios',                       anchor: 'horarios' },
     ],
   });
 

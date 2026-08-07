@@ -11,15 +11,53 @@ function fromAddress(): string {
   return match ? match[1] : 'notificaciones@centinelia.mx';
 }
 
+export interface BrandedFromInput {
+  agent_name?:            string | null;
+  business_name?:         string | null;
+  /** Correo verificado del cliente (agent.email_from). Si el dominio está
+   *  verificado en Resend, prevalece sobre notificaciones@centinelia.mx. */
+  email_from?:            string | null;
+  email_domain_verified?: boolean | null;
+}
+
 /**
- * From con display name del empleado usando "Centinelia" como apellido.
- * Cero consumo de cuota Gmail del cliente. El humano ve "Sofía Centinelia"
- * en negritas en su bandeja aunque técnicamente el correo sale de
- * notificaciones@centinelia.mx. Convención: a los empleados que no
- * conoces por nombre les llamas "Centinelias".
+ * Construye el From de los correos automáticos que salen a nombre del
+ * empleado. Dos modos:
+ *
+ * 1) STRING (legacy): "Sofía" → "Sofía Centinelia <notificaciones@centinelia.mx>".
+ *    Cero consumo de cuota Gmail. Convención: a los empleados que no
+ *    conoces por nombre les llamas "Centinelias".
+ *
+ * 2) OBJECT: si `email_domain_verified === true` y hay `email_from` con
+ *    formato válido (algo@dominio.tld), el correo sale desde ese dominio
+ *    ("Sofía (AC Proyectos) <notificaciones@acproyectos.mx>"), sin sufijo
+ *    Centinelia. Sirve para clientes que quieren branding fuerte y mejor
+ *    deliverability corporativa. Requiere que Resend tenga el dominio
+ *    verificado (ver rutas /api/portal/[token]/email-domain).
+ *
+ * Si no hay agent_name y no hay dominio custom, cae al FROM por defecto.
  */
-export function agentBrandedFrom(agentName: string | null | undefined): string {
-  const name = (agentName ?? '').trim();
+export function agentBrandedFrom(input: string | null | undefined | BrandedFromInput): string {
+  // Legacy string overload
+  if (typeof input === 'string' || input == null) {
+    const name = (input ?? '').trim();
+    if (!name) return FROM;
+    return `${name} Centinelia <${fromAddress()}>`;
+  }
+
+  const name = (input.agent_name ?? '').trim();
+  const rawCustom = (input.email_from ?? '').trim();
+  const useCustom = !!input.email_domain_verified && /^\S+@\S+\.\S+$/.test(rawCustom);
+
+  if (useCustom) {
+    // Cuando el cliente tiene dominio propio verificado, el sufijo
+    // "Centinelia" se cae — la marca visible es del cliente.
+    const display = name
+      || (input.business_name ?? '').trim()
+      || 'Notificaciones';
+    return `${display} <${rawCustom}>`;
+  }
+
   if (!name) return FROM;
   return `${name} Centinelia <${fromAddress()}>`;
 }

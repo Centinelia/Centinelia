@@ -18,6 +18,7 @@ import { redirect } from 'next/navigation';
 import PortalLogout            from './PortalLogout';
 import BrandKitEditor          from './BrandKitEditor';
 import EmailSettings            from './EmailSettings';
+import SheetsMappingsSection    from './configurar/SheetsMappingsSection';
 import BusinessSwitcher        from './BusinessSwitcher';
 import PortalLeadsSection      from './PortalLeadsSection';
 import PortalOrdersSection     from './PortalOrdersSection';
@@ -1702,6 +1703,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </Card>
                 </PageSection>
                 </div>{/* end #sitio */}
+
+                {/* Notificaciones automáticas al cliente — remitente de emails
+                    post-llamada. Movido de Integraciones el 2026-08-06 porque
+                    es config del negocio (dominio propio), no de conectores. */}
+                <div id="dominio-correo" style={{ scrollMarginTop: 80 }}>
+                  <EmailSettings token={token} />
+                </div>
+
+                {/* CRM en Google Sheets — data sync donde caen leads/citas/pedidos.
+                    Movido de Integraciones el 2026-08-06 porque es config org-wide
+                    del negocio, no una integración de terceros más. */}
+                <div id="sheets-crm" style={{ scrollMarginTop: 80 }}>
+                  <SheetsMappingsSection token={token} />
+                </div>
               </div>
 
               </div>{/* end wrapper flex-row */}
