@@ -4,10 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getAgentAccess } from '@/lib/portal/agent-access';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies } from 'next/headers';
-import type { GuardiaSchedule, DirectoryPerson } from '@/lib/helpdesk/folio';
+import type { GuardiaSchedule } from '@/lib/helpdesk/folio';
 import HelpdeskSection   from './HelpdeskSection';
 import IncidentesSection from './IncidentesSection';
-import DirectorioEditor  from '../../DirectorioEditor';
 import GuardiaEditor     from './GuardiaEditor';
 import MeerkatPicker     from '../../agentes/MeerkatPicker';
 import { Card }          from '@/components/portal-ui';
@@ -38,16 +37,14 @@ export default async function HelpdeskPage({ params }: Props) {
     getAgentAccess(token),
   ]);
 
-  // Directorio + guardia viven en organizations (org-scoped, no por agente).
+  // Horario de guardia vive en organizations (org-scoped). El directorio de personas también,
+  // pero se edita en /organizacion → Directorio, no aquí.
   const { data: org } = agent?.portal_email
     ? await supabase.from('organizations')
-        .select('directory, guardia_schedule')
+        .select('guardia_schedule')
         .eq('portal_email', agent.portal_email as string)
         .single()
     : { data: null };
-
-  const directory: DirectoryPerson[] = ((org as any)?.directory ?? []);
-  const isOwnerSession = !session?.isSubUser;
 
   let hasNeo = false;
   if (!isItSubUser && agent?.portal_email) {
@@ -157,15 +154,17 @@ export default async function HelpdeskPage({ params }: Props) {
         <IncidentesSection token={token} initialIncidents={incidents ?? []} />
       )}
 
-      <HelpdeskSection token={token} subUserName={subUserName} />
+      <HelpdeskSection token={token} subUserName={subUserName} employeeName={employeeName} />
 
       {!isItSubUser && (
         <div className="flex flex-col gap-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
-            Directorio de la organización
+          <GuardiaEditor token={token} initial={guardia} />
+          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+            Los técnicos, especialistas y demás personas del directorio se editan en{' '}
+            <a href={`/portal/${token}?tab=negocio&nav=directorio`} className="font-semibold" style={{ color: '#6C3BFF' }}>
+              Organización → Directorio
+            </a>.
           </p>
-          <DirectorioEditor token={token} initial={directory} isOwner={isOwnerSession} showHelpdeskFields />
-          <GuardiaEditor    token={token} initial={guardia} />
         </div>
       )}
 

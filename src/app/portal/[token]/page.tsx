@@ -578,7 +578,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
                 <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
-                <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                <p className="text-sm" style={{ color: '#1A0A3B' }}>
                   Tu empleado está pausado por falta de pago. Actualiza tu método de pago o contacta a Centinelia.
                 </p>
               </div>
@@ -587,7 +587,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
                 style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
                 <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0" />
-                <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                <p className="text-sm" style={{ color: '#1A0A3B' }}>
                   Tu empleado está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
                 </p>
               </div>
@@ -597,7 +597,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
                 <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                  <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
                     Estás al {Math.round(minutesPct)}% de tus minutos, te quedan {minutesRemain} min
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>Reset el {resetDate}</p>
@@ -620,7 +620,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="flex items-center gap-2.5">
                   <div className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
-                  <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                  <p className="text-sm" style={{ color: '#1A0A3B' }}>
                     <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
                     <span style={{ color: 'var(--c-text-2)' }}>
                       {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
@@ -644,7 +644,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: '#6B6480', whiteSpace: 'nowrap' }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>
@@ -1218,7 +1218,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     <div className="flex-1 min-w-0 flex flex-col">
 
       {/* Tab nav — mobile only (unchanged from V1) */}
-      <div className="md:hidden" style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)', position: 'sticky', top: 53, zIndex: 9 }}>
+      <div className="md:hidden" style={{ background: '#ffffff', borderBottom: '1px solid #E8E3F5', position: 'sticky', top: 53, zIndex: 9 }}>
         <div className="px-4 sm:px-6">
           <PortalTabNav token={token} currentTab={tab} tabs={TABS} />
         </div>
@@ -1232,7 +1232,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-opacity hover:opacity-90"
               style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
               <AlertTriangle size={15} color="#f87171" className="flex-shrink-0" />
-              <p className="flex-1 text-sm" style={{ color: 'var(--c-text)' }}>
+              <p className="flex-1 text-sm" style={{ color: '#1A0A3B' }}>
                 Este empleado está pausado por falta de pago. Al resolver, solo este empleado se reactiva.
               </p>
               <span className="text-sm font-semibold whitespace-nowrap" style={{ color: '#f87171' }}>Resolver pago</span>
@@ -1243,7 +1243,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
               style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0" />
-              <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+              <p className="text-sm" style={{ color: '#1A0A3B' }}>
                 Tu empleado está pausado voluntariamente. Puedes reanudarlo cuando quieras desde la pestaña Resumen.
               </p>
             </div>
@@ -1253,7 +1253,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <AlertTriangle size={15} color="#fbbf24" className="flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
                   Estás al {Math.round(minutesPct)}% de tus minutos, te quedan {minutesRemain} min
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>Reset el {resetDate}</p>
@@ -1277,7 +1277,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 <div className="flex items-center gap-2.5">
                   <div className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
-                  <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                  <p className="text-sm" style={{ color: '#1A0A3B' }}>
                     <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
                     <span style={{ color: 'var(--c-text-2)' }}>
                       {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
@@ -1301,7 +1301,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   </div>
                   <div style={{ paddingLeft: 196, paddingRight: 20, minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <p className="text-xs font-semibold mb-1" style={{ color: '#6C3BFF' }}>Tu equipo está listo</p>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
+                    <p className="text-xs leading-relaxed" style={{ color: '#6B6480', whiteSpace: 'nowrap' }}>
                       En cuanto llegue la primera llamada, los registros aparecerán aquí automáticamente.
                     </p>
                   </div>

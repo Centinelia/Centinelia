@@ -100,7 +100,8 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-export default function HelpdeskSection({ token, subUserName }: { token: string; subUserName?: string | null }) {
+export default function HelpdeskSection({ token, subUserName, employeeName }: { token: string; subUserName?: string | null; employeeName?: string | null }) {
+  const empName = (employeeName ?? '').trim() || 'Neo';
   const [tickets, setTickets]   = useState<Ticket[]>([]);
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState<FilterKey>('activos');
@@ -337,7 +338,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                     También avisar a todos los que llamen
                   </p>
                   <p className="text-[11px] mt-0.5" style={{ color: '#6B6480' }}>
-                    El empleado anuncia esto al inicio de cada llamada para evitar que otros reporten lo mismo. Se apaga automáticamente al resolver la solicitud.
+                    {empName} anuncia esto al inicio de cada llamada para evitar que otros reporten lo mismo. Se apaga automáticamente al resolver la solicitud.
                   </p>
                 </div>
               </label>
@@ -345,7 +346,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
               {newAnuncio && (
                 <div className="mt-3 pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid #F0EDF9' }}>
                   <div>
-                    <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Mensaje que dice el empleado</label>
+                    <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Mensaje que dice {empName}</label>
                     <textarea value={newVoz} onChange={e => setNewVoz(e.target.value)} rows={2}
                       placeholder="Ej: Hola, quiero avisarte que no hay internet en la oficina desde las 10am. Ya lo estamos resolviendo, no necesitas abrir un ticket nuevo."
                       className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
@@ -358,7 +359,7 @@ export default function HelpdeskSection({ token, subUserName }: { token: string;
                       className="w-full px-3 py-2 rounded-lg text-[12px]"
                       style={inputStyle} />
                     <p className="text-[10px] mt-1" style={{ color: '#9B8FB5' }}>
-                      Palabras separadas por coma. Si el caller las menciona, el empleado sabe que ya está enterado del problema.
+                      Palabras separadas por coma. Si el caller las menciona, {empName} sabe que ya está enterado del problema.
                     </p>
                   </div>
                 </div>
