@@ -166,7 +166,7 @@ function StatusDot({ on }: { on: boolean }) {
   if (!on) return null;
   return (
     <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-      style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+      style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
         style={{ background: '#22c55e', boxShadow: '0 0 4px rgba(34,197,94,0.6)' }} />
       Activo
@@ -184,20 +184,25 @@ function OfficeSummaryBar({ caps }: { caps: CapabilitySummary[] }) {
   if (caps.length === 0) return null;
 
   return (
-    <div className="rounded-xl px-4 py-3.5 flex flex-col gap-3"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-
+    <div
+      className="rounded-2xl px-5 py-4 flex flex-col gap-3"
+      style={{
+        background: '#ffffff',
+        border: '1px solid #E8E3F5',
+        boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+      }}
+    >
       {connected.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold tracking-widest uppercase"
-            style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px] font-bold tracking-widest uppercase"
+            style={{ color: '#9B8FB5' }}>
             Tu equipo tiene acceso a
           </p>
           <div className="flex flex-wrap gap-1.5">
             {connected.map(c => (
               <span key={c.id}
-                className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)' }}>
+                className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
                 <Check size={10} /> {c.label}
               </span>
             ))}
@@ -207,17 +212,17 @@ function OfficeSummaryBar({ caps }: { caps: CapabilitySummary[] }) {
 
       {pending.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold tracking-widest uppercase"
-            style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px] font-bold tracking-widest uppercase"
+            style={{ color: '#9B8FB5' }}>
             {connected.length === 0 ? 'Para equipar la oficina' : 'Todavía no pueden usar'}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {pending.map(c => (
               <span key={c.id}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: 'var(--c-border-2)' }} />
+                  style={{ background: '#C7BEE0' }} />
                 {c.label}
               </span>
             ))}
@@ -256,18 +261,18 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
     const suite = SUITE_CAPABILITIES[provider];
     return (
       <div className="rounded-xl overflow-hidden w-full"
-        style={{ border: '1px solid var(--c-border)', background: 'var(--c-bg)' }}>
-        <p className="px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-widest uppercase"
-          style={{ color: 'var(--c-text-4)', borderBottom: '1px solid var(--c-border)' }}>
+        style={{ border: '1px solid #E8E3F5', background: '#FAFAFB' }}>
+        <p className="px-3 pt-2.5 pb-2 text-[10px] font-bold tracking-widest uppercase"
+          style={{ color: '#9B8FB5', borderBottom: '1px solid #F0EDF9' }}>
           Esta cuenta da acceso a · {suite.name}
         </p>
         <div className="grid grid-cols-3 gap-0">
           {suite.items.map((item, i) => (
             <div key={item.label}
               className="flex items-center gap-2 px-3 py-2.5"
-              style={{ borderRight: i < suite.items.length - 1 ? '1px solid var(--c-border)' : 'none' }}>
+              style={{ borderRight: i < suite.items.length - 1 ? '1px solid #F0EDF9' : 'none' }}>
               <Check size={10} style={{ color: '#22c55e', flexShrink: 0 }} />
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <span className="flex items-center gap-1.5 text-[12px]" style={{ color: '#6B6480' }}>
                 {item.icon} {item.label}
               </span>
             </div>
@@ -279,9 +284,9 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
 
   return (
     <div className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--c-border)', background: 'var(--c-bg)' }}>
-      <p className="px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-widest uppercase"
-        style={{ color: 'var(--c-text-4)', borderBottom: '1px solid var(--c-border)' }}>
+      style={{ border: '1px solid #E8E3F5', background: '#FAFAFB' }}>
+      <p className="px-3 pt-2.5 pb-2 text-[10px] font-bold tracking-widest uppercase"
+        style={{ color: '#9B8FB5', borderBottom: '1px solid #F0EDF9' }}>
         Conectar da acceso a
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
@@ -290,19 +295,19 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
           return (
             <div key={p}
               className="flex flex-col gap-1.5 px-3 py-3"
-              style={i === 1 ? { borderLeft: '1px solid var(--c-border)' } : {}}>
-              <span className="text-[11px] font-semibold mb-0.5" style={{ color: 'var(--c-text-2)' }}>
+              style={i === 1 ? { borderLeft: '1px solid #F0EDF9' } : {}}>
+              <span className="text-[11px] font-semibold mb-0.5" style={{ color: '#1A0A3B' }}>
                 {suite.name}
               </span>
               {suite.items.slice(0, 2).map(item => (
                 <div key={item.label} className="flex items-center gap-1.5">
-                  <Check size={10} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--c-text-4)' }}>
+                  <Check size={10} style={{ color: '#9B8FB5', flexShrink: 0 }} />
+                  <span className="flex items-center gap-1 text-[12px]" style={{ color: '#6B6480' }}>
                     {item.icon} {item.label}
                   </span>
                 </div>
               ))}
-              <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>y más...</span>
+              <span className="text-[10px]" style={{ color: '#9B8FB5' }}>y más...</span>
             </div>
           );
         })}
@@ -311,10 +316,10 @@ function WorkspaceCallout({ provider }: { provider: 'gmail' | 'outlook' | null }
   );
 }
 
-/* ── capability row ─────────────────────────────────────────────────────── */
+/* ── capability row (dentro del surface único, con divider) ─────────────── */
 
 function CapabilityRow({
-  icon, connectedIcon, label, subtitle, connected, comingSoon, children,
+  icon, connectedIcon, label, subtitle, connected, comingSoon, isLast, children,
 }: {
   icon:           React.ReactNode;
   connectedIcon?: React.ReactNode;
@@ -322,38 +327,37 @@ function CapabilityRow({
   subtitle?:      string;
   connected?:     boolean;
   comingSoon?:    boolean;
+  isLast:         boolean;
   children?:      React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const displayIcon = connected && connectedIcon ? connectedIcon : icon;
 
   return (
-    <div className="rounded-xl overflow-hidden"
-      style={{
-        background: 'var(--c-surface)',
-        border: `1px solid ${connected ? 'rgba(34,197,94,0.2)' : 'var(--c-border-2)'}`,
-      }}>
-
+    <div
+      className="flex flex-col"
+      style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9' }}
+    >
       <button
         onClick={() => !comingSoon && setOpen(o => !o)}
         disabled={comingSoon}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-        style={{ cursor: comingSoon ? 'default' : 'pointer' }}
-        onMouseEnter={e => { if (!comingSoon) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.03)'; }}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors"
+        style={{ cursor: comingSoon ? 'default' : 'pointer', background: 'transparent' }}
+        onMouseEnter={e => { if (!comingSoon) (e.currentTarget as HTMLButtonElement).style.background = '#FAFAFB'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
       >
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}>
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
           {displayIcon}
         </div>
 
         <div className="flex flex-col flex-1 min-w-0">
-          <span className="text-sm font-semibold"
-            style={{ color: comingSoon ? 'var(--c-text-4)' : 'var(--c-text)', lineHeight: 1.3 }}>
+          <span className="text-[13px] font-semibold"
+            style={{ color: comingSoon ? '#9B8FB5' : '#1A0A3B', lineHeight: 1.3 }}>
             {label}
           </span>
           {subtitle && (
-            <span className="text-xs truncate" style={{ color: 'var(--c-text-3)', marginTop: 1, lineHeight: 1.3 }}>
+            <span className="text-[12px] truncate" style={{ color: '#6B6480', marginTop: 1, lineHeight: 1.3 }}>
               {subtitle}
             </span>
           )}
@@ -362,13 +366,13 @@ function CapabilityRow({
         <StatusDot on={!!connected} />
 
         {comingSoon ? (
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full whitespace-nowrap"
-            style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+            style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
             Pronto
           </span>
         ) : (
           <ChevronDown size={14} style={{
-            color:      'var(--c-text-4)',
+            color:      '#9B8FB5',
             flexShrink: 0,
             transform:  open ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 200ms',
@@ -377,7 +381,10 @@ function CapabilityRow({
       </button>
 
       {open && !comingSoon && (
-        <div className="px-4 pb-5 pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div
+          className="px-5 pb-5 pt-4"
+          style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
+        >
           {children}
         </div>
       )}
@@ -465,34 +472,41 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
     { id: 'finanzas',  label: 'Finanzas',   connected: !!status.qb?.connected },
   ];
 
-  return (
-    <div className="flex flex-col gap-3">
+  /* ── build capability rows ──────────────────────────────────────────── */
 
-      {/* ── Summary bar ────────────────────────────────────────────────── */}
-      {statusLoaded && <OfficeSummaryBar caps={caps} />}
+  type CapRow = {
+    key: string;
+    icon: React.ReactNode;
+    connectedIcon?: React.ReactNode;
+    label: string;
+    subtitle?: string;
+    connected: boolean;
+    children: React.ReactNode;
+  };
 
-      {/* ── Category rows ──────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-1.5">
-
-        {/* Bandeja compartida de la organización */}
-        <CapabilityRow
-          icon={<Mail size={16} style={{ color: '#9B6DFF' }} />}
-          connectedIcon={emailConn?.provider === 'gmail' ? RowIcons.gmail : RowIcons.outlook}
-          label="Bandeja compartida"
-          subtitle={emailSubtitle ?? 'Correos entrantes se rutean automáticamente al empleado que corresponde por rol'}
-          connected={status.emails.length > 0}
-        >
-          <div className="mb-4 flex gap-2.5 rounded-lg px-3 py-2.5"
-            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}>
-            <Users size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
-            <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-              <p className="font-semibold" style={{ color: 'var(--c-text)' }}>
+  const rows: CapRow[] = [
+    {
+      key: 'correo',
+      icon: <Mail size={16} style={{ color: '#6C3BFF' }} />,
+      connectedIcon: emailConn?.provider === 'gmail' ? RowIcons.gmail : RowIcons.outlook,
+      label: 'Bandeja compartida',
+      subtitle: emailSubtitle ?? 'Correos entrantes se rutean automáticamente al empleado que corresponde por rol',
+      connected: status.emails.length > 0,
+      children: (
+        <>
+          <div
+            className="mb-4 flex gap-2.5 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
+          >
+            <Users size={13} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 2 }} />
+            <div className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+              <p className="font-semibold" style={{ color: '#1A0A3B' }}>
                 Cómo funciona la bandeja compartida
               </p>
-              <p className="mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                Los correos que lleguen a esta dirección se distribuyen automáticamente entre tus empleados según su rol: <strong>ventas</strong> → tu vendedor, <strong>cobranza</strong> → tu cobrador, <strong>facturación</strong> → quien lleva cuentas, etc. Cada empleado responde desde su propio correo si tiene uno conectado; si no, sale desde esta bandeja.
+              <p className="mt-0.5" style={{ color: '#6B6480' }}>
+                Los correos que lleguen a esta dirección se distribuyen automáticamente entre tus empleados según su rol: <strong>ventas</strong> a tu vendedor, <strong>cobranza</strong> a tu cobrador, <strong>facturación</strong> a quien lleva cuentas, etc. Cada empleado responde desde su propio correo si tiene uno conectado; si no, sale desde esta bandeja.
               </p>
-              <p className="mt-1.5" style={{ color: 'var(--c-text-3)' }}>
+              <p className="mt-1.5" style={{ color: '#6B6480' }}>
                 Si el asignación automática no acierta, puedes reasignar cualquier correo desde la Bandeja de la Oficina.
               </p>
             </div>
@@ -511,73 +525,115 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
               )
             }
           />
-        </CapabilityRow>
+        </>
+      ),
+    },
+    {
+      key: 'calendario',
+      icon: <Calendar size={16} style={{ color: '#6C3BFF' }} />,
+      connectedIcon:
+        (calViaEmail?.provider ?? status.cal?.calendar_type) === 'gmail'
+          ? RowIcons.gcal
+          : (calViaEmail?.provider ?? status.cal?.calendar_type) === 'outlook' ||
+            status.cal?.calendar_type === 'outlook_cal'
+          ? RowIcons.mcal
+          : undefined,
+      label: 'Calendario',
+      subtitle: calSubtitle,
+      connected: !!calViaEmail || !!status.cal?.calendar_type,
+      children: <IntegrationsSection token={token} plan={plan} emailConn={calViaEmail} />,
+    },
+    {
+      key: 'crm',
+      icon: <Users size={16} style={{ color: '#6C3BFF' }} />,
+      connectedIcon: RowIcons.notion,
+      label: 'Conocimiento del cliente',
+      subtitle: notionSubtitle,
+      connected: !!status.notion?.connected,
+      children: (
+        <div className="flex flex-col gap-5">
+          <NotionSection token={token} />
+          {hasNotion && <NotionSchemasSection token={token} />}
+        </div>
+      ),
+    },
+    ...(hasOpsAgent
+      ? [{
+          key: 'mensajeria',
+          icon: <MessageSquare size={16} style={{ color: '#5865F2' }} />,
+          connectedIcon: RowIcons.teams,
+          label: 'Mensajería',
+          subtitle: teamsSubtitle,
+          connected: !!status.teamsEmail,
+          children: <TeamsSection token={token} />,
+        }]
+      : []),
+    {
+      key: 'comercio',
+      icon: <ShoppingCart size={16} style={{ color: '#F5D000' }} />,
+      connectedIcon: RowIcons.mercadolibre,
+      label: 'Comercio',
+      subtitle: mlSubtitle,
+      connected: !!status.ml?.connected,
+      children: <MercadoLibreSection token={token} />,
+    },
+    {
+      key: 'finanzas',
+      icon: <DollarSign size={16} style={{ color: '#2CA01C' }} />,
+      connectedIcon: RowIcons.quickbooks,
+      label: 'Finanzas',
+      subtitle: qbSubtitle,
+      connected: !!status.qb?.connected,
+      children: <QuickBooksSection token={token} />,
+    },
+  ];
 
-        {/* Calendario */}
-        <CapabilityRow
-          icon={<Calendar size={16} style={{ color: '#6C3BFF' }} />}
-          connectedIcon={
-            (calViaEmail?.provider ?? status.cal?.calendar_type) === 'gmail'       ? RowIcons.gcal
-            : (calViaEmail?.provider ?? status.cal?.calendar_type) === 'outlook' ||
-              status.cal?.calendar_type === 'outlook_cal'                           ? RowIcons.mcal
-            : undefined
-          }
-          label="Calendario"
-          subtitle={calSubtitle}
-          connected={!!calViaEmail || !!status.cal?.calendar_type}
-        >
-          <IntegrationsSection token={token} plan={plan} emailConn={calViaEmail} />
-        </CapabilityRow>
+  return (
+    <div className="flex flex-col gap-3">
 
-        {/* Conocimiento del cliente */}
-        <CapabilityRow
-          icon={<Users size={16} style={{ color: '#6C3BFF' }} />}
-          connectedIcon={RowIcons.notion}
-          label="Conocimiento del cliente"
-          subtitle={notionSubtitle}
-          connected={!!status.notion?.connected}
-        >
-          <div className="flex flex-col gap-5">
-            <NotionSection token={token} />
-            {hasNotion && <NotionSchemasSection token={token} />}
+      {/* ── Summary bar ────────────────────────────────────────────────── */}
+      {statusLoaded && <OfficeSummaryBar caps={caps} />}
+
+      {/* ── Categorías (surface único con dividers) ───────────────────── */}
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+        }}
+      >
+        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                Integraciones
+              </h2>
+              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                {rows.length}
+              </span>
+            </div>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+              Conecta los servicios que ya usas para que tu equipo trabaje directo sobre ellos.
+            </p>
           </div>
-        </CapabilityRow>
+        </div>
 
-        {/* Mensajería */}
-        {hasOpsAgent && (
-          <CapabilityRow
-            icon={<MessageSquare size={16} style={{ color: '#5865F2' }} />}
-            connectedIcon={RowIcons.teams}
-            label="Mensajería"
-            subtitle={teamsSubtitle}
-            connected={!!status.teamsEmail}
-          >
-            <TeamsSection token={token} />
-          </CapabilityRow>
-        )}
-
-        {/* Comercio */}
-        <CapabilityRow
-          icon={<ShoppingCart size={16} style={{ color: '#F5D000' }} />}
-          connectedIcon={RowIcons.mercadolibre}
-          label="Comercio"
-          subtitle={mlSubtitle}
-          connected={!!status.ml?.connected}
-        >
-          <MercadoLibreSection token={token} />
-        </CapabilityRow>
-
-        {/* Finanzas */}
-        <CapabilityRow
-          icon={<DollarSign size={16} style={{ color: '#2CA01C' }} />}
-          connectedIcon={RowIcons.quickbooks}
-          label="Finanzas"
-          subtitle={qbSubtitle}
-          connected={!!status.qb?.connected}
-        >
-          <QuickBooksSection token={token} />
-        </CapabilityRow>
-
+        <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+          {rows.map((r, idx) => (
+            <CapabilityRow
+              key={r.key}
+              icon={r.icon}
+              connectedIcon={r.connectedIcon}
+              label={r.label}
+              subtitle={r.subtitle}
+              connected={r.connected}
+              isLast={idx === rows.length - 1}
+            >
+              {r.children}
+            </CapabilityRow>
+          ))}
+        </div>
       </div>
     </div>
   );
