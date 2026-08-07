@@ -120,7 +120,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
         label: 'Salientes',
         items: [
           { label: 'Permisos',  anchor: 'llamadas-sal' },
-          { label: 'Campañas',  href: `/portal/${t}/oficina/llamadas?filtro=campanas` },
+          { label: 'Campañas',  href: `/portal/${t}/oficina/campanas` },
           { label: 'Contactos', href: `/portal/${t}/oficina/llamadas?filtro=salientes` },
         ],
       });
