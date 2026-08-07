@@ -142,12 +142,13 @@ function parseCSV(text: string): Array<{ nombre?: string; telefono: string; emai
  * ajuste dinámico.
  */
 function ContactRowInner({
-  c, isSelected, onToggle, onTagsChange,
+  c, isSelected, onToggle, onTagsChange, onEdit,
 }: {
   c: Contact;
   isSelected: boolean;
   onToggle: (id: string) => void;
   onTagsChange: (id: string, tags: string[]) => void | Promise<void>;
+  onEdit: (c: Contact) => void;
 }) {
   const hasTags = (c.tags ?? []).length > 0;
   return (
@@ -190,14 +191,23 @@ function ContactRowInner({
             </div>
           )}
         </div>
-        {!hasTags && (
-          <div
-            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={e => e.stopPropagation()}
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+          {!hasTags && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => onEdit(c)}
+            aria-label={`Editar ${c.nombre ?? c.telefono}`}
+            title="Editar contacto"
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-white"
+            style={{ color: '#9B8FB5' }}
           >
-            <ContactTags tags={c.tags ?? []} onChange={tags => onTagsChange(c.id, tags)} />
-          </div>
-        )}
+            <Pencil size={12} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -210,12 +220,13 @@ function ContactRowInner({
  * altura dinámica (por tags).
  */
 function VirtualContactList({
-  contacts, selected, onToggle, onTagsChange,
+  contacts, selected, onToggle, onTagsChange, onEdit,
 }: {
   contacts:     Contact[];
   selected:     Set<string>;
   onToggle:     (id: string) => void;
   onTagsChange: (id: string, tags: string[]) => void | Promise<void>;
+  onEdit:       (c: Contact) => void;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -260,6 +271,7 @@ function VirtualContactList({
                 isSelected={selected.has(c.id)}
                 onToggle={onToggle}
                 onTagsChange={onTagsChange}
+                onEdit={onEdit}
               />
             </div>
           );
@@ -680,6 +692,63 @@ export default function OutboundSection({
   const [emailNew,  setEmailNew]  = useState('');
   const [motivo,    setMotivo]    = useState('');
 
+  // ── Edit contact modal state ──────────────────────────────────────────────────
+  const [editingContact,  setEditingContact]  = useState<Contact | null>(null);
+  const [editNombre,      setEditNombre]      = useState('');
+  const [editTelefono,    setEditTelefono]    = useState('');
+  const [editEmail,       setEditEmail]       = useState('');
+  const [editMotivo,      setEditMotivo]      = useState('');
+  const [editPassword,    setEditPassword]    = useState('');
+  const [editSaving,      setEditSaving]      = useState(false);
+  const [editError,       setEditError]       = useState('');
+
+  const openEditContact = (c: Contact) => {
+    setEditingContact(c);
+    setEditNombre(c.nombre ?? '');
+    setEditTelefono(c.telefono);
+    setEditEmail(c.email ?? '');
+    setEditMotivo(c.motivo ?? '');
+    setEditPassword('');
+    setEditError('');
+  };
+  const closeEditContact = () => {
+    setEditingContact(null);
+    setEditPassword('');
+    setEditError('');
+  };
+  const handleSaveEdit = async () => {
+    if (!editingContact) return;
+    if (!editTelefono.trim()) { setEditError('El teléfono es requerido.'); return; }
+    if (!editPassword.trim()) { setEditError('Contraseña requerida.'); return; }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const res = await fetch(`/api/portal/${token}/salientes/contacts/${editingContact.id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          nombre:   editNombre,
+          telefono: editTelefono,
+          email:    editEmail,
+          motivo:   editMotivo,
+          password: editPassword,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setEditError(d.error ?? 'Error al guardar.');
+        return;
+      }
+      const updated = await res.json() as Contact;
+      setContacts(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+      closeEditContact();
+    } catch {
+      setEditError('Error de red.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   // ── Campaign state ────────────────────────────────────────────────────────────
@@ -1005,8 +1074,8 @@ export default function OutboundSection({
                   </span>
                 )}
               </div>
-              <p className="text-[12px] mt-1 max-w-[380px]" style={{ color: '#6B6480' }}>
-                Tu base de contactos. Agrégales tags para que las campañas los llamen por segmento.
+              <p className="text-[12px] mt-1 whitespace-nowrap" style={{ color: '#6B6480' }}>
+                Agrégales tags para que las campañas los llamen por segmento.
               </p>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -1085,6 +1154,62 @@ export default function OutboundSection({
             </OficinaModal>
           )}
 
+          {/* Edit contact modal — password gate */}
+          {editingContact && (
+            <OficinaModal
+              open
+              onClose={closeEditContact}
+              eyebrow="Editar contacto"
+              title={editingContact.nombre ?? editingContact.telefono}
+              description="Requiere contraseña de administrador (la misma que usas para eliminar contactos y empleados)."
+              size="md"
+              footer={
+                <>
+                  <OficinaModal.SecondaryAction onClick={closeEditContact}>
+                    Cancelar
+                  </OficinaModal.SecondaryAction>
+                  <OficinaModal.PrimaryAction
+                    onClick={handleSaveEdit}
+                    loading={editSaving}
+                    disabled={!editTelefono.trim() || !editPassword.trim()}
+                  >
+                    Guardar cambios
+                  </OficinaModal.PrimaryAction>
+                </>
+              }
+            >
+              <div className="flex flex-col gap-4">
+                <OficinaModal.Field label="Nombre" hint="opcional">
+                  <input placeholder="Ej: Juan Pérez" value={editNombre} onChange={e => setEditNombre(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Teléfono" hint="requerido">
+                  <input placeholder="Ej: +52 811 234 5678" value={editTelefono} onChange={e => setEditTelefono(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Correo" hint="opcional">
+                  <input type="email" placeholder="Ej: juan@empresa.mx" value={editEmail} onChange={e => setEditEmail(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Motivo" hint="opcional">
+                  <input placeholder="Ej: Interesado en paquete premium" value={editMotivo} onChange={e => setEditMotivo(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Contraseña de administrador" hint="requerida">
+                  <input type="password" placeholder="••••••••" value={editPassword} onChange={e => setEditPassword(e.target.value)}
+                    autoComplete="current-password"
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                {editError && (
+                  <p className="text-[13px] px-3 py-2 rounded-lg"
+                    style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
+                    {editError}
+                  </p>
+                )}
+              </div>
+            </OficinaModal>
+          )}
+
           {/* Buscar + tag chips (mismo bloque, dentro del surface con divider) */}
           {contacts.length > 0 && (
             <div className="px-5 py-3 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9' }}>
@@ -1153,15 +1278,18 @@ export default function OutboundSection({
                 borderTop: '1px solid #F0EDF9',
                 background: selectedPending.length > 0 ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
               }}>
-              <label className="flex items-center gap-2 text-[12px] cursor-pointer flex-shrink-0 font-medium"
-                style={{ color: '#6B6480' }}>
+              <label
+                className="flex items-center gap-2 text-[12px] cursor-pointer flex-shrink-0 font-medium"
+                style={{ color: '#6B6480' }}
+                title={`${pendingContacts.length} contacto${pendingContacts.length !== 1 ? 's' : ''} sin llamar aún (elegibles)`}
+              >
                 <input type="checkbox"
                   checked={visiblePending.length > 0 && visiblePending.every(c => selected.has(c.id))}
                   onChange={toggleAll} disabled={visiblePending.length === 0}
                   style={{ accentColor: '#6C3BFF' }} />
                 {selectedPending.length > 0
                   ? <span style={{ color: '#6C3BFF' }}>{selectedPending.length} seleccionados</span>
-                  : `${pendingContacts.length} pendiente${pendingContacts.length !== 1 ? 's' : ''}`}
+                  : `Seleccionar todos${pendingContacts.length > 0 ? ` (${pendingContacts.length})` : ''}`}
               </label>
 
               {selectedPending.length > 0 && (
@@ -1287,6 +1415,7 @@ export default function OutboundSection({
                 selected={selected}
                 onToggle={toggle}
                 onTagsChange={handleTagsChange}
+                onEdit={openEditContact}
               />
             </div>
           )}
@@ -1346,7 +1475,7 @@ export default function OutboundSection({
                   </span>
                 )}
               </div>
-              <p className="text-[12px] mt-1 max-w-[380px]" style={{ color: '#6B6480' }}>
+              <p className="text-[12px] mt-1 whitespace-nowrap" style={{ color: '#6B6480' }}>
                 Programa llamadas automáticas recurrentes o únicas a tus contactos.
               </p>
             </div>
