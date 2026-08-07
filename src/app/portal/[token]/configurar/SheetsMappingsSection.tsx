@@ -11,7 +11,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import EmptyState from '@/components/ui/empty-state';
-import { SectionHeader } from '@/components/portal-ui';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -54,14 +53,15 @@ function MappingRow({
   mapping,
   token,
   spreadsheetsMap,
-  onRefresh,
   onDelete,
+  isLast,
 }: {
   mapping: Mapping;
   token: string;
   spreadsheetsMap: Map<string, string>;
   onRefresh: () => void;
   onDelete: () => void;
+  isLast: boolean;
 }) {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -96,24 +96,24 @@ function MappingRow({
 
   return (
     <div
-      className="rounded-lg p-4"
-      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+      className="px-5 py-4 flex flex-col gap-3"
+      style={{ borderBottom: isLast ? 'none' : '1px solid #F0EDF9' }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {/* Purpose badge */}
           <span
-            className="inline-block text-[10px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded mb-2"
-            style={{ background: 'var(--c-hover)', color: 'var(--c-text-3)' }}
+            className="inline-block text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full mb-2"
+            style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}
           >
             {purposeLabel(mapping.purpose, mapping.custom_purpose_label)}
           </span>
 
           {/* Spreadsheet + tab */}
-          <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>
+          <p className="text-[13px] font-semibold truncate" style={{ color: '#1A0A3B' }}>
             {spreadsheetsMap.get(mapping.spreadsheet_id) ?? mapping.spreadsheet_id}
           </p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
             Hoja: {mapping.tab_name}
           </p>
 
@@ -124,7 +124,7 @@ function MappingRow({
                 <span
                   key={h}
                   className="text-[10px] px-1.5 py-0.5 rounded"
-                  style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
+                  style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
                 >
                   {h}
                 </span>
@@ -132,7 +132,7 @@ function MappingRow({
             </div>
           )}
           {localHeaders.length === 0 && (
-            <p className="text-xs mt-2 italic" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-[11px] mt-2 italic" style={{ color: '#9B8FB5' }}>
               Sin columnas detectadas. Usa "Actualizar columnas".
             </p>
           )}
@@ -145,24 +145,24 @@ function MappingRow({
             onClick={handleRefresh}
             disabled={refreshing}
             title="Actualizar columnas"
-            className="p-1.5 rounded transition-colors"
-            style={{ color: 'var(--c-text-3)' }}
+            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
           >
             {refreshing
-              ? <Loader2 size={15} className="animate-spin" />
-              : <RefreshCw size={15} />}
+              ? <Loader2 size={14} className="animate-spin" />
+              : <RefreshCw size={14} />}
           </button>
           <button
             type="button"
             onClick={handleDelete}
             disabled={deleting}
             title="Eliminar"
-            className="p-1.5 rounded transition-colors"
-            style={{ color: 'var(--c-text-3)' }}
+            className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
+            style={{ background: '#FAFAFB', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }}
           >
             {deleting
-              ? <Loader2 size={15} className="animate-spin" />
-              : <Trash2 size={15} />}
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Trash2 size={14} />}
           </button>
         </div>
       </div>
@@ -255,16 +255,16 @@ function AddMappingForm({
   if (sheetsError === 'google_no_conectado') {
     return (
       <div
-        className="rounded-lg p-4"
-        style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}
+        className="px-5 py-4"
+        style={{ borderTop: '1px solid #F0EDF9', background: 'rgba(245,158,11,0.06)' }}
       >
         <div className="flex items-start gap-2.5">
           <WifiOff size={14} style={{ color: '#f59e0b', marginTop: 2, flexShrink: 0 }} />
           <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+            <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
               Google no conectado
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
               Conecta Google Workspace en la sección de Integraciones de la Oficina para acceder a tus sheets.
             </p>
           </div>
@@ -272,8 +272,8 @@ function AddMappingForm({
         <button
           type="button"
           onClick={onCancel}
-          className="mt-3 text-xs"
-          style={{ color: 'var(--c-text-3)' }}
+          className="mt-3 text-[12px] px-2.5 py-1 rounded-lg transition-opacity hover:opacity-70"
+          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
         >
           Cancelar
         </button>
@@ -281,18 +281,24 @@ function AddMappingForm({
     );
   }
 
+  const inputStyle = {
+    background: '#FAFAFB',
+    border: '1px solid #E8E3F5',
+    color: '#1A0A3B',
+  };
+
   return (
     <div
-      className="rounded-lg p-4 space-y-3"
-      style={{ border: '1px dashed var(--c-border)', background: 'var(--c-surface-2)' }}
+      className="px-5 py-4 flex flex-col gap-3"
+      style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
     >
-      <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
         Nueva hoja
       </p>
 
       {/* Purpose */}
       <div>
-        <label className="text-xs mb-1 block" style={{ color: 'var(--c-text-2)' }}>
+        <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
           Propósito
         </label>
         <div className="relative">
@@ -300,25 +306,21 @@ function AddMappingForm({
             id="sheets-purpose"
             value={purpose}
             onChange={e => { setPurpose(e.target.value as PurposeValue); setCustomLabel(''); }}
-            className="w-full appearance-none rounded-md px-3 py-2 pr-8 text-sm"
-            style={{
-              background: 'var(--c-surface)',
-              border: '1px solid var(--c-border)',
-              color: 'var(--c-text)',
-            }}
+            className="w-full appearance-none rounded-lg px-3 py-2 pr-8 text-[13px] outline-none"
+            style={inputStyle}
           >
             {RESERVED_PURPOSES.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
-          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-3)' }} />
+          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
         </div>
       </div>
 
       {/* Custom label */}
       {purpose === 'custom' && (
         <div>
-          <label className="text-xs mb-1 block" style={{ color: 'var(--c-text-2)' }}>
+          <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
             Nombre del propósito
           </label>
           <input
@@ -327,23 +329,19 @@ function AddMappingForm({
             value={customLabel}
             onChange={e => setCustomLabel(e.target.value)}
             placeholder="Ej: Inventario, Proveedores..."
-            className="w-full rounded-md px-3 py-2 text-sm"
-            style={{
-              background: 'var(--c-surface)',
-              border: '1px solid var(--c-border)',
-              color: 'var(--c-text)',
-            }}
+            className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
+            style={inputStyle}
           />
         </div>
       )}
 
       {/* Spreadsheet picker */}
       <div>
-        <label className="text-xs mb-1 block" style={{ color: 'var(--c-text-2)' }}>
+        <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
           Spreadsheet
         </label>
         {sheetsLoading ? (
-          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
             <Loader2 size={13} className="animate-spin" /> Cargando sheets...
           </div>
         ) : (
@@ -352,30 +350,26 @@ function AddMappingForm({
               id="sheets-spreadsheet"
               value={selectedSpreadsheet}
               onChange={e => setSelectedSpreadsheet(e.target.value)}
-              className="w-full appearance-none rounded-md px-3 py-2 pr-8 text-sm"
-              style={{
-                background: 'var(--c-surface)',
-                border: '1px solid var(--c-border)',
-                color: 'var(--c-text)',
-              }}
+              className="w-full appearance-none rounded-lg px-3 py-2 pr-8 text-[13px] outline-none"
+              style={inputStyle}
             >
               <option value="">Elige un spreadsheet</option>
               {spreadsheets.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-3)' }} />
+            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
           </div>
         )}
       </div>
 
       {/* Tab picker */}
       <div>
-        <label className="text-xs mb-1 block" style={{ color: 'var(--c-text-2)' }}>
+        <label className="text-[12px] mb-1 block font-medium" style={{ color: '#6B6480' }}>
           Hoja (tab)
         </label>
         {tabsLoading ? (
-          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
             <Loader2 size={13} className="animate-spin" /> Cargando hojas...
           </div>
         ) : (
@@ -385,12 +379,8 @@ function AddMappingForm({
               value={selectedTab}
               onChange={e => setSelectedTab(e.target.value)}
               disabled={!selectedSpreadsheet || tabs.length === 0}
-              className="w-full appearance-none rounded-md px-3 py-2 pr-8 text-sm disabled:opacity-50"
-              style={{
-                background: 'var(--c-surface)',
-                border: '1px solid var(--c-border)',
-                color: 'var(--c-text)',
-              }}
+              className="w-full appearance-none rounded-lg px-3 py-2 pr-8 text-[13px] outline-none disabled:opacity-50"
+              style={inputStyle}
             >
               <option value="">
                 {!selectedSpreadsheet ? 'Elige un spreadsheet primero' : 'Elige una hoja'}
@@ -399,13 +389,13 @@ function AddMappingForm({
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
-            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-3)' }} />
+            <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" style={{ color: '#9B8FB5' }} />
           </div>
         )}
       </div>
 
       {saveError && (
-        <p className="text-xs" style={{ color: '#ef4444' }}>{saveError}</p>
+        <p className="text-[12px]" style={{ color: '#ef4444' }}>{saveError}</p>
       )}
 
       {/* Actions */}
@@ -415,16 +405,20 @@ function AddMappingForm({
           type="button"
           onClick={handleSubmit}
           disabled={saving || !selectedSpreadsheet || !selectedTab || (purpose === 'custom' && !customLabel.trim())}
-          className="px-3 py-1.5 rounded-md text-sm font-medium transition-opacity disabled:opacity-40"
-          style={{ background: 'var(--c-text)', color: 'var(--c-bg)' }}
+          className="px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+          style={{
+            background: '#6C3BFF',
+            color: '#fff',
+            boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+          }}
         >
           {saving ? 'Guardando...' : 'Agregar hoja'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-1.5 rounded-md text-sm"
-          style={{ color: 'var(--c-text-3)' }}
+          className="px-3 py-2 rounded-lg text-[13px] font-medium transition-opacity hover:opacity-70"
+          style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}
         >
           Cancelar
         </button>
@@ -477,93 +471,124 @@ export default function SheetsMappingsSection({ token }: Props) {
 
   return (
     <section className="scroll-mt-6">
-      <SectionHeader
-        as="h2"
-        title="Sheets del negocio"
-        tooltip="Configuración global de todos tus empleados. Conecta un Google Sheet a cada tipo de dato y todos los empleados escribirán y leerán directamente en tus hojas existentes."
-        className="mb-2"
-      />
-      <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
-        Conecta un Google Sheet a cada tipo de dato. Todos tus empleados escribirán y leerán directamente en tus hojas existentes, respetando los encabezados que ya tienes.
-      </p>
-
-      {/* Mapping list */}
-      {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm" style={{ color: 'var(--c-text-3)' }}>
-          <Loader2 size={15} className="animate-spin" />
-          Cargando hojas configuradas...
-        </div>
-      ) : loadError ? (
-        <EmptyState
-          icon={Sheet}
-          title="Sin hojas configuradas"
-          description="No se pudieron cargar las hojas. Intenta recargar la página."
-          size="sm"
-          action={
-            <p className="text-xs" style={{ color: '#ef4444' }}>
-              Error al cargar las hojas configuradas.
+      <div
+        className="flex flex-col rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                Sheets del negocio
+              </h2>
+              {mappings.length > 0 && (
+                <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                  {mappings.length}
+                </span>
+              )}
+            </div>
+            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+              Conecta un Google Sheet a cada tipo de dato. Tus empleados escribirán y leerán directamente en tus hojas existentes.
             </p>
-          }
-        />
-      ) : mappings.length === 0 && !showAddForm ? (
-        <EmptyState
-          icon={Sheet}
-          title="Sin hojas configuradas"
-          description="Agrega la primera hoja para que el empleado pueda leer y escribir datos directamente en Google Sheets."
-          size="sm"
-          action={
-            <button
-              type="button"
-              id="sheets-add-first"
-              onClick={() => setShowAddForm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ background: 'var(--c-text)', color: 'var(--c-bg)' }}
-            >
-              <Plus size={14} />
-              Agregar hoja
-            </button>
-          }
-        />
-      ) : (
-        <div className="space-y-2">
-          {mappings.map(m => (
-            <MappingRow
-              key={m.id}
-              mapping={m}
-              token={token}
-              spreadsheetsMap={spreadsheetsMap}
-              onRefresh={loadMappings}
-              onDelete={loadMappings}
-            />
-          ))}
+          </div>
+          {!loading && mappings.length > 0 && !showAddForm && (
+            <div className="flex items-center gap-1.5">
+              <button
+                id="sheets-add-btn"
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+                style={{
+                  background: '#6C3BFF',
+                  color: '#fff',
+                  boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+                }}
+              >
+                <Plus size={13} />
+                Agregar hoja
+              </button>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Add form */}
-      {showAddForm && (
-        <div className="mt-3">
+        {/* Body */}
+        {loading ? (
+          <div
+            className="px-5 py-6 flex items-center gap-2 text-[13px]"
+            style={{ borderTop: '1px solid #F0EDF9', color: '#6B6480' }}
+          >
+            <Loader2 size={15} className="animate-spin" />
+            Cargando hojas configuradas...
+          </div>
+        ) : loadError ? (
+          <div style={{ borderTop: '1px solid #F0EDF9' }}>
+            <EmptyState
+              icon={Sheet}
+              title="Sin hojas configuradas"
+              description="No se pudieron cargar las hojas. Intenta recargar la página."
+              size="sm"
+              action={
+                <p className="text-xs" style={{ color: '#ef4444' }}>
+                  Error al cargar las hojas configuradas.
+                </p>
+              }
+            />
+          </div>
+        ) : mappings.length === 0 && !showAddForm ? (
+          <div style={{ borderTop: '1px solid #F0EDF9' }}>
+            <EmptyState
+              icon={Sheet}
+              title="Sin hojas configuradas"
+              description="Agrega la primera hoja para que el empleado pueda leer y escribir datos directamente en Google Sheets."
+              size="sm"
+              action={
+                <button
+                  type="button"
+                  id="sheets-add-first"
+                  onClick={() => setShowAddForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+                  style={{
+                    background: '#6C3BFF',
+                    color: '#fff',
+                    boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+                  }}
+                >
+                  <Plus size={13} />
+                  Agregar hoja
+                </button>
+              }
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
+            {mappings.map((m, idx) => (
+              <MappingRow
+                key={m.id}
+                mapping={m}
+                token={token}
+                spreadsheetsMap={spreadsheetsMap}
+                onRefresh={loadMappings}
+                onDelete={loadMappings}
+                isLast={idx === mappings.length - 1 && !showAddForm}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Add form (rendered as sub-section with divider) */}
+        {showAddForm && (
           <AddMappingForm
             token={token}
             onSaved={() => { setShowAddForm(false); loadMappings(); }}
             onCancel={() => setShowAddForm(false)}
           />
-        </div>
-      )}
-
-      {/* Add button (shown when list is not empty) */}
-      {!loading && mappings.length > 0 && !showAddForm && (
-        <button
-          id="sheets-add-btn"
-          type="button"
-          onClick={() => setShowAddForm(true)}
-          className="mt-3 flex items-center gap-1.5 text-sm"
-          style={{ color: 'var(--c-text-3)' }}
-        >
-          <Plus size={14} />
-          Agregar otra hoja
-        </button>
-      )}
-
+        )}
+      </div>
     </section>
   );
 }
