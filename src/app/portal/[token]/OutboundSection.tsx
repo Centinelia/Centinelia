@@ -787,96 +787,110 @@ export default function OutboundSection({
           {/* Header */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--c-text)' }}>Contactos</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+              <h2 className="text-[15px] font-bold" style={{ color: '#1A0A3B' }}>
+                Contactos
+                {contacts.length > 0 && (
+                  <span className="ml-2 text-[13px] font-normal tabular-nums" style={{ color: '#9B8FB5' }}>
+                    {contacts.length}
+                  </span>
+                )}
+              </h2>
+              <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
                 Tu base de contactos. Agrégales tags para que las campañas los llamen por segmento.
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button type="button" onClick={refresh} disabled={refreshing}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
-                <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-                Actualizar
+                aria-label="Actualizar"
+                className="flex items-center justify-center rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
+                style={{ width: 32, height: 32, background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
               </button>
               <button type="button" onClick={() => fileRef.current?.click()} disabled={contactSaving}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70 disabled:opacity-50"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-medium transition-opacity hover:opacity-70 disabled:opacity-50"
+                style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <Upload size={12} />
                 CSV
               </button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSV} />
-              <button type="button" onClick={() => { setShowContactForm(f => !f); setContactError(''); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              <button type="button" onClick={() => { setShowContactForm(true); setContactError(''); }}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-80"
                 style={{ background: '#6C3BFF', color: '#fff' }}>
                 <Plus size={12} />
-                Agregar
+                Nuevo
               </button>
             </div>
           </div>
 
-          {/* Add contact form */}
+          {/* Add contact modal */}
           {showContactForm && (
-            <form onSubmit={handleAddContact}
-              className="rounded-2xl p-4 flex flex-col gap-3"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Nuevo contacto</p>
-              <div className="flex flex-col gap-2">
-                <input placeholder="Nombre (opcional)" value={nombre} onChange={e => setNombre(e.target.value)}
-                  className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
-                <input placeholder="Teléfono *" value={telefono} onChange={e => setTelefono(e.target.value)} required
-                  className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
-                <input placeholder="Motivo (opcional)" value={motivo} onChange={e => setMotivo(e.target.value)}
-                  className="rounded-xl px-3 py-2.5 text-sm outline-none" style={inputStyle} />
+            <OficinaModal
+              open
+              onClose={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setMotivo(''); setContactError(''); }}
+              eyebrow="Nuevo contacto"
+              title="Agrega un contacto"
+              description="Este contacto queda disponible para futuras campañas segmentadas por tags."
+              size="md"
+              footer={
+                <>
+                  <OficinaModal.SecondaryAction
+                    onClick={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setMotivo(''); setContactError(''); }}
+                  >
+                    Cancelar
+                  </OficinaModal.SecondaryAction>
+                  <OficinaModal.PrimaryAction
+                    onClick={() => handleAddContact({ preventDefault: () => {} } as React.FormEvent)}
+                    loading={contactSaving}
+                    disabled={!telefono.trim()}
+                  >
+                    Guardar
+                  </OficinaModal.PrimaryAction>
+                </>
+              }
+            >
+              <div className="flex flex-col gap-4">
+                <OficinaModal.Field label="Nombre" hint="opcional">
+                  <input placeholder="Ej: Juan Pérez" value={nombre} onChange={e => setNombre(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Teléfono" hint="requerido">
+                  <input placeholder="Ej: +52 811 234 5678" value={telefono} onChange={e => setTelefono(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                <OficinaModal.Field label="Motivo" hint="opcional">
+                  <input placeholder="Ej: Interesado en paquete premium" value={motivo} onChange={e => setMotivo(e.target.value)}
+                    style={{ ...inputStyle, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', borderRadius: 10 }} />
+                </OficinaModal.Field>
+                {contactError && (
+                  <p className="text-[13px] px-3 py-2 rounded-lg"
+                    style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>
+                    {contactError}
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <button type="submit" disabled={contactSaving || !telefono.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
-                  style={{ background: '#6C3BFF', color: '#fff' }}>
-                  {contactSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  Guardar
-                </button>
-                <button type="button"
-                  onClick={() => { setShowContactForm(false); setNombre(''); setTelefono(''); setMotivo(''); }}
-                  className="px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-70"
-                  style={{ color: 'var(--c-text-3)' }}>
-                  Cancelar
-                </button>
-              </div>
-            </form>
+            </OficinaModal>
           )}
 
-          {/* Search + source filter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1 min-w-[140px]">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: 'var(--c-text-3)' }} />
-              <input
-                type="text"
-                value={contactSearch}
-                onChange={e => setContactSearch(e.target.value)}
-                placeholder="Buscar…"
-                className="w-full pl-8 pr-8 py-2 rounded-lg text-xs outline-none"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
-              />
-              {contactSearch && (
-                <button onClick={() => setContactSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
-                  <X size={11} />
-                </button>
-              )}
-            </div>
-            <Select value={sourceFilter} onValueChange={v => setSourceFilter(v as SourceFilter)}>
-              <SelectTrigger className="w-auto py-2 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="llamada_entrante">Entrante</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Buscar (source filter obsoleto — tags reemplazó la segmentación) */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: '#9B8FB5' }} />
+            <input
+              type="text"
+              value={contactSearch}
+              onChange={e => setContactSearch(e.target.value)}
+              placeholder="Buscar por nombre o teléfono…"
+              className="w-full pl-9 pr-9 py-2 rounded-xl text-[13px] outline-none"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+            />
+            {contactSearch && (
+              <button onClick={() => setContactSearch('')}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-opacity hover:opacity-70"
+                style={{ color: '#9B8FB5', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           {/* Tag filter chips (segmentación) */}
@@ -1037,8 +1051,10 @@ export default function OutboundSection({
               />
             </div>
           ) : visibleContacts.length === 0 ? (
-            <p className="text-xs text-center py-6" style={{ color: 'var(--c-text-3)' }}>
-              {sourceFilter === 'all' ? 'Sin resultados' : 'Sin contactos con este origen'}
+            <p className="text-xs text-center py-6" style={{ color: '#6B6480' }}>
+              {contactSearch.trim() ? 'Sin resultados con esta búsqueda' :
+               tagFilter                 ? `Sin contactos con tag "${tagFilter}"` :
+                                          'Sin resultados'}
             </p>
           ) : (
             <div className="flex flex-col gap-1.5">
