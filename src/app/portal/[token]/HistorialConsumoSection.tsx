@@ -58,7 +58,7 @@ export default async function HistorialConsumoSection({
 }) {
   const supabase = createAdminClient();
 
-  const [ledgerRes, callsRes, opsLogRes, agentsRes] = await Promise.all([
+  const [ledgerRes, callsRes, outboundRes, opsLogRes, agentsRes] = await Promise.all([
     supabase
       .from('minutes_ledger')
       .select('id, agent_id, created_at, amount, description, source')
@@ -70,6 +70,13 @@ export default async function HistorialConsumoSection({
       .select('id, agent_id, created_at, duration_seconds, caller_number')
       .in('agent_id', agentIds)
       .order('created_at', { ascending: false })
+      .limit(500),
+    supabase
+      .from('outbound_calls')
+      .select('id, agent_id, called_at, duration_sec, telefono, nombre')
+      .in('agent_id', agentIds)
+      .not('duration_sec', 'is', null)
+      .order('called_at', { ascending: false })
       .limit(500),
     // Fuente unificada de consumo de tareas — cualquier consumeAiOp() escribe aquí.
     supabase
@@ -109,6 +116,23 @@ export default async function HistorialConsumoSection({
       source:      'llamada' as LedgerSource,
     };
   });
+
+  // Salientes vienen de outbound_calls (separado en la UI con icono + label
+  // distinto para distinguir entrantes vs salientes en el ledger).
+  const outboundDebits: Omit<MinutesEntry, 'balance'>[] = (outboundRes.data ?? []).map((c: any) => {
+    const durSec = (c.duration_sec as number | null) ?? 0;
+    const mins   = Math.max(1, Math.ceil(durSec / 60));
+    const nombre = ((c.nombre as string | null)?.trim()) || null;
+    const tel    = ((c.telefono as string | null)?.trim()) || 'Número privado';
+    return {
+      id:          `out-${c.id as string}`,
+      date:        c.called_at as string,
+      amount:      -mins,
+      description: nombre ? `${nombre} (${tel}) · ${mins} min` : `${tel} · ${mins} min`,
+      source:      'llamada_saliente' as LedgerSource,
+    };
+  });
+  debits.push(...outboundDebits);
 
   if (credits.length === 0 && minutesIncluded > 0) {
     const firstDate = debits.length > 0 ? debits[debits.length - 1].date : new Date().toISOString();

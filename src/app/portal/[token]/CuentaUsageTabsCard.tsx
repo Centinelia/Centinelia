@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Tabs from '@/components/portal-ui/overlays/Tabs';
+import { Gauge, ShoppingCart, BatteryCharging } from 'lucide-react';
 
 interface Props {
   /** Content for the "Uso" tab (Minutos + Tareas usage bars) */
@@ -11,6 +11,12 @@ interface Props {
   /** Content for the "Recarga" tab (auto-refill configuration) */
   recargaContent: React.ReactNode;
 }
+
+const TABS: Array<{ id: 'uso' | 'comprar' | 'recarga'; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+  { id: 'uso',     label: 'Uso',     icon: Gauge },
+  { id: 'comprar', label: 'Comprar', icon: ShoppingCart },
+  { id: 'recarga', label: 'Recarga', icon: BatteryCharging },
+];
 
 // Map URL hash (used by sidebar anchors) → tab value
 function hashToTab(): 'uso' | 'comprar' | 'recarga' {
@@ -58,26 +64,35 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
           </p>
         </div>
       </div>
-      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
-        <Tabs.Root value={value} onValueChange={v => setValue(v as 'uso' | 'comprar' | 'recarga')} variant="pill">
-          <Tabs.List>
-            <Tabs.Trigger value="uso">Uso</Tabs.Trigger>
-            <Tabs.Trigger value="comprar">Comprar</Tabs.Trigger>
-            <Tabs.Trigger value="recarga">Recarga</Tabs.Trigger>
-          </Tabs.List>
+      {/* Segmented tab bar — más presencia */}
+      <div className="px-5 py-3" style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+        <div className="inline-flex items-center gap-1 p-1 rounded-xl w-full"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const active = value === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setValue(t.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[13px] font-semibold transition-all"
+                style={{
+                  background: active ? '#6C3BFF' : 'transparent',
+                  color:      active ? '#ffffff' : '#6B6480',
+                  boxShadow:  active ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+                }}>
+                <Icon size={13} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-          <Tabs.Content value="uso">
-            <div className="flex flex-col gap-4">{usoContent}</div>
-          </Tabs.Content>
-
-          <Tabs.Content value="comprar">
-            <div className="flex flex-col gap-4">{comprarContent}</div>
-          </Tabs.Content>
-
-          <Tabs.Content value="recarga">
-            <div className="flex flex-col gap-4">{recargaContent}</div>
-          </Tabs.Content>
-        </Tabs.Root>
+      <div className="px-5 py-5">
+        {value === 'uso'     && <div className="flex flex-col gap-4">{usoContent}</div>}
+        {value === 'comprar' && <div className="flex flex-col gap-4">{comprarContent}</div>}
+        {value === 'recarga' && <div className="flex flex-col gap-4">{recargaContent}</div>}
       </div>
     </div>
   );

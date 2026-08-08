@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import {
-  RefreshCw, RotateCcw, Zap, CreditCard, Phone, SlidersHorizontal, BatteryCharging,
+  RefreshCw, RotateCcw, Zap, CreditCard, Phone, PhoneIncoming, PhoneOutgoing, SlidersHorizontal, BatteryCharging,
   Bot, Mail, FileText, Calendar, Search, ClipboardList, X,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'auto_recarga';
+export type LedgerSource = 'renovacion' | 'rollover' | 'extra_compra' | 'activacion' | 'ajuste' | 'llamada' | 'llamada_saliente' | 'auto_recarga';
 
 export interface MinutesEntry {
   id:          string;
@@ -35,13 +35,14 @@ export interface TaskEntry {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const MIN_SOURCE_META: Record<LedgerSource, { iconKey: string; color: string; label: string }> = {
-  renovacion:   { iconKey: 'refresh',  color: '#6C3BFF', label: 'Renovación' },
-  rollover:     { iconKey: 'rotate',   color: '#a855f7', label: 'Rollover' },
-  extra_compra: { iconKey: 'zap',      color: '#f59e0b', label: 'Compra extra' },
-  activacion:   { iconKey: 'card',     color: '#3b82f6', label: 'Activación' },
-  ajuste:       { iconKey: 'sliders',  color: '#22c55e', label: 'Ajuste' },
-  llamada:      { iconKey: 'phone',    color: '#6b7280', label: 'Llamada' },
-  auto_recarga: { iconKey: 'battery',  color: '#6C3BFF', label: 'Auto-recarga' },
+  renovacion:       { iconKey: 'refresh',        color: '#6C3BFF', label: 'Renovación' },
+  rollover:         { iconKey: 'rotate',         color: '#a855f7', label: 'Rollover' },
+  extra_compra:     { iconKey: 'zap',            color: '#f59e0b', label: 'Compra extra' },
+  activacion:       { iconKey: 'card',           color: '#3b82f6', label: 'Activación' },
+  ajuste:           { iconKey: 'sliders',        color: '#22c55e', label: 'Ajuste' },
+  llamada:          { iconKey: 'phone_in',       color: '#3b82f6', label: 'Llamada entrante' },
+  llamada_saliente: { iconKey: 'phone_out',      color: '#f59e0b', label: 'Llamada saliente' },
+  auto_recarga:     { iconKey: 'battery',        color: '#6C3BFF', label: 'Auto-recarga' },
 };
 
 const TRIGGER_META: Record<string, { iconKey: string; color: string; label: string }> = {
@@ -57,21 +58,23 @@ const TRIGGER_META: Record<string, { iconKey: string; color: string; label: stri
   document:        { iconKey: 'doc',         color: '#06b6d4', label: 'Documento' },
 };
 
-function renderIcon(iconKey: string) {
+function renderIcon(iconKey: string, size = 14) {
   switch (iconKey) {
-    case 'refresh':   return <RefreshCw size={11} />;
-    case 'rotate':    return <RotateCcw size={11} />;
-    case 'zap':       return <Zap size={11} />;
-    case 'card':      return <CreditCard size={11} />;
-    case 'sliders':   return <SlidersHorizontal size={11} />;
-    case 'phone':     return <Phone size={11} />;
-    case 'battery':   return <BatteryCharging size={11} />;
-    case 'bot':       return <Bot size={11} />;
-    case 'mail':      return <Mail size={11} />;
-    case 'calendar':  return <Calendar size={11} />;
-    case 'search':    return <Search size={11} />;
-    case 'doc':       return <FileText size={11} />;
-    case 'clipboard': return <ClipboardList size={11} />;
+    case 'refresh':   return <RefreshCw size={size} />;
+    case 'rotate':    return <RotateCcw size={size} />;
+    case 'zap':       return <Zap size={size} />;
+    case 'card':      return <CreditCard size={size} />;
+    case 'sliders':   return <SlidersHorizontal size={size} />;
+    case 'phone':     return <Phone size={size} />;
+    case 'phone_in':  return <PhoneIncoming size={size} />;
+    case 'phone_out': return <PhoneOutgoing size={size} />;
+    case 'battery':   return <BatteryCharging size={size} />;
+    case 'bot':       return <Bot size={size} />;
+    case 'mail':      return <Mail size={size} />;
+    case 'calendar':  return <Calendar size={size} />;
+    case 'search':    return <Search size={size} />;
+    case 'doc':       return <FileText size={size} />;
+    case 'clipboard': return <ClipboardList size={size} />;
     default:          return null;
   }
 }
@@ -110,68 +113,93 @@ export default function HistorialConsumoClient({
   const clearFilters = () => { setFromDate(''); setToDate(''); };
   const hasFilters = !!(fromDate || toDate);
 
+  const applyQuickRange = (range: 'hoy' | '7d' | 'mes' | 'todo') => {
+    const now = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    if (range === 'todo') { setFromDate(''); setToDate(''); return; }
+    if (range === 'hoy') { const d = iso(now); setFromDate(d); setToDate(d); return; }
+    if (range === '7d') {
+      const from = new Date(now); from.setDate(from.getDate() - 6);
+      setFromDate(iso(from)); setToDate(iso(now)); return;
+    }
+    if (range === 'mes') {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFromDate(iso(from)); setToDate(iso(now)); return;
+    }
+  };
+
   return (
     <div className="flex flex-col">
 
-      {/* Toggle Minutos / Tareas — centrado */}
-      <div className="flex justify-center mb-4">
-        <div className="inline-flex items-center gap-1 p-1 rounded-lg"
-          style={{ background: '#FAFAFB', border: '1px solid #F0EDF9' }}>
-          {(['minutos', 'tareas'] as const).map(t => {
-            const activeTab = tab === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="px-5 py-1.5 rounded-md text-xs font-semibold transition-all"
-                style={{
-                  background: activeTab ? '#6C3BFF' : 'transparent',
-                  color:      activeTab ? '#fff'    : '#6B6480',
-                  boxShadow:  activeTab ? '0 2px 8px rgba(108,59,255,0.25)' : 'none',
-                }}>
-                {t === 'minutos' ? 'Minutos' : 'Tareas'}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Toolbar: tabs + rango + filter status */}
+      <div className="sticky top-0 z-10 px-5 pt-3 pb-3 flex flex-col gap-3"
+        style={{ background: '#ffffff', borderBottom: '1px solid #F0EDF9' }}>
 
-      {/* Date filter — sticky */}
-      <div className="mb-3 pb-3 sticky top-0 z-10"
-        style={{ borderBottom: '1px solid #F0EDF9', background: '#ffffff' }}>
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Desde</span>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={e => setFromDate(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-md w-full"
-              style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
-            />
+        {/* Tabs Minutos/Tareas + Quick ranges */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="inline-flex items-center gap-1 p-1 rounded-lg"
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+            {(['minutos', 'tareas'] as const).map(t => {
+              const activeTab = tab === t;
+              return (
+                <button key={t} onClick={() => setTab(t)}
+                  className="px-4 py-1.5 rounded-md text-[12px] font-semibold transition-all"
+                  style={{
+                    background: activeTab ? '#ffffff' : 'transparent',
+                    color:      activeTab ? '#1A0A3B' : '#6B6480',
+                    boxShadow:  activeTab ? '0 1px 2px rgba(26,10,59,0.06)' : 'none',
+                  }}>
+                  {t === 'minutos' ? 'Minutos' : 'Tareas'}
+                </button>
+              );
+            })}
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Hasta</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={e => setToDate(e.target.value)}
-              className="text-xs px-2 py-1.5 rounded-md w-full"
-              style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
-            />
+
+          <div className="flex items-center gap-1 flex-wrap">
+            {[
+              { key: 'hoy' as const, label: 'Hoy' },
+              { key: '7d'  as const, label: '7 días' },
+              { key: 'mes' as const, label: 'Este mes' },
+              { key: 'todo' as const, label: 'Todo' },
+            ].map(r => (
+              <button key={r.key} onClick={() => applyQuickRange(r.key)}
+                className="text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors"
+                style={{
+                  background: !hasFilters && r.key === 'todo' ? '#1A0A3B' : '#ffffff',
+                  color:      !hasFilters && r.key === 'todo' ? '#ffffff' : '#6B6480',
+                  border:     '1px solid ' + (!hasFilters && r.key === 'todo' ? '#1A0A3B' : '#E8E3F5'),
+                }}>
+                {r.label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Custom date range */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-[130px]">
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Desde</label>
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+              className="w-full text-[12px] px-3 py-2 rounded-lg outline-none transition-all focus:ring-2"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+          </div>
+          <div className="flex-1 min-w-[130px]">
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Hasta</label>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+              className="w-full text-[12px] px-3 py-2 rounded-lg outline-none transition-all focus:ring-2"
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+          </div>
+        </div>
+
         {hasFilters && (
           <div className="flex items-center justify-between">
-            <span className="text-xs tabular-nums" style={{ color: '#9B8FB5' }}>
-              {active.length} de {total} {tab === 'minutos' ? 'movimientos' : 'tareas'}
+            <span className="text-[11px] tabular-nums" style={{ color: '#6B6480' }}>
+              <strong style={{ color: '#1A0A3B' }}>{active.length}</strong> de {total} {tab === 'minutos' ? 'movimientos' : 'tareas'}
             </span>
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-              style={{ color: '#6B6480' }}
-            >
-              <X size={11} /> Limpiar
+            <button onClick={clearFilters}
+              className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+              style={{ color: '#6B6480' }}>
+              <X size={11} /> Limpiar filtros
             </button>
           </div>
         )}
@@ -179,7 +207,7 @@ export default function HistorialConsumoClient({
 
       {/* Content */}
       {active.length === 0 ? (
-        <p className="text-xs text-center py-4" style={{ color: '#6B6480' }}>
+        <p className="text-xs text-center py-6" style={{ color: '#6B6480' }}>
           {hasFilters ? `Sin ${tab === 'minutos' ? 'movimientos' : 'tareas'} en este rango` : `Sin ${tab === 'minutos' ? 'movimientos' : 'tareas'} registrados`}
         </p>
       ) : tab === 'minutos' ? (
@@ -199,36 +227,52 @@ function MinutesList({ entries, callerNames }: { entries: MinutesEntry[]; caller
     <>
       {Array.from(groups.entries()).map(([month, rows]) => (
         <div key={month} className="flex flex-col">
-          <div className="text-xs font-semibold py-2" style={{ color: '#9B8FB5' }}>{month}</div>
+          <div className="sticky top-0 z-[1] text-[10px] font-bold uppercase tracking-widest px-5 py-2"
+            style={{ background: '#FAFAFB', color: '#9B8FB5', borderTop: '1px solid #F0EDF9', borderBottom: '1px solid #F0EDF9' }}>
+            {month}
+          </div>
           {rows.map((e, i) => {
             const meta = MIN_SOURCE_META[e.source] ?? MIN_SOURCE_META.ajuste;
             const isCredit = e.amount > 0;
+            const raw = e.source === 'llamada' ? e.description.split(' · ')[0] : null;
+            const callerName = raw ? callerNames[raw.replace(/\D/g, '')] : null;
             return (
-              <div key={e.id + i} className="flex items-center gap-2.5 py-2"
-                style={{ borderTop: '1px solid #F0EDF9' }}>
-                <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
-                  style={{ background: `${meta.color}18`, color: meta.color }}>
+              <div key={e.id + i}
+                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[#FAFAFB]"
+                style={{ borderBottom: i === rows.length - 1 ? 'none' : '1px solid #F5F2FB' }}>
+                <div className="flex-shrink-0 flex items-center justify-center rounded-xl w-10 h-10"
+                  style={{ background: `${meta.color}12`, color: meta.color }}>
                   {renderIcon(meta.iconKey)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs leading-snug truncate" style={{ color: '#1A0A3B' }}>
-                    {e.description}
+                  <p className="text-[13px] font-medium leading-snug truncate" style={{ color: '#1A0A3B' }}>
+                    {callerName ?? e.description}
                   </p>
-                  {e.source === 'llamada' && (() => {
-                    const raw = e.description.split(' · ')[0];
-                    const name = callerNames[raw.replace(/\D/g, '')];
-                    return name ? <p className="text-xs leading-none mt-0.5" style={{ color: '#9B6DFF' }}>{name}</p> : null;
-                  })()}
-                  <p className="text-xs mt-0.5" style={{ color: '#9B8FB5' }}>
-                    {fmtDate(e.date)} · {fmtTime(e.date)}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                      style={{ background: `${meta.color}12`, color: meta.color }}>
+                      {meta.label}
+                    </span>
+                    {callerName && (
+                      <span className="text-[11px] tabular-nums" style={{ color: '#9B8FB5' }}>
+                        {e.description}
+                      </span>
+                    )}
+                    <span className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                      {fmtDate(e.date)} · {fmtTime(e.date)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end flex-shrink-0">
-                  <span className="text-xs font-bold tabular-nums"
-                    style={{ color: isCredit ? '#22c55e' : '#1A0A3B' }}>
+                <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                  <span
+                    className="text-[15px] font-bold tabular-nums leading-none px-2 py-1 rounded-md"
+                    style={{
+                      color:      isCredit ? '#16a34a' : '#1A0A3B',
+                      background: isCredit ? 'rgba(34,197,94,0.10)' : 'transparent',
+                    }}>
                     {isCredit ? '+' : ''}{e.amount} min
                   </span>
-                  <span className="text-xs tabular-nums mt-0.5" style={{ color: '#9B8FB5' }}>
+                  <span className="text-[10px] tabular-nums" style={{ color: '#9B8FB5' }}>
                     saldo {e.balance}
                   </span>
                 </div>
@@ -247,32 +291,36 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
     <>
       {Array.from(groups.entries()).map(([month, rows]) => (
         <div key={month} className="flex flex-col">
-          <div className="text-xs font-semibold py-2" style={{ color: '#9B8FB5' }}>{month}</div>
+          <div className="sticky top-0 z-[1] text-[10px] font-bold uppercase tracking-widest px-5 py-2"
+            style={{ background: '#FAFAFB', color: '#9B8FB5', borderTop: '1px solid #F0EDF9', borderBottom: '1px solid #F0EDF9' }}>
+            {month}
+          </div>
           {rows.map((e, i) => {
             const meta = TRIGGER_META[e.triggerType ?? 'manual'] ?? TRIGGER_META.manual;
-            const failed  = e.status === 'failed' || e.goalMet === false;
+            const failed = e.status === 'failed' || e.goalMet === false;
             return (
-              <div key={e.id + i} className="flex items-center gap-2.5 py-2"
-                style={{ borderTop: '1px solid #F0EDF9' }}>
-                <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
-                  style={{ background: `${meta.color}18`, color: meta.color }}>
+              <div key={e.id + i}
+                className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[#FAFAFB]"
+                style={{ borderBottom: i === rows.length - 1 ? 'none' : '1px solid #F5F2FB' }}>
+                <div className="flex-shrink-0 flex items-center justify-center rounded-xl w-10 h-10"
+                  style={{ background: `${meta.color}12`, color: meta.color }}>
                   {renderIcon(meta.iconKey)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-xs font-medium leading-snug truncate"
+                    className="text-[13px] font-medium leading-snug truncate"
                     style={{ color: '#1A0A3B', cursor: e.description ? 'help' : 'default' }}
                     title={e.description ?? e.title ?? ''}
                   >
                     {e.title || meta.label}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                      style={{ background: `${meta.color}18`, color: meta.color }}>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                      style={{ background: `${meta.color}12`, color: meta.color }}>
                       {meta.label}
                     </span>
                     {e.agentName && (
-                      <span className="text-[11px]" style={{ color: '#9B6DFF' }}>
+                      <span className="text-[11px] font-medium" style={{ color: '#6C3BFF' }}>
                         {e.agentName}
                       </span>
                     )}
@@ -280,18 +328,18 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                       {fmtDate(e.date)} · {fmtTime(e.date)}
                     </span>
                     {failed && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
                         style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
                         Falló
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-col items-end flex-shrink-0">
-                  <span className="text-xs font-bold tabular-nums" style={{ color: '#1A0A3B' }}>
+                <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                  <span className="text-[15px] font-bold tabular-nums leading-none" style={{ color: '#1A0A3B' }}>
                     −{e.opsUsed}
                   </span>
-                  <span className="text-[10px] mt-0.5" style={{ color: '#9B8FB5' }}>
+                  <span className="text-[10px]" style={{ color: '#9B8FB5' }}>
                     {e.opsUsed === 1 ? 'tarea' : 'tareas'}
                   </span>
                 </div>
