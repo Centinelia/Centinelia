@@ -590,35 +590,20 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   {u.name && <p className="text-xs truncate mt-0.5" style={{ color: '#6B6480' }}>{u.email}</p>}
                 </div>
               </div>
-              {!u.is_owner && u.id !== currentUserId && (
+              {!u.is_owner && u.id !== currentUserId && editId !== u.id && (
                 <div className="flex items-center gap-1 shrink-0">
-                  {editId !== u.id ? (
-                    <>
-                      <button onClick={() => startEdit(u)}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[#FAFAFB]"
-                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => handleDelete(u.id, u.email)}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
-                        <Trash2 size={13} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={handleSaveEdit} disabled={saving}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(34,197,94,0.1)]"
-                        style={{ background: 'none', border: 'none', color: '#22c55e', cursor: saving ? 'not-allowed' : 'pointer' }}>
-                        <Check size={13} />
-                      </button>
-                      <button onClick={cancelEdit}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[#FAFAFB]"
-                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
-                        <X size={13} />
-                      </button>
-                    </>
-                  )}
+                  <button onClick={() => startEdit(u)}
+                    title="Editar"
+                    className="p-2 rounded-lg transition-colors hover:bg-[rgba(108,59,255,0.08)]"
+                    style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
+                    <Edit2 size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(u.id, u.email)}
+                    title="Eliminar"
+                    className="p-2 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+                    style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               )}
             </div>
@@ -640,13 +625,30 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
             {/* Edit mode */}
             {editId === u.id && (
-              <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid #E8E3F5', background: 'rgba(108,59,255,0.02)' }}>
+              <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid #E8E3F5', background: 'rgba(108,59,255,0.03)' }}>
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: 'rgba(108,59,255,0.10)', border: '1px solid rgba(108,59,255,0.22)' }}
+                  >
+                    <Edit2 size={13} style={{ color: '#6C3BFF' }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold leading-tight" style={{ color: '#1A0A3B' }}>
+                      Editando {u.name ?? u.email}
+                    </p>
+                    <p className="text-[11px]" style={{ color: '#6B6480' }}>
+                      Cambia nombre, permisos o contraseña.
+                    </p>
+                  </div>
+                </div>
+
                 <FieldGroup label="Nombre">
                   <input
                     type="text" value={editName} onChange={e => setEditName(e.target.value)}
                     placeholder="Nombre del colaborador"
                     className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
-                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   />
                 </FieldGroup>
 
@@ -668,6 +670,23 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                       <PasswordField value={editPassword} onChange={setEditPassword} placeholder="Nueva contraseña" />
                     </div>
                   )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3" style={{ borderTop: '1px solid #E8E3F5' }}>
+                  <button
+                    onClick={cancelEdit}
+                    className="px-4 py-2.5 rounded-lg text-[13px] font-medium transition-colors hover:bg-[#FAFAFB]"
+                    style={{ background: 'none', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveEdit} disabled={saving}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 12px rgba(108,59,255,0.25)' }}
+                  >
+                    {saving ? 'Guardando…' : (<><Check size={13} strokeWidth={2.5} /> Guardar cambios</>)}
+                  </button>
                 </div>
               </div>
             )}
