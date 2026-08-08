@@ -42,17 +42,17 @@ export default function InvoicingEmailEditor({ token, initialEmail }: { token: s
     } finally { setSaving(false); }
   }
 
-  if (loading) return <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>;
+  if (loading) return <p className="text-sm" style={{ color: '#6B6480' }}>Cargando...</p>;
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm" style={{ color: 'var(--c-text-sub)', lineHeight: 1.6 }}>
+      <p className="text-sm" style={{ color: '#6B6480', lineHeight: 1.6 }}>
         Cuando un cliente pida su factura, este es el correo que recibirá la notificación con todos los datos para timbrar en tu sistema fiscal. Si lo dejas vacío, cae al correo del responsable.
       </p>
 
       {subUsers.length > 0 ? (
         <Select value={email || '__none'} onValueChange={v => setEmail(v === '__none' ? '' : v)}>
-          <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+          <SelectTrigger className="bg-[color:#FAFAFB] border-[color:#E8E3F5]">
             <SelectValue placeholder="Sin responsable asignado" />
           </SelectTrigger>
           <SelectContent>
@@ -70,8 +70,8 @@ export default function InvoicingEmailEditor({ token, initialEmail }: { token: s
             onChange={e => { setEmail(e.target.value); setSaved(false); }}
             placeholder="facturacion@tuempresa.com"
             className="w-full text-sm px-3 py-2 rounded-lg outline-none"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>
             Si agregas sub-usuarios en <strong>Usuarios y permisos</strong>, podrás seleccionarlos desde un menú.
           </p>
         </div>

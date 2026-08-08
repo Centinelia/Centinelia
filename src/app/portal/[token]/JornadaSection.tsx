@@ -53,10 +53,10 @@ export default function JornadaSection({
           <Phone size={13} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--c-text)' }}>
+          <p className="text-xs font-semibold leading-tight" style={{ color: '#1A0A3B' }}>
             Contratar canal de voz
           </p>
-          <p className="text-[10px] mt-0.5 leading-snug" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[10px] mt-0.5 leading-snug" style={{ color: '#6B6480' }}>
             Cambia la jornada a Combinada y asigna un número mexicano.
           </p>
         </div>

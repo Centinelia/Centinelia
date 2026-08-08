@@ -19,9 +19,9 @@ function CharBar({ value }: { value: string }) {
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between text-xs">
         <span style={{ color, fontWeight: 500 }}>{n.toLocaleString('es-MX')} / {HARD.toLocaleString('es-MX')} caracteres</span>
-        <span style={{ color: 'var(--c-text-4)' }}>{hint}</span>
+        <span style={{ color: '#9B8FB5' }}>{hint}</span>
       </div>
-      <div className="w-full rounded-full overflow-hidden" style={{ height: 3, background: 'var(--c-border)' }}>
+      <div className="w-full rounded-full overflow-hidden" style={{ height: 3, background: '#E8E3F5' }}>
         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -271,15 +271,15 @@ export default function AgentKnowledgeBaseEditor({
 
       {/* Puesto del empleado */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-3)' }}>
+        <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B6480' }}>
           Puesto del empleado
         </label>
         {roleLocked ? (
           <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}>
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: roleColor }} />
             <span className="font-medium">{role}</span>
-            <span className="ml-auto text-[10px] uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>
+            <span className="ml-auto text-[10px] uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
               Predeterminado
             </span>
           </div>
@@ -291,7 +291,7 @@ export default function AgentKnowledgeBaseEditor({
               onChange={e => { setRole(e.target.value); setSavedRoleName(false); setDirtyRoleName(true); }}
               placeholder="Ej. Coordinadora de ventas, Asistente ejecutivo..."
               className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             />
             <button
               onClick={saveRoleName}
@@ -307,7 +307,7 @@ export default function AgentKnowledgeBaseEditor({
         {/* Color del rol */}
         <div className="pt-1">
           {colorLocked ? (
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-4)' }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: '#9B8FB5' }}>
               <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: roleColor }} />
               <span>Color: <span style={{ color: roleColor }}>{role.trim() || 'Vista previa'}</span></span>
             </div>
@@ -317,11 +317,11 @@ export default function AgentKnowledgeBaseEditor({
                 type="button"
                 onClick={() => setColorOpen(p => !p)}
                 className="flex items-center gap-2 text-xs"
-                style={{ color: 'var(--c-text-4)' }}
+                style={{ color: '#9B8FB5' }}
               >
                 <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: roleColor }} />
                 <span>Color: <span style={{ color: roleColor }}>{role.trim() || 'Vista previa'}</span></span>
-                <ChevronDown size={12} style={{ color: 'var(--c-text-4)', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                <ChevronDown size={12} style={{ color: '#9B8FB5', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
               {colorOpen && (
                 <div className="flex items-center gap-1.5 mt-2">
@@ -347,7 +347,7 @@ export default function AgentKnowledgeBaseEditor({
       {role.trim() && <>
 
       {/* Divider */}
-      <div style={{ borderTop: '1px solid var(--c-border)' }} />
+      <div style={{ borderTop: '1px solid #E8E3F5' }} />
 
       {/* Section 1: Instrucciones del puesto */}
       <div className="flex flex-col gap-3">
@@ -361,7 +361,7 @@ export default function AgentKnowledgeBaseEditor({
             {role}
           </span>
         </div>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs" style={{ color: '#6B6480' }}>
           Procedimientos, reglas, límites de aprobación y contactos clave que tu empleado usa en su puesto de <strong style={{ color: roleColor }}>{role}</strong>.
         </p>
         <textarea
@@ -370,7 +370,7 @@ export default function AgentKnowledgeBaseEditor({
           rows={10}
           placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del responsable.`}
           className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
-          style={{ background: 'var(--c-input-bg)', border: `1px solid ${roleColor}4d`, color: 'var(--c-text)', minHeight: 180 }}
+          style={{ background: '#FAFAFB', border: `1px solid ${roleColor}4d`, color: '#1A0A3B', minHeight: 180 }}
         />
         <CharBar value={roleKb} />
         <div className="flex items-center gap-2 flex-wrap">
@@ -454,14 +454,14 @@ export default function AgentKnowledgeBaseEditor({
           </p>
         )}
         {!websiteSynced && !generatingRole && role.trim() && (
-          <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs" style={{ color: '#9B8FB5' }}>
             Consejo: sincroniza tu sitio web en <strong>Negocio → Sitio web</strong> para mejores resultados. Si no tienes sitio, el manual de la organización es suficiente.
           </p>
         )}
       </div>
 
       {/* Divider */}
-      <div style={{ borderTop: '1px solid var(--c-border)' }} />
+      <div style={{ borderTop: '1px solid #E8E3F5' }} />
 
       {/* Section 2: Aprendizajes activos */}
       <div className="flex flex-col gap-3">
@@ -471,7 +471,7 @@ export default function AgentKnowledgeBaseEditor({
             Aprendizajes activos
           </p>
         </div>
-        <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs" style={{ color: '#6B6480' }}>
           Todo lo que tu empleado ha aprendido en campo y fue aprobado en Oficina. Puedes editar, reorganizar o eliminar entradas directamente aquí.
         </p>
         {learningRunning && (
@@ -482,7 +482,7 @@ export default function AgentKnowledgeBaseEditor({
               <span className="text-xs font-semibold" style={{ color: '#6C3BFF' }}>
                 Analizando correos del negocio…
               </span>
-              <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+              <span className="text-[11px]" style={{ color: '#6B6480' }}>
                 Cuando termine, los nuevos aprendizajes aparecerán abajo automáticamente.
               </span>
             </div>
@@ -494,7 +494,7 @@ export default function AgentKnowledgeBaseEditor({
           rows={8}
           placeholder="Los aprendizajes aprobados desde Oficina aparecerán aquí automáticamente..."
           className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
-          style={{ background: 'var(--c-input-bg)', border: '1px solid rgba(108,59,255,0.25)', color: 'var(--c-text)', minHeight: 140 }}
+          style={{ background: '#FAFAFB', border: '1px solid rgba(108,59,255,0.25)', color: '#1A0A3B', minHeight: 140 }}
         />
         <CharBar value={learnings} />
         <SaveButton saving={savingLearn} saved={savedLearn} accent="#6C3BFF" onSave={() => save('role_learnings', learnings, setSavingLearn, setSavedLearn, setDirtyLearnings)} />

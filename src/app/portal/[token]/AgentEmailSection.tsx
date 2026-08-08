@@ -103,7 +103,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-4" style={{ color: 'var(--c-text-3)' }}>
+      <div className="flex items-center gap-2 py-4" style={{ color: '#6B6480' }}>
         <Loader2 size={14} className="animate-spin" />
         <span className="text-sm">Cargando...</span>
       </div>
@@ -116,11 +116,11 @@ export default function AgentEmailSection({ token }: { token: string }) {
       {/* ── Slot 1: Bandeja del empleado ─────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
             Correo del empleado
           </p>
-          <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-            Conecta la bandeja real que este empleado atenderá (por ejemplo <span style={{ fontFamily: 'monospace', color: 'var(--c-text-2)' }}>nia@tuempresa.com</span>). Centinelia leerá y enviará correos desde ahí como si el empleado tuviera la contraseña.
+          <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>
+            Conecta la bandeja real que este empleado atenderá (por ejemplo <span style={{ fontFamily: 'monospace', color: '#1A0A3B' }}>nia@tuempresa.com</span>). Centinelia leerá y enviará correos desde ahí como si el empleado tuviera la contraseña.
           </p>
         </div>
 
@@ -129,9 +129,9 @@ export default function AgentEmailSection({ token }: { token: string }) {
           style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.16)' }}
         >
           <Mail size={13} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 2 }} />
-          <div className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
-            <p className="font-semibold" style={{ color: 'var(--c-text)' }}>Cómo funciona el acceso</p>
-            <p className="mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <div className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>
+            <p className="font-semibold" style={{ color: '#1A0A3B' }}>Cómo funciona el acceso</p>
+            <p className="mt-0.5" style={{ color: '#6B6480' }}>
               Al hacer clic en <strong>Conectar</strong> abre el login de Google o Microsoft. Inicia sesión con las credenciales de la cuenta que quieres darle al empleado (no la tuya). Centinelia guarda un token que renueva solo — no tenemos ni guardamos la contraseña.
             </p>
           </div>
@@ -154,21 +154,21 @@ export default function AgentEmailSection({ token }: { token: string }) {
               key={provider.id}
               className="rounded-xl p-4"
               style={{
-                background: 'var(--c-surface)',
-                border:     `1px solid ${conn && !conn.needs_reauth ? 'rgba(34,197,94,0.2)' : 'var(--c-border-2)'}`,
+                background: '#ffffff',
+                border:     `1px solid ${conn && !conn.needs_reauth ? 'rgba(34,197,94,0.2)' : '#F0EDF9'}`,
               }}
             >
               <div className="flex items-start gap-3">
                 <div
                   className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
                 >
                   {provider.icon}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                    <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                       {provider.label}
                     </span>
                     {conn && !conn.needs_reauth && (
@@ -191,16 +191,16 @@ export default function AgentEmailSection({ token }: { token: string }) {
 
                   {conn ? (
                     <>
-                      <p className="text-xs mt-0.5 truncate font-mono" style={{ color: 'var(--c-text-2)' }}>
+                      <p className="text-xs mt-0.5 truncate font-mono" style={{ color: '#1A0A3B' }}>
                         {conn.email}
                       </p>
-                      <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: '#9B8FB5' }}>
                         <RefreshCw size={9} />
                         Última sync: {timeAgo(conn.last_sync_at)}
                       </p>
                     </>
                   ) : (
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                    <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                       {provider.areaDesc}
                     </p>
                   )}
@@ -222,7 +222,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
                         onClick={() => disconnect(provider.id)}
                         disabled={disconnecting === provider.id}
                         className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10 disabled:opacity-50"
-                        style={{ color: 'var(--c-text-3)' }}
+                        style={{ color: '#6B6480' }}
                         title="Desconectar"
                       >
                         {disconnecting === provider.id
@@ -251,7 +251,7 @@ export default function AgentEmailSection({ token }: { token: string }) {
           style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.1)' }}
         >
           <Mail size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
-          <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs leading-relaxed" style={{ color: '#9B8FB5' }}>
             Los mensajes nuevos se revisan cada 15 minutos. El empleado los analiza y los deja listos para revisión en la Oficina.
           </p>
         </div>

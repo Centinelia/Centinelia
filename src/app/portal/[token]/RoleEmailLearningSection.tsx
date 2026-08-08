@@ -54,21 +54,21 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
         Tu empleado lee el correo del negocio (Oficina → Integraciones) y aprende cómo se toman decisiones en su área.
         Si 3 de 10 correos hablan de ventas, el empleado de ventas analiza esos 3 y extrae las reglas implícitas de tu organización.
-        Los aprendizajes se guardan en <strong style={{ color: 'var(--c-text-2)' }}>Rol y Personalidad → Responsabilidades → Aprendizajes del rol</strong>, donde puedes editarlos o borrarlos.
+        Los aprendizajes se guardan en <strong style={{ color: '#1A0A3B' }}>Rol y Personalidad → Responsabilidades → Aprendizajes del rol</strong>, donde puedes editarlos o borrarlos.
       </p>
 
       {state === 'no-email' && (
         <div className="flex items-start gap-3 rounded-xl p-4"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-          <AlertCircle size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0, marginTop: 1 }} />
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+          <AlertCircle size={14} style={{ color: '#6B6480', flexShrink: 0, marginTop: 1 }} />
           <div>
-            <p className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs font-medium" style={{ color: '#1A0A3B' }}>
               Sin correo del negocio conectado
             </p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               Conecta Gmail o Outlook en Oficina → Integraciones para activar el aprendizaje de plataformas.
             </p>
           </div>
@@ -79,9 +79,9 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
         <>
           {connectedEmail && (
             <div className="flex items-center gap-2">
-              <Mail size={12} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                Conectado: <span style={{ color: 'var(--c-text-2)' }}>{connectedEmail}</span>
+              <Mail size={12} style={{ color: '#6B6480', flexShrink: 0 }} />
+              <span className="text-xs" style={{ color: '#6B6480' }}>
+                Conectado: <span style={{ color: '#1A0A3B' }}>{connectedEmail}</span>
               </span>
             </div>
           )}
@@ -108,7 +108,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                 className="w-4 h-4 rounded-full border-2 animate-spin flex-shrink-0"
                 style={{ borderColor: 'rgba(108,59,255,0.2)', borderTopColor: '#6C3BFF' }}
               />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <span className="text-xs" style={{ color: '#6B6480' }}>
                 Leyendo correos y aprendiendo reglas de la organización...
               </span>
             </div>
@@ -136,7 +136,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                   <p className="text-xs font-semibold" style={{ color: '#22c55e' }}>
                     {result.saved} aprendizaje{result.saved !== 1 ? 's' : ''} guardado{result.saved !== 1 ? 's' : ''} automáticamente
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                     De {result.total_emails} correos analizados, {result.relevant_count} eran relevantes para {agentRole || 'el rol'}.
                   </p>
                 </div>
@@ -146,8 +146,8 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
                 style={{ background: 'rgba(108,59,255,0.05)', border: '1px solid rgba(108,59,255,0.15)' }}>
                 <BookOpen size={12} style={{ color: '#9B6DFF', flexShrink: 0, marginTop: 1 }} />
                 <div className="flex flex-col gap-1">
-                  <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
-                    Se guardaron en <strong style={{ color: 'var(--c-text-2)' }}>Responsabilidades → Aprendizajes del rol</strong>. Edítalos ahí si es necesario.
+                  <p className="text-[11px]" style={{ color: '#6B6480' }}>
+                    Se guardaron en <strong style={{ color: '#1A0A3B' }}>Responsabilidades → Aprendizajes del rol</strong>. Edítalos ahí si es necesario.
                   </p>
                   <a
                     href="?tab=personalidad#rol"
@@ -163,13 +163,13 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
 
           {state === 'no-relevant' && result && (
             <div className="flex items-start gap-3 rounded-xl p-4"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
-              <AlertCircle size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0, marginTop: 1 }} />
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+              <AlertCircle size={14} style={{ color: '#6B6480', flexShrink: 0, marginTop: 1 }} />
               <div>
-                <p className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+                <p className="text-xs font-medium" style={{ color: '#1A0A3B' }}>
                   Sin correos relevantes al rol
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                   Se analizaron {result.total_emails} correos pero ninguno contenía decisiones relacionadas con {agentRole || 'el rol de este empleado'}.
                   Puede que el correo conectado no sea el que usas para operaciones de {agentRole || 'este rol'}.
                 </p>
@@ -178,7 +178,7 @@ export default function RoleEmailLearningSection({ token, connectedEmail, agentR
           )}
 
           {(state === 'idle') && (
-            <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
               Consume 5 tareas · analiza los últimos 30 días · no almacena correos, solo las reglas extraídas
             </p>
           )}
