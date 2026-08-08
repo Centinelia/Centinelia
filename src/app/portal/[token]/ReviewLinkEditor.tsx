@@ -31,38 +31,44 @@ export default function ReviewLinkEditor({ token, initialValue }: { token: strin
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-medium uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
-          Enlace de reseñas
+      <div>
+        <label className="text-[13px] font-semibold block mb-1" style={{ color: '#1A0A3B' }}>
+          Enlace de Google Reviews
         </label>
-        <input
-          type="url"
-          value={value}
-          onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}
-          placeholder="https://g.page/r/tu-negocio/review"
-          className="w-full px-3 py-2 rounded-lg text-[13px] focus:outline-none"
-          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
-        />
-        <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
-          Tu empleado invitará a clientes contentos a dejar una reseña con este enlace.
+        <p className="text-[12px] mb-2.5" style={{ color: '#6B6480' }}>
+          Tu empleado comparte este link con clientes satisfechos al final de la llamada para pedir una reseña.
         </p>
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={value}
+            onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}
+            placeholder="https://g.page/r/tu-negocio/review"
+            className="flex-1 px-3.5 py-2.5 rounded-lg text-[14px] outline-none transition-colors focus:border-[#6C3BFF]"
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
+          />
+          <button
+            onClick={handleSave}
+            disabled={saving || !dirty}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all hover:opacity-90 disabled:cursor-not-allowed shrink-0"
+            style={{
+              background: saved ? '#22c55e' : dirty ? '#6C3BFF' : '#FAFAFB',
+              color:      saved || dirty ? '#fff' : '#9B8FB5',
+              border:     saved || dirty ? 'none' : '1px solid #E8E3F5',
+              boxShadow:  saved
+                ? '0 4px 12px rgba(34,197,94,0.24)'
+                : dirty ? '0 4px 12px rgba(108,59,255,0.24)' : 'none',
+              opacity:    saving ? 0.7 : 1,
+            }}
+          >
+            {saving
+              ? <><Loader2 size={13} className="animate-spin" />Guardando</>
+              : saved
+                ? <><Check size={13} strokeWidth={2.5} />Guardado</>
+                : 'Guardar'}
+          </button>
+        </div>
       </div>
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="self-start flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
-        style={{
-          background: saved ? '#22c55e' : '#6C3BFF',
-          color: '#fff',
-          boxShadow: saved ? 'none' : '0 1px 2px rgba(108,59,255,0.24)',
-        }}
-      >
-        {saving
-          ? <><Loader2 size={13} className="animate-spin" />Guardando</>
-          : saved
-            ? <><Check size={13} />Guardado</>
-            : 'Guardar'}
-      </button>
     </div>
   );
 }

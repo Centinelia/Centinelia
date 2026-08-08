@@ -1750,17 +1750,10 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Sitio web y reseñas</h2>
                         </div>
                       </div>
-                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <div className="flex items-center gap-1.5 mb-4">
-                          <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Sitio web</h3>
-                          <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
-                        </div>
+                      <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                        <div style={{ borderTop: '1px solid #F0EDF9', margin: '20px -20px 16px' }} />
-                        <div className="flex items-center gap-1.5 mb-3">
-                          <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Reseñas</h3>
-                          <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
-                        </div>
+                      </div>
+                      <div className="px-5 py-5" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
                       </div>
                     </div>
