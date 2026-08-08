@@ -47,17 +47,17 @@ function RankRow({ agent, rank, value, unit }: { agent: AgentStat; rank: number;
   const medal = rank < 3 ? RANK_ICONS[rank] : null;
   return (
     <div className="flex items-center gap-3 py-2.5 px-3 rounded-xl transition-colors hover:bg-white/5">
-      <span className="w-5 text-center text-sm font-bold flex-shrink-0" style={{ color: rank < 3 ? RANK_COLORS[rank] : 'var(--c-text-4)' }}>
+      <span className="w-5 text-center text-sm font-bold flex-shrink-0" style={{ color: rank < 3 ? RANK_COLORS[rank] : '#9B8FB5' }}>
         {medal ?? rank + 1}
       </span>
       <Avatar agent={agent} size={34} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{agent.name}</p>
+        <p className="text-sm font-medium truncate" style={{ color: '#1A0A3B' }}>{agent.name}</p>
         {agent.role && <p className="text-xs truncate" style={{ color: agent.roleColor }}>{agent.role}</p>}
       </div>
-      <span className="text-sm font-bold flex-shrink-0" style={{ color: 'var(--c-text)' }}>
+      <span className="text-sm font-bold flex-shrink-0" style={{ color: '#1A0A3B' }}>
         {value.toLocaleString('es-MX')}
-        <span className="text-xs font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>{unit}</span>
+        <span className="text-xs font-normal ml-1" style={{ color: '#6B6480' }}>{unit}</span>
       </span>
     </div>
   );
@@ -81,21 +81,21 @@ export default function AgentRankingSection({ token }: { token: string }) {
 
   return (
     <div className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Trophy size={15} style={{ color: '#f59e0b' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Ranking del equipo Digital</h2>
+          <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Ranking del equipo Digital</h2>
         </div>
-        <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+        <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
           {(['semana', 'mes', 'año'] as Period[]).map(p => (
             <button key={p} onClick={() => setPeriod(p)}
               className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
               style={period === p
                 ? { background: 'rgba(108,59,255,0.15)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }
-                : { color: 'var(--c-text-3)' }}>
+                : { color: '#6B6480' }}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
@@ -107,7 +107,7 @@ export default function AgentRankingSection({ token }: { token: string }) {
           <div className="w-5 h-5 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
         </div>
       ) : stats.length === 0 ? (
-        <p className="text-xs text-center py-6" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-xs text-center py-6" style={{ color: '#9B8FB5' }}>
           Sin datos para {PERIOD_LABELS[period].toLowerCase()}
         </p>
       ) : (

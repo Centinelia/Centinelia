@@ -79,7 +79,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
 
       {/* Stats bar */}
       {statsLine && (
-        <p className="text-[11px] px-1" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-[11px] px-1" style={{ color: '#6B6480' }}>
           <span className="font-semibold" style={{ color: '#9B6DFF' }}>Hoy</span>
           {' · '}{statsLine}
         </p>
@@ -89,21 +89,21 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         {/* Search */}
         <div className="relative flex-1">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'var(--c-text-3)' }} />
+            style={{ color: '#6B6480' }} />
           <input
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar por número o resumen…"
             className="w-full pl-8 pr-8 py-2 rounded-lg text-xs"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)',
-              color: 'var(--c-text)', outline: 'none' }}
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5',
+              color: '#1A0A3B', outline: 'none' }}
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--c-text-3)', background: 'none', border: 'none',
+              style={{ color: '#6B6480', background: 'none', border: 'none',
                 cursor: 'pointer', padding: 2 }}
             >
               <X size={12} />
@@ -114,10 +114,10 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         {availableOutcomes.length > 1 && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger
-              className="w-auto shrink-0 py-2 text-xs bg-[color:var(--c-surface-2)]"
+              className="w-auto shrink-0 py-2 text-xs bg-[color:#FAFAFB]"
               style={{
-                border: typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid var(--c-border)',
-                color: typeFilter !== 'all' ? '#9B6DFF' : 'var(--c-text-3)',
+                border: typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: typeFilter !== 'all' ? '#9B6DFF' : '#6B6480',
                 fontWeight: typeFilter !== 'all' ? 600 : 400,
               }}
             >
@@ -138,7 +138,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         <div className="flex flex-col gap-2" style={{ padding: '1px 1px 6px' }}>
           {filtered.length === 0
             ? (
-              <p className="text-xs text-center py-6" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-xs text-center py-6" style={{ color: '#9B8FB5' }}>
                 {isFiltered ? 'Sin resultados para este filtro' : 'Sin llamadas en este período'}
               </p>
             )
@@ -162,7 +162,7 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
       </div>
 
       {filtered.length > 0 && (
-        <p className="text-xs text-center" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-xs text-center" style={{ color: '#9B8FB5' }}>
           {isFiltered
             ? `${filtered.length} de ${calls.length} llamadas`
             : `${calls.length} llamada${calls.length !== 1 ? 's' : ''}`

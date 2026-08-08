@@ -17,7 +17,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
 
   const contactoBlock = (
     <div className="flex flex-col gap-1">
-      <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>Contacto</p>
+      <p className="text-[10px]" style={{ color: '#9B8FB5' }}>Contacto</p>
       <div className="flex items-center gap-2">
         <a
           href={`https://wa.me/${wa}`}
@@ -42,14 +42,14 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
   );
 
   const poweredByBlock = (
-    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+    <span className="text-xs" style={{ color: '#9B8FB5' }}>
       Powered by{' '}
       <a
         href="https://pneumastudio.mx"
         target="_blank"
         rel="noopener noreferrer"
         className="hover:opacity-80 transition-opacity"
-        style={{ color: 'var(--c-text-4)' }}
+        style={{ color: '#9B8FB5' }}
       >
         Pneuma Studio
       </a>
@@ -59,7 +59,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
   return (
     <div
       className="mt-auto px-4 sm:px-6 pt-3 pb-24 md:pb-6 shrink-0 relative"
-      style={{ borderTop: '1px solid var(--c-border)' }}
+      style={{ borderTop: '1px solid #E8E3F5' }}
     >
       {/* Mobile layout: Contacto ↔ Reportar falla en su posición natural.
           Powered by absolute anclado al footer, alineado con el centro de los FABs. */}
@@ -96,7 +96,7 @@ export default async function PortalFooter({ noSidebar = false, token }: Props) 
               <div className="flex items-center gap-0.5">
                 {[0,1,2,3,4].map(i => <Star key={i} size={11} fill="#FBBF24" color="#FBBF24" />)}
               </div>
-              <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>¿Te gusta Centinelia?</p>
+              <p className="text-[10px]" style={{ color: '#9B8FB5' }}>¿Te gusta Centinelia?</p>
               <p className="text-[10px] font-semibold" style={{ color: '#9B6DFF' }}>Déjanos una reseña</p>
             </a>
           )}

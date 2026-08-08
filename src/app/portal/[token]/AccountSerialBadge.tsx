@@ -25,7 +25,7 @@ export default function AccountSerialBadge({ serial, variant = 'header', onDark 
         style={{
           background: onDark ? 'rgba(255,255,255,0.08)' : 'rgba(108,59,255,0.08)',
           border:     onDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(108,59,255,0.2)',
-          color:      onDark ? 'rgba(255,255,255,0.85)' : 'var(--c-text-3)',
+          color:      onDark ? 'rgba(255,255,255,0.85)' : '#6B6480',
           fontSize:   11,
           fontWeight: 600,
           fontFamily: 'monospace',
@@ -40,15 +40,15 @@ export default function AccountSerialBadge({ serial, variant = 'header', onDark 
   }
 
   return (
-    <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+    <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      <h2 className="text-xs font-semibold mb-1 tracking-widest uppercase" style={{ color: '#6B6480' }}>
         Número de cuenta
       </h2>
-      <p className="text-xs mb-3" style={{ color: 'var(--c-text-4)' }}>
+      <p className="text-xs mb-3" style={{ color: '#9B8FB5' }}>
         Comparte este código cuando contactes a soporte técnico. Te ayuda a identificarte en segundos.
       </p>
       <div className="flex items-center gap-3">
-        <span className="text-2xl font-bold tracking-widest" style={{ color: 'var(--c-text)', fontFamily: 'monospace' }}>
+        <span className="text-2xl font-bold tracking-widest" style={{ color: '#1A0A3B', fontFamily: 'monospace' }}>
           {serial}
         </span>
         <button

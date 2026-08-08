@@ -17,7 +17,7 @@ export default function PeakHoursChart({ hourCounts }: Props) {
 
   if (total === 0) {
     return (
-      <p style={{ fontSize: 13, color: 'var(--c-text-3)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
+      <p style={{ fontSize: 13, color: '#6B6480', textAlign: 'center', padding: '16px 0', margin: 0 }}>
         Sin datos suficientes
       </p>
     );
@@ -44,7 +44,7 @@ export default function PeakHoursChart({ hourCounts }: Props) {
               <div style={{
                 width:           '100%',
                 height:          `${Math.max(pct, count > 0 ? 6 : 2)}%`,
-                background:      isPeak ? '#6C3BFF' : count > 0 ? 'rgba(108,59,255,0.3)' : 'var(--c-border)',
+                background:      isPeak ? '#6C3BFF' : count > 0 ? 'rgba(108,59,255,0.3)' : '#E8E3F5',
                 borderRadius:    '3px 3px 0 0',
               }} />
             </div>
@@ -54,15 +54,15 @@ export default function PeakHoursChart({ hourCounts }: Props) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 4 }}>
         {[0, 6, 12, 18, 23].map(h => (
-          <span key={h} style={{ fontSize: 10, color: 'var(--c-text-4)' }}>{HOUR_LABELS[h]}</span>
+          <span key={h} style={{ fontSize: 10, color: '#9B8FB5' }}>{HOUR_LABELS[h]}</span>
         ))}
       </div>
 
       {peakIdx >= 0 && (
-        <p style={{ fontSize: 12, color: 'var(--c-text-3)', marginTop: 10, marginBottom: 0 }}>
+        <p style={{ fontSize: 12, color: '#6B6480', marginTop: 10, marginBottom: 0 }}>
           Hora pico:{' '}
           <span style={{ color: '#9B6DFF', fontWeight: 600 }}>{HOUR_LABELS[peakIdx]}</span>
-          <span style={{ color: 'var(--c-text-4)' }}> · {hourCounts[peakIdx]} llamada{hourCounts[peakIdx] !== 1 ? 's' : ''}</span>
+          <span style={{ color: '#9B8FB5' }}> · {hourCounts[peakIdx]} llamada{hourCounts[peakIdx] !== 1 ? 's' : ''}</span>
         </p>
       )}
     </div>
