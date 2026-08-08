@@ -1634,43 +1634,81 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── 1. PERFIL ────────────────────────────────────────── */}
                 <>
                   <div id="organizacion" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="ORGANIZACIÓN" title="Perfil del negocio" as="h2" tooltip="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />}>
-                      {agent.portal_email && (
-                        <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
-                      )}
-                    </PageSection>
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Perfil del negocio</h2>
+                            <InfoTooltip text="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                        {agent.portal_email && (
+                          <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div id="conocimiento" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="CONOCIMIENTO" title="Manual de la organización" as="h2" tooltip="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Manual de la organización</h2>
+                            <InfoTooltip text="Tus empleados consultan esta información en todas sus interacciones: llamadas, correos y mensajes. Incluye servicios, precios, FAQs y cualquier detalle que deban conocer." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <KnowledgeBaseEditor
                           token={token}
                           initialValue={orgSettings?.knowledge_base ?? (agent as any).knowledge_base ?? ''}
                           websiteSynced={!!(orgSettings?.website_knowledge ?? (agent as any).website_knowledge)}
                           hasDescription={!!((orgSettings?.business_description ?? (agent as any).business_description)?.trim())}
                         />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="perfil-dueno" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="PERFIL" title="Perfil del responsable" as="h2" tooltip="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Perfil del responsable</h2>
+                            <InfoTooltip text="Cuéntale a tus empleados quién eres, cuáles son tus prioridades y cómo te gusta que se hagan las cosas. Cuanto más sepan de ti, mejor se adaptarán a tu estilo." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <OwnerProfileEditor
                           token={token}
                           initialValue={orgSettings?.owner_profile ?? (agent as any).owner_profile ?? ''}
                         />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
                 </>
 
                 {/* ── 2. IDENTIDAD ────────────────────────────────────── */}
                 <>
                   <div id="branding" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Identidad visual" as="h2" tooltip="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Identidad visual</h2>
+                            <InfoTooltip text="Colores, datos de contacto y pie de página que aparecen en todos los correos y documentos que generan tus empleados." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <BrandKitEditor
                           token={token}
                           logoUrl={(agent as any).logo_url ?? null}
@@ -1683,53 +1721,86 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           initialPhone={orgSettings?.brand_phone ?? ''}
                           initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
                         />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="tono-de-marca" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="IDENTIDAD" title="Tono de marca" as="h2" tooltip="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Todos tus empleados hablarán como tu marca, no con un tono genérico." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Tono de marca</h2>
+                            <InfoTooltip text="Extrae el tono real de tu negocio a partir de muestras (correos previos, copy del sitio, pitch). Todos tus empleados hablarán como tu marca, no con un tono genérico." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <BrandVoiceEditor token={token} initGuide={(orgSettings as any)?.brand_voice_guide ?? ''} />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="sitio" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Sitio web y reseñas</h2>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <div className="flex items-center gap-1.5 mb-4">
-                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Sitio web</h2>
+                          <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Sitio web</h3>
                           <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
                         </div>
                         <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                        <div style={{ borderTop: '1px solid #E8E3F5', margin: '20px -20px 16px' }} />
+                        <div style={{ borderTop: '1px solid #F0EDF9', margin: '20px -20px 16px' }} />
                         <div className="flex items-center gap-1.5 mb-3">
-                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Reseñas</h2>
+                          <h3 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Reseñas</h3>
                           <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
                         </div>
                         <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
                 </>
 
                 {/* ── 3. OPERACIÓN ────────────────────────────────────── */}
                 <>
                   <div id="horarios" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="DISPONIBILIDAD" title="Horario de atención" as="h2" tooltip="Define los días y horarios en que tu empleado está disponible para atender llamadas." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Horario de atención</h2>
+                            <InfoTooltip text="Define los días y horarios en que tu empleado está disponible para atender llamadas." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <BusinessHoursEditor token={token} initialHours={((orgSettings?.business_hours ?? agent.business_hours) ?? null) as BusinessHours | null} />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="idioma" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="IDIOMA" title="Idioma de atención" as="h2" tooltip="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Idioma de atención</h2>
+                            <InfoTooltip text="Configuración global. Por default tus empleados atienden en español. Actívalo si también recibes llamadas en inglés." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <MultilingualToggle token={token} initial={!!(orgSettings as any)?.multilingual} />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="dominio-correo" style={{ scrollMarginTop: 80 }}>
@@ -1744,11 +1815,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── 4. DIRECTORIO ───────────────────────────────────── */}
                 <>
                   <div id="directorio" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="DIRECTORIO" title="Personas de la organización" as="h2" tooltip="Responsable, equipo y especialistas. Todos tus empleados comparten este directorio: para identificar llamadas internas, referir contactos y asignar tickets del helpdesk." />}>
-                      <Card padding="md">
+                    <div className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Personas de la organización</h2>
+                            <InfoTooltip text="Responsable, equipo y especialistas. Todos tus empleados comparten este directorio: para identificar llamadas internas, referir contactos y asignar tickets del helpdesk." />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <DirectorioEditor token={token} initial={orgDirectory} isOwner={isOwner} showHelpdeskFields />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   </div>
                 </>
 
