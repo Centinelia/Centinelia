@@ -1875,8 +1875,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   {/* Consumo promedio — arriba, contexto antes del saldo actual */}
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <PageSection heading={<SectionHeader eyebrow="PROMEDIO" title="Consumo promedio" as="h2" />}>
-                      <Card id="consumo-promedio" padding="md">
+                    <div id="consumo-promedio" className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Consumo promedio</h2>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <div className="flex flex-col gap-4">
                           {allCalls.length > 0 && (
                             <div>
@@ -1899,8 +1905,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             </div>
                           )}
                         </div>
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   )}
 
                   <div id="uso-del-mes" style={{ scrollMarginTop: '1.5rem' }}>
@@ -1999,18 +2005,30 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   {/* Contratos y fechas críticas — feature oculto por ahora, código preservado */}
                   {false && (
-                    <PageSection heading={<SectionHeader eyebrow="CONTRATOS" title="Contratos internos" as="h2" />}>
-                      <Card id="contratos-internos" padding="md">
+                    <div id="contratos-internos" className="flex flex-col rounded-2xl overflow-hidden"
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                        <div>
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Contratos internos</h2>
+                        </div>
+                      </div>
+                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         <ContractTrackerSection token={token} />
-                      </Card>
-                    </PageSection>
+                      </div>
+                    </div>
                   )}
                 </div>
 
                 {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
                 <div className="flex flex-col gap-5">
-                  <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de consumo" as="h2" />}>
-                    <Card id="historial" padding="md">
+                  <div id="historial" className="flex flex-col rounded-2xl overflow-hidden"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                      <div>
+                        <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Historial de consumo</h2>
+                      </div>
+                    </div>
+                    <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                       <div className="relative">
                         <div className="overflow-y-auto" style={{ maxHeight: '520px', paddingRight: 12 }}>
                           {agent.portal_email ? (
@@ -2027,15 +2045,24 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
                           style={{ background: 'linear-gradient(to bottom, transparent, #ffffff)' }} />
                       </div>
-                    </Card>
-                  </PageSection>
+                    </div>
+                  </div>
 
                   {/* Reporte mensual compacto — abajo del historial */}
-                  <PageSection heading={<SectionHeader eyebrow="REPORTE" title="Reporte mensual" as="h3" tooltip="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />}>
-                    <Card id="reporte-mensual" padding="sm">
+                  <div id="reporte-mensual" className="flex flex-col rounded-2xl overflow-hidden"
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Reporte mensual</h2>
+                          <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                       <MonthReportPicker token={token} />
-                    </Card>
-                  </PageSection>
+                    </div>
+                  </div>
                 </div>
 
               </div>
