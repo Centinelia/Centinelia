@@ -1361,14 +1361,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 return (
                 <div id="hoy" className="flex flex-col rounded-2xl overflow-hidden scroll-mt-6"
                   style={{
-                    background: '#ffffff',
-                    border:     '1px solid #E8E3F5',
-                    boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                    background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, #ffffff 100%)',
+                    border:     '2px solid rgba(108,59,255,0.28)',
+                    boxShadow:  '0 4px 20px rgba(108,59,255,0.08)',
                   }}>
                   <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: '#6C3BFF', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                        style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
                         <AlertTriangle size={18} color="#fff" />
                       </div>
                       <div className="min-w-0">
@@ -1592,15 +1592,15 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div
                     className="flex flex-col rounded-2xl overflow-hidden"
                     style={{
-                      background: '#ffffff',
-                      border:     '1px solid #E8E3F5',
-                      boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                      background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, #ffffff 100%)',
+                      border:     '2px solid rgba(108,59,255,0.28)',
+                      boxShadow:  '0 4px 20px rgba(108,59,255,0.08)',
                     }}
                   >
                     <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: '#6C3BFF', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                          style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
                           <AlertTriangle size={18} color="#fff" />
                         </div>
                         <div className="min-w-0">

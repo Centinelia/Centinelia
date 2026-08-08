@@ -438,7 +438,7 @@ export default async function AgentesPage({ params }: Props) {
         return (
           <div key={a.id}
             className="rounded-2xl flex flex-col"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
 
             {/* Color bar */}
             <div style={{ height: 3, borderRadius: '12px 12px 0 0', background: `linear-gradient(90deg, ${hasRole ? roleColor : color}, ${hasRole ? roleColor : color}55)` }} />
@@ -465,7 +465,7 @@ export default async function AgentesPage({ params }: Props) {
 
               {/* Nombre + rol + estado */}
               <div className="flex flex-col items-center gap-1 text-center w-full">
-                <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: 'var(--c-text)' }}>
+                <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: '#1A0A3B' }}>
                   {(a.agent_name as string | null)?.trim() || 'Centinelia'}
                 </span>
                 {hasRole && (
@@ -483,7 +483,7 @@ export default async function AgentesPage({ params }: Props) {
               {/* Descripción + capacidades — siempre al fondo del cuerpo */}
               <div className="flex flex-col gap-3 flex-1 justify-end w-full">
               {meerkatDef?.descripcion && (
-                <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                <p className="text-xs text-center leading-relaxed" style={{ color: '#6B6480' }}>
                   {meerkatDef.descripcion}
                 </p>
               )}
@@ -494,10 +494,10 @@ export default async function AgentesPage({ params }: Props) {
                   <summary
                     className="cursor-pointer list-none select-none flex items-center gap-1.5 w-fit"
                     style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
-                    <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-4)' }}>
+                    <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5' }}>
                       Ver capacidades
                     </span>
-                    <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                    <span className="text-[10px]" style={{ color: '#9B8FB5' }}>▸</span>
                   </summary>
                   <div className="flex flex-wrap gap-1.5 pt-2">
                     {capabilities.map(c => (
@@ -522,7 +522,7 @@ export default async function AgentesPage({ params }: Props) {
               </div>{/* end description+capacidades wrapper */}
 
               {/* Stats */}
-              <div className="flex items-center justify-center gap-4 w-full" style={{ color: 'var(--c-text-3)' }}>
+              <div className="flex items-center justify-center gap-4 w-full" style={{ color: '#6B6480' }}>
                 {!isCoordinator && (
                   <span className="flex items-center gap-1 text-xs">
                     <Bot size={12} />
@@ -540,7 +540,7 @@ export default async function AgentesPage({ params }: Props) {
             </div>
 
             {/* Botones — abajo */}
-            <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid #E8E3F5' }}>
               <div className="flex-1 flex justify-start min-w-0">
                 <Link
                   href={`/portal/${a.portal_token as string}/configurar`}
@@ -583,11 +583,11 @@ export default async function AgentesPage({ params }: Props) {
       {/* Header row: coverage label + areas + % + progress bar */}
       <div className="flex items-center gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
             Cobertura funcional
           </p>
           {overallPct < 100 && missingCats.length > 0 && (
-            <p className="text-xs mt-1 truncate" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs mt-1 truncate" style={{ color: '#1A0A3B' }}>
               Sin cubrir:{' '}
               {missingCats.length <= 3
                 ? missingCats.map(c => c.label).join(', ')
@@ -595,7 +595,7 @@ export default async function AgentesPage({ params }: Props) {
             </p>
           )}
           {overallPct === 100 && (
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>
+            <p className="text-xs mt-1" style={{ color: '#1A0A3B' }}>
               Tu equipo cubre todas las áreas funcionales.
             </p>
           )}
@@ -608,7 +608,7 @@ export default async function AgentesPage({ params }: Props) {
             }}>
             {overallPct}%
           </span>
-          <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+          <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
             <div className="h-1.5 rounded-full"
               style={{ width: `${overallPct}%`, background: overallPct === 100 ? '#16a34a' : '#6C3BFF' }} />
           </div>
@@ -623,36 +623,36 @@ export default async function AgentesPage({ params }: Props) {
               className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
               style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-              <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-2)' }}>
+              <span className="text-[11px] font-medium flex-1 truncate" style={{ color: '#1A0A3B' }}>
                 {cat.label}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
                   <div className="h-1 rounded-full" style={{ width: `${Math.round((cat.covered / cat.total) * 100)}%`, background: cat.covered === cat.total ? '#16a34a' : cat.color }} />
                 </div>
-                <span className="text-[10px] tabular-nums w-6 text-right" style={{ color: 'var(--c-text-4)' }}>
+                <span className="text-[10px] tabular-nums w-6 text-right" style={{ color: '#9B8FB5' }}>
                   {Math.round((cat.covered / cat.total) * 100)}%
                 </span>
               </div>
-              <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+              <span className="text-[10px] flex-shrink-0" style={{ color: '#9B8FB5' }}>▸</span>
             </summary>
             <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
               {cat.tools.map(t => (
                 <div key={t.key} className="flex items-center gap-1 py-0.5">
                   <span className="text-[10px] w-3 text-center flex-shrink-0"
-                    style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                    style={{ color: t.covered ? '#16a34a' : '#9B8FB5' }}>
                     {t.covered ? '✓' : '○'}
                   </span>
                   <span className="group/cap relative text-[10px] leading-tight cursor-default"
-                    style={{ color: t.covered ? 'var(--c-text-2)' : 'var(--c-text-4)' }}>
+                    style={{ color: t.covered ? '#1A0A3B' : '#9B8FB5' }}>
                     {t.label}
                     {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
                       <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
                         <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
                           style={{
-                            background: 'var(--c-surface-2, #1e1a2e)',
-                            border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                            color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                            background: '#ffffff',
+                            border:     `1px solid ${t.covered ? '#E8E3F5' : 'rgba(108,59,255,0.35)'}`,
+                            color:      t.covered ? '#1A0A3B' : '#9B6DFF',
                           }}>
                           {t.covered
                             ? t.agents.join(' · ')
@@ -669,8 +669,8 @@ export default async function AgentesPage({ params }: Props) {
       </div>
 
       {/* Módulos adicionales */}
-      <div className="pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
-        <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--c-text-4)' }}>
+      <div className="pt-3" style={{ borderTop: '1px solid #E8E3F5' }}>
+        <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: '#9B8FB5' }}>
           Módulos adicionales
         </p>
         <div className="grid grid-cols-3 gap-x-3 gap-y-0">
@@ -680,31 +680,31 @@ export default async function AgentesPage({ params }: Props) {
                 className="cursor-pointer list-none select-none flex items-center gap-1.5 py-1.5 px-1 rounded-lg transition-colors"
                 style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-60" style={{ background: cat.color }} />
-                <span className="text-[11px] font-medium flex-1 truncate" style={{ color: 'var(--c-text-3)' }}>
+                <span className="text-[11px] font-medium flex-1 truncate" style={{ color: '#6B6480' }}>
                   {cat.label}
                 </span>
-                <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
+                <span className="text-[10px] tabular-nums flex-shrink-0" style={{ color: '#9B8FB5' }}>
                   {cat.covered}/{cat.total}
                 </span>
-                <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>▸</span>
+                <span className="text-[10px] flex-shrink-0" style={{ color: '#9B8FB5' }}>▸</span>
               </summary>
               <div className="ml-3 mt-0.5 mb-1.5 flex flex-col gap-0.5">
                 {cat.tools.map(t => (
                   <div key={t.key} className="flex items-center gap-1 py-0.5">
                     <span className="text-[10px] w-3 text-center flex-shrink-0"
-                      style={{ color: t.covered ? '#16a34a' : 'var(--c-text-4)' }}>
+                      style={{ color: t.covered ? '#16a34a' : '#9B8FB5' }}>
                       {t.covered ? '✓' : '○'}
                     </span>
                     <span className="group/cap relative text-[10px] leading-tight cursor-default"
-                      style={{ color: t.covered ? 'var(--c-text-3)' : 'var(--c-text-4)' }}>
+                      style={{ color: t.covered ? '#6B6480' : '#9B8FB5' }}>
                       {t.label}
                       {(t.covered ? t.agents.length > 0 : t.suggestedRoles.length > 0) && (
                         <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 z-50 hidden group-hover/cap:inline-block">
                           <span className="rounded-md px-2 py-1 text-[10px] font-medium whitespace-nowrap shadow-md"
                             style={{
-                              background: 'var(--c-surface-2, #1e1a2e)',
-                              border:     `1px solid ${t.covered ? 'var(--c-border)' : 'rgba(108,59,255,0.35)'}`,
-                              color:      t.covered ? 'var(--c-text-1)' : '#9B6DFF',
+                              background: '#ffffff',
+                              border:     `1px solid ${t.covered ? '#E8E3F5' : 'rgba(108,59,255,0.35)'}`,
+                              color:      t.covered ? '#1A0A3B' : '#9B6DFF',
                             }}>
                             {t.covered
                               ? t.agents.join(' · ')
@@ -723,7 +723,7 @@ export default async function AgentesPage({ params }: Props) {
 
       {/* CTA */}
       {missingCats.length > 0 && !annualContractInfo && (
-        <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid #E8E3F5' }}>
           <MeerkatPicker
             token={token}
             plan={(baseAgent.plan ?? 'pro') as 'pro'}
@@ -743,11 +743,11 @@ export default async function AgentesPage({ params }: Props) {
   const billingAlertBanner = pausedByBilling.length > 0 ? (
     <div className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(239,68,68,0.08) 0%, var(--c-surface) 100%)',
+        background: 'linear-gradient(180deg, rgba(239,68,68,0.08) 0%, #ffffff 100%)',
         border: '2px solid rgba(239,68,68,0.3)',
         boxShadow: '0 4px 20px rgba(239,68,68,0.08)',
       }}>
-      <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
+      <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid #F0EDF9' }}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.35)' }}>
           <AlertTriangle size={18} color="#fff" />
@@ -756,7 +756,7 @@ export default async function AgentesPage({ params }: Props) {
           <h2 className="text-base font-bold" style={{ color: '#dc2626' }}>
             {pausedByBilling.length} {pausedByBilling.length === 1 ? 'empleado pausado por falta de pago' : 'empleados pausados por falta de pago'}
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
             Cada empleado tiene su propia suscripción. Al resolver el pago de uno, solo ese se reactiva.
           </p>
         </div>
@@ -775,8 +775,8 @@ export default async function AgentesPage({ params }: Props) {
                 <AlertTriangle size={16} color="#fff" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{name}</p>
-                {role && <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{role}</p>}
+                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{name}</p>
+                {role && <p className="text-xs truncate" style={{ color: '#6B6480' }}>{role}</p>}
               </div>
               <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
                 style={{ background: '#ef4444', color: '#fff' }}>Resolver</span>
@@ -794,11 +794,11 @@ export default async function AgentesPage({ params }: Props) {
       {/* Page header — patrón consistente con /inicio */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: '#9B8FB5' }}>
             Tu equipo
           </p>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Mis Empleados</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+          <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Mis Empleados</h1>
+          <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
             {agents.length} {agents.length === 1 ? 'empleado' : 'empleados'} · {baseAgent.business_name}
           </p>
         </div>
@@ -826,33 +826,33 @@ export default async function AgentesPage({ params }: Props) {
 
       {/* Métricas del equipo — bloque estilo /inicio */}
       {agents.length > 0 && (
-        <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-          <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+        <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+          <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
             Tu equipo este mes
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Empleados activos</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Empleados activos</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{activeAgentsCount}</p>
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>de {agents.length}</span>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{activeAgentsCount}</p>
+                <span className="text-xs" style={{ color: '#6B6480' }}>de {agents.length}</span>
               </div>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Llamadas atendidas</p>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalCallsMonth}</p>
-              <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>en total del mes</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Llamadas atendidas</p>
+              <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalCallsMonth}</p>
+              <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>en total del mes</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Tareas ejecutadas</p>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalOpsMonth}</p>
-              <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>ops del mes</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Tareas ejecutadas</p>
+              <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalOpsMonth}</p>
+              <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>ops del mes</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Con puesto asignado</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Con puesto asignado</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{rolePct}%</p>
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>({agentsWithRole}/{agents.length})</span>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{rolePct}%</p>
+                <span className="text-xs" style={{ color: '#6B6480' }}>({agentsWithRole}/{agents.length})</span>
               </div>
             </div>
           </div>
@@ -862,12 +862,12 @@ export default async function AgentesPage({ params }: Props) {
       {/* Empty state */}
       {agents.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 rounded-xl"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+          style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
             <Bot size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
           </div>
-          <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin empleados en tu cuenta</p>
+          <p className="text-sm" style={{ color: '#6B6480' }}>Sin empleados en tu cuenta</p>
         </div>
       )}
 
@@ -921,33 +921,33 @@ export default async function AgentesPage({ params }: Props) {
 
         {/* Métricas del equipo — bloque estilo /inicio */}
         {agents.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-            <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+          <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+            <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
               Tu equipo este mes
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Empleados activos</p>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Empleados activos</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{activeAgentsCount}</p>
-                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>de {agents.length}</span>
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{activeAgentsCount}</p>
+                  <span className="text-xs" style={{ color: '#6B6480' }}>de {agents.length}</span>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Llamadas atendidas</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalCallsMonth}</p>
-                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>en total del mes</p>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Llamadas atendidas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalCallsMonth}</p>
+                <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>en total del mes</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Tareas ejecutadas</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{totalOpsMonth}</p>
-                <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>total del mes</p>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Tareas ejecutadas</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalOpsMonth}</p>
+                <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>total del mes</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>Con puesto asignado</p>
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Con puesto asignado</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>{rolePct}%</p>
-                  <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>({agentsWithRole}/{agents.length})</span>
+                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{rolePct}%</p>
+                  <span className="text-xs" style={{ color: '#6B6480' }}>({agentsWithRole}/{agents.length})</span>
                 </div>
               </div>
             </div>
