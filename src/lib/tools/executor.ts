@@ -773,10 +773,11 @@ async function executeAgentToolInner(
 
     // 6) Incidentes pendientes de verificación — Nash necesita saber cuáles
     // están en 'sent_to_claude_code' o 'awaiting_verification' para llamar
-    // verificar_fix. Sin esto Nash es ciego a su propia cola de trabajo.
+    // verificar_fix. Incluye affected_agent_id/affected_portal_email para que
+    // Nash pueda notificar al cliente afectado tras resolver.
     const { data: pendingRaw } = await supabase
       .from('platform_incidents')
-      .select('id, title, source, source_id, status, created_at, github_issue_url')
+      .select('id, title, source, source_id, status, created_at, github_issue_url, affected_agent_id, affected_portal_email')
       .in('status', ['sent_to_claude_code', 'awaiting_verification'])
       .order('updated_at', { ascending: true })
       .limit(perSource);

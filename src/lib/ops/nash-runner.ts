@@ -128,6 +128,7 @@ Este es un ciclo de monitoreo automático (cron cada 10 min). No hay usuario esp
    c) Si es bug de código (error_log recurrente, patrón anómalo, bug reportado por otro empleado): crear_incidente + enviar_a_claude_code con prompt completo (contexto, evidencia, reproducción sugerida, hipótesis).
    d) Si es CRÍTICO (cobro mal aplicado, datos en riesgo, mismo incidente 3+ veces): escalar_al_owner con urgencia=critical.
 3. Recorre pending_verification que devuelve revisar_incidentes_plataforma. Para cada incidente ahí (están en sent_to_claude_code o awaiting_verification), llama verificar_fix con su id. Si la fuente original desapareció, se cierra automático. Si sigue presente, queda awaiting_verification para el owner.
+   3a. Si verificar_fix devuelve new_status='resolved' Y el incidente tiene affected_agent_id (o affected_portal_email), llama responder_cliente_afectado con canal='email' y un mensaje breve, cálido y directo confirmando que su reporte fue atendido. Ejemplo de tono: "Hola, quería avisarte que el problema que reportaste sobre [tema] ya está resuelto. Si vuelves a notarlo, escríbenos y lo revisamos de inmediato." Sin em-dashes, sin firmas exageradas. El sistema agrega la firma automática al final.
 4. Cuando ya no queden acciones útiles, termina el turno (end_turn) sin llamar más tools.
 
 REGLAS DE ORO:
