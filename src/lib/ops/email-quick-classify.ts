@@ -59,8 +59,11 @@ function extractEmailAddress(raw: string): string {
 // ── Q4 Spam Filter Enhancements ──
 // Patrones agresivos para detectar correos de marketing/promo/retailer
 
-const PROMO_SENDER_REGEX = /@(promociones?|promo|marketing|newsletter|noreply|no-reply|notifications?|hello|hi|team|info|hola|ofertas?|deals?|updates?)\./i;
+const PROMO_SENDER_REGEX = /@(promociones?|promo|marketing|newsletter|noreply|no-reply|notifications?|hello|hi|team|info|hola|ofertas?|deals?|updates?|aviso|avisos|notice|market|em|news|newsletters?)\./i;
 const BULK_SENDER_REGEX  = /@.*\.(mailchimp|sendgrid|constantcontact|hubspot|marketo|braze|iterable|klaviyo|convertkit)\./i;
+
+// Dominios de bulk mail / newsletters que casi nunca son de negocio real.
+const BULK_MAIL_DOMAIN_REGEX = /@([a-z0-9-]+\.)?(substack|mailchi|beehiiv|revue|convertkit|buttondown|ghost|kajabi)\.(com|net|org|io)$/i;
 
 const RETAILER_DOMAINS = new Set([
   'officedepot.com', 'liverpool.com.mx', 'amazon.com', 'mercadolibre.com',
@@ -74,7 +77,9 @@ const RETAILER_DOMAINS = new Set([
 // esas las usan clientes reales pidiendo cotización (falsos positivos
 // documentados en 2026-07-31 con lead de Ferretería).
 const SUBJECT_PROMO_REGEX = /(% off|black\s+friday|hot\s+sale|buen\s+fin|cyber\s+monday|cup[oó]n|last\s+chance|limited\s+time|liquidaci[oó]n|-?\d{2,}%\s+de\s+descuento)/i;
-const SUBJECT_EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+// Cubre: Misc Technical (⏳⌛), Misc Symbols (☀★), Dingbats (✓✨), Supplemental
+// Arrows/Symbols (⬇⬆), Emoji Supplement + Symbols and Pictographs (👗🔥).
+const SUBJECT_EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
 
 // ── Marketing / newsletter (necesita match tanto en asunto como cuerpo) ──
 
@@ -138,7 +143,10 @@ function matchesAny(text: string, patterns: RegExp[]): RegExp | null {
  *   (mensaje real de un cliente pidiendo descuento)
  */
 export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResult {
-  const from    = (input.from    ?? '').trim().toLowerCase();
+  // Extrae el email real del formato `"Sender Name" <foo@bar.com>` que devuelve
+  // Gmail/IMAP. Antes usábamos el string completo y el `^` de los regex nunca
+  // matcheaba porque empezaba con el nombre del remitente.
+  const from    = extractEmailAddress(input.from ?? '');
   const subject = (input.subject ?? '').trim();
   const body    = (input.body    ?? '');
 
@@ -162,6 +170,9 @@ export function quickClassifyEmail(input: QuickClassifyInput): QuickClassifyResu
   }
   if (BULK_SENDER_REGEX.test(from)) {
     return { category: 'spam', reason: `bulk_provider (${from})` };
+  }
+  if (BULK_MAIL_DOMAIN_REGEX.test(from)) {
+    return { category: 'spam', reason: `bulk_domain (${from})` };
   }
 
   // 3b. Retailer domain check
