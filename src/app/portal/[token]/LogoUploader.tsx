@@ -69,33 +69,53 @@ export default function LogoUploader({ token, currentUrl, compact }: { token: st
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative group" style={{ width: 96, height: 64 }}>
+      <div className="relative group" style={{ width: 160, height: 104 }}>
         <button
           onClick={() => inputRef.current?.click()}
           disabled={loading}
           title={loading ? 'Subiendo…' : preview ? 'Cambiar logo' : 'Subir logo'}
-          className="w-full h-full rounded-xl overflow-hidden flex items-center justify-center relative"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', cursor: loading ? 'wait' : 'pointer', padding: 0 }}
+          className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center relative transition-all"
+          style={{
+            background: '#FAFAFB',
+            border: preview ? '1px solid #E8E3F5' : '2px dashed rgba(108,59,255,0.25)',
+            cursor: loading ? 'wait' : 'pointer',
+            padding: 0,
+            boxShadow: preview ? '0 1px 2px rgba(26,10,59,0.04)' : 'none',
+          }}
         >
           {preview
-            ? <img src={preview} alt="Logo" className="w-full h-full object-contain p-1" />
-            : <span className="text-2xl select-none opacity-30">🏢</span>
+            ? <img src={preview} alt="Logo" className="w-full h-full object-contain p-3" />
+            : (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(108,59,255,0.1)' }}>
+                  <Upload size={16} style={{ color: '#6C3BFF' }} />
+                </div>
+                <span className="text-[11px] font-medium" style={{ color: '#6C3BFF' }}>Sube tu logo</span>
+              </div>
+            )
           }
-          <div
-            className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ background: 'rgba(0,0,0,0.45)' }}
-          >
-            <Upload size={15} style={{ color: '#fff' }} />
-          </div>
+          {preview && (
+            <div
+              className="absolute inset-0 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ background: 'rgba(15,5,34,0.55)', backdropFilter: 'blur(2px)' }}
+            >
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: '#ffffff', color: '#1A0A3B', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                <Upload size={13} />
+                <span className="text-[12px] font-semibold">Cambiar</span>
+              </div>
+            </div>
+          )}
         </button>
         {preview && !loading && (
           <button
             onClick={handleRemove}
             title="Quitar logo"
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480', boxShadow: '0 2px 6px rgba(26,10,59,0.12)' }}
           >
-            <X size={10} />
+            <X size={12} strokeWidth={2.5} />
           </button>
         )}
       </div>
