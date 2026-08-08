@@ -47,7 +47,7 @@ export default function OutboundInstructionsEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs" style={{ color: '#6B6480' }}>
         Define el objetivo de tus llamadas salientes, qué decir, cómo manejar objeciones y qué hacer si no contestan.
       </p>
       <textarea
@@ -68,9 +68,9 @@ export default function OutboundInstructionsEditor({
         }
         className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
         style={{
-          background: 'var(--c-input-bg)',
-          border: '1px solid var(--c-input-border)',
-          color: 'var(--c-text)',
+          background: '#FAFAFB',
+          border: '1px solid #E8E3F5',
+          color: '#1A0A3B',
           minHeight: 180,
         }}
       />
@@ -79,9 +79,9 @@ export default function OutboundInstructionsEditor({
           <span style={{ color: barColor, fontWeight: 500 }}>
             {chars.toLocaleString('es-MX')} / {HARD_LIMIT.toLocaleString('es-MX')} caracteres
           </span>
-          <span style={{ color: 'var(--c-text-4)' }}>{hint}</span>
+          <span style={{ color: '#9B8FB5' }}>{hint}</span>
         </div>
-        <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-input-border)' }}>
+        <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: '#E8E3F5' }}>
           <div className="h-full rounded-full transition-all duration-300"
             style={{ width: `${pct}%`, background: barColor }} />
         </div>

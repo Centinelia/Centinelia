@@ -49,7 +49,7 @@ export default function RoleKnowledgeBaseEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs" style={{ color: '#6B6480' }}>
         Tu empleado consulta esta información en su día a día como <strong style={{ color: '#f59e0b' }}>{role}</strong>. Incluye procedimientos, reglas del puesto, límites de aprobación, contactos clave y cualquier detalle específico de su rol.
       </p>
       <textarea
@@ -59,9 +59,9 @@ export default function RoleKnowledgeBaseEditor({
         placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n- Proveedor principal: proveedor@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del responsable.`}
         className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
         style={{
-          background: 'var(--c-input-bg)',
+          background: '#FAFAFB',
           border: '1px solid rgba(245,158,11,0.3)',
-          color: 'var(--c-text)',
+          color: '#1A0A3B',
           minHeight: 180,
         }}
       />
@@ -70,9 +70,9 @@ export default function RoleKnowledgeBaseEditor({
           <span style={{ color: barColor, fontWeight: 500 }}>
             {chars.toLocaleString('es-MX')} / {HARD_LIMIT.toLocaleString('es-MX')} caracteres
           </span>
-          <span style={{ color: 'var(--c-text-4)' }}>{hint}</span>
+          <span style={{ color: '#9B8FB5' }}>{hint}</span>
         </div>
-        <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-input-border)' }}>
+        <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: '#E8E3F5' }}>
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{ width: `${pct}%`, background: barColor }}

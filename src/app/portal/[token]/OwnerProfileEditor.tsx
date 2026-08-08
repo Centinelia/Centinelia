@@ -56,19 +56,19 @@ export default function OwnerProfileEditor({ token, initialValue }: Props) {
         className="w-full rounded-xl text-xs leading-relaxed outline-none resize-y"
         style={{
           padding:    '10px 12px',
-          background: 'var(--c-surface-2)',
-          border:     '1px solid var(--c-border)',
-          color:      'var(--c-text)',
+          background: '#FAFAFB',
+          border:     '1px solid #E8E3F5',
+          color:      '#1A0A3B',
           fontFamily: 'inherit',
         }}
       />
 
       <div className="flex items-center justify-between">
-        <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
           Se comparte con todos tus empleados · se actualiza en segundos
         </p>
         {saving && (
-          <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>
+          <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>
         )}
         {saved && (
           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>

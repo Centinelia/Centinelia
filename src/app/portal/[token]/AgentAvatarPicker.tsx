@@ -92,12 +92,12 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
         >
           <div
             className="rounded-2xl p-5 flex flex-col gap-4 w-full max-w-xs"
-            style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border)' }}
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Elige un avatar</p>
-              <button onClick={() => setOpen(false)} className="hover:opacity-70 transition-opacity" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Elige un avatar</p>
+              <button onClick={() => setOpen(false)} className="hover:opacity-70 transition-opacity" style={{ color: '#6B6480' }}>
                 <X size={16} />
               </button>
             </div>
@@ -131,8 +131,8 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
                     disabled={saving}
                     className="aspect-square rounded-xl overflow-hidden relative transition-all"
                     style={{
-                      border:     `2px solid ${active ? '#6C3BFF' : 'var(--c-border)'}`,
-                      background: active ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
+                      border:     `2px solid ${active ? '#6C3BFF' : '#E8E3F5'}`,
+                      background: active ? 'rgba(108,59,255,0.08)' : '#FAFAFB',
                     }}
                   >
                     <Image src={src} alt="" fill sizes="80px" style={{ objectFit: 'contain', padding: 4 }} />
@@ -146,7 +146,7 @@ export default function AgentAvatarPicker({ token, avatarSrc, initial, color, si
               })}
             </div>
 
-            <p className="text-[10px] text-center" style={{ color: 'var(--c-text-4)' }}>
+            <p className="text-[10px] text-center" style={{ color: '#9B8FB5' }}>
               Toca un avatar para seleccionarlo y guardarlo
             </p>
           </div>
