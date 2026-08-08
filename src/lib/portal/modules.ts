@@ -1,5 +1,11 @@
 export const PORTAL_MODULES = [
   // ── Portal principal — todos los giros ──────────────────────────────────
+  // Oficina va primero: es donde el sub-usuario trabaja el día a día;
+  // el resto (Inicio, Organización, Empleados, Cuenta, Usuarios) son meta/config.
+  {
+    id: 'oficina', label: 'Oficina', group: 'Portal', giros: ['all'] as string[],
+    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
+  },
   {
     id: 'inicio', label: 'Inicio', group: 'Portal', giros: ['all'] as string[],
     desc: 'Resumen general: llamadas, tareas, métricas y actividad reciente de tus empleados.',
@@ -11,10 +17,6 @@ export const PORTAL_MODULES = [
   {
     id: 'agentes', label: 'Empleados', group: 'Portal', giros: ['all'] as string[],
     desc: 'Lista de todos los empleados Centinelia activos en la cuenta.',
-  },
-  {
-    id: 'oficina', label: 'Oficina', group: 'Portal', giros: ['all'] as string[],
-    desc: 'Acceso al módulo de Oficina con todas las herramientas de trabajo interno.',
   },
   {
     id: 'cuenta', label: 'Cuenta', group: 'Portal', giros: ['all'] as string[],
