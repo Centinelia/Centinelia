@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network, LifeBuoy } from 'lucide-react';
+import { BarChart3, Plus, CreditCard, Users, Settings, Phone, Home, Terminal, DollarSign, ShieldCheck, GitBranch, Flag, Activity, AlertOctagon, Wrench, Network, LifeBuoy, Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem { href: string; icon: LucideIcon; label: string; }
