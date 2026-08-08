@@ -771,25 +771,38 @@ async function executeAgentToolInner(
       .limit(perSource);
     const failed_tasks = (atRaw ?? []).filter(r => !trackedSet.has(`agent_task:${r.id}`));
 
+    // 6) Incidentes pendientes de verificación — Nash necesita saber cuáles
+    // están en 'sent_to_claude_code' o 'awaiting_verification' para llamar
+    // verificar_fix. Sin esto Nash es ciego a su propia cola de trabajo.
+    const { data: pendingRaw } = await supabase
+      .from('platform_incidents')
+      .select('id, title, source, source_id, status, created_at, github_issue_url')
+      .in('status', ['sent_to_claude_code', 'awaiting_verification'])
+      .order('updated_at', { ascending: true })
+      .limit(perSource);
+    const pending_verification = pendingRaw ?? [];
+
     const totalNew = bug_reports.length + error_logs.length + escalated_stale.length + failed_handoffs.length + failed_tasks.length;
 
     return {
       ok: true,
       summary: {
-        window_days:            days,
-        already_tracked_count:  trackedSet.size,
-        total_new_signals:      totalNew,
-        bug_reports_count:      bug_reports.length,
-        error_logs_count:       error_logs.length,
-        escalated_stale_count:  escalated_stale.length,
-        failed_handoffs_count:  failed_handoffs.length,
-        failed_tasks_count:     failed_tasks.length,
+        window_days:                days,
+        already_tracked_count:      trackedSet.size,
+        total_new_signals:          totalNew,
+        bug_reports_count:          bug_reports.length,
+        error_logs_count:           error_logs.length,
+        escalated_stale_count:      escalated_stale.length,
+        failed_handoffs_count:      failed_handoffs.length,
+        failed_tasks_count:         failed_tasks.length,
+        pending_verification_count: pending_verification.length,
       },
       bug_reports,
       error_logs,
       escalated_stale,
       failed_handoffs,
       failed_tasks,
+      pending_verification,
     };
   }
 
