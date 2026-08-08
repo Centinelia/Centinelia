@@ -63,7 +63,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
               className="flex flex-col items-start gap-1 p-3 rounded-xl text-left transition-all"
               style={{
                 background: active ? 'rgba(108,59,255,0.06)' : '#ffffff',
-                border:     `1px solid ${active ? '#6C3BFF' : '#E8E3F5'}`,
+                border:     `1px solid ${active ? '#6C3BFF' : 'rgba(108,59,255,0.18)'}`,
                 boxShadow:  active ? '0 4px 12px rgba(108,59,255,0.12)' : '0 1px 2px rgba(26,10,59,0.04)',
               }}
             >
@@ -89,7 +89,7 @@ export default function BuyMinutesSection({ token }: { token: string }) {
           className="flex flex-col items-start gap-1 p-3 rounded-xl text-left transition-all"
           style={{
             background: selected === 'custom' ? 'rgba(108,59,255,0.06)' : '#ffffff',
-            border:     `1px solid ${selected === 'custom' ? '#6C3BFF' : '#E8E3F5'}`,
+            border:     `1px solid ${selected === 'custom' ? '#6C3BFF' : 'rgba(108,59,255,0.18)'}`,
             boxShadow:  selected === 'custom' ? '0 4px 12px rgba(108,59,255,0.12)' : '0 1px 2px rgba(26,10,59,0.04)',
           }}
         >

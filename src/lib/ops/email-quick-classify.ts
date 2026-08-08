@@ -37,11 +37,24 @@ const NOTIFICATION_LOCAL_PARTS = [
   'bounce', 'bounces',
   'mailer-daemon', 'mailer_daemon',
   'postmaster',
+  'boletin', 'boletines', 'newsletter', 'newsletters',
+  'noticias', 'promociones', 'promocion',
 ];
 
+// Matchea local-part exacto (con posible sufijo tipo `noreply-alert`) o con
+// prefijo separado por `-`/`.`/`_` (LinkedIn: `messages-noreply`,
+// `updates-noreply`; Microsoft: `microsoft-noreply`).
 const NOTIFICATION_LOCAL_PATTERNS = NOTIFICATION_LOCAL_PARTS.map(lp =>
-  new RegExp(`^${lp}([+._-][a-z0-9]+)?@`, 'i')
+  new RegExp(`(^|[+._-])${lp}([+._-][a-z0-9]+)?@`, 'i')
 );
+
+// Extrae el email real de formatos comunes:
+//   "Sender Name <foo@bar.com>"  → foo@bar.com
+//   "foo@bar.com"                 → foo@bar.com
+function extractEmailAddress(raw: string): string {
+  const match = raw.match(/<([^>]+)>/);
+  return (match?.[1] ?? raw).trim().toLowerCase();
+}
 
 // ── Q4 Spam Filter Enhancements ──
 // Patrones agresivos para detectar correos de marketing/promo/retailer
