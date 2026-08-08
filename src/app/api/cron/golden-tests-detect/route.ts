@@ -122,6 +122,11 @@ export async function GET(req: NextRequest) {
     inserted.push(`${meerkatId}:${run.id}:v[${versionsToRun.join(',')}]:${trigger}`);
   }
 
+  if (inserted.length > 0) {
+    const { triggerGoldenTestsWorker } = await import('@/lib/golden-tests/worker-trigger');
+    triggerGoldenTestsWorker(`detect inserted=${inserted.length}`);
+  }
+
   console.log('[golden-tests-detect]', { inserted, skipped });
   return NextResponse.json({ inserted, skipped });
 }

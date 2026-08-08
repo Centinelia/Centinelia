@@ -64,5 +64,9 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { triggerGoldenTestsWorker } = await import('@/lib/golden-tests/worker-trigger');
+  triggerGoldenTestsWorker(`rerun ${meerkatId} run=${run.id}`);
+
   return NextResponse.json({ ok: true, run_id: run.id, meerkat_id: meerkatId, versions, invalidated_baselines: versions });
 }

@@ -35,6 +35,7 @@ import AutomationsSection    from './AutomationsSection';
 import { BriefDelDiaSection } from './BriefDelDiaSection';
 import { BrandTemplateSection } from './BrandTemplateSection';
 import ApprovalSettingsSection from './ApprovalSettingsSection';
+import InstantProcessingSection from './InstantProcessingSection';
 import ConfigurarTabs from './ConfigurarTabs';
 import OutboundToggles from '../OutboundToggles';
 import { Card, SectionHeader } from '@/components/portal-ui';
@@ -601,6 +602,14 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                 <div id="aprobaciones" style={SCROLL_STYLE}>
                   <Card border elevated={false} padding="sm">
                     <ApprovalSettingsSection token={token} roleColor={roleColor} />
+                  </Card>
+                </div>
+              )}
+
+              {isOwner && (
+                <div id="ritmo-de-trabajo" style={SCROLL_STYLE}>
+                  <Card border elevated={false} padding="sm">
+                    <InstantProcessingSection token={token} roleColor={roleColor} />
                   </Card>
                 </div>
               )}
