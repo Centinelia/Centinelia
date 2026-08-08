@@ -437,6 +437,18 @@ export async function POST(req: NextRequest) {
             `🎉 *Nuevo cliente, Centinelia*\n\nNegocio: *${agent.business_name}*\nPlan: ${planLabels[featurePlan ?? ''] ?? featurePlan}\nEmail: ${agent.client_email}\nWA: ${(agent as any).transfer_whatsapp ?? ''}\n${phoneInfo}`
           ).catch(console.error);
         }
+
+        // 5. Topup reminder para el owner: cuánto agregar en Vapi/Twilio/Anthropic.
+        const { sendTopupReminderEmail } = await import('@/lib/billing/topup-reminder');
+        await sendTopupReminderEmail({
+          businessName: fullAgent.business_name ?? '(sin nombre)',
+          portalEmail:  fullAgent.portal_email ?? '(sin email)',
+          agentName:    fullAgent.agent_name ?? null,
+          minutes:      jornadaAlloc.minutes,
+          aiOps:        jornadaAlloc.aiOps,
+          jornadaLabel: jornadaTypeMeta,
+          tierLabel:    minutesCfg.label,
+        }).catch(err => console.error('[billing-webhook] topup reminder failed:', err));
       }
       break;
     }
