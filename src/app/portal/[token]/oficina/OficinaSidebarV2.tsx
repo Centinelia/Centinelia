@@ -67,7 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'PERSONAS',
     items: [
       { href: '/llamadas',   moduleId: 'llamadas',      label: 'Llamadas',   icon: Phone,     badgeKey: '' },
-      { href: '/campanas',   moduleId: 'llamadas',      label: 'Campañas',   icon: Megaphone, badgeKey: '' },
+      { href: '/campanas',   moduleId: 'campanas',      label: 'Campañas',   icon: Megaphone, badgeKey: '' },
       { href: '/onboarding', moduleId: 'of_onboarding', label: 'Onboarding', icon: UserCheck, badgeKey: '' },
       { href: '/encuestas',  moduleId: 'of_encuestas',  label: 'Calidad',    icon: PieChart,  badgeKey: '' },
     ],

@@ -26,18 +26,11 @@ export const PORTAL_MODULES = [
     id: 'usuarios', label: 'Usuarios y permisos', group: 'Portal', giros: ['all'] as string[],
     desc: 'Administrar colaboradores del portal: crear accesos, cambiar contraseñas y asignar secciones. No incluye modificar al propietario ni a sí mismo.',
   },
-  // ── Oficina general — todos los giros ───────────────────────────────────
+  // ── Oficina — orden exacto de la sidebar V2 (ver OficinaSidebarV2.tsx) ──
+  // ─ ACTIVIDAD ─
   {
     id: 'of_actividad', label: 'Hoy en la oficina', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Panorama en tiempo real de lo que tus empleados están haciendo ahora.',
-  },
-  {
-    id: 'llamadas', label: 'Llamadas entrantes', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Historial de llamadas recibidas, grabaciones y transcripciones.',
-  },
-  {
-    id: 'salientes', label: 'Llamadas salientes', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Campañas y registros de llamadas que tus empleados realizan de forma proactiva.',
   },
   {
     id: 'of_bandeja', label: 'Bandeja', group: 'Oficina', giros: ['all'] as string[],
@@ -47,6 +40,7 @@ export const PORTAL_MODULES = [
     id: 'of_reportes', label: 'Reportes', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Resúmenes periódicos generados por tus empleados sobre la operación.',
   },
+  // ─ CONOCIMIENTO ─
   {
     id: 'of_aprendizajes', label: 'Cómo trabajamos', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Revisión y aprobación de lo que tus empleados aprenden de llamadas, correos y conversaciones.',
@@ -55,9 +49,14 @@ export const PORTAL_MODULES = [
     id: 'of_investigacion', label: 'Investigación', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Búsquedas e investigaciones realizadas por tus empleados sobre clientes o temas.',
   },
+  // ─ OPERACIÓN ─
   {
     id: 'of_documentos', label: 'Documentos', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Archivos generados por tus empleados o subidos para que los utilicen como referencia.',
+  },
+  {
+    id: 'of_facturas', label: 'Facturas por emitir', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Solicitudes de factura pendientes de emitir y su seguimiento fiscal.',
   },
   {
     id: 'of_contratos', label: 'Contratos', group: 'Oficina', giros: ['all'] as string[],
@@ -68,10 +67,6 @@ export const PORTAL_MODULES = [
     desc: 'Plantillas de factura, orden de compra, contrato y otros documentos que tus empleados usan como base.',
   },
   {
-    id: 'of_facturas', label: 'Facturas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Solicitudes de factura pendientes de emitir y su seguimiento fiscal.',
-  },
-  {
     id: 'of_tareas_programadas', label: 'Tareas', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Tareas manuales y programadas que ejecutan tus empleados, con calendario y aprobaciones.',
   },
@@ -79,19 +74,24 @@ export const PORTAL_MODULES = [
     id: 'of_juntas', label: 'Juntas', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Actas y resúmenes de reuniones procesadas por tus empleados.',
   },
+  // ─ PERSONAS ─
+  {
+    id: 'llamadas', label: 'Llamadas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Historial de llamadas entrantes y salientes, grabaciones y transcripciones.',
+  },
+  {
+    id: 'campanas', label: 'Campañas', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Programación y monitoreo de campañas de llamadas salientes con contactos y tags.',
+  },
   {
     id: 'of_onboarding', label: 'Onboarding', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Flujos de bienvenida y capacitación que tus empleados gestionan para nuevos colaboradores.',
   },
   {
-    id: 'of_encuestas', label: 'Encuestas', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Encuestas de satisfacción o recopilación de datos realizadas por llamada.',
+    id: 'of_encuestas', label: 'Calidad', group: 'Oficina', giros: ['all'] as string[],
+    desc: 'Encuestas de satisfacción y recopilación de datos post-llamada para medir la calidad del servicio.',
   },
-  {
-    id: 'integraciones', label: 'Integraciones', group: 'Oficina', giros: ['all'] as string[],
-    desc: 'Conexiones con calendarios, CRMs, correo, WhatsApp y otras plataformas.',
-  },
-  // ── Oficina sector — Gobierno / Municipio ───────────────────────────────
+  // ─ OPERACIÓN — sector Gobierno / Municipio ─
   {
     id: 'of_reportes_ciudadanos', label: 'Reportes ciudadanos', group: 'Oficina', giros: ['gobierno'] as string[],
     desc: 'Folios de reportes recibidos por ciudadanos: baches, alumbrado, limpieza, etc.',
@@ -100,7 +100,7 @@ export const PORTAL_MODULES = [
     id: 'of_cabildo', label: 'Cabildo', group: 'Oficina', giros: ['gobierno'] as string[],
     desc: 'Gestión de sesiones de cabildo: puntos de acuerdo, actas y votaciones.',
   },
-  // ── Oficina sector — Tecnología / IT ────────────────────────────────────
+  // ─ SISTEMA — sector Tecnología + Gobierno ─
   {
     id: 'of_helpdesk', label: 'Mesa de ayuda', group: 'Oficina', giros: ['tecnologia', 'gobierno'] as string[],
     desc: 'Tickets de soporte técnico: apertura, seguimiento y resolución de incidentes.',
@@ -121,7 +121,7 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   'agentes':                       'agentes',
   'llamadas':                      'llamadas',
   'llamadas/entrantes':            'llamadas',
-  'llamadas/salientes':            'salientes',
+  'llamadas/salientes':            'llamadas',
   'usuarios':                      'usuarios',
   // Oficina
   'oficina':                       'oficina',
@@ -139,10 +139,12 @@ export const ROUTE_MODULE_MAP: Record<string, string> = {
   'oficina/reportes-ciudadanos':   'of_reportes_ciudadanos',
   'oficina/cabildo':               'of_cabildo',
   'oficina/llamadas':              'llamadas',
+  'oficina/campanas':              'campanas',
   'oficina/onboarding':            'of_onboarding',
   'oficina/encuestas':             'of_encuestas',
   'oficina/helpdesk':              'of_helpdesk',
-  'oficina/integraciones':         'integraciones',
+  // Integraciones se movió a Organización (?tab=negocio#integraciones) el 2026-08-07;
+  // acceso lo gate el módulo 'negocio' ahora.
 };
 
 // Given a pathname like "/portal/{token}/oficina/bandeja", return the module ID
