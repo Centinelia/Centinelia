@@ -74,80 +74,94 @@ export function BrandTemplateSection({ agentId, availableTipos }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-        Sube una plantilla .docx para cada tipo de documento. Cuando tu empleado genere uno, usara tu formato en lugar del diseno por defecto. Tamano maximo: 5 MB. Usa marcadores como {'{title}'}, {'{sections}'} y {'{closing}'} dentro del documento.
+      <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+        Sube una plantilla .docx para cada tipo de documento. Cuando tu empleado genere uno, usará tu formato en lugar del diseño por defecto. Tamaño máximo: 5 MB. Usa marcadores como {'{title}'}, {'{sections}'} y {'{closing}'} dentro del documento.
       </p>
 
-      {availableTipos.map(tipo => {
-        const existing = templates.find(t => t.tipo === tipo);
-        const isLoading = busy === tipo;
-        return (
-          <div
-            key={tipo}
-            className="flex items-center justify-between gap-4 p-3 rounded-lg"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--c-text-3)' }} />
-              <div className="min-w-0">
-                <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
-                  {TIPO_LABEL[tipo]}
-                </p>
-                {existing ? (
-                  <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>
-                    {existing.filename}
+      <div className="flex flex-col rounded-xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+        {availableTipos.map((tipo, idx) => {
+          const existing = templates.find(t => t.tipo === tipo);
+          const isLoading = busy === tipo;
+          const hasFile = !!existing;
+          return (
+            <div
+              key={tipo}
+              className="flex items-center justify-between gap-4 px-4 py-3"
+              style={{ borderTop: idx === 0 ? 'none' : '1px solid #F0EDF9' }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: hasFile ? 'rgba(108,59,255,0.08)' : '#FAFAFB',
+                    border: `1px solid ${hasFile ? 'rgba(108,59,255,0.18)' : '#E8E3F5'}`,
+                  }}
+                >
+                  <FileText className="w-4 h-4" style={{ color: hasFile ? '#6C3BFF' : '#9B8FB5' }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+                    {TIPO_LABEL[tipo]}
                   </p>
-                ) : (
-                  <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                    Usando formato por defecto
-                  </p>
+                  {existing ? (
+                    <p className="text-[11px] truncate" style={{ color: '#6B6480' }}>
+                      {existing.filename}
+                    </p>
+                  ) : (
+                    <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                      Usando formato por defecto
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {existing && (
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => void remove(tipo)}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.08)] disabled:opacity-50"
+                    title="Quitar plantilla"
+                  >
+                    <Trash2 className="w-4 h-4" style={{ color: '#ef4444' }} />
+                  </button>
                 )}
+
+                <label
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
+                  style={{
+                    background: existing ? '#FAFAFB' : '#6C3BFF',
+                    color:      existing ? '#6B6480' : '#fff',
+                    border:     existing ? '1px solid #E8E3F5' : 'none',
+                    boxShadow:  existing ? 'none' : '0 1px 2px rgba(108,59,255,0.24)',
+                    opacity:    isLoading ? 0.5 : 1,
+                    pointerEvents: isLoading ? 'none' : undefined,
+                  }}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {isLoading ? 'Subiendo' : existing ? 'Reemplazar' : 'Subir .docx'}
+                  <input
+                    type="file"
+                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    disabled={isLoading}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) void upload(tipo, f);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {existing && (
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => void remove(tipo)}
-                  className="p-1.5 rounded transition-opacity hover:opacity-70 disabled:opacity-50"
-                  title="Quitar plantilla"
-                >
-                  <Trash2 className="w-4 h-4" style={{ color: '#ef4444' }} />
-                </button>
-              )}
-
-              <label
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-opacity hover:opacity-80"
-                style={{
-                  background: '#6C3BFF',
-                  color:      '#fff',
-                  opacity:    isLoading ? 0.5 : 1,
-                  pointerEvents: isLoading ? 'none' : undefined,
-                }}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {isLoading ? 'Subiendo...' : existing ? 'Reemplazar' : 'Subir .docx'}
-                <input
-                  type="file"
-                  accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  className="hidden"
-                  disabled={isLoading}
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (f) void upload(tipo, f);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
       {error && (
-        <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+        <p className="text-[12px] rounded-lg px-3 py-2"
+          style={{ color: '#dc2626', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
           {error}
         </p>
       )}
