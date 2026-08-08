@@ -18,7 +18,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       style={{
         position: 'relative', flexShrink: 0,
         width: 44, height: 24, borderRadius: 12,
-        background: on ? '#6C3BFF' : 'var(--c-border)',
+        background: on ? '#6C3BFF' : '#E8E3F5',
         border: 'none', cursor: 'pointer', transition: 'background 0.2s',
       }}
     >
@@ -84,7 +84,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
   const canSave = (!minEnabled && !opsEnabled) || hasCard;
 
   if (loading) return (
-    <div className="h-10 rounded-lg animate-pulse" style={{ background: 'var(--c-border)' }} />
+    <div className="h-10 rounded-lg animate-pulse" style={{ background: '#E8E3F5' }} />
   );
 
   return (
@@ -94,8 +94,8 @@ export default function AutoRefillSection({ token }: { token: string }) {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Minutos</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Minutos</p>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               Recarga cuando el saldo de minutos baje del umbral
             </p>
           </div>
@@ -105,7 +105,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
         {minEnabled && (
           <>
             <div>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#6B6480' }}>
                 Recargar cuando queden menos de
               </p>
               <div className="grid grid-cols-4 gap-1.5">
@@ -113,9 +113,9 @@ export default function AutoRefillSection({ token }: { token: string }) {
                   <button key={t} onClick={() => setMinThreshold(t)}
                     className="py-2 rounded-lg text-xs font-semibold transition-all"
                     style={{
-                      background: minThreshold === t ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-                      border:     `1px solid ${minThreshold === t ? 'rgba(108,59,255,0.4)' : 'var(--c-border)'}`,
-                      color:      minThreshold === t ? '#6C3BFF' : 'var(--c-text-2)',
+                      background: minThreshold === t ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
+                      border:     `1px solid ${minThreshold === t ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                      color:      minThreshold === t ? '#6C3BFF' : '#1A0A3B',
                       cursor:     'pointer',
                     }}
                   >{t} min</button>
@@ -123,7 +123,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#6B6480' }}>
                 Agregar automáticamente
               </p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -131,9 +131,9 @@ export default function AutoRefillSection({ token }: { token: string }) {
                   <button key={o.minutes} onClick={() => setMinMinutes(o.minutes)}
                     className="flex flex-col items-center py-2.5 rounded-lg transition-all"
                     style={{
-                      background: minMinutes === o.minutes ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-                      border:     `1px solid ${minMinutes === o.minutes ? 'rgba(108,59,255,0.4)' : 'var(--c-border)'}`,
-                      color:      minMinutes === o.minutes ? '#6C3BFF' : 'var(--c-text-2)',
+                      background: minMinutes === o.minutes ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
+                      border:     `1px solid ${minMinutes === o.minutes ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                      color:      minMinutes === o.minutes ? '#6C3BFF' : '#1A0A3B',
                       cursor:     'pointer',
                     }}
                   >
@@ -146,7 +146,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 const base = MIN_REFILL_OPTIONS.find(o => o.minutes === minMinutes)?.price ?? 0;
                 const total = withIva(base);
                 return (
-                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-3" style={{ color: '#6B6480' }}>
                     Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
                   </p>
                 );
@@ -156,14 +156,14 @@ export default function AutoRefillSection({ token }: { token: string }) {
         )}
       </div>
 
-      <div style={{ borderTop: '1px solid var(--c-border)' }} />
+      <div style={{ borderTop: '1px solid #E8E3F5' }} />
 
       {/* ── Tareas ── */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Tareas</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Tareas</p>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               Recarga cuando el saldo de tareas baje del umbral
             </p>
           </div>
@@ -173,7 +173,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
         {opsEnabled && (
           <>
             <div>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#6B6480' }}>
                 Recargar cuando queden menos de
               </p>
               <div className="grid grid-cols-4 gap-1.5">
@@ -181,9 +181,9 @@ export default function AutoRefillSection({ token }: { token: string }) {
                   <button key={t} onClick={() => setOpsThreshold(t)}
                     className="py-2 rounded-lg text-xs font-semibold transition-all"
                     style={{
-                      background: opsThreshold === t ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-                      border:     `1px solid ${opsThreshold === t ? 'rgba(108,59,255,0.4)' : 'var(--c-border)'}`,
-                      color:      opsThreshold === t ? '#6C3BFF' : 'var(--c-text-2)',
+                      background: opsThreshold === t ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
+                      border:     `1px solid ${opsThreshold === t ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                      color:      opsThreshold === t ? '#6C3BFF' : '#1A0A3B',
                       cursor:     'pointer',
                     }}
                   >{t} tareas</button>
@@ -191,7 +191,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#6B6480' }}>
                 Agregar automáticamente
               </p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -199,9 +199,9 @@ export default function AutoRefillSection({ token }: { token: string }) {
                   <button key={o.ops} onClick={() => setOpsAmount(o.ops)}
                     className="flex flex-col items-center py-2.5 rounded-lg transition-all"
                     style={{
-                      background: opsAmount === o.ops ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-                      border:     `1px solid ${opsAmount === o.ops ? 'rgba(108,59,255,0.4)' : 'var(--c-border)'}`,
-                      color:      opsAmount === o.ops ? '#6C3BFF' : 'var(--c-text-2)',
+                      background: opsAmount === o.ops ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
+                      border:     `1px solid ${opsAmount === o.ops ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
+                      color:      opsAmount === o.ops ? '#6C3BFF' : '#1A0A3B',
                       cursor:     'pointer',
                     }}
                   >
@@ -214,7 +214,7 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 const base = OPS_REFILL_OPTIONS.find(o => o.ops === opsAmount)?.price ?? 0;
                 const total = withIva(base);
                 return (
-                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-3" style={{ color: '#6B6480' }}>
                     Total con IVA: <span style={{ color: '#6C3BFF', fontWeight: 600 }}>${total.toLocaleString('es-MX')} MXN</span>
                   </p>
                 );

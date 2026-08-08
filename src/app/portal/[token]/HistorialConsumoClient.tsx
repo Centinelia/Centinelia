@@ -116,7 +116,7 @@ export default function HistorialConsumoClient({
       {/* Toggle Minutos / Tareas — centrado */}
       <div className="flex justify-center mb-4">
         <div className="inline-flex items-center gap-1 p-1 rounded-lg"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)' }}>
+          style={{ background: '#FAFAFB', border: '1px solid #F0EDF9' }}>
           {(['minutos', 'tareas'] as const).map(t => {
             const activeTab = tab === t;
             return (
@@ -126,7 +126,7 @@ export default function HistorialConsumoClient({
                 className="px-5 py-1.5 rounded-md text-xs font-semibold transition-all"
                 style={{
                   background: activeTab ? '#6C3BFF' : 'transparent',
-                  color:      activeTab ? '#fff'    : 'var(--c-text-3)',
+                  color:      activeTab ? '#fff'    : '#6B6480',
                   boxShadow:  activeTab ? '0 2px 8px rgba(108,59,255,0.25)' : 'none',
                 }}>
                 {t === 'minutos' ? 'Minutos' : 'Tareas'}
@@ -138,38 +138,38 @@ export default function HistorialConsumoClient({
 
       {/* Date filter — sticky */}
       <div className="mb-3 pb-3 sticky top-0 z-10"
-        style={{ borderBottom: '1px solid var(--c-divider)', background: 'var(--c-surface)' }}>
+        style={{ borderBottom: '1px solid #F0EDF9', background: '#ffffff' }}>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Desde</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Desde</span>
             <input
               type="date"
               value={fromDate}
               onChange={e => setFromDate(e.target.value)}
               className="text-xs px-2 py-1.5 rounded-md w-full"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
+              style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Hasta</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Hasta</span>
             <input
               type="date"
               value={toDate}
               onChange={e => setToDate(e.target.value)}
               className="text-xs px-2 py-1.5 rounded-md w-full"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
+              style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
             />
           </div>
         </div>
         {hasFilters && (
           <div className="flex items-center justify-between">
-            <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-4)' }}>
+            <span className="text-xs tabular-nums" style={{ color: '#9B8FB5' }}>
               {active.length} de {total} {tab === 'minutos' ? 'movimientos' : 'tareas'}
             </span>
             <button
               onClick={clearFilters}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-              style={{ color: 'var(--c-text-3)' }}
+              style={{ color: '#6B6480' }}
             >
               <X size={11} /> Limpiar
             </button>
@@ -179,7 +179,7 @@ export default function HistorialConsumoClient({
 
       {/* Content */}
       {active.length === 0 ? (
-        <p className="text-xs text-center py-4" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs text-center py-4" style={{ color: '#6B6480' }}>
           {hasFilters ? `Sin ${tab === 'minutos' ? 'movimientos' : 'tareas'} en este rango` : `Sin ${tab === 'minutos' ? 'movimientos' : 'tareas'} registrados`}
         </p>
       ) : tab === 'minutos' ? (
@@ -199,19 +199,19 @@ function MinutesList({ entries, callerNames }: { entries: MinutesEntry[]; caller
     <>
       {Array.from(groups.entries()).map(([month, rows]) => (
         <div key={month} className="flex flex-col">
-          <div className="text-xs font-semibold py-2" style={{ color: 'var(--c-text-4)' }}>{month}</div>
+          <div className="text-xs font-semibold py-2" style={{ color: '#9B8FB5' }}>{month}</div>
           {rows.map((e, i) => {
             const meta = MIN_SOURCE_META[e.source] ?? MIN_SOURCE_META.ajuste;
             const isCredit = e.amount > 0;
             return (
               <div key={e.id + i} className="flex items-center gap-2.5 py-2"
-                style={{ borderTop: '1px solid var(--c-divider)' }}>
+                style={{ borderTop: '1px solid #F0EDF9' }}>
                 <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
                   style={{ background: `${meta.color}18`, color: meta.color }}>
                   {renderIcon(meta.iconKey)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs leading-snug truncate" style={{ color: 'var(--c-text)' }}>
+                  <p className="text-xs leading-snug truncate" style={{ color: '#1A0A3B' }}>
                     {e.description}
                   </p>
                   {e.source === 'llamada' && (() => {
@@ -219,16 +219,16 @@ function MinutesList({ entries, callerNames }: { entries: MinutesEntry[]; caller
                     const name = callerNames[raw.replace(/\D/g, '')];
                     return name ? <p className="text-xs leading-none mt-0.5" style={{ color: '#9B6DFF' }}>{name}</p> : null;
                   })()}
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                  <p className="text-xs mt-0.5" style={{ color: '#9B8FB5' }}>
                     {fmtDate(e.date)} · {fmtTime(e.date)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
                   <span className="text-xs font-bold tabular-nums"
-                    style={{ color: isCredit ? '#22c55e' : 'var(--c-text-2)' }}>
+                    style={{ color: isCredit ? '#22c55e' : '#1A0A3B' }}>
                     {isCredit ? '+' : ''}{e.amount} min
                   </span>
-                  <span className="text-xs tabular-nums mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                  <span className="text-xs tabular-nums mt-0.5" style={{ color: '#9B8FB5' }}>
                     saldo {e.balance}
                   </span>
                 </div>
@@ -247,13 +247,13 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
     <>
       {Array.from(groups.entries()).map(([month, rows]) => (
         <div key={month} className="flex flex-col">
-          <div className="text-xs font-semibold py-2" style={{ color: 'var(--c-text-4)' }}>{month}</div>
+          <div className="text-xs font-semibold py-2" style={{ color: '#9B8FB5' }}>{month}</div>
           {rows.map((e, i) => {
             const meta = TRIGGER_META[e.triggerType ?? 'manual'] ?? TRIGGER_META.manual;
             const failed  = e.status === 'failed' || e.goalMet === false;
             return (
               <div key={e.id + i} className="flex items-center gap-2.5 py-2"
-                style={{ borderTop: '1px solid var(--c-divider)' }}>
+                style={{ borderTop: '1px solid #F0EDF9' }}>
                 <div className="flex-shrink-0 flex items-center justify-center rounded-full w-6 h-6"
                   style={{ background: `${meta.color}18`, color: meta.color }}>
                   {renderIcon(meta.iconKey)}
@@ -261,7 +261,7 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                 <div className="flex-1 min-w-0">
                   <p
                     className="text-xs font-medium leading-snug truncate"
-                    style={{ color: 'var(--c-text)', cursor: e.description ? 'help' : 'default' }}
+                    style={{ color: '#1A0A3B', cursor: e.description ? 'help' : 'default' }}
                     title={e.description ?? e.title ?? ''}
                   >
                     {e.title || meta.label}
@@ -276,7 +276,7 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                         {e.agentName}
                       </span>
                     )}
-                    <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                    <span className="text-[11px]" style={{ color: '#9B8FB5' }}>
                       {fmtDate(e.date)} · {fmtTime(e.date)}
                     </span>
                     {failed && (
@@ -288,10 +288,10 @@ function TasksList({ entries }: { entries: TaskEntry[] }) {
                   </div>
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
-                  <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--c-text-2)' }}>
+                  <span className="text-xs font-bold tabular-nums" style={{ color: '#1A0A3B' }}>
                     −{e.opsUsed}
                   </span>
-                  <span className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-4)' }}>
+                  <span className="text-[10px] mt-0.5" style={{ color: '#9B8FB5' }}>
                     {e.opsUsed === 1 ? 'tarea' : 'tareas'}
                   </span>
                 </div>

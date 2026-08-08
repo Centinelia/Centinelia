@@ -183,7 +183,7 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
 
   if (loading) return (
     <div className="flex flex-col gap-3">
-      {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: 'var(--c-surface-2)' }} />)}
+      {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: '#FAFAFB' }} />)}
     </div>
   );
 
@@ -204,15 +204,15 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{calLabel}</p>
+                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{calLabel}</p>
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>Activo</span>
               </div>
-              <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-3)' }}>{emailConn.email}</p>
+              <p className="text-xs mt-0.5 truncate" style={{ color: '#6B6480' }}>{emailConn.email}</p>
             </div>
           </div>
           <div className="px-4 pb-3 pt-0">
-            <p className="text-xs p-3 rounded-lg" style={{ background: `${calColor}08`, color: 'var(--c-text-3)', border: `1px solid ${calColor}20` }}>
+            <p className="text-xs p-3 rounded-lg" style={{ background: `${calColor}08`, color: '#6B6480', border: `1px solid ${calColor}20` }}>
               Tu empleado puede consultar disponibilidad y crear eventos directamente en {calLabel}, sin necesidad de compartir links de reserva.
             </p>
           </div>
@@ -221,7 +221,7 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
 
       {/* ── Link-sharing options ────────────────────────────────────────── */}
       {emailConn && (
-        <p className="text-xs px-1" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-xs px-1" style={{ color: '#9B8FB5' }}>
           O activa un link de reserva externo como alternativa o fallback:
         </p>
       )}
@@ -233,8 +233,8 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
 
         return (
           <div key={intg.id} className="rounded-xl overflow-hidden" style={{
-            border:     `1px solid ${isActive ? `${intg.accentColor}55` : 'var(--c-border)'}`,
-            background: isActive ? `${intg.accentColor}08` : 'var(--c-surface-2)',
+            border:     `1px solid ${isActive ? `${intg.accentColor}55` : '#E8E3F5'}`,
+            background: isActive ? `${intg.accentColor}08` : '#FAFAFB',
             opacity:    !allowed ? 0.65 : 1,
           }}>
             <button
@@ -245,8 +245,8 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
             >
               {intg.icon}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{intg.label}</p>
-                <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{intg.description}</p>
+                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{intg.label}</p>
+                <p className="text-xs" style={{ color: '#6B6480' }}>{intg.description}</p>
               </div>
 
               {!allowed ? (
@@ -261,26 +261,26 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
 
               {allowed && (
                 isExpanded
-                  ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
-                  : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
+                  ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} />
+                  : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />
               )}
             </button>
 
             {allowed && isExpanded && (
-              <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="px-4 pb-4" style={{ borderTop: '1px solid #E8E3F5' }}>
                 <div className="flex flex-col gap-3 mt-3">
 
                   {intg.id === 'cal_com' && (
                     <>
                       <div>
-                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>API Key de Cal.com</label>
+                        <label className="text-xs font-medium mb-1 block" style={{ color: '#1A0A3B' }}>API Key de Cal.com</label>
                         <input
                           type="password"
                           value={state.cal_api_key}
                           onChange={e => set('cal_api_key', e.target.value)}
                           placeholder={state.cal_api_configured ? '••••••••• (guardada, pega nueva para cambiar)' : 'cal_live_...'}
                           className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                         />
                         <a href="https://app.cal.com/settings/developer/api-keys" target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs mt-1 hover:opacity-80" style={{ color: '#6C3BFF' }}>
@@ -289,16 +289,16 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
                       </div>
 
                       <div>
-                        <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>ID del tipo de evento</label>
+                        <label className="text-xs font-medium mb-1 block" style={{ color: '#1A0A3B' }}>ID del tipo de evento</label>
                         <input
                           type="text"
                           value={state.calendar_event_type_id}
                           onChange={e => set('calendar_event_type_id', e.target.value)}
                           placeholder="Ej: 123456"
                           className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                          style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                         />
-                        <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                        <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
                           En cal.com/event-types → editar → revisa la URL del navegador
                         </p>
                       </div>
@@ -306,19 +306,19 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
                   )}
 
                   {(intg.id === 'google' || intg.id === 'outlook_cal') && (
-                    <p className="text-xs p-3 rounded-lg" style={{ background: `${intg.accentColor}10`, color: 'var(--c-text-3)', border: `1px solid ${intg.accentColor}25` }}>
+                    <p className="text-xs p-3 rounded-lg" style={{ background: `${intg.accentColor}10`, color: '#6B6480', border: `1px solid ${intg.accentColor}25` }}>
                       Tu empleado captura nombre, servicio y horario durante la llamada. Al terminar, comparte tu link de reserva por correo para que el cliente confirme.
                     </p>
                   )}
 
                   {intg.id === 'calendly' && (
-                    <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(0,107,255,0.08)', color: 'var(--c-text-3)', border: '1px solid rgba(0,107,255,0.15)' }}>
+                    <p className="text-xs p-3 rounded-lg" style={{ background: 'rgba(0,107,255,0.08)', color: '#6B6480', border: '1px solid rgba(0,107,255,0.15)' }}>
                       Tu empleado captura nombre y servicio durante la llamada. Al terminar, comparte tu link de Calendly por correo para que el cliente seleccione su horario. Para agendamiento directo sin link, usa Cal.com.
                     </p>
                   )}
 
                   <div>
-                    <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--c-text-2)' }}>
+                    <label className="text-xs font-medium mb-1 block" style={{ color: '#1A0A3B' }}>
                       {intg.id === 'cal_com'
                         ? 'Link de reserva (fallback por correo si falla la API)'
                         : intg.id === 'calendly'
@@ -339,7 +339,7 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
                           : 'https://calendar.google.com/calendar/appointments/...'
                       }
                       className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"
-                      style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                     />
                   </div>
 
@@ -350,7 +350,7 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
                       style={{
                         background: isActive ? 'rgba(34,197,94,0.12)' : `${intg.accentColor}15`,
                         border:     `1px solid ${isActive ? 'rgba(34,197,94,0.3)' : `${intg.accentColor}40`}`,
-                        color:      isActive ? '#22c55e' : intg.accentColor === '#000' ? 'var(--c-text)' : intg.accentColor,
+                        color:      isActive ? '#22c55e' : intg.accentColor === '#000' ? '#1A0A3B' : intg.accentColor,
                       }}
                     >
                       {isActive ? <><Check size={12} /> Seleccionado</> : `Usar ${intg.label}`}
@@ -359,7 +359,7 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
                       <button
                         onClick={() => selectType(null)}
                         className="px-3 py-2 rounded-lg text-xs"
-                        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}
+                        style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}
                       >
                         Desactivar
                       </button>
@@ -378,9 +378,9 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
         disabled={saving || !isDirty}
         className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
         style={{
-          background: saved  ? 'rgba(34,197,94,0.15)' : isDirty ? '#6C3BFF' : 'var(--c-surface-2)',
-          border:     saved  ? '1px solid rgba(34,197,94,0.3)' : isDirty ? 'none' : '1px solid var(--c-border)',
-          color:      saved  ? '#22c55e' : isDirty ? '#fff' : 'var(--c-text-3)',
+          background: saved  ? 'rgba(34,197,94,0.15)' : isDirty ? '#6C3BFF' : '#FAFAFB',
+          border:     saved  ? '1px solid rgba(34,197,94,0.3)' : isDirty ? 'none' : '1px solid #E8E3F5',
+          color:      saved  ? '#22c55e' : isDirty ? '#fff' : '#6B6480',
           opacity:    saving ? 0.6 : 1,
           cursor:     isDirty && !saving ? 'pointer' : 'default',
         }}
@@ -390,10 +390,10 @@ export default function IntegrationsSection({ token, plan, emailConn }: {
 
       {/* Contact CTA */}
       <div className="flex items-center justify-between px-4 py-3 rounded-xl"
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
         <div>
-          <p className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>¿No encuentras tu herramienta?</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Podemos conectar cualquier sistema, escríbenos</p>
+          <p className="text-xs font-medium" style={{ color: '#1A0A3B' }}>¿No encuentras tu herramienta?</p>
+          <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>Podemos conectar cualquier sistema, escríbenos</p>
         </div>
         {SUPPORT_WA && (
           <a href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent('¡Hola! Quiero conectar una herramienta a mi empleado digital, ¿pueden ayudarme?')}`}
