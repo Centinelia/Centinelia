@@ -1565,17 +1565,17 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Header — patrón consistente con /inicio, /agentes, /cuenta */}
               <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: '#9B8FB5' }}>
                   TU ORGANIZACIÓN
                 </p>
-                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Configuración del negocio</h1>
-                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Configuración del negocio</h1>
+                <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
                   Toda la información que tus empleados usan como contexto: perfil, identidad visual, manual y datos de contacto.
                 </p>
               </div>
 
               {(() => {
-                // Bloque destacado "Configuración pendiente" — patrón HOY del /inicio.
+                // Bloque destacado "Configuración pendiente" — patrón surface único con acento lila.
                 // Solo aparece si hay setup crítico sin completar.
                 const hasLogo        = !!(agent as any).logo_url;
                 const hasDescription = !!(orgSettings?.business_description ?? (agent as any).business_description)?.trim();
@@ -1589,36 +1589,40 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 ].filter(Boolean) as { label: string; anchor: string }[];
                 if (pending.length === 0) return null;
                 return (
-                  <div className="rounded-2xl overflow-hidden"
+                  <div
+                    className="flex flex-col rounded-2xl overflow-hidden"
                     style={{
-                      background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)',
-                      border:     '2px solid rgba(108,59,255,0.28)',
-                      boxShadow:  '0 4px 20px rgba(108,59,255,0.08)',
-                    }}>
-                    <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
-                        <AlertTriangle size={18} color="#fff" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
-                          Configuración pendiente
-                        </h2>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                          {pending.length} {pending.length === 1 ? 'ajuste' : 'ajustes'} para completar el perfil del negocio. Tus empleados trabajan mejor con contexto completo.
-                        </p>
+                      background: '#ffffff',
+                      border:     '1px solid #E8E3F5',
+                      boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: '#6C3BFF', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                          <AlertTriangle size={18} color="#fff" />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                            Configuración pendiente
+                          </h2>
+                          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                            {pending.length} {pending.length === 1 ? 'ajuste' : 'ajustes'} para completar el perfil del negocio.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="p-5 flex flex-col gap-2">
+                    <div className="px-5 pb-5 pt-4 flex flex-col gap-2" style={{ borderTop: '1px solid #F0EDF9' }}>
                       {pending.map((p, idx) => (
                         <a key={idx} href={`#${p.anchor}`}
                           className="flex items-center justify-between text-sm no-underline transition-opacity hover:opacity-80"
-                          style={{ color: 'var(--c-text)' }}>
+                          style={{ color: '#1A0A3B' }}>
                           <span>
                             <span style={{ color: '#6C3BFF', marginRight: 6 }}>●</span>
                             {p.label}
                           </span>
-                          <span className="text-xs whitespace-nowrap" style={{ color: '#9B6DFF' }}>Configurar →</span>
+                          <span className="text-xs whitespace-nowrap" style={{ color: '#6C3BFF' }}>Configurar →</span>
                         </a>
                       ))}
                     </div>
@@ -1695,13 +1699,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     <PageSection heading={<SectionHeader eyebrow="PRESENCIA" title="Sitio web y reseñas" as="h2" />}>
                       <Card padding="md">
                         <div className="flex items-center gap-1.5 mb-4">
-                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Sitio web</h2>
+                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Sitio web</h2>
                           <InfoTooltip text="Sincroniza tu sitio para que tu empleado tenga siempre la información actualizada de tu organización." />
                         </div>
                         <WebsiteSyncButton token={token} currentUrl={orgSettings?.business_website ?? (agent as any).business_website ?? null} />
-                        <div style={{ borderTop: '1px solid var(--c-border)', margin: '20px -20px 16px' }} />
+                        <div style={{ borderTop: '1px solid #E8E3F5', margin: '20px -20px 16px' }} />
                         <div className="flex items-center gap-1.5 mb-3">
-                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Reseñas</h2>
+                          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Reseñas</h2>
                           <InfoTooltip text="Tu empleado comparte este link con tus clientes al finalizar llamadas exitosas para que dejen una reseña." />
                         </div>
                         <ReviewLinkEditor token={token} initialValue={orgSettings?.google_review_url ?? (agent as any).google_review_url ?? ''} />
