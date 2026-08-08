@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Mail, LogIn } from 'lucide-react';
 import InfoTooltip  from '@/components/InfoTooltip';
 import LogoUploader from './LogoUploader';
 
@@ -12,9 +12,17 @@ interface OrgData {
   created_at: string;
 }
 
-interface Props { token: string; portalEmail: string; logoUrl: string | null; initialDescription?: string }
+interface Props {
+  token:                 string;
+  portalEmail:           string;
+  logoUrl:               string | null;
+  initialDescription?:   string;
+  initialBusinessEmail?: string;
+}
 
-export default function OrgCard({ token, portalEmail, logoUrl, initialDescription = '' }: Props) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function OrgCard({ token, portalEmail, logoUrl, initialDescription = '', initialBusinessEmail = '' }: Props) {
   const [org,     setOrg]     = useState<OrgData | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState('');
@@ -24,6 +32,14 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
   const [desc,      setDesc]      = useState(initialDescription);
   const [descSaved, setDescSaved] = useState(false);
   const descTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Business email (editable, separado del portal_email de login)
+  const [bizEmail,       setBizEmail]       = useState(initialBusinessEmail);
+  const [editingEmail,   setEditingEmail]   = useState(false);
+  const [emailDraft,     setEmailDraft]     = useState('');
+  const [savingEmail,    setSavingEmail]    = useState(false);
+  const [emailError,     setEmailError]     = useState<string | null>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   const saveDesc = async (value: string) => {
     await fetch(`/api/portal/${token}/settings`, {
@@ -72,6 +88,37 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
   }
 
   function cancel() { setEditing(false); setDraft(''); }
+
+  function startEditEmail() {
+    setEmailDraft(bizEmail);
+    setEmailError(null);
+    setEditingEmail(true);
+    setTimeout(() => emailInputRef.current?.focus(), 50);
+  }
+  function cancelEditEmail() { setEditingEmail(false); setEmailDraft(''); setEmailError(null); }
+  async function saveEmail() {
+    const value = emailDraft.trim().toLowerCase();
+    if (value && !EMAIL_RE.test(value)) {
+      setEmailError('Correo no válido');
+      return;
+    }
+    setSavingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await fetch(`/api/portal/${token}/settings`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ business_email: value || null }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setBizEmail(value);
+      setEditingEmail(false);
+    } catch {
+      setEmailError('No se pudo guardar. Intenta de nuevo.');
+    } finally {
+      setSavingEmail(false);
+    }
+  }
 
   const planLabel: Record<string, string> = {
     starter: 'Starter', crecimiento: 'Crecimiento', pro: 'Pro', agencia: 'Agencia',
@@ -130,13 +177,92 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
             </div>
           )}
 
-          <p className="text-[13px] truncate" style={{ color: '#6B6480' }}>{portalEmail}</p>
-
           {memberSince && (
-            <span className="text-[11px] mt-1 inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full"
+            <span className="text-[11px] inline-flex items-center gap-1 self-start px-2 py-0.5 rounded-full"
               style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
               Miembro desde {memberSince}
             </span>
+          )}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div style={{ borderTop: '1px solid #F0EDF9' }} />
+
+      {/* Correos: portal (readonly) + negocio (editable) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Correo del portal (login) — readonly */}
+        <div className="rounded-xl px-3.5 py-3"
+          style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <LogIn size={11} style={{ color: '#9B8FB5' }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+              Correo del portal
+            </span>
+            <InfoTooltip text="Es el correo con el que inicias sesión. No se puede cambiar aquí." />
+          </div>
+          <p className="text-[13px] truncate font-medium" style={{ color: '#1A0A3B' }}>{portalEmail}</p>
+        </div>
+
+        {/* Correo del negocio (operativo) — editable */}
+        <div className="rounded-xl px-3.5 py-3"
+          style={{
+            background: bizEmail ? '#FAFAFB' : 'rgba(108,59,255,0.03)',
+            border: `1px solid ${bizEmail ? '#E8E3F5' : 'rgba(108,59,255,0.2)'}`,
+          }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Mail size={11} style={{ color: bizEmail ? '#6C3BFF' : '#9B8FB5' }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+              Correo del negocio
+            </span>
+            <InfoTooltip text="Correo operativo del negocio (contacto, firmas, footer de documentos). Si lo dejas vacío, se usa el correo del portal como fallback." />
+          </div>
+          {editingEmail ? (
+            <div className="flex items-center gap-2">
+              <input
+                ref={emailInputRef}
+                type="email"
+                value={emailDraft}
+                onChange={e => setEmailDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEmail(); if (e.key === 'Escape') cancelEditEmail(); }}
+                placeholder="operaciones@tuempresa.com"
+                className="flex-1 rounded-lg px-2.5 py-1.5 text-[13px] font-medium"
+                style={{ background: '#ffffff', border: `1px solid ${emailError ? '#EF4444' : '#6C3BFF'}`, color: '#1A0A3B', outline: 'none' }}
+              />
+              <button onClick={saveEmail} disabled={savingEmail}
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-opacity hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                <Check size={12} strokeWidth={2.5} />
+              </button>
+              <button onClick={cancelEditEmail}
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[#F0EDF9]"
+                style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              {bizEmail ? (
+                <p className="text-[13px] truncate font-medium" style={{ color: '#1A0A3B' }}>{bizEmail}</p>
+              ) : (
+                <button onClick={startEditEmail}
+                  className="text-[12px] font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: 'none', border: 'none', color: '#6C3BFF', cursor: 'pointer', padding: 0 }}>
+                  + Agregar correo del negocio
+                </button>
+              )}
+              {bizEmail && (
+                <button onClick={startEditEmail}
+                  aria-label="Editar correo del negocio"
+                  className="flex items-center justify-center w-6 h-6 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[rgba(108,59,255,0.08)] ml-auto"
+                  style={{ color: '#6C3BFF', flexShrink: 0 }}>
+                  <Pencil size={11} />
+                </button>
+              )}
+            </div>
+          )}
+          {emailError && (
+            <p className="text-[11px] mt-1" style={{ color: '#EF4444' }}>{emailError}</p>
           )}
         </div>
       </div>

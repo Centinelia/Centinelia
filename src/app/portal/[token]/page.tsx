@@ -141,7 +141,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   const { data: orgSettings } = agent.portal_email
     ? await supabase
         .from('organizations')
-        .select('knowledge_base, owner_profile, business_description, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
+        .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
         .eq('portal_email', agent.portal_email)
         .single()
     : { data: null };
@@ -891,7 +891,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="flex-1 min-w-0 flex flex-col gap-5">
                 <div id="organizacion">
                   {agent.portal_email && (
-                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                    <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} initialBusinessEmail={(orgSettings as any)?.business_email ?? ''} />
                   )}
                 </div>
 
@@ -1646,7 +1646,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                       <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                         {agent.portal_email && (
-                          <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} />
+                          <OrgCard token={token} portalEmail={agent.portal_email} logoUrl={(agent as any).logo_url ?? null} initialDescription={orgSettings?.business_description ?? (agent as any).business_description ?? ''} initialBusinessEmail={(orgSettings as any)?.business_email ?? ''} />
                         )}
                       </div>
                     </div>
