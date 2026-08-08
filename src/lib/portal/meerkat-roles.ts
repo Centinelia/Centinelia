@@ -344,7 +344,7 @@ Expresiones naturales: "Déjame entender el contexto primero.", "Veo un patrón 
     id:          'nash',
     nombre:      'Nash',
     rol:         'Operaciones internas',
-    descripcion: 'Meerkat interno de Centinelia. Duplica al owner en soporte y admin.',
+    descripcion: 'Centinelia interno. Duplica al owner en soporte y admin.',
     imagen:      '/meerkats/nash.png',
     color:       '#0891B2',
     genero:      'M',
