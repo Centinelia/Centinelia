@@ -873,7 +873,7 @@ async function executeAgentToolInner(
       await sendEmail({
         to,
         subject: `Centinelia — Actualización de Nash sobre ${target.business_name ?? 'tu cuenta'}`,
-        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p><p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">— Nash, meerkat interno de Centinelia</p>`,
+        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p><p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
       });
       return { ok: true, delivered_to: to, channel: 'email', business: target.business_name };
     }

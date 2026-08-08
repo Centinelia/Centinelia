@@ -165,7 +165,7 @@ export default function BrandKitEditor({
             value={website}
             onChange={e => setWebsite(e.target.value)}
             placeholder="https://tuempresa.mx"
-            className="w-full text-[13px] rounded-lg px-3 py-2 outline-none"
+            className="w-full text-[14px] rounded-lg px-3.5 py-2.5 outline-none transition-colors focus:border-[#6C3BFF]"
             style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
@@ -178,7 +178,7 @@ export default function BrandKitEditor({
             value={phone}
             onChange={e => setPhone(e.target.value)}
             placeholder="81 1234 5678"
-            className="w-full text-[13px] rounded-lg px-3 py-2 outline-none"
+            className="w-full text-[14px] rounded-lg px-3.5 py-2.5 outline-none transition-colors focus:border-[#6C3BFF]"
             style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
@@ -191,7 +191,7 @@ export default function BrandKitEditor({
             value={address}
             onChange={e => setAddress(e.target.value)}
             placeholder="Av. Principal 123, Ciudad"
-            className="w-full text-[13px] rounded-lg px-3 py-2 outline-none"
+            className="w-full text-[14px] rounded-lg px-3.5 py-2.5 outline-none transition-colors focus:border-[#6C3BFF]"
             style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
           />
         </div>
@@ -223,19 +223,25 @@ export default function BrandKitEditor({
         footer={footer}
       />
 
-      {/* ── Save ── */}
+      {/* ── Save — usa el color de marca actual como accent ── */}
       <div className="flex items-center gap-3">
         <button
           onClick={save}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-opacity disabled:opacity-50 hover:opacity-90"
-          style={{ background: color, color: '#fff', boxShadow: `0 1px 2px ${color}3d` }}>
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-[14px] font-semibold transition-opacity disabled:opacity-50 hover:opacity-90"
+          style={{
+            background: saved ? '#22c55e' : color,
+            color: '#fff',
+            boxShadow: saved
+              ? '0 4px 12px rgba(34,197,94,0.24)'
+              : `0 4px 12px ${color}40`,
+          }}>
           {saving
             ? <Loader2 size={14} className="animate-spin" />
             : saved
-            ? <Check size={14} />
+            ? <Check size={14} strokeWidth={2.5} />
             : null}
-          {saving ? 'Guardando' : saved ? 'Guardado' : 'Guardar branding'}
+          {saving ? 'Guardando' : saved ? 'Branding guardado' : 'Guardar branding'}
         </button>
       </div>
 
