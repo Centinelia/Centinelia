@@ -56,32 +56,43 @@ function ModuleSelector({
   const someInSet = (ids: string[]) => ids.some(id => selected.includes(id));
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* General groups */}
+    <div className="flex flex-col gap-3">
+      {/* General groups — surface cards */}
       {(['Portal', 'Oficina'] as const).map(group => {
         const mods = generalModules(group);
         const ids  = mods.map(m => m.id);
         const all  = allInSet(ids);
         const some = someInSet(ids) && !all;
+        const selCount = ids.filter(id => selected.includes(id)).length;
         return (
-          <div key={group}>
+          <div key={group} className="rounded-xl overflow-hidden"
+            style={{ background: '#ffffff', border: '1px solid rgba(108,59,255,0.15)' }}>
             <button
               type="button"
               onClick={() => toggleAll(ids)}
-              className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
-              style={{ color: '#6B6480', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              className="w-full flex items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-[rgba(108,59,255,0.03)]"
+              style={{ background: some || all ? 'rgba(108,59,255,0.04)' : 'transparent', border: 'none', cursor: 'pointer' }}
             >
               <Checkbox all={all} some={some} />
-              {group === 'Oficina' ? 'Oficina (general)' : group}
+              <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#1A0A3B' }}>
+                {group === 'Oficina' ? 'Oficina (general)' : group}
+              </span>
+              <span className="ml-auto text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
+                style={{
+                  background: selCount > 0 ? 'rgba(108,59,255,0.1)' : '#FAFAFB',
+                  color:      selCount > 0 ? '#6C3BFF' : '#9B8FB5',
+                }}>
+                {selCount}/{ids.length}
+              </span>
             </button>
-            <div className="grid grid-cols-1 gap-1.5 pl-2">
+            <div className="p-2 grid grid-cols-1 gap-1" style={{ borderTop: '1px solid #F0EDF9' }}>
               {mods.map(m => <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />)}
             </div>
           </div>
         );
       })}
 
-      {/* Industry groups */}
+      {/* Industry groups — collapsibles */}
       {GIRO_GROUPS.map(giroGroup => {
         const mods     = PORTAL_MODULES.filter(m => m.giros.includes(giroGroup.id));
         if (mods.length === 0) return null;
@@ -90,13 +101,21 @@ function ModuleSelector({
         const some     = someInSet(ids) && !all;
         const isOpen   = !!openGiros[giroGroup.id];
         const isActive = giroGroup.id === accountGiro;
+        const selCount = ids.filter(id => selected.includes(id)).length;
 
         return (
-          <div key={giroGroup.id} className="rounded-xl"
-            style={{ border: isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid #E8E3F5', background: isActive ? 'rgba(108,59,255,0.04)' : '#FAFAFB' }}>
+          <div key={giroGroup.id} className="rounded-xl overflow-hidden"
+            style={{
+              background: '#ffffff',
+              border: isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid rgba(108,59,255,0.15)',
+              boxShadow: isActive ? '0 1px 2px rgba(108,59,255,0.06)' : 'none',
+            }}>
 
-            <div className="flex items-center gap-2 px-3 py-2.5">
-              <button type="button" onClick={() => toggleAll(ids)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+            <div className="flex items-center gap-2 px-3 py-2.5"
+              style={{ background: isActive ? 'rgba(108,59,255,0.04)' : (some || all ? 'rgba(108,59,255,0.04)' : 'transparent') }}>
+              <button type="button" onClick={() => toggleAll(ids)}
+                className="p-1 rounded transition-colors hover:bg-[rgba(108,59,255,0.08)]"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
                 <Checkbox all={all} some={some} />
               </button>
               <button
@@ -105,24 +124,31 @@ function ModuleSelector({
                 className="flex-1 flex items-center gap-2 text-left"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isActive ? '#9B6DFF' : '#6B6480' }}>
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: isActive ? '#6C3BFF' : '#1A0A3B' }}>
                   {giroGroup.label}
                 </span>
                 {isActive && (
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
-                    style={{ background: 'rgba(108,59,255,0.15)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.3)' }}>
+                    style={{ background: 'rgba(108,59,255,0.15)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.3)' }}>
                     Tu sector
                   </span>
                 )}
-                <span className="ml-auto" style={{ color: '#9B8FB5' }}>
-                  {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                <span className="ml-auto flex items-center gap-1.5">
+                  {selCount > 0 && (
+                    <span className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>
+                      {selCount}/{ids.length}
+                    </span>
+                  )}
+                  <span style={{ color: '#9B8FB5' }}>
+                    {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </span>
                 </span>
               </button>
             </div>
 
             {isOpen && (
-              <div className="px-3 pb-3 grid grid-cols-1 gap-1.5" style={{ borderTop: '1px solid #E8E3F5' }}>
-                <div className="h-2" />
+              <div className="p-2 grid grid-cols-1 gap-1" style={{ borderTop: '1px solid #F0EDF9' }}>
                 {mods.map(m => <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />)}
               </div>
             )}
@@ -161,21 +187,27 @@ function ModuleToggle({ id, label, selected, onToggle }: {
   }, [tip]);
 
   return (
-    <div className="relative flex">
+    <div className="relative flex group">
       <button
         type="button"
         onClick={() => onToggle(id)}
-        className="flex-1 flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors text-left"
+        className="flex-1 flex items-center gap-2.5 px-3 py-2 text-[13px] transition-all text-left"
         style={{
-          background:   on ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
-          border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid #E8E3F5',
-          color:        on ? '#9B6DFF' : '#1A0A3B',
+          background:   on ? 'rgba(108,59,255,0.08)' : 'transparent',
+          color:        on ? '#1A0A3B' : '#1A0A3B',
+          fontWeight:   on ? 600 : 500,
           borderRadius: desc ? '8px 0 0 8px' : 8,
         }}
+        onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = '#FAFAFB'; }}
+        onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
       >
-        <div className="w-3 h-3 rounded flex items-center justify-center flex-shrink-0"
-          style={{ border: '1px solid rgba(108,59,255,0.5)', background: on ? '#6C3BFF' : 'transparent' }}>
-          {on && <Check size={8} color="#fff" />}
+        <div className="w-4 h-4 rounded-[5px] flex items-center justify-center flex-shrink-0 transition-all"
+          style={{
+            border:     on ? 'none' : '1.5px solid rgba(108,59,255,0.3)',
+            background: on ? '#6C3BFF' : 'transparent',
+            boxShadow:  on ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+          }}>
+          {on && <Check size={11} color="#fff" strokeWidth={3} />}
         </div>
         {label}
       </button>
@@ -185,17 +217,15 @@ function ModuleToggle({ id, label, selected, onToggle }: {
           <button
             type="button"
             onClick={() => setTip(v => !v)}
-            className="h-full px-1.5 flex items-center justify-center"
+            className="h-full px-2 flex items-center justify-center transition-opacity opacity-60 hover:opacity-100"
             style={{
-              background:   on ? 'rgba(108,59,255,0.08)' : '#FAFAFB',
-              border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid #E8E3F5',
-              borderLeft:   'none',
+              background:   'transparent',
               borderRadius: '0 8px 8px 0',
-              color:        '#9B8FB5',
+              color:        on ? '#6C3BFF' : '#9B8FB5',
               cursor:       'pointer',
             }}
           >
-            <Info size={10} />
+            <Info size={12} />
           </button>
 
           {tip && (
