@@ -98,5 +98,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     metadata:   { count: contacts.length, agent_id: agent.id },
   });
 
+  if (new Date(scheduledAt) <= new Date()) {
+    const { triggerOutboundContacts } = await import('@/lib/outbound/outbound-trigger');
+    triggerOutboundContacts(`portal bulk import ${contacts.length} contacts`, session.portalEmail);
+  }
+
   return NextResponse.json({ ok: true, imported: contacts.length });
 }

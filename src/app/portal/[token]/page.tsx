@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb, Clock } from 'lucide-react';
+import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb, Clock, FileText } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
 import type { BusinessHours, Plan } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
@@ -2033,20 +2033,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
-                <div className="flex flex-col gap-5">
+                  {/* Historial de consumo — movido a col 1 (abajo de Consumo/compras/recarga)
+                      porque tiene más ancho para respirar y col 2 queda para meta docs. */}
                   <div id="historial" className="flex flex-col rounded-2xl overflow-hidden"
                     style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
                     <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
                       <div>
                         <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Historial de consumo</h2>
+                        <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                          Cada movimiento de minutos y tareas del pool, ordenado por fecha.
+                        </p>
                       </div>
                     </div>
-                    <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                    <div style={{ borderTop: '1px solid #F0EDF9' }}>
                       <div className="relative">
-                        <div className="overflow-y-auto" style={{ maxHeight: '520px', paddingRight: 12 }}>
+                        <div className="overflow-y-auto" style={{ maxHeight: '640px' }}>
                           {agent.portal_email ? (
                             <HistorialConsumoSection
                               portalEmail={agent.portal_email as string}
@@ -2063,34 +2065,48 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Reporte mensual compacto — abajo del historial */}
+                {/* ── Col 2: Reporte mensual (hero) + Términos de servicio ── */}
+                <div className="flex flex-col gap-5">
+                  {/* Reporte mensual — presencia visual mayor, primera cosa en col 2 */}
                   <div id="reporte-mensual" className="flex flex-col rounded-2xl overflow-hidden"
-                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-                    <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
-                      <div>
-                        <div className="flex items-baseline gap-2">
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(108,59,255,0.05) 0%, #ffffff 100%)',
+                      border:     '1px solid #E8E3F5',
+                      boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                    }}>
+                    <div className="px-5 pt-5 pb-4">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.28)' }}>
+                          <FileText size={16} color="#fff" />
+                        </div>
+                        <div className="flex items-baseline gap-2 min-w-0">
                           <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Reporte mensual</h2>
-                          <InfoTooltip text="Descarga el resumen del mes con llamadas, resultados, minutos y horas pico." />
+                          <InfoTooltip text="PDF con llamadas, resultados, minutos, horas pico y evolución del mes." />
                         </div>
                       </div>
+                      <p className="text-[12px]" style={{ color: '#6B6480' }}>
+                        Descarga el resumen del mes en PDF. Ideal para compartir con tu equipo o revisar KPIs.
+                      </p>
                     </div>
                     <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
                       <MonthReportPicker token={token} />
                     </div>
                   </div>
+
+                  {/* Términos de servicio — movido a col 2 (referencia legal, no diario) */}
+                  <div id="terminos-servicio">
+                    <ContractSection
+                      token={token}
+                      businessName={agent.business_name}
+                      signedAt={contractAcceptedAt}
+                      contractPreviewUrl={`/portal/${token}/contrato`}
+                    />
+                  </div>
                 </div>
 
-              </div>
-
-              {/* Términos de servicio — al fondo (referencia legal, no diario) */}
-              <div id="terminos-servicio" style={{ scrollMarginTop: '1.5rem' }}>
-                <ContractSection
-                  token={token}
-                  businessName={agent.business_name}
-                  signedAt={contractAcceptedAt}
-                  contractPreviewUrl={`/portal/${token}/contrato`}
-                />
               </div>
             </div>
           </PageContainer>

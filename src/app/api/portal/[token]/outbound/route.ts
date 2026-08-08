@@ -68,5 +68,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     metadata:  { agent_id: agent.id, telefono },
   });
 
+  // Event-driven: si scheduled_at ya venció (o es "ya"), dispara el runner.
+  // Si está en el futuro, cron horario lo agarra.
+  if (new Date(scheduled_at) <= new Date()) {
+    const { triggerOutboundContacts } = await import('@/lib/outbound/outbound-trigger');
+    triggerOutboundContacts(`portal outbound contact ${data!.id}`, session.portalEmail);
+  }
+
   return NextResponse.json({ ok: true, contact: data });
 }

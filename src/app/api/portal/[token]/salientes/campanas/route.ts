@@ -138,5 +138,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Event-driven: si next_run_at ya venció al momento de crear, dispara YA.
+  // Campañas futuras las agarra el cron horario.
+  if (next && next <= new Date()) {
+    const { triggerOutboundCampaigns } = await import('@/lib/outbound/campaigns-trigger');
+    triggerOutboundCampaigns(`portal campaign create ${data?.id}`, session.portalEmail);
+  }
+
   return NextResponse.json(data);
 }
