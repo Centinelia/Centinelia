@@ -42,6 +42,7 @@
     { "path": "/api/cron/annual-contracts-weekly-overage-digest", "schedule": "0 15 * * 1" },
     { "path": "/api/cron/nox-brief",                              "schedule": "0 * * * *"  },
     { "path": "/api/cron/recovery",                               "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/nash-monitor",                           "schedule": "0 * * * *" }
+    { "path": "/api/cron/nash-monitor",                           "schedule": "0 * * * *" },
+    { "path": "/api/billing/grace-period-check",                  "schedule": "0 */6 * * *" }
   ]
 }

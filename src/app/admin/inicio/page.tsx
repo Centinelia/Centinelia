@@ -15,18 +15,19 @@ export const dynamic = 'force-dynamic';
 const DEMO_EMAILS = ['demo@centinelia.mx', 'centinelia.dev@gmail.com'];
 
 interface AgentRow {
-  id:               string;
-  business_name:    string;
-  active:           boolean;
-  billing_status:   string | null;
-  minutes_used:     number | null;
-  minutes_included: number | null;
-  ai_ops_used:      number | null;
-  ai_ops_limit:     number | null;
-  portal_email:     string | null;
-  plan:             string | null;
-  minutes_plan:     string | null;
-  approval_email:   string | null;
+  id:                    string;
+  business_name:         string;
+  active:                boolean;
+  billing_status:        string | null;
+  minutes_used:          number | null;
+  minutes_included:      number | null;
+  ai_ops_used:           number | null;
+  ai_ops_limit:          number | null;
+  portal_email:          string | null;
+  plan:                  string | null;
+  minutes_plan:          string | null;
+  approval_email:        string | null;
+  grace_period_ends_at:  string | null;
 }
 
 type Severity = 'high' | 'med' | 'low';
@@ -61,7 +62,7 @@ export default async function InicioPage() {
     twilioBalance,
   ] = await Promise.all([
     supabase.from('voice_agents')
-      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email, plan, minutes_plan, approval_email')
+      .select('id, business_name, active, billing_status, minutes_used, minutes_included, ai_ops_used, ai_ops_limit, portal_email, plan, minutes_plan, approval_email, grace_period_ends_at')
       .not('portal_email', 'in', demoExcl)
       .order('created_at', { ascending: false }),
     supabase.from('voice_calls')
@@ -188,11 +189,20 @@ export default async function InicioPage() {
 
   const failedBilling = agentList.filter(a => a.billing_status === 'pago_fallido');
   if (failedBilling.length > 0) {
+    // Urgencia: ¿cuántos vencen gracia en ≤1 día? Es la señal de "actúa ya".
+    const urgentByGrace = failedBilling.filter(a => {
+      if (!a.grace_period_ends_at) return false;
+      const daysLeft = Math.ceil((new Date(a.grace_period_ends_at).getTime() - now) / (24 * 60 * 60 * 1000));
+      return daysLeft <= 1;
+    });
+    const urgencySuffix = urgentByGrace.length > 0
+      ? ` — ${urgentByGrace.length} vence${urgentByGrace.length === 1 ? '' : 'n'} gracia hoy/mañana`
+      : '';
     alerts.push({
       severity: 'high',
       label:    failedBilling.length === 1
-                  ? `Pago fallido: ${failedBilling[0].business_name}`
-                  : `${failedBilling.length} clientes con pago fallido`,
+                  ? `Pago fallido: ${failedBilling[0].business_name}${urgencySuffix}`
+                  : `${failedBilling.length} clientes con pago fallido${urgencySuffix}`,
       sub:      nameList(failedBilling),
       href:     failedBilling.length === 1
                   ? clientLink(failedBilling[0])

@@ -25,17 +25,34 @@ interface Projection {
   anthropic_projected: number;
 }
 
-async function computeProjection(supabase: ReturnType<typeof createAdminClient>): Promise<Projection> {
-  // Agentes activos con plan asignado — computamos su consumo esperado mensual.
+interface AtRiskAgent {
+  agent_id:             string;
+  agent_name:           string | null;
+  business_name:        string | null;
+  portal_email:         string | null;
+  grace_period_ends_at: string | null;
+  days_remaining:       number | null;
+  minutes:              number;
+  aiOps:                number;
+}
+
+async function computeProjectionAndAtRisk(
+  supabase: ReturnType<typeof createAdminClient>,
+): Promise<{ projection: Projection; at_risk: AtRiskAgent[] }> {
+  // Solo cuentan clientes cuya suscripción está al día. Los que están en
+  // `pago_fallido` van a la lista "en riesgo" — no engordan la proyección
+  // hasta que sepamos si pagan o pausan.
   const { data: agents } = await supabase
     .from('voice_agents')
-    .select('id, jornada_type, minutes_plan, features')
+    .select('id, agent_name, business_name, portal_email, jornada_type, minutes_plan, features, billing_status, grace_period_ends_at')
     .eq('active', true)
     .not('minutes_plan', 'is', null);
 
   let totalMinutes = 0;
   let totalOps     = 0;
   let count        = 0;
+  const atRisk: AtRiskAgent[] = [];
+  const nowMs = Date.now();
 
   for (const agent of agents ?? []) {
     const jornada = agent.jornada_type as JornadaType | null;
@@ -45,28 +62,49 @@ async function computeProjection(supabase: ReturnType<typeof createAdminClient>)
     const features = (agent.features ?? {}) as Record<string, unknown>;
     const isCoordinator = features.is_coordinator === true;
 
+    let alloc: { minutes: number; aiOps: number } | null = null;
     if (isCoordinator) {
       const cfg = NOX_MONTHLY_CONFIG[tier];
-      if (cfg) {
-        totalMinutes += cfg.minutes;
-        totalOps     += cfg.aiOps;
-        count++;
-      }
+      if (cfg) alloc = { minutes: cfg.minutes, aiOps: cfg.aiOps };
     } else if (jornada && JORNADA_CONFIG[jornada]?.[tier]) {
-      const alloc = JORNADA_CONFIG[jornada][tier];
-      totalMinutes += alloc.minutes;
-      totalOps     += alloc.aiOps;
-      count++;
+      alloc = JORNADA_CONFIG[jornada][tier];
     }
+    if (!alloc) continue;
+
+    const billingStatus = agent.billing_status as string | null;
+    if (billingStatus === 'pago_fallido') {
+      const graceEnd = agent.grace_period_ends_at as string | null;
+      const daysRemaining = graceEnd
+        ? Math.max(0, Math.ceil((new Date(graceEnd).getTime() - nowMs) / (24 * 60 * 60 * 1000)))
+        : null;
+      atRisk.push({
+        agent_id:             agent.id as string,
+        agent_name:           (agent.agent_name    as string | null) ?? null,
+        business_name:        (agent.business_name as string | null) ?? null,
+        portal_email:         (agent.portal_email  as string | null) ?? null,
+        grace_period_ends_at: graceEnd,
+        days_remaining:       daysRemaining,
+        minutes:              alloc.minutes,
+        aiOps:                alloc.aiOps,
+      });
+      continue;
+    }
+
+    totalMinutes += alloc.minutes;
+    totalOps     += alloc.aiOps;
+    count++;
   }
 
   return {
-    total_minutes:       totalMinutes,
-    total_ops:           totalOps,
-    active_agents:       count,
-    vapi_projected:      totalMinutes * COST_PER_MIN_VAPI,
-    twilio_projected:    totalMinutes * COST_PER_MIN_TWILIO,
-    anthropic_projected: totalOps     * COST_PER_OP_ANTHROPIC,
+    projection: {
+      total_minutes:       totalMinutes,
+      total_ops:           totalOps,
+      active_agents:       count,
+      vapi_projected:      totalMinutes * COST_PER_MIN_VAPI,
+      twilio_projected:    totalMinutes * COST_PER_MIN_TWILIO,
+      anthropic_projected: totalOps     * COST_PER_OP_ANTHROPIC,
+    },
+    at_risk: atRisk,
   };
 }
 
@@ -81,7 +119,7 @@ export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabase = createAdminClient();
-  const projection = await computeProjection(supabase);
+  const { projection, at_risk } = await computeProjectionAndAtRisk(supabase);
 
   const { data: balances } = await supabase
     .from('platform_balances')
@@ -136,6 +174,7 @@ export async function GET() {
     platforms: Object.fromEntries(byPlatform),
     topups_this_month: topups ?? [],
     topups_recent:     allTopups ?? [],
+    at_risk,
   });
 }
 

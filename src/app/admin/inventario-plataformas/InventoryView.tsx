@@ -32,11 +32,23 @@ interface Topup {
   notes:        string | null;
 }
 
+interface AtRiskAgent {
+  agent_id:             string;
+  agent_name:           string | null;
+  business_name:        string | null;
+  portal_email:         string | null;
+  grace_period_ends_at: string | null;
+  days_remaining:       number | null;
+  minutes:              number;
+  aiOps:                number;
+}
+
 interface InventoryData {
   projection:        Projection;
   platforms:         Record<Platform, PlatformState>;
   topups_this_month: Topup[];
   topups_recent:     Topup[];
+  at_risk:           AtRiskAgent[];
 }
 
 const PLATFORM_META: Record<Platform, { label: string; url: string; hint: string }> = {
@@ -103,6 +115,49 @@ export function InventoryView() {
           />
         </div>
       </div>
+
+      {/* Sección en riesgo — clientes con pago fallido */}
+      {data.at_risk.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.35)' }}>
+          <div className="px-5 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(248,113,113,0.25)' }}>
+            <AlertTriangle size={16} style={{ color: '#F87171' }} />
+            <h2 className="text-sm font-semibold" style={{ color: '#F87171' }}>
+              {data.at_risk.length} cliente{data.at_risk.length === 1 ? '' : 's'} en riesgo de pausar
+            </h2>
+          </div>
+          <div className="p-4 flex flex-col gap-2">
+            {data.at_risk.map(a => (
+              <div
+                key={a.agent_id}
+                className="rounded-lg p-3 flex flex-wrap items-center justify-between gap-3"
+                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                    {a.business_name ?? '(sin nombre)'} {a.agent_name && <span style={{ color: 'var(--c-text-3)' }}>· {a.agent_name}</span>}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{a.portal_email ?? '(sin email)'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold" style={{ color: a.days_remaining !== null && a.days_remaining <= 1 ? '#F87171' : '#F59E0B' }}>
+                    {a.days_remaining === null
+                      ? 'sin fecha de gracia'
+                      : a.days_remaining === 0
+                        ? 'gracia vence hoy'
+                        : `${a.days_remaining} día${a.days_remaining === 1 ? '' : 's'} de gracia`}
+                  </p>
+                  <p className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                    consumo si regresa: {a.minutes > 0 && <>{a.minutes} min </>}{a.aiOps > 0 && <>+ {a.aiOps} ops</>}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="px-5 pb-4 text-xs" style={{ color: 'var(--c-text-3)' }}>
+            Estos empleados no están contados en la proyección de arriba porque su pago falló. Si pagan mid-month, se van a agregar al pool automáticamente — considera reservar buffer extra si crees que van a regularizar.
+          </p>
+        </div>
+      )}
 
       {/* Cards por plataforma */}
       <div className="flex flex-col gap-4">
