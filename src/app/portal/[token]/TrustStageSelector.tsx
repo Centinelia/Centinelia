@@ -55,7 +55,7 @@ export default function TrustStageSelector({ token, initStage }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
         Cuánta independencia tiene en las acciones que ejecuta por su cuenta (llamadas, correos, captura de leads). A medida que confías en su desempeño, súbelo de Supervisado a Autónomo.
       </p>
 
@@ -70,8 +70,8 @@ export default function TrustStageSelector({ token, initStage }: Props) {
               onClick={() => select(s.value)}
               className="flex flex-col gap-2 rounded-xl p-4 text-left transition-all"
               style={{
-                background: active ? `rgba(${accentRGB}, 0.08)` : 'var(--c-surface-2)',
-                border:     active ? `1.5px solid rgba(${accentRGB}, 0.5)` : '1.5px solid var(--c-border)',
+                background: active ? `rgba(${accentRGB}, 0.08)` : '#FAFAFB',
+                border:     active ? `1.5px solid rgba(${accentRGB}, 0.5)` : '1.5px solid #E8E3F5',
                 cursor:     'pointer',
               }}
             >
@@ -79,11 +79,11 @@ export default function TrustStageSelector({ token, initStage }: Props) {
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: active ? `rgba(${accentRGB}, 0.15)` : 'var(--c-surface)',
-                    border:     `1px solid ${active ? `rgba(${accentRGB}, 0.3)` : 'var(--c-border)'}`,
+                    background: active ? `rgba(${accentRGB}, 0.15)` : '#ffffff',
+                    border:     `1px solid ${active ? `rgba(${accentRGB}, 0.3)` : '#E8E3F5'}`,
                   }}
                 >
-                  <Icon size={13} style={{ color: active ? '#6C3BFF' : 'var(--c-text-3)' }} />
+                  <Icon size={13} style={{ color: active ? '#6C3BFF' : '#6B6480' }} />
                 </div>
                 {active && (
                   <div
@@ -95,14 +95,14 @@ export default function TrustStageSelector({ token, initStage }: Props) {
                 )}
               </div>
               <div>
-                <p className="text-xs font-semibold" style={{ color: active ? '#6C3BFF' : 'var(--c-text)' }}>
+                <p className="text-xs font-semibold" style={{ color: active ? '#6C3BFF' : '#1A0A3B' }}>
                   {s.name}
                 </p>
-                <p className="text-[10px] mt-0.5 font-medium" style={{ color: active ? 'rgba(108,59,255,0.7)' : 'var(--c-text-3)' }}>
+                <p className="text-[10px] mt-0.5 font-medium" style={{ color: active ? 'rgba(108,59,255,0.7)' : '#6B6480' }}>
                   {s.short}
                 </p>
               </div>
-              <p className="text-[10px] leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[10px] leading-relaxed" style={{ color: '#9B8FB5' }}>
                 {s.desc}
               </p>
             </button>
@@ -111,7 +111,7 @@ export default function TrustStageSelector({ token, initStage }: Props) {
       </div>
 
       <div className="flex items-center justify-end h-4">
-        {saving && <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>}
+        {saving && <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>}
         {saved && (
           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>
             <Check size={11} /> Guardado

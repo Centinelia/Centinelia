@@ -89,9 +89,9 @@ export default function GoalsSection({
   const periodLabel = (p: string) => p === 'month' ? 'este mes' : 'esta semana';
 
   const inputStyle: React.CSSProperties = {
-    background: 'var(--c-surface)',
-    border: '1px solid var(--c-border)',
-    color: 'var(--c-text)',
+    background: '#ffffff',
+    border: '1px solid #E8E3F5',
+    color: '#1A0A3B',
     borderRadius: 8,
     fontSize: 13,
     padding: '7px 10px',
@@ -102,11 +102,11 @@ export default function GoalsSection({
   return (
     <div className="flex flex-col gap-3">
       {loading && (
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Cargando metas...</p>
+        <p className="text-sm" style={{ color: '#6B6480' }}>Cargando metas...</p>
       )}
 
       {!loading && goals.length === 0 && !adding && (
-        <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-sm" style={{ color: '#6B6480' }}>
           Sin metas activas. Agrega una para que el empleado sepa hacia qué trabajar.
         </p>
       )}
@@ -118,21 +118,21 @@ export default function GoalsSection({
           <div
             key={goal.id}
             className="flex flex-col gap-2 p-3 rounded-xl"
-            style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium leading-snug" style={{ color: 'var(--c-text)' }}>
+                <p className="text-sm font-medium leading-snug" style={{ color: '#1A0A3B' }}>
                   {goal.title}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                   {metricLabel(goal.metric)} · {periodLabel(goal.period)}
                 </p>
               </div>
               <button
                 onClick={() => deleteGoal(goal.id)}
                 className="shrink-0 p-1 rounded-lg transition-opacity hover:opacity-60"
-                style={{ color: 'var(--c-text-3)' }}
+                style={{ color: '#6B6480' }}
               >
                 <Trash2 size={13} />
               </button>
@@ -141,7 +141,7 @@ export default function GoalsSection({
             <div className="flex items-center gap-2">
               <div
                 className="flex-1 h-1.5 rounded-full overflow-hidden"
-                style={{ background: 'var(--c-border)' }}
+                style={{ background: '#E8E3F5' }}
               >
                 <div
                   className="h-full rounded-full transition-all duration-300"
@@ -150,7 +150,7 @@ export default function GoalsSection({
               </div>
               <span
                 className="text-xs tabular-nums shrink-0"
-                style={{ color: done ? '#22c55e' : 'var(--c-text-2)' }}
+                style={{ color: done ? '#22c55e' : '#1A0A3B' }}
               >
                 {goal.progress}/{goal.target}
               </span>
@@ -158,7 +158,7 @@ export default function GoalsSection({
 
             {goal.metric === 'custom' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                <span className="text-xs" style={{ color: '#6B6480' }}>
                   Progreso actual:
                 </span>
                 <input
@@ -177,7 +177,7 @@ export default function GoalsSection({
       {adding && (
         <div
           className="flex flex-col gap-2.5 p-3 rounded-xl"
-          style={{ background: 'var(--c-surface-2)', border: `1px solid ${roleColor}50` }}
+          style={{ background: '#FAFAFB', border: `1px solid ${roleColor}50` }}
         >
           <input
             autoFocus
@@ -188,7 +188,7 @@ export default function GoalsSection({
           />
           <div className="flex gap-2">
             <Select value={form.metric} onValueChange={v => setForm(f => ({ ...f, metric: v }))}>
-              <SelectTrigger className="flex-1 bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectTrigger className="flex-1 bg-[color:#ffffff] border-[color:#E8E3F5]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -198,7 +198,7 @@ export default function GoalsSection({
               </SelectContent>
             </Select>
             <Select value={form.period} onValueChange={v => setForm(f => ({ ...f, period: v }))}>
-              <SelectTrigger className="flex-1 bg-[color:var(--c-surface)] border-[color:var(--c-border)]">
+              <SelectTrigger className="flex-1 bg-[color:#ffffff] border-[color:#E8E3F5]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -228,7 +228,7 @@ export default function GoalsSection({
             <button
               onClick={() => { setAdding(false); setForm(EMPTY_FORM); }}
               className="px-4 py-2 rounded-lg text-sm transition-opacity hover:opacity-70"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             >
               Cancelar
             </button>

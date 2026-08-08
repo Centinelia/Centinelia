@@ -75,11 +75,11 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
     persist(next);
   }
 
-  const triggerCls = 'w-auto py-1.5 px-2.5 text-xs bg-[color:var(--c-surface-2)] border-[color:var(--c-border)]';
+  const triggerCls = 'w-auto py-1.5 px-2.5 text-xs bg-[color:#FAFAFB] border-[color:#E8E3F5]';
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
         {isCoordinator
           ? 'El director ejecuta una revisión operativa en el horario que configures: estado de tareas, pendientes del equipo, situaciones que requieren decisión. El reporte queda disponible en la Oficina sin que tengas que pedírselo.'
           : 'Tu empleado ejecuta una tarea de forma autónoma en el horario que configures: revisar llamadas, preparar resúmenes, dar seguimiento a prospectos. Sin que tengas que pedírselo.'}
@@ -96,14 +96,14 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
           />
           <div
             className="w-9 h-5 rounded-full transition-colors"
-            style={{ background: config.enabled ? '#6C3BFF' : 'var(--c-border)' }}
+            style={{ background: config.enabled ? '#6C3BFF' : '#E8E3F5' }}
           />
           <div
             className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm"
             style={{ transform: config.enabled ? 'translateX(16px)' : 'translateX(0)' }}
           />
         </div>
-        <span className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>
+        <span className="text-xs font-medium" style={{ color: '#1A0A3B' }}>
           {config.enabled ? 'Check-in automático activado' : 'Check-in automático desactivado'}
         </span>
       </label>
@@ -111,8 +111,8 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
       {config.enabled && (
         <>
           {/* Schedule */}
-          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--c-text-2)' }}>
-            <Clock size={12} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />
+          <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: '#1A0A3B' }}>
+            <Clock size={12} style={{ color: '#9B8FB5', flexShrink: 0 }} />
             <span>Ejecutar</span>
             <Select value={config.frequency} onValueChange={v => update({ frequency: v as 'daily' | 'weekly' })}>
               <SelectTrigger className={triggerCls}><SelectValue /></SelectTrigger>
@@ -143,7 +143,7 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
 
           {/* Task */}
           <div className="flex flex-col gap-1.5">
-            <p className="text-[11px] font-medium" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[11px] font-medium" style={{ color: '#6B6480' }}>
               Tarea a ejecutar
             </p>
             <textarea
@@ -154,9 +154,9 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
               className="w-full rounded-xl text-xs leading-relaxed outline-none resize-y"
               style={{
                 padding:    '10px 12px',
-                background: 'var(--c-surface-2)',
-                border:     '1px solid var(--c-border)',
-                color:      'var(--c-text)',
+                background: '#FAFAFB',
+                border:     '1px solid #E8E3F5',
+                color:      '#1A0A3B',
                 fontFamily: 'inherit',
               }}
             />
@@ -165,14 +165,14 @@ export default function HeartbeatEditor({ token, initConfig, isCoordinator = fal
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
           {config.enabled
             ? isCoordinator
               ? 'Consume 3-8 tareas por check-in · el resultado llega por correo al owner'
               : 'Consume 3-8 tareas por check-in · el resultado llega por tus canales de notificación'
             : 'Activa para que tu empleado trabaje sin que tengas que pedírselo'}
         </p>
-        {saving && <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>}
+        {saving && <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>}
         {saved && (
           <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>
             <Check size={11} /> Guardado

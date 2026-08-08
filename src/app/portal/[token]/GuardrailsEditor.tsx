@@ -71,7 +71,7 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
           Define qué puede hacer este empleado de forma autónoma y qué debe escalar antes de actuar. Cuanto más claro sea el límite, menos errores comete.
         </p>
 
@@ -84,19 +84,19 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
           className="w-full rounded-xl text-xs leading-relaxed outline-none resize-y"
           style={{
             padding:    '10px 12px',
-            background: 'var(--c-surface-2)',
-            border:     '1px solid var(--c-border)',
-            color:      'var(--c-text)',
+            background: '#FAFAFB',
+            border:     '1px solid #E8E3F5',
+            color:      '#1A0A3B',
             fontFamily: 'inherit',
           }}
         />
 
         <div className="flex items-center justify-between">
-          <p className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
             Solo aplica a este empleado · las reglas de privacidad globales siempre están activas
           </p>
           {saving && (
-            <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Guardando…</span>
+            <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>
           )}
           {saved && (
             <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>
@@ -107,14 +107,14 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
       </div>
 
       {/* Learnings subsection */}
-      <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: '1.25rem' }}>
+      <div style={{ borderTop: '1px solid #E8E3F5', paddingTop: '1.25rem' }}>
         <div className="flex items-center gap-2 mb-3">
           <ShieldCheck size={13} style={{ color: '#9B6DFF' }} />
           <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#9B6DFF' }}>
             Aprendizajes de límites de autoridad
           </p>
         </div>
-        <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-xs mb-3" style={{ color: '#6B6480' }}>
           Correcciones y ajustes de autoridad que el empleado ha aprendido en campo y fueron aprobados. Puedes editarlos directamente aquí.
         </p>
         <textarea
@@ -124,9 +124,9 @@ export default function GuardrailsEditor({ token, initialValue, initialGuardrail
           placeholder="Los aprendizajes sobre límites de autoridad aprobados desde Oficina aparecerán aquí..."
           className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y mb-3"
           style={{
-            background: 'var(--c-input-bg)',
+            background: '#FAFAFB',
             border:     '1px solid rgba(108,59,255,0.25)',
-            color:      'var(--c-text)',
+            color:      '#1A0A3B',
             fontFamily: 'inherit',
           }}
         />
