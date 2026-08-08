@@ -826,7 +826,7 @@ export default async function AgentesPage({ params }: Props) {
 
       {/* Métricas del equipo — bloque estilo /inicio */}
       {agents.length > 0 && (
-        <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+        <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
           <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
             Tu equipo este mes
           </h2>
@@ -862,7 +862,7 @@ export default async function AgentesPage({ params }: Props) {
       {/* Empty state */}
       {agents.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-20 rounded-xl"
-          style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
             <Bot size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
@@ -921,7 +921,7 @@ export default async function AgentesPage({ params }: Props) {
 
         {/* Métricas del equipo — bloque estilo /inicio */}
         {agents.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+          <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
             <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
               Tu equipo este mes
             </h2>
