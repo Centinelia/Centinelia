@@ -111,7 +111,7 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
 
   if (appts.length === 0) {
     return (
-      <div className="text-center py-10" style={{ color: 'var(--c-text-3)' }}>
+      <div className="text-center py-10" style={{ color: '#6B6480' }}>
         <CalendarDays size={28} className="mx-auto mb-2 opacity-30" />
         <p className="text-sm">Sin {label}s registradas</p>
       </div>
@@ -125,11 +125,11 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter size={12} style={{ color: 'var(--c-text-3)' }} />
+            <Filter size={12} style={{ color: '#6B6480' }} />
             {QUICK_FILTERS.map(({ label: l, value }) => (
               <button key={value} onClick={() => setQuickFilter(value)}
                 className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
-                style={{ background: quickFilter === value ? '#6C3BFF' : 'var(--c-input-bg)', color: quickFilter === value ? '#fff' : 'var(--c-text-2)' }}>
+                style={{ background: quickFilter === value ? '#6C3BFF' : '#FAFAFB', color: quickFilter === value ? '#fff' : '#1A0A3B' }}>
                 {l}
               </button>
             ))}
@@ -137,14 +137,14 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
           {quickFilter === 'custom' && (
             <div className="flex items-center gap-2 flex-wrap">
               <DatePicker value={customFrom} onChange={setCustomFrom} className="w-auto min-w-[160px]" />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>–</span>
+              <span className="text-xs" style={{ color: '#6B6480' }}>–</span>
               <DatePicker value={customTo} onChange={setCustomTo} className="w-auto min-w-[160px]" />
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs" style={{ color: '#6B6480' }}>
             {filtered.length} de {appts.length} {label}{appts.length !== 1 ? 's' : ''}{quickFilter !== 'all' ? ' (filtrado)' : ''}
           </p>
           {filtered.length > 0 && (
@@ -174,42 +174,42 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-8 text-sm" style={{ color: 'var(--c-text-3)' }}>Sin {label}s en este período</div>
+          <div className="text-center py-8 text-sm" style={{ color: '#6B6480' }}>Sin {label}s en este período</div>
         ) : (
           filtered.map(appt => {
             const status = (appt.status ?? 'confirmada') as ApptStatus;
             const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.confirmada;
             return (
-              <div key={appt.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[var(--c-border-2)]"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              <div key={appt.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[#F0EDF9]"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
                 onClick={() => setDetailAppt(appt)}>
                 <div className="flex flex-col gap-2.5">
                   {/* Top: content + edit button */}
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+                        <span className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>
                           {appt.nombre ?? 'Sin nombre'}
                         </span>
-                        {appt.telefono && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>· {appt.telefono}</span>}
+                        {appt.telefono && <span className="text-xs" style={{ color: '#6B6480' }}>· {appt.telefono}</span>}
                       </div>
                       {appt.servicio && <p className="text-xs mt-1 font-medium" style={{ color: '#6C3BFF' }}>{appt.servicio}</p>}
                       {(appt.fecha || appt.hora) && (
-                        <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--c-text-3)' }}>
+                        <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#6B6480' }}>
                           <CalendarDays size={11} />
                           {appt.fecha ?? ''}{appt.hora ? ` · ${appt.hora}` : ''}
                         </p>
                       )}
                     </div>
                     <button onClick={e => { e.stopPropagation(); setEditing(appt); setEditForm({ ...appt }); }}
-                      className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0"
-                      style={{ color: 'var(--c-text-3)' }}>
+                      className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors flex-shrink-0"
+                      style={{ color: '#6B6480' }}>
                       <Pencil size={13} />
                     </button>
                   </div>
                   {/* Bottom: date + status select */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span className="text-xs" style={{ color: '#6B6480' }}>
                       {new Date(appt.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <div onClick={e => e.stopPropagation()}>
@@ -243,17 +243,17 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}>
-          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: 'var(--c-modal)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>Editar {label}</h3>
-              <button onClick={() => setEditing(null)} className="p-1 rounded-lg hover:bg-[var(--c-surface-2)]" style={{ color: 'var(--c-text-2)' }}>
+          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: '#ffffff' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
+              <h3 className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>Editar {label}</h3>
+              <button onClick={() => setEditing(null)} className="p-1 rounded-lg hover:bg-[#FAFAFB]" style={{ color: '#1A0A3B' }}>
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
               {EDIT_FIELDS.map(({ key, label: fl, type, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{fl}</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>{fl}</label>
                   {type === 'date' ? (
                     <DatePicker value={(editForm[key] as string) ?? ''}
                       onChange={v => setEditForm(f => ({ ...f, [key]: v }))} />
@@ -264,15 +264,15 @@ export default function PortalAppointmentsSection({ initialAppointments, token, 
                     <input type={type ?? 'text'} value={(editForm[key] as string) ?? ''} placeholder={placeholder}
                       onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
                       className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
                   )}
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid #E8E3F5' }}>
               <button onClick={() => setEditing(null)} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>Cancelar</button>
+                style={{ background: '#FAFAFB', color: '#1A0A3B' }}>Cancelar</button>
               <button onClick={saveEdit} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-80"
                 style={{ background: '#6C3BFF', color: '#fff', opacity: saving ? 0.7 : 1 }}>

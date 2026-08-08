@@ -154,7 +154,7 @@ export default async function OficinaLayout({
   if (v2Enabled) {
     return (
       <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-        <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: 'var(--c-text)' }}>
+        <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
           <OficinaHeaderDark
             token={token}
             businessName={agent.business_name}
@@ -202,10 +202,10 @@ export default async function OficinaLayout({
   // ── V1 layout (legacy — se eliminará pronto) ─────────────────────────────
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
+      <div className="min-h-screen relative flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B', overflowX: 'clip' }}>
 
         {/* Header */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ background: '#ffffff', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
           <div className="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <OficinaMobileNav
@@ -234,15 +234,15 @@ export default async function OficinaLayout({
 
         {/* Mobile breadcrumb */}
         <div className="md:hidden flex items-center gap-2 px-4 py-2.5"
-          style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)' }}>
+          style={{ background: '#ffffff', borderBottom: '1px solid #E8E3F5' }}>
           <Link href={`/portal/${token}?tab=inicio`}
             className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: 'var(--c-text-3)' }}>
+            style={{ color: '#6B6480' }}>
             <ArrowLeft size={12} />
             Portal
           </Link>
-          <span style={{ color: 'var(--c-text-4)' }}>/</span>
-          <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Oficina</span>
+          <span style={{ color: '#9B8FB5' }}>/</span>
+          <span className="text-xs font-medium" style={{ color: '#1A0A3B' }}>Oficina</span>
         </div>
 
         {/* Body — sidebar is position:fixed, main content has md:pl-[260px] to compensate */}

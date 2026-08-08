@@ -113,7 +113,7 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
 
   if (orders.length === 0) {
     return (
-      <div className="text-center py-10" style={{ color: 'var(--c-text-3)' }}>
+      <div className="text-center py-10" style={{ color: '#6B6480' }}>
         <ShoppingBag size={28} className="mx-auto mb-2 opacity-30" />
         <p className="text-sm">Sin pedidos registrados</p>
       </div>
@@ -126,11 +126,11 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
         {/* Date filter */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter size={12} style={{ color: 'var(--c-text-3)' }} />
+            <Filter size={12} style={{ color: '#6B6480' }} />
             {QUICK_FILTERS.map(({ label, value }) => (
               <button key={value} onClick={() => setQuickFilter(value)}
                 className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
-                style={{ background: quickFilter === value ? '#6C3BFF' : 'var(--c-input-bg)', color: quickFilter === value ? '#fff' : 'var(--c-text-2)' }}>
+                style={{ background: quickFilter === value ? '#6C3BFF' : '#FAFAFB', color: quickFilter === value ? '#fff' : '#1A0A3B' }}>
                 {label}
               </button>
             ))}
@@ -138,14 +138,14 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
           {quickFilter === 'custom' && (
             <div className="flex items-center gap-2 flex-wrap">
               <DatePicker value={customFrom} onChange={setCustomFrom} className="w-auto min-w-[160px]" />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>–</span>
+              <span className="text-xs" style={{ color: '#6B6480' }}>–</span>
               <DatePicker value={customTo} onChange={setCustomTo} className="w-auto min-w-[160px]" />
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs" style={{ color: '#6B6480' }}>
             {filtered.length} de {orders.length} pedido{orders.length !== 1 ? 's' : ''}{quickFilter !== 'all' ? ' (filtrado)' : ''}
           </p>
           {filtered.length > 0 && (
@@ -175,52 +175,52 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-8 text-sm" style={{ color: 'var(--c-text-3)' }}>Sin pedidos en este período</div>
+          <div className="text-center py-8 text-sm" style={{ color: '#6B6480' }}>Sin pedidos en este período</div>
         ) : (
           filtered.map(order => {
             const status = (order.status ?? 'nuevo') as OrderStatus;
             const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.nuevo;
             return (
-              <div key={order.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[var(--c-border-2)]"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              <div key={order.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[#F0EDF9]"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
                 onClick={() => setDetailOrder(order)}>
                 <div className="flex flex-col gap-2.5">
                   {/* Top: content + edit button */}
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+                        <span className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>
                           {order.nombre ?? 'Sin nombre'}
                         </span>
                         {order.telefono && (
-                          <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>· {order.telefono}</span>
+                          <span className="text-xs" style={{ color: '#6B6480' }}>· {order.telefono}</span>
                         )}
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                          style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>
+                          style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
                           {order.tipo === 'entrega' ? <Truck size={9} /> : <Store size={9} />}
                           {order.tipo === 'entrega' ? 'Entrega' : 'Recoger'}
                         </span>
                       </div>
-                      <p className="text-sm mt-1.5 font-medium" style={{ color: 'var(--c-text)' }}>{order.items}</p>
-                      {order.direccion && <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>📍 {order.direccion}</p>}
-                      {order.notas    && <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>📝 {order.notas}</p>}
+                      <p className="text-sm mt-1.5 font-medium" style={{ color: '#1A0A3B' }}>{order.items}</p>
+                      {order.direccion && <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>📍 {order.direccion}</p>}
+                      {order.notas    && <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>📝 {order.notas}</p>}
                     </div>
                     <button onClick={e => { e.stopPropagation(); setEditingOrder(order); setEditForm({ ...order }); }}
-                      className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0"
-                      style={{ color: 'var(--c-text-3)' }}>
+                      className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors flex-shrink-0"
+                      style={{ color: '#6B6480' }}>
                       <Pencil size={13} />
                     </button>
                   </div>
                   {/* Bottom: date + status select + PDF */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span className="text-xs" style={{ color: '#6B6480' }}>
                       {new Date(order.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <div className="flex items-center gap-2">
                       <a href={`/api/portal/${token}/pdf/orden/${order.id}`} target="_blank" rel="noreferrer"
                         onClick={e => e.stopPropagation()}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-opacity hover:opacity-70"
-                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                         <FileText size={10} /> PDF
                       </a>
                     <div onClick={e => e.stopPropagation()}>
@@ -256,28 +256,28 @@ export default function PortalOrdersSection({ initialOrders, token, isPro }: {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setEditingOrder(null); }}>
-          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: 'var(--c-modal)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>Editar pedido</h3>
-              <button onClick={() => setEditingOrder(null)} className="p-1 rounded-lg hover:bg-[var(--c-surface-2)]" style={{ color: 'var(--c-text-2)' }}>
+          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: '#ffffff' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
+              <h3 className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>Editar pedido</h3>
+              <button onClick={() => setEditingOrder(null)} className="p-1 rounded-lg hover:bg-[#FAFAFB]" style={{ color: '#1A0A3B' }}>
                 <X size={16} />
               </button>
             </div>
             <div className="p-5 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
               {EDIT_FIELDS.map(({ key, label, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{label}</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>{label}</label>
                   <input value={(editForm[key] as string) ?? ''} placeholder={placeholder}
                     onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid #E8E3F5' }}>
               <button onClick={() => setEditingOrder(null)} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>Cancelar</button>
+                style={{ background: '#FAFAFB', color: '#1A0A3B' }}>Cancelar</button>
               <button onClick={saveEdit} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-80"
                 style={{ background: '#6C3BFF', color: '#fff', opacity: saving ? 0.7 : 1 }}>

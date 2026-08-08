@@ -89,15 +89,15 @@ export default async function AgentesLayout({
   // Mobile breadcrumb — used in V1 layout only
   const mobileBreadcrumb = (
     <div className="md:hidden flex items-center gap-2 px-4 py-2.5"
-      style={{ background: 'var(--c-modal)', borderBottom: '1px solid var(--c-border)' }}>
+      style={{ background: '#ffffff', borderBottom: '1px solid #E8E3F5' }}>
       <Link href={`/portal/${token}?tab=inicio`}
         className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-        style={{ color: 'var(--c-text-3)' }}>
+        style={{ color: '#6B6480' }}>
         <ArrowLeft size={12} />
         Portal
       </Link>
-      <span style={{ color: 'var(--c-text-4)' }}>/</span>
-      <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>Mis Empleados</span>
+      <span style={{ color: '#9B8FB5' }}>/</span>
+      <span className="text-xs font-medium" style={{ color: '#1A0A3B' }}>Mis Empleados</span>
     </div>
   );
 
@@ -115,7 +115,7 @@ export default async function AgentesLayout({
   if (v2Enabled) {
     return (
       <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-        <div className="min-h-screen flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+        <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
           <PortalShell
             orgId={agent.portal_email ?? ''}
             token={token}
@@ -147,10 +147,10 @@ export default async function AgentesLayout({
   // V1 layout
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div className="min-h-screen" style={{ background: 'var(--c-bg)', color: 'var(--c-text)' }}>
+      <div className="min-h-screen" style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
 
         {/* Header */}
-        <div style={{ background: 'var(--c-modal)', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ background: '#ffffff', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
           <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <BusinessSwitcher
               current={{ business_name: agent.business_name, logo_url: (agent as any).logo_url ?? null, first_token: token }} // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -35,7 +35,7 @@ function BizAvatarDark({ name, logo_url, size = 46 }: { name: string; logo_url: 
       style={{
         width:      size,
         height:     size,
-        background: 'rgba(255,255,255,0.06)',
+        background: '#F4F1FA',
         border:     '1px solid rgba(255,255,255,0.12)',
       }}
     >
@@ -75,7 +75,7 @@ export default function OficinaBusinessChip({ current, options, currentBusinessN
         onClick={() => isMulti && setOpen(v => !v)}
         className="flex items-center gap-2.5 min-w-0 rounded-lg pl-1 pr-2 py-1 transition-colors"
         style={{ cursor: isMulti ? 'pointer' : 'default' }}
-        onMouseEnter={e => { if (isMulti) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; }}
+        onMouseEnter={e => { if (isMulti) (e.currentTarget as HTMLElement).style.background = '#F4F1FA'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >
         <BizAvatarDark name={current.business_name} logo_url={current.logo_url} size={32} />
@@ -97,10 +97,10 @@ export default function OficinaBusinessChip({ current, options, currentBusinessN
       {open && (
         <div
           className="absolute top-full left-0 mt-2 w-64 rounded-xl shadow-xl z-50 overflow-hidden py-1"
-          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
         >
           <p className="px-4 pt-2 pb-1 text-xs font-semibold tracking-widest uppercase"
-            style={{ color: 'var(--c-text-4)' }}>
+            style={{ color: '#9B8FB5' }}>
             Mis organizaciones
           </p>
           {options.map(opt => {
@@ -109,17 +109,17 @@ export default function OficinaBusinessChip({ current, options, currentBusinessN
               <button
                 key={opt.business_name}
                 onClick={() => { router.push(`/portal/${opt.first_token}/oficina`); setOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--c-surface-2)]"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[#FAFAFB]"
               >
                 <div className="w-7 h-7 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                   {opt.logo_url
                     ? <img src={opt.logo_url} alt={opt.business_name} className="w-full h-full object-contain p-0.5" />
-                    : <span className="text-[10px] font-bold" style={{ color: 'var(--c-text-3)' }}>{opt.business_name.slice(0, 2).toUpperCase()}</span>
+                    : <span className="text-[10px] font-bold" style={{ color: '#6B6480' }}>{opt.business_name.slice(0, 2).toUpperCase()}</span>
                   }
                 </div>
                 <span className="text-sm truncate flex-1"
-                  style={{ color: isCurrent ? '#6C3BFF' : 'var(--c-text)', fontWeight: isCurrent ? 600 : 400 }}>
+                  style={{ color: isCurrent ? '#6C3BFF' : '#1A0A3B', fontWeight: isCurrent ? 600 : 400 }}>
                   {opt.business_name}
                 </span>
                 {isCurrent && <Check size={13} style={{ color: '#6C3BFF', flexShrink: 0 }} />}

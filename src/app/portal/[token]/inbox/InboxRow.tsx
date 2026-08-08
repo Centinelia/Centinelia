@@ -68,12 +68,12 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
 
   return (
     <button
-      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--c-hover)]"
+      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#F4F1FA]"
       onClick={onToggle}
       style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
     >
       <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-0.5">
-        <div className="w-2 h-2 rounded-full" style={{ background: isPending ? catColor.fg : 'var(--c-border-2)' }} />
+        <div className="w-2 h-2 rounded-full" style={{ background: isPending ? catColor.fg : '#F0EDF9' }} />
       </div>
       <div className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -113,9 +113,9 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
             <span
               className="text-[11px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"
               style={{
-                background: isShared ? 'rgba(108,59,255,0.06)' : 'var(--c-surface)',
-                color:      isShared ? '#6C3BFF' : 'var(--c-text-3)',
-                border:     `1px solid ${isShared ? 'rgba(108,59,255,0.20)' : 'var(--c-border)'}`,
+                background: isShared ? 'rgba(108,59,255,0.06)' : '#ffffff',
+                color:      isShared ? '#6C3BFF' : '#6B6480',
+                border:     `1px solid ${isShared ? 'rgba(108,59,255,0.20)' : '#E8E3F5'}`,
               }}
               title={
                 item.assigned_by === 'human' ? 'Reasignado manualmente'
@@ -153,18 +153,18 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
             </span>
           )}
           {!isPending && !item.auto_mode_flagged_at && !showStateBadge && (
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>{STATUS_LABELS[item.status]}</span>
+            <span className="text-xs" style={{ color: '#9B8FB5' }}>{STATUS_LABELS[item.status]}</span>
           )}
         </div>
         <p
           className={`text-sm truncate ${isPending ? 'font-semibold' : 'font-normal'}`}
-          style={{ color: isPending ? 'var(--c-text)' : 'var(--c-text-3)' }}
+          style={{ color: isPending ? '#1A0A3B' : '#6B6480' }}
         >
           {item.email_subject || '(sin asunto)'}
         </p>
-        <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{item.email_from}</p>
+        <p className="text-xs truncate mt-0.5" style={{ color: '#6B6480' }}>{item.email_from}</p>
         {item.ai_summary && !isExpanded && (
-          <p className="text-xs mt-1 line-clamp-1" style={{ color: 'var(--c-text-4)' }}>{item.ai_summary}</p>
+          <p className="text-xs mt-1 line-clamp-1" style={{ color: '#9B8FB5' }}>{item.ai_summary}</p>
         )}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
@@ -185,9 +185,9 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
           </span>
         )}
         {item.attachments?.length > 0 && (
-          <Paperclip size={11} style={{ color: 'var(--c-text-4)' }} />
+          <Paperclip size={11} style={{ color: '#9B8FB5' }} />
         )}
-        <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+        <span className="text-xs" style={{ color: '#9B8FB5' }}>
           {new Date(item.created_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
         </span>
         {onReassign && agents.length > 1 && (
@@ -197,7 +197,7 @@ export default function InboxRow({ item, agents, isExpanded, onToggle, showState
             onReassign={onReassign}
           />
         )}
-        {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--c-text-4)' }} /> : <ChevronDown size={13} style={{ color: 'var(--c-text-4)' }} />}
+        {isExpanded ? <ChevronUp size={13} style={{ color: '#9B8FB5' }} /> : <ChevronDown size={13} style={{ color: '#9B8FB5' }} />}
       </div>
     </button>
   );
@@ -242,8 +242,8 @@ function ReassignMenu({
       <button
         type="button"
         onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
-        className="p-1 rounded-md transition-colors hover:bg-[var(--c-surface-2)]"
-        style={{ background: 'none', border: 'none', color: 'var(--c-text-4)', cursor: 'pointer' }}
+        className="p-1 rounded-md transition-colors hover:bg-[#FAFAFB]"
+        style={{ background: 'none', border: 'none', color: '#9B8FB5', cursor: 'pointer' }}
         title="Reasignar a otro empleado"
       >
         <MoreVertical size={13} />
@@ -252,13 +252,13 @@ function ReassignMenu({
         <div
           className="absolute right-0 top-full mt-1.5 z-50 min-w-[200px] rounded-lg overflow-hidden"
           style={{
-            background: 'var(--c-modal, #fff)',
-            border:     '1px solid var(--c-border)',
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
             boxShadow:  '0 12px 32px rgba(26,10,59,0.14)',
           }}
         >
-          <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--c-border)' }}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+          <div className="px-3 py-2 border-b" style={{ borderColor: '#E8E3F5' }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
               Reasignar a
             </p>
           </div>
@@ -272,17 +272,17 @@ function ReassignMenu({
                     type="button"
                     onClick={e => handlePick(a.id, e)}
                     disabled={isCurrent || saving !== null}
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--c-surface-2)] disabled:opacity-60 disabled:cursor-default"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[#FAFAFB] disabled:opacity-60 disabled:cursor-default"
                     style={{
-                      background: isCurrent ? 'var(--c-surface-2)' : 'none',
+                      background: isCurrent ? '#FAFAFB' : 'none',
                       border:     'none',
                       cursor:     isCurrent ? 'default' : 'pointer',
-                      color:      'var(--c-text)',
+                      color:      '#1A0A3B',
                     }}
                   >
                     <span className="truncate">{label}</span>
                     {saving === a.id && <Loader2 size={11} className="animate-spin flex-shrink-0" />}
-                    {isCurrent && !saving && <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>Actual</span>}
+                    {isCurrent && !saving && <span className="text-[10px]" style={{ color: '#9B8FB5' }}>Actual</span>}
                   </button>
                 </li>
               );

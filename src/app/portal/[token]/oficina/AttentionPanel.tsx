@@ -39,7 +39,7 @@ export default async function AttentionPanel({ token }: { token: string }) {
     return (
       <div
         className="rounded-2xl overflow-hidden"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', position: 'sticky', top: 69 }}
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5', position: 'sticky', top: 69 }}
       >
         <div className="flex items-center gap-2 px-4 py-3">
           <div
@@ -48,7 +48,7 @@ export default async function AttentionPanel({ token }: { token: string }) {
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Todo al día</p>
+          <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>Todo al día</p>
         </div>
       </div>
     );
@@ -57,25 +57,25 @@ export default async function AttentionPanel({ token }: { token: string }) {
   return (
     <div
       className="rounded-2xl overflow-hidden"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', position: 'sticky', top: 69 }}
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5', position: 'sticky', top: 69 }}
     >
-      <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--c-border)' }}>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Necesitan tu atención</h2>
+      <div className="px-4 py-3" style={{ borderBottom: '1px solid #E8E3F5' }}>
+        <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Necesitan tu atención</h2>
         {pending.length > 0 && (
-          <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
             {pending.length} módulo{pending.length !== 1 ? 's' : ''} con pendientes
           </p>
         )}
       </div>
 
-      <div className="divide-y" style={{ borderColor: 'var(--c-border)' }}>
+      <div className="divide-y" style={{ borderColor: '#E8E3F5' }}>
         {pending.map(item => {
           const Icon = item.icon;
           return (
             <Link
               key={item.label}
               href={item.href}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--c-surface-2)]"
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FAFAFB]"
               style={{ textDecoration: 'none' }}
             >
               <div
@@ -84,7 +84,7 @@ export default async function AttentionPanel({ token }: { token: string }) {
               >
                 <Icon size={14} style={{ color: item.color }} />
               </div>
-              <span className="flex-1 text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+              <span className="flex-1 text-sm font-medium" style={{ color: '#1A0A3B' }}>
                 {item.label}
               </span>
               <span
