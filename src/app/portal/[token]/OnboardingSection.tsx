@@ -44,6 +44,19 @@ const TYPE_LABELS: Record<string, string> = {
   otro:      'Otro',
 };
 
+const SURFACE_STYLE = {
+  background: '#ffffff',
+  border: '1px solid #E8E3F5',
+  boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+} as const;
+
+const INPUT_STYLE = {
+  background: '#FAFAFB',
+  border: '1px solid #E8E3F5',
+  color: '#1A0A3B',
+  outline: 'none',
+} as const;
+
 export default function OnboardingSection({ token }: {
   token: string;
 }) {
@@ -214,31 +227,31 @@ export default function OnboardingSection({ token }: {
 
       {/* Hero */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
           Onboarding
         </p>
-        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: 'var(--c-text)' }}>
+        <h1 className="text-xl font-bold mt-1.5 leading-snug" style={{ color: '#1A0A3B' }}>
           Tu empleado guía a cada persona en su proceso de incorporación.
         </h1>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+        <p className="text-sm mt-2 leading-relaxed" style={{ color: '#6B6480' }}>
           Define plantillas con los pasos y documentos que necesitas de nuevos empleados, clientes o proveedores.
           Tu empleado envía el formulario por correo y lleva el seguimiento desde aquí.
         </p>
       </div>
 
-      {/* How it works */}
+      {/* How it works — se conserva el acento lila (bloque destacado) */}
       <div className="flex flex-col sm:flex-row gap-3">
         {[
           { n: '1', t: 'Crea una plantilla', d: 'Define los pasos del proceso y los documentos que necesitas recibir.' },
           { n: '2', t: 'Envíala por correo', d: 'El contacto recibe un link con su formulario personalizado para completarlo.' },
           { n: '3', t: 'Supervisa el avance', d: 'Ve el estatus y descarga los documentos recibidos desde esta pantalla.' },
         ].map(s => (
-          <div key={s.n} className="flex gap-3 rounded-xl p-4 flex-1" style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.1)' }}>
+          <div key={s.n} className="flex gap-3 rounded-2xl p-4 flex-1" style={{ background: 'rgba(108,59,255,0.04)', border: '1px solid rgba(108,59,255,0.15)' }}>
             <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"
-              style={{ background: 'rgba(108,59,255,0.12)', color: '#6C3BFF' }}>{s.n}</span>
+              style={{ background: 'rgba(108,59,255,0.14)', color: '#6C3BFF' }}>{s.n}</span>
             <div>
-              <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{s.t}</p>
-              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-4)' }}>{s.d}</p>
+              <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{s.t}</p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>{s.d}</p>
             </div>
           </div>
         ))}
@@ -247,32 +260,32 @@ export default function OnboardingSection({ token }: {
       <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Plantillas y procesos</p>
+        <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5' }}>Plantillas y procesos</p>
         <button
           onClick={() => { setShowTplForm(v => !v); setShowSendForm(null); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF' }}>
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
           <Plus size={12} /> Nueva plantilla
         </button>
       </div>
 
       {/* Template create form */}
       {showTplForm && (
-        <form onSubmit={handleCreateTemplate} className="rounded-xl p-4 flex flex-col gap-3"
-          style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
-          <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nueva plantilla de onboarding</p>
+        <form onSubmit={handleCreateTemplate} className="rounded-2xl p-4 flex flex-col gap-3"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+          <p className="text-xs font-semibold" style={{ color: '#6C3BFF' }}>Nueva plantilla de onboarding</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre *</label>
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Nombre *</label>
               <input required value={tplForm.name} onChange={e => setTplForm(p => ({ ...p, name: e.target.value }))}
                 placeholder="Ej. Onboarding empleado nuevo"
                 className="w-full px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+                style={INPUT_STYLE} />
             </div>
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Tipo</label>
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Tipo</label>
               <Select value={tplForm.type} onValueChange={v => setTplForm(p => ({ ...p, type: v }))}>
-                <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+                <SelectTrigger style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,7 +296,7 @@ export default function OnboardingSection({ token }: {
           </div>
 
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Pasos del proceso</label>
+            <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Pasos del proceso</label>
             {tplForm.steps.map((s, i) => (
               <div key={i} className="flex gap-2 mb-1.5">
                 <input value={s} onChange={e => {
@@ -292,24 +305,25 @@ export default function OnboardingSection({ token }: {
                 }}
                   placeholder={`Paso ${i + 1}...`}
                   className="flex-1 px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+                  style={INPUT_STYLE} />
                 {tplForm.steps.length > 1 && (
                   <button type="button" onClick={() => setTplForm(p => ({ ...p, steps: p.steps.filter((_, j) => j !== i) }))}
                     className="px-2 py-1 rounded-lg text-xs"
-                    style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171' }}>×</button>
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}
+                    aria-label="Quitar paso">×</button>
                 )}
               </div>
             ))}
             <button type="button"
               onClick={() => setTplForm(p => ({ ...p, steps: [...p.steps, ''] }))}
-              className="text-xs mt-1 transition-opacity hover:opacity-70"
-              style={{ color: '#9B6DFF' }}>
+              className="text-xs mt-1 transition-opacity hover:opacity-80 font-medium"
+              style={{ color: '#6C3BFF' }}>
               + Agregar paso
             </button>
           </div>
 
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Documentos a solicitar</label>
+            <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Documentos a solicitar</label>
             {tplForm.docs.map((d, i) => (
               <div key={i} className="flex gap-2 mb-1.5">
                 <input value={d} onChange={e => {
@@ -318,42 +332,44 @@ export default function OnboardingSection({ token }: {
                 }}
                   placeholder={`Ej. Identificación oficial`}
                   className="flex-1 px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+                  style={INPUT_STYLE} />
                 {tplForm.docs.length > 1 && (
                   <button type="button" onClick={() => setTplForm(p => ({ ...p, docs: p.docs.filter((_, j) => j !== i) }))}
                     className="px-2 py-1 rounded-lg text-xs"
-                    style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171' }}>×</button>
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}
+                    aria-label="Quitar documento">×</button>
                 )}
               </div>
             ))}
             <button type="button"
               onClick={() => setTplForm(p => ({ ...p, docs: [...p.docs, ''] }))}
-              className="text-xs mt-1 transition-opacity hover:opacity-70"
-              style={{ color: '#9B6DFF' }}>
+              className="text-xs mt-1 transition-opacity hover:opacity-80 font-medium"
+              style={{ color: '#6C3BFF' }}>
               + Agregar documento
             </button>
           </div>
 
           <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Notas adicionales</label>
+            <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Notas adicionales</label>
             <textarea rows={2} value={tplForm.notes} onChange={e => setTplForm(p => ({ ...p, notes: e.target.value }))}
               placeholder="Instrucciones especiales..."
               className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-              style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit' }} />
+              style={{ ...INPUT_STYLE, fontFamily: 'inherit' }} />
           </div>
 
           {createError && (
-            <p className="text-xs" style={{ color: '#f87171' }}>{createError}</p>
+            <p className="text-xs px-3 py-2 rounded-lg"
+              style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>{createError}</p>
           )}
           <div className="flex gap-2">
             <button type="submit" disabled={saving}
-              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ background: '#6C3BFF', color: '#fff' }}>
+              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
               {saving ? 'Guardando...' : 'Crear plantilla'}
             </button>
             <button type="button" onClick={() => { setShowTplForm(false); setCreateError(null); }}
               className="px-4 py-2 rounded-lg text-xs font-semibold"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>
+              style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
               Cancelar
             </button>
           </div>
@@ -362,17 +378,21 @@ export default function OnboardingSection({ token }: {
 
       {/* Action error */}
       {actionError && (
-        <p className="text-xs px-1" style={{ color: '#f87171' }}>{actionError}
+        <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>{actionError}
           <button onClick={() => setActionError(null)} className="ml-2 underline">Cerrar</button>
         </p>
       )}
 
       {/* View toggle */}
-      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
         {(['instances', 'templates'] as const).map(v => (
           <button key={v} onClick={() => setView(v)}
             className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-            style={{ background: view === v ? '#6C3BFF' : 'transparent', color: view === v ? '#fff' : 'var(--c-text-3)' }}>
+            style={{
+              background: view === v ? '#6C3BFF' : 'transparent',
+              color: view === v ? '#fff' : '#6B6480',
+              boxShadow: view === v ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+            }}>
             {v === 'instances' ? `Procesos activos${instances.length > 0 ? ` (${instances.length})` : ''}` : 'Plantillas'}
           </button>
         ))}
@@ -380,30 +400,30 @@ export default function OnboardingSection({ token }: {
 
       {/* Search */}
       <div className="relative">
-        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-text-4)', pointerEvents: 'none' }} />
+        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9B8FB5', pointerEvents: 'none' }} />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={view === 'templates' ? 'Buscar plantilla...' : 'Buscar por nombre o correo...'}
           className="w-full text-xs rounded-xl"
-          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
         />
       </div>
 
       {loading ? (
-        <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+        <p className="text-xs py-4 text-center" style={{ color: '#6B6480' }}>Cargando...</p>
       ) : view === 'templates' ? (
         /* Templates list */
         templates.length === 0 ? (
-          <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+          <div className="rounded-2xl p-6 flex flex-col gap-4" style={SURFACE_STYLE}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
-                <UserCheck size={16} style={{ color: '#9B6DFF' }} />
+                <UserCheck size={16} style={{ color: '#6C3BFF' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin plantillas todavía</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Crea una plantilla con los pasos y documentos que necesitas de cada contacto.</p>
+                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin plantillas todavía</p>
+                <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>Crea una plantilla con los pasos y documentos que necesitas de cada contacto.</p>
               </div>
             </div>
             <div className="flex flex-col gap-2 pl-12">
@@ -413,37 +433,36 @@ export default function OnboardingSection({ token }: {
                 'Proveedor: alta en sistema, datos bancarios, CFDI de servicios',
               ].map(ex => (
                 <div key={ex} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
-                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+                  <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: '#9B8FB5' }} />
+                  <p className="text-xs" style={{ color: '#6B6480' }}>{ex}</p>
                 </div>
               ))}
             </div>
             <div className="pl-12">
               <button
                 onClick={() => { setShowTplForm(true); setView('templates'); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-                style={{ background: 'rgba(108,59,255,0.12)', border: '1px solid rgba(108,59,255,0.3)', color: '#9B6DFF' }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-90"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
               >
                 <Plus size={12} /> Crear primera plantilla
               </button>
             </div>
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <p className="text-xs text-center py-4" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
+          <p className="text-xs text-center py-4" style={{ color: '#6B6480' }}>Sin resultados para "{search}"</p>
         ) : (
           <div className="flex flex-col gap-2">
             {filteredTemplates.map(t => (
-              <div key={t.id} className="rounded-xl overflow-hidden"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                <button onClick={() => toggleT(t.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80">
+              <div key={t.id} className="rounded-2xl overflow-hidden" style={SURFACE_STYLE}>
+                <button onClick={() => toggleT(t.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFB]">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{t.name}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--c-text-3)' }}>
+                      <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{t.name}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                         {TYPE_LABELS[t.type] ?? t.type}
                       </span>
                     </div>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{t.steps.length} pasos · {t.document_requests.length} documentos</p>
+                    <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{t.steps.length} pasos · {t.document_requests.length} documentos</p>
                   </div>
                   <button
                     onClick={ev => { ev.stopPropagation(); setShowSendForm(t.id); setShowTplForm(false); }}
@@ -451,26 +470,26 @@ export default function OnboardingSection({ token }: {
                     style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}>
                     <Send size={10} /> Enviar
                   </button>
-                  {expandedT.has(t.id) ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                  {expandedT.has(t.id) ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />}
                 </button>
 
                 {expandedT.has(t.id) && (
-                  <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                  <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9' }}>
                     <div className="pt-3">
-                      <p className="text-xs font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>Pasos</p>
-                      {t.steps.map((s, i) => <p key={i} className="text-sm mb-1" style={{ color: 'var(--c-text)' }}>{i + 1}. {s}</p>)}
+                      <p className="text-xs font-semibold mb-2" style={{ color: '#6B6480' }}>Pasos</p>
+                      {t.steps.map((s, i) => <p key={i} className="text-sm mb-1" style={{ color: '#1A0A3B' }}>{i + 1}. {s}</p>)}
                     </div>
                     {t.document_requests.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>Documentos solicitados</p>
-                        {t.document_requests.map((d, i) => <p key={i} className="text-sm mb-1 flex gap-2" style={{ color: 'var(--c-text)' }}><span style={{ color: '#9B6DFF' }}>•</span>{d}</p>)}
+                        <p className="text-xs font-semibold mb-2" style={{ color: '#6B6480' }}>Documentos solicitados</p>
+                        {t.document_requests.map((d, i) => <p key={i} className="text-sm mb-1 flex gap-2" style={{ color: '#1A0A3B' }}><span style={{ color: '#6C3BFF' }}>•</span>{d}</p>)}
                       </div>
                     )}
-                    {t.notes && <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>{t.notes}</p>}
+                    {t.notes && <p className="text-sm" style={{ color: '#1A0A3B' }}>{t.notes}</p>}
                     <div className="flex justify-end">
                       <button onClick={() => handleDeleteTemplate(t.id)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                        style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
                         <Trash2 size={11} /> Eliminar
                       </button>
                     </div>
@@ -483,14 +502,14 @@ export default function OnboardingSection({ token }: {
       ) : (
         /* Instances list */
         instances.length === 0 ? (
-          <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+          <div className="rounded-2xl p-6 flex flex-col gap-4" style={SURFACE_STYLE}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(34,197,94,0.1)' }}>
                 <Users size={16} style={{ color: '#22c55e' }} />
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin procesos activos</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin procesos activos</p>
+                <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                   {templates.length === 0
                     ? 'Primero crea una plantilla y luego envíala al contacto que quieres incorporar.'
                     : 'Abre una plantilla en la pestaña "Plantillas" y usa el botón Enviar para iniciar un proceso.'}
@@ -501,7 +520,7 @@ export default function OnboardingSection({ token }: {
               <div className="pl-12">
                 <button
                   onClick={() => setView('templates')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80"
                   style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}
                 >
                   <Send size={12} /> Ver plantillas para enviar
@@ -510,7 +529,7 @@ export default function OnboardingSection({ token }: {
             )}
           </div>
         ) : filteredInstances.length === 0 ? (
-          <p className="text-xs text-center py-4" style={{ color: 'var(--c-text-3)' }}>Sin resultados para "{search}"</p>
+          <p className="text-xs text-center py-4" style={{ color: '#6B6480' }}>Sin resultados para "{search}"</p>
         ) : (
           <div className="flex flex-col gap-2">
             {filteredInstances.map(inst => {
@@ -519,33 +538,32 @@ export default function OnboardingSection({ token }: {
               const isOpen  = expandedI.has(inst.id);
 
               return (
-                <div key={inst.id} className="rounded-xl overflow-hidden"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                  <button onClick={() => toggleI(inst.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80">
+                <div key={inst.id} className="rounded-2xl overflow-hidden" style={SURFACE_STYLE}>
+                  <button onClick={() => toggleI(inst.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FAFAFB]">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: stCfg.color }} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{inst.contact_name}</span>
+                        <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{inst.contact_name}</span>
                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
                           style={{ background: stCfg.bg, color: stCfg.color }}>{stCfg.label}</span>
                       </div>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{inst.contact_email} · {tplName}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>{inst.contact_email} · {tplName}</p>
                     </div>
-                    {isOpen ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                    {isOpen ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />}
                   </button>
 
                   {isOpen && (
-                    <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                    <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9' }}>
                       <div className="pt-3 grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs mb-0.5" style={{ color: 'var(--c-text-3)' }}>Enviado</p>
-                          <p className="text-sm" style={{ color: 'var(--c-text)' }}>
+                          <p className="text-xs mb-0.5" style={{ color: '#6B6480' }}>Enviado</p>
+                          <p className="text-sm" style={{ color: '#1A0A3B' }}>
                             {new Date(inst.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                           </p>
                         </div>
                         {inst.submitted_at && (
                           <div>
-                            <p className="text-xs mb-0.5" style={{ color: 'var(--c-text-3)' }}>Completado</p>
+                            <p className="text-xs mb-0.5" style={{ color: '#6B6480' }}>Completado</p>
                             <p className="text-sm" style={{ color: '#22c55e' }}>
                               {new Date(inst.submitted_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
                             </p>
@@ -557,19 +575,19 @@ export default function OnboardingSection({ token }: {
                       <a
                         href={`${baseUrl}/onboarding/${inst.submit_token}`}
                         target="_blank" rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-                        style={{ color: '#9B6DFF' }}>
+                        className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80 font-medium"
+                        style={{ color: '#6C3BFF' }}>
                         <ExternalLink size={11} /> Ver formulario de onboarding
                       </a>
 
                       {/* Submitted docs */}
                       {inst.submitted_docs?.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>Documentos recibidos</p>
+                          <p className="text-xs font-semibold mb-2" style={{ color: '#6B6480' }}>Documentos recibidos</p>
                           {inst.submitted_docs.map((doc, i) => (
                             <a key={i} href={doc.url} target="_blank" rel="noreferrer"
-                              className="flex items-center gap-1.5 text-xs mb-1 transition-opacity hover:opacity-70"
-                              style={{ color: '#9B6DFF' }}>
+                              className="flex items-center gap-1.5 text-xs mb-1 transition-opacity hover:opacity-80 font-medium"
+                              style={{ color: '#6C3BFF' }}>
                               <ExternalLink size={10} /> {doc.name}
                             </a>
                           ))}
@@ -594,7 +612,7 @@ export default function OnboardingSection({ token }: {
                         )}
                         <button onClick={() => handleDeleteInstance(inst.id)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
                           <Trash2 size={11} /> Eliminar
                         </button>
                       </div>
@@ -612,37 +630,42 @@ export default function OnboardingSection({ token }: {
       {/* Send modal */}
       {showSendForm && (
         <div className="fixed inset-0 flex items-center justify-center z-50 px-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          style={{ background: 'rgba(15,5,34,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
           <div className="w-full max-w-md rounded-2xl p-6 flex flex-col gap-4"
-            style={{ background: '#1a0a3b', border: '1px solid rgba(108,59,255,0.3)' }}>
-            <h3 className="text-base font-semibold" style={{ color: '#e2e8f0' }}>Enviar onboarding</h3>
+            style={{
+              background: '#ffffff',
+              border: '1px solid #E8E3F5',
+              boxShadow: '0 24px 60px rgba(26,10,59,0.20)',
+            }}>
+            <h3 className="text-base font-semibold" style={{ color: '#1A0A3B' }}>Enviar onboarding</h3>
             <form onSubmit={handleSend} className="flex flex-col gap-3">
               <div>
-                <label className="text-xs block mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Nombre del contacto *</label>
+                <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Nombre del contacto *</label>
                 <input required value={sendForm.contact_name} onChange={e => setSendForm(p => ({ ...p, contact_name: e.target.value }))}
                   placeholder="Ana García"
                   className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0' }} />
+                  style={INPUT_STYLE} />
               </div>
               <div>
-                <label className="text-xs block mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Correo electrónico *</label>
+                <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Correo electrónico *</label>
                 <input required type="email" value={sendForm.contact_email} onChange={e => setSendForm(p => ({ ...p, contact_email: e.target.value }))}
                   placeholder="ana@empresa.com"
                   className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#e2e8f0' }} />
+                  style={INPUT_STYLE} />
               </div>
               {sendError && (
-                <p className="text-xs" style={{ color: '#f87171' }}>{sendError}</p>
+                <p className="text-xs px-3 py-2 rounded-lg"
+                  style={{ background: '#FEF2F2', color: '#EF4444', border: '1px solid #FECACA' }}>{sendError}</p>
               )}
               <div className="flex gap-2 mt-2">
                 <button type="submit" disabled={saving}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
-                  style={{ background: '#6C3BFF', color: '#fff' }}>
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                   {saving ? 'Enviando...' : 'Enviar correo'}
                 </button>
                 <button type="button" onClick={() => { setShowSendForm(null); setSendError(null); }}
                   className="px-4 py-2 rounded-lg text-sm font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                   Cancelar
                 </button>
               </div>
