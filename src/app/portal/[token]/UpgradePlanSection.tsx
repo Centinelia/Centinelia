@@ -63,21 +63,21 @@ export default function UpgradePlanSection({
 
         return (
           <div key={t.key} className="rounded-xl overflow-hidden"
-            style={{ border: `1px solid ${isExpanded ? '#6C3BFF55' : 'var(--c-border)'}`, background: isExpanded ? 'rgba(108,59,255,0.05)' : 'var(--c-surface-2)' }}>
+            style={{ border: `1px solid ${isExpanded ? '#6C3BFF55' : '#E8E3F5'}`, background: isExpanded ? 'rgba(108,59,255,0.05)' : '#FAFAFB' }}>
             <button className="w-full flex items-center gap-3 px-4 py-3 text-left"
               onClick={() => setExpandedTier(isExpanded ? null : t.key)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-              <span className="text-sm font-semibold flex-1" style={{ color: 'var(--c-text)' }}>{t.label}</span>
+              <span className="text-sm font-semibold flex-1" style={{ color: '#1A0A3B' }}>{t.label}</span>
               {isCurrent && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium mr-1"
                 style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>Actual</span>}
-              <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+              <span className="text-xs tabular-nums" style={{ color: '#6B6480' }}>
                 {t.minutes} min{cfg.aiOps > 0 ? ` · ${cfg.aiOps} tareas` : ''} · ${cfg.mxn.toLocaleString('es-MX')} + IVA/mes
               </span>
-              <ChevronDown size={14} style={{ color: 'var(--c-text-3)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginLeft: 4 }} />
+              <ChevronDown size={14} style={{ color: '#6B6480', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginLeft: 4 }} />
             </button>
             {isExpanded && !isCurrent && (
               <div className="px-4 pb-4" style={{ borderTop: '1px solid rgba(108,59,255,0.15)' }}>
-                <div className="flex flex-col gap-0.5 mt-3 text-xs" style={{ color: 'var(--c-text-3)' }}>
+                <div className="flex flex-col gap-0.5 mt-3 text-xs" style={{ color: '#6B6480' }}>
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>${cfg.mxn.toLocaleString('es-MX')} MXN/mes</span>
@@ -86,13 +86,13 @@ export default function UpgradePlanSection({
                     <span>IVA (16%)</span>
                     <span>${Math.round(cfg.mxn * 0.16).toLocaleString('es-MX')} MXN</span>
                   </div>
-                  <div className="flex justify-between font-semibold pt-0.5" style={{ borderTop: '1px solid var(--c-border)', marginTop: 2, color: 'var(--c-text-1)' }}>
+                  <div className="flex justify-between font-semibold pt-0.5" style={{ borderTop: '1px solid #E8E3F5', marginTop: 2, color: '#1A0A3B' }}>
                     <span>Total mensual</span>
                     <span>${Math.round(cfg.mxn * 1.16).toLocaleString('es-MX')} MXN</span>
                   </div>
                 </div>
                 <button onClick={() => handleChangeTier(t.key)} disabled={!!loadingTier} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold mt-3"
-                  style={{ background: isUpgrade ? 'rgba(108,59,255,0.1)' : 'var(--c-surface)', border: `1px solid ${isUpgrade ? 'rgba(108,59,255,0.35)' : 'var(--c-border)'}`, color: isUpgrade ? '#6C3BFF' : 'var(--c-text-2)' }}>
+                  style={{ background: isUpgrade ? 'rgba(108,59,255,0.1)' : '#ffffff', border: `1px solid ${isUpgrade ? 'rgba(108,59,255,0.35)' : '#E8E3F5'}`, color: isUpgrade ? '#6C3BFF' : '#1A0A3B' }}>
                   {loadingTier === t.key ? 'Procesando…' : isUpgrade ? <><ArrowUpCircle size={12} /> Cambiar a {t.label}</> : <><ArrowDownCircle size={12} /> Cambiar a {t.label}</>}
                 </button>
               </div>
@@ -100,7 +100,7 @@ export default function UpgradePlanSection({
           </div>
         );
       })}
-      <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
+      <p className="text-xs mt-1" style={{ color: '#9B8FB5' }}>
         Cambios de tier aplican en el próximo ciclo de facturación. Minutos extra fuera del plan cuestan $12.99/min + IVA.
       </p>
     </div>

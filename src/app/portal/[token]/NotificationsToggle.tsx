@@ -22,8 +22,8 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
         borderRadius:    12,
         border:          'none',
         cursor:          disabled ? 'default' : 'pointer',
-        background:      on ? '#6C3BFF' : 'var(--c-surface-2)',
-        outline:         on ? '2px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+        background:      on ? '#6C3BFF' : '#FAFAFB',
+        outline:         on ? '2px solid rgba(108,59,255,0.3)' : '1px solid #E8E3F5',
         outlineOffset:   0,
         position:        'relative',
         transition:      'background 0.2s, outline 0.2s',
@@ -98,8 +98,8 @@ export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp
             gap:            16,
             padding:        '12px 14px',
             borderRadius:   12,
-            background:     'var(--c-surface-2)',
-            border:         '1px solid var(--c-border)',
+            background:     '#FAFAFB',
+            border:         '1px solid #E8E3F5',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
@@ -107,8 +107,8 @@ export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp
               width:          32,
               height:         32,
               borderRadius:   8,
-              background:     'var(--c-surface)',
-              border:         '1px solid var(--c-border)',
+              background:     '#ffffff',
+              border:         '1px solid #E8E3F5',
               display:        'flex',
               alignItems:     'center',
               justifyContent: 'center',
@@ -117,13 +117,13 @@ export default function NotificationsToggle({ token, initWhatsApp: _initWhatsApp
               {r.icon}
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: 0, lineHeight: 1.3 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: 0, lineHeight: 1.3 }}>
                 {r.label}
                 {saved === r.field && (
                   <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Check size={11} /> Guardado</span>
                 )}
               </p>
-              <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '2px 0 0', lineHeight: 1.4 }}>
+              <p style={{ fontSize: 12, color: '#6B6480', margin: '2px 0 0', lineHeight: 1.4 }}>
                 {r.desc}
               </p>
             </div>

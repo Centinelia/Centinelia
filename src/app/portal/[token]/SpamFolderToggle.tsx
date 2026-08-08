@@ -47,12 +47,12 @@ export default function SpamFolderToggle({
   return (
     <div
       className="rounded-xl p-4"
-      style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
     >
       <div className="flex items-center justify-between mb-2">
         <p
           className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: 'var(--c-text-4)' }}
+          style={{ color: '#9B8FB5' }}
         >
           Revisar carpeta de Spam
         </p>
@@ -60,7 +60,7 @@ export default function SpamFolderToggle({
           onClick={toggle}
           disabled={saving}
           className="w-10 h-6 rounded-full transition-colors relative"
-          style={{ background: enabled ? '#6C3BFF' : 'var(--c-border)' }}
+          style={{ background: enabled ? '#6C3BFF' : '#E8E3F5' }}
         >
           <div
             className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
@@ -77,27 +77,27 @@ export default function SpamFolderToggle({
       </div>
       <p
         className="text-xs mb-2"
-        style={{ color: 'var(--c-text-3)', lineHeight: 1.5 }}
+        style={{ color: '#6B6480', lineHeight: 1.5 }}
       >
         Gmail/Outlook a veces marcan correos legítimos como spam por error.
         Activar para que tu empleado también revise esa carpeta y rescate lo
         importante.
       </p>
-      <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
+      <p className="text-xs" style={{ color: '#9B8FB5' }}>
         Costo estimado: ~30-50 tareas adicionales/mes según volumen.
       </p>
       {enabled && stats && stats.revisados > 0 && (
         <div
           className="mt-3 pt-3 border-t"
-          style={{ borderColor: 'var(--c-border)' }}
+          style={{ borderColor: '#E8E3F5' }}
         >
           <p
             className="text-xs font-semibold mb-1"
-            style={{ color: 'var(--c-text-3)' }}
+            style={{ color: '#6B6480' }}
           >
             Última semana:
           </p>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs" style={{ color: '#6B6480' }}>
             {stats.revisados} correos revisados · {stats.rescatados} rescatados ·{' '}
             {stats.ops_consumidas} tareas consumidas
           </p>
