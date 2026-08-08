@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Zap, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
 
 const MIN_THRESHOLD_OPTIONS = [25, 50, 75, 100];
 const MIN_REFILL_OPTIONS    = [{ minutes: 100, price: 1200 }, { minutes: 200, price: 2400 }];
@@ -269,10 +269,10 @@ export default function AutoRefillSection({ token }: { token: string }) {
         }}
       >
         {saved
-          ? <><RefreshCw size={13} /> Guardado</>
+          ? <><Check size={13} strokeWidth={2.5} /> Guardado</>
           : saving
           ? 'Guardando…'
-          : <><Zap size={13} /> Guardar configuración</>}
+          : 'Guardar configuración'}
       </button>
     </div>
   );

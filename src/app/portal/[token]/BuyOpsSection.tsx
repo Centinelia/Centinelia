@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 const PRICE_PER_OP = 8.5;
 const IVA = 0.16;
@@ -159,7 +159,7 @@ export default function BuyOpsSection({ token }: { token: string }) {
           opacity:    loading ? 0.6 : 1,
         }}
       >
-        <Zap size={14} />
+        <Plus size={14} strokeWidth={2.5} />
         {loading
           ? 'Redirigiendo…'
           : total
