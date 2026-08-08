@@ -186,8 +186,8 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
         onClick={openPicker}
         className="flex items-center gap-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80 shrink-0"
         style={preselect
-          ? { background: '#6C3BFF', color: '#fff', border: 'none', padding: '7px 16px' }
-          : { background: 'rgba(108,59,255,0.1)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.25)', padding: '6px 12px' }
+          ? { background: '#6C3BFF', color: '#fff', border: 'none', padding: '7px 16px', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }
+          : { background: '#6C3BFF', color: '#fff', border: 'none', padding: '6px 12px', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }
         }
       >
         {triggerLabel ?? <><Plus size={13} /> Contratar empleado</>}
@@ -201,26 +201,26 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
         >
           <div
             className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', maxHeight: '90vh' }}
+            style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)', maxHeight: '90vh' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 shrink-0"
-              style={{ borderBottom: '1px solid var(--c-border)' }}>
+              style={{ borderBottom: '1px solid #E8E3F5' }}>
               <div className="flex items-center gap-2">
                 {showBack && (
                   <button
                     onClick={handleBack}
                     className="p-1 rounded-lg transition-opacity hover:opacity-70 mr-1"
-                    style={{ color: 'var(--c-text-3)' }}
+                    style={{ color: '#6B6480' }}
                   >
                     <ArrowLeft size={15} />
                   </button>
                 )}
                 <div>
-                  <h2 className="font-bold text-base" style={{ color: 'var(--c-text)' }}>
+                  <h2 className="font-bold text-base" style={{ color: '#1A0A3B' }}>
                     {headerTitle}
                   </h2>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                     {headerSubtitle}
                   </p>
                 </div>
@@ -228,7 +228,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
               <button
                 onClick={closePicker}
                 className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
-                style={{ color: 'var(--c-text-3)' }}
+                style={{ color: '#6B6480' }}
               >
                 <X size={16} />
               </button>
@@ -246,8 +246,8 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                         onClick={() => smartMode ? setExpandedRole(role) : handleSelect(role)}
                         className="flex flex-col rounded-xl overflow-hidden text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
                         style={{
-                          background: 'var(--c-surface-2)',
-                          border:     `1px solid var(--c-border)`,
+                          background: '#FAFAFB',
+                          border:     `1px solid #E8E3F5`,
                           cursor:     'pointer',
                         }}
                       >
@@ -258,7 +258,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                         {/* Text */}
                         <div className="px-3 py-2.5 flex flex-col gap-0.5">
                           <div className="font-bold text-sm leading-tight"
-                            style={{ color: role.id === 'custom' ? 'var(--c-text-3)' : 'var(--c-text)' }}>
+                            style={{ color: role.id === 'custom' ? '#6B6480' : '#1A0A3B' }}>
                             {role.nombre}
                           </div>
                           {role.rol && (
@@ -266,7 +266,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                               {role.rol}
                             </div>
                           )}
-                          <div className="text-[10px] mt-0.5 leading-tight" style={{ color: 'var(--c-text-4)' }}>
+                          <div className="text-[10px] mt-0.5 leading-tight" style={{ color: '#9B8FB5' }}>
                             {role.descripcion}
                           </div>
                           {smartMode && rec && (
@@ -295,13 +295,13 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
 
                   {/* Hero */}
                   <div className="flex items-center gap-4 p-4 rounded-xl"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                     <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0"
                       style={{ background: `${expandedRole.color}10` }}>
                       <MeerkatCardImage role={expandedRole} />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-base leading-tight" style={{ color: 'var(--c-text)' }}>
+                      <span className="font-bold text-base leading-tight" style={{ color: '#1A0A3B' }}>
                         {expandedRole.nombre}
                       </span>
                       {expandedRole.rol && (
@@ -309,7 +309,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                           {expandedRole.rol}
                         </span>
                       )}
-                      <span className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+                      <span className="text-xs mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>
                         {expandedRole.descripcion}
                       </span>
                     </div>
@@ -318,7 +318,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                   {/* New capabilities */}
                   {rec && rec.newCats.length > 0 && (
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+                      <p className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>
                         Con este empleado, incorporas:
                       </p>
                       {rec.newCats.map(cat => (
@@ -333,7 +333,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                             {cat.newTools.map(tool => (
                               <div key={tool} className="flex items-center gap-1.5">
                                 <span className="text-[10px] flex-shrink-0" style={{ color: '#16a34a' }}>✓</span>
-                                <span className="text-[11px]" style={{ color: 'var(--c-text-2)' }}>{tool}</span>
+                                <span className="text-[11px]" style={{ color: '#1A0A3B' }}>{tool}</span>
                               </div>
                             ))}
                           </div>
@@ -345,7 +345,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                   {/* All capabilities */}
                   {rec && rec.allCaps.length > 0 && (
                     <div className="flex flex-col gap-1.5">
-                      <p className="text-xs font-semibold" style={{ color: 'var(--c-text-4)' }}>
+                      <p className="text-xs font-semibold" style={{ color: '#9B8FB5' }}>
                         Capacidades completas
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -380,12 +380,12 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
             {step === 'confirm' && selected && (
               <div className="p-6 flex flex-col gap-5 overflow-y-auto">
                 <div className="flex items-center gap-4 p-4 rounded-xl"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                   <div className="w-16 h-20 rounded-xl overflow-hidden flex-shrink-0" style={{ background: `${selected.color}10` }}>
                     <MeerkatCardImage role={selected} />
                   </div>
                   <div>
-                    <div className="font-bold text-base" style={{ color: 'var(--c-text)' }}>
+                    <div className="font-bold text-base" style={{ color: '#1A0A3B' }}>
                       {selected.nombre}
                     </div>
                     {selected.rol && (
@@ -393,7 +393,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                         {selected.rol}
                       </div>
                     )}
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                    <div className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                       {selected.descripcion}
                     </div>
                   </div>
@@ -401,7 +401,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
 
                 {/* Nombre */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+                  <label className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>
                     Nombre del empleado
                   </label>
                   <input
@@ -412,9 +412,9 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                     placeholder={selected.id === 'custom' ? 'Ej: Mi Asistente' : selected.nombre}
                     className="px-3 py-2.5 rounded-lg text-sm"
                     style={{
-                      background: 'var(--c-surface-2)',
-                      border:     '1px solid var(--c-border)',
-                      color:      'var(--c-text)',
+                      background: '#FAFAFB',
+                      border:     '1px solid #E8E3F5',
+                      color:      '#1A0A3B',
                       outline:    'none',
                     }}
                     autoFocus
@@ -430,17 +430,17 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                   ];
                   return (
                     <div className="flex flex-col gap-2">
-                      <label className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>Tipo de jornada</label>
+                      <label className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>Tipo de jornada</label>
                       <div className="grid grid-cols-3 gap-2">
                         {JORNADA_OPTS.map(o => {
                           const active = jornada === o.key;
                           return (
                             <button key={o.key} type="button" onClick={() => setJornada(o.key)}
                               className="flex flex-col items-center gap-1 p-3 rounded-xl text-center transition-all"
-                              style={{ background: active ? o.bg : 'var(--c-surface-2)', border: `1px solid ${active ? o.border : 'var(--c-border)'}`, cursor: 'pointer' }}>
-                              <span className="flex items-center gap-0.5" style={{ color: active ? o.color : 'var(--c-text-3)' }}>{o.icon}</span>
-                              <span className="text-xs font-bold" style={{ color: active ? o.color : 'var(--c-text)' }}>{o.label}</span>
-                              <span className="text-[10px]" style={{ color: 'var(--c-text-4)' }}>{o.desc}</span>
+                              style={{ background: active ? o.bg : '#FAFAFB', border: `1px solid ${active ? o.border : '#E8E3F5'}`, cursor: 'pointer' }}>
+                              <span className="flex items-center gap-0.5" style={{ color: active ? o.color : '#6B6480' }}>{o.icon}</span>
+                              <span className="text-xs font-bold" style={{ color: active ? o.color : '#1A0A3B' }}>{o.label}</span>
+                              <span className="text-[10px]" style={{ color: '#9B8FB5' }}>{o.desc}</span>
                             </button>
                           );
                         })}
@@ -451,7 +451,7 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
 
                 {/* Tier mensual */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>
+                  <label className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>
                     Volumen mensual
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -468,18 +468,18 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                           onClick={() => setTier(j.tier)}
                           className="flex flex-col gap-1 p-3 rounded-xl text-left transition-all"
                           style={{
-                            background: active ? 'rgba(108,59,255,0.1)' : 'var(--c-surface-2)',
-                            border:     active ? '1px solid rgba(108,59,255,0.45)' : '1px solid var(--c-border)',
+                            background: active ? 'rgba(108,59,255,0.1)' : '#FAFAFB',
+                            border:     active ? '1px solid rgba(108,59,255,0.45)' : '1px solid #E8E3F5',
                             cursor:     'pointer',
                           }}
                         >
-                          <span className="text-xs font-bold" style={{ color: active ? '#9B6DFF' : 'var(--c-text)' }}>
+                          <span className="text-xs font-bold" style={{ color: active ? '#9B6DFF' : '#1A0A3B' }}>
                             {j.label}
                           </span>
-                          <span className="text-[10px]" style={{ color: 'var(--c-text-3)' }}>
+                          <span className="text-[10px]" style={{ color: '#6B6480' }}>
                             {allocStr}/mes
                           </span>
-                          <span className="text-[11px] font-semibold mt-0.5 whitespace-nowrap" style={{ color: active ? '#9B6DFF' : 'var(--c-text-2)' }}>
+                          <span className="text-[11px] font-semibold mt-0.5 whitespace-nowrap" style={{ color: active ? '#9B6DFF' : '#1A0A3B' }}>
                             {fmt(j.mxn)}<span style={{ fontWeight: 400, fontSize: 9, opacity: 0.65 }}> + IVA/mes</span>
                           </span>
                         </button>
@@ -503,28 +503,28 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                   return (
                     <div className="rounded-xl p-4 flex flex-col gap-2"
                       style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.18)' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-3)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B6480' }}>
                         Resumen de contratación
                       </p>
-                      <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                      <div className="flex items-center justify-between text-xs" style={{ color: '#1A0A3B' }}>
                         <span>Contratación (único)</span>
                         <span className="font-semibold">{fmt(SETUP_FEE[plan])}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-2)' }}>
+                      <div className="flex items-center justify-between text-xs" style={{ color: '#1A0A3B' }}>
                         <span>{j.label} · {allocStr}/mes</span>
                         <span className="font-semibold whitespace-nowrap">{fmt(j.mxn)}<span style={{ fontWeight: 400, opacity: 0.6 }}> + IVA/mes</span></span>
                       </div>
-                      <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-3)', borderTop: '1px solid rgba(108,59,255,0.12)', paddingTop: 6, marginTop: 2 }}>
+                      <div className="flex items-center justify-between text-xs" style={{ color: '#6B6480', borderTop: '1px solid rgba(108,59,255,0.12)', paddingTop: 6, marginTop: 2 }}>
                         <span>Subtotal</span>
                         <span>{fmt(subtotal)}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs" style={{ color: 'var(--c-text-3)' }}>
+                      <div className="flex items-center justify-between text-xs" style={{ color: '#6B6480' }}>
                         <span>IVA (16%)</span>
                         <span>{fmt(iva)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm font-bold pt-1"
                         style={{ borderTop: '1px solid rgba(108,59,255,0.18)', paddingTop: 8 }}>
-                        <span style={{ color: 'var(--c-text)' }}>Total primer mes</span>
+                        <span style={{ color: '#1A0A3B' }}>Total primer mes</span>
                         <span style={{ color: '#9B6DFF' }}>{fmt(total)}</span>
                       </div>
                     </div>
@@ -544,9 +544,9 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                       onClick={() => setSelected(null)}
                       className="px-4 py-2 rounded-lg text-sm"
                       style={{
-                        color:      'var(--c-text-3)',
-                        background: 'var(--c-surface-2)',
-                        border:     '1px solid var(--c-border)',
+                        color:      '#6B6480',
+                        background: '#FAFAFB',
+                        border:     '1px solid #E8E3F5',
                         cursor:     'pointer',
                       }}
                     >
