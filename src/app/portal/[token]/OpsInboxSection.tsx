@@ -401,8 +401,8 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         key={item.id}
         className="rounded-xl overflow-hidden"
         style={{
-          border:     `1px solid ${isExpanded ? catColorHex + '44' : 'var(--c-border)'}`,
-          background: isExpanded ? `${catColorHex}08` : 'var(--c-surface-2)',
+          border:     `1px solid ${isExpanded ? catColorHex + '44' : '#E8E3F5'}`,
+          background: isExpanded ? `${catColorHex}08` : '#FAFAFB',
         }}
       >
         <InboxRow
@@ -428,7 +428,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" style={{ color: '#f59e0b' }} />
                 <div>
                   <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>El cliente respondió a este hilo</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                     Nuevo mensaje recibido el {new Date(item.client_replied_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Este borrador puede estar desactualizado; revisa la bandeja por un correo más reciente antes de aprobar.
                   </p>
                 </div>
@@ -438,7 +438,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             {/* Summary */}
             {item.ai_summary && (
               <div className="mt-3 mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{item.ai_summary}</p>
+                <p className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>{item.ai_summary}</p>
               </div>
             )}
 
@@ -446,10 +446,10 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             {item.item_type === 'invoice' && item.invoice_data && (
               <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
                 <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#f59e0b' }}>Datos de la factura</p>
-                {item.invoice_data.vendor     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Proveedor:</span> {String(item.invoice_data.vendor)}</p>}
-                {item.invoice_data.amount     && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Monto:</span> ${Number(item.invoice_data.amount).toLocaleString('es-MX')} {String(item.invoice_data.currency ?? 'MXN')}</p>}
-                {item.invoice_data.invoice_no && <p className="text-xs mb-1" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>No. Factura:</span> {String(item.invoice_data.invoice_no)}</p>}
-                {item.invoice_data.po_ref     && <p className="text-xs" style={{ color: 'var(--c-text-2)' }}><span style={{ color: 'var(--c-text-4)' }}>Ref OC:</span> {String(item.invoice_data.po_ref)}</p>}
+                {item.invoice_data.vendor     && <p className="text-xs mb-1" style={{ color: '#1A0A3B' }}><span style={{ color: '#9B8FB5' }}>Proveedor:</span> {String(item.invoice_data.vendor)}</p>}
+                {item.invoice_data.amount     && <p className="text-xs mb-1" style={{ color: '#1A0A3B' }}><span style={{ color: '#9B8FB5' }}>Monto:</span> ${Number(item.invoice_data.amount).toLocaleString('es-MX')} {String(item.invoice_data.currency ?? 'MXN')}</p>}
+                {item.invoice_data.invoice_no && <p className="text-xs mb-1" style={{ color: '#1A0A3B' }}><span style={{ color: '#9B8FB5' }}>No. Factura:</span> {String(item.invoice_data.invoice_no)}</p>}
+                {item.invoice_data.po_ref     && <p className="text-xs" style={{ color: '#1A0A3B' }}><span style={{ color: '#9B8FB5' }}>Ref OC:</span> {String(item.invoice_data.po_ref)}</p>}
               </div>
             )}
 
@@ -457,30 +457,30 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             {item.invoice_discrepancy && (
               <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
                 <p className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: '#ef4444' }}>Discrepancia</p>
-                <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>{item.invoice_discrepancy}</p>
+                <p className="text-xs" style={{ color: '#1A0A3B' }}>{item.invoice_discrepancy}</p>
               </div>
             )}
 
             {/* Draft: editable si pendiente, solo lectura después */}
             {item.ai_draft && isPending && (
-              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
-                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Puedes editar antes de aprobar</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Borrador de respuesta</p>
+                  <p className="text-xs" style={{ color: '#9B8FB5' }}>Puedes editar antes de aprobar</p>
                 </div>
                 <textarea
                   value={draftEdits[item.id] ?? item.ai_draft}
                   onChange={e => setDraftEdits(prev => ({ ...prev, [item.id]: e.target.value }))}
                   rows={Math.min(20, Math.max(6, (draftEdits[item.id] ?? item.ai_draft).split('\n').length + 1))}
                   className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 />
               </div>
             )}
             {item.ai_draft && !isPending && (
-              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>Borrador de respuesta</p>
-                <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{item.ai_draft}</p>
+              <div className="mb-3 px-3 py-2.5 rounded-lg" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                <p className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: '#9B8FB5' }}>Borrador de respuesta</p>
+                <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#1A0A3B' }}>{item.ai_draft}</p>
               </div>
             )}
 
@@ -490,7 +490,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 {item.attachments.map((att, i) => (
                   <a key={i} href={att.url} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
                     <FileText size={10} />{att.name}
                   </a>
                 ))}
@@ -547,7 +547,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#842029' }}>Reportar mal envío</p>
 
                 <div className="space-y-1.5">
-                  <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>¿Qué salió mal?</p>
+                  <p className="text-xs" style={{ color: '#9B8FB5' }}>¿Qué salió mal?</p>
                   {FLAG_CATEGORIES.map(cat => (
                     <label key={cat.key} className="flex items-start gap-2 cursor-pointer px-2 py-1.5 rounded-md hover:bg-[rgba(239,68,68,0.04)]">
                       <input
@@ -559,22 +559,22 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                         className="mt-0.5 accent-[#ef4444]"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium" style={{ color: 'var(--c-text-2)' }}>{cat.label}</div>
-                        <div className="text-[11px] leading-snug" style={{ color: 'var(--c-text-4)' }}>{cat.hint}</div>
+                        <div className="text-xs font-medium" style={{ color: '#1A0A3B' }}>{cat.label}</div>
+                        <div className="text-[11px] leading-snug" style={{ color: '#9B8FB5' }}>{cat.hint}</div>
                       </div>
                     </label>
                   ))}
                 </div>
 
                 <div>
-                  <label className="text-xs block mb-1" style={{ color: 'var(--c-text-4)' }}>Detalle (opcional)</label>
+                  <label className="text-xs block mb-1" style={{ color: '#9B8FB5' }}>Detalle (opcional)</label>
                   <textarea
                     value={flagReason}
                     onChange={e => setFlagReason(e.target.value)}
                     rows={3}
                     placeholder="Contexto adicional que ayude al empleado a evitar este error en el futuro."
                     className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   />
                 </div>
 
@@ -591,7 +591,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                     onClick={closeFlagForm}
                     disabled={submittingFlag}
                     className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
-                    style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                    style={{ color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
                     Cancelar
                   </button>
                 </div>
@@ -603,19 +603,19 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               <div className="mt-3 pt-3 border-t border-dashed border-[#664D03]/30">
                 <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#842029' }}>Reportado como mal envío</p>
                 {item.auto_mode_flag_category && (
-                  <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>
-                    <span style={{ color: 'var(--c-text-4)' }}>Categoría:</span>{' '}
-                    <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>
+                  <p className="text-xs mb-1" style={{ color: '#6B6480' }}>
+                    <span style={{ color: '#9B8FB5' }}>Categoría:</span>{' '}
+                    <span className="font-medium" style={{ color: '#1A0A3B' }}>
                       {FLAG_CATEGORIES.find(c => c.key === item.auto_mode_flag_category)?.label ?? item.auto_mode_flag_category}
                     </span>
                   </p>
                 )}
                 {item.auto_mode_flag_reason && (
-                  <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
-                    <span style={{ color: 'var(--c-text-4)' }}>Detalle:</span> {item.auto_mode_flag_reason}
+                  <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ color: '#6B6480' }}>
+                    <span style={{ color: '#9B8FB5' }}>Detalle:</span> {item.auto_mode_flag_reason}
                   </p>
                 )}
-                <p className="text-[11px] mt-1.5" style={{ color: 'var(--c-text-4)' }}>
+                <p className="text-[11px] mt-1.5" style={{ color: '#9B8FB5' }}>
                   {new Date(item.auto_mode_flagged_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>
 
@@ -633,7 +633,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 )}
                 {correctionOpenId === item.id && (
                   <div className="mt-3 space-y-2">
-                    <label className="text-xs block" style={{ color: 'var(--c-text-4)' }}>
+                    <label className="text-xs block" style={{ color: '#9B8FB5' }}>
                       Correo de corrección a {item.email_from}
                     </label>
                     <textarea
@@ -641,7 +641,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                       onChange={e => setCorrectionText(e.target.value)}
                       rows={Math.min(20, Math.max(8, correctionText.split('\n').length + 1))}
                       className="w-full text-xs leading-relaxed resize-y rounded-md px-2 py-1.5 focus:outline-none focus:ring-1"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                     />
                     <div className="flex gap-2">
                       <button
@@ -656,7 +656,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                         onClick={closeCorrection}
                         disabled={sendingCorrection}
                         className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors hover:opacity-80"
-                        style={{ color: 'var(--c-text-4)', border: '1px solid var(--c-border)' }}>
+                        style={{ color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
                         Cancelar
                       </button>
                     </div>
@@ -676,7 +676,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
 
   if (loading) return (
     <div className="flex items-center justify-center py-12">
-      <RefreshCw size={18} className="animate-spin" style={{ color: 'var(--c-text-4)' }} />
+      <RefreshCw size={18} className="animate-spin" style={{ color: '#9B8FB5' }} />
     </div>
   );
 
@@ -689,7 +689,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         tooltip={`¿Cuántas tareas consume?\n1 tarea por cada correo entrante que el empleado analiza y clasifica.\n\nNo consumen tareas: aprobar, editar antes de enviar, rechazar, rescatar spam, reportar mal envío, enviar corrección al cliente.`}
         right={
           <div className="flex items-center gap-2">
-            <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--c-text-4)' }}>
+            <button onClick={load} className="p-1.5 rounded-lg transition-colors" style={{ color: '#9B8FB5' }}>
               <RefreshCw size={12} />
             </button>
           </div>
@@ -706,12 +706,12 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             <p className="text-xs font-semibold" style={{ color: '#f59e0b' }}>
               {reauthNeeded.length === 1 ? 'Una integración necesita reconexión' : `${reauthNeeded.length} integraciones necesitan reconexión`}
             </p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               {reauthNeeded.map((r, i) => (
                 <span key={`${r.provider}-${r.email}-${i}`}>
-                  {i > 0 && <span style={{ color: 'var(--c-border-2)' }}> · </span>}
+                  {i > 0 && <span style={{ color: '#F0EDF9' }}> · </span>}
                   {PROVIDER_LABELS[r.provider] ?? r.provider}
-                  {r.email && <span style={{ color: 'var(--c-text-4)' }}> ({r.email})</span>}
+                  {r.email && <span style={{ color: '#9B8FB5' }}> ({r.email})</span>}
                 </span>
               ))}
               . Los correos entrantes de estas cuentas no se están sincronizando hasta que reconectes.
@@ -730,7 +730,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       {/* Tabs */}
       <div
         className="flex gap-0 border-b overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ borderColor: 'var(--c-border)' }}
+        style={{ borderColor: '#E8E3F5' }}
       >
         {TAB_CONFIG.map(tab => (
           <button
@@ -742,7 +742,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
             style={{
               borderColor:  activeTab === tab.key ? '#6C3BFF' : 'transparent',
-              color:        activeTab === tab.key ? 'var(--c-text)' : 'var(--c-text-3)',
+              color:        activeTab === tab.key ? '#1A0A3B' : '#6B6480',
               fontWeight:   activeTab === tab.key ? 600 : 400,
               background:   'transparent',
             }}
@@ -765,20 +765,20 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
 
       {/* Search */}
       <div className="relative">
-        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-text-4)', pointerEvents: 'none' }} />
+        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9B8FB5', pointerEvents: 'none' }} />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por asunto, remitente o resumen..."
           className="w-full text-xs rounded-xl"
-          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
         />
       </div>
 
       {/* Origen filter chips */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: 'var(--c-text-4)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: '#9B8FB5' }}>
           Origen
         </span>
         {([
@@ -794,9 +794,9 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
               onClick={() => changeScope(chip.key)}
               className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
               style={{
-                background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface)',
-                color:      isActive ? '#6C3BFF' : 'var(--c-text-3)',
-                border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : 'var(--c-border)'}`,
+                background: isActive ? 'rgba(108,59,255,0.10)' : '#ffffff',
+                color:      isActive ? '#6C3BFF' : '#6B6480',
+                border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : '#E8E3F5'}`,
                 fontWeight: isActive ? 600 : 400,
                 cursor:     'pointer',
               }}
@@ -817,7 +817,7 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
       {/* Human Requests section — only shown in Pendientes tab */}
       {activeTab === 'pendientes' && humanRequests.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
             Pendientes tuyos
           </p>
           {humanRequests.map(hr => {
@@ -828,18 +828,18 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
                 key={hr.id}
                 href={`/portal/${token}/requests/${hr.id}`}
                 className="block rounded-xl transition-opacity hover:opacity-80"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', textDecoration: 'none' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', textDecoration: 'none' }}
               >
                 <div className="flex items-center justify-between px-4 py-3 gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <MessageSquare size={14} style={{ color: '#6C3BFF', flexShrink: 0, marginTop: 1 }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: 'var(--c-text)' }}>{hr.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+                      <p className="text-sm font-medium truncate" style={{ color: '#1A0A3B' }}>{hr.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
                         {hr.request_type}
-                        <span className="mx-1.5" style={{ color: 'var(--c-border-2)' }}>·</span>
+                        <span className="mx-1.5" style={{ color: '#F0EDF9' }}>·</span>
                         <span style={{ color: urgColor }}>Urgencia {urgLabel}</span>
-                        <span className="mx-1.5" style={{ color: 'var(--c-border-2)' }}>·</span>
+                        <span className="mx-1.5" style={{ color: '#F0EDF9' }}>·</span>
                         {new Date(hr.created_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}
                       </p>
                       {hr.client_replied_at && (
@@ -932,7 +932,7 @@ function InboxTransitionsTimeline({ inboxId, token }: { inboxId: string; token: 
       <button
         onClick={toggle}
         className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-80"
-        style={{ color: 'var(--c-text-4)' }}
+        style={{ color: '#9B8FB5' }}
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <GitBranch size={11} />
@@ -940,21 +940,21 @@ function InboxTransitionsTimeline({ inboxId, token }: { inboxId: string; token: 
       </button>
 
       {open && (
-        <div className="mt-2 pl-4 border-l" style={{ borderColor: 'var(--c-border)' }}>
-          {loading && <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Cargando…</p>}
+        <div className="mt-2 pl-4 border-l" style={{ borderColor: '#E8E3F5' }}>
+          {loading && <p className="text-xs" style={{ color: '#9B8FB5' }}>Cargando…</p>}
           {!loading && items?.length === 0 && (
-            <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin historial registrado (item previo al state machine).</p>
+            <p className="text-xs" style={{ color: '#9B8FB5' }}>Sin historial registrado (item previo al state machine).</p>
           )}
           {!loading && items && items.length > 0 && (
             <ol className="space-y-1">
               {items.map(t => (
-                <li key={t.id} className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-                  <span className="font-mono" style={{ color: 'var(--c-text-4)' }}>{fmt(t.transitioned_at)}</span>
+                <li key={t.id} className="text-xs" style={{ color: '#6B6480' }}>
+                  <span className="font-mono" style={{ color: '#9B8FB5' }}>{fmt(t.transitioned_at)}</span>
                   {' · '}
-                  <span style={{ color: 'var(--c-text-2)' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
+                  <span style={{ color: '#1A0A3B' }}>{t.from_status ? `${t.from_status} → ${t.to_status}` : `→ ${t.to_status}`}</span>
                   {' · '}
-                  <span style={{ color: 'var(--c-text-4)' }}>{t.actor}</span>
-                  {t.reason && <span style={{ color: 'var(--c-text-4)' }}> · {t.reason}</span>}
+                  <span style={{ color: '#9B8FB5' }}>{t.actor}</span>
+                  {t.reason && <span style={{ color: '#9B8FB5' }}> · {t.reason}</span>}
                 </li>
               ))}
             </ol>
