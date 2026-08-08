@@ -111,11 +111,12 @@ export default function AutoRefillSection({ token }: { token: string }) {
               <div className="grid grid-cols-4 gap-1.5">
                 {MIN_THRESHOLD_OPTIONS.map(t => (
                   <button key={t} onClick={() => setMinThreshold(t)}
-                    className="py-2 rounded-lg text-xs font-semibold transition-all"
+                    className="py-2.5 rounded-lg text-[12px] font-semibold transition-all"
                     style={{
-                      background: minThreshold === t ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
-                      border:     `1px solid ${minThreshold === t ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                      color:      minThreshold === t ? '#6C3BFF' : '#1A0A3B',
+                      background: minThreshold === t ? '#6C3BFF' : '#ffffff',
+                      border:     `1px solid ${minThreshold === t ? '#6C3BFF' : '#E8E3F5'}`,
+                      color:      minThreshold === t ? '#ffffff' : '#6B6480',
+                      boxShadow:  minThreshold === t ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
                       cursor:     'pointer',
                     }}
                   >{t} min</button>
@@ -127,20 +128,30 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 Agregar automáticamente
               </p>
               <div className="grid grid-cols-2 gap-1.5">
-                {MIN_REFILL_OPTIONS.map(o => (
-                  <button key={o.minutes} onClick={() => setMinMinutes(o.minutes)}
-                    className="flex flex-col items-center py-2.5 rounded-lg transition-all"
-                    style={{
-                      background: minMinutes === o.minutes ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
-                      border:     `1px solid ${minMinutes === o.minutes ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                      color:      minMinutes === o.minutes ? '#6C3BFF' : '#1A0A3B',
-                      cursor:     'pointer',
-                    }}
-                  >
-                    <span className="text-sm font-bold">{o.minutes} min</span>
-                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} + IVA</span>
-                  </button>
-                ))}
+                {MIN_REFILL_OPTIONS.map(o => {
+                  const active = minMinutes === o.minutes;
+                  return (
+                    <button key={o.minutes} onClick={() => setMinMinutes(o.minutes)}
+                      className="flex flex-col items-start gap-1 p-3 rounded-xl text-left transition-all"
+                      style={{
+                        background: active ? 'rgba(108,59,255,0.06)' : '#ffffff',
+                        border:     `1px solid ${active ? '#6C3BFF' : '#E8E3F5'}`,
+                        boxShadow:  active ? '0 4px 12px rgba(108,59,255,0.12)' : '0 1px 2px rgba(26,10,59,0.04)',
+                        cursor:     'pointer',
+                      }}
+                    >
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[20px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>
+                          {o.minutes}
+                        </span>
+                        <span className="text-[12px]" style={{ color: '#9B8FB5' }}>min</span>
+                      </div>
+                      <span className="text-[11px] tabular-nums" style={{ color: '#6B6480' }}>
+                        ${o.price.toLocaleString('es-MX')} + IVA
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               {(() => {
                 const base = MIN_REFILL_OPTIONS.find(o => o.minutes === minMinutes)?.price ?? 0;
@@ -179,11 +190,12 @@ export default function AutoRefillSection({ token }: { token: string }) {
               <div className="grid grid-cols-4 gap-1.5">
                 {OPS_THRESHOLD_OPTIONS.map(t => (
                   <button key={t} onClick={() => setOpsThreshold(t)}
-                    className="py-2 rounded-lg text-xs font-semibold transition-all"
+                    className="py-2.5 rounded-lg text-[12px] font-semibold transition-all"
                     style={{
-                      background: opsThreshold === t ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
-                      border:     `1px solid ${opsThreshold === t ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                      color:      opsThreshold === t ? '#6C3BFF' : '#1A0A3B',
+                      background: opsThreshold === t ? '#6C3BFF' : '#ffffff',
+                      border:     `1px solid ${opsThreshold === t ? '#6C3BFF' : '#E8E3F5'}`,
+                      color:      opsThreshold === t ? '#ffffff' : '#6B6480',
+                      boxShadow:  opsThreshold === t ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
                       cursor:     'pointer',
                     }}
                   >{t} tareas</button>
@@ -195,20 +207,30 @@ export default function AutoRefillSection({ token }: { token: string }) {
                 Agregar automáticamente
               </p>
               <div className="grid grid-cols-2 gap-1.5">
-                {OPS_REFILL_OPTIONS.map(o => (
-                  <button key={o.ops} onClick={() => setOpsAmount(o.ops)}
-                    className="flex flex-col items-center py-2.5 rounded-lg transition-all"
-                    style={{
-                      background: opsAmount === o.ops ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
-                      border:     `1px solid ${opsAmount === o.ops ? 'rgba(108,59,255,0.4)' : '#E8E3F5'}`,
-                      color:      opsAmount === o.ops ? '#6C3BFF' : '#1A0A3B',
-                      cursor:     'pointer',
-                    }}
-                  >
-                    <span className="text-sm font-bold">{o.ops} tareas</span>
-                    <span className="text-xs mt-0.5" style={{ opacity: 0.7 }}>${o.price.toLocaleString('es-MX')} + IVA</span>
-                  </button>
-                ))}
+                {OPS_REFILL_OPTIONS.map(o => {
+                  const active = opsAmount === o.ops;
+                  return (
+                    <button key={o.ops} onClick={() => setOpsAmount(o.ops)}
+                      className="flex flex-col items-start gap-1 p-3 rounded-xl text-left transition-all"
+                      style={{
+                        background: active ? 'rgba(108,59,255,0.06)' : '#ffffff',
+                        border:     `1px solid ${active ? '#6C3BFF' : '#E8E3F5'}`,
+                        boxShadow:  active ? '0 4px 12px rgba(108,59,255,0.12)' : '0 1px 2px rgba(26,10,59,0.04)',
+                        cursor:     'pointer',
+                      }}
+                    >
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[20px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>
+                          {o.ops}
+                        </span>
+                        <span className="text-[12px]" style={{ color: '#9B8FB5' }}>tareas</span>
+                      </div>
+                      <span className="text-[11px] tabular-nums" style={{ color: '#6B6480' }}>
+                        ${o.price.toLocaleString('es-MX')} + IVA
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               {(() => {
                 const base = OPS_REFILL_OPTIONS.find(o => o.ops === opsAmount)?.price ?? 0;
@@ -235,20 +257,22 @@ export default function AutoRefillSection({ token }: { token: string }) {
       <button
         onClick={save}
         disabled={saving || !canSave}
-        className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all"
+        className="flex items-center justify-center gap-2 py-3 rounded-xl text-[14px] font-semibold transition-all hover:opacity-90 disabled:cursor-not-allowed"
         style={{
-          background: saved ? 'rgba(34,197,94,0.12)' : 'rgba(108,59,255,0.1)',
-          border:     `1px solid ${saved ? 'rgba(34,197,94,0.3)' : 'rgba(108,59,255,0.25)'}`,
-          color:      saved ? '#22c55e' : '#9B6DFF',
-          cursor:     (saving || !canSave) ? 'not-allowed' : 'pointer',
-          opacity:    (saving || !canSave) ? 0.5 : 1,
+          background: saved ? '#22c55e' : canSave ? '#6C3BFF' : '#FAFAFB',
+          color:      canSave || saved ? '#ffffff' : '#9B8FB5',
+          border:     canSave || saved ? 'none' : '1px solid #E8E3F5',
+          boxShadow:  saved
+            ? '0 4px 12px rgba(34,197,94,0.24)'
+            : canSave ? '0 4px 12px rgba(108,59,255,0.24)' : 'none',
+          opacity:    saving ? 0.6 : 1,
         }}
       >
         {saved
-          ? <><RefreshCw size={12} /> Guardado</>
+          ? <><RefreshCw size={13} /> Guardado</>
           : saving
           ? 'Guardando…'
-          : <><Zap size={12} /> Guardar configuración</>}
+          : <><Zap size={13} /> Guardar configuración</>}
       </button>
     </div>
   );

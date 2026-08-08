@@ -51,7 +51,7 @@ const TRIGGER_META: Record<string, { iconKey: string; color: string; label: stri
   inbox:           { iconKey: 'mail',        color: '#3b82f6', label: 'Desde bandeja' },
   schedule:        { iconKey: 'calendar',    color: '#a855f7', label: 'Programada' },
   scheduled:       { iconKey: 'calendar',    color: '#a855f7', label: 'Programada' },
-  manual:          { iconKey: 'clipboard',   color: '#22c55e', label: 'Manual' },
+  manual:          { iconKey: 'clipboard',   color: '#22c55e', label: 'Bajo demanda' },
   chat:            { iconKey: 'clipboard',   color: '#22c55e', label: 'Desde chat' },
   delegation:      { iconKey: 'bot',         color: '#0d9488', label: 'Delegación entre empleados' },
   research:        { iconKey: 'search',      color: '#f59e0b', label: 'Investigación' },
