@@ -1639,7 +1639,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
                         <div>
                           <div className="flex items-baseline gap-2">
-                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Perfil del negocio</h2>
+                            <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Perfil de la organización</h2>
                             <InfoTooltip text="Datos generales y descripción de tu organización que tus empleados usarán como contexto en todas sus interacciones." />
                           </div>
                         </div>

@@ -138,7 +138,9 @@ export default function BugReportButton({ token, variant = 'fab' }: Props) {
                 </div>
                 <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text)', margin: '0 0 6px' }}>Reporte enviado</p>
                 <p style={{ fontSize: 13, color: 'var(--c-text-3)', margin: '0 0 24px', lineHeight: 1.5 }}>
-                  Nuestro equipo lo revisará a la brevedad. Gracias por ayudarnos a mejorar.
+                  Nuestro equipo lo revisará a la brevedad.
+                  <br />
+                  Gracias por ayudarnos a mejorar.
                 </p>
                 <button
                   onClick={() => setOpen(false)}

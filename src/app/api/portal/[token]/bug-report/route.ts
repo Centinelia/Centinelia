@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { data: agent } = await supabase
     .from('voice_agents')
-    .select('business_name, client_name, client_email, portal_email')
+    .select('id, business_name, client_name, client_email, portal_email')
     .eq('portal_token', token)
     .single();
 
@@ -45,6 +45,26 @@ export async function POST(req: NextRequest, { params }: Params) {
       description:   description.trim(),
     }),
   });
+
+  // Alimentar a Nash: log en tool_call_log con la shape que espera
+  // revisar_incidentes_plataforma. Sin este insert, Nash es ciego a los
+  // bug reports que vienen del footer del portal (solo veía los del tool
+  // reportar_falla llamado por agentes).
+  await supabase.from('tool_call_log').insert({
+    agent_id:     agent.id as string,
+    portal_email: agent.portal_email as string | null,
+    channel:      'portal',
+    tool_name:    'reportar_falla',
+    input_json:   { tipo: category ?? 'General', descripcion: description.trim(), source: 'portal_footer' },
+    ok:           true,
+    latency_ms:   0,
+    attempt:      1,
+  });
+
+  // Trigger event-driven: Nash procesa este signal en background si el
+  // debounce (5min) lo permite. Fallback: cron horario.
+  const { triggerNashMonitor } = await import('@/lib/ops/nash-trigger');
+  triggerNashMonitor(`portal footer bug-report from ${auth.portalEmail ?? 'unknown'}`);
 
   return NextResponse.json({ ok: true });
 }
