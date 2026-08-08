@@ -26,15 +26,26 @@ const DEFAULT_HOURS: BusinessHours = {
 };
 
 function Toggle({ on, onToggle, small }: { on: boolean; onToggle: () => void; small?: boolean }) {
-  const w = small ? 'w-7 h-3.5' : 'w-10 h-5';
-  const dot = small ? 'w-2.5 h-2.5' : 'w-4 h-4';
-  const onLeft = small ? '0.875rem' : '1.25rem';
+  const size = small
+    ? { w: 32, h: 18, dot: 14, onLeft: 15 }
+    : { w: 44, h: 24, dot: 18, onLeft: 23 };
   return (
     <button type="button" onClick={onToggle}
-      className={`${w} rounded-full transition-colors relative flex-shrink-0`}
-      style={{ background: on ? '#6C3BFF' : 'var(--c-border-2)' }}>
-      <span className={`absolute top-0.5 ${dot} rounded-full bg-white transition-all`}
-        style={{ left: on ? onLeft : '0.125rem' }} />
+      className="rounded-full transition-colors relative flex-shrink-0"
+      style={{
+        width:      size.w,
+        height:     size.h,
+        background: on ? '#6C3BFF' : '#E8E3F5',
+        boxShadow:  on ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+      }}>
+      <span className="absolute rounded-full bg-white transition-all"
+        style={{
+          width:  size.dot,
+          height: size.dot,
+          top:    (size.h - size.dot) / 2,
+          left:   on ? size.onLeft : (size.h - size.dot) / 2,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+        }} />
     </button>
   );
 }
@@ -52,11 +63,11 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
       }}
       placeholder="09:00"
       maxLength={5}
-      className="w-14 text-center text-xs rounded-lg px-2 py-1.5 outline-none tabular-nums"
+      className="w-16 text-center text-[13px] font-medium rounded-lg px-2 py-1.5 outline-none tabular-nums"
       style={{
-        background: 'var(--c-input-bg)',
-        border: '1px solid var(--c-input-border)',
-        color: 'var(--c-text)',
+        background: '#ffffff',
+        border: '1px solid #E8E3F5',
+        color: '#1A0A3B',
       }}
     />
   );
@@ -112,13 +123,19 @@ export default function BusinessHoursEditor({
     <div className="flex flex-col gap-4">
 
       {/* Master toggle */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+      <div
+        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+        style={{
+          background: enabled ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
+          border: `1px solid ${enabled ? 'rgba(108,59,255,0.24)' : '#E8E3F5'}`,
+        }}
+      >
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <div className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
             {enabled ? 'Horario restringido' : 'Sin restricción (24/7)'}
           </div>
-          <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-            {enabled ? 'Tu empleado solo contesta en este horario' : 'Tu empleado siempre contesta'}
+          <div className="text-[11px]" style={{ color: '#6B6480' }}>
+            {enabled ? 'Tu empleado solo contesta en este horario.' : 'Tu empleado siempre contesta.'}
           </div>
         </div>
         <Toggle on={enabled} onToggle={handleMasterToggle} />
@@ -126,25 +143,33 @@ export default function BusinessHoursEditor({
 
       {/* Day rows */}
       {enabled && (
-        <div className="flex flex-col" style={{ borderTop: '1px solid var(--c-border)' }}>
-          {DAYS.map(({ key, label }) => {
+        <div
+          className="flex flex-col rounded-xl overflow-hidden"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+        >
+          {DAYS.map(({ key, label }, idx) => {
             const s: DaySchedule = hours[key] ?? { open: false };
             return (
-              <div key={key} className="flex items-center gap-3 py-2.5"
-                style={{ borderBottom: '1px solid var(--c-border)' }}>
+              <div
+                key={key}
+                className="flex items-center gap-3 px-4 py-2.5"
+                style={{ borderTop: idx === 0 ? 'none' : '1px solid #F0EDF9' }}
+              >
                 <Toggle on={s.open} onToggle={() => toggleDay(key)} small />
-                <span className="w-7 text-xs font-medium flex-shrink-0"
-                  style={{ color: s.open ? 'var(--c-text)' : 'var(--c-text-4)' }}>
+                <span
+                  className="w-8 text-[12px] font-semibold uppercase tracking-wider flex-shrink-0"
+                  style={{ color: s.open ? '#1A0A3B' : '#9B8FB5' }}
+                >
                   {label}
                 </span>
                 {s.open ? (
                   <div className="flex items-center gap-1.5 ml-auto">
                     <TimeInput value={s.from ?? '09:00'} onChange={v => setTime(key, 'from', v)} />
-                    <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>–</span>
+                    <span className="text-[12px]" style={{ color: '#9B8FB5' }}>a</span>
                     <TimeInput value={s.to ?? '18:00'} onChange={v => setTime(key, 'to', v)} />
                   </div>
                 ) : (
-                  <span className="ml-auto text-xs" style={{ color: 'var(--c-text-4)' }}>Cerrado</span>
+                  <span className="ml-auto text-[12px]" style={{ color: '#9B8FB5' }}>Cerrado</span>
                 )}
               </div>
             );
@@ -156,11 +181,15 @@ export default function BusinessHoursEditor({
       <button
         onClick={handleSave}
         disabled={saving}
-        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80 disabled:opacity-50"
-        style={{ background: saved ? '#22c55e' : '#6C3BFF', color: '#fff' }}
+        className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+        style={{
+          background: saved ? '#22c55e' : '#6C3BFF',
+          color: '#fff',
+          boxShadow: saved ? 'none' : '0 1px 2px rgba(108,59,255,0.24)',
+        }}
       >
         {saving
-          ? <><Loader2 size={14} className="animate-spin" />Guardando…</>
+          ? <><Loader2 size={14} className="animate-spin" />Guardando</>
           : saved
             ? <><Check size={14} />Guardado</>
             : 'Guardar horario'}
