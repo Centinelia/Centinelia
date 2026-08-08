@@ -55,8 +55,8 @@ function RecordingPlayer({ url, createdAt }: { url: string; createdAt: string })
 
   if (expired) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8,
-        background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10,
+        background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', fontSize: 12 }}>
         <Clock size={13} /> Grabación expirada
       </div>
     );
@@ -80,12 +80,12 @@ function RecordingPlayer({ url, createdAt }: { url: string; createdAt: string })
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
-          color: daysLeft <= 2 ? '#f59e0b' : 'var(--c-text-3)' }}>
+          color: daysLeft <= 2 ? '#f59e0b' : '#6B6480' }}>
           <Clock size={10} /> Disponible hasta {expiresLabel}
         </span>
         <button onClick={handleDownload} disabled={downloading}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7,
-            background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)',
+          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 8,
+            background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B',
             fontSize: 11, fontWeight: 600, cursor: downloading ? 'default' : 'pointer', opacity: downloading ? 0.6 : 1 }}>
           <Download size={11} /> {downloading ? 'Descargando…' : 'Descargar'}
         </button>
@@ -126,8 +126,12 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
     <>
       {/* Compact card */}
       <div
-        className={`rounded-xl overflow-hidden transition-opacity ${hasDetails ? 'cursor-pointer hover:opacity-80' : ''}`}
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}
+        className={`rounded-2xl overflow-hidden transition-opacity ${hasDetails ? 'cursor-pointer hover:opacity-90' : ''}`}
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+        }}
         onClick={() => hasDetails && setOpen(true)}
       >
         <div style={{ height: 2, background: outcome.color, opacity: 0.65 }} />
@@ -136,14 +140,14 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
           {/* Row 1: phone icon + caller name + outcome pill + time ago */}
           <div className="flex items-center gap-2">
             <Phone size={12} style={{ color: outcome.color, flexShrink: 0 }} />
-            <span className="text-sm font-semibold flex-1 truncate" style={{ color: 'var(--c-text)' }}>
+            <span className="text-sm font-semibold flex-1 truncate" style={{ color: '#1A0A3B' }}>
               {displayName}
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
               style={{ background: outcome.bg, color: outcome.color }}>
               {outcome.label}
             </span>
-            <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-text-4)' }}>
+            <span className="text-xs flex-shrink-0" style={{ color: '#9B8FB5' }}>
               {timeAgo(call.created_at)}
             </span>
           </div>
@@ -152,11 +156,11 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
           <div className="flex items-center gap-2">
             {agentName && (
               <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
+                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.15)' }}>
                 <User size={10} /> {agentName}
               </span>
             )}
-            <span className="text-xs tabular-nums" style={{ color: 'var(--c-text-3)' }}>
+            <span className="text-xs tabular-nums" style={{ color: '#6B6480' }}>
               {fmtDuration(call.duration_seconds ?? 0)}
             </span>
           </div>
@@ -164,10 +168,10 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
           {/* Row 3: summary single line + expand hint */}
           {call.summary && (
             <div className="flex items-center gap-1.5">
-              <p className="text-xs leading-snug flex-1 line-clamp-1" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-xs leading-snug flex-1 line-clamp-1" style={{ color: '#6B6480' }}>
                 {call.summary}
               </p>
-              {hasDetails && <ChevronDown size={11} style={{ color: 'var(--c-text-4)', flexShrink: 0 }} />}
+              {hasDetails && <ChevronDown size={11} style={{ color: '#9B8FB5', flexShrink: 0 }} />}
             </div>
           )}
         </div>
@@ -176,33 +180,37 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
       {/* Detail modal with tabs */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'rgba(15,5,34,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
           onClick={e => { if (e.target === e.currentTarget) setOpen(false); }}>
-          <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
-            style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border)' }}>
+          <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden"
+            style={{
+              background: '#ffffff',
+              border: '1px solid #E8E3F5',
+              boxShadow: '0 24px 60px rgba(26,10,59,0.20)',
+            }}>
 
             {/* Modal header */}
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <div className="px-5 py-4" style={{ borderBottom: '1px solid #F0EDF9' }}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>{displayName}</span>
+                    <span className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>{displayName}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium"
                       style={{ background: outcome.bg, color: outcome.color }}>{outcome.label}</span>
                     {agentName && (
                       <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF' }}>
+                        style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
                         <User size={10} /> {agentName}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                  <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
                     {fmtDuration(call.duration_seconds ?? 0)} · {formattedDateLong}
                   </p>
                 </div>
                 <button onClick={() => setOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0"
-                  style={{ color: 'var(--c-text-2)' }}>
+                  className="p-1.5 rounded-lg transition-colors flex-shrink-0 hover:bg-[#FAFAFB]"
+                  style={{ color: '#6B6480' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -214,7 +222,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
                       className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       style={{
                         background: effectiveTab === t.id ? 'rgba(108,59,255,0.12)' : 'transparent',
-                        color:      effectiveTab === t.id ? '#9B6DFF' : 'var(--c-text-3)',
+                        color:      effectiveTab === t.id ? '#6C3BFF' : '#6B6480',
                       }}>
                       {t.label}
                     </button>
@@ -229,12 +237,12 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
               {effectiveTab === 'resumen' && (
                 <>
                   {call.summary && (
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{call.summary}</p>
+                    <p className="text-sm leading-relaxed" style={{ color: '#1A0A3B' }}>{call.summary}</p>
                   )}
                   {(call.self_eval_score || call.self_eval_notes) && (
                     <div className="rounded-xl p-3 flex flex-col gap-2"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-3)' }}>
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6B6480' }}>
                         Auto-evaluación
                       </p>
                       {call.self_eval_score && (
@@ -243,7 +251,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
                             const filled = n <= call.self_eval_score!;
                             const color  = call.self_eval_score! >= 4 ? '#22c55e'
                               : call.self_eval_score! === 3 ? '#f59e0b' : '#ef4444';
-                            return <Star key={n} size={13} fill={filled ? color : 'none'} color={filled ? color : 'var(--c-border)'} />;
+                            return <Star key={n} size={13} fill={filled ? color : 'none'} color={filled ? color : '#E8E3F5'} />;
                           })}
                           <span className="text-xs font-medium ml-1" style={{
                             color: call.self_eval_score >= 4 ? '#22c55e' : call.self_eval_score === 3 ? '#f59e0b' : '#ef4444',
@@ -251,7 +259,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
                         </div>
                       )}
                       {call.self_eval_notes && (
-                        <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{call.self_eval_notes}</p>
+                        <p className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>{call.self_eval_notes}</p>
                       )}
                     </div>
                   )}
@@ -259,7 +267,7 @@ export default function CallCard({ call, isPro, clientName, agentName, token }: 
                     <a href={`/api/portal/${token}/pdf/cotizacion/${call.id}`}
                       target="_blank" rel="noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 self-start"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                       <FileText size={12} /> Cotización PDF
                     </a>
                   )}
