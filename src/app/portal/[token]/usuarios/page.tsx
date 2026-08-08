@@ -15,30 +15,33 @@ import SubUserManager                   from './SubUserManager';
 import AccountSerialBadge               from '../AccountSerialBadge';
 import { getOrCreateSerial }            from '@/lib/portal/serial';
 import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
-import { PageContainer, Card } from '@/components/portal-ui';
+import { PageContainer } from '@/components/portal-ui';
 
 interface Props { params: Promise<{ token: string }> }
 
 function KpiTile({ label, value, hint, accent }: { label: string; value: number; hint?: string; accent?: boolean }) {
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-2xl p-4"
       style={{
-        background: accent ? 'rgba(108,59,255,0.06)' : 'var(--c-surface)',
-        border:     `1px solid ${accent ? 'rgba(108,59,255,0.22)' : 'var(--c-border-2)'}`,
+        background: '#ffffff',
+        border:     `1px solid ${accent ? 'rgba(108,59,255,0.28)' : '#E8E3F5'}`,
+        boxShadow:  accent
+          ? '0 4px 12px rgba(108,59,255,0.08)'
+          : '0 1px 2px rgba(26,10,59,0.04)',
       }}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
         {label}
       </p>
-      <div className="mt-2 flex items-baseline gap-2">
+      <div className="mt-2 flex items-baseline gap-1.5">
         <span
-          className="text-2xl font-semibold leading-none"
-          style={{ color: accent ? '#6C3BFF' : 'var(--c-text)', letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}
+          className="text-[28px] font-bold leading-none tabular-nums tracking-tight"
+          style={{ color: accent ? '#6C3BFF' : '#1A0A3B' }}
         >
           {value}
         </span>
-        {hint && <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>{hint}</span>}
+        {hint && <span className="text-[11px] font-medium" style={{ color: '#6B6480' }}>{hint}</span>}
       </div>
     </div>
   );
@@ -148,7 +151,7 @@ export default async function UsuariosPage({ params }: Props) {
     </div>
   );
 
-  // V2 body — design system (PageContainer + PageSection + SectionHeader + Card)
+  // V2 body — surface pattern real (no Card wrapper)
   const pageBodyV2 = (
     <div className="flex-1 min-w-0 flex flex-col">
       <PageContainer>
@@ -156,26 +159,38 @@ export default async function UsuariosPage({ params }: Props) {
         {/* Hero: título + KPI strip */}
         <section className="mb-6">
           <div className="mb-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
               Acceso
             </p>
-            <h1 className="mt-1 text-2xl font-semibold leading-tight" style={{ color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
+            <h1 className="mt-1 text-xl font-bold" style={{ color: '#1A0A3B' }}>
               Usuarios y permisos
             </h1>
-            <p className="mt-1.5 text-sm max-w-xl" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
               Crea accesos para colaboradores, asigna secciones específicas y monitorea quién ve qué del portal.
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiTile label="Usuarios totales"   value={totalUsers}     accent />
-            <KpiTile label="Con acceso completo" value={ownersCount}   hint="Propietarios" />
-            <KpiTile label="Con acceso parcial"  value={subUsersCount} hint="Colaboradores" />
+            <KpiTile label="Usuarios totales"    value={totalUsers}     accent />
+            <KpiTile label="Con acceso completo" value={ownersCount}    hint="Propietarios" />
+            <KpiTile label="Con acceso parcial"  value={subUsersCount}  hint="Colaboradores" />
             <KpiTile label="Secciones asignadas" value={uniqueModules.size} hint="Módulos únicos" />
           </div>
         </section>
 
-        <Card padding="lg">{subUserManager}</Card>
+        {/* Surface único envuelve al SubUserManager */}
+        <div
+          className="flex flex-col rounded-2xl overflow-hidden"
+          style={{
+            background: '#ffffff',
+            border:     '1px solid #E8E3F5',
+            boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+          }}
+        >
+          <div className="px-5 py-5">
+            {subUserManager}
+          </div>
+        </div>
       </PageContainer>
       <PortalFooter token={token} />
     </div>
