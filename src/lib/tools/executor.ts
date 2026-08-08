@@ -1046,8 +1046,21 @@ async function executeAgentToolInner(
         if (!recent || recent.length === 0) { verified = true; notes = 'sin errores nuevos en LLM log en 24h'; }
         else notes = `siguen apareciendo errores en LLM log (${recent.length}+ en últimas 24h)`;
       }
+      else if (source === 'bug_report' && sourceId) {
+        // El source_id apunta al tool_call_log.id del reporte original.
+        // Si el owner o alguien lo borró (típicamente porque el bug fue confirmado
+        // resuelto), lo tomamos como señal de cierre. Si sigue existiendo, dejamos
+        // awaiting_verification para revisión manual.
+        const { data: original } = await supabase
+          .from('tool_call_log')
+          .select('id')
+          .eq('id', sourceId)
+          .maybeSingle();
+        if (!original) { verified = true; notes = 'tool_call_log del reporte original fue borrado (señal ausente)'; }
+        else notes = 'reporte original sigue en tool_call_log, requiere validación manual del owner';
+      }
       else if (source === 'bug_report') {
-        notes = 'bug_report no es auto-verificable; requiere validación manual del owner';
+        notes = 'bug_report sin source_id no es auto-verificable';
       }
       else {
         notes = `source '${source}' sin verificación automática implementada`;
