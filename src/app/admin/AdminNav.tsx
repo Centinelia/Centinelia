@@ -23,9 +23,10 @@ const groups: NavGroup[] = [
   {
     group: 'Financiero',
     items: [
-      { href: '/admin/ledger',       icon: DollarSign,  label: 'Ledger' },
-      { href: '/admin/aprobaciones', icon: ShieldCheck, label: 'Aprobaciones' },
-      { href: '/admin/facturacion',  icon: CreditCard,  label: 'Facturación' },
+      { href: '/admin/ledger',                icon: DollarSign,  label: 'Ledger' },
+      { href: '/admin/aprobaciones',          icon: ShieldCheck, label: 'Aprobaciones' },
+      { href: '/admin/facturacion',           icon: CreditCard,  label: 'Facturación' },
+      { href: '/admin/saldos-nuevo-cliente',  icon: Wallet,      label: 'Saldos cliente nuevo' },
     ],
   },
   {

@@ -57,9 +57,8 @@ function ModuleSelector({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* General groups — surface cards. Oficina primero porque es donde
-          el sub-usuario trabaja el día a día; Portal después (config/meta). */}
-      {(['Oficina', 'Portal'] as const).map(group => {
+      {/* General groups — surface cards */}
+      {(['Portal', 'Oficina'] as const).map(group => {
         const mods = generalModules(group);
         const ids  = mods.map(m => m.id);
         const all  = allInSet(ids);
