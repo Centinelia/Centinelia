@@ -37,8 +37,8 @@ function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
         borderRadius:  12,
         border:        'none',
         cursor:        disabled ? 'default' : 'pointer',
-        background:    on ? '#6C3BFF' : 'var(--c-surface-2)',
-        outline:       on ? '2px solid rgba(108,59,255,0.3)' : '1px solid var(--c-border)',
+        background:    on ? '#6C3BFF' : '#FAFAFB',
+        outline:       on ? '2px solid rgba(108,59,255,0.3)' : '1px solid #E8E3F5',
         outlineOffset: 0,
         position:      'relative',
         transition:    'background 0.2s, outline 0.2s',
@@ -87,8 +87,8 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
         maxWidth:     480,
         borderRadius: 16,
         overflow:     'hidden',
-        background:   'var(--c-modal)',
-        border:       '1px solid var(--c-border)',
+        background:   '#ffffff',
+        border:       '1px solid #E8E3F5',
         boxShadow:    '0 24px 64px rgba(0,0,0,0.4)',
       }}>
         {/* Header */}
@@ -97,7 +97,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
           alignItems:     'center',
           justifyContent: 'space-between',
           padding:        '16px 20px',
-          borderBottom:   '1px solid var(--c-border)',
+          borderBottom:   '1px solid #E8E3F5',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -113,7 +113,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
             }}>
               <Phone size={15} style={{ color: '#6C3BFF' }} />
             </div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text)', margin: 0 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#1A0A3B', margin: 0 }}>
               Activar llamadas salientes
             </p>
           </div>
@@ -125,7 +125,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
               cursor:     'pointer',
               padding:    6,
               borderRadius: 8,
-              color:      'var(--c-text-3)',
+              color:      '#6B6480',
               display:    'flex',
             }}
             aria-label="Cerrar"
@@ -136,7 +136,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
 
         {/* Body */}
         <div style={{ padding: '20px 20px 4px' }}>
-          <p style={{ fontSize: 13, color: 'var(--c-text-2)', lineHeight: 1.65, margin: '0 0 20px' }}>
+          <p style={{ fontSize: 13, color: '#1A0A3B', lineHeight: 1.65, margin: '0 0 20px' }}>
             Al activar las llamadas salientes confirmo que las usaré exclusivamente
             para contactar a personas con relación previa a mi organización: clientes
             actuales, prospectos que dejaron sus datos, y devolución de llamadas
@@ -151,8 +151,8 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
             cursor:     'pointer',
             padding:    '12px 14px',
             borderRadius: 10,
-            background: checked ? 'rgba(108,59,255,0.07)' : 'var(--c-surface-2)',
-            border:     `1px solid ${checked ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`,
+            background: checked ? 'rgba(108,59,255,0.07)' : '#FAFAFB',
+            border:     `1px solid ${checked ? 'rgba(108,59,255,0.3)' : '#E8E3F5'}`,
             transition: 'background 0.15s, border-color 0.15s',
           }}>
             <input
@@ -161,7 +161,7 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
               onChange={e => setChecked(e.target.checked)}
               style={{ marginTop: 2, accentColor: '#6C3BFF', flexShrink: 0, width: 15, height: 15 }}
             />
-            <span style={{ fontSize: 12, color: 'var(--c-text-2)', lineHeight: 1.5 }}>
+            <span style={{ fontSize: 12, color: '#1A0A3B', lineHeight: 1.5 }}>
               He leído y acepto los términos de uso responsable de llamadas salientes.
             </span>
           </label>
@@ -183,9 +183,9 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
               fontSize:     13,
               fontWeight:   500,
               cursor:       'pointer',
-              background:   'var(--c-surface-2)',
-              border:       '1px solid var(--c-border)',
-              color:        'var(--c-text-2)',
+              background:   '#FAFAFB',
+              border:       '1px solid #E8E3F5',
+              color:        '#1A0A3B',
             }}
           >
             Cancelar
@@ -199,9 +199,9 @@ function OutboundConsentModal({ onConfirm, onCancel, saving }: {
               fontSize:     13,
               fontWeight:   600,
               cursor:       !checked || saving ? 'default' : 'pointer',
-              background:   !checked ? 'var(--c-surface-2)' : '#6C3BFF',
+              background:   !checked ? '#FAFAFB' : '#6C3BFF',
               border:       'none',
-              color:        !checked ? 'var(--c-text-3)' : '#fff',
+              color:        !checked ? '#6B6480' : '#fff',
               display:      'flex',
               alignItems:   'center',
               gap:          6,
@@ -306,10 +306,10 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
         {/* Capability discovery: iluminados = puede este empleado, muted = otro meerkat */}
         <div className="flex flex-col gap-3">
           <div>
-            <h2 className="text-sm font-bold" style={{ color: 'var(--c-text)' }}>
+            <h2 className="text-sm font-bold" style={{ color: '#1A0A3B' }}>
               Tu empleado puede salir a trabajar
             </h2>
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
               {outbound
                 ? `Estas son las tareas${agentName ? ` que ${agentName}` : ' que este empleado'} puede ejecutar. Los grises los desbloquea otro empleado (pasa el mouse para ver cuál).`
                 : 'Activa las llamadas salientes abajo. Estas son las tareas que puede hacer este empleado; los grises los desbloquea otro (pasa el mouse para ver cuál).'}
@@ -326,20 +326,20 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                   onMouseLeave={() => setHoverCap(null)}
                   className="relative flex items-center gap-2 px-3 py-2 rounded-lg w-fit"
                   style={{
-                    background: isActive ? 'rgba(108,59,255,0.10)' : 'var(--c-surface-2)',
-                    border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border-2)',
+                    background: isActive ? 'rgba(108,59,255,0.10)' : '#FAFAFB',
+                    border:     isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid #F0EDF9',
                     cursor:     isActive ? 'default' : 'help',
                   }}
                   title={isActive ? cap.description : undefined}
                 >
                   <div
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: isActive ? '#6C3BFF' : 'var(--c-text-4)', opacity: isActive ? 1 : 0.6 }}
+                    style={{ background: isActive ? '#6C3BFF' : '#9B8FB5', opacity: isActive ? 1 : 0.6 }}
                   />
                   <span
                     className="text-xs whitespace-nowrap"
                     style={{
-                      color:   isActive ? 'var(--c-text)' : 'var(--c-text-4)',
+                      color:   isActive ? '#1A0A3B' : '#9B8FB5',
                       opacity: isActive ? 1 : 0.85,
                     }}
                   >
@@ -350,13 +350,13 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                     <div
                       className="absolute z-20 top-full left-0 mt-1.5 min-w-[190px] rounded-xl p-2.5"
                       style={{
-                        background:    'var(--c-surface)',
-                        border:        '1px solid var(--c-border-2)',
+                        background:    '#ffffff',
+                        border:        '1px solid #F0EDF9',
                         boxShadow:     '0 12px 32px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.15)',
                         backdropFilter: 'none',
                       }}
                     >
-                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>
+                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: '#6B6480' }}>
                         Lo desbloquea
                       </p>
                       <div className="flex flex-col gap-1.5">
@@ -373,7 +373,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                                 style={{ objectFit: 'cover', objectPosition: 'center 3%' }}
                               />
                             </div>
-                            <span className="text-xs font-medium" style={{ color: 'var(--c-text)' }}>
+                            <span className="text-xs font-medium" style={{ color: '#1A0A3B' }}>
                               {o.nombre}
                             </span>
                           </div>
@@ -389,7 +389,7 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
 
         {/* Permisos */}
         <div className="flex flex-col gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--c-text-4)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#9B8FB5' }}>
             Permisos
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -402,17 +402,17 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
               gap:            16,
               padding:        '12px 14px',
               borderRadius:   r.hint ? '12px 12px 0 0' : 12,
-              background:     'var(--c-surface-2)',
-              border:         '1px solid var(--c-border)',
-              borderBottom:   r.hint ? 'none' : '1px solid var(--c-border)',
+              background:     '#FAFAFB',
+              border:         '1px solid #E8E3F5',
+              borderBottom:   r.hint ? 'none' : '1px solid #E8E3F5',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                 <div style={{
                   width:          32,
                   height:         32,
                   borderRadius:   8,
-                  background:     'var(--c-surface)',
-                  border:         '1px solid var(--c-border)',
+                  background:     '#ffffff',
+                  border:         '1px solid #E8E3F5',
                   display:        'flex',
                   alignItems:     'center',
                   justifyContent: 'center',
@@ -421,13 +421,13 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
                   {r.icon}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)', margin: 0, lineHeight: 1.3 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0A3B', margin: 0, lineHeight: 1.3 }}>
                     {r.label}
                     {saved === r.field && (
                       <span style={{ marginLeft: 8, fontSize: 11, color: '#22c55e', fontWeight: 500 }}>Guardado ✓</span>
                     )}
                   </p>
-                  <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: '2px 0 0', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: 12, color: '#6B6480', margin: '2px 0 0', lineHeight: 1.4 }}>
                     {r.desc}
                   </p>
                 </div>
@@ -439,11 +439,11 @@ export default function OutboundToggles({ token, initOutbound, initMissedCallRec
               <div style={{
                 padding:      '8px 14px',
                 borderRadius: '0 0 12px 12px',
-                background:   'var(--c-surface-2)',
-                border:       '1px solid var(--c-border)',
-                borderTop:    '1px solid var(--c-border)',
+                background:   '#FAFAFB',
+                border:       '1px solid #E8E3F5',
+                borderTop:    '1px solid #E8E3F5',
               }}>
-                <p style={{ fontSize: 11, color: 'var(--c-text-3)', margin: 0 }}>{r.hint}</p>
+                <p style={{ fontSize: 11, color: '#6B6480', margin: 0 }}>{r.hint}</p>
               </div>
             )}
           </div>

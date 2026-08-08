@@ -119,12 +119,12 @@ export default function ContractTrackerSection({ token }: { token: string }) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+          <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5" style={{ color: '#6B6480' }}>
             <FileText size={13} /> Contratos y fechas críticas
             <InfoTooltip text={"Registra contratos, permisos, licencias o cualquier fecha crítica y tu empleado te avisará antes de que venzan.\n\nPuede analizar el documento, redactar borradores de renovación y enviar alertas automáticas a los días que configures."} />
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.18)', color: 'var(--c-text-4)' }}
+              style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.18)', color: '#9B8FB5' }}
             >
               1 tarea / análisis
             </span>
@@ -147,13 +147,13 @@ export default function ContractTrackerSection({ token }: { token: string }) {
           <p className="text-xs font-semibold" style={{ color: '#9B6DFF' }}>Nuevo contrato / fecha crítica</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Nombre *</label>
-              <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej. Arrendamiento local 5" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Nombre *</label>
+              <input required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej. Arrendamiento local 5" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
             </div>
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Tipo</label>
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Tipo</label>
               <Select value={form.contract_type} onValueChange={v => setForm(p => ({ ...p, contract_type: v }))}>
-                <SelectTrigger className="bg-[color:var(--c-bg)] border-[color:var(--c-border)]">
+                <SelectTrigger className="bg-[color:#FAFAFB] border-[color:#E8E3F5]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -162,64 +162,64 @@ export default function ContractTrackerSection({ token }: { token: string }) {
               </Select>
             </div>
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Contraparte</label>
-              <input value={form.counterparty} onChange={e => setForm(p => ({ ...p, counterparty: e.target.value }))} placeholder="Empresa o persona" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Contraparte</label>
+              <input value={form.counterparty} onChange={e => setForm(p => ({ ...p, counterparty: e.target.value }))} placeholder="Empresa o persona" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
             </div>
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Fecha de vencimiento *</label>
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Fecha de vencimiento *</label>
               <DatePicker value={form.expiry_date} onChange={v => setForm(p => ({ ...p, expiry_date: v }))} />
             </div>
             <div>
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Alertar (días antes)</label>
-              <input value={form.alert_days_before} onChange={e => setForm(p => ({ ...p, alert_days_before: e.target.value }))} placeholder="30,7,1" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }} />
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Alertar (días antes)</label>
+              <input value={form.alert_days_before} onChange={e => setForm(p => ({ ...p, alert_days_before: e.target.value }))} placeholder="30,7,1" className="w-full px-3 py-2 rounded-lg text-sm" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
             </div>
             <div className="col-span-2">
-              <label className="text-xs block mb-1" style={{ color: 'var(--c-text-3)' }}>Notas</label>
-              <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm resize-none" style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontFamily: 'inherit' }} />
+              <label className="text-xs block mb-1" style={{ color: '#6B6480' }}>Notas</label>
+              <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-3 py-2 rounded-lg text-sm resize-none" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'inherit' }} />
             </div>
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: '#6C3BFF', color: '#fff' }}>{saving ? 'Guardando...' : 'Guardar'}</button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-2)', border: '1px solid var(--c-border)' }}>Cancelar</button>
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5' }}>Cancelar</button>
           </div>
         </form>
       )}
 
-      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
         {(['activo', 'vencido', 'todos'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize" style={{ background: filter === f ? '#6C3BFF' : 'transparent', color: filter === f ? '#fff' : 'var(--c-text-3)' }}>
+          <button key={f} onClick={() => setFilter(f)} className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize" style={{ background: filter === f ? '#6C3BFF' : 'transparent', color: filter === f ? '#fff' : '#6B6480' }}>
             {f === 'activo' ? 'Activos' : f === 'vencido' ? 'Vencidos' : 'Todos'}
           </button>
         ))}
       </div>
 
       <div className="relative">
-        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-text-4)', pointerEvents: 'none' }} />
-        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, contraparte o notas..." className="w-full text-xs rounded-xl" style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9B8FB5', pointerEvents: 'none' }} />
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, contraparte o notas..." className="w-full text-xs rounded-xl" style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
       </div>
 
       {loading ? (
-        <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+        <p className="text-xs py-4 text-center" style={{ color: '#6B6480' }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ border: '1px solid #E8E3F5', background: '#ffffff' }}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(108,59,255,0.1)' }}>
               <FileText size={16} style={{ color: '#9B6DFF' }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin contratos registrados</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>Tu empleado te avisa antes de que venzan — sin que tengas que llevarlo en la cabeza.</p>
+              <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin contratos registrados</p>
+              <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>Tu empleado te avisa antes de que venzan, sin que tengas que llevarlo en la cabeza.</p>
             </div>
           </div>
           <div className="flex flex-col gap-2 pl-12">
             {[
-              'Arrendamiento del local — vence en 6 meses, alerta 30 días antes',
-              'Licencia de software — renovación anual, alerta 15 días antes',
-              'Contrato con proveedor — revisión trimestral de condiciones',
+              'Arrendamiento del local: vence en 6 meses, alerta 30 días antes',
+              'Licencia de software: renovación anual, alerta 15 días antes',
+              'Contrato con proveedor: revisión trimestral de condiciones',
             ].map(ex => (
               <div key={ex} className="flex items-start gap-2">
-                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--c-text-4)' }} />
-                <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>{ex}</p>
+                <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: '#9B8FB5' }} />
+                <p className="text-xs" style={{ color: '#9B8FB5' }}>{ex}</p>
               </div>
             ))}
           </div>
@@ -242,13 +242,13 @@ export default function ContractTrackerSection({ token }: { token: string }) {
             const statusCf  = STATUS_CFG[c.status] ?? STATUS_CFG.activo;
             const typeLabel = TYPE_LABELS[c.contract_type] ?? 'Documento';
             return (
-              <div key={c.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--c-surface)', border: `1px solid ${days >= 0 && days <= 7 && c.status === 'activo' ? 'rgba(239,68,68,0.3)' : days <= 30 && days >= 0 && c.status === 'activo' ? 'rgba(245,158,11,0.25)' : 'var(--c-border)'}` }}>
+              <div key={c.id} className="rounded-xl overflow-hidden" style={{ background: '#ffffff', border: `1px solid ${days >= 0 && days <= 7 && c.status === 'activo' ? 'rgba(239,68,68,0.3)' : days <= 30 && days >= 0 && c.status === 'activo' ? 'rgba(245,158,11,0.25)' : '#E8E3F5'}` }}>
                 <button onClick={() => toggle(c.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80">
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: c.status === 'activo' ? uColor : '#6b7280' }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{c.name}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--c-text-3)' }}>{typeLabel}</span>
+                      <span className="text-sm font-semibold truncate" style={{ color: '#1A0A3B' }}>{c.name}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: '#FAFAFB', color: '#6B6480' }}>{typeLabel}</span>
                       <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: statusCf.bg, color: statusCf.color }}>{statusCf.label}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -256,25 +256,25 @@ export default function ContractTrackerSection({ token }: { token: string }) {
                         <Clock size={10} />
                         {c.status === 'activo' ? (days < 0 ? 'Vencido' : days === 0 ? '¡Vence hoy!' : `Vence en ${days} día${days !== 1 ? 's' : ''}`) : new Date(c.expiry_date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
-                      {c.counterparty && <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>{c.counterparty}</p>}
+                      {c.counterparty && <p className="text-xs" style={{ color: '#6B6480' }}>{c.counterparty}</p>}
                     </div>
                   </div>
-                  {isOpen ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                  {isOpen ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />}
                 </button>
                 {isOpen && (
-                  <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-divider)' }}>
+                  <div className="px-4 pb-4 flex flex-col gap-3" style={{ borderTop: '1px solid #F0EDF9' }}>
                     <div className="pt-3 grid grid-cols-2 gap-3">
                       <div>
-                        <p className="text-xs mb-0.5" style={{ color: 'var(--c-text-3)' }}>Fecha de vencimiento</p>
-                        <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{new Date(c.expiry_date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <p className="text-xs mb-0.5" style={{ color: '#6B6480' }}>Fecha de vencimiento</p>
+                        <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{new Date(c.expiry_date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                       </div>
                       <div>
-                        <p className="text-xs mb-0.5" style={{ color: 'var(--c-text-3)' }}>Alertas (días antes)</p>
-                        <p className="text-sm" style={{ color: 'var(--c-text)' }}>{c.alert_days_before.join(', ')}</p>
+                        <p className="text-xs mb-0.5" style={{ color: '#6B6480' }}>Alertas (días antes)</p>
+                        <p className="text-sm" style={{ color: '#1A0A3B' }}>{c.alert_days_before.join(', ')}</p>
                       </div>
                     </div>
-                    {c.notes && <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}><p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>Notas</p><p className="text-sm" style={{ color: 'var(--c-text)' }}>{c.notes}</p></div>}
-                    {c.renewal_draft && <div className="rounded-lg p-3" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}><p className="text-xs mb-2 font-semibold" style={{ color: '#9B6DFF' }}>Borrador de renovación (generado automáticamente)</p><p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{c.renewal_draft}</p></div>}
+                    {c.notes && <div className="rounded-lg p-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}><p className="text-xs mb-1" style={{ color: '#6B6480' }}>Notas</p><p className="text-sm" style={{ color: '#1A0A3B' }}>{c.notes}</p></div>}
+                    {c.renewal_draft && <div className="rounded-lg p-3" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}><p className="text-xs mb-2 font-semibold" style={{ color: '#9B6DFF' }}>Borrador de renovación (generado automáticamente)</p><p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#1A0A3B' }}>{c.renewal_draft}</p></div>}
                     <div className="flex items-center gap-2 flex-wrap">
                       {c.status === 'activo' && <button onClick={() => handleStatus(c.id, 'renovado')} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'rgba(155,109,255,0.1)', border: '1px solid rgba(155,109,255,0.25)', color: '#9B6DFF' }}>Marcar renovado</button>}
                       {(c.status === 'vencido' || c.status === 'renovado') && <button onClick={() => handleStatus(c.id, 'activo')} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#22c55e' }}>Marcar activo</button>}

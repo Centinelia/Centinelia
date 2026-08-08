@@ -68,11 +68,11 @@ export default function BrandKitEditor({
           className="flex items-center gap-2 w-full text-left"
         >
           <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color }} />
-          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: '#6B6480' }}>
             Color de marca
           </p>
-          <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color}</code>
-          <ChevronDown size={13} style={{ color: 'var(--c-text-3)', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+          <code className="text-xs" style={{ color: '#1A0A3B' }}>{color}</code>
+          <ChevronDown size={13} style={{ color: '#6B6480', transform: colorOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
         </button>
         {colorOpen && (
           <div className="mt-3">
@@ -94,8 +94,8 @@ export default function BrandKitEditor({
               <label
                 title="Color personalizado"
                 className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-                style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
-                <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
+                style={{ border: '1.5px dashed #E8E3F5', background: '#FAFAFB' }}>
+                <Palette size={12} style={{ color: '#6B6480' }} />
                 <input type="color" value={color} onChange={e => setColor(e.target.value)}
                   className="sr-only" />
               </label>
@@ -111,15 +111,15 @@ export default function BrandKitEditor({
           onClick={() => setColor2Open(p => !p)}
           className="flex items-center gap-2 w-full text-left"
         >
-          <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color2 || 'var(--c-border)', border: color2 ? 'none' : '1px dashed var(--c-text-4)' }} />
-          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: 'var(--c-text-3)' }}>
+          <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: color2 || '#E8E3F5', border: color2 ? 'none' : '1px dashed #9B8FB5' }} />
+          <p className="text-xs font-semibold tracking-widest uppercase flex-1" style={{ color: '#6B6480' }}>
             Color secundario <span className="normal-case font-normal ml-1">(opcional)</span>
           </p>
           {color2
-            ? <code className="text-xs" style={{ color: 'var(--c-text-2)' }}>{color2}</code>
-            : <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>ninguno</span>
+            ? <code className="text-xs" style={{ color: '#1A0A3B' }}>{color2}</code>
+            : <span className="text-xs" style={{ color: '#9B8FB5' }}>ninguno</span>
           }
-          <ChevronDown size={13} style={{ color: 'var(--c-text-3)', transform: color2Open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+          <ChevronDown size={13} style={{ color: '#6B6480', transform: color2Open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
         </button>
         {color2Open && (
           <div className="mt-3">
@@ -141,14 +141,14 @@ export default function BrandKitEditor({
               <label
                 title="Color personalizado"
                 className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-                style={{ border: '1.5px dashed var(--c-border)', background: 'var(--c-bg)' }}>
-                <Palette size={12} style={{ color: 'var(--c-text-3)' }} />
+                style={{ border: '1.5px dashed #E8E3F5', background: '#FAFAFB' }}>
+                <Palette size={12} style={{ color: '#6B6480' }} />
                 <input type="color" value={color2 || '#000000'} onChange={e => setColor2(e.target.value)}
                   className="sr-only" />
               </label>
             </div>
             {color2 && (
-              <button onClick={() => setColor2('')} className="text-xs" style={{ color: 'var(--c-text-3)' }}>Quitar color secundario</button>
+              <button onClick={() => setColor2('')} className="text-xs" style={{ color: '#6B6480' }}>Quitar color secundario</button>
             )}
           </div>
         )}
@@ -157,7 +157,7 @@ export default function BrandKitEditor({
       {/* ── Datos de contacto ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+          <label className="block text-xs mb-1.5 font-medium" style={{ color: '#1A0A3B' }}>
             Sitio web
           </label>
           <input
@@ -166,11 +166,11 @@ export default function BrandKitEditor({
             onChange={e => setWebsite(e.target.value)}
             placeholder="https://tuempresa.mx"
             className="w-full text-sm rounded-lg px-3 py-2"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
+            style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
           />
         </div>
         <div>
-          <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+          <label className="block text-xs mb-1.5 font-medium" style={{ color: '#1A0A3B' }}>
             Teléfono de contacto
           </label>
           <input
@@ -179,11 +179,11 @@ export default function BrandKitEditor({
             onChange={e => setPhone(e.target.value)}
             placeholder="81 1234 5678"
             className="w-full text-sm rounded-lg px-3 py-2"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
+            style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
           />
         </div>
         <div>
-          <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+          <label className="block text-xs mb-1.5 font-medium" style={{ color: '#1A0A3B' }}>
             Dirección física
           </label>
           <input
@@ -192,13 +192,13 @@ export default function BrandKitEditor({
             onChange={e => setAddress(e.target.value)}
             placeholder="Av. Principal 123, Ciudad"
             className="w-full text-sm rounded-lg px-3 py-2"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
+            style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+        <label className="block text-xs mb-1.5 font-medium" style={{ color: '#1A0A3B' }}>
           Pie de página de documentos y correos
         </label>
         <input
@@ -207,7 +207,7 @@ export default function BrandKitEditor({
           onChange={e => setFooter(e.target.value)}
           placeholder="Horario: Lun–Vie 9am–6pm · Tel: 81 1234 5678"
           className="w-full text-sm rounded-lg px-3 py-2"
-          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-2)', color: 'var(--c-text-1)' }}
+          style={{ background: '#FAFAFB', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
         />
       </div>
 
@@ -262,10 +262,10 @@ function EmailPreview({ logoUrl, businessName, agentName, color, color2, address
 
   return (
     <div>
-      <p className="text-xs mb-2 font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+      <p className="text-xs mb-2 font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
         Vista previa del email
       </p>
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border-2)', background: '#F8F7FF', fontSize: 12 }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #F0EDF9', background: '#F8F7FF', fontSize: 12 }}>
 
         {/* Header */}
         <div style={{ padding: '16px 24px', textAlign: 'center', borderBottom: `1px solid ${BORDER}` }}>

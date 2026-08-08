@@ -141,7 +141,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
   if (loading) return (
     <div className="flex justify-center py-8">
-      <Loader2 size={18} className="animate-spin" style={{ color: 'var(--c-text-4)' }} />
+      <Loader2 size={18} className="animate-spin" style={{ color: '#9B8FB5' }} />
     </div>
   );
 
@@ -151,7 +151,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Database size={16} style={{ color: '#6C3BFF' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Schemas de Notion</span>
+          <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Schemas de Notion</span>
         </div>
         {!creating && (
           <button onClick={() => setCreating(true)}
@@ -162,7 +162,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
         )}
       </div>
 
-      <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+      <p className="text-xs leading-relaxed" style={{ color: '#9B8FB5' }}>
         Define la estructura esperada de tus bases de datos de Notion. Tu empleado valida semanalmente que cada entrada cumpla el schema y te notifica si hay problemas.
       </p>
 
@@ -173,19 +173,19 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Nombre</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#6B6480' }}>Nombre</label>
               <input value={form.db_name} onChange={e => setForm(f => ({ ...f, db_name: e.target.value }))}
                 placeholder="Ej: Proveedores aprobados"
                 className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
             </div>
             <div>
-              <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Tipo</label>
+              <label className="block text-xs mb-1.5" style={{ color: '#6B6480' }}>Tipo</label>
               <div className="flex gap-1.5">
                 {(['read', 'write'] as const).map(t => (
                   <button key={t} onClick={() => setForm(f => ({ ...f, db_type: t }))}
                     className="px-3 py-2.5 rounded-xl text-xs font-medium"
-                    style={{ background: form.db_type === t ? '#6C3BFF' : 'var(--c-surface)', color: form.db_type === t ? '#fff' : 'var(--c-text-3)', border: `1px solid ${form.db_type === t ? '#6C3BFF' : 'var(--c-border)'}` }}>
+                    style={{ background: form.db_type === t ? '#6C3BFF' : '#ffffff', color: form.db_type === t ? '#fff' : '#6B6480', border: `1px solid ${form.db_type === t ? '#6C3BFF' : '#E8E3F5'}` }}>
                     {t === 'read' ? 'Solo lectura' : 'Escritura'}
                   </button>
                 ))}
@@ -194,33 +194,33 @@ export default function NotionSchemasSection({ token }: { token: string }) {
           </div>
 
           <div>
-            <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+            <label className="block text-xs mb-1.5" style={{ color: '#6B6480' }}>
               ID de la base de datos en Notion
-              <span className="ml-1" style={{ color: 'var(--c-text-4)' }}>(URL o ID directo)</span>
+              <span className="ml-1" style={{ color: '#9B8FB5' }}>(URL o ID directo)</span>
             </label>
             <input value={form.notion_db_id} onChange={e => setForm(f => ({ ...f, notion_db_id: e.target.value }))}
               placeholder="https://notion.so/... o 1a2b3c4d5e6f..."
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none font-mono"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
           </div>
 
           <div>
-            <label className="block text-xs mb-1.5" style={{ color: 'var(--c-text-3)' }}>Descripción (opcional)</label>
+            <label className="block text-xs mb-1.5" style={{ color: '#6B6480' }}>Descripción (opcional)</label>
             <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="¿Para qué sirve esta base de datos?"
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
           </div>
 
           {/* Required properties */}
           <div>
-            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Campos obligatorios</label>
+            <label className="block text-xs mb-2" style={{ color: '#6B6480' }}>Campos obligatorios</label>
             <div className="flex gap-2 mb-2">
               <input value={form.propNameInput} onChange={e => setForm(f => ({ ...f, propNameInput: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && addProp()}
                 placeholder="Nombre del campo"
                 className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
               <Select value={form.propTypeInput} onValueChange={v => setForm(f => ({ ...f, propTypeInput: v }))}>
                 <SelectTrigger className="w-auto rounded-xl py-2 px-2 text-xs">
                   <SelectValue />
@@ -239,9 +239,9 @@ export default function NotionSchemasSection({ token }: { token: string }) {
               <div className="flex flex-wrap gap-1.5">
                 {form.required_props.map(p => (
                   <span key={p.name} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
-                    <span style={{ color: 'var(--c-text-4)' }}>{p.type}</span> {p.name}
-                    <button onClick={() => removeProp(p.name)} style={{ color: 'var(--c-text-4)' }}><X size={10} /></button>
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
+                    <span style={{ color: '#9B8FB5' }}>{p.type}</span> {p.name}
+                    <button onClick={() => removeProp(p.name)} style={{ color: '#9B8FB5' }}><X size={10} /></button>
                   </span>
                 ))}
               </div>
@@ -250,19 +250,19 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
           {/* Allowed values */}
           <div>
-            <label className="block text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>
+            <label className="block text-xs mb-2" style={{ color: '#6B6480' }}>
               Valores permitidos en campos Select
             </label>
             <div className="flex gap-2 mb-2">
               <input value={form.avPropInput} onChange={e => setForm(f => ({ ...f, avPropInput: e.target.value }))}
                 placeholder="Nombre del campo"
                 className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
               <input value={form.avValInput} onChange={e => setForm(f => ({ ...f, avValInput: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && addAllowedValue()}
                 placeholder="Valor permitido"
                 className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
-                style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
               <button onClick={addAllowedValue}
                 className="px-3 py-2 rounded-xl text-xs font-semibold"
                 style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)', color: '#9B6DFF' }}>
@@ -271,12 +271,12 @@ export default function NotionSchemasSection({ token }: { token: string }) {
             </div>
             {Object.entries(form.allowed_values).map(([prop, vals]) => (
               <div key={prop} className="mb-2">
-                <span className="text-xs font-medium mr-2" style={{ color: 'var(--c-text-3)' }}>{prop}:</span>
+                <span className="text-xs font-medium mr-2" style={{ color: '#6B6480' }}>{prop}:</span>
                 {vals.map(v => (
                   <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs mr-1"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                    style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
                     {v}
-                    <button onClick={() => removeAllowedValue(prop, v)} style={{ color: 'var(--c-text-4)' }}><X size={10} /></button>
+                    <button onClick={() => removeAllowedValue(prop, v)} style={{ color: '#9B8FB5' }}><X size={10} /></button>
                   </span>
                 ))}
               </div>
@@ -291,7 +291,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
             </button>
             <button onClick={() => { setCreating(false); setForm(empty()); }}
               className="px-4 py-2.5 rounded-xl text-sm"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
               Cancelar
             </button>
           </div>
@@ -300,7 +300,7 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
       {/* Schemas list */}
       {schemas.length === 0 && !creating && (
-        <div className="text-center py-10" style={{ color: 'var(--c-text-4)' }}>
+        <div className="text-center py-10" style={{ color: '#9B8FB5' }}>
           <Database size={28} className="mx-auto mb-3 opacity-40" />
           <p className="text-sm">Sin bases de datos configuradas.</p>
         </div>
@@ -313,17 +313,17 @@ export default function NotionSchemasSection({ token }: { token: string }) {
 
         return (
           <div key={s.id} className="rounded-xl overflow-hidden"
-            style={{ border: `1px solid ${hasViolations ? 'rgba(245,158,11,0.3)' : isExpanded ? 'rgba(108,59,255,0.3)' : 'var(--c-border)'}`, background: 'var(--c-surface-2)' }}>
+            style={{ border: `1px solid ${hasViolations ? 'rgba(245,158,11,0.3)' : isExpanded ? 'rgba(108,59,255,0.3)' : '#E8E3F5'}`, background: '#FAFAFB' }}>
 
             <button className="w-full flex items-center gap-3 px-4 py-3 text-left"
               onClick={() => setExpanded(isExpanded ? null : s.id)}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
               <Database size={14} style={{ color: hasViolations ? '#f59e0b' : '#6C3BFF', flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>{s.db_name}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: '#1A0A3B' }}>{s.db_name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs px-1.5 py-0.5 rounded-full"
-                    style={{ background: s.db_type === 'write' ? 'rgba(108,59,255,0.1)' : 'rgba(255,255,255,0.05)', color: s.db_type === 'write' ? '#9B6DFF' : 'var(--c-text-4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    style={{ background: s.db_type === 'write' ? 'rgba(108,59,255,0.1)' : '#FAFAFB', color: s.db_type === 'write' ? '#9B6DFF' : '#9B8FB5', border: '1px solid #E8E3F5' }}>
                     {s.db_type === 'write' ? 'Escritura' : 'Lectura'}
                   </span>
                   {s.last_validated_at && (
@@ -336,32 +336,32 @@ export default function NotionSchemasSection({ token }: { token: string }) {
               <button onClick={e => { e.stopPropagation(); handleValidate(s.id, s.agent_id); }}
                 disabled={isValidating}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 mr-1"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--c-border)', color: 'var(--c-text-4)' }}>
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#9B8FB5' }}>
                 <RefreshCw size={10} className={isValidating ? 'animate-spin' : ''} />
                 {isValidating ? 'Validando…' : 'Validar'}
               </button>
-              {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--c-text-4)' }} /> : <ChevronDown size={13} style={{ color: 'var(--c-text-4)' }} />}
+              {isExpanded ? <ChevronUp size={13} style={{ color: '#9B8FB5' }} /> : <ChevronDown size={13} style={{ color: '#9B8FB5' }} />}
             </button>
 
             {isExpanded && (
-              <div className="px-4 pb-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="px-4 pb-4" style={{ borderTop: '1px solid #E8E3F5' }}>
 
                 {s.description && (
-                  <p className="text-xs mt-3 mb-3" style={{ color: 'var(--c-text-3)' }}>{s.description}</p>
+                  <p className="text-xs mt-3 mb-3" style={{ color: '#6B6480' }}>{s.description}</p>
                 )}
 
-                <p className="text-xs mt-3 mb-1" style={{ color: 'var(--c-text-4)' }}>
-                  ID: <span className="font-mono" style={{ color: 'var(--c-text-3)' }}>{s.notion_db_id}</span>
+                <p className="text-xs mt-3 mb-1" style={{ color: '#9B8FB5' }}>
+                  ID: <span className="font-mono" style={{ color: '#6B6480' }}>{s.notion_db_id}</span>
                 </p>
 
                 {s.required_props?.length > 0 && (
                   <div className="mt-2 mb-2">
-                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--c-text-4)' }}>Campos obligatorios:</p>
+                    <p className="text-xs font-semibold mb-1" style={{ color: '#9B8FB5' }}>Campos obligatorios:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {s.required_props.map(p => (
                         <span key={p.name} className="text-xs px-2 py-0.5 rounded-lg"
-                          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)' }}>
-                          <span style={{ color: 'var(--c-text-4)' }}>{p.type}</span> {p.name}
+                          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#6B6480' }}>
+                          <span style={{ color: '#9B8FB5' }}>{p.type}</span> {p.name}
                         </span>
                       ))}
                     </div>
@@ -377,22 +377,22 @@ export default function NotionSchemasSection({ token }: { token: string }) {
                     </div>
                     {s.last_violations.slice(0, 5).map(v => (
                       <div key={v.page_id} className="px-3 py-2.5" style={{ borderTop: '1px solid rgba(245,158,11,0.1)' }}>
-                        <p className="text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>{v.page_title}</p>
+                        <p className="text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>{v.page_title}</p>
                         {v.issues.map((issue, i) => (
-                          <p key={i} className="text-xs" style={{ color: 'var(--c-text-4)' }}>• {issue}</p>
+                          <p key={i} className="text-xs" style={{ color: '#9B8FB5' }}>• {issue}</p>
                         ))}
                       </div>
                     ))}
                     {s.last_violations.length > 5 && (
                       <div className="px-3 py-2" style={{ borderTop: '1px solid rgba(245,158,11,0.1)' }}>
-                        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>…y {s.last_violations.length - 5} más</p>
+                        <p className="text-xs" style={{ color: '#9B8FB5' }}>…y {s.last_violations.length - 5} más</p>
                       </div>
                     )}
                   </div>
                 )}
 
                 {s.last_validated_at && (
-                  <p className="text-xs mt-3" style={{ color: 'var(--c-text-4)' }}>
+                  <p className="text-xs mt-3" style={{ color: '#9B8FB5' }}>
                     Última validación: {new Date(s.last_validated_at).toLocaleDateString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}

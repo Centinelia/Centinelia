@@ -75,20 +75,20 @@ export default function TeamsSection({ token }: { token: string }) {
     <div className="flex flex-col gap-5">
 
       {/* Webhook URL */}
-      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
+      <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
         <div className="flex items-center gap-2 mb-1">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
             <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.03.053a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" fill="#5865F2"/>
           </svg>
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Microsoft Teams</h2>
+          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>Microsoft Teams</h2>
         </div>
-        <p className="text-xs mb-4" style={{ color: 'var(--c-text-2)' }}>
+        <p className="text-xs mb-4" style={{ color: '#1A0A3B' }}>
           URL del webhook para configurar en Power Automate. Cópiala y pégala en el flujo.
         </p>
 
         <div className="flex items-center gap-2 mb-4">
           <div className="flex-1 px-3 py-2.5 rounded-lg font-mono text-xs overflow-x-auto"
-            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', whiteSpace: 'nowrap' }}>
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', whiteSpace: 'nowrap' }}>
             {webhookUrl}
           </div>
           <button onClick={copyUrl}
@@ -101,9 +101,9 @@ export default function TeamsSection({ token }: { token: string }) {
         {/* Anti-loop email config */}
         <form onSubmit={saveEmail} className="flex flex-col gap-3">
           <div>
-            <label className="text-xs block mb-1.5 font-medium" style={{ color: 'var(--c-text-2)' }}>
+            <label className="text-xs block mb-1.5 font-medium" style={{ color: '#1A0A3B' }}>
               Tu correo en Teams
-              <span className="font-normal ml-1" style={{ color: 'var(--c-text-3)' }}>(evita que el agente responda tus propios mensajes)</span>
+              <span className="font-normal ml-1" style={{ color: '#6B6480' }}>(evita que el agente responda tus propios mensajes)</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -112,7 +112,7 @@ export default function TeamsSection({ token }: { token: string }) {
                 onChange={e => setUserEmail(e.target.value)}
                 placeholder="nombre@empresa.com"
                 className="flex-1 px-3 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
               />
               <button type="submit" disabled={saving}
                 className="px-3 py-2 rounded-lg text-xs font-semibold flex-shrink-0 transition-opacity hover:opacity-80"
@@ -130,12 +130,12 @@ export default function TeamsSection({ token }: { token: string }) {
       </div>
 
       {/* Power Automate setup guide */}
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E3F5' }}>
         <button onClick={() => setShowSetup(v => !v)}
           className="w-full flex items-center justify-between px-5 py-4 text-left transition-opacity hover:opacity-80"
-          style={{ background: 'var(--c-surface)' }}>
+          style={{ background: '#ffffff' }}>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
+            <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
               Cómo configurar Power Automate
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -143,12 +143,12 @@ export default function TeamsSection({ token }: { token: string }) {
               Paso a paso
             </span>
           </div>
-          {showSetup ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)' }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)' }} />}
+          {showSetup ? <ChevronUp size={14} style={{ color: '#6B6480' }} /> : <ChevronDown size={14} style={{ color: '#6B6480' }} />}
         </button>
 
         {showSetup && (
-          <div className="px-5 pb-5" style={{ borderTop: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
-            <p className="text-xs mt-4 mb-4" style={{ color: 'var(--c-text-2)' }}>
+          <div className="px-5 pb-5" style={{ borderTop: '1px solid #E8E3F5', background: '#ffffff' }}>
+            <p className="text-xs mt-4 mb-4" style={{ color: '#1A0A3B' }}>
               Entra a <strong>make.powerautomate.com</strong> con tu cuenta de Microsoft y crea un flujo nuevo (Automated cloud flow).
             </p>
 
@@ -186,22 +186,22 @@ export default function TeamsSection({ token }: { token: string }) {
                   {step.n}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text)' }}>{step.title}</p>
+                  <p className="text-sm font-semibold mb-1" style={{ color: '#1A0A3B' }}>{step.title}</p>
                   {step.code ? (
                     <>
                       {step.body.split('\n\n').map((block, i) => (
                         block.startsWith('{') || block.startsWith('"') ? (
                           <pre key={i} className="text-xs p-3 rounded-lg overflow-x-auto mb-2"
-                            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                             {block}
                           </pre>
                         ) : (
-                          <p key={i} className="text-xs mb-2 leading-relaxed whitespace-pre-line" style={{ color: 'var(--c-text-2)' }}>{block}</p>
+                          <p key={i} className="text-xs mb-2 leading-relaxed whitespace-pre-line" style={{ color: '#1A0A3B' }}>{block}</p>
                         )
                       ))}
                     </>
                   ) : (
-                    <p className="text-xs leading-relaxed whitespace-pre-line" style={{ color: 'var(--c-text-2)' }}>{step.body}</p>
+                    <p className="text-xs leading-relaxed whitespace-pre-line" style={{ color: '#1A0A3B' }}>{step.body}</p>
                   )}
                 </div>
               </div>
@@ -209,7 +209,7 @@ export default function TeamsSection({ token }: { token: string }) {
 
             <div className="rounded-lg p-3 mt-2" style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
               <p className="text-xs font-semibold mb-1" style={{ color: '#f59e0b' }}>Posible bloqueo de IT</p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+              <p className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>
                 Si el trigger de Teams no está disponible o la acción HTTP está bloqueada, el departamento de IT deshabilitó esas funciones en Power Automate. En ese caso necesitarías pedirles que habiliten el conector de Teams y el conector HTTP para tu cuenta.
               </p>
             </div>
@@ -218,18 +218,18 @@ export default function TeamsSection({ token }: { token: string }) {
       </div>
 
       {/* Message history */}
-      <div className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-4 flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+      <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #F0EDF9' }}>
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-4 flex items-center gap-1.5" style={{ color: '#6B6480' }}>
           <MessageSquare size={13} /> Mensajes recientes
         </h2>
 
         {loading ? (
-          <p className="text-xs py-4 text-center" style={{ color: 'var(--c-text-3)' }}>Cargando...</p>
+          <p className="text-xs py-4 text-center" style={{ color: '#6B6480' }}>Cargando...</p>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center py-8 gap-2">
-            <MessageSquare size={24} style={{ color: 'var(--c-text-3)', opacity: 0.3 }} />
-            <p className="text-sm" style={{ color: 'var(--c-text-3)' }}>Sin mensajes todavía</p>
-            <p className="text-xs text-center" style={{ color: 'var(--c-text-3)' }}>
+            <MessageSquare size={24} style={{ color: '#6B6480', opacity: 0.3 }} />
+            <p className="text-sm" style={{ color: '#6B6480' }}>Sin mensajes todavía</p>
+            <p className="text-xs text-center" style={{ color: '#6B6480' }}>
               Cuando Power Automate mande el primer mensaje aparecerá aquí.
             </p>
           </div>
@@ -239,33 +239,33 @@ export default function TeamsSection({ token }: { token: string }) {
               const isOpen = expanded.has(m.id);
               return (
                 <div key={m.id} className="rounded-xl overflow-hidden"
-                  style={{ border: '1px solid var(--c-border)' }}>
+                  style={{ border: '1px solid #E8E3F5' }}>
                   <button onClick={() => toggle(m.id)}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80"
-                    style={{ background: 'var(--c-surface-2)' }}>
+                    style={{ background: '#FAFAFB' }}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                        <span className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                           {m.sender_name ?? m.sender_email ?? 'Contacto'}
                         </span>
-                        <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{fmtTime(m.created_at)}</span>
+                        <span className="text-xs" style={{ color: '#6B6480' }}>{fmtTime(m.created_at)}</span>
                       </div>
-                      <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--c-text-2)' }}>{m.message}</p>
+                      <p className="text-xs mt-0.5 truncate" style={{ color: '#1A0A3B' }}>{m.message}</p>
                     </div>
-                    {isOpen ? <ChevronUp size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />}
+                    {isOpen ? <ChevronUp size={14} style={{ color: '#6B6480', flexShrink: 0 }} /> : <ChevronDown size={14} style={{ color: '#6B6480', flexShrink: 0 }} />}
                   </button>
 
                   {isOpen && (
-                    <div className="flex flex-col gap-3 p-4" style={{ borderTop: '1px solid var(--c-divider)' }}>
-                      <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                        <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--c-text-3)' }}>
+                    <div className="flex flex-col gap-3 p-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+                      <div className="rounded-lg p-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                        <p className="text-xs font-semibold mb-1.5" style={{ color: '#6B6480' }}>
                           {m.sender_name ?? 'Contacto'}
                         </p>
-                        <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{m.message}</p>
+                        <p className="text-sm leading-relaxed" style={{ color: '#1A0A3B' }}>{m.message}</p>
                       </div>
                       <div className="rounded-lg p-3" style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
                         <p className="text-xs font-semibold mb-1.5" style={{ color: '#9B6DFF' }}>Respuesta enviada</p>
-                        <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{m.reply}</p>
+                        <p className="text-sm leading-relaxed" style={{ color: '#1A0A3B' }}>{m.reply}</p>
                       </div>
                     </div>
                   )}
