@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { timingSafeEqual } from 'crypto';
 import { transitionAgentTask } from '@/lib/state-machines/agent-task';
 import { recordHumanDecision } from '@/lib/human-gates/record';
+import { triggerProcessTasks } from '@/lib/ops/process-tasks-trigger';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,15 +115,7 @@ async function handle(req: NextRequest, id: string) {
     metadata: { title: task.title, assigned_to: task.assigned_to },
   });
 
-  // Fire-and-forget: dispara el cron manualmente para esta tarea. Si el
-  // cron secret existe llamamos al endpoint, si no cae al tick horario normal.
-  const cronSecret = process.env.CRON_SECRET;
-  const appUrl     = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.centinelia.mx';
-  if (cronSecret) {
-    void fetch(`${appUrl}/api/cron/process-tasks`, {
-      headers: { Authorization: `Bearer ${cronSecret}` },
-    }).catch(err => console.error('[approve-plan] trigger process-tasks failed:', err));
-  }
+  triggerProcessTasks(`approve-plan ${id}`);
 
   return htmlResponse(
     'ok',
