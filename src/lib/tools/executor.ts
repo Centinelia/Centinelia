@@ -863,9 +863,10 @@ async function executeAgentToolInner(
     }
 
     if (toolName === 'responder_cliente_afectado') {
-      const affectedId = String(toolInput.agent_id ?? '').trim();
-      const mensaje    = String(toolInput.mensaje  ?? '').trim();
-      const canal      = String(toolInput.canal    ?? 'email');
+      const affectedId = String(toolInput.agent_id     ?? '').trim();
+      const mensaje    = String(toolInput.mensaje      ?? '').trim();
+      const canal      = String(toolInput.canal        ?? 'email');
+      const incidentId = String(toolInput.incidente_id ?? '').trim();
       if (!affectedId || !mensaje) return { ok: false, error: 'agent_id y mensaje son obligatorios' };
       if (!['email', 'whatsapp'].includes(canal)) return { ok: false, error: `canal inválido: ${canal}` };
       const { data: target } = await supabase
@@ -878,18 +879,31 @@ async function executeAgentToolInner(
         const to = target.transfer_whatsapp as string | null;
         if (!to) return { ok: false, error: 'el cliente no tiene transfer_whatsapp configurado, prueba con email' };
         const { sendWhatsApp } = await import('@/lib/whatsapp/send');
-        const okWa = await sendWhatsApp(to, `Centinelia — Nash:\n\n${mensaje}`);
+        const okWa = await sendWhatsApp(to, `Centinelia (Nash):\n\n${mensaje}`);
         if (!okWa) return { ok: false, error: 'sendWhatsApp devolvió false — revisa TWILIO_*' };
         return { ok: true, delivered_to: to, channel: 'whatsapp', business: target.business_name };
       }
       const to = target.client_email as string | null;
       if (!to) return { ok: false, error: 'el cliente no tiene client_email configurado' };
+
+      // Reply-To bidireccional: si el cliente responde a este correo, el inbound
+      // webhook detecta el token del incidente y reabre el caso sin que el cliente
+      // tenga que abrir otro reporte.
+      let replyTo: string | undefined;
+      let replyHint = '';
+      if (incidentId) {
+        const { incidentReplyAddressFor } = await import('@/lib/email/inbox');
+        replyTo   = incidentReplyAddressFor(incidentId);
+        replyHint = '<p style="font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#6b7280;margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;border-left:3px solid #9CA3AF">Si el problema persiste o quieres seguir la conversación, simplemente <strong>responde a este correo</strong>. Tu mensaje reabre el caso automáticamente, no necesitas levantar otro reporte.</p>';
+      }
+
       await sendEmail({
         to,
-        subject: `Centinelia — Actualización de Nash sobre ${target.business_name ?? 'tu cuenta'}`,
-        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p><p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
+        subject: `Centinelia (Nash): actualización sobre ${target.business_name ?? 'tu cuenta'}`,
+        html:    `<p style="font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6">${mensaje.replace(/\n/g, '<br>')}</p>${replyHint}<p style="font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:#6b7280;margin-top:24px">Nash, Centinelia interno</p>`,
+        replyTo,
       });
-      return { ok: true, delivered_to: to, channel: 'email', business: target.business_name };
+      return { ok: true, delivered_to: to, channel: 'email', business: target.business_name, reply_to: replyTo ?? null };
     }
 
     if (toolName === 'enviar_a_claude_code') {

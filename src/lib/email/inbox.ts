@@ -65,6 +65,50 @@ export function parseToToken(toHeader: string): string {
   return addr.split('@')[0].replace(/[^a-f0-9]/g, '');
 }
 
+// ── Incident reply tokens (Nash) ─────────────────────────────────────────────
+// Cuando Nash envía correo al cliente afectado (ACK de creación o notificación
+// de resolución), el Reply-To apunta a esta dirección. Si el cliente responde,
+// el webhook de /api/email/inbound detecta el patrón y reabre el incidente.
+//
+// Diseño: token = UUID sin guiones (32 hex chars). Longitud discriminante vs
+// agent (12) y handoff (16). Lookup O(1) por eq(id, uuid) con índice.
+
+export function incidentReplyTokenFor(incidentId: string): string {
+  return incidentId.replace(/-/g, '').toLowerCase();
+}
+
+export function incidentReplyAddressFor(incidentId: string): string {
+  return `${incidentReplyTokenFor(incidentId)}@${INBOX_DOMAIN}`;
+}
+
+export interface IncidentReplyMatch {
+  incidentId:          string;
+  affectedAgentId:     string | null;
+  affectedPortalEmail: string | null;
+  title:               string;
+  status:              string;
+}
+
+export async function resolveIncidentFromToken(token: string): Promise<IncidentReplyMatch | null> {
+  if (token.length !== 32) return null;
+  // Reconstruye UUID canónico: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuid = `${token.slice(0,8)}-${token.slice(8,12)}-${token.slice(12,16)}-${token.slice(16,20)}-${token.slice(20,32)}`;
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('platform_incidents')
+    .select('id, affected_agent_id, affected_portal_email, title, status')
+    .eq('id', uuid)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    incidentId:          data.id as string,
+    affectedAgentId:     (data.affected_agent_id     as string | null) ?? null,
+    affectedPortalEmail: (data.affected_portal_email as string | null) ?? null,
+    title:               (data.title                 as string) ?? '',
+    status:              (data.status                as string) ?? '',
+  };
+}
+
 export interface HandoffRequestMatch {
   id:            string;
   status:        string;

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveInboxToken, parseSenderName, parseToToken, resolveAgentFromToken, resolveHumanRequestFromToken } from '@/lib/email/inbox';
+import { resolveInboxToken, parseSenderName, parseToToken, resolveAgentFromToken, resolveHumanRequestFromToken, resolveIncidentFromToken } from '@/lib/email/inbox';
 import { processHandoffReply, type HandoffAttachment } from '@/lib/human-handoff/inbound';
 import { processInboxEmail } from '@/lib/ops/inbox-processor';
 import { applyCommsRouting } from '@/lib/comms/routing';
@@ -79,6 +79,58 @@ export async function POST(req: NextRequest) {
       }
     }
     return stored;
+  }
+
+  // 0. Try incident reply first (32 hex chars = UUID sin guiones — Nash usa
+  //    esto en el Reply-To de sus emails al cliente). El cliente responde,
+  //    reabrimos el incidente y creamos un nuevo bug_report que Nash procesa
+  //    en su siguiente ciclo. Discriminador de longitud vs handoff (16) y
+  //    agent/inbox (12).
+  const incidentMatch = await resolveIncidentFromToken(token);
+  if (incidentMatch) {
+    // Reabrir el incidente: si estaba resolved/closed, vuelve a open. Si
+    // estaba awaiting_verification/sent_to_claude_code, marca open explícito
+    // para que Nash lo re-trabaje.
+    await supabase
+      .from('platform_incidents')
+      .update({
+        status: 'open',
+        meta: {
+          reopened_at:     new Date().toISOString(),
+          reopened_reason: 'client_email_reply',
+          reopened_by:     from,
+        },
+      })
+      .eq('id', incidentMatch.incidentId);
+
+    // Crear un nuevo tool_call_log tipo 'reportar_falla' con el contenido del
+    // reply. Nash lo verá como una señal fresca en su próxima corrida y
+    // volverá a crear/actualizar el incidente + posiblemente notificar de
+    // nuevo o escalar si es la 2da+ ocurrencia.
+    if (incidentMatch.affectedAgentId) {
+      await supabase.from('tool_call_log').insert({
+        agent_id:     incidentMatch.affectedAgentId,
+        portal_email: incidentMatch.affectedPortalEmail,
+        channel:      'portal',
+        tool_name:    'reportar_falla',
+        input_json:   {
+          tipo:        'reopen',
+          descripcion: `[REABRIÓ CASO] ${incidentMatch.title}\n\nCliente respondió: ${text.trim().slice(0, 2000)}\n\nReferencia incidente: ${incidentMatch.incidentId}`,
+          source:      'incident_reply',
+          from,
+          subject:     subject || null,
+        },
+        ok:           true,
+        latency_ms:   0,
+        attempt:      1,
+      });
+    }
+
+    // Trigger Nash inmediato para que procese la reapertura sin esperar al cron.
+    const { triggerNashMonitor } = await import('@/lib/ops/nash-trigger');
+    triggerNashMonitor(`incident reply ${incidentMatch.incidentId.slice(0, 8)} from ${from}`);
+
+    return NextResponse.json({ ok: true, incident_reopened: incidentMatch.incidentId });
   }
 
   // 1. Try handoff reply first (16 hex chars, unique length discriminator)
