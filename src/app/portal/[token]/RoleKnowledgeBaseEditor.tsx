@@ -56,7 +56,7 @@ export default function RoleKnowledgeBaseEditor({
         value={value}
         onChange={e => { setValue(e.target.value); setSaved(false); setDirty(true); }}
         rows={10}
-        placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n- Proveedor principal: proveedor@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del dueño.`}
+        placeholder={`PROCEDIMIENTO:\n1. Revisar el documento recibido.\n2. Comparar contra los criterios aprobados.\n3. Si hay discrepancia mayor al 5%, escalar por email.\n\nCONTACTOS CLAVE:\n- Aprobador final: gerencia@empresa.com\n- Proveedor principal: proveedor@empresa.com\n\nLÍMITES:\n- Facturas hasta $10,000: aprobación automática.\n- Facturas mayores: requieren confirmación del responsable.`}
         className="w-full rounded-xl px-3 py-3 text-xs leading-relaxed outline-none resize-y"
         style={{
           background: 'var(--c-input-bg)',

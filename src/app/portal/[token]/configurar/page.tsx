@@ -529,7 +529,7 @@ export default async function ConfigurarAgentePage({ params }: Props) {
                       className="mb-2"
                     />
                     <p className="text-xs mb-3" style={{ color: 'var(--c-text-3)' }}>
-                      El directorio de personas (dueño, equipo, especialistas) vive a nivel organización y lo comparten todos tus empleados.
+                      El directorio de personas (responsable, equipo, especialistas) vive a nivel organización y lo comparten todos tus empleados.
                     </p>
                     <a
                       href={`/portal/${token}?tab=negocio&nav=directorio`}

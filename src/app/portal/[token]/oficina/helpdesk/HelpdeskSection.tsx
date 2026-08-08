@@ -82,7 +82,7 @@ function ticketOrigin(t: Ticket): { icon: React.ReactNode; label: string } {
     return { icon: <Phone size={11} />, label: 'Por llamada' };
   }
   if (t.created_by === 'owner') {
-    return { icon: <User size={11} />, label: 'Registrado por el dueño' };
+    return { icon: <User size={11} />, label: 'Registrado por el responsable' };
   }
   if (t.created_by && t.created_by !== 'sub_user') {
     return { icon: <User size={11} />, label: `Registrado por ${t.created_by}` };

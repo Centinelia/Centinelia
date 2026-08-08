@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, Plus, X, CheckCircle, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Plus, X, CheckCircle, ChevronDown, ChevronUp, ShieldAlert, LifeBuoy } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface Incident {
   id: string; titulo: string; descripcion: string;
   mensaje_voz: string; keywords: string[]; activo: boolean; created_at: string;
+  linked_ticket?: { id: string; folio: string; status: string } | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -89,7 +90,7 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
             )}
           </div>
           <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-            Tu empleado informará estos incidentes antes de registrar nuevas solicitudes.
+            Avisos globales que anuncia al inicio de cada llamada. Sirven para no ahogarte en solicitudes duplicadas cuando algo afecta a todos.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-1">
@@ -109,28 +110,48 @@ export default function IncidentesSection({ token, initialIncidents }: { token: 
             />
           ) : (
             <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-              {active.map((i, idx) => (
-                <div key={i.id} className="px-5 py-4 flex items-start gap-3"
-                  style={{ borderBottom: idx === active.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold" style={{ color: '#b91c1c' }}>{i.titulo}</p>
-                    <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>{i.mensaje_voz}</p>
-                    {i.keywords.length > 0 && (
-                      <div className="flex gap-1 flex-wrap mt-1.5">
-                        {i.keywords.map(k => (
-                          <span key={k} className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                            style={{ background: 'rgba(239,68,68,0.10)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.20)' }}>{k}</span>
-                        ))}
+              {active.map((i, idx) => {
+                const linked = i.linked_ticket;
+                return (
+                  <div key={i.id} className="px-5 py-4 flex items-start gap-3"
+                    style={{ borderBottom: idx === active.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[13px] font-semibold" style={{ color: '#b91c1c' }}>{i.titulo}</p>
+                        {linked && (
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                            title={`Linkeado a solicitud #${linked.folio}. Se apaga al resolver esa solicitud.`}
+                            style={{ background: 'rgba(108,59,255,0.10)', color: '#6C3BFF', border: '1px solid rgba(108,59,255,0.25)' }}>
+                            <LifeBuoy size={9} /> Solicitud #{linked.folio}
+                          </span>
+                        )}
                       </div>
+                      <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: '#6B6480' }}>{i.mensaje_voz}</p>
+                      {i.keywords.length > 0 && (
+                        <div className="flex gap-1 flex-wrap mt-1.5">
+                          {i.keywords.map(k => (
+                            <span key={k} className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                              style={{ background: 'rgba(239,68,68,0.10)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.20)' }}>{k}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {linked ? (
+                      <span className="text-[11px] shrink-0 self-center px-2 py-1 rounded-lg"
+                        title="Se apaga cuando cierres la solicitud linkeada, no aquí"
+                        style={{ background: '#FAFAFB', color: '#9B8FB5', border: '1px solid #E8E3F5' }}>
+                        Se apaga con la solicitud
+                      </span>
+                    ) : (
+                      <button onClick={() => resolve(i.id)}
+                        className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-semibold shrink-0 transition-opacity hover:opacity-80"
+                        style={{ background: '#ffffff', color: '#22c55e', border: '1px solid rgba(34,197,94,0.30)', cursor: 'pointer' }}>
+                        <CheckCircle size={11} /> Resolver
+                      </button>
                     )}
                   </div>
-                  <button onClick={() => resolve(i.id)}
-                    className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-semibold shrink-0 transition-opacity hover:opacity-80"
-                    style={{ background: '#ffffff', color: '#22c55e', border: '1px solid rgba(34,197,94,0.30)', cursor: 'pointer' }}>
-                    <CheckCircle size={11} /> Resolver
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -19,7 +19,7 @@ const TYPES: { key: ResearchType; label: string; icon: React.ElementType; desc: 
     label:       'Leads',
     icon:        Users,
     desc:        'Encuentra empresas o personas con alta probabilidad de convertirse en clientes.',
-    placeholder: 'Ej: empresas que necesitan contabilidad, dueños de restaurante en Monterrey…',
+    placeholder: 'Ej: empresas que necesitan contabilidad, responsables de restaurante en Monterrey…',
   },
   {
     key:         'competidores',

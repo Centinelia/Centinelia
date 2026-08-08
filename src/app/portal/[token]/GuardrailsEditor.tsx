@@ -26,7 +26,7 @@ NO PUEDE HACER (debe escalar al equipo):
 
 SIEMPRE DEBE TRANSFERIR cuando:
 - El cliente menciona queja formal o amenaza legal
-- La solicitud requiere autorización del dueño
+- La solicitud requiere autorización del responsable
 - No tiene información suficiente para responder con certeza`;
 
 export default function GuardrailsEditor({ token, initialValue, initialGuardrailsLearnings = '' }: Props) {

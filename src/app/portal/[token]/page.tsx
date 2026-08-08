@@ -1722,7 +1722,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── 4. DIRECTORIO ───────────────────────────────────── */}
                 <>
                   <div id="directorio" style={{ scrollMarginTop: 80 }}>
-                    <PageSection heading={<SectionHeader eyebrow="DIRECTORIO" title="Personas de la organización" as="h2" tooltip="Dueño, equipo y especialistas. Todos tus empleados comparten este directorio: para identificar llamadas internas, referir contactos y asignar tickets del helpdesk." />}>
+                    <PageSection heading={<SectionHeader eyebrow="DIRECTORIO" title="Personas de la organización" as="h2" tooltip="Responsable, equipo y especialistas. Todos tus empleados comparten este directorio: para identificar llamadas internas, referir contactos y asignar tickets del helpdesk." />}>
                       <Card padding="md">
                         <DirectorioEditor token={token} initial={orgDirectory} isOwner={isOwner} showHelpdeskFields />
                       </Card>

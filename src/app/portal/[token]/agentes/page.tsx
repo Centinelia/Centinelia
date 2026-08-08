@@ -513,7 +513,7 @@ export default async function AgentesPage({ params }: Props) {
                     ))}
                     {isCoordinator && !hasPassphrase && (
                       <p className="w-full text-[10px] mt-1 leading-relaxed" style={{ color: '#f59e0b' }}>
-                        Sin passphrase del dueño este director no puede actuar. Configura una en Empleados → Configurar.
+                        Sin passphrase del responsable este director no puede actuar. Configura una en Empleados → Configurar.
                       </p>
                     )}
                   </div>

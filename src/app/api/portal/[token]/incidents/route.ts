@@ -16,7 +16,8 @@ export async function GET(
   if (session.portalEmail && access.portalEmail !== session.portalEmail)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const { data, error } = await createAdminClient()
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
     .from('it_incidents')
     .select('*')
     .in('agent_id', access.ids)
@@ -24,7 +25,28 @@ export async function GET(
     .limit(100);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ incidents: data ?? [] });
+
+  // Lookup de tickets linkeados: para cada incident traemos su ticket (si existe)
+  // — sirve al frontend para mostrar 'de ticket #XXX' y evitar duplicar UI.
+  const incidents = data ?? [];
+  const incidentIds = incidents.map(i => (i as { id: string }).id);
+  let linkedByIncidentId: Record<string, { id: string; folio: string; status: string }> = {};
+  if (incidentIds.length > 0) {
+    const { data: tickets } = await supabase
+      .from('helpdesk_tickets')
+      .select('id, folio, status, incident_id')
+      .in('incident_id', incidentIds);
+    for (const t of (tickets ?? []) as Array<{ id: string; folio: string; status: string; incident_id: string }>) {
+      linkedByIncidentId[t.incident_id] = { id: t.id, folio: t.folio, status: t.status };
+    }
+  }
+
+  return NextResponse.json({
+    incidents: incidents.map(i => ({
+      ...i,
+      linked_ticket: linkedByIncidentId[(i as { id: string }).id] ?? null,
+    })),
+  });
 }
 
 export async function POST(

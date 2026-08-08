@@ -8,7 +8,7 @@
  * todos los agentes de la cuenta.
  *
  * Una persona puede tener múltiples "roles" simultáneos:
- *   - is_owner: dueño (bypass 24/7)
+ *   - is_owner: responsable (bypass 24/7)
  *   - is_team:  miembro del equipo interno (identificación de llamadas)
  *   - helpdesk_expertise + on_call: aparece en búsquedas de Neo y horario de guardia
  */
@@ -107,7 +107,7 @@ export default function DirectorioEditor({
 
   function setOwnerFlag(id: string, next: boolean) {
     if (gate !== 'unlocked') { setGate('confirming'); return; }
-    // Solo puede haber un dueño
+    // Solo puede haber un responsable
     setPeople(prev => prev.map(p => ({
       ...p,
       is_owner: p.id === id ? next : (next ? false : p.is_owner),
@@ -120,11 +120,11 @@ export default function DirectorioEditor({
   return (
     <div className="flex flex-col gap-4">
 
-      {/* ── Dueño ─────────────────────────────────────────────────────────── */}
+      {/* ── Responsable ─────────────────────────────────────────────────────────── */}
       <section>
         <div className="flex items-center gap-1.5 mb-2">
           <Crown size={12} style={{ color: '#f59e0b' }} />
-          <span className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Dueño</span>
+          <span className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Responsable</span>
           {isOwner && gate === 'locked' && ownerEntry && (
             <Lock size={11} style={{ color: 'rgba(245,158,11,0.5)' }} />
           )}
@@ -149,11 +149,11 @@ export default function DirectorioEditor({
           }}
             className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
             style={{ background: 'rgba(245,158,11,0.08)', border: '1px dashed rgba(245,158,11,0.35)', color: '#f59e0b', cursor: 'pointer' }}>
-            <Plus size={11} /> Registrar dueño
+            <Plus size={11} /> Registrar responsable
           </button>
         ) : (
           <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
-            {isOwner ? 'Sin número de dueño registrado. Desbloquea para añadir.' : 'Sin número de dueño registrado.'}
+            {isOwner ? 'Sin número de responsable registrado. Desbloquea para añadir.' : 'Sin número de responsable registrado.'}
           </p>
         )}
 
@@ -161,7 +161,7 @@ export default function DirectorioEditor({
           <div className="flex flex-col gap-2 p-3 rounded-lg mt-2"
             style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
             <p className="text-xs font-medium" style={{ color: '#f59e0b' }}>
-              Confirma tu contraseña para editar el número del dueño
+              Confirma tu contraseña para editar el número del responsable
             </p>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -362,7 +362,7 @@ function PersonRow({
             <button onClick={() => onSetOwner(true)}
               className="text-xs flex items-center gap-1 opacity-70 hover:opacity-100"
               style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', padding: 0 }}>
-              <Crown size={11} /> Marcar como dueño
+              <Crown size={11} /> Marcar como responsable
             </button>
           )}
         </div>

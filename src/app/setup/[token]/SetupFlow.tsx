@@ -442,7 +442,7 @@ function Step4Tone({
             ¿Cómo habla su organización con las personas?
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--c-text-4)' }}>
-            El trato define la relación. Puedes cambiarlo solo con autorización del dueño de la cuenta.
+            El trato define la relación. Puedes cambiarlo solo con autorización del responsable de la cuenta.
           </p>
         </div>
 

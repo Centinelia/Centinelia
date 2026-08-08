@@ -47,7 +47,7 @@ export default function InvoicingEmailEditor({ token, initialEmail }: { token: s
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm" style={{ color: 'var(--c-text-sub)', lineHeight: 1.6 }}>
-        Cuando un cliente pida su factura, este es el correo que recibirá la notificación con todos los datos para timbrar en tu sistema fiscal. Si lo dejas vacío, cae al correo del dueño.
+        Cuando un cliente pida su factura, este es el correo que recibirá la notificación con todos los datos para timbrar en tu sistema fiscal. Si lo dejas vacío, cae al correo del responsable.
       </p>
 
       {subUsers.length > 0 ? (
@@ -56,7 +56,7 @@ export default function InvoicingEmailEditor({ token, initialEmail }: { token: s
             <SelectValue placeholder="Sin responsable asignado" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none">Sin responsable asignado (usa correo del dueño)</SelectItem>
+            <SelectItem value="__none">Sin responsable asignado (usa correo del responsable)</SelectItem>
             {subUsers.map(u => (
               <SelectItem key={u.id} value={u.email}>
                 {u.name ? `${u.name} · ${u.email}` : u.email}

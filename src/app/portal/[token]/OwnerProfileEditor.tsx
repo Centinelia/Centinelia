@@ -9,7 +9,7 @@ interface Props {
 }
 
 const PLACEHOLDER = `Ej:
-Soy el dueño de una clínica dental en Monterrey con 3 sucursales. Recibo alrededor de 80 llamadas al día.
+Soy responsable de una clínica dental en Monterrey con 3 sucursales. Recibo alrededor de 80 llamadas al día.
 
 MIS PRIORIDADES (en orden):
 1. Pacientes con cita para hoy o mañana — siempre urgente
