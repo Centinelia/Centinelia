@@ -1272,14 +1272,14 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
             <div className="flex flex-col gap-5">
 
               {/* Greeting banner — status-aware, keep as-is (styled alert) */}
-              <div className="rounded-xl px-5 py-4"
+              <div className="rounded-2xl px-5 py-4"
                 style={{ background: officeOk ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${officeOk ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ background: officeOk ? '#22c55e' : '#ef4444', boxShadow: officeOk ? '0 0 6px #22c55e' : '0 0 6px #ef4444' }} />
                   <p className="text-sm" style={{ color: '#1A0A3B' }}>
                     <span className="font-semibold">{greeting}, {agent.business_name}.</span>{' '}
-                    <span style={{ color: 'var(--c-text-2)' }}>
+                    <span style={{ color: '#6B6480' }}>
                       {officeOk ? 'Tu oficina está activa y atendiendo.' : 'Tu oficina está pausada en este momento.'}
                     </span>
                   </p>
@@ -1288,10 +1288,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {isFirstTime && (
                 <div
-                  className="relative rounded-xl overflow-hidden"
+                  className="relative rounded-2xl overflow-hidden"
                   style={{
-                    background: 'rgba(108,59,255,0.06)',
-                    border:     '1px solid rgba(108,59,255,0.15)',
+                    background: '#ffffff',
+                    border:     '1px solid #E8E3F5',
+                    boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
                     minHeight:  96,
                   }}
                 >
@@ -1310,20 +1311,31 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* ═══ BLOQUE 1: CÓMO VA TU SEMANA ═══ */}
               {weeklyMetrics.some(m => m.curr > 0 || m.prev > 0) && (
-                <div id="semana" className="rounded-xl p-5 scroll-mt-6" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)' }}>
-                  <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-                    Cómo va tu semana
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div
+                  id="semana"
+                  className="flex flex-col rounded-2xl overflow-hidden scroll-mt-6"
+                  style={{
+                    background: '#ffffff',
+                    border:     '1px solid #E8E3F5',
+                    boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                    <div>
+                      <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Cómo va tu semana</h2>
+                      <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>Comparativa vs semana anterior</p>
+                    </div>
+                  </div>
+                  <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {weeklyMetrics.map(m => {
-                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : 'var(--c-text-3)';
-                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '—';
+                      const dirColor = m.dir === 'up' ? '#22c55e' : m.dir === 'down' ? '#ef4444' : '#6B6480';
+                      const arrow    = m.dir === 'up' ? '▲' : m.dir === 'down' ? '▼' : '·';
                       const deltaSuffix = m.unit === '%' ? 'pp' : '%';
                       return (
                         <div key={m.label}>
-                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: 'var(--c-text-4)' }}>{m.label}</p>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>{m.label}</p>
                           <div className="flex items-baseline gap-2">
-                            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--c-text)' }}>
+                            <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>
                               {m.curr}{m.unit}
                             </p>
                             {m.delta !== null && (
@@ -1332,7 +1344,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] mt-1" style={{ color: 'var(--c-text-4)' }}>
+                          <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>
                             vs {m.prev}{m.unit} semana anterior
                           </p>
                         </div>
@@ -1342,31 +1354,37 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
               )}
 
-              {/* ═══ BLOQUE 2: HOY TIENES QUE ATENDER (destacado con acento) ═══ */}
+              {/* ═══ BLOQUE 2: HOY TIENES QUE ATENDER (surface único) ═══ */}
               {(() => {
                 const pendingCount = apptsHoy.length + (bandejaCount > 0 ? 1 : 0) + (salientesEnCola > 0 ? 1 : 0) + (learningsCount > 0 ? 1 : 0) + reauthAlerts.length;
                 if (pendingCount === 0 && !hasNox && !nextTask) return null;
                 return (
-                <div id="hoy" className="rounded-2xl overflow-hidden scroll-mt-6"
-                  style={{ background: 'linear-gradient(180deg, rgba(108,59,255,0.06) 0%, var(--c-surface) 100%)', border: '2px solid rgba(108,59,255,0.28)', boxShadow: '0 4px 20px rgba(108,59,255,0.08)' }}>
-                  <div className="px-5 pt-5 pb-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--c-border-2)' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: '#6C3BFF', boxShadow: '0 4px 12px rgba(108,59,255,0.35)' }}>
-                      <AlertTriangle size={18} color="#fff" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-base font-bold" style={{ color: 'var(--c-text)' }}>
-                        Hoy tienes que atender
-                      </h2>
-                      {pendingCount > 0 && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
-                          {pendingCount} {pendingCount === 1 ? 'asunto pendiente' : 'asuntos pendientes'} de tu revisión
-                        </p>
-                      )}
+                <div id="hoy" className="flex flex-col rounded-2xl overflow-hidden scroll-mt-6"
+                  style={{
+                    background: '#ffffff',
+                    border:     '1px solid #E8E3F5',
+                    boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
+                  }}>
+                  <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: '#6C3BFF', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                        <AlertTriangle size={18} color="#fff" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+                          Hoy tienes que atender
+                        </h2>
+                        {pendingCount > 0 && (
+                          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+                            {pendingCount} {pendingCount === 1 ? 'asunto pendiente' : 'asuntos pendientes'} de tu revisión
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-5 flex flex-col gap-2.5">
+                  <div className="px-5 pb-5 pt-4 flex flex-col gap-2.5" style={{ borderTop: '1px solid #F0EDF9' }}>
                     {/* URGENTE: integraciones caídas */}
                     {reauthAlerts.map(alert => (
                       <Link key={alert.provider} href={`/portal/${token}?tab=negocio#integraciones`}
@@ -1380,7 +1398,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           <p className="text-sm font-semibold" style={{ color: '#dc2626' }}>
                             {alert.provider === 'gmail' ? 'Gmail' : 'Outlook'} requiere reconexión
                           </p>
-                          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{alert.email} — el empleado no puede leer correos</p>
+                          <p className="text-xs truncate" style={{ color: '#6B6480' }}>{alert.email}: el empleado no puede leer correos</p>
                         </div>
                         <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
                           style={{ background: '#ef4444', color: '#fff' }}>Resolver</span>
@@ -1390,13 +1408,13 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     {/* Citas hoy */}
                     {apptsHoy.length > 0 && (
                       <div className="px-4 py-3 rounded-xl"
-                        style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                         <div className="flex items-center gap-3 mb-2">
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                             style={{ background: '#3b82f6' }}>
                             <CalendarDays size={16} color="#fff" />
                           </div>
-                          <p className="text-sm font-semibold flex-1" style={{ color: 'var(--c-text)' }}>
+                          <p className="text-sm font-semibold flex-1" style={{ color: '#1A0A3B' }}>
                             {apptsHoy.length} {apptsHoy.length === 1 ? 'cita confirmada hoy' : 'citas confirmadas hoy'}
                           </p>
                         </div>
@@ -1427,22 +1445,22 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             }
                             const content = (
                               <>
-                                <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '—'}</span>
-                                <span className="mx-1.5" style={{ color: 'var(--c-text-4)' }}>·</span>
+                                <span className="font-semibold tabular-nums" style={{ color: '#3b82f6' }}>{(a.hora as string) ?? '·'}</span>
+                                <span className="mx-1.5" style={{ color: '#9B8FB5' }}>·</span>
                                 <span className="font-medium">{displayName}</span>
-                                {a.servicio ? <span style={{ color: 'var(--c-text-3)' }}> · {a.servicio}</span> : null}
-                                {ubicacion ? <span style={{ color: 'var(--c-text-3)' }}> · 📍 {ubicacion}</span> : null}
-                                {nombre && telefono ? <span style={{ color: 'var(--c-text-4)' }}> · {telefono}</span> : null}
+                                {a.servicio ? <span style={{ color: '#6B6480' }}> · {a.servicio}</span> : null}
+                                {ubicacion ? <span style={{ color: '#6B6480' }}> · {ubicacion}</span> : null}
+                                {nombre && telefono ? <span style={{ color: '#9B8FB5' }}> · {telefono}</span> : null}
                               </>
                             );
                             return calUrl ? (
                               <a key={a.id} href={calUrl} target="_blank" rel="noopener noreferrer"
                                 className="text-xs no-underline transition-opacity hover:opacity-70"
-                                style={{ color: 'var(--c-text-2)' }}>
+                                style={{ color: '#6B6480' }}>
                                 {content}
                               </a>
                             ) : (
-                              <p key={a.id} className="text-xs" style={{ color: 'var(--c-text-2)' }}>
+                              <p key={a.id} className="text-xs" style={{ color: '#6B6480' }}>
                                 {content}
                               </p>
                             );
@@ -1455,19 +1473,19 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     {bandejaCount > 0 && (
                       <Link href={`/portal/${token}/oficina/bandeja`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(108,59,255,0.06)', border: '1px solid rgba(108,59,255,0.2)' }}>
+                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: '#6C3BFF' }}>
                           <Inbox size={16} color="#fff" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                             {bandejaCount} {bandejaCount === 1 ? 'correo espera' : 'correos esperan'} tu aprobación
                           </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Borradores, escalaciones y solicitudes</p>
+                          <p className="text-xs" style={{ color: '#6B6480' }}>Borradores, escalaciones y solicitudes</p>
                         </div>
                         <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                          style={{ background: '#6C3BFF', color: '#fff' }}>Ver bandeja</span>
+                          style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>Ver bandeja</span>
                       </Link>
                     )}
 
@@ -1475,16 +1493,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     {salientesEnCola > 0 && (
                       <Link href={`/portal/${token}/oficina/llamadas?filtro=salientes`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)' }}>
+                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: '#a855f7' }}>
                           <PhoneOutgoing size={16} color="#fff" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                             {salientesEnCola} {salientesEnCola === 1 ? 'contacto en cola' : 'contactos en cola'}
                           </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Campaña saliente activa</p>
+                          <p className="text-xs" style={{ color: '#6B6480' }}>Campaña saliente activa</p>
                         </div>
                         <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
                           style={{ background: '#a855f7', color: '#fff' }}>Ver campañas</span>
@@ -1495,16 +1513,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     {learningsCount > 0 && (
                       <Link href={`/portal/${token}/oficina/aprendizajes`}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all hover:translate-x-0.5"
-                        style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: '#22c55e' }}>
                           <Lightbulb size={16} color="#fff" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                          <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                             {learningsCount} {learningsCount === 1 ? 'aprendizaje' : 'aprendizajes'} por aprobar
                           </p>
-                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Reglas propuestas por tu equipo</p>
+                          <p className="text-xs" style={{ color: '#6B6480' }}>Reglas propuestas por tu equipo</p>
                         </div>
                         <span className="text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
                           style={{ background: '#22c55e', color: '#fff' }}>Revisar</span>
@@ -1513,8 +1531,8 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                     {/* Brief del día (integrado, sin card duplicada) */}
                     {hasNox && (
-                      <div className="mt-1 pt-3" style={{ borderTop: '1px solid var(--c-border-2)' }}>
-                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--c-text-4)' }}>
+                      <div className="mt-1 pt-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: '#9B8FB5' }}>
                           Brief del día
                         </p>
                         <BriefDelDiaCard />
@@ -1523,9 +1541,9 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                     {/* Próxima tarea automática (línea discreta al pie) */}
                     {nextTask && (
-                      <p className="text-[11px] pt-2 mt-1" style={{ color: 'var(--c-text-4)', borderTop: '1px solid var(--c-border-2)' }}>
+                      <p className="text-[11px] pt-2 mt-1" style={{ color: '#9B8FB5', borderTop: '1px solid #F0EDF9' }}>
                         <Clock size={10} className="inline-block mr-1" style={{ verticalAlign: '-1px' }} />
-                        Próxima tarea automática: <span style={{ color: 'var(--c-text-3)' }}>{nextTask.name}</span> · {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
+                        Próxima tarea automática: <span style={{ color: '#6B6480' }}>{nextTask.name}</span> · {fmtFuture(nextTask.nextRunAt)} · {nextTask.agentName}
                       </p>
                     )}
                   </div>
