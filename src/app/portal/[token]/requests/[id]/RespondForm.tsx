@@ -42,18 +42,18 @@ function FileDropzone({ files, setFiles }: { files: File[]; setFiles: (f: File[]
         }}
         className="rounded-xl border-2 border-dashed cursor-pointer transition-colors px-4 py-6 flex flex-col items-center gap-2 text-center"
         style={{
-          borderColor: dragActive ? '#6C3BFF' : 'var(--c-border)',
-          background:  dragActive ? 'rgba(108,59,255,0.06)' : 'var(--c-bg)',
+          borderColor: dragActive ? '#6C3BFF' : '#E8E3F5',
+          background:  dragActive ? 'rgba(108,59,255,0.06)' : '#FAFAFB',
         }}
       >
         <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(108,59,255,0.10)' }}>
           <Upload size={16} style={{ color: '#6C3BFF' }} />
         </div>
-        <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+        <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
           Haz clic o arrastra archivos aquí
         </p>
-        <p className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-          Fotos, PDFs, docs · máx 10 MB por archivo
+        <p className="text-xs" style={{ color: '#9B8FB5' }}>
+          Fotos, PDFs, docs. Máx 10 MB por archivo
         </p>
         <input
           ref={inputRef}
@@ -70,17 +70,18 @@ function FileDropzone({ files, setFiles }: { files: File[]; setFiles: (f: File[]
             const isImg = f.type.startsWith('image/');
             const Icon = isImg ? ImageIcon : FileText;
             return (
-              <div key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg px-3 py-2 border" style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
-                <Icon size={13} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
-                <span className="text-xs flex-1 min-w-0 truncate" style={{ color: 'var(--c-text-2)' }}>{f.name}</span>
-                <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>{humanSize(f.size)}</span>
+              <div key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg px-3 py-2"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
+                <Icon size={13} style={{ color: '#6B6480', flexShrink: 0 }} />
+                <span className="text-xs flex-1 min-w-0 truncate" style={{ color: '#1A0A3B' }}>{f.name}</span>
+                <span className="text-[11px]" style={{ color: '#9B8FB5' }}>{humanSize(f.size)}</span>
                 <button
                   type="button"
                   onClick={e => { e.stopPropagation(); setFiles(files.filter((_, idx) => idx !== i)); }}
-                  className="p-1 rounded-md hover:bg-black/10 transition-colors"
+                  className="p-1 rounded-md hover:bg-[#F0EDF9] transition-colors"
                   aria-label={`Quitar ${f.name}`}
                 >
-                  <X size={12} style={{ color: 'var(--c-text-4)' }} />
+                  <X size={12} style={{ color: '#9B8FB5' }} />
                 </button>
               </div>
             );
@@ -108,6 +109,12 @@ interface Props {
   status:       string;
 }
 
+const SURFACE_STYLE = {
+  background: '#ffffff',
+  border: '1px solid #E8E3F5',
+  boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+} as const;
+
 export default function RespondForm(props: Props) {
   const [notes, setNotes] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -130,8 +137,8 @@ export default function RespondForm(props: Props) {
 
   if (props.status !== 'pending' && props.status !== 'escalated') {
     return (
-      <div className="p-6 rounded-xl border" style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
-        <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Esta solicitud ya fue procesada (estado: {props.status}).</p>
+      <div className="p-6 rounded-2xl" style={SURFACE_STYLE}>
+        <p className="text-sm" style={{ color: '#1A0A3B' }}>Esta solicitud ya fue procesada (estado: {props.status}).</p>
       </div>
     );
   }
@@ -186,35 +193,48 @@ export default function RespondForm(props: Props) {
     return !q || (u.name ?? '').toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
   });
 
+  const inputStyle = {
+    background: '#FAFAFB',
+    border: '1px solid #E8E3F5',
+    color: '#1A0A3B',
+    outline: 'none',
+  } as const;
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="p-5 rounded-xl border" style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
-        <p className="text-sm font-semibold mb-2" style={{ color: 'var(--c-text)' }}>{props.title}</p>
-        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--c-text-2)', lineHeight: 1.6 }}>{props.description}</p>
+      <div className="p-5 rounded-2xl" style={SURFACE_STYLE}>
+        <p className="text-sm font-semibold mb-2" style={{ color: '#1A0A3B' }}>{props.title}</p>
+        <p className="text-sm whitespace-pre-wrap" style={{ color: '#1A0A3B', lineHeight: 1.6 }}>{props.description}</p>
       </div>
 
       {props.originalEmail && (
-        <details className="p-4 rounded-xl border" style={{ background: 'var(--c-surface-2)', borderColor: 'var(--c-border)' }}>
-          <summary className="text-xs cursor-pointer" style={{ color: 'var(--c-text-3)' }}>Contexto: correo original</summary>
-          <p className="text-xs mt-2 mb-1" style={{ color: 'var(--c-text-3)' }}>De: {props.originalEmail.from}</p>
-          <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Asunto: {props.originalEmail.subject}</p>
-          <p className="text-xs whitespace-pre-wrap" style={{ color: 'var(--c-text-3)', lineHeight: 1.5 }}>{props.originalEmail.body.slice(0, 3000)}</p>
+        <details className="p-4 rounded-2xl" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+          <summary className="text-xs cursor-pointer" style={{ color: '#6B6480' }}>Contexto: correo original</summary>
+          <p className="text-xs mt-2 mb-1" style={{ color: '#6B6480' }}>De: {props.originalEmail.from}</p>
+          <p className="text-xs mb-2" style={{ color: '#6B6480' }}>Asunto: {props.originalEmail.subject}</p>
+          <p className="text-xs whitespace-pre-wrap" style={{ color: '#6B6480', lineHeight: 1.5 }}>{props.originalEmail.body.slice(0, 3000)}</p>
         </details>
       )}
 
       {!showRedirect && (
-        <div className="p-5 rounded-xl border" style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--c-text-4)' }}>Tu respuesta</p>
+        <div className="p-5 rounded-2xl" style={SURFACE_STYLE}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: '#9B8FB5' }}>Tu respuesta</p>
 
           {props.requestType === 'info' && (
             <>
               <div className="mb-3">
-                <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Archivos (fotos, PDFs, etc.)</p>
+                <p className="text-xs mb-2" style={{ color: '#6B6480' }}>Archivos (fotos, PDFs, etc.)</p>
                 <FileDropzone files={files} setFiles={setFiles} />
               </div>
               <label className="block">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Notas (opcional)</span>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 w-full text-sm px-3 py-2 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 80 }} placeholder="Detalles adicionales para el empleado..." />
+                <span className="text-xs" style={{ color: '#6B6480' }}>Notas (opcional)</span>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="mt-1 w-full text-sm px-3 py-2 rounded-lg"
+                  style={{ ...inputStyle, minHeight: 80 }}
+                  placeholder="Detalles adicionales para el empleado..."
+                />
               </label>
             </>
           )}
@@ -223,18 +243,24 @@ export default function RespondForm(props: Props) {
             <>
               <div className="flex flex-col gap-2 mb-3">
                 {(['done','partial','cannot_do'] as const).map(a => (
-                  <label key={a} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
-                    <input type="radio" name="action" value={a} checked={action === a} onChange={() => setAction(a)} />
+                  <label key={a} className="flex items-center gap-2 text-sm" style={{ color: '#1A0A3B' }}>
+                    <input type="radio" name="action" value={a} checked={action === a} onChange={() => setAction(a)}
+                      style={{ accentColor: '#6C3BFF' }} />
                     {a === 'done' ? 'Ya lo hice' : a === 'partial' ? 'Solo parcialmente' : 'No pude hacerlo'}
                   </label>
                 ))}
               </div>
               <label className="block mb-3">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Resultado / notas</span>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 w-full text-sm px-3 py-2 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 80 }} />
+                <span className="text-xs" style={{ color: '#6B6480' }}>Resultado / notas</span>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="mt-1 w-full text-sm px-3 py-2 rounded-lg"
+                  style={{ ...inputStyle, minHeight: 80 }}
+                />
               </label>
               <div>
-                <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Adjuntos (opcional)</p>
+                <p className="text-xs mb-2" style={{ color: '#6B6480' }}>Adjuntos (opcional)</p>
                 <FileDropzone files={files} setFiles={setFiles} />
               </div>
             </>
@@ -243,32 +269,33 @@ export default function RespondForm(props: Props) {
           {props.requestType === 'approval' && (
             <>
               <label className="block mb-4">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Tu respuesta para el empleado</span>
+                <span className="text-xs" style={{ color: '#6B6480' }}>Tu respuesta para el empleado</span>
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="mt-1 w-full text-sm px-3 py-2 rounded-lg border"
-                  style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 100 }}
+                  className="mt-1 w-full text-sm px-3 py-2 rounded-lg"
+                  style={{ ...inputStyle, minHeight: 100 }}
                   placeholder="Ejemplo: 'Rango $8,000 a $15,000 según alcance' o 'Sí, autorizo el descuento' o instrucciones detalladas..."
                 />
               </label>
 
               <div className="mb-4">
-                <p className="text-xs mb-2" style={{ color: 'var(--c-text-3)' }}>Adjuntos (opcional)</p>
+                <p className="text-xs mb-2" style={{ color: '#6B6480' }}>Adjuntos (opcional)</p>
                 <FileDropzone files={files} setFiles={setFiles} />
               </div>
 
-              <details className="rounded-lg border" style={{ borderColor: 'var(--c-border)', background: 'var(--c-surface-2)' }}>
-                <summary className="text-xs cursor-pointer px-3 py-2" style={{ color: 'var(--c-text-3)' }}>
-                  Marcar decisión formal (opcional) {approvalDecision ? `— ${approvalDecision === 'approved' ? 'Autorizado' : 'No autorizado'}` : ''}
+              <details className="rounded-xl" style={{ border: '1px solid #E8E3F5', background: '#FAFAFB' }}>
+                <summary className="text-xs cursor-pointer px-3 py-2" style={{ color: '#6B6480' }}>
+                  Marcar decisión formal (opcional) {approvalDecision ? ` (${approvalDecision === 'approved' ? 'Autorizado' : 'No autorizado'})` : ''}
                 </summary>
                 <div className="px-3 pb-3 pt-1 flex flex-col gap-2">
-                  <p className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
+                  <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
                     Solo si el empleado te pidió un sí/no explícito.
                   </p>
                   {(['approved','rejected'] as const).map(d => (
-                    <label key={d} className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-text-2)' }}>
-                      <input type="radio" name="approval" value={d} checked={approvalDecision === d} onChange={() => setApprovalDecision(d)} />
+                    <label key={d} className="flex items-center gap-2 text-sm" style={{ color: '#1A0A3B' }}>
+                      <input type="radio" name="approval" value={d} checked={approvalDecision === d} onChange={() => setApprovalDecision(d)}
+                        style={{ accentColor: '#6C3BFF' }} />
                       {d === 'approved' ? 'Autorizado' : 'No autorizado'}
                     </label>
                   ))}
@@ -277,7 +304,7 @@ export default function RespondForm(props: Props) {
                       type="button"
                       onClick={() => setApprovalDecision(null)}
                       className="text-[11px] self-start underline"
-                      style={{ color: 'var(--c-text-4)' }}
+                      style={{ color: '#9B8FB5' }}
                     >
                       Quitar decisión
                     </button>
@@ -292,7 +319,7 @@ export default function RespondForm(props: Props) {
               onClick={submitResponse}
               disabled={saving}
               className="flex-1 min-w-[180px] flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:opacity-90 disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg,#6C3BFF,#9B6DFF)', color: '#fff', border: 'none' }}
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Enviar respuesta
             </button>
@@ -317,43 +344,63 @@ export default function RespondForm(props: Props) {
       )}
 
       {showRedirect && (
-        <div className="p-5 rounded-xl border" style={{ background: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: 'var(--c-text)' }}>&iquest;A qui&eacute;n redirigimos?</p>
-          <input type="text" placeholder="Buscar empleado..." value={redirectSearch} onChange={e => setRedirectSearch(e.target.value)} className="w-full text-sm px-3 py-2 mb-3 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)' }} />
+        <div className="p-5 rounded-2xl" style={SURFACE_STYLE}>
+          <p className="text-sm font-semibold mb-3" style={{ color: '#1A0A3B' }}>&iquest;A qui&eacute;n redirigimos?</p>
+          <input
+            type="text"
+            placeholder="Buscar empleado..."
+            value={redirectSearch}
+            onChange={e => setRedirectSearch(e.target.value)}
+            className="w-full text-sm px-3 py-2 mb-3 rounded-lg"
+            style={inputStyle}
+          />
           <div className="max-h-48 overflow-y-auto mb-3">
             {filteredUsers.map(u => (
-              <label key={u.id} className="flex items-start gap-2 p-2 rounded-lg cursor-pointer hover:bg-black/5">
-                <input type="radio" name="redirect_user" checked={redirectEmail === u.email} onChange={() => setRedirectEmail(u.email)} className="mt-1" />
+              <label key={u.id} className="flex items-start gap-2 p-2 rounded-lg cursor-pointer hover:bg-[#FAFAFB]">
+                <input type="radio" name="redirect_user" checked={redirectEmail === u.email} onChange={() => setRedirectEmail(u.email)}
+                  className="mt-1" style={{ accentColor: '#6C3BFF' }} />
                 <div>
-                  <div className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>{u.name ?? '(sin nombre)'}</div>
-                  <div className="text-xs font-mono" style={{ color: 'var(--c-text-3)' }}>{u.email}{u.modules?.[0] ? ` · ${u.modules[0]}` : ''}</div>
+                  <div className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>{u.name ?? '(sin nombre)'}</div>
+                  <div className="text-xs font-mono" style={{ color: '#6B6480' }}>{u.email}{u.modules?.[0] ? ` · ${u.modules[0]}` : ''}</div>
                 </div>
               </label>
             ))}
-            {filteredUsers.length === 0 && <p className="text-xs p-2" style={{ color: 'var(--c-text-4)' }}>Sin empleados registrados. Puedes usar un correo externo abajo.</p>}
+            {filteredUsers.length === 0 && <p className="text-xs p-2" style={{ color: '#9B8FB5' }}>Sin empleados registrados. Puedes usar un correo externo abajo.</p>}
           </div>
           <div className="mb-3">
-            <p className="text-xs mb-1" style={{ color: 'var(--c-text-3)' }}>o correo externo:</p>
-            <input type="email" placeholder="correo@externo.com" value={redirectEmail} onChange={e => setRedirectEmail(e.target.value)} className="w-full text-sm px-3 py-2 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)' }} />
+            <p className="text-xs mb-1" style={{ color: '#6B6480' }}>o correo externo:</p>
+            <input
+              type="email"
+              placeholder="correo@externo.com"
+              value={redirectEmail}
+              onChange={e => setRedirectEmail(e.target.value)}
+              className="w-full text-sm px-3 py-2 rounded-lg"
+              style={inputStyle}
+            />
           </div>
           <label className="block mb-3">
-            <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>Nota (opcional):</span>
-            <textarea value={redirectNote} onChange={e => setRedirectNote(e.target.value)} className="mt-1 w-full text-sm px-3 py-2 rounded-lg border" style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border)', color: 'var(--c-text)', minHeight: 60 }} />
+            <span className="text-xs" style={{ color: '#6B6480' }}>Nota (opcional):</span>
+            <textarea
+              value={redirectNote}
+              onChange={e => setRedirectNote(e.target.value)}
+              className="mt-1 w-full text-sm px-3 py-2 rounded-lg"
+              style={{ ...inputStyle, minHeight: 60 }}
+            />
           </label>
           <div className="flex gap-2">
             <button
               onClick={submitRedirect}
               disabled={saving || !redirectEmail.trim()}
               className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:opacity-90 disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg,#6C3BFF,#9B6DFF)', color: '#fff', border: 'none' }}
+              style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Redirigir
             </button>
             <button
               onClick={() => setShowRedirect(false)}
               disabled={saving}
-              className="text-xs font-semibold px-4 py-2.5 rounded-xl border transition-colors hover:opacity-80 disabled:opacity-60"
-              style={{ borderColor: 'var(--c-border)', color: 'var(--c-text-3)' }}
+              className="text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors hover:opacity-80 disabled:opacity-60"
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480' }}
             >
               Cancelar
             </button>
