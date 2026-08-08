@@ -1779,11 +1779,11 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
               {/* Header — patrón consistente con /inicio y /agentes */}
               <div>
-                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--c-text-4)' }}>
+                <p className="text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: '#9B8FB5' }}>
                   TU CUENTA
                 </p>
-                <h1 className="text-xl font-bold" style={{ color: 'var(--c-text)' }}>Plan y consumo</h1>
-                <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                <h1 className="text-xl font-bold" style={{ color: '#1A0A3B' }}>Plan y consumo</h1>
+                <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
                   Revisa tu uso del mes, compra saldo extra y consulta el historial de movimientos.
                 </p>
               </div>
@@ -1791,7 +1791,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
 
                 {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga + Contratos ── */}
-                <div className="flex flex-col gap-5" id="minutos" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <div className="flex flex-col gap-5" id="minutos">
 
                   {/* Consumo promedio — arriba, contexto antes del saldo actual */}
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
@@ -1800,7 +1800,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         <div className="flex flex-col gap-4">
                           {allCalls.length > 0 && (
                             <div>
-                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>Minutos</p>}
+                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: '#6B6480' }}>Minutos</p>}
                               <div className="grid grid-cols-3 gap-2">
                                 <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
                                 <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
@@ -1810,7 +1810,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           )}
                           {aiOpsLimit > 0 && aiOpsUsed > 0 && (
                             <div>
-                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>Tareas</p>}
+                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: '#6B6480' }}>Tareas</p>}
                               <div className="grid grid-cols-3 gap-2">
                                 <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
                                 <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
@@ -1831,18 +1831,18 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         <>
                           <div>
                             <div className="flex justify-between text-xs mb-1.5">
-                              <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Minutos</span>
+                              <span className="font-medium" style={{ color: '#6B6480' }}>Minutos</span>
                               {minutesIncluded > 0 ? (
                                 <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
                               ) : (
-                                <span style={{ color: 'var(--c-text-4)' }}>Sin plan de minutos</span>
+                                <span style={{ color: '#9B8FB5' }}>Sin plan de minutos</span>
                               )}
                             </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
                               <div className="h-2 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${minutesPct}%` : '0%', background: minutesColor }} />
                             </div>
                             {minutesIncluded > 0 && (
-                              <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                              <div className="flex justify-between text-xs mt-1" style={{ color: '#6B6480' }}>
                                 <span>{minutesRemain} disponibles</span>
                                 <span>Renueva el {resetDate}</span>
                               </div>
@@ -1854,20 +1854,20 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           {aiOpsLimit > 0 && (
                             <div>
                               <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-medium" style={{ color: 'var(--c-text-2)' }}>Tareas</span>
+                                <span className="font-medium" style={{ color: '#6B6480' }}>Tareas</span>
                                 <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
                               </div>
-                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
                                 <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
                               </div>
-                              <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+                              <div className="flex justify-between text-xs mt-1" style={{ color: '#6B6480' }}>
                                 <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
                                 <span>Renueva el {resetDate}</span>
                               </div>
                             </div>
                           )}
                           {minutesIncluded === 0 && aiOpsLimit === 0 && (
-                            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>No hay saldo configurado en esta cuenta.</p>
+                            <p className="text-xs" style={{ color: '#6B6480' }}>No hay saldo configurado en esta cuenta.</p>
                           )}
                         </>
                       }
@@ -1879,25 +1879,25 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                               {warnPct >= 70 && (
                                 <p className="text-xs flex items-center gap-1.5" style={{ color: warnPct >= 90 ? '#ef4444' : '#f59e0b' }}>
                                   <AlertTriangle size={11} />
-                                  {warnPct >= 90 ? 'Saldo bajo — recarga pronto' : 'Tu saldo está bajando'}
+                                  {warnPct >= 90 ? 'Saldo bajo, recarga pronto' : 'Tu saldo está bajando'}
                                 </p>
                               )}
-                              <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>Se suman al instante. No afectan tu plan mensual.</p>
+                              <p className="text-xs" style={{ color: '#6B6480' }}>Se suman al instante. No afectan tu plan mensual.</p>
                               {annualContractInfo ? (
                                 <div className="flex flex-col gap-5">
                                   <AnnualContractCallout action="comprar_minutos" folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
-                                  <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                                  <div style={{ borderTop: '1px solid #E8E3F5' }} />
                                   <AnnualContractCallout action="comprar_tareas"  folio={annualContractInfo.folio} endDate={annualContractInfo.endDate} isExpired={annualContractInfo.isExpired} />
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-5">
                                   <div>
-                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Minutos</p>
+                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: '#6B6480' }}>Minutos</p>
                                     <BuyMinutesSection token={token} />
                                   </div>
-                                  <div style={{ borderTop: '1px solid var(--c-border)' }} />
+                                  <div style={{ borderTop: '1px solid #E8E3F5' }} />
                                   <div>
-                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: 'var(--c-text-3)' }}>Tareas</p>
+                                    <p className="text-xs font-semibold mb-2 tracking-wide uppercase" style={{ color: '#6B6480' }}>Tareas</p>
                                     <BuyOpsSection token={token} />
                                   </div>
                                 </div>
@@ -1908,7 +1908,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                       }
                       recargaContent={
                         <>
-                          <p className="text-xs" style={{ color: 'var(--c-text-2)' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
+                          <p className="text-xs" style={{ color: '#6B6480' }}>Activa para recargar automáticamente cuando el saldo baje de un umbral.</p>
                           <AutoRefillSection token={token} />
                         </>
                       }
@@ -1928,7 +1928,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 </div>
 
                 {/* ── Col 2: Reporte mensual + Historial + Consumo promedio (colapsado) ── */}
-                <div className="flex flex-col gap-5" style={{ borderTop: '1px solid var(--c-border)', paddingTop: 24 }}>
+                <div className="flex flex-col gap-5">
                   <PageSection heading={<SectionHeader eyebrow="HISTORIAL" title="Historial de consumo" as="h2" />}>
                     <Card id="historial" padding="md">
                       <div className="relative">
@@ -1945,7 +1945,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           )}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-                          style={{ background: 'linear-gradient(to bottom, transparent, var(--c-surface))' }} />
+                          style={{ background: 'linear-gradient(to bottom, transparent, #ffffff)' }} />
                       </div>
                     </Card>
                   </PageSection>
