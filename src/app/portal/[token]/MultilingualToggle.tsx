@@ -39,26 +39,46 @@ export default function MultilingualToggle({
   }
 
   return (
-    <div
-      className="rounded-xl p-4"
-      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <p
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: '#9B8FB5' }}
-        >
-          Atender también en inglés
-        </p>
+    <div className="flex flex-col gap-3">
+      <div
+        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+        style={{
+          background: enabled ? 'rgba(108,59,255,0.04)' : '#FAFAFB',
+          border: `1px solid ${enabled ? 'rgba(108,59,255,0.24)' : '#E8E3F5'}`,
+          transition: 'background 0.2s, border 0.2s',
+        }}
+      >
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+            Atender también en inglés
+          </p>
+          <p className="text-[11px]" style={{ color: '#6B6480' }}>
+            {enabled
+              ? 'Tus empleados detectan y responden en español o inglés.'
+              : 'Tus empleados atienden solo en español.'}
+          </p>
+        </div>
         <button
           onClick={toggle}
           disabled={saving}
-          className="w-10 h-6 rounded-full transition-colors relative"
-          style={{ background: enabled ? '#6C3BFF' : '#E8E3F5' }}
+          aria-label="Atender también en inglés"
+          className="rounded-full transition-colors relative flex-shrink-0"
+          style={{
+            width: 44,
+            height: 24,
+            background: enabled ? '#6C3BFF' : '#E8E3F5',
+            boxShadow: enabled ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
+          }}
         >
           <div
-            className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
-            style={{ left: enabled ? '20px' : '4px' }}
+            className="rounded-full bg-white absolute transition-all"
+            style={{
+              width: 18,
+              height: 18,
+              top: 3,
+              left: enabled ? 23 : 3,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+            }}
           />
           {saving && (
             <Loader2
@@ -69,10 +89,7 @@ export default function MultilingualToggle({
           )}
         </button>
       </div>
-      <p
-        className="text-xs"
-        style={{ color: '#6B6480', lineHeight: 1.5 }}
-      >
+      <p className="text-[11px] leading-relaxed" style={{ color: '#9B8FB5' }}>
         Por default tus empleados atienden solo en español, que es más preciso para transcribir voz en México. Activa esto si también recibes llamadas en inglés.
       </p>
     </div>

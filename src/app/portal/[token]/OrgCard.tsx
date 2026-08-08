@@ -82,30 +82,19 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
     : null;
 
   return (
-    <div
-      id="organizacion"
-      className="rounded-xl p-5"
-      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
-    >
-      {/* Header row: two column labels */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>
-            Organización
-          </h2>
-          <InfoTooltip text="Nombre e identidad de tu cuenta. El logo aparece en el encabezado del portal y en los documentos generados." />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Logo</h2>
-          <InfoTooltip text={"Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.\nFormatos: PNG, JPG, SVG o WebP. Máx. 2 MB."} />
-        </div>
-      </div>
+    <div id="organizacion" className="flex flex-col gap-5">
 
       {/* Content row: name/email/date + logo */}
-      <div className="flex items-start gap-5">
+      <div className="flex items-start gap-5 flex-wrap sm:flex-nowrap">
 
         {/* Left: org info */}
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: '#9B8FB5' }}>
+              Organización
+            </span>
+            <InfoTooltip text="Nombre e identidad de tu cuenta. El logo aparece en el encabezado del portal y en los documentos generados." />
+          </div>
           {editing ? (
             <div className="flex items-center gap-2">
               <input
@@ -114,55 +103,67 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
                 onChange={e => setDraft(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
                 maxLength={100}
-                className="flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold"
-                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }}
+                className="flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
               />
               <button onClick={save} disabled={saving}
-                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ color: '#6C3BFF' }}>
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
                 <Check size={14} />
               </button>
               <button onClick={cancel}
-                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ color: 'var(--c-text-3)' }}>
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[#F0EDF9]"
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <X size={14} />
               </button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)' }}>
+              <span className="text-[15px] font-bold tracking-tight truncate" style={{ color: '#1A0A3B' }}>
                 {org?.name ?? '—'}
               </span>
               <button onClick={startEdit}
-                className="flex items-center justify-center w-6 h-6 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ color: 'var(--c-text-3)', flexShrink: 0 }}>
-                <Pencil size={11} />
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[#FAFAFB]"
+                style={{ color: '#9B8FB5', flexShrink: 0 }}>
+                <Pencil size={12} />
               </button>
             </div>
           )}
 
-          <p className="text-xs truncate" style={{ color: 'var(--c-text-3)' }}>{portalEmail}</p>
-
-          {memberSince && (
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>
-              Desde {memberSince}
-            </span>
-          )}
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[12px] truncate" style={{ color: '#6B6480' }}>{portalEmail}</p>
+            {memberSince && (
+              <span className="text-[11px]" style={{ color: '#9B8FB5' }}>
+                Miembro desde {memberSince}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right: logo */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Logo</span>
+            <InfoTooltip text={"Aparece en el encabezado de tu portal de clientes y en todos los documentos generados.\nFormatos: PNG, JPG, SVG o WebP. Máx. 2 MB."} />
+          </div>
           <LogoUploader token={token} currentUrl={logoUrl} />
         </div>
 
       </div>
 
+      {/* Divider */}
+      <div style={{ borderTop: '1px solid #F0EDF9' }} />
+
       {/* Business description — full width */}
-      <div className="mt-4 flex flex-col gap-1">
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Descripción</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Descripción</span>
           <InfoTooltip text={"Describe brevemente a qué se dedica tu organización y tus servicios principales.\nTu empleado usará esto para generar bases de conocimiento más precisas."} />
-          {descSaved && <Check size={10} style={{ color: '#22c55e', marginLeft: 2 }} />}
+          {descSaved && (
+            <span className="inline-flex items-center gap-1 text-[11px] ml-auto" style={{ color: '#22c55e' }}>
+              <Check size={11} /> Guardado
+            </span>
+          )}
         </div>
         <textarea
           value={desc}
@@ -170,10 +171,10 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
           placeholder="Ej. Taller mecánico especializado en autos europeos, ofrecemos servicio de mantenimiento, frenos y suspensión en Monterrey..."
           rows={3}
           maxLength={600}
-          className="w-full rounded-lg px-2.5 py-2 text-xs leading-relaxed outline-none resize-none"
-          style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+          className="w-full rounded-lg px-3 py-2.5 text-[13px] leading-relaxed outline-none resize-none"
+          style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
         />
-        <span className="text-[10px] self-end" style={{ color: 'var(--c-text-4)' }}>{desc.length}/600</span>
+        <span className="text-[11px] self-end tabular-nums" style={{ color: '#9B8FB5' }}>{desc.length}/600</span>
       </div>
     </div>
   );

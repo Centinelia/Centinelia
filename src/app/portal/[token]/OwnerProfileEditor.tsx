@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, User } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 
 interface Props {
   token:        string;
@@ -53,25 +53,28 @@ export default function OwnerProfileEditor({ token, initialValue }: Props) {
         onBlur={handleBlur}
         rows={10}
         placeholder={PLACEHOLDER}
-        className="w-full rounded-xl text-xs leading-relaxed outline-none resize-y"
+        className="w-full rounded-lg text-[13px] leading-relaxed outline-none resize-y"
         style={{
-          padding:    '10px 12px',
-          background: '#FAFAFB',
+          padding:    '12px 14px',
+          background: '#ffffff',
           border:     '1px solid #E8E3F5',
           color:      '#1A0A3B',
           fontFamily: 'inherit',
+          minHeight:  200,
         }}
       />
 
-      <div className="flex items-center justify-between">
-        <p className="text-[10px]" style={{ color: '#9B8FB5' }}>
-          Se comparte con todos tus empleados · se actualiza en segundos
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+          Se comparte con todos tus empleados. Se guarda automáticamente al salir del campo.
         </p>
         {saving && (
-          <span className="text-[11px]" style={{ color: '#6B6480' }}>Guardando…</span>
+          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#6B6480' }}>
+            <Loader2 size={11} className="animate-spin" /> Guardando
+          </span>
         )}
         {saved && (
-          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#22c55e' }}>
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: '#22c55e' }}>
             <Check size={11} /> Guardado
           </span>
         )}
