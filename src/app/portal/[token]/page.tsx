@@ -1873,38 +1873,41 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga + Contratos ── */}
                 <div className="flex flex-col gap-5" id="minutos">
 
-                  {/* Consumo promedio — arriba, contexto antes del saldo actual */}
+                  {/* Consumo promedio — grupos Minutos/Tareas con etiqueta al lado, no header aparte */}
                   {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
                     <div id="consumo-promedio" className="flex flex-col rounded-2xl overflow-hidden"
                       style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-                      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+                      <div className="flex items-start justify-between gap-3 flex-wrap px-6 pt-5 pb-4">
                         <div>
                           <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Consumo promedio</h2>
+                          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>Tu ritmo de uso vs el plan mensual.</p>
                         </div>
                       </div>
-                      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
-                        <div className="flex flex-col gap-4">
-                          {allCalls.length > 0 && (
-                            <div>
-                              {aiOpsLimit > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: '#6B6480' }}>Minutos</p>}
-                              <div className="grid grid-cols-3 gap-2">
-                                <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                                <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                                <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                              </div>
+                      <div>
+                        {allCalls.length > 0 && (
+                          <div className="px-6 py-4 flex items-center gap-6" style={{ borderTop: '1px solid #F0EDF9' }}>
+                            <div className="w-16 flex-shrink-0">
+                              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Minutos</p>
                             </div>
-                          )}
-                          {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                            <div>
-                              {allCalls.length > 0 && <p className="text-[10px] font-semibold tracking-wide uppercase mb-2" style={{ color: '#6B6480' }}>Tareas</p>}
-                              <div className="grid grid-cols-3 gap-2">
-                                <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                                <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                                <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                              </div>
+                            <div className="flex-1 grid grid-cols-3 gap-4">
+                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
+                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
+                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
+                          <div className="px-6 py-4 flex items-center gap-6" style={{ borderTop: '1px solid #F0EDF9' }}>
+                            <div className="w-16 flex-shrink-0">
+                              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Tareas</p>
+                            </div>
+                            <div className="flex-1 grid grid-cols-3 gap-4">
+                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
+                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
+                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1913,48 +1916,63 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                   <div id="comprar"      style={{ scrollMarginTop: '1.5rem' }}>
                   <CuentaUsageTabsCard
                       usoContent={
-                        <>
+                        <div className="flex flex-col gap-5">
+                          {/* Minutos — hero con número grande + barra + meta */}
                           <div>
-                            <div className="flex justify-between text-xs mb-1.5">
-                              <span className="font-medium" style={{ color: '#6B6480' }}>Minutos</span>
+                            <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Minutos</span>
+                              </div>
                               {minutesIncluded > 0 ? (
-                                <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-[24px] font-bold leading-none tabular-nums tracking-tight" style={{ color: minutesColor }}>
+                                    {minutesUsed}
+                                  </span>
+                                  <span className="text-[13px]" style={{ color: '#9B8FB5' }}>/ {minutesIncluded} min</span>
+                                </div>
                               ) : (
-                                <span style={{ color: '#9B8FB5' }}>Sin plan de minutos</span>
+                                <span className="text-[13px]" style={{ color: '#9B8FB5' }}>Sin plan de minutos</span>
                               )}
                             </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
-                              <div className="h-2 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${minutesPct}%` : '0%', background: minutesColor }} />
+                            <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: '#F0EDF9' }}>
+                              <div className="h-2.5 rounded-full transition-all" style={{ width: minutesIncluded > 0 ? `${Math.min(100, minutesPct)}%` : '0%', background: minutesColor }} />
                             </div>
                             {minutesIncluded > 0 && (
-                              <div className="flex justify-between text-xs mt-1" style={{ color: '#6B6480' }}>
-                                <span>{minutesRemain} disponibles</span>
-                                <span>Renueva el {resetDate}</span>
+                              <div className="flex justify-between text-[11px] mt-2" style={{ color: '#6B6480' }}>
+                                <span><strong style={{ color: '#1A0A3B' }}>{minutesRemain}</strong> disponibles</span>
+                                <span>Renueva el <strong style={{ color: '#1A0A3B' }}>{resetDate}</strong></span>
                               </div>
                             )}
                             {rolloverMinutes > 0 && (
-                              <p className="text-xs mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
+                              <p className="text-[11px] mt-1" style={{ color: '#6C3BFF' }}>{planBaseMinutes} base + {rolloverMinutes} del mes anterior</p>
                             )}
                           </div>
+
                           {aiOpsLimit > 0 && (
-                            <div>
-                              <div className="flex justify-between text-xs mb-1.5">
-                                <span className="font-medium" style={{ color: '#6B6480' }}>Tareas</span>
-                                <span style={{ color: aiOpsColor }}>{aiOpsUsed} / {aiOpsLimit}</span>
+                            <div style={{ borderTop: '1px solid #F0EDF9', paddingTop: 20 }}>
+                              <div className="flex items-baseline justify-between mb-2 flex-wrap gap-2">
+                                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Tareas</span>
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-[24px] font-bold leading-none tabular-nums tracking-tight" style={{ color: aiOpsColor }}>
+                                    {aiOpsUsed}
+                                  </span>
+                                  <span className="text-[13px]" style={{ color: '#9B8FB5' }}>/ {aiOpsLimit}</span>
+                                </div>
                               </div>
-                              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
-                                <div className="h-2 rounded-full transition-all" style={{ width: `${aiOpsPct}%`, background: aiOpsColor }} />
+                              <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: '#F0EDF9' }}>
+                                <div className="h-2.5 rounded-full transition-all" style={{ width: `${Math.min(100, aiOpsPct)}%`, background: aiOpsColor }} />
                               </div>
-                              <div className="flex justify-between text-xs mt-1" style={{ color: '#6B6480' }}>
-                                <span>{Math.max(0, aiOpsLimit - aiOpsUsed)} disponibles</span>
-                                <span>Renueva el {resetDate}</span>
+                              <div className="flex justify-between text-[11px] mt-2" style={{ color: '#6B6480' }}>
+                                <span><strong style={{ color: '#1A0A3B' }}>{Math.max(0, aiOpsLimit - aiOpsUsed)}</strong> disponibles</span>
+                                <span>Renueva el <strong style={{ color: '#1A0A3B' }}>{resetDate}</strong></span>
                               </div>
                             </div>
                           )}
+
                           {minutesIncluded === 0 && aiOpsLimit === 0 && (
                             <p className="text-xs" style={{ color: '#6B6480' }}>No hay saldo configurado en esta cuenta.</p>
                           )}
-                        </>
+                        </div>
                       }
                       comprarContent={
                         (() => {
@@ -2199,10 +2217,26 @@ function KpiCard({ icon, value, label, sub, valueColor = 'var(--c-text)', accent
 }
 
 function StatBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  // Split "3.3 min" o "771" en número + unidad para tipografía diferenciada
+  const match = value.match(/^([\d.,]+)\s*(.*)$/);
+  const num  = match?.[1] ?? value;
+  const unit = match?.[2] ?? '';
   return (
-    <div className="rounded-lg p-3 text-center" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-      <div className="text-sm font-bold" style={{ color: highlight ? '#ef4444' : 'var(--c-text)' }}>{value}</div>
-      <div className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>{label}</div>
+    <div className="flex flex-col gap-1 py-2">
+      <div className="flex items-baseline gap-1">
+        <span
+          className="text-[28px] font-bold leading-none tabular-nums tracking-tight"
+          style={{ color: highlight ? '#ef4444' : '#1A0A3B' }}
+        >
+          {num}
+        </span>
+        {unit && (
+          <span className="text-[13px] font-medium" style={{ color: highlight ? '#ef4444' : '#9B8FB5' }}>
+            {unit}
+          </span>
+        )}
+      </div>
+      <div className="text-[11px] font-medium" style={{ color: '#6B6480' }}>{label}</div>
     </div>
   );
 }
