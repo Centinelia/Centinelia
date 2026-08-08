@@ -122,9 +122,9 @@ export default function DirectorioEditor({
 
       {/* ── Responsable ─────────────────────────────────────────────────────────── */}
       <section>
-        <div className="flex items-center gap-1.5 mb-2">
-          <Crown size={12} style={{ color: '#f59e0b' }} />
-          <span className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Responsable</span>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Crown size={14} style={{ color: '#f59e0b' }} />
+          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#f59e0b' }}>Responsable</span>
           {isOwner && gate === 'locked' && ownerEntry && (
             <Lock size={11} style={{ color: 'rgba(245,158,11,0.5)' }} />
           )}
@@ -147,74 +147,77 @@ export default function DirectorioEditor({
             setPeople(prev => [...prev.filter(x => !x.is_owner), p]);
             setEditId(p.id);
           }}
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
+            className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-2.5 rounded-lg transition-opacity hover:opacity-80"
             style={{ background: 'rgba(245,158,11,0.08)', border: '1px dashed rgba(245,158,11,0.35)', color: '#f59e0b', cursor: 'pointer' }}>
-            <Plus size={11} /> Registrar responsable
+            <Plus size={12} /> Registrar responsable
           </button>
         ) : (
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-[12px]" style={{ color: '#6B6480' }}>
             {isOwner ? 'Sin número de responsable registrado. Desbloquea para añadir.' : 'Sin número de responsable registrado.'}
           </p>
         )}
 
         {isOwner && gate === 'confirming' && (
-          <div className="flex flex-col gap-2 p-3 rounded-lg mt-2"
-            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-            <p className="text-xs font-medium" style={{ color: '#f59e0b' }}>
+          <div className="flex flex-col gap-2.5 p-4 rounded-xl mt-2"
+            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.24)' }}>
+            <p className="text-[12px] font-semibold" style={{ color: '#c2680a' }}>
               Confirma tu contraseña para editar el número del responsable
             </p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+              <div className="relative flex-1 min-w-[180px]">
                 <input
                   type={pwVisible ? 'text' : 'password'}
                   value={pwInput}
                   onChange={e => setPwInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && confirmPassword()}
                   placeholder="Contraseña"
-                  className="w-full px-3 py-2 pr-8 rounded-lg text-sm"
+                  className="w-full px-3 py-2 pr-8 rounded-lg text-[13px]"
                   style={inputStyle}
                   autoFocus
                 />
                 <button
                   onClick={() => setPwVisible(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-3)' }}>
-                  {pwVisible ? <EyeOff size={13} /> : <Eye size={13} />}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B6480' }}>
+                  {pwVisible ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
               <button onClick={confirmPassword} disabled={pwChecking || !pwInput.trim()}
-                className="px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: '#f59e0b', color: '#fff', border: 'none', cursor: 'pointer' }}>
+                className="px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#f59e0b', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(245,158,11,0.24)' }}>
                 {pwChecking ? '…' : 'Confirmar'}
               </button>
               <button onClick={() => { setGate('locked'); setPwInput(''); setPwError(''); }}
-                className="px-3 py-2 rounded-lg text-xs transition-opacity hover:opacity-80"
-                style={{ background: 'transparent', color: 'var(--c-text-3)', border: '1px solid var(--c-border)', cursor: 'pointer' }}>
+                className="px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-80"
+                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5', cursor: 'pointer' }}>
                 Cancelar
               </button>
             </div>
-            {pwError && <p className="text-xs" style={{ color: '#ef4444' }}>{pwError}</p>}
+            {pwError && <p className="text-[11px]" style={{ color: '#dc2626' }}>{pwError}</p>}
           </div>
         )}
       </section>
 
       {/* ── Equipo / especialistas ────────────────────────────────────────── */}
       <section>
-        <div className="flex items-center gap-1.5 mb-2">
+        <div className="flex items-center gap-2 mb-2.5">
           {showHelpdeskFields
-            ? <BookUser size={12} style={{ color: '#6C3BFF' }} />
-            : <Users size={12} style={{ color: '#6C3BFF' }} />}
-          <span className="text-xs font-semibold" style={{ color: '#6C3BFF' }}>
+            ? <BookUser size={14} style={{ color: '#6C3BFF' }} />
+            : <Users size={14} style={{ color: '#6C3BFF' }} />}
+          <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#6C3BFF' }}>
             {showHelpdeskFields ? 'Personas y especialistas' : 'Equipo'}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>
-            {teamPeople.length}
-          </span>
+          {teamPeople.length > 0 && (
+            <span className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded"
+              style={{ background: 'rgba(108,59,255,0.1)', color: '#6C3BFF' }}>
+              {teamPeople.length}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
           {teamPeople.length === 0 && (
-            <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-[12px]" style={{ color: '#9B8FB5' }}>
               Aún no hay personas registradas.
             </p>
           )}
@@ -235,15 +238,19 @@ export default function DirectorioEditor({
         </div>
 
         <button onClick={addPerson}
-          className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF', border: '1px dashed rgba(108,59,255,0.35)', cursor: 'pointer' }}>
-          <Plus size={11} /> Añadir persona
+          className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-80"
+          style={{ background: 'rgba(108,59,255,0.06)', color: '#6C3BFF', border: '1px dashed rgba(108,59,255,0.28)', cursor: 'pointer' }}>
+          <Plus size={12} /> Añadir persona
         </button>
       </section>
 
-      {saving && <p className="text-[11px]" style={{ color: 'var(--c-text-4)' }}>Guardando…</p>}
+      {saving && (
+        <p className="inline-flex items-center gap-1 text-[11px]" style={{ color: '#6B6480' }}>
+          Guardando
+        </p>
+      )}
       {!saving && savedAt > 0 && Date.now() - savedAt < 2500 && (
-        <p className="text-[11px]" style={{ color: '#22c55e' }}>Guardado</p>
+        <p className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: '#22c55e' }}>Guardado</p>
       )}
     </div>
   );
@@ -269,47 +276,47 @@ function PersonRow({
   person, editing, onUpdate, onCommit, onEdit, onRemove, onSetOwner,
   showHelpdeskFields, canPromoteToOwner = false, variant = 'team',
 }: PersonRowProps) {
-  const bg     = variant === 'owner' ? 'rgba(245,158,11,0.07)'    : '#FAFAFB';
-  const border = variant === 'owner' ? '1px solid rgba(245,158,11,0.25)' : '1px solid #E8E3F5';
+  const bg     = variant === 'owner' ? 'rgba(245,158,11,0.06)'    : '#FAFAFB';
+  const border = variant === 'owner' ? '1px solid rgba(245,158,11,0.24)' : '1px solid #E8E3F5';
 
   if (!editing) {
     return (
-      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg"
+      <div className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-colors hover:bg-[#F5F2FB]"
         style={{ background: bg, border }}>
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          {variant === 'owner' && <Crown size={12} style={{ color: '#f59e0b', flexShrink: 0 }} />}
-          <span className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
-            {person.name || <em style={{ color: 'var(--c-text-4)' }}>sin nombre</em>}
+          {variant === 'owner' && <Crown size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />}
+          <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+            {person.name || <em style={{ color: '#9B8FB5', fontWeight: 400 }}>sin nombre</em>}
           </span>
-          <span className="font-mono text-xs" style={{ color: 'var(--c-text-3)' }}>{person.phone}</span>
+          <span className="font-mono text-[12px]" style={{ color: '#6B6480' }}>{person.phone}</span>
           {person.extension && (
-            <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>ext. {person.extension}</span>
+            <span className="text-[11px]" style={{ color: '#9B8FB5' }}>ext. {person.extension}</span>
           )}
           {person.department && (
-            <span className="text-xs px-1.5 py-0.5 rounded"
+            <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
               style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
               {person.department}
             </span>
           )}
           {person.on_call && (
-            <span className="text-xs px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+            <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
+              style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
               guardia
             </span>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={onEdit}
-            className="opacity-50 hover:opacity-100 transition-opacity"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+            className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[#F0EDF9]"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             title="Editar">
-            <Pencil size={13} style={{ color: 'var(--c-text-2)' }} />
+            <Pencil size={13} style={{ color: '#6B6480' }} />
           </button>
           <button onClick={onRemove}
-            className="opacity-50 hover:opacity-100 transition-opacity"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+            className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.08)]"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             title="Eliminar">
-            <X size={14} style={{ color: 'var(--c-text-2)' }} />
+            <X size={14} style={{ color: '#6B6480' }} />
           </button>
         </div>
       </div>
@@ -317,31 +324,31 @@ function PersonRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-lg" style={{ background: bg, border }}>
+    <div className="flex flex-col gap-2.5 p-4 rounded-xl" style={{ background: bg, border }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input value={person.name} onChange={e => onUpdate({ name: e.target.value })}
           placeholder="Nombre"
-          className="px-3 py-2 rounded-lg text-sm" style={inputStyle} autoFocus />
+          className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} autoFocus />
         <input value={person.phone} onChange={e => onUpdate({ phone: e.target.value })}
           placeholder="Teléfono (ej: +52 811 234 5678)"
-          className="px-3 py-2 rounded-lg text-sm font-mono" style={inputStyle} />
+          className="px-3 py-2 rounded-lg text-[13px] font-mono" style={inputStyle} />
         <input value={person.extension ?? ''} onChange={e => onUpdate({ extension: e.target.value })}
           placeholder="Extensión (opcional)"
-          className="px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+          className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
         <input value={person.department ?? ''} onChange={e => onUpdate({ department: e.target.value })}
-          placeholder="Departamento / área (opcional)"
-          className="px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+          placeholder="Departamento o área (opcional)"
+          className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
       </div>
 
       {showHelpdeskFields && (
         <>
           <input value={person.role ?? ''} onChange={e => onUpdate({ role: e.target.value })}
             placeholder="Puesto (opcional, ej: Coordinador de red)"
-            className="px-3 py-2 rounded-lg text-sm" style={inputStyle} />
+            className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
           <input value={person.helpdesk_expertise ?? ''} onChange={e => onUpdate({ helpdesk_expertise: e.target.value })}
             placeholder="Especialidad para Neo (ej: vpn, wifi, switches)"
-            className="px-3 py-2 rounded-lg text-sm" style={inputStyle} />
-          <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--c-text-2)' }}>
+            className="px-3 py-2 rounded-lg text-[13px]" style={inputStyle} />
+          <label className="flex items-center gap-2 text-[12px]" style={{ color: '#6B6480' }}>
             <input type="checkbox" checked={!!person.on_call}
               onChange={e => onUpdate({ on_call: e.target.checked })} />
             Disponible en horario de guardia
@@ -349,8 +356,8 @@ function PersonRow({
         </>
       )}
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--c-text-2)' }}>
+      <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+        <div className="flex items-center gap-3 text-[12px]" style={{ color: '#6B6480' }}>
           {variant !== 'owner' && (
             <label className="flex items-center gap-1.5">
               <input type="checkbox" checked={!!person.is_team}
@@ -360,16 +367,16 @@ function PersonRow({
           )}
           {canPromoteToOwner && onSetOwner && !person.is_owner && (
             <button onClick={() => onSetOwner(true)}
-              className="text-xs flex items-center gap-1 opacity-70 hover:opacity-100"
+              className="text-[12px] font-medium flex items-center gap-1 opacity-70 hover:opacity-100"
               style={{ background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', padding: 0 }}>
               <Crown size={11} /> Marcar como responsable
             </button>
           )}
         </div>
         <button onClick={onCommit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-          style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer' }}>
-          <Save size={11} /> Guardar
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
+          style={{ background: '#6C3BFF', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+          <Save size={12} /> Guardar
         </button>
       </div>
     </div>
