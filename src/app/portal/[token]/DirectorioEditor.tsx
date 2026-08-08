@@ -280,43 +280,64 @@ function PersonRow({
   const border = variant === 'owner' ? '1px solid rgba(245,158,11,0.24)' : '1px solid #E8E3F5';
 
   if (!editing) {
+    // Initials del nombre para el avatar
+    const initials = (person.name ?? '')
+      .split(/\s+/).filter(Boolean).slice(0, 2)
+      .map(w => w[0]?.toUpperCase() ?? '').join('') || '?';
+    const avatarBg = variant === 'owner' ? 'rgba(245,158,11,0.15)' : 'rgba(108,59,255,0.12)';
+    const avatarColor = variant === 'owner' ? '#c2680a' : '#6C3BFF';
     return (
-      <div className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl transition-colors hover:bg-[#F5F2FB]"
-        style={{ background: bg, border }}>
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          {variant === 'owner' && <Crown size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />}
-          <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
-            {person.name || <em style={{ color: '#9B8FB5', fontWeight: 400 }}>sin nombre</em>}
-          </span>
-          <span className="font-mono text-[12px]" style={{ color: '#6B6480' }}>{person.phone}</span>
-          {person.extension && (
-            <span className="text-[11px]" style={{ color: '#9B8FB5' }}>ext. {person.extension}</span>
-          )}
-          {person.department && (
-            <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
-              style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
-              {person.department}
-            </span>
-          )}
-          {person.on_call && (
-            <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
-              style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
-              guardia
-            </span>
-          )}
+      <div className="group flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-colors"
+        style={{ background: bg, border }}
+        onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = variant === 'owner' ? 'rgba(245,158,11,0.10)' : '#F4F1FA'}
+        onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = bg}>
+        {/* Avatar initials */}
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
+          style={{ background: avatarBg, color: avatarColor }}>
+          {variant === 'owner' ? <Crown size={16} strokeWidth={2.2} /> : initials}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[14px] font-semibold" style={{ color: '#1A0A3B' }}>
+              {person.name || <em style={{ color: '#9B8FB5', fontWeight: 400 }}>Sin nombre</em>}
+            </span>
+            {person.department && (
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
+                style={{ background: 'rgba(108,59,255,0.08)', color: '#6C3BFF' }}>
+                {person.department}
+              </span>
+            )}
+            {person.on_call && (
+              <span className="text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a' }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#16a34a' }} />
+                Guardia
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="font-mono text-[12px]" style={{ color: '#6B6480' }}>{person.phone || 'Sin teléfono'}</span>
+            {person.extension && (
+              <span className="text-[11px]" style={{ color: '#9B8FB5' }}>· ext. {person.extension}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit}
-            className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[#F0EDF9]"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[rgba(108,59,255,0.08)]"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             title="Editar">
-            <Pencil size={13} style={{ color: '#6B6480' }} />
+            <Pencil size={13} style={{ color: '#6C3BFF' }} />
           </button>
           <button onClick={onRemove}
-            className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.08)]"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             title="Eliminar">
-            <X size={14} style={{ color: '#6B6480' }} />
+            <X size={15} style={{ color: '#EF4444' }} />
           </button>
         </div>
       </div>

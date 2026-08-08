@@ -23,10 +23,11 @@ interface Props {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function OrgCard({ token, portalEmail, logoUrl, initialDescription = '', initialBusinessEmail = '' }: Props) {
-  const [org,     setOrg]     = useState<OrgData | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState('');
-  const [saving,  setSaving]  = useState(false);
+  const [org,      setOrg]      = useState<OrgData | null>(null);
+  const [editing,  setEditing]  = useState(false);
+  const [draft,    setDraft]    = useState('');
+  const [saving,   setSaving]   = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [desc,      setDesc]      = useState(initialDescription);
@@ -72,22 +73,42 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
   }
 
   async function save() {
-    if (!draft.trim()) return cancel();
+    const trimmed = draft.trim();
+    if (!trimmed) return cancel();
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch(`/api/portal/${token}/org`, {
+      const res = await fetch(`/api/portal/${token}/org`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: draft.trim() }),
+        body: JSON.stringify({ name: trimmed }),
       });
-      setOrg(prev => prev ? { ...prev, name: draft.trim() } : prev);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = res.status === 403
+          ? 'No tienes permiso para cambiar el nombre. Pide al dueño de la cuenta.'
+          : res.status === 401
+            ? 'Sesión vencida. Vuelve a iniciar sesión.'
+            : (err.error as string | undefined) ?? `Error ${res.status}. Intenta de nuevo.`;
+        setSaveError(msg);
+        console.error('[org-card] save failed', { status: res.status, err });
+        return;
+      }
+      // Refetch para confirmar persistencia; si upsert insertó nuevo row,
+      // el GET devuelve el estado autoritativo con created_at etc.
+      const refetch = await fetch(`/api/portal/${token}/org`).then(r => r.json()).catch(() => null);
+      if (refetch?.org) setOrg(refetch.org);
+      else setOrg(prev => prev ? { ...prev, name: trimmed } : { name: trimmed, plan: '', logo_url: null, created_at: new Date().toISOString() });
       setEditing(false);
+    } catch (err) {
+      console.error('[org-card] save network error', err);
+      setSaveError('Error de conexión. Verifica tu internet.');
     } finally {
       setSaving(false);
     }
   }
 
-  function cancel() { setEditing(false); setDraft(''); }
+  function cancel() { setEditing(false); setDraft(''); setSaveError(null); }
 
   function startEditEmail() {
     setEmailDraft(bizEmail);
@@ -142,26 +163,31 @@ export default function OrgCard({ token, portalEmail, logoUrl, initialDescriptio
         {/* Identity: nombre hero + email + member since + edit inline */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           {editing ? (
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
-                maxLength={100}
-                className="flex-1 rounded-lg px-3 py-2 text-[22px] font-bold tracking-tight"
-                style={{ background: '#ffffff', border: '1px solid #6C3BFF', color: '#1A0A3B', outline: 'none' }}
-              />
-              <button onClick={save} disabled={saving}
-                className="flex items-center justify-center w-9 h-9 rounded-lg transition-opacity hover:opacity-90"
-                style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
-                <Check size={15} strokeWidth={2.5} />
-              </button>
-              <button onClick={cancel}
-                className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-[#F0EDF9]"
-                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
-                <X size={15} />
-              </button>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+                  maxLength={100}
+                  className="flex-1 rounded-lg px-3 py-2 text-[22px] font-bold tracking-tight"
+                  style={{ background: '#ffffff', border: `1px solid ${saveError ? '#EF4444' : '#6C3BFF'}`, color: '#1A0A3B', outline: 'none' }}
+                />
+                <button onClick={save} disabled={saving || !draft.trim()}
+                  className="flex items-center justify-center w-9 h-9 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}>
+                  <Check size={15} strokeWidth={2.5} />
+                </button>
+                <button onClick={cancel}
+                  className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-[#F0EDF9]"
+                  style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                  <X size={15} />
+                </button>
+              </div>
+              {saveError && (
+                <p className="text-[12px] mt-0.5" style={{ color: '#EF4444' }}>{saveError}</p>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 group">
