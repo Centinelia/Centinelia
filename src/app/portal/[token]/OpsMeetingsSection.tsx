@@ -432,11 +432,11 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
 
                         {/* Tab selector */}
                         <div className="flex items-center justify-between mt-2">
-                          <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                          <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                             {(['data', 'transcript'] as const).map(t => (
                               <button key={t} onClick={() => setTab(t)}
                                 className="px-3 py-1 rounded text-xs font-medium transition-all"
-                                style={{ background: tab === t ? '#6C3BFF' : 'transparent', color: tab === t ? '#fff' : 'var(--c-text-3)' }}>
+                                style={{ background: tab === t ? '#6C3BFF' : 'transparent', color: tab === t ? '#fff' : '#6B6480' }}>
                                 {t === 'data' ? 'Resumen' : 'Transcripción'}
                               </button>
                             ))}
@@ -446,7 +446,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                               <div className="flex items-center gap-1.5">
                                 <button onClick={() => { setEditId(null); setEditData(null); }}
                                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs"
-                                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}>
                                   <X size={10} /> Cancelar
                                 </button>
                                 <button onClick={() => saveEdit(m.id)} disabled={editSaving}
@@ -458,7 +458,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                             ) : (
                               <button onClick={() => startEdit(m)}
                                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-opacity hover:opacity-70"
-                                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                                style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#6B6480', cursor: 'pointer' }}>
                                 <Pencil size={10} /> Editar
                               </button>
                             )
@@ -471,16 +471,16 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                             <div className="flex flex-col gap-3">
                               {/* Edit summary */}
                               <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Resumen ejecutivo</label>
+                                <label className="text-xs font-semibold" style={{ color: '#6B6480' }}>Resumen ejecutivo</label>
                                 <textarea rows={3} value={editData.summary}
                                   onChange={e => setEditData(d => d ? { ...d, summary: e.target.value } : d)}
                                   className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-                                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                               </div>
 
                               {/* Edit decisions */}
                               <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Decisiones</label>
+                                <label className="text-xs font-semibold" style={{ color: '#6B6480' }}>Decisiones</label>
                                 {editData.decisions.map((d, i) => (
                                   <div key={i} className="flex gap-2">
                                     <input value={d} onChange={e => setEditData(ed => {
@@ -489,7 +489,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                       decisions[i] = e.target.value;
                                       return { ...ed, decisions };
                                     })} className="flex-1 px-3 py-1.5 rounded-lg text-sm"
-                                      style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                      style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                                     <button onClick={() => setEditData(ed => ed ? { ...ed, decisions: ed.decisions.filter((_, j) => j !== i) } : ed)}
                                       className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
                                       style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#f87171', cursor: 'pointer' }}>
@@ -506,10 +506,10 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
 
                               {/* Edit action items */}
                               <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Tareas y compromisos</label>
+                                <label className="text-xs font-semibold" style={{ color: '#6B6480' }}>Tareas y compromisos</label>
                                 {editData.action_items.map((a, i) => (
                                   <div key={i} className="flex flex-col gap-1.5 p-2 rounded-lg"
-                                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)' }}>
+                                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
                                     <div className="flex gap-2">
                                       <input value={a.task} placeholder="Tarea"
                                         onChange={e => setEditData(ed => {
@@ -517,7 +517,7 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                           const items = ed.action_items.map((x, j) => j === i ? { ...x, task: e.target.value } : x);
                                           return { ...ed, action_items: items };
                                         })} className="flex-1 px-3 py-1.5 rounded-lg text-xs"
-                                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                                       <button onClick={() => setEditData(ed => ed ? { ...ed, action_items: ed.action_items.filter((_, j) => j !== i) } : ed)}
                                         className="p-1.5 rounded-lg transition-opacity hover:opacity-70"
                                         style={{ background: 'rgba(239,68,68,0.08)', border: 'none', color: '#f87171', cursor: 'pointer' }}>
@@ -531,14 +531,14 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                           const items = ed.action_items.map((x, j) => j === i ? { ...x, assignee: e.target.value || null } : x);
                                           return { ...ed, action_items: items };
                                         })} className="flex-1 px-2 py-1 rounded-lg text-xs"
-                                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                                       <input value={a.due ?? ''} placeholder="Fecha límite"
                                         onChange={e => setEditData(ed => {
                                           if (!ed) return ed;
                                           const items = ed.action_items.map((x, j) => j === i ? { ...x, due: e.target.value || null } : x);
                                           return { ...ed, action_items: items };
                                         })} className="flex-1 px-2 py-1 rounded-lg text-xs"
-                                        style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                                     </div>
                                   </div>
                                 ))}
@@ -551,27 +551,27 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
 
                               {/* Edit next steps */}
                               <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold" style={{ color: 'var(--c-text-3)' }}>Próximos pasos</label>
+                                <label className="text-xs font-semibold" style={{ color: '#6B6480' }}>Próximos pasos</label>
                                 <textarea rows={2} value={editData.next_steps}
                                   onChange={e => setEditData(d => d ? { ...d, next_steps: e.target.value } : d)}
                                   className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-                                  style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                               </div>
                             </div>
                           ) : (
                             <div className="flex flex-col gap-3">
                               {data.summary && (
-                                <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--c-text-3)' }}>Resumen ejecutivo</p>
-                                  <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{data.summary}</p>
+                                <div className="rounded-lg p-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                                  <p className="text-xs font-semibold mb-1" style={{ color: '#6B6480' }}>Resumen ejecutivo</p>
+                                  <p className="text-sm leading-relaxed" style={{ color: '#1A0A3B' }}>{data.summary}</p>
                                 </div>
                               )}
 
                               {data.decisions.length > 0 && (
-                                <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                                  <p className="text-xs font-semibold mb-2" style={{ color: 'var(--c-text-3)' }}>Decisiones</p>
+                                <div className="rounded-lg p-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                                  <p className="text-xs font-semibold mb-2" style={{ color: '#6B6480' }}>Decisiones</p>
                                   {data.decisions.map((d, i) => (
-                                    <p key={i} className="text-sm mb-1.5 flex gap-2" style={{ color: 'var(--c-text)' }}>
+                                    <p key={i} className="text-sm mb-1.5 flex gap-2" style={{ color: '#1A0A3B' }}>
                                       <span style={{ color: '#6C3BFF', flexShrink: 0 }}>•</span>{d}
                                     </p>
                                   ))}
@@ -587,10 +587,10 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                                     const isSaving = taskSaving === key;
                                     return (
                                       <div key={i} className="flex items-start gap-2 mb-2 pb-2"
-                                        style={{ borderBottom: i < data.action_items.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                                        style={{ borderBottom: i < data.action_items.length - 1 ? '1px solid #F0EDF9' : 'none' }}>
                                         <div className="flex-1 min-w-0">
-                                          <p className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>{a.task}</p>
-                                          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                                          <p className="text-sm font-medium" style={{ color: '#1A0A3B' }}>{a.task}</p>
+                                          <p className="text-xs" style={{ color: '#6B6480' }}>
                                             {[a.assignee, a.due].filter(Boolean).join(' · ') || 'Sin asignar'}
                                           </p>
                                         </div>
@@ -618,9 +618,9 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
                               )}
 
                               {data.next_steps && (
-                                <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--c-border)' }}>
-                                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--c-text-3)' }}>Próximos pasos</p>
-                                  <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text)' }}>{data.next_steps}</p>
+                                <div className="rounded-lg p-3" style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                                  <p className="text-xs font-semibold mb-1" style={{ color: '#6B6480' }}>Próximos pasos</p>
+                                  <p className="text-sm leading-relaxed" style={{ color: '#1A0A3B' }}>{data.next_steps}</p>
                                 </div>
                               )}
                             </div>
@@ -629,8 +629,8 @@ export default function OpsMeetingsSection({ token }: { token: string }) {
 
                         {tab === 'transcript' && m.transcript && (
                           <div className="rounded-lg p-3 max-h-64 overflow-y-auto"
-                            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--c-border)' }}>
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--c-text-2)' }}>{m.transcript}</p>
+                            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5' }}>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#1A0A3B' }}>{m.transcript}</p>
                           </div>
                         )}
                       </>

@@ -149,15 +149,15 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
         {/* Date filter bar */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter size={12} style={{ color: 'var(--c-text-3)' }} />
+            <Filter size={12} style={{ color: '#6B6480' }} />
             {QUICK_FILTERS.map(({ label, value }) => (
               <button
                 key={value}
                 onClick={() => setQuickFilter(value)}
                 className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
                 style={{
-                  background: quickFilter === value ? '#6C3BFF' : 'var(--c-input-bg)',
-                  color:      quickFilter === value ? '#fff'    : 'var(--c-text-2)',
+                  background: quickFilter === value ? '#6C3BFF' : '#FAFAFB',
+                  color:      quickFilter === value ? '#fff'    : '#1A0A3B',
                 }}
               >
                 {label}
@@ -168,7 +168,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
           {quickFilter === 'custom' && (
             <div className="flex items-center gap-2 flex-wrap">
               <DatePicker value={customFrom} onChange={setCustomFrom} className="w-auto min-w-[160px]" />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>–</span>
+              <span className="text-xs" style={{ color: '#6B6480' }}>–</span>
               <DatePicker value={customTo} onChange={setCustomTo} className="w-auto min-w-[160px]" />
             </div>
           )}
@@ -176,7 +176,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
 
         {/* Count + export */}
         <div className="flex items-center justify-between">
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs" style={{ color: '#6B6480' }}>
             {filteredLeads.length} de {leads.length} lead{leads.length !== 1 ? 's' : ''}
             {quickFilter !== 'all' && ' (filtrado)'}
           </p>
@@ -187,7 +187,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
         </div>
 
         {filteredLeads.length === 0 ? (
-          <div className="text-center py-10" style={{ color: 'var(--c-text-3)' }}>
+          <div className="text-center py-10" style={{ color: '#6B6480' }}>
             <User size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">Sin leads en este rango de fechas</p>
           </div>
@@ -196,19 +196,19 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
             const status = (lead.status ?? 'nuevo') as LeadStatus;
             const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.nuevo;
             return (
-              <div key={lead.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[var(--c-border-2)]"
-                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+              <div key={lead.id} className="rounded-xl p-4 cursor-pointer transition-all hover:border-[#F0EDF9]"
+                style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
                 onClick={() => setDetailLead(lead)}>
                 <div className="flex flex-col gap-2.5">
                   {/* Top: content + edit button */}
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>
+                        <span className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>
                           {lead.nombre ?? 'Sin nombre'}
                         </span>
                         {lead.negocio && (
-                          <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                          <span className="text-xs" style={{ color: '#6B6480' }}>
                             · {lead.negocio}{lead.giro ? ` (${lead.giro})` : ''}
                           </span>
                         )}
@@ -233,8 +233,8 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
                     </div>
                     <button
                       onClick={e => { e.stopPropagation(); openEdit(lead); }}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)] flex-shrink-0"
-                      style={{ color: 'var(--c-text-3)' }}
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[#FAFAFB] flex-shrink-0"
+                      style={{ color: '#6B6480' }}
                       title="Editar datos del lead"
                     >
                       <Pencil size={13} />
@@ -242,7 +242,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
                   </div>
                   {/* Bottom: date + status select */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+                    <span className="text-xs" style={{ color: '#6B6480' }}>
                       {new Date(lead.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <div onClick={e => e.stopPropagation()}>
@@ -277,12 +277,12 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) closeEdit(); }}>
-          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: 'var(--c-modal)' }}>
+          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden" style={{ background: '#ffffff' }}>
             <div className="flex items-center justify-between px-5 py-4"
-              style={{ borderBottom: '1px solid var(--c-border)' }}>
-              <h3 className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>Editar datos del lead</h3>
-              <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors"
-                style={{ color: 'var(--c-text-2)' }}>
+              style={{ borderBottom: '1px solid #E8E3F5' }}>
+              <h3 className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>Editar datos del lead</h3>
+              <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-[#FAFAFB] transition-colors"
+                style={{ color: '#1A0A3B' }}>
                 <X size={16} />
               </button>
             </div>
@@ -290,7 +290,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
             <div className="p-5 flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
               {EDIT_FIELDS.map(({ key, label, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
+                  <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>
                     {label}
                   </label>
                   <input
@@ -299,16 +299,16 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
                     onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
                     placeholder={placeholder}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   />
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex gap-2 px-5 py-4" style={{ borderTop: '1px solid #E8E3F5' }}>
               <button onClick={closeEdit} disabled={saving}
                 className="flex-1 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'var(--c-input-bg)', color: 'var(--c-text-2)' }}>
+                style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
                 Cancelar
               </button>
               <button onClick={saveEdit} disabled={saving}
@@ -339,7 +339,7 @@ export default function PortalLeadsSection({ initialLeads, token, filename, isPr
 function Chip({ children, icon, highlight }: { children: React.ReactNode; icon?: React.ReactNode; highlight?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-      style={{ background: highlight ? 'rgba(34,197,94,0.12)' : 'var(--c-input-bg)', color: highlight ? '#16a34a' : 'var(--c-text-3)' }}>
+      style={{ background: highlight ? 'rgba(34,197,94,0.12)' : '#FAFAFB', color: highlight ? '#16a34a' : '#6B6480' }}>
       {icon}{children}
     </span>
   );

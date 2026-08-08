@@ -120,15 +120,15 @@ function ContactCard({
     <div
       className="rounded-xl flex cursor-pointer transition-all"
       style={{
-        background: selected ? `${sc.color}08` : 'var(--c-surface-2)',
-        border: `1px solid ${selected ? sc.color + '40' : 'var(--c-border)'}`,
+        background: selected ? `${sc.color}08` : '#FAFAFB',
+        border: `1px solid ${selected ? sc.color + '40' : '#E8E3F5'}`,
       }}
       onClick={() => onToggle(contact.id)}
       role="checkbox"
       aria-checked={selected}
     >
       {/* Selection indicator */}
-      <div className="flex items-center justify-center px-3 flex-shrink-0" style={{ color: selected ? sc.color : 'var(--c-text-3)' }}>
+      <div className="flex items-center justify-center px-3 flex-shrink-0" style={{ color: selected ? sc.color : '#6B6480' }}>
         {selected
           ? <CheckSquare size={16} />
           : <Square size={16} />}
@@ -147,7 +147,7 @@ function ContactCard({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium" style={{ color: 'var(--c-text)' }}>
+                <span className="text-sm font-medium" style={{ color: '#1A0A3B' }}>
                   {contact.nombre ?? 'Sin nombre'}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
@@ -156,15 +156,15 @@ function ContactCard({
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{contact.telefono}</span>
-                {contact.email && <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>{contact.email}</span>}
+                <span className="text-xs" style={{ color: '#6B6480' }}>{contact.telefono}</span>
+                {contact.email && <span className="text-xs" style={{ color: '#6B6480' }}>{contact.email}</span>}
               </div>
             </div>
           </div>
-          <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-text-3)' }}>{date}</span>
+          <span className="text-xs flex-shrink-0" style={{ color: '#6B6480' }}>{date}</span>
         </div>
         {contact.extra && (
-          <p className="text-xs mt-1.5 line-clamp-1" style={{ color: 'var(--c-text-2)' }}>{contact.extra}</p>
+          <p className="text-xs mt-1.5 line-clamp-1" style={{ color: '#1A0A3B' }}>{contact.extra}</p>
         )}
       </div>
     </div>
@@ -231,19 +231,19 @@ function ScheduleModal({
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
-        style={{ background: 'var(--c-modal)', border: '1px solid var(--c-border)' }}>
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
           <div>
-            <p className="font-semibold text-sm" style={{ color: 'var(--c-text)' }}>Programar llamadas</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
+            <p className="font-semibold text-sm" style={{ color: '#1A0A3B' }}>Programar llamadas</p>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6480' }}>
               {contacts.length} contacto{contacts.length !== 1 ? 's' : ''} seleccionado{contacts.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button onClick={onClose} aria-label="Cerrar"
-            className="p-1.5 rounded-lg hover:bg-[var(--c-surface-2)] transition-colors flex-shrink-0"
-            style={{ color: 'var(--c-text-2)' }}>
+            className="p-1.5 rounded-lg hover:bg-[#FAFAFB] transition-colors flex-shrink-0"
+            style={{ color: '#1A0A3B' }}>
             <X size={16} />
           </button>
         </div>
@@ -252,7 +252,7 @@ function ScheduleModal({
         <div className="px-5 pt-4 pb-0 max-h-28 overflow-y-auto flex flex-wrap gap-1.5">
           {contacts.map(c => (
             <span key={c.id} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full"
-              style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
               {c.nombre ?? c.telefono}
             </span>
           ))}
@@ -264,7 +264,7 @@ function ScheduleModal({
           {/* Agent selector */}
           {agents.length > 1 && (
             <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--c-text-2)' }}>
+              <label className="block text-xs font-medium mb-2" style={{ color: '#1A0A3B' }}>
                 Empleado que llamará
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -274,9 +274,9 @@ function ScheduleModal({
                     <button key={a.token} onClick={() => setAgentToken(a.token)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                       style={{
-                        background: agentToken === a.token ? 'rgba(108,59,255,0.15)' : 'var(--c-surface-2)',
-                        border:     `1px solid ${agentToken === a.token ? 'rgba(108,59,255,0.5)' : 'var(--c-border)'}`,
-                        color:      agentToken === a.token ? '#9B6DFF' : 'var(--c-text-3)',
+                        background: agentToken === a.token ? 'rgba(108,59,255,0.15)' : '#FAFAFB',
+                        border:     `1px solid ${agentToken === a.token ? 'rgba(108,59,255,0.5)' : '#E8E3F5'}`,
+                        color:      agentToken === a.token ? '#9B6DFF' : '#6B6480',
                       }}>
                       <Bot size={11} aria-hidden="true" />
                       {a.name}
@@ -294,27 +294,27 @@ function ScheduleModal({
           )}
 
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
+            <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>
               ¿De qué hablará el empleado? <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <textarea value={motivo} onChange={e => setMotivo(e.target.value)} rows={3}
               placeholder="Ej: Recordatorio de cita del viernes 11 de julio a las 10am"
               className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF] resize-none"
-              style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }} />
-            <p className="text-xs mt-1" style={{ color: 'var(--c-text-3)' }}>
+              style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }} />
+            <p className="text-xs mt-1" style={{ color: '#6B6480' }}>
               Se aplica el mismo contexto a todos los contactos seleccionados.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
+              <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>
                 Fecha <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <DatePicker value={fecha} onChange={setFecha} min={todayStr} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--c-text-2)' }}>
+              <label className="block text-xs font-medium mb-1" style={{ color: '#1A0A3B' }}>
                 Hora <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <TimeInput value={hora} onChange={setHora} />
@@ -421,7 +421,7 @@ export default function PortalContactsSection({
             { label: 'Salientes', value: outboundCount, color: '#f59e0b', Icon: PhoneOutgoing },
           ].map(({ label, value, color, Icon: Ic }) => (
             <div key={label} className="rounded-xl overflow-hidden"
-              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              style={{ background: '#ffffff', border: '1px solid #F0EDF9', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
               <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, ${color}66)` }} />
               <div className="p-3">
                 <div className="flex items-center gap-2 mb-1.5">
@@ -431,7 +431,7 @@ export default function PortalContactsSection({
                   </div>
                   <div className="text-xl font-bold tabular-nums leading-none" style={{ color }}>{value}</div>
                 </div>
-                <div className="text-xs font-semibold" style={{ color: 'var(--c-text-2)' }}>{label}</div>
+                <div className="text-xs font-semibold" style={{ color: '#1A0A3B' }}>{label}</div>
               </div>
             </div>
           ))}
@@ -440,14 +440,14 @@ export default function PortalContactsSection({
 
       {/* List card */}
       <div className="rounded-xl p-5"
-        style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+        style={{ background: '#ffffff', border: '1px solid #F0EDF9', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
 
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-semibold tracking-widest uppercase flex items-center gap-1.5"
-            style={{ color: 'var(--c-text-3)' }}>
+            style={{ color: '#6B6480' }}>
             <User size={13} aria-hidden="true" /> Lista de contactos
           </h2>
-          <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>
+          <p className="text-xs" style={{ color: '#6B6480' }}>
             {filtered.length}{search || sourceFilter !== 'all' ? ` de ${contacts.length}` : ''}
           </p>
         </div>
@@ -455,14 +455,14 @@ export default function PortalContactsSection({
         {/* Search */}
         <div className="relative mb-3">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'var(--c-text-3)' }} aria-hidden="true" />
+            style={{ color: '#6B6480' }} aria-hidden="true" />
           <input
             type="search"
             placeholder="Buscar por nombre, teléfono o email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-8 pr-4 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#6C3BFF]"
-            style={{ background: 'var(--c-input-bg)', border: '1px solid var(--c-input-border)', color: 'var(--c-text)' }}
+            style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
             aria-label="Buscar contactos"
           />
         </div>
@@ -470,14 +470,14 @@ export default function PortalContactsSection({
         {/* Filter chips + select all */}
         <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter size={12} style={{ color: 'var(--c-text-3)' }} aria-hidden="true" />
+            <Filter size={12} style={{ color: '#6B6480' }} aria-hidden="true" />
             {SOURCE_FILTERS.map(({ label, value }) => (
               <button key={value} onClick={() => setSourceFilter(value)}
                 className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
                 style={{
                   background: sourceFilter === value ? '#6C3BFF' : 'transparent',
-                  color:      sourceFilter === value ? '#fff'    : 'var(--c-text-3)',
-                  border:     sourceFilter === value ? 'none'    : '1px solid var(--c-border)',
+                  color:      sourceFilter === value ? '#fff'    : '#6B6480',
+                  border:     sourceFilter === value ? 'none'    : '1px solid #E8E3F5',
                 }}>
                 {label}
               </button>
@@ -485,7 +485,7 @@ export default function PortalContactsSection({
             {(search || sourceFilter !== 'all') && (
               <button onClick={() => { setSearch(''); setSourceFilter('all'); }}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors hover:opacity-70"
-                style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                style={{ color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 <X size={10} /> Limpiar
               </button>
             )}
@@ -495,7 +495,7 @@ export default function PortalContactsSection({
           {filtered.length > 0 && (
             <button onClick={toggleAll}
               className="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
-              style={{ color: allVisibleSelected ? '#6C3BFF' : 'var(--c-text-3)' }}>
+              style={{ color: allVisibleSelected ? '#6C3BFF' : '#6B6480' }}>
               {allVisibleSelected
                 ? <><CheckSquare size={13} /> Deseleccionar todo</>
                 : <><Square size={13} /> Seleccionar todo</>}

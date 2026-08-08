@@ -283,7 +283,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           style={{
             width:     'min(380px, calc(100vw - 32px))',
             height:    500,
-            background: 'var(--c-modal)',
+            background: '#ffffff',
             border:    `1px solid ${color}50`,
             borderRadius: 20,
             boxShadow: `0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px ${color}18, inset 0 1px 0 rgba(255,255,255,0.05)`,
@@ -291,7 +291,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
         >
           {/* Agent selector (multi-agent only) */}
           {agents.length > 1 && (
-            <div className="flex gap-1.5 px-3 pt-2.5 pb-2 flex-shrink-0 flex-wrap" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <div className="flex gap-1.5 px-3 pt-2.5 pb-2 flex-shrink-0 flex-wrap" style={{ borderBottom: '1px solid #E8E3F5' }}>
               {agents.map(a => {
                 const c   = a.role_color || agentColor(a.id);
                 const sel = a.id === selectedId;
@@ -301,9 +301,9 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                     onClick={() => { setSelectedId(a.id); setInput(''); }}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
                     style={{
-                      background: sel ? `${c}18` : 'var(--c-surface)',
-                      border:     sel ? `1px solid ${c}40` : '1px solid var(--c-border)',
-                      color:      sel ? c : 'var(--c-text-2)',
+                      background: sel ? `${c}18` : '#ffffff',
+                      border:     sel ? `1px solid ${c}40` : '1px solid #E8E3F5',
+                      color:      sel ? c : '#1A0A3B',
                     }}
                   >
                     <span className="w-4 h-4 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
@@ -322,7 +322,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
 
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-            style={{ borderBottom: '1px solid var(--c-border)', background: `${color}08` }}>
+            style={{ borderBottom: '1px solid #E8E3F5', background: `${color}08` }}>
             <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
               style={{ background: `${color}20`, border: `1px solid ${color}35` }}>
               {selectedAgent.avatar_url
@@ -331,24 +331,24 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+              <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
                 {selectedAgent.agent_name?.trim() || 'Agente'}
               </p>
               {selectedAgent.role && (
-                <p className="text-xs truncate" style={{ color: selectedAgent.role_color || 'var(--c-text-3)' }}>{selectedAgent.role}</p>
+                <p className="text-xs truncate" style={{ color: selectedAgent.role_color || '#6B6480' }}>{selectedAgent.role}</p>
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span className="text-xs" style={{ color: 'var(--c-text-3)' }}>En línea</span>
-              <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--c-text-3)' }}>
+              <span className="text-xs" style={{ color: '#6B6480' }}>En línea</span>
+              <span className="flex items-center gap-0.5 text-xs" style={{ color: '#6B6480' }}>
                 <Zap size={9} style={{ color: '#9B6DFF' }} />
                 3–13 tareas/msg
               </span>
               <button
                 onClick={() => setOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ color: 'var(--c-text-3)', marginLeft: 4 }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-[#FAFAFB]"
+                style={{ color: '#6B6480', marginLeft: 4 }}
               >
                 <X size={14} />
               </button>
@@ -372,7 +372,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                   className="max-w-[80%] rounded-2xl text-sm leading-relaxed"
                   style={msg.role === 'user'
                     ? { background: 'linear-gradient(135deg, #6C3BFF, #9B6DFF)', color: '#fff', borderBottomRightRadius: 4, padding: '8px 12px' }
-                    : { background: 'var(--c-bg)', color: 'var(--c-text)', border: '1px solid var(--c-border)', borderBottomLeftRadius: 4, padding: '8px 12px' }}
+                    : { background: '#FAFAFB', color: '#1A0A3B', border: '1px solid #E8E3F5', borderBottomLeftRadius: 4, padding: '8px 12px' }}
                 >
                   {msg.role === 'assistant' && msg.tools && msg.tools.length > 0 && (
                     <div className="flex flex-col gap-1 mb-2">
@@ -380,7 +380,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                         <div
                           key={ti}
                           className="inline-flex items-center gap-1.5 text-xs italic self-start"
-                          style={{ color: 'var(--c-text-3)' }}
+                          style={{ color: '#6B6480' }}
                         >
                           <Wrench size={10} />
                           <span>{toolLabel(t)}</span>
@@ -389,7 +389,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
                     </div>
                   )}
                   {!msg.content ? (
-                    <span className="flex items-center gap-1.5" style={{ color: 'var(--c-text-3)' }}>
+                    <span className="flex items-center gap-1.5" style={{ color: '#6B6480' }}>
                       <Loader2 size={11} className="animate-spin" /> Pensando…
                     </span>
                   ) : msg.role === 'user' ? (
@@ -418,7 +418,7 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           </div>
 
           {/* Input */}
-          <div className="flex items-end gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--c-border)' }}>
+          <div className="flex items-end gap-2 px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid #E8E3F5' }}>
             <textarea
               ref={inputRef}
               value={input}
@@ -429,11 +429,11 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
               rows={1}
               className="flex-1 text-sm outline-none resize-none leading-relaxed"
               style={{
-                background:   'var(--c-input-bg)',
-                border:       '1px solid var(--c-input-border)',
+                background:   '#FAFAFB',
+                border:       '1px solid #E8E3F5',
                 borderRadius: 12,
                 padding:      '8px 12px',
-                color:        'var(--c-text)',
+                color:        '#1A0A3B',
                 maxHeight:    100,
                 overflowY:    'auto',
               }}
@@ -495,15 +495,15 @@ export default function OpsAgentChatFab({ token, agents }: Props) {
           {/* Speech bubble */}
           <div
             style={{
-              background:    'var(--c-modal)',
-              border:        '1px solid var(--c-border)',
+              background:    '#ffffff',
+              border:        '1px solid #E8E3F5',
               borderRadius:  14,
               borderBottomRightRadius: 4,
               padding:       '8px 12px',
               boxShadow:     '0 4px 20px rgba(0,0,0,0.18)',
               fontSize:      13,
               lineHeight:    1.4,
-              color:         'var(--c-text)',
+              color:         '#1A0A3B',
               wordBreak:     'break-word',
             }}
           >
