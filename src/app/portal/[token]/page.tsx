@@ -1911,8 +1911,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
 
                   <div id="uso-del-mes" style={{ scrollMarginTop: '1.5rem' }}>
                   <div id="comprar"      style={{ scrollMarginTop: '1.5rem' }}>
-                  <PageSection heading={<SectionHeader eyebrow="SALDO MENSUAL" title="Consumo, compras y recarga" as="h2" />}>
-                    <CuentaUsageTabsCard
+                  <CuentaUsageTabsCard
                       usoContent={
                         <>
                           <div>
@@ -1999,7 +1998,6 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                         </>
                       }
                     />
-                  </PageSection>
                   </div>
                   </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertOctagon, Bot, CheckCircle2, ExternalLink, GitBranch, Plus, RefreshCw, User } from 'lucide-react';
+import { AlertOctagon, Bot, CheckCircle2, ExternalLink, GitBranch, Pause, Play, Plus, RefreshCw, User } from 'lucide-react';
 
 type Group    = 'open' | 'claude_code' | 'resolved';
 type Priority = 'low' | 'med' | 'high' | 'critical';
@@ -72,6 +72,8 @@ export function SoporteView() {
   const [items,   setItems]   = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
+  const [nashEnabled, setNashEnabled] = useState<boolean | null>(null);
+  const [togglingNash, setTogglingNash] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,11 +86,43 @@ export function SoporteView() {
     }
   }, [group]);
 
+  const loadNashStatus = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/nash-toggle', { cache: 'no-store' });
+      const d = await r.json();
+      if (typeof d.enabled === 'boolean') setNashEnabled(d.enabled);
+    } catch {
+      // silencioso: si falla, el toggle queda en null y muestra "..."
+    }
+  }, []);
+
+  const toggleNash = useCallback(async () => {
+    if (nashEnabled === null || togglingNash) return;
+    const next = !nashEnabled;
+    const confirmMsg = next
+      ? 'Encender Nash: el cron correrá cada 10 minutos y consumirá tokens de Sonnet.'
+      : 'Apagar Nash: dejará de procesar incidentes hasta que lo enciendas de nuevo.';
+    if (!window.confirm(confirmMsg)) return;
+    setTogglingNash(true);
+    try {
+      const r = await fetch('/api/admin/nash-toggle', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ enabled: next }),
+      });
+      const d = await r.json();
+      if (typeof d.enabled === 'boolean') setNashEnabled(d.enabled);
+    } finally {
+      setTogglingNash(false);
+    }
+  }, [nashEnabled, togglingNash]);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadNashStatus(); }, [loadNashStatus]);
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--c-surface-2)' }}>
           {(Object.keys(GROUP_LABELS) as Group[]).map(g => (
             <button
@@ -104,7 +138,33 @@ export function SoporteView() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <button
+            onClick={toggleNash}
+            disabled={nashEnabled === null || togglingNash}
+            title={nashEnabled ? 'Pausar el cron de Nash' : 'Reanudar el cron de Nash'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+            style={{
+              background: nashEnabled ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.15)',
+              color:      nashEnabled ? '#22c55e' : 'var(--c-text-3)',
+              border:     `1px solid ${nashEnabled ? 'rgba(34,197,94,0.30)' : 'var(--c-border)'}`,
+            }}
+          >
+            {nashEnabled === null ? (
+              <>
+                <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--c-text-4)' }} />
+                Cargando…
+              </>
+            ) : nashEnabled ? (
+              <>
+                <Pause size={12} /> Nash activo — pausar
+              </>
+            ) : (
+              <>
+                <Play size={12} /> Nash pausado — reanudar
+              </>
+            )}
+          </button>
           <button
             onClick={load}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"

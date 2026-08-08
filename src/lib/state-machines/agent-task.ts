@@ -134,6 +134,11 @@ export async function transitionAgentTask(opts: TransitionOptions): Promise<Tran
     console.warn('[state-machine/agent-task] transition log insert failed (status actualizado igualmente):', transErr.message);
   }
 
+  if (toStatus === 'failed') {
+    const { triggerNashMonitor } = await import('@/lib/ops/nash-trigger');
+    triggerNashMonitor(`agent_task ${taskId} → failed`);
+  }
+
   return { ok: true, from: fromStatus, to: toStatus, transitionId: transitionRow?.id as string | undefined };
 }
 

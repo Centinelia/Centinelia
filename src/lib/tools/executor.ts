@@ -666,6 +666,8 @@ async function executeAgentToolInner(
       const full = contexto ? `${descripcion.trim()}\n\nContexto:\n${contexto.trim()}` : descripcion.trim();
       const to   = process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? 'hola@centinelia.mx';
       await sendEmail({ to, subject: `Reporte de falla (ops): ${agentName} — ${businessName}`, html: bugReportHtml({ businessName, reporterName: agentName, reporterEmail: (agent.client_email as string | null) ?? '', category: tipo, description: full }) });
+      const { triggerNashMonitor } = await import('@/lib/ops/nash-trigger');
+      triggerNashMonitor(`reportar_falla from ${agentName}`);
     }
     return {
       ok: true,

@@ -41,16 +41,24 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
 
   return (
     <div
-      className="rounded-xl"
+      className="flex flex-col rounded-2xl overflow-hidden"
       style={{
-        background: 'var(--c-surface)',
-        border:     '1px solid var(--c-border-2)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: '#ffffff',
+        border:     '1px solid #E8E3F5',
+        boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
       }}
     >
-      {/* Pill tab bar */}
-      <div className="p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+            Consumo, compras y recarga
+          </h2>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            Uso del mes, compras puntuales y recarga automática.
+          </p>
+        </div>
+      </div>
+      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
         <Tabs.Root value={value} onValueChange={v => setValue(v as 'uso' | 'comprar' | 'recarga')} variant="pill">
           <Tabs.List>
             <Tabs.Trigger value="uso">Uso</Tabs.Trigger>
