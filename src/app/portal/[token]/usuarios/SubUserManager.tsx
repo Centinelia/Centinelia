@@ -69,7 +69,7 @@ function ModuleSelector({
               type="button"
               onClick={() => toggleAll(ids)}
               className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider"
-              style={{ color: 'var(--c-text-3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ color: '#6B6480', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               <Checkbox all={all} some={some} />
               {group === 'Oficina' ? 'Oficina (general)' : group}
@@ -93,7 +93,7 @@ function ModuleSelector({
 
         return (
           <div key={giroGroup.id} className="rounded-xl"
-            style={{ border: isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid var(--c-border)', background: isActive ? 'rgba(108,59,255,0.04)' : 'var(--c-surface-2)' }}>
+            style={{ border: isActive ? '1px solid rgba(108,59,255,0.35)' : '1px solid #E8E3F5', background: isActive ? 'rgba(108,59,255,0.04)' : '#FAFAFB' }}>
 
             <div className="flex items-center gap-2 px-3 py-2.5">
               <button type="button" onClick={() => toggleAll(ids)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
@@ -105,7 +105,7 @@ function ModuleSelector({
                 className="flex-1 flex items-center gap-2 text-left"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isActive ? '#9B6DFF' : 'var(--c-text-3)' }}>
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isActive ? '#9B6DFF' : '#6B6480' }}>
                   {giroGroup.label}
                 </span>
                 {isActive && (
@@ -114,14 +114,14 @@ function ModuleSelector({
                     Tu sector
                   </span>
                 )}
-                <span className="ml-auto" style={{ color: 'var(--c-text-4)' }}>
+                <span className="ml-auto" style={{ color: '#9B8FB5' }}>
                   {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </span>
               </button>
             </div>
 
             {isOpen && (
-              <div className="px-3 pb-3 grid grid-cols-1 gap-1.5" style={{ borderTop: '1px solid var(--c-border)' }}>
+              <div className="px-3 pb-3 grid grid-cols-1 gap-1.5" style={{ borderTop: '1px solid #E8E3F5' }}>
                 <div className="h-2" />
                 {mods.map(m => <ModuleToggle key={m.id} id={m.id} label={m.label} selected={selected} onToggle={toggle} />)}
               </div>
@@ -167,9 +167,9 @@ function ModuleToggle({ id, label, selected, onToggle }: {
         onClick={() => onToggle(id)}
         className="flex-1 flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors text-left"
         style={{
-          background:   on ? 'rgba(108,59,255,0.12)' : 'var(--c-surface-2)',
-          border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
-          color:        on ? '#9B6DFF' : 'var(--c-text-2)',
+          background:   on ? 'rgba(108,59,255,0.12)' : '#FAFAFB',
+          border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid #E8E3F5',
+          color:        on ? '#9B6DFF' : '#1A0A3B',
           borderRadius: desc ? '8px 0 0 8px' : 8,
         }}
       >
@@ -187,11 +187,11 @@ function ModuleToggle({ id, label, selected, onToggle }: {
             onClick={() => setTip(v => !v)}
             className="h-full px-1.5 flex items-center justify-center"
             style={{
-              background:   on ? 'rgba(108,59,255,0.08)' : 'var(--c-surface-2)',
-              border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border)',
+              background:   on ? 'rgba(108,59,255,0.08)' : '#FAFAFB',
+              border:       on ? '1px solid rgba(108,59,255,0.4)' : '1px solid #E8E3F5',
               borderLeft:   'none',
               borderRadius: '0 8px 8px 0',
-              color:        'var(--c-text-4)',
+              color:        '#9B8FB5',
               cursor:       'pointer',
             }}
           >
@@ -201,7 +201,7 @@ function ModuleToggle({ id, label, selected, onToggle }: {
           {tip && (
             <div
               className="absolute z-50 bottom-full right-0 mb-1.5 w-52 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
-              style={{ background: 'var(--c-modal)', border: '1px solid rgba(108,59,255,0.25)', color: 'var(--c-text-2)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+              style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', boxShadow: '0 8px 24px rgba(26,10,59,0.12)' }}
             >
               <p className="font-semibold mb-0.5" style={{ color: '#9B6DFF' }}>{label}</p>
               {desc}
@@ -245,7 +245,7 @@ function InitialsAvatar({ name, email, isOwner }: { name: string | null; email: 
 
 function ModuleChips({ modules }: { modules: string[] }) {
   if (modules.length === 0)
-    return <span className="text-xs" style={{ color: 'var(--c-text-4)' }}>Sin acceso</span>;
+    return <span className="text-xs" style={{ color: '#9B8FB5' }}>Sin acceso</span>;
   const labels = modules.map(id => PORTAL_MODULES.find(m => m.id === id)?.label ?? id);
   const shown  = labels.slice(0, 3);
   const rest   = labels.length - 3;
@@ -259,7 +259,7 @@ function ModuleChips({ modules }: { modules: string[] }) {
       ))}
       {rest > 0 && (
         <span className="px-1.5 py-0.5 rounded text-[10px]"
-          style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+          style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
           +{rest}
         </span>
       )}
@@ -274,12 +274,12 @@ function FieldGroup({ label, required, hint, children }: {
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--c-text-2)', letterSpacing: '0.01em' }}>
+      <label className="text-xs font-semibold flex items-center gap-1" style={{ color: '#1A0A3B', letterSpacing: '0.01em' }}>
         {label}
         {required && <span style={{ color: '#ef4444' }}>*</span>}
       </label>
       {children}
-      {hint && <p className="text-[11px] leading-relaxed" style={{ color: 'var(--c-text-4)' }}>{hint}</p>}
+      {hint && <p className="text-[11px] leading-relaxed" style={{ color: '#9B8FB5' }}>{hint}</p>}
     </div>
   );
 }
@@ -296,11 +296,11 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full px-3.5 py-2.5 pr-10 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
-        style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+        style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
       />
       <button type="button" onClick={() => setShow(v => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors hover:bg-[var(--c-surface)]"
-        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors hover:bg-[#ffffff]"
+        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
         {show ? <EyeOff size={14} /> : <Eye size={14} />}
       </button>
     </div>
@@ -411,7 +411,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users size={16} style={{ color: '#6C3BFF' }} />
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+            <h2 className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>
               Usuarios ({users.length})
             </h2>
           </div>
@@ -438,7 +438,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
           <div
             className="rounded-2xl p-5 flex flex-col gap-4"
             style={{
-              background: 'var(--c-surface)',
+              background: '#ffffff',
               border:     '1px solid rgba(108,59,255,0.25)',
               boxShadow:  '0 12px 30px rgba(108,59,255,0.08)',
             }}
@@ -451,10 +451,10 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                 <Plus size={14} style={{ color: '#6C3BFF' }} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--c-text)' }}>
+                <p className="text-sm font-semibold leading-tight" style={{ color: '#1A0A3B' }}>
                   Nuevo colaborador
                 </p>
-                <p className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>
+                <p className="text-[11px]" style={{ color: '#6B6480' }}>
                   Configura correo, contraseña inicial y las secciones a las que tendrá acceso.
                 </p>
               </div>
@@ -466,7 +466,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
                   placeholder="usuario@empresa.com"
                   className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 />
               </FieldGroup>
               <FieldGroup label="Nombre">
@@ -474,7 +474,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   type="text" value={newName} onChange={e => setNewName(e.target.value)}
                   placeholder="Nombre del colaborador"
                   className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
-                  style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                  style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                 />
               </FieldGroup>
             </div>
@@ -487,11 +487,11 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
               <ModuleSelector selected={newModules} onChange={setNewModules} accountGiro={accountGiro} />
             </FieldGroup>
 
-            <div className="flex items-center justify-end gap-2 pt-2" style={{ borderTop: '1px solid var(--c-border)' }}>
+            <div className="flex items-center justify-end gap-2 pt-2" style={{ borderTop: '1px solid #E8E3F5' }}>
               <button
                 onClick={resetAdd}
-                className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--c-surface-2)]"
-                style={{ background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-2)', cursor: 'pointer' }}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[#FAFAFB]"
+                style={{ background: 'none', border: '1px solid #E8E3F5', color: '#1A0A3B', cursor: 'pointer' }}
               >
                 Cancelar
               </button>
@@ -516,8 +516,8 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
               <Info size={14} style={{ color: '#6C3BFF' }} />
             </div>
             <div className="flex flex-col gap-1 min-w-0">
-              <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Acerca de los usuarios</p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-3)' }}>
+              <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Acerca de los usuarios</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
                 Cada usuario inicia sesión con su propio correo y contraseña. Solo ve las secciones que le asignes. El propietario siempre tiene acceso completo.
               </p>
             </div>
@@ -530,14 +530,14 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
         {/* Search bar */}
         <div className="relative">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--c-text-4)' }} />
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#9B8FB5' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nombre, correo o número de cuenta…"
             className="w-full pl-10 pr-3 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.4)]"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', color: 'var(--c-text)' }}
+            style={{ background: '#ffffff', border: '1px solid #F0EDF9', color: '#1A0A3B' }}
           />
         </div>
 
@@ -549,15 +549,15 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
               style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.16)' }}>
               <Users size={22} style={{ color: '#9B6DFF' }} />
             </div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>Sin colaboradores aún</p>
-            <p className="text-xs mt-1.5 max-w-[280px]" style={{ color: 'var(--c-text-3)' }}>
+            <p className="text-sm font-semibold" style={{ color: '#1A0A3B' }}>Sin colaboradores aún</p>
+            <p className="text-xs mt-1.5 max-w-[280px]" style={{ color: '#6B6480' }}>
               Añade a tu equipo desde el panel de la izquierda. Cada persona inicia sesión con su propio correo.
             </p>
           </div>
         )}
 
         {users.length > 0 && filteredUsers.length === 0 && (
-          <div className="text-center py-10 text-xs" style={{ color: 'var(--c-text-4)' }}>
+          <div className="text-center py-10 text-xs" style={{ color: '#9B8FB5' }}>
             Sin resultados para &ldquo;{search}&rdquo;
           </div>
         )}
@@ -566,8 +566,8 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
         {filteredUsers.map(u => (
           <div key={u.id} className="user-card rounded-xl overflow-hidden transition-all"
             style={{
-              border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid var(--c-border-2)',
-              background: 'var(--c-surface)',
+              border: editId === u.id ? '1px solid rgba(108,59,255,0.4)' : '1px solid #F0EDF9',
+              background: '#ffffff',
               boxShadow: editId === u.id ? '0 8px 24px rgba(108,59,255,0.08)' : '0 1px 2px rgba(26,10,59,0.04)',
             }}>
 
@@ -577,7 +577,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                 <InitialsAvatar name={u.name} email={u.email} isOwner={u.is_owner} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--c-text)', letterSpacing: '-0.005em' }}>
+                    <p className="text-sm font-semibold truncate" style={{ color: '#1A0A3B', letterSpacing: '-0.005em' }}>
                       {u.name ?? u.email}
                     </p>
                     {u.is_owner && (
@@ -587,7 +587,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                       </span>
                     )}
                   </div>
-                  {u.name && <p className="text-xs truncate mt-0.5" style={{ color: 'var(--c-text-3)' }}>{u.email}</p>}
+                  {u.name && <p className="text-xs truncate mt-0.5" style={{ color: '#6B6480' }}>{u.email}</p>}
                 </div>
               </div>
               {!u.is_owner && u.id !== currentUserId && (
@@ -595,13 +595,13 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                   {editId !== u.id ? (
                     <>
                       <button onClick={() => startEdit(u)}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[#FAFAFB]"
+                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
                         <Edit2 size={13} />
                       </button>
                       <button onClick={() => handleDelete(u.id, u.email)}
                         className="p-1.5 rounded-lg transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
                         <Trash2 size={13} />
                       </button>
                     </>
@@ -613,8 +613,8 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                         <Check size={13} />
                       </button>
                       <button onClick={cancelEdit}
-                        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--c-surface-2)]"
-                        style={{ background: 'none', border: 'none', color: 'var(--c-text-3)', cursor: 'pointer' }}>
+                        className="p-1.5 rounded-lg transition-colors hover:bg-[#FAFAFB]"
+                        style={{ background: 'none', border: 'none', color: '#6B6480', cursor: 'pointer' }}>
                         <X size={13} />
                       </button>
                     </>
@@ -630,7 +630,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
                 {serialByUserId[u.id] && (
                   <span
                     className="shrink-0 text-[10px] font-semibold"
-                    style={{ color: 'var(--c-text-4)', fontFamily: 'monospace', letterSpacing: '0.04em' }}
+                    style={{ color: '#9B8FB5', fontFamily: 'monospace', letterSpacing: '0.04em' }}
                   >
                     {serialByUserId[u.id]}
                   </span>
@@ -640,13 +640,13 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
 
             {/* Edit mode */}
             {editId === u.id && (
-              <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid var(--c-border)', background: 'rgba(108,59,255,0.02)' }}>
+              <div className="px-5 pb-5 pt-4 flex flex-col gap-4" style={{ borderTop: '1px solid #E8E3F5', background: 'rgba(108,59,255,0.02)' }}>
                 <FieldGroup label="Nombre">
                   <input
                     type="text" value={editName} onChange={e => setEditName(e.target.value)}
                     placeholder="Nombre del colaborador"
                     className="w-full px-3.5 py-2.5 rounded-lg text-sm outline-none transition-colors focus:border-[rgba(108,59,255,0.45)]"
-                    style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)' }}
+                    style={{ background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B' }}
                   />
                 </FieldGroup>
 
