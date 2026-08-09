@@ -1014,6 +1014,51 @@ CATEGORÍAS:
       },
     });
 
+    // Google Sheets tools — para captura estructurada de datos (leads,
+    // clientes, OCs, bitácoras, cajas chicas) cuando el usuario tiene
+    // sheets_mappings configurados. Si no hay mapping, la tool devuelve
+    // sheet_no_configurado y el agente informa al usuario en la respuesta.
+    const sheetsPurposeEnum = ['clientes', 'leads', 'bitacoras', 'oc', 'cajas_chicas', 'custom'];
+    tools.push({
+      name: 'sheets_agregar_fila',
+      description: 'Agrega fila al Google Sheet configurado (clientes/leads/bitacoras/oc/cajas_chicas/custom). Úsala cuando el correo trae datos que el usuario quiere capturar en su Sheet — ej. lead nuevo con datos completos, nueva OC, entrada de bitácora.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          purpose:              { type: 'string', enum: sheetsPurposeEnum },
+          custom_purpose_label: { type: 'string' },
+          data:                 { type: 'object', additionalProperties: true, description: 'Objeto {columna: valor} con encabezados del Sheet.' },
+        },
+        required: ['purpose', 'data'],
+      },
+    });
+    tools.push({
+      name: 'sheets_leer',
+      description: 'Lee el contenido del Google Sheet configurado. Úsala cuando el correo pide datos que están en el Sheet.',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          purpose:              { type: 'string', enum: sheetsPurposeEnum },
+          custom_purpose_label: { type: 'string' },
+          range:                { type: 'string' },
+        },
+        required: ['purpose'],
+      },
+    });
+    tools.push({
+      name: 'sheets_buscar',
+      description: 'Busca filas del Google Sheet por texto (case-insensitive). Úsala cuando el correo pregunta por un registro específico (cliente, OC, proveedor).',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          purpose:              { type: 'string', enum: sheetsPurposeEnum },
+          custom_purpose_label: { type: 'string' },
+          query:                { type: 'string' },
+        },
+        required: ['purpose', 'query'],
+      },
+    });
+
     // Pilar 2 Creatividad — tools condicionales por meerkat_role_id (email)
     {
       const { MEERKAT_TOOL_ACCESS } = await import('@/lib/creativity/meerkat-gates');

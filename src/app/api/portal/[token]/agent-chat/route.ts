@@ -221,6 +221,71 @@ const VERIFICAR_GASTO_RECURRENTE_TOOL: Anthropic.Tool = {
   },
 };
 
+// ── Google Sheets tools — gated por feature google_sheets ─────────────────
+// Purposes soportados por sheets_mappings: clientes, leads, bitacoras, oc,
+// cajas_chicas, custom. Si no hay mapping para el purpose, devuelven
+// {ok:false, reason:'sheet_no_configurado'} y el agente informa al usuario.
+
+const SHEETS_PURPOSE_ENUM = ['clientes', 'leads', 'bitacoras', 'oc', 'cajas_chicas', 'custom'];
+
+const SHEETS_AGREGAR_FILA_TOOL: Anthropic.Tool = {
+  name: 'sheets_agregar_fila',
+  description: 'Agrega una fila al Google Sheet configurado (clientes, leads, bitácoras, órdenes de compra, cajas chicas). Úsala cuando el usuario pida registrar un nuevo cliente/lead/OC/etc. en su Sheet.',
+  input_schema: {
+    type: 'object' as const,
+    required: ['purpose', 'data'],
+    properties: {
+      purpose:              { type: 'string', enum: SHEETS_PURPOSE_ENUM, description: 'Tipo de Sheet destino.' },
+      custom_purpose_label: { type: 'string', description: 'Etiqueta del Sheet cuando purpose=custom.' },
+      data:                 { type: 'object', additionalProperties: true, description: 'Objeto {columna: valor} donde las claves son encabezados del Sheet.' },
+    },
+  },
+};
+
+const SHEETS_ACTUALIZAR_FILA_TOOL: Anthropic.Tool = {
+  name: 'sheets_actualizar_fila',
+  description: 'Actualiza una fila existente buscando por columna y valor. Úsala cuando el usuario pida cambiar datos de un registro específico en el Sheet.',
+  input_schema: {
+    type: 'object' as const,
+    required: ['purpose', 'match_by', 'match_value', 'data'],
+    properties: {
+      purpose:              { type: 'string', enum: SHEETS_PURPOSE_ENUM },
+      custom_purpose_label: { type: 'string' },
+      match_by:             { type: 'string', description: 'Nombre de la columna por la que buscar.' },
+      match_value:          { type: 'string', description: 'Valor a encontrar en esa columna.' },
+      data:                 { type: 'object', additionalProperties: true, description: 'Campos a actualizar.' },
+    },
+  },
+};
+
+const SHEETS_LEER_TOOL: Anthropic.Tool = {
+  name: 'sheets_leer',
+  description: 'Lee el contenido completo del Sheet configurado. Úsala cuando el usuario pida "muéstrame los clientes/leads/OCs" o quiera un resumen del Sheet.',
+  input_schema: {
+    type: 'object' as const,
+    required: ['purpose'],
+    properties: {
+      purpose:              { type: 'string', enum: SHEETS_PURPOSE_ENUM },
+      custom_purpose_label: { type: 'string' },
+      range:                { type: 'string', description: 'Rango A1 opcional (ej. A1:D50).' },
+    },
+  },
+};
+
+const SHEETS_BUSCAR_TOOL: Anthropic.Tool = {
+  name: 'sheets_buscar',
+  description: 'Busca filas que contengan un texto (case-insensitive). Úsala cuando el usuario pida "busca el cliente X" o "encuentra la OC del proveedor Y" en el Sheet.',
+  input_schema: {
+    type: 'object' as const,
+    required: ['purpose', 'query'],
+    properties: {
+      purpose:              { type: 'string', enum: SHEETS_PURPOSE_ENUM },
+      custom_purpose_label: { type: 'string' },
+      query:                { type: 'string', description: 'Texto a buscar en cualquier celda de la fila.' },
+    },
+  },
+};
+
 const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
   name: 'buscar_documento_oficina',
   description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, one-pagers, pitch decks, reportes Excel, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, folio y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo. IMPORTANTE: si no estás seguro del tipo exacto, OMITE el parámetro kind y busca solo por query — así verás todos los tipos que matchean.',
@@ -1112,6 +1177,10 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   aprobar_gasto:              'aprobar_gasto',
   evaluar_limite_gasto:       'evaluar_limite_gasto',
   verificar_gasto_recurrente: 'verificar_gasto_recurrente',
+  sheets_agregar_fila:        'sheets_agregar_fila',
+  sheets_actualizar_fila:     'sheets_actualizar_fila',
+  sheets_leer:                'sheets_leer',
+  sheets_buscar:              'sheets_buscar',
   marcar_no_llamar:          null,  // voice-only (no aplica a chat)
   agregar_tag_contacto:      'agregar_tag_contacto',
 };
@@ -1131,6 +1200,10 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   aprobar_gasto:              APROBAR_GASTO_TOOL,
   evaluar_limite_gasto:       EVALUAR_LIMITE_GASTO_TOOL,
   verificar_gasto_recurrente: VERIFICAR_GASTO_RECURRENTE_TOOL,
+  sheets_agregar_fila:        SHEETS_AGREGAR_FILA_TOOL,
+  sheets_actualizar_fila:     SHEETS_ACTUALIZAR_FILA_TOOL,
+  sheets_leer:                SHEETS_LEER_TOOL,
+  sheets_buscar:              SHEETS_BUSCAR_TOOL,
   agregar_tag_contacto:      AGREGAR_TAG_CONTACTO_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,

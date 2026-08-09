@@ -140,6 +140,10 @@ const TOOL_HUMAN_LABEL: Record<string, string> = {
   aprobar_gasto:            'aprobar gastos operativos (solo directores)',
   evaluar_limite_gasto:     'verificar si un gasto cabe en el presupuesto mensual (solo directores)',
   verificar_gasto_recurrente: 'verificar si un proveedor es recurrente con historial aprobado',
+  sheets_agregar_fila:      'agregar fila a un Google Sheet (leads, clientes, OCs, bitácoras, cajas chicas)',
+  sheets_actualizar_fila:   'actualizar fila existente en un Google Sheet',
+  sheets_leer:              'leer contenido de un Google Sheet',
+  sheets_buscar:            'buscar filas en un Google Sheet por texto',
 };
 
 function peerToolCapabilities(peer: TeamPeer): string[] {
@@ -240,7 +244,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nova — recuperación / retención.
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'reportar_falla'],
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'sheets_agregar_fila', 'sheets_actualizar_fila', 'sheets_leer', 'sheets_buscar', 'reportar_falla'],
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
@@ -339,6 +343,14 @@ function buildToolDef(name: string, agent: VoiceAgent, server: ServerFn): ToolDe
     case 'evaluar_limite_gasto': return { type: 'function', function: { name: 'evaluar_limite_gasto', description: 'Verifica si un gasto propuesto cabe en el presupuesto mensual de la organización. Devuelve: presupuesto configurado, gastado este mes, y si excede el límite. Invócala ANTES de aprobar_gasto para decidir con datos.', parameters: { type: 'object', properties: { monto: { type: 'number', description: 'Monto en MXN del gasto que se está evaluando.' } }, required: ['monto'] } }, server: server('exec/evaluar_limite_gasto') };
 
     case 'verificar_gasto_recurrente': return { type: 'function', function: { name: 'verificar_gasto_recurrente', description: 'Consulta el historial de facturas recibidas de un proveedor. Devuelve si es recurrente (≥2 facturas aprobadas antes), monto del último pago, y variación con el monto actual. Úsala en facturas de proveedor para decidir si auto-marcar como pagada o escalar al humano.', parameters: { type: 'object', properties: { proveedor: { type: 'string', description: 'Nombre del proveedor (o email si no tienes nombre).' }, monto: { type: 'number', description: 'Monto de la factura actual en MXN (opcional, para detectar variación anómala).' } }, required: ['proveedor'] } }, server: server('exec/verificar_gasto_recurrente') };
+
+    case 'sheets_agregar_fila': return { type: 'function', function: { name: 'sheets_agregar_fila', description: 'Agrega fila al Google Sheet configurado. purpose = clientes/leads/bitacoras/oc/cajas_chicas/custom. Úsala cuando el llamante pida registrar algo en el Sheet del negocio.', parameters: { type: 'object', properties: { purpose: { type: 'string', enum: ['clientes','leads','bitacoras','oc','cajas_chicas','custom'] }, custom_purpose_label: { type: 'string' }, data: { type: 'object', description: 'Objeto {columna: valor} con encabezados del Sheet.' } }, required: ['purpose', 'data'] } }, server: server('exec/sheets_agregar_fila') };
+
+    case 'sheets_actualizar_fila': return { type: 'function', function: { name: 'sheets_actualizar_fila', description: 'Actualiza fila existente buscando por columna y valor.', parameters: { type: 'object', properties: { purpose: { type: 'string', enum: ['clientes','leads','bitacoras','oc','cajas_chicas','custom'] }, custom_purpose_label: { type: 'string' }, match_by: { type: 'string' }, match_value: { type: 'string' }, data: { type: 'object' } }, required: ['purpose', 'match_by', 'match_value', 'data'] } }, server: server('exec/sheets_actualizar_fila') };
+
+    case 'sheets_leer': return { type: 'function', function: { name: 'sheets_leer', description: 'Lee todo el contenido del Google Sheet.', parameters: { type: 'object', properties: { purpose: { type: 'string', enum: ['clientes','leads','bitacoras','oc','cajas_chicas','custom'] }, custom_purpose_label: { type: 'string' }, range: { type: 'string' } }, required: ['purpose'] } }, server: server('exec/sheets_leer') };
+
+    case 'sheets_buscar': return { type: 'function', function: { name: 'sheets_buscar', description: 'Busca filas del Google Sheet por texto (case-insensitive).', parameters: { type: 'object', properties: { purpose: { type: 'string', enum: ['clientes','leads','bitacoras','oc','cajas_chicas','custom'] }, custom_purpose_label: { type: 'string' }, query: { type: 'string' } }, required: ['purpose', 'query'] } }, server: server('exec/sheets_buscar') };
 
     case 'read_url': return { type: 'function', function: { name: 'read_url', description: 'Lee y extrae el contenido de texto de una URL pública. Úsala para obtener información de páginas web específicas.', parameters: { type: 'object', properties: { url: { type: 'string', description: 'URL completa a leer (ej: https://example.com/page)' } }, required: ['url'] } }, server: server('read-url') };
 
