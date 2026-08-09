@@ -918,9 +918,49 @@ async function executeAgentToolInner(
         .maybeSingle();
       if (readErr) return { ok: false, error: readErr.message };
       if (!incident) return { ok: false, error: `incidente ${incidentId} no encontrado` };
+
+      // Si ya hay GH issue creado (típicamente porque el cliente reabrió el
+      // caso respondiendo al email), agregamos COMMENT al issue existente en
+      // lugar de crear uno nuevo. Mantiene la conversación en un solo lugar
+      // y evita duplicados en /admin/soporte.
       if (incident.github_issue_url) {
-        return { ok: true, github_issue_url: incident.github_issue_url as string, already_sent: true };
+        const token = process.env.NASH_GITHUB_TOKEN;
+        const repo  = process.env.NASH_GITHUB_REPO ?? 'Centinelia/Centinelia';
+        const issueNumMatch = (incident.github_issue_url as string).match(/\/issues\/(\d+)/);
+        const issueNum = issueNumMatch?.[1];
+        if (token && issueNum) {
+          try {
+            const res = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNum}/comments`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept':        'application/vnd.github+json',
+                'Content-Type':  'application/json',
+                'User-Agent':    'nash-centinelia',
+              },
+              body: JSON.stringify({
+                body: `**Actualización de Nash** (${new Date().toISOString().slice(0, 16).replace('T', ' ')})\n\n${prompt}\n\n---\n\n_Este comentario fue agregado porque el cliente respondió confirmando que el problema persiste. Ver metadata del incidente ${incident.id} en /admin/soporte._`,
+              }),
+            });
+            if (res.ok) {
+              const prevMeta = (incident.meta as Record<string, unknown> | null) ?? {};
+              const commentsLog = Array.isArray(prevMeta.claude_code_comments) ? prevMeta.claude_code_comments : [];
+              await supabase.from('platform_incidents')
+                .update({
+                  status: 'sent_to_claude_code',
+                  meta:   { ...prevMeta, claude_code_comments: [...commentsLog, { at: new Date().toISOString(), preview: prompt.slice(0, 200) }] },
+                })
+                .eq('id', incidentId);
+              return { ok: true, github_issue_url: incident.github_issue_url as string, added_comment: true, already_sent: true };
+            }
+            return { ok: false, error: `github comment failed: ${res.status}`, github_issue_url: incident.github_issue_url as string };
+          } catch (e) {
+            return { ok: false, error: e instanceof Error ? e.message : String(e), github_issue_url: incident.github_issue_url as string };
+          }
+        }
+        return { ok: true, github_issue_url: incident.github_issue_url as string, already_sent: true, warning: 'no se pudo agregar comment (falta token o issue num)' };
       }
+
       const token  = process.env.NASH_GITHUB_TOKEN;
       const repo   = process.env.NASH_GITHUB_REPO ?? 'Centinelia/Centinelia';
       const labels = ['bug', 'from-nash', `priority-${incident.priority}`, ...labelsIn];
