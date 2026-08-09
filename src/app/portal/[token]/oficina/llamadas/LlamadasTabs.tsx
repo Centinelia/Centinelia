@@ -212,15 +212,15 @@ export default function LlamadasTabs({
               <EmptyState
                 icon={PhoneOutgoing}
                 title="Llamadas salientes desactivadas"
-                description="Activa la función para que tu empleado pueda hacer llamadas de seguimiento, cobro o recuperación."
+                description="Activa la función en el empleado que quieres que haga llamadas de seguimiento, cobro o recuperación. Los coordinadores (Nox, Niva) no tienen voz. Solo empleados con voz pueden hacer salientes."
                 size="sm"
                 action={
                   <Link
-                    href={`/portal/${token}/configurar?tab=tools#llamadas-salientes`}
+                    href={`/portal/${token}/agentes`}
                     className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
                     style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
                   >
-                    Activar en Configurar →
+                    Elegir empleado →
                   </Link>
                 }
               />
@@ -250,15 +250,15 @@ export default function LlamadasTabs({
           <EmptyState
             icon={PhoneMissed}
             title="Recuperación de llamadas desactivada"
-            description="Cuando la activas, tu empleado devuelve automáticamente cada llamada que no pudo contestar."
+            description="Actívala en el empleado que quieres que devuelva llamadas perdidas. Solo aplica a empleados con voz, no a coordinadores."
             size="sm"
             action={
               <Link
-                href={`/portal/${token}/configurar?tab=personalidad#llamadas`}
+                href={`/portal/${token}/agentes`}
                 className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
                 style={{ background: '#6C3BFF', color: '#fff', textDecoration: 'none' }}
               >
-                Activar en Configurar →
+                Elegir empleado →
               </Link>
             }
           />

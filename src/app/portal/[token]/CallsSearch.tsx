@@ -28,6 +28,8 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
 }) {
   const [query,      setQuery]      = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFrom,   setDateFrom]   = useState('');
+  const [dateTo,     setDateTo]     = useState('');
 
   const statsLine = useMemo(() => {
     const today      = new Date().toLocaleDateString('en-CA');
@@ -67,12 +69,16 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         c.summary?.toLowerCase().includes(q) ||
         c.transcript?.toLowerCase().includes(q)
       );
-      return matchType && matchQuery;
+      // Rango de fechas — inclusive en ambos extremos (23:59:59 en el "to")
+      const createdISO = c.created_at?.slice(0, 10) ?? '';
+      const matchFrom  = !dateFrom || createdISO >= dateFrom;
+      const matchTo    = !dateTo   || createdISO <= dateTo;
+      return matchType && matchQuery && matchFrom && matchTo;
     }),
-    [calls, q, typeFilter]
+    [calls, q, typeFilter, dateFrom, dateTo]
   );
 
-  const isFiltered = q || typeFilter !== 'all';
+  const isFiltered = q || typeFilter !== 'all' || dateFrom || dateTo;
 
   return (
     <div className="flex flex-col gap-3">
@@ -114,22 +120,60 @@ export default function CallsSearch({ calls, isPro, callerNames = {}, token, age
         {availableOutcomes.length > 1 && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger
-              className="w-auto shrink-0 py-2 text-xs bg-[color:#FAFAFB]"
+              className="shrink-0 py-2 text-xs bg-[color:#FAFAFB]"
               style={{
-                border: typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
-                color: typeFilter !== 'all' ? '#9B6DFF' : '#6B6480',
+                minWidth:   140,
+                border:     typeFilter !== 'all' ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color:      typeFilter !== 'all' ? '#9B6DFF' : '#6B6480',
                 fontWeight: typeFilter !== 'all' ? 600 : 400,
               }}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tipo: todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {availableOutcomes.map(o => (
                 <SelectItem key={o} value={o!}>{OUTCOME_LABELS[o!] ?? o}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )}
+      </div>
+
+      {/* Rango de fechas */}
+      <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: '#6B6480' }}>
+        <span>Desde</span>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          className="rounded-lg px-2 py-1 text-xs"
+          style={{
+            background: '#FAFAFB',
+            border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+            color: '#1A0A3B', outline: 'none',
+          }}
+        />
+        <span>hasta</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          className="rounded-lg px-2 py-1 text-xs"
+          style={{
+            background: '#FAFAFB',
+            border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+            color: '#1A0A3B', outline: 'none',
+          }}
+        />
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:opacity-70"
+            style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
+          >
+            <X size={11} /> limpiar
+          </button>
         )}
       </div>
 

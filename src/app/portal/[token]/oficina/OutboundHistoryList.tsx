@@ -62,8 +62,10 @@ interface Props {
 }
 
 export default function OutboundHistoryList({ calls, agentNameById }: Props) {
-  const [filter, setFilter] = useState<Filter>('todas');
-  const [query,  setQuery]  = useState('');
+  const [filter,   setFilter]   = useState<Filter>('todas');
+  const [query,    setQuery]    = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
 
   const filteredByStatus = useMemo(() => {
     if (filter === 'todas') return calls;
@@ -75,13 +77,18 @@ export default function OutboundHistoryList({ calls, agentNameById }: Props) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return filteredByStatus;
-    return filteredByStatus.filter(c =>
-      (c.nombre ?? '').toLowerCase().includes(q) ||
-      c.telefono.includes(q) ||
-      (c.motivo ?? '').toLowerCase().includes(q)
-    );
-  }, [filteredByStatus, query]);
+    return filteredByStatus.filter(c => {
+      const matchQuery = !q || (
+        (c.nombre ?? '').toLowerCase().includes(q) ||
+        c.telefono.includes(q) ||
+        (c.motivo ?? '').toLowerCase().includes(q)
+      );
+      const calledISO  = c.called_at?.slice(0, 10) ?? '';
+      const matchFrom  = !dateFrom || calledISO >= dateFrom;
+      const matchTo    = !dateTo   || calledISO <= dateTo;
+      return matchQuery && matchFrom && matchTo;
+    });
+  }, [filteredByStatus, query, dateFrom, dateTo]);
 
   const counts = useMemo(() => ({
     todas:         calls.length,
@@ -127,6 +134,45 @@ export default function OutboundHistoryList({ calls, agentNameById }: Props) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Rango de fechas */}
+      {calls.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: '#6B6480' }}>
+          <span>Desde</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="rounded-lg px-2 py-1 text-xs"
+            style={{
+              background: '#FAFAFB',
+              border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+              color: '#1A0A3B', outline: 'none',
+            }}
+          />
+          <span>hasta</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="rounded-lg px-2 py-1 text-xs"
+            style={{
+              background: '#FAFAFB',
+              border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+              color: '#1A0A3B', outline: 'none',
+            }}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:opacity-70"
+              style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
+            >
+              <X size={11} /> limpiar
+            </button>
+          )}
         </div>
       )}
 

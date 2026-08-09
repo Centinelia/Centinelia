@@ -79,7 +79,9 @@ export default async function ConfigurarAgentePage({ params }: Props) {
   const hasVoiceJornada = !isCoordinator && jornadaType !== 'tareas';
   const initOutbound   = !!(features.outbound_calls);
   const initMissedCall = !!((agent as any).missed_call_recovery);
-  const showOutbound   = initOutbound || agent.plan === 'pro';
+  // Coordinadores (Nox, Niva, Nash) NO tienen voz — nunca deben ver el
+  // toggle de llamadas salientes en su config (confusión al usuario).
+  const showOutbound   = !isCoordinator && (initOutbound || agent.plan === 'pro');
   // Capabilities de outbound: agent-level override > meerkat default. Ver
   // src/lib/portal/outbound-capabilities.ts y outbound-gate.ts.
   const meerkatCaps = meerkatId ? ((MEERKAT_MAP as Record<string, { features: { outbound_capabilities?: string[] } }>)[meerkatId]?.features.outbound_capabilities ?? []) : [];

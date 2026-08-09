@@ -5,18 +5,11 @@ import { notFound, redirect }           from 'next/navigation';
 import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { ThemeProvider }                from '@/components/ThemeProvider';
-import BusinessSwitcher                 from '../BusinessSwitcher';
-import PortalLogout                     from '../PortalLogout';
 
-import OficinaSidebar                   from './OficinaSidebar';
 import OficinaSidebarV2                 from './OficinaSidebarV2';
 import OficinaHeaderDark                from './OficinaHeaderDark';
 import OficinaMobileNav                 from './OficinaMobileNav';
-import NotificationBell                 from '../NotificationBell';
 import PortalFooter                     from '../PortalFooter';
-import Link                             from 'next/link';
-import { ArrowLeft }                    from 'lucide-react';
-import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 
 // Next.js 15 generates Promise<unknown> for nested layout params;
 // use Promise<any> so the type is compatible at the call site.
@@ -56,13 +49,16 @@ export default async function OficinaLayout({
   const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
 
-  // Pool compartido: prefiere org-level, cae a SUM per-agente si no está migrada.
+  // Pool compartido + logo org-level. Ver [[feedback-integraciones-org-level]]:
+  // toda config del negocio (logo, marca, pool) vive en organizations, no
+  // per-agente. Un solo query paralelo evita 2 roundtrips.
   const { data: orgPool } = lookupEmail
     ? await supabase.from('organizations')
-        .select('monthly_ops_pool, monthly_ops_used')
+        .select('monthly_ops_pool, monthly_ops_used, logo_url')
         .eq('portal_email', lookupEmail)
         .maybeSingle()
     : { data: null };
+  const orgLogoUrl = (orgPool?.logo_url as string | null) ?? null;
   let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
   let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
   if (!orgPool?.monthly_ops_pool) {
@@ -76,23 +72,23 @@ export default async function OficinaLayout({
   const vertical   = ((agent as any).features as any)?.vertical as string | undefined;
   const modules    = session?.isSubUser ? (session.modules ?? []) : undefined;
 
-  // V2 flag
-  const v2Enabled = agent.portal_email
-    ? await isPortalV2Enabled(agent.portal_email)
-    : false;
-
   // Business switcher options
   const { data: clientAgents } = lookupEmail
     ? await supabase.from('voice_agents').select('business_name, logo_url, portal_token').eq('portal_email', lookupEmail)
     : { data: [] };
 
-  const businessGroups = [...new Map(
-    (clientAgents ?? []).map((a: any) => [a.business_name, {
-      business_name: a.business_name,
-      logo_url:      a.logo_url ?? null,
-      first_token:   a.portal_token,
-    }])
-  ).values()];
+  // Dedup por business_name PREFIRIENDO el peer que sí tiene logo. Antes:
+  // si Niva era el primero del map (sin logo) su null ganaba y todo el
+  // business quedaba sin logo aunque otros peers sí lo tuvieran.
+  const businessGroups = [...(clientAgents ?? []).reduce((map: Map<string, { business_name: string; logo_url: string | null; first_token: string }>, a: any) => {
+    const existing = map.get(a.business_name);
+    if (!existing) {
+      map.set(a.business_name, { business_name: a.business_name, logo_url: a.logo_url ?? null, first_token: a.portal_token });
+    } else if (!existing.logo_url && a.logo_url) {
+      map.set(a.business_name, { ...existing, logo_url: a.logo_url });
+    }
+    return map;
+  }, new Map()).values()];
 
   // ── Unread badge counts ──────────────────────────────────────────────────
   const badges: Record<string, number> = { bandeja: 0, contratos: 0, juntas: 0, reportes: 0 };
@@ -163,33 +159,25 @@ export default async function OficinaLayout({
     }
   }
 
-  // ── V2 shell: header dark 48px + sidebar dark 260px + content light ────
-  if (v2Enabled) {
-    return (
-      <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-        <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
-          <OficinaHeaderDark
-            token={token}
-            businessName={agent.business_name}
-            logoUrl={(agent as any).logo_url ?? null}
-            businessOptions={businessGroups}
-            mobileNav={
-              <OficinaMobileNav
-                token={token}
-                badges={badges}
-                minutesRemain={minutesRemain}
-                minutesIncluded={minutesIncluded}
-                aiOpsUsed={aiOpsUsed}
-                aiOpsLimit={aiOpsLimit}
-                hasStripe={hasStripe}
-                vertical={vertical}
-                modules={modules}
-              />
-            }
-          />
-
-          <div className="flex flex-1 min-h-0">
-            <OficinaSidebarV2
+  return (
+    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+      <div className="min-h-screen flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B' }}>
+        <OficinaHeaderDark
+          token={token}
+          businessName={agent.business_name}
+          logoUrl={
+            // org-level primero (fuente de verdad después de la migración
+            // 20260809_organizations_logo_url). Fallback a voice_agents por
+            // si algún cliente subió logo después de la migration snapshot y
+            // aún no se ha sync'd al org (edge case, safety net).
+            orgLogoUrl
+              ?? (agent as any).logo_url
+              ?? (clientAgents ?? []).find((a: any) => a.business_name === agent.business_name && a.logo_url)?.logo_url
+              ?? null
+          }
+          businessOptions={businessGroups}
+          mobileNav={
+            <OficinaMobileNav
               token={token}
               badges={badges}
               minutesRemain={minutesRemain}
@@ -200,67 +188,11 @@ export default async function OficinaLayout({
               vertical={vertical}
               modules={modules}
             />
-            <main className="flex-1 min-w-0 flex flex-col">
-              <div className="px-4 sm:px-6 py-6 flex-1">
-                {children}
-              </div>
-              <PortalFooter token={token} />
-            </main>
-          </div>
-        </div>
-      </ThemeProvider>
-    );
-  }
+          }
+        />
 
-  // ── V1 layout (legacy — se eliminará pronto) ─────────────────────────────
-  return (
-    <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
-      <div className="min-h-screen relative flex flex-col" style={{ background: '#FAFAFB', color: '#1A0A3B', overflowX: 'clip' }}>
-
-        {/* Header */}
-        <div style={{ background: '#ffffff', borderBottom: '1px solid rgba(108,59,255,0.18)', boxShadow: '0 2px 24px rgba(0,0,0,0.18)', position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <OficinaMobileNav
-                token={token}
-                badges={badges}
-                minutesRemain={minutesRemain}
-                minutesIncluded={minutesIncluded}
-                aiOpsUsed={aiOpsUsed}
-                aiOpsLimit={aiOpsLimit}
-                hasStripe={hasStripe}
-                vertical={vertical}
-                modules={modules}
-              />
-              <BusinessSwitcher
-                current={{ business_name: agent.business_name, logo_url: (agent as any).logo_url ?? null, first_token: token }}
-                options={businessGroups}
-                currentBusinessName={agent.business_name}
-              />
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <NotificationBell token={token} />
-              <PortalLogout />
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile breadcrumb */}
-        <div className="md:hidden flex items-center gap-2 px-4 py-2.5"
-          style={{ background: '#ffffff', borderBottom: '1px solid #E8E3F5' }}>
-          <Link href={`/portal/${token}?tab=inicio`}
-            className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: '#6B6480' }}>
-            <ArrowLeft size={12} />
-            Portal
-          </Link>
-          <span style={{ color: '#9B8FB5' }}>/</span>
-          <span className="text-xs font-medium" style={{ color: '#1A0A3B' }}>Oficina</span>
-        </div>
-
-        {/* Body — sidebar is position:fixed, main content has md:pl-[260px] to compensate */}
-        <div className="flex flex-1">
-          <OficinaSidebar
+        <div className="flex flex-1 min-h-0">
+          <OficinaSidebarV2
             token={token}
             badges={badges}
             minutesRemain={minutesRemain}
@@ -271,14 +203,13 @@ export default async function OficinaLayout({
             vertical={vertical}
             modules={modules}
           />
-          <div className="flex-1 min-w-0 flex flex-col md:pl-[260px]">
+          <main className="flex-1 min-w-0 flex flex-col">
             <div className="px-4 sm:px-6 py-6 flex-1">
               {children}
             </div>
             <PortalFooter token={token} />
-          </div>
+          </main>
         </div>
-
       </div>
     </ThemeProvider>
   );

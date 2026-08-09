@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   CheckCircle2, XCircle, Loader2, AlertTriangle, Clock, Bot,
-  ListChecks, RefreshCw,
+  ListChecks, RefreshCw, X,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -42,9 +42,11 @@ const FILTERS: { key: Filter; label: string; statuses: TaskStatus[] }[] = [
 ];
 
 export default function AgentTasksSection({ token }: { token: string }) {
-  const [filter, setFilter] = useState<Filter>('active');
-  const [items,  setItems]  = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [filter,   setFilter]   = useState<Filter>('active');
+  const [items,    setItems]    = useState<Task[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +59,13 @@ export default function AgentTasksSection({ token }: { token: string }) {
   }, [token, filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const filteredItems = items.filter(t => {
+    const createdISO = t.created_at?.slice(0, 10) ?? '';
+    const matchFrom  = !dateFrom || createdISO >= dateFrom;
+    const matchTo    = !dateTo   || createdISO <= dateTo;
+    return matchFrom && matchTo;
+  });
 
   const currentLabel = FILTERS.find(f => f.key === filter)?.label ?? '';
 
@@ -98,28 +107,65 @@ export default function AgentTasksSection({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* Filter pills */}
+      {/* Filter pills + rango de fechas */}
       <div
-        className="px-5 py-2.5 flex items-center gap-1.5 flex-wrap"
+        className="px-5 py-2.5 flex items-center gap-3 flex-wrap"
         style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
       >
-        {FILTERS.map(f => {
-          const active = filter === f.key;
-          return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {FILTERS.map(f => {
+            const active = filter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
+                style={{
+                  background: active ? '#6C3BFF' : '#ffffff',
+                  color:      active ? '#ffffff' : '#6B6480',
+                  border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] ml-auto" style={{ color: '#6B6480' }}>
+          <span>Desde</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="rounded-md px-2 py-1 text-xs"
+            style={{
+              background: '#ffffff',
+              border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+              color: '#1A0A3B', outline: 'none',
+            }}
+          />
+          <span>hasta</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="rounded-md px-2 py-1 text-xs"
+            style={{
+              background: '#ffffff',
+              border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+              color: '#1A0A3B', outline: 'none',
+            }}
+          />
+          {(dateFrom || dateTo) && (
             <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors"
-              style={{
-                background: active ? '#6C3BFF' : '#ffffff',
-                color:      active ? '#ffffff' : '#6B6480',
-                border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
-              }}
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:opacity-70"
+              style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
             >
-              {f.label}
+              <X size={10} /> limpiar
             </button>
-          );
-        })}
+          )}
+        </div>
       </div>
 
       {/* Content */}
