@@ -18,13 +18,17 @@ const TABS: Array<{ id: 'uso' | 'comprar' | 'recarga'; label: string; icon: Reac
   { id: 'recarga', label: 'Recarga', icon: BatteryCharging },
 ];
 
-// Map URL hash (used by sidebar anchors) → tab value
-function hashToTab(): 'uso' | 'comprar' | 'recarga' {
-  if (typeof window === 'undefined') return 'uso';
+// Map URL hash (used by sidebar anchors) → tab value.
+// Returns null cuando el hash no corresponde a un tab de esta card, para no
+// forzar un switch a "uso" cuando el usuario hace click en un item que apunta
+// a otra sección de Cuenta (Historial, Reporte mensual, etc.).
+function hashToTab(): 'uso' | 'comprar' | 'recarga' | null {
+  if (typeof window === 'undefined') return null;
   const h = window.location.hash.slice(1);
+  if (h === 'uso-del-mes' || h === 'uso') return 'uso';
   if (h === 'comprar') return 'comprar';
   if (h === 'recarga') return 'recarga';
-  return 'uso';
+  return null;
 }
 
 /**
@@ -39,8 +43,12 @@ export default function CuentaUsageTabsCard({ usoContent, comprarContent, recarg
   const [value, setValue] = useState<'uso' | 'comprar' | 'recarga'>('uso');
 
   useEffect(() => {
-    setValue(hashToTab());
-    const onHash = () => setValue(hashToTab());
+    const initial = hashToTab();
+    if (initial) setValue(initial);
+    const onHash = () => {
+      const next = hashToTab();
+      if (next) setValue(next);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);

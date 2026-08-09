@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, Loader2, Palette, ChevronDown } from 'lucide-react';
+import { Check, Loader2, Palette, ChevronDown, Mail } from 'lucide-react';
 
 interface Props {
   token:               string;
@@ -14,6 +14,7 @@ interface Props {
   initialAddress:      string;
   initialPhone:        string;
   initialFooter:       string;
+  senderEmail:         string | null;
 }
 
 const PRESET_COLORS = [
@@ -25,6 +26,7 @@ const PRESET_COLORS = [
 export default function BrandKitEditor({
   token, logoUrl, businessName, agentName,
   initialColor, initialColorSecondary, initialWebsite, initialAddress, initialPhone, initialFooter,
+  senderEmail,
 }: Props) {
   const [color,    setColor]    = useState(initialColor          || '#6C3BFF');
   const [color2,   setColor2]   = useState(initialColorSecondary || '');
@@ -221,6 +223,7 @@ export default function BrandKitEditor({
         address={address}
         website={website}
         footer={footer}
+        senderEmail={senderEmail}
       />
 
       {/* ── Save — usa el color de marca actual como accent ── */}
@@ -251,7 +254,7 @@ export default function BrandKitEditor({
 
 // ── Inline email preview ────────────────────────────────────────────────────
 
-function EmailPreview({ logoUrl, businessName, agentName, color, color2, address, website, footer }: {
+function EmailPreview({ logoUrl, businessName, agentName, color, color2, address, website, footer, senderEmail }: {
   logoUrl:      string | null;
   businessName: string;
   agentName:    string;
@@ -260,6 +263,7 @@ function EmailPreview({ logoUrl, businessName, agentName, color, color2, address
   address:      string;
   website:      string;
   footer:       string;
+  senderEmail:  string | null;
 }) {
   const accent = color2 || color;
   const BORDER = `${color}22`;
@@ -267,54 +271,127 @@ function EmailPreview({ logoUrl, businessName, agentName, color, color2, address
   const SUB    = 'rgba(26,10,59,0.55)';
 
   return (
-    <div>
-      <p className="text-xs mb-2 font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
-        Vista previa del email
-      </p>
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #F0EDF9', background: '#F8F7FF', fontSize: 12 }}>
-
-        {/* Header */}
-        <div style={{ padding: '16px 24px', textAlign: 'center', borderBottom: `1px solid ${BORDER}` }}>
-          {logoUrl
-            ? <img src={logoUrl} alt={businessName} style={{ maxHeight: 40, maxWidth: 160, display: 'inline-block', objectFit: 'contain' }} />
-            : <span style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>{businessName}</span>
-          }
+    <div className="flex flex-col gap-3">
+      {/* Header semántico */}
+      <div className="flex items-center gap-3">
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${color}14`, border: `1px solid ${color}33` }}
+        >
+          <Mail size={20} style={{ color }} strokeWidth={2} />
         </div>
-
-        {/* Body */}
-        <div style={{ padding: '20px 24px', background: '#fff', borderBottom: `1px solid ${BORDER}` }}>
-          <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <span style={{ display: 'inline-block', background: `${color}14`, border: `1px solid ${color}30`, borderRadius: 20, padding: '4px 12px', color, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Cita confirmada
-            </span>
-          </div>
-          <p style={{ color: TEXT, fontSize: 14, fontWeight: 700, margin: '0 0 4px', textAlign: 'center' }}>Hola, María</p>
-          <p style={{ color: SUB, fontSize: 12, margin: '0 0 14px', textAlign: 'center' }}>Tu cita en <strong>{businessName}</strong> quedó registrada.</p>
-          <div style={{ background: `${accent}08`, border: `1px solid ${accent}18`, borderRadius: 10, padding: '10px 16px', fontSize: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${BORDER}`, paddingBottom: 8, marginBottom: 8 }}>
-              <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Fecha</span>
-              <span style={{ color: TEXT, fontWeight: 600 }}>Lunes 14 de julio, 2026</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Servicio</span>
-              <span style={{ color: TEXT }}>Consulta general</span>
-            </div>
-          </div>
-          <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 11, margin: '14px 0 0' }}>
-            {agentName}, {businessName}
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+            Así se verán tus correos
+          </p>
+          <p className="text-[12px]" style={{ color: '#6B6480' }}>
+            Ejemplo real usando tu logo, colores y datos actuales.
           </p>
         </div>
+      </div>
 
-        {/* Footer */}
-        <div style={{ padding: '10px 24px', textAlign: 'center' }}>
-          {footer && <p style={{ color: 'rgba(26,10,59,0.4)', fontSize: 10, margin: '0 0 2px', lineHeight: 1.6 }}>{footer}</p>}
-          {(address || website) && (
-            <p style={{ color: 'rgba(26,10,59,0.3)', fontSize: 10, margin: 0, lineHeight: 1.6 }}>
-              {[address, website].filter(Boolean).join(' · ')}
-            </p>
-          )}
+      {/* Chrome de cliente de correo */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #E8E3F5',
+          boxShadow: '0 12px 32px rgba(26,10,59,0.08), 0 2px 6px rgba(26,10,59,0.04)',
+        }}
+      >
+        {/* Barra de ventana estilo Mac */}
+        <div
+          className="flex items-center gap-2 px-4 py-2.5"
+          style={{ background: '#F5F2FB', borderBottom: '1px solid #E8E3F5' }}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-full" style={{ background: '#FF5F57' }} />
+            <span className="w-3 h-3 rounded-full" style={{ background: '#FEBC2E' }} />
+            <span className="w-3 h-3 rounded-full" style={{ background: '#28C840' }} />
+          </div>
+          <p className="text-[11px] font-semibold flex-1 text-center" style={{ color: '#6B6480' }}>
+            Correo · Bandeja de entrada
+          </p>
+          <span className="w-14" />
         </div>
 
+        {/* Metadata del mensaje */}
+        <div className="flex flex-col gap-2 px-5 py-3.5" style={{ background: '#FAFAFB', borderBottom: '1px solid #F0EDF9' }}>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider w-14 flex-shrink-0" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>De</span>
+            <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>{businessName}</span>
+            {senderEmail && (
+              <span className="text-[12px]" style={{ color: '#9B8FB5' }}>&lt;{senderEmail}&gt;</span>
+            )}
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider w-14 flex-shrink-0" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>Para</span>
+            <span className="text-[13px]" style={{ color: '#1A0A3B' }}>María González</span>
+            <span className="text-[12px]" style={{ color: '#9B8FB5' }}>&lt;maria@ejemplo.com&gt;</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider w-14 flex-shrink-0" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>Asunto</span>
+            <span className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Confirmación de tu cita</span>
+          </div>
+        </div>
+
+        {/* Body del correo (contenido real de la plantilla) */}
+        <div style={{ background: '#F8F7FF', fontSize: 12 }}>
+          {/* Header con logo */}
+          <div style={{ padding: '20px 28px', textAlign: 'center', borderBottom: `1px solid ${BORDER}`, background: '#ffffff' }}>
+            {logoUrl
+              ? <img src={logoUrl} alt={businessName} style={{ maxHeight: 44, maxWidth: 180, display: 'inline-block', objectFit: 'contain' }} />
+              : <span style={{ fontSize: 16, fontWeight: 800, color: TEXT, letterSpacing: '-0.01em' }}>{businessName}</span>
+            }
+          </div>
+
+          {/* Body */}
+          <div style={{ padding: '24px 28px', background: '#fff' }}>
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <span style={{ display: 'inline-block', background: `${color}14`, border: `1px solid ${color}30`, borderRadius: 20, padding: '5px 14px', color, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Cita confirmada
+              </span>
+            </div>
+            <p style={{ color: TEXT, fontSize: 15, fontWeight: 700, margin: '0 0 6px', textAlign: 'center' }}>Hola, María</p>
+            <p style={{ color: SUB, fontSize: 13, margin: '0 0 18px', textAlign: 'center' }}>Tu cita en <strong>{businessName}</strong> quedó registrada.</p>
+            <div style={{ background: `${accent}08`, border: `1px solid ${accent}22`, borderRadius: 12, padding: '14px 18px', fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${BORDER}`, paddingBottom: 10, marginBottom: 10 }}>
+                <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Fecha</span>
+                <span style={{ color: TEXT, fontWeight: 600 }}>Lunes 14 de julio, 2026</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${BORDER}`, paddingBottom: 10, marginBottom: 10 }}>
+                <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Hora</span>
+                <span style={{ color: TEXT, fontWeight: 600 }}>4:30 pm</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: SUB, fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em' }}>Servicio</span>
+                <span style={{ color: TEXT }}>Consulta general</span>
+              </div>
+            </div>
+
+            {/* Botón CTA de ejemplo */}
+            <div style={{ textAlign: 'center', marginTop: 18 }}>
+              <span style={{ display: 'inline-block', background: color, color: '#fff', fontWeight: 700, fontSize: 12, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
+                Ver detalles
+              </span>
+            </div>
+
+            <p style={{ color: SUB, fontSize: 12, margin: '20px 0 0', textAlign: 'center' }}>
+              Saludos,<br />
+              <strong style={{ color: TEXT }}>{agentName}</strong>
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '14px 28px 18px', textAlign: 'center', borderTop: `1px solid ${BORDER}`, background: '#FAFAFB' }}>
+            {footer && <p style={{ color: 'rgba(26,10,59,0.55)', fontSize: 11, margin: '0 0 4px', lineHeight: 1.6 }}>{footer}</p>}
+            {(address || website) && (
+              <p style={{ color: 'rgba(26,10,59,0.4)', fontSize: 10, margin: 0, lineHeight: 1.6 }}>
+                {[address, website].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

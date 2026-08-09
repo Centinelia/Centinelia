@@ -21,6 +21,7 @@ import {
   type NavGroup,
 } from '@/lib/portal/portal-v2-areas';
 import { uColor } from '@/lib/portal/utils';
+import { pulseAnchor } from '@/lib/portal/highlight-anchor';
 
 // ─── Icon registry ─────────────────────────────────────────────────────────────
 
@@ -159,17 +160,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
       setPendingIds(null);
       const rect = firstEl.getBoundingClientRect();
       window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
-      for (const id of pendingIds) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        el.style.transition = 'box-shadow 0.15s';
-        el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
-        setTimeout(() => {
-          el.style.transition = 'box-shadow 1.5s ease-out';
-          el.style.boxShadow = '';
-          setTimeout(() => { el.style.transition = ''; }, 1500);
-        }, 600);
-      }
+      for (const id of pendingIds) pulseAnchor(id);
     }, 50);
     return () => clearInterval(timer);
   }, [pendingIds]);
@@ -178,6 +169,19 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
     setOpenIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
     );
+  }
+
+  /**
+   * Next.js Link internally uses history.pushState which does NOT fire
+   * hashchange events per HTML spec — the event only fires on direct
+   * location.hash assignment, forward/back navigation, or non-intercepted
+   * link clicks. Sin este dispatch manual, NegocioTabs / CuentaUsageTabsCard
+   * / HashScrollHighlight nunca se enteran de cambios de anchor y no cambian
+   * al sub-tab correcto.
+   */
+  function handleAnchorClick(anchor?: string) {
+    if (anchor) setPendingIds([anchor]);
+    setTimeout(() => window.dispatchEvent(new Event('hashchange')), 0);
   }
 
   return (
@@ -341,9 +345,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                             <Link
                               href={itemHref}
                               scroll={false}
-                              onClick={() => {
-                                if (item.anchor) setPendingIds([item.anchor]);
-                              }}
+                              onClick={() => handleAnchorClick(item.anchor)}
                               aria-current={itemActive ? 'page' : undefined}
                               className={[
                                 'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',

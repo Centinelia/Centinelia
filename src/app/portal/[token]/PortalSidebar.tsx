@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Meerkat from '@/components/icons/Meerkat';
 import { uColor } from '@/lib/portal/utils';
+import { pulseAnchor } from '@/lib/portal/highlight-anchor';
 
 type SubItem    = { label: string; id: string; ids?: string[]; href?: string; icon?: React.ReactNode; anchorId?: string };
 type SubSection = { label: string; id: string; icon: React.ReactNode; items: SubItem[] };
@@ -46,17 +47,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
       setPendingIds(null);
       const rect = firstEl.getBoundingClientRect();
       window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
-      for (const id of pendingIds) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        el.style.transition = 'box-shadow 0.15s';
-        el.style.boxShadow = '0 0 0 3px rgba(108,59,255,0.7), inset 0 0 0 9999px rgba(108,59,255,0.15)';
-        setTimeout(() => {
-          el.style.transition = 'box-shadow 1.5s ease-out';
-          el.style.boxShadow = '';
-          setTimeout(() => { el.style.transition = ''; }, 1500);
-        }, 600);
-      }
+      for (const id of pendingIds) pulseAnchor(id);
     }, 50);
     return () => clearInterval(timer);
   }, [pendingIds]);
@@ -64,25 +55,35 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
   const toggle = (id: string) =>
     setOpenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
+  // Next.js Link internally usa history.pushState que NO dispara hashchange
+  // events per HTML spec. Sin este dispatch manual, NegocioTabs y
+  // CuentaUsageTabsCard no cambian al sub-tab correcto cuando clicas un
+  // anchor cross sub-tab.
+  const fireHashChange = () =>
+    setTimeout(() => window.dispatchEvent(new Event('hashchange')), 0);
+
   const allSections: Section[] = [
     {
       id: 'inicio', moduleId: 'inicio', label: 'Inicio', icon: <LayoutDashboard size={14} />,
       items: [
-        { label: 'Resumen',    id: 'semana' },
-        { label: 'Pendientes', id: 'hoy' },
+        { label: 'Cómo va tu semana',      id: 'semana' },
+        { label: 'Hoy tienes que atender', id: 'hoy' },
       ],
     },
     {
       id: 'negocio', moduleId: 'negocio', label: 'Organización', icon: <Building2 size={14} />,
       items: [
-        { label: 'Organización',                    id: 'organizacion' },
-        { label: 'Branding',                        id: 'branding' },
-        { label: 'Manual de la organización',        id: 'conocimiento' },
-        { label: 'Perfil del responsable',    id: 'perfil-dueno' },
-        { label: 'Contratos internos',        id: 'contratos-internos' },
-        { label: 'Sitio web y reseñas',       id: 'sitio' },
-        { label: 'Notificaciones al cliente',        id: 'dominio-correo' },
-        { label: 'Horarios',                  id: 'horarios' },
+        { label: 'Perfil de la organización',       id: 'organizacion' },
+        { label: 'Manual de la organización',       id: 'conocimiento' },
+        { label: 'Perfil del responsable',          id: 'perfil-dueno' },
+        { label: 'Identidad visual',                id: 'branding' },
+        { label: 'Tono de marca',                   id: 'tono-de-marca' },
+        { label: 'Sitio web y reseñas',             id: 'sitio' },
+        { label: 'Horario de atención',             id: 'horarios' },
+        { label: 'Idioma de atención',              id: 'idioma' },
+        { label: 'Correos automáticos a tus clientes', id: 'dominio-correo' },
+        { label: 'Tu CRM en Google Sheets',         id: 'sheets-crm' },
+        { label: 'Personas de la organización',     id: 'directorio' },
       ],
     },
     {
@@ -139,9 +140,12 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
     {
       id: 'cuenta', moduleId: 'cuenta', label: 'Cuenta', icon: <CircleUser size={14} />,
       items: [
-        { label: 'Consumo',   id: 'uso-del-mes',  ids: ['uso-del-mes', 'consumo-promedio'] },
-        { label: 'Saldo',     id: 'comprar',  ids: ['comprar', 'recarga'] },
-        { label: 'Historial', id: 'historial' },
+        { label: 'Consumo promedio',     id: 'consumo-promedio' },
+        { label: 'Consumo del mes',      id: 'uso-del-mes' },
+        { label: 'Comprar saldo',        id: 'comprar',  ids: ['comprar', 'recarga'] },
+        { label: 'Historial de consumo', id: 'historial' },
+        { label: 'Reporte mensual',      id: 'reporte-mensual' },
+        { label: 'Términos de servicio', id: 'terminos-servicio' },
       ],
     },
     ...(isOwner ? [{
@@ -245,6 +249,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                         onClick={() => {
                           const scrollId = item.anchorId ?? (!item.href ? item.id : null);
                           if (scrollId) setPendingIds(item.ids ?? [scrollId]);
+                          fireHashChange();
                         }}
                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                         style={{ color: itemActive ? '#9B6DFF' : 'var(--c-text-2)', background: itemActive ? 'rgba(108,59,255,0.08)' : 'transparent' }}
@@ -294,7 +299,7 @@ export default function PortalSidebar({ token, currentTab, hasOpsAgent, showOutb
                                 key={item.id}
                                 href={item.href ?? `${subHref}#${item.id}`}
                                 scroll={false}
-                                onClick={() => { if (!item.href && item.id) setPendingIds(item.ids ?? [item.id]); }}
+                                onClick={() => { if (!item.href && item.id) setPendingIds(item.ids ?? [item.id]); fireHashChange(); }}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--c-surface-2)]"
                                 style={{ color: 'var(--c-text-2)' }}
                               >

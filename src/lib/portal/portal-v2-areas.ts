@@ -64,12 +64,13 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'inicio',
     tabParam: 'inicio',
     items: [
-      { label: 'Resumen',    anchor: 'semana' },
-      { label: 'Pendientes', anchor: 'hoy' },
+      { label: 'Cómo va tu semana',    anchor: 'semana' },
+      { label: 'Hoy tienes que atender', anchor: 'hoy' },
     ],
   });
 
   // ── 2. Organización ────────────────────────────────────────────────────────
+  // Labels espejo de los <h2> reales de cada sección en page.tsx.
   all.push({
     id: 'negocio',
     label: 'Organización',
@@ -77,16 +78,18 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'negocio',
     tabParam: 'negocio',
     items: [
-      { label: 'Organización',                 anchor: 'organizacion' },
-      { label: 'Branding',                     anchor: 'branding' },
-      { label: 'Manual de la organización',    anchor: 'conocimiento' },
-      { label: 'Perfil del responsable',       anchor: 'perfil-dueno' },
-      { label: 'Contratos internos',           anchor: 'contratos-internos' },
-      { label: 'Sitio web y reseñas',          anchor: 'sitio' },
-      { label: 'Correos automáticos al cliente', anchor: 'dominio-correo' },
-      { label: 'CRM en Google Sheets',           anchor: 'sheets-crm' },
-      { label: 'Integraciones',                  anchor: 'integraciones' },
-      { label: 'Horarios',                       anchor: 'horarios' },
+      { label: 'Perfil de la organización',       anchor: 'organizacion' },
+      { label: 'Manual de la organización',       anchor: 'conocimiento' },
+      { label: 'Perfil del responsable',          anchor: 'perfil-dueno' },
+      { label: 'Identidad visual',                anchor: 'branding' },
+      { label: 'Tono de marca',                   anchor: 'tono-de-marca' },
+      { label: 'Sitio web y reseñas',             anchor: 'sitio' },
+      { label: 'Horario de atención',             anchor: 'horarios' },
+      { label: 'Idioma de atención',              anchor: 'idioma' },
+      { label: 'Correos automáticos a tus clientes', anchor: 'dominio-correo' },
+      { label: 'Tu CRM en Google Sheets',         anchor: 'sheets-crm' },
+      { label: 'Personas de la organización',     anchor: 'directorio' },
+      { label: 'Integraciones',                   anchor: 'integraciones' },
     ],
   });
 
@@ -139,6 +142,7 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
   }
 
   // ── 6. Cuenta ──────────────────────────────────────────────────────────────
+  // Labels espejo de los <h2> reales de cada sección en page.tsx.
   all.push({
     id: 'cuenta',
     label: 'Cuenta',
@@ -146,9 +150,10 @@ export function buildPortalNav(input: BuildNavInput): NavGroup[] {
     moduleId: 'cuenta',
     tabParam: 'cuenta',
     items: [
-      { label: 'Consumo',              anchor: 'uso-del-mes' },
-      { label: 'Saldo',                anchor: 'comprar' },
-      { label: 'Historial',            anchor: 'historial' },
+      { label: 'Consumo promedio',     anchor: 'consumo-promedio' },
+      { label: 'Consumo del mes',      anchor: 'uso-del-mes' },
+      { label: 'Comprar saldo',        anchor: 'comprar' },
+      { label: 'Historial de consumo', anchor: 'historial' },
       { label: 'Reporte mensual',      anchor: 'reporte-mensual' },
       { label: 'Términos de servicio', anchor: 'terminos-servicio' },
     ],

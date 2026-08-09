@@ -525,20 +525,6 @@ export default function SheetsMappingsSection({ token }: Props) {
             <Loader2 size={15} className="animate-spin" />
             Cargando hojas configuradas...
           </div>
-        ) : loadError ? (
-          <div style={{ borderTop: '1px solid #F0EDF9' }}>
-            <EmptyState
-              icon={Sheet}
-              title="Sin hojas configuradas"
-              description="No se pudieron cargar las hojas. Intenta recargar la página."
-              size="sm"
-              action={
-                <p className="text-xs" style={{ color: '#ef4444' }}>
-                  Error al cargar las hojas configuradas.
-                </p>
-              }
-            />
-          </div>
         ) : mappings.length === 0 && !showAddForm ? (
           <div style={{ borderTop: '1px solid #F0EDF9' }}>
             <EmptyState
@@ -547,20 +533,33 @@ export default function SheetsMappingsSection({ token }: Props) {
               description="Agrega la primera hoja para que el empleado pueda leer y escribir datos directamente en Google Sheets."
               size="sm"
               action={
-                <button
-                  type="button"
-                  id="sheets-add-first"
-                  onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
-                  style={{
-                    background: '#6C3BFF',
-                    color: '#fff',
-                    boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
-                  }}
-                >
-                  <Plus size={13} />
-                  Agregar hoja
-                </button>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    id="sheets-add-first"
+                    onClick={() => setShowAddForm(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90"
+                    style={{
+                      background: '#6C3BFF',
+                      color: '#fff',
+                      boxShadow: '0 1px 2px rgba(108,59,255,0.24)',
+                    }}
+                  >
+                    <Plus size={13} />
+                    Agregar hoja
+                  </button>
+                  {loadError && (
+                    <button
+                      type="button"
+                      onClick={loadMappings}
+                      className="text-[11px] font-medium transition-opacity hover:opacity-70 inline-flex items-center gap-1"
+                      style={{ color: '#9B8FB5' }}
+                    >
+                      <RefreshCw size={10} />
+                      Reintentar carga
+                    </button>
+                  )}
+                </div>
               }
             />
           </div>

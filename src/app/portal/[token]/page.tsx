@@ -16,6 +16,7 @@ import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { redirect } from 'next/navigation';
 
 import PortalLogout            from './PortalLogout';
+import HashScrollHighlight     from './HashScrollHighlight';
 import BrandKitEditor          from './BrandKitEditor';
 import EmailSettings            from './EmailSettings';
 import SheetsMappingsSection    from './configurar/SheetsMappingsSection';
@@ -911,6 +912,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                     initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
                     initialPhone={orgSettings?.brand_phone ?? ''}
                     initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                    senderEmail={(orgSettings as any)?.business_email ?? agent.portal_email ?? null}
                   />
                 </div>
 
@@ -1720,6 +1722,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                           initialAddress={orgSettings?.brand_address ?? (agent as any).brand_address ?? ''}
                           initialPhone={orgSettings?.brand_phone ?? ''}
                           initialFooter={orgSettings?.email_footer_text ?? (agent as any).email_footer_text ?? ''}
+                          senderEmail={(orgSettings as any)?.business_email ?? agent.portal_email ?? null}
                         />
                       </div>
                     </div>
@@ -2115,6 +2118,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   if (v2Enabled) {
     return (
       <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+        <HashScrollHighlight />
         <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
           <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
           <PortalShell
@@ -2153,6 +2157,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
   // V1 layout: BusinessSwitcher header + PortalSidebar
   return (
     <ThemeProvider storageKey="centinelia-portal-theme" defaultTheme="light">
+      <HashScrollHighlight />
       <div className="min-h-screen relative flex flex-col" style={{ background: 'var(--c-bg)', color: 'var(--c-text)', overflowX: 'clip' }}>
         <div style={{ position: 'absolute', width: 900, height: 500, top: -320, left: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(ellipse, rgba(108,59,255,0.13) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 

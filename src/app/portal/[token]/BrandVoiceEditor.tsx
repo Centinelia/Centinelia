@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Sparkles, Trash2, Loader2 } from 'lucide-react';
+import { Check, Sparkles, Trash2, Loader2, Mail, Globe, Megaphone, FileText } from 'lucide-react';
 
 interface Props {
   token:      string;
@@ -64,35 +64,107 @@ export default function BrandVoiceEditor({ token, initGuide, roleColor = '#6C3BF
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <p className="text-[13px] leading-relaxed" style={{ color: '#6B6480' }}>
-        Extrae el tono real de tu negocio a partir de correos, copy del sitio o cualquier texto que ya hayas escrito. Tus empleados van a hablar como tu marca, no con un tono genérico. Puedes editarlo manualmente después.
+        Extrae el tono real de tu negocio a partir de textos que ya hayas escrito. Tus empleados van a hablar como tu marca, no con un tono genérico. Puedes editarlo manualmente después.
       </p>
 
       {!guide.trim() && (
-        <div className="flex flex-col gap-3">
-          <label className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
-            Pega 3 a 5 muestras reales, separadas por una línea en blanco
-          </label>
-          <textarea
-            value={samples}
-            onChange={e => { setSamples(e.target.value); setError(null); }}
-            rows={10}
-            placeholder='Un correo previo que hayas mandado a un cliente…
+        <div className="flex flex-col gap-5">
 
-Otro correo o mensaje…
-
-Tu descripción del negocio o pitch escrito…'
-            className="w-full rounded-xl text-[14px] leading-relaxed outline-none resize-y transition-colors focus:border-[#6C3BFF]"
+          {/* Cómo empezar — pasos numerados */}
+          <div className="flex flex-col gap-3 rounded-2xl p-5"
             style={{
-              padding:    '14px 16px',
-              background: '#ffffff',
-              border:     '1px solid #E8E3F5',
-              color:      '#1A0A3B',
-              fontFamily: 'inherit',
-              minHeight:  200,
-            }}
-          />
+              background: `linear-gradient(135deg, ${roleColor}14 0%, ${roleColor}08 50%, #ffffff 100%)`,
+              border: `1px solid ${roleColor}33`,
+            }}>
+            <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+              Cómo hacerlo en 3 pasos
+            </p>
+
+            <ol className="flex flex-col gap-3">
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                  style={{ background: roleColor, color: '#ffffff' }}>1</span>
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+                    Junta 3 a 5 muestras reales de tu negocio
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                      <Mail size={11} style={{ color: roleColor }} /> Correos que ya mandaste
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                      <Globe size={11} style={{ color: roleColor }} /> Copy de tu sitio web
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                      <Megaphone size={11} style={{ color: roleColor }} /> Publicaciones de redes sociales
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full"
+                      style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                      <FileText size={11} style={{ color: roleColor }} /> Descripciones de servicios
+                    </span>
+                  </div>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                  style={{ background: roleColor, color: '#ffffff' }}>2</span>
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+                    Pégalos en el cuadro de abajo
+                  </p>
+                  <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+                    Separa cada muestra con una <strong>línea en blanco</strong> (presiona Enter dos veces entre una y otra).
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                  style={{ background: roleColor, color: '#ffffff' }}>3</span>
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+                    Presiona <span style={{ color: roleColor }}>Extraer tono de marca</span>
+                  </p>
+                  <p className="text-[12px] leading-relaxed" style={{ color: '#6B6480' }}>
+                    Analizamos las muestras y generamos una guía que tus empleados usarán para escribir con tu voz.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>
+              Pega aquí tus 3 a 5 muestras
+            </label>
+            <textarea
+              value={samples}
+              onChange={e => { setSamples(e.target.value); setError(null); }}
+              rows={10}
+              placeholder='Muestra 1: un correo previo que hayas mandado a un cliente...
+
+Muestra 2: el texto "Sobre nosotros" de tu sitio web...
+
+Muestra 3: la descripción de tu servicio principal...'
+              className="w-full rounded-xl text-[14px] leading-relaxed outline-none resize-y transition-colors focus:border-[#6C3BFF]"
+              style={{
+                padding:    '14px 16px',
+                background: '#ffffff',
+                border:     '1px solid #E8E3F5',
+                color:      '#1A0A3B',
+                fontFamily: 'inherit',
+                minHeight:  220,
+              }}
+            />
+            <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+              Tip: entre más muestras y más variadas, mejor detectamos el tono real.
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={extract}
@@ -105,7 +177,7 @@ Tu descripción del negocio o pitch escrito…'
             }}
           >
             {extracting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {extracting ? 'Analizando muestras…' : 'Extraer tono de marca'}
+            {extracting ? 'Analizando muestras' : 'Extraer tono de marca'}
           </button>
         </div>
       )}

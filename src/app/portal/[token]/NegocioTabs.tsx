@@ -70,6 +70,20 @@ export default function NegocioTabs({ children }: Props) {
     if (resolved !== tab) setTab(resolved);
   }, [navFromUrl, tab]);
 
+  // Listen for hash-only navigation (same tab, different sub-section anchor).
+  // Sin esto, hacer click en un sidebar item que apunta a otro sub-tab dentro
+  // de Organización solo cambia el hash — searchParams no cambian y este
+  // componente no se enteraría, dejando el usuario en el sub-tab equivocado.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onHashChange = () => {
+      const fromHash = resolveTabFromHash();
+      if (fromHash && fromHash !== tab) setTab(fromHash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [tab]);
+
   // Scroll al anchor cuando cambia el tab (con delay para que el DOM del panel esté montado).
   useEffect(() => {
     if (typeof window === 'undefined') return;
