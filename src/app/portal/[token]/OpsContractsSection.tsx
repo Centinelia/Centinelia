@@ -8,6 +8,8 @@ import {
   ToggleRight, RefreshCw, Mail,
 } from 'lucide-react';
 
+type StateFilter = 'todos' | 'borrador' | 'aprobado' | 'enviado' | 'cancelado';
+
 interface Clause {
   id: string; title: string; body: string; required: boolean; enabled: boolean;
 }
@@ -34,6 +36,9 @@ export default function OpsContractsSection({ token }: { token: string }) {
   const [sending, setSending]     = useState<string | null>(null);
   const [sendDone, setSendDone]   = useState<string | null>(null);
   const [templateClauses, setTemplateClauses] = useState<Clause[]>([]);
+  const [stateFilter, setStateFilter] = useState<StateFilter>('todos');
+  const [dateFrom,    setDateFrom]    = useState('');
+  const [dateTo,      setDateTo]      = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +79,31 @@ export default function OpsContractsSection({ token }: { token: string }) {
     await load();
   }
 
+  // Filtro por estado + rango de fechas (created_at)
+  const filteredDrafts = drafts.filter(d => {
+    if (stateFilter !== 'todos' && d.status !== stateFilter) return false;
+    const iso = d.created_at?.slice(0, 10) ?? '';
+    if (dateFrom && iso < dateFrom) return false;
+    if (dateTo   && iso > dateTo)   return false;
+    return true;
+  });
+
+  const stateCounts: Record<StateFilter, number> = {
+    todos:     drafts.length,
+    borrador:  drafts.filter(d => d.status === 'borrador').length,
+    aprobado:  drafts.filter(d => d.status === 'aprobado').length,
+    enviado:   drafts.filter(d => d.status === 'enviado').length,
+    cancelado: drafts.filter(d => d.status === 'cancelado').length,
+  };
+
+  const stateChips: { key: StateFilter; label: string }[] = [
+    { key: 'todos',     label: 'Todos'     },
+    { key: 'borrador',  label: 'Borrador'  },
+    { key: 'aprobado',  label: 'Aprobado'  },
+    { key: 'enviado',   label: 'Enviado'   },
+    { key: 'cancelado', label: 'Cancelado' },
+  ];
+
   return (
     <div
       className="flex flex-col rounded-2xl overflow-hidden"
@@ -89,9 +119,12 @@ export default function OpsContractsSection({ token }: { token: string }) {
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
               Contratos con clientes
             </h2>
-            {drafts.length > 0 && (
+            {filteredDrafts.length > 0 && (
               <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
-                {drafts.length}
+                {filteredDrafts.length}
+                {filteredDrafts.length !== drafts.length && (
+                  <span style={{ color: '#9B8FB5', fontWeight: 400 }}> / {drafts.length}</span>
+                )}
               </span>
             )}
           </div>
@@ -112,6 +145,71 @@ export default function OpsContractsSection({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Filter chips + rango fechas (solo si hay borradores para filtrar) */}
+      {drafts.length > 0 && (
+        <div
+          className="px-5 py-2.5 flex items-center gap-3 flex-wrap"
+          style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}
+        >
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {stateChips.map(chip => {
+              const active = stateFilter === chip.key;
+              const count  = stateCounts[chip.key];
+              return (
+                <button
+                  key={chip.key}
+                  onClick={() => setStateFilter(chip.key)}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors flex items-center gap-1.5"
+                  style={{
+                    background: active ? '#6C3BFF' : '#ffffff',
+                    color:      active ? '#ffffff' : '#6B6480',
+                    border:     active ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
+                  }}
+                >
+                  {chip.label}
+                  <span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] ml-auto" style={{ color: '#6B6480' }}>
+            <span>Desde</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            <span>hasta</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:opacity-70"
+                style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
+              >
+                <X size={10} /> limpiar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-[12px] py-8 text-center" style={{ color: '#6B6480', borderTop: '1px solid #F0EDF9' }}>Cargando...</p>
       ) : drafts.length === 0 ? (
@@ -125,7 +223,7 @@ export default function OpsContractsSection({ token }: { token: string }) {
               <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>Tu empleado puede redactar contratos desde cero o a partir de una conversación con un cliente.</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2 pl-13" style={{ paddingLeft: 52 }}>
+          <div className="flex flex-col gap-2" style={{ paddingLeft: 52 }}>
             {[
               'Contrato de servicios para un nuevo cliente',
               'Renovación de un contrato existente con nuevas condiciones',
@@ -164,9 +262,13 @@ export default function OpsContractsSection({ token }: { token: string }) {
             </Link>
           </div>
         </div>
+      ) : filteredDrafts.length === 0 ? (
+        <p className="text-[12px] py-8 text-center" style={{ color: '#9B8FB5', borderTop: '1px solid #F0EDF9' }}>
+          Sin borradores que coincidan con el filtro. Ajusta el estado o las fechas.
+        </p>
       ) : (
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {drafts.map((draft, idx) => {
+          {filteredDrafts.map((draft, idx) => {
             const isOpen   = expanded.has(draft.id);
             const statusCf = DRAFT_STATUS[draft.status] ?? DRAFT_STATUS.borrador;
             const canSend  = draft.status !== 'enviado' && draft.status !== 'cancelado' && !!draft.client_email;
@@ -175,7 +277,7 @@ export default function OpsContractsSection({ token }: { token: string }) {
 
             return (
               <div key={draft.id}
-                style={{ borderBottom: idx === drafts.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
+                style={{ borderBottom: idx === filteredDrafts.length - 1 ? 'none' : '1px solid #F0EDF9' }}>
                 <button onClick={() => setExpanded(prev => { const next = new Set(prev); if (next.has(draft.id)) next.delete(draft.id); else next.add(draft.id); return next; })}
                   className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FAFAFB]">
                   <div className="flex-1 min-w-0">
