@@ -54,7 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'OPERACIÓN',
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '' },
-      { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas por emitir', icon: Receipt,        badgeKey: 'facturas' },
+      { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas',            icon: Receipt,        badgeKey: 'facturas' },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '' },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '' },
       { href: '/tareas',               moduleId: 'of_tareas_programadas',   label: 'Tareas',              icon: CalendarClock,  badgeKey: '' },
@@ -257,24 +257,26 @@ export default function OficinaSidebarV2({
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Minutos</span>
                     <span className="text-[11px] font-semibold tabular-nums" style={{ color: hasMinPlan ? uColorDark(minPct) : 'rgba(255,255,255,0.35)' }}>
-                      {hasMinPlan ? `${minutesRemain} rest.` : 'Sin plan'}
+                      {hasMinPlan ? `${minutesRemain} rest.` : 'Jornada sin minutos'}
                     </span>
                   </div>
                   <div className="rounded-full overflow-hidden" style={{ height: 3, background: 'rgba(255,255,255,0.08)' }}>
                     <div style={{ width: `${minPct}%`, height: '100%', background: uColorDark(minPct), borderRadius: 9999 }} />
                   </div>
                 </div>
-                {aiOpsLimit > 0 && (
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Tareas</span>
-                      <span className="text-[11px] font-semibold tabular-nums" style={{ color: uColorDark(opsPct) }}>{opsRemain} rest.</span>
-                    </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Tareas</span>
+                    <span className="text-[11px] font-semibold tabular-nums" style={{ color: aiOpsLimit > 0 ? uColorDark(opsPct) : 'rgba(255,255,255,0.35)' }}>
+                      {aiOpsLimit > 0 ? `${opsRemain} rest.` : 'Jornada sin tareas'}
+                    </span>
+                  </div>
+                  {aiOpsLimit > 0 && (
                     <div className="rounded-full overflow-hidden" style={{ height: 3, background: 'rgba(255,255,255,0.08)' }}>
                       <div style={{ width: `${opsPct}%`, height: '100%', background: uColorDark(opsPct), borderRadius: 9999 }} />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </Link>
             );
           })()}

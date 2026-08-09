@@ -55,7 +55,7 @@ export const PORTAL_MODULES = [
     desc: 'Archivos generados por tus empleados o subidos para que los utilicen como referencia.',
   },
   {
-    id: 'of_facturas', label: 'Facturas por emitir', group: 'Oficina', giros: ['all'] as string[],
+    id: 'of_facturas', label: 'Facturas', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Solicitudes de factura pendientes de emitir y su seguimiento fiscal.',
   },
   {

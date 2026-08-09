@@ -49,7 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     group: 'OPERACIÓN',
     items: [
       { href: '/documentos',           moduleId: 'of_documentos',           label: 'Documentos',          icon: FolderOpen,     badgeKey: '',               opsHint: '',                 pulseId: 'of-documentos'           },
-      { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas por emitir', icon: Receipt,        badgeKey: 'facturas',       opsHint: '',                 pulseId: 'of-facturas'             },
+      { href: '/facturas',             moduleId: 'of_facturas',             label: 'Facturas',            icon: Receipt,        badgeKey: 'facturas',       opsHint: '',                 pulseId: 'of-facturas'             },
       { href: '/contratos',            moduleId: 'of_contratos',            label: 'Contratos',           icon: FileSignature,  badgeKey: '',               opsHint: '',                 pulseId: 'of-contratos'            },
       { href: '/plantillas',           moduleId: 'of_plantillas',           label: 'Plantillas',          icon: LayoutTemplate, badgeKey: '',               opsHint: '',                 pulseId: 'of-plantillas'           },
       { href: '/tareas',               moduleId: 'of_tareas_programadas',   label: 'Tareas',              icon: CalendarClock,  badgeKey: '',               opsHint: '',                 pulseId: 'of-tareas'               },
@@ -227,24 +227,26 @@ export default function OficinaSidebar({
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Minutos</span>
                     <span className="text-[11px] font-medium tabular-nums" style={{ color: hasMinPlan ? uColor(minPct) : '#9ca3af' }}>
-                      {hasMinPlan ? `${minutesRemain} rest.` : 'Sin plan'}
+                      {hasMinPlan ? `${minutesRemain} rest.` : 'Jornada sin minutos'}
                     </span>
                   </div>
                   <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
                     <div style={{ width: `${minPct}%`, height: '100%', background: uColor(minPct), borderRadius: 9999 }} />
                   </div>
                 </div>
-                {aiOpsLimit > 0 && (
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
-                      <span className="text-[11px] font-medium tabular-nums" style={{ color: uColor(opsPct) }}>{opsRemain} rest.</span>
-                    </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px]" style={{ color: 'var(--c-text-3)' }}>Tareas</span>
+                    <span className="text-[11px] font-medium tabular-nums" style={{ color: aiOpsLimit > 0 ? uColor(opsPct) : '#9ca3af' }}>
+                      {aiOpsLimit > 0 ? `${opsRemain} rest.` : 'Jornada sin tareas'}
+                    </span>
+                  </div>
+                  {aiOpsLimit > 0 && (
                     <div className="rounded-full overflow-hidden" style={{ height: 4, background: 'var(--c-border)' }}>
                       <div style={{ width: `${opsPct}%`, height: '100%', background: uColor(opsPct), borderRadius: 9999 }} />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </Link>
             );
           })()}
