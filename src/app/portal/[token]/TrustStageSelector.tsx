@@ -8,27 +8,34 @@ interface Props {
   initStage:  number;
 }
 
+// Autónomo es el default y la norma — así es como funciona un empleado
+// real. Observador y Supervisado son escalones de control cuando el
+// usuario quiere freno mano deliberado. NUNCA reordenar sin actualizar
+// la copy correspondiente. Ver [[feedback-empleados-inteligentes]].
 const STAGES = [
   {
-    value: 1,
-    icon:  Eye,
-    name:  'Observador',
-    short: 'Solo informa, no actúa',
-    desc:  'Tu empleado responde preguntas y recopila información, pero no ejecuta ninguna acción. Tú o tu equipo toman todas las decisiones. En correos: solo clasifica y resume, no redacta respuestas — tú escribes desde cero.',
+    value:       3,
+    icon:        Zap,
+    name:        'Autónomo',
+    short:       'Trabaja como un empleado real',
+    desc:        'Ejecuta sus responsabilidades sin pedirte permiso paso por paso. Una capa de seguridad revisa cada correo y solo te consulta cuando el caso lo amerita (queja legal, compromiso alto stakes, datos sensibles). Si algo sale mal, tú reportas mal envío y aprende al instante.',
+    recommended: true,
   },
   {
-    value: 2,
-    icon:  Bell,
-    name:  'Supervisado',
-    short: 'Actúa y te avisa de cada paso',
-    desc:  'Tu empleado ejecuta sus responsabilidades, pero te notifica inmediatamente por cada acción que toma. En correos: redacta el borrador y siempre espera tu aprobación antes de enviar.',
+    value:       2,
+    icon:        Bell,
+    name:        'Supervisado',
+    short:       'Redacta pero espera tu aprobación',
+    desc:        'Redacta el borrador de cada correo, pero nunca envía sin tu OK. Útil las primeras 2 semanas con un empleado nuevo si prefieres validar su tono manualmente antes de dejarlo volar.',
+    recommended: false,
   },
   {
-    value: 3,
-    icon:  Zap,
-    name:  'Autónomo',
-    short: 'Actúa con criterio propio',
-    desc:  'Tu empleado trabaja de forma independiente dentro de sus límites de autoridad. Solo te avisa cuando algo requiere tu atención. En correos: una capa de seguridad revisa cada borrador y escala solo los que involucran compromisos, quejas graves o datos delicados.',
+    value:       1,
+    icon:        Eye,
+    name:        'Observador',
+    short:       'Solo mira, no actúa',
+    desc:        'Solo clasifica y resume lo que entra. No redacta ni envía nada — tú escribes cada respuesta desde cero. Reserva este modo para pruebas o cuentas en pausa.',
+    recommended: false,
   },
 ];
 
@@ -56,7 +63,7 @@ export default function TrustStageSelector({ token, initStage }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
-        Cuánta independencia tiene en las acciones que ejecuta por su cuenta (llamadas, correos, captura de leads). A medida que confías en su desempeño, súbelo de Supervisado a Autónomo.
+        Por defecto tu empleado trabaja como uno real: decide y actúa dentro de sus límites. Baja el nivel solo si prefieres validar cada paso manualmente.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -68,13 +75,21 @@ export default function TrustStageSelector({ token, initStage }: Props) {
             <button
               key={s.value}
               onClick={() => select(s.value)}
-              className="flex flex-col gap-2 rounded-xl p-4 text-left transition-all"
+              className="relative flex flex-col gap-2 rounded-xl p-4 text-left transition-all"
               style={{
                 background: active ? `rgba(${accentRGB}, 0.08)` : '#FAFAFB',
                 border:     active ? `1.5px solid rgba(${accentRGB}, 0.5)` : '1.5px solid #E8E3F5',
                 cursor:     'pointer',
               }}
             >
+              {s.recommended && (
+                <span
+                  className="absolute -top-2 left-3 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+                  style={{ background: '#6C3BFF', color: '#ffffff', letterSpacing: '0.05em' }}
+                >
+                  Recomendado
+                </span>
+              )}
               <div className="flex items-center justify-between">
                 <div
                   className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
