@@ -270,9 +270,9 @@ export default function MeerkatPicker({ token, plan = 'pro', defaultTier = 'star
                             {role.descripcion}
                           </div>
                           {smartMode && rec && (
-                            <div className="mt-1.5">
+                            <div className="mt-1.5 flex justify-center sm:justify-start">
                               <span
-                                className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full text-center leading-tight"
                                 style={{ background: `${role.color}15`, color: role.color, border: `1px solid ${role.color}35` }}
                               >
                                 +{rec.newCats.length} {rec.newCats.length === 1 ? 'nueva capacidad' : 'nuevas capacidades'}

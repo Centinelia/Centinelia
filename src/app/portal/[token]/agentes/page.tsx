@@ -745,7 +745,7 @@ export default async function AgentesPage({ params }: Props) {
         <p className="text-[11px] font-semibold tracking-widest uppercase mb-2.5" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
           Áreas principales
         </p>
-      <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-0">
         {coreStats.map(cat => (
           <details key={cat.label}>
             <summary
@@ -755,7 +755,13 @@ export default async function AgentesPage({ params }: Props) {
               <span className="text-[11px] font-medium flex-1 truncate" style={{ color: '#1A0A3B' }}>
                 {cat.label}
               </span>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Móvil: solo fracción X/Y (sin barra) */}
+              <span className="sm:hidden text-[11px] font-semibold tabular-nums flex-shrink-0"
+                style={{ color: cat.covered === cat.total ? '#16a34a' : '#9B8FB5' }}>
+                {cat.covered}/{cat.total}
+              </span>
+              {/* Desktop: barra + % */}
+              <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
                 <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
                   <div className="h-1 rounded-full" style={{ width: `${Math.round((cat.covered / cat.total) * 100)}%`, background: cat.covered === cat.total ? '#16a34a' : cat.color }} />
                 </div>
@@ -804,7 +810,7 @@ export default async function AgentesPage({ params }: Props) {
         <p className="text-[11px] font-semibold tracking-widest uppercase mb-2.5" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
           Módulos adicionales
         </p>
-        <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-0">
           {specializedStats.map(cat => (
             <details key={cat.label}>
               <summary

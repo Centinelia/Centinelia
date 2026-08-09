@@ -325,8 +325,8 @@ function PersonRow({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Actions — siempre visibles en móvil (< sm), hover-reveal en desktop */}
+        <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit}
             className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-[rgba(108,59,255,0.08)]"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}

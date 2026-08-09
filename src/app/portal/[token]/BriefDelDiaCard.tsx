@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AlertTriangle, AlertCircle, Clock, Info, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import InfoTooltip from '@/components/InfoTooltip';
 
 interface Brief {
   id:           string;
@@ -37,7 +38,10 @@ export function BriefDelDiaCard() {
     <section className="rounded-xl p-5" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border-2)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Brief del día</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--c-text-3)' }}>Brief del día</h2>
+            <InfoTooltip text={"Resumen inteligente que tu equipo prepara para arrancar el día.\n\nAgrupa lo que requiere acción, lo que necesita preparación y lo que solo debes saber, basado en tus correos, tareas pendientes y actividad de los empleados.\n\nSe actualiza automático cada mañana o cuando lo pides. Cuesta 5 tareas del plan por cada actualización manual."} />
+          </div>
           {brief && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-3)' }}>
               Actualizado {ageLabel}

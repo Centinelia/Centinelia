@@ -432,7 +432,7 @@ export default function SubUserManager({ token, initialUsers, accountGiro, accou
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 lg:items-start">
 
       {/* ── LEFT PANEL: form ──────────────────────────────────────────────── */}
       <div className="w-full lg:w-[420px] shrink-0 flex flex-col gap-4">
