@@ -43,7 +43,9 @@ export default async function AgentesLayout({
   if (session?.portalEmail && agent.portal_email && agent.portal_email !== session.portalEmail)
     redirect('/portal/login');
 
-  const lookupEmail = session?.portalEmail ?? agent.portal_email ?? null;
+  // || (no ??): en dev verifySession puede devolver portalEmail: '' — ver
+  // agentes/page.tsx para el detalle del bug.
+  const lookupEmail = session?.portalEmail || agent.portal_email || null;
 
   const { data: clientAgents } = lookupEmail
     ? await supabase
@@ -75,11 +77,23 @@ export default async function AgentesLayout({
   const minutesUsed     = (acctMins?.minutes_used     ?? (agent as any).minutes_used     ?? 0) as number;
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
 
-  const { data: opsAgents } = lookupEmail
-    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
+  // Source of truth: organizations.monthly_ops_pool / monthly_ops_used
+  // (fallback a SUM per-agente si la org es antigua sin migrar).
+  const { data: orgPool } = lookupEmail
+    ? await supabase.from('organizations')
+        .select('monthly_ops_pool, monthly_ops_used')
+        .eq('portal_email', lookupEmail)
+        .maybeSingle()
     : { data: null };
-  const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
-  const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
+  let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
+  let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
+  if (!orgPool?.monthly_ops_pool) {
+    const { data: opsAgents } = lookupEmail
+      ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', lookupEmail)
+      : { data: null };
+    aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+    aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
+  }
 
   // V2 flag
   const v2Enabled = agent.portal_email

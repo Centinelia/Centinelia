@@ -258,7 +258,10 @@ export default async function AgentesPage({ params }: Props) {
   if (session?.portalEmail && baseAgent.portal_email && baseAgent.portal_email !== session.portalEmail)
     redirect('/portal/login');
 
-  const lookupEmail = session?.portalEmail ?? baseAgent.portal_email ?? null;
+  // NOTA: || (no ??) porque en dev verifySession puede devolver portalEmail: ''
+  // (string vacío) cuando no hay DEV_PORTAL_EMAIL en .env.local. `??` no cae
+  // al fallback con '' (no es nullish), lo que rompía la lista de empleados.
+  const lookupEmail = session?.portalEmail || baseAgent.portal_email || null;
 
   const { data: agentsRaw } = lookupEmail
     ? await supabase

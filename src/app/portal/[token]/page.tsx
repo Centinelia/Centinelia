@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Phone, CheckCircle, PhoneCall, PhoneOutgoing, Users, ShoppingBag, CalendarDays, AlertTriangle, ChevronRight, Zap, Inbox, Lightbulb, Clock, FileText } from 'lucide-react';
 import { MonthReportPicker } from './MonthReportPicker';
+import ConsumoPromedioCard from './ConsumoPromedioCard';
 import type { BusinessHours, Plan } from '@/types/agent';
 import type { VoiceCall } from '@/types/agent';
 import { MINUTES_TIER_CONFIG } from '@/lib/billing/plans';
@@ -127,9 +128,12 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     redirect(`/setup/${token}`);
   }
 
-  // All agents for this client (same portal_email)
-  // In dev the middleware bypasses auth so session is null — fall back to the agent's own email
-  const lookupEmail = session?.portalEmail ?? (agent as any).portal_email ?? null;
+  // All agents for this client (same portal_email).
+  // || (no ??): en dev el verifySession puede devolver portalEmail: '' cuando
+  // no hay DEV_PORTAL_EMAIL en .env.local. `??` no cae al fallback con ''
+  // (no es nullish) → query filtra por email vacío → 0 rows. `||` sí cae
+  // porque '' es falsy.
+  const lookupEmail = session?.portalEmail || (agent as any).portal_email || null;
 
   // ─── Batch 1: paralelizar TODAS las queries org-scoped que dependen de
   // portal_email pero son independientes entre sí. Antes eran 6 awaits en
@@ -152,7 +156,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
           : Promise.resolve([] as any[]),
         supabase
           .from('organizations')
-          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory')
+          .select('knowledge_base, owner_profile, business_description, business_email, business_hours, business_website, website_knowledge, google_review_url, email_brand_color, brand_color_secondary, brand_website, brand_address, brand_phone, email_footer_text, billing_model, contract_accepted_at, contract_ip, contract_signer_name, multilingual, brand_voice_guide, directory, monthly_ops_pool, monthly_ops_used')
           .eq('portal_email', agent.portal_email)
           .single()
           .then(r => r.data),
@@ -291,10 +295,16 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
     return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
   })();
 
-  // AI ops: account-level pool (SUM of all agents in account)
-  // (opsAgents ya fue fetcheado en Batch 1 arriba)
-  const aiOpsUsed  = (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
-  const aiOpsLimit = (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
+  // Pool compartido: organizations.monthly_ops_pool/used es source of truth.
+  // Fallback a SUM per-agente si la org es antigua sin migrar.
+  const orgPoolTotal = (orgSettings?.monthly_ops_pool as number | null) ?? null;
+  const orgPoolUsed  = (orgSettings?.monthly_ops_used as number | null) ?? null;
+  const aiOpsUsed  = orgPoolTotal != null
+    ? (orgPoolUsed ?? 0)
+    : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_used  as number) ?? 0), 0);
+  const aiOpsLimit = orgPoolTotal != null
+    ? orgPoolTotal
+    : (opsAgents ?? []).reduce((s: number, a: any) => s + (((a as any).ai_ops_limit as number) ?? 0), 0);
   const aiOpsPct   = aiOpsLimit > 0 ? Math.min((aiOpsUsed / aiOpsLimit) * 100, 100) : 0;
   const aiOpsColor = aiOpsPct > 90 ? '#ef4444' : aiOpsPct > 70 ? '#f59e0b' : '#22c55e';
 
@@ -1101,7 +1111,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                             {minutesIncluded > 0 ? (
                               <span style={{ color: minutesColor }}>{minutesUsed} / {minutesIncluded} min</span>
                             ) : (
-                              <span style={{ color: 'var(--c-text-4)' }}>Sin plan de minutos</span>
+                              <span style={{ color: 'var(--c-text-4)' }}>Jornada sin minutos</span>
                             )}
                           </div>
                           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
@@ -1899,44 +1909,21 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                 {/* ── Col 1: Consumo promedio + Uso + Compras + Recarga + Contratos ── */}
                 <div className="flex flex-col gap-5" id="minutos">
 
-                  {/* Consumo promedio — grupos Minutos/Tareas con etiqueta al lado, no header aparte */}
-                  {(allCalls.length > 0 || (aiOpsLimit > 0 && aiOpsUsed > 0)) && (
-                    <div id="consumo-promedio" className="flex flex-col rounded-2xl overflow-hidden"
-                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-                      <div className="flex items-start justify-between gap-3 flex-wrap px-6 pt-5 pb-4">
-                        <div>
-                          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Consumo promedio</h2>
-                          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>Tu ritmo de uso vs el plan mensual.</p>
-                        </div>
-                      </div>
-                      <div>
-                        {allCalls.length > 0 && (
-                          <div className="px-6 py-4 flex items-center gap-6" style={{ borderTop: '1px solid #F0EDF9' }}>
-                            <div className="w-16 flex-shrink-0">
-                              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Minutos</p>
-                            </div>
-                            <div className="flex-1 grid grid-cols-3 gap-4">
-                              <StatBox label="Por día"    value={`${avgMinPerDay} min`} />
-                              <StatBox label="Por semana" value={`${avgMinPerWeek} min`} />
-                              <StatBox label="Por mes"    value={`${avgMinPerMonth} min`} highlight={avgMinPerMonth > minutesIncluded * 0.9} />
-                            </div>
-                          </div>
-                        )}
-                        {aiOpsLimit > 0 && aiOpsUsed > 0 && (
-                          <div className="px-6 py-4 flex items-center gap-6" style={{ borderTop: '1px solid #F0EDF9' }}>
-                            <div className="w-16 flex-shrink-0">
-                              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Tareas</p>
-                            </div>
-                            <div className="flex-1 grid grid-cols-3 gap-4">
-                              <StatBox label="Por día"    value={`${avgOpsPerDay}`} />
-                              <StatBox label="Por semana" value={`${avgOpsPerWeek}`} />
-                              <StatBox label="Por mes"    value={`${avgOpsPerMonth}`} highlight={avgOpsPerMonth > aiOpsLimit * 0.9} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Consumo promedio — toggle Minutos ↔ Tareas */}
+                  <ConsumoPromedioCard
+                    minutos={allCalls.length > 0 ? {
+                      perDay:   avgMinPerDay,
+                      perWeek:  avgMinPerWeek,
+                      perMonth: `${avgMinPerMonth}`,
+                      monthHighlight: avgMinPerMonth > minutesIncluded * 0.9,
+                    } : undefined}
+                    tareas={aiOpsLimit > 0 ? {
+                      perDay:   avgOpsPerDay,
+                      perWeek:  avgOpsPerWeek,
+                      perMonth: avgOpsPerMonth,
+                      monthHighlight: avgOpsPerMonth > aiOpsLimit * 0.9,
+                    } : undefined}
+                  />
 
                   <div id="uso-del-mes" style={{ scrollMarginTop: '1.5rem' }}>
                   <div id="comprar"      style={{ scrollMarginTop: '1.5rem' }}>
@@ -1957,7 +1944,7 @@ export default async function ClientPortalPage({ params, searchParams }: Props) 
                                   <span className="text-[13px]" style={{ color: '#9B8FB5' }}>/ {minutesIncluded} min</span>
                                 </div>
                               ) : (
-                                <span className="text-[13px]" style={{ color: '#9B8FB5' }}>Sin plan de minutos</span>
+                                <span className="text-[13px]" style={{ color: '#9B8FB5' }}>Jornada sin minutos</span>
                               )}
                             </div>
                             <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: '#F0EDF9' }}>
