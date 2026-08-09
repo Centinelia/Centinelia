@@ -78,7 +78,7 @@ function timeAgo(iso: string): string {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   if (d === 0) return 'hoy';
   if (d === 1) return 'ayer';
-  if (d < 7)  return `hace ${d} dias`;
+  if (d < 7)  return `hace ${d} días`;
   return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
@@ -336,7 +336,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
         }
       }
     } catch {
-      setUploadError('Error de conexion. Intenta de nuevo.');
+      setUploadError('Error de conexión. Intenta de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -373,7 +373,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
   }
 
   async function handleDelete() {
-    if (!confirm('Eliminar la plantilla de referencia?')) return;
+    if (!confirm('¿Eliminar la plantilla de referencia?')) return;
     setDeleting(true);
     try {
       await fetch(`/api/portal/${token}/template-upload`, {
@@ -440,7 +440,7 @@ function UploadZone({ token, docType, templateName, templatePath, validation, on
           <>
             <Upload size={18} style={{ color: drag ? color : '#9B8FB5', opacity: drag ? 1 : 0.5 }} />
             <p className="text-sm font-medium" style={{ color: '#6B6480' }}>
-              Arrastra tu plantilla Word aqui o haz clic para seleccionarla
+              Arrastra tu plantilla Word aquí o haz clic para seleccionarla
             </p>
             <p className="text-xs" style={{ color: '#9B8FB5' }}>
               Solo .docx · Máx 10 MB · Detectamos automáticamente los marcadores
@@ -608,7 +608,7 @@ function TemplateRow({
                 {stats.lastUsed && (
                   <>
                     <span style={{ color: '#E8E3F5' }}>·</span>
-                    <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Ultimo uso {timeAgo(stats.lastUsed)}</span>
+                    <span className="text-[11px]" style={{ color: '#9B8FB5' }}>Último uso {timeAgo(stats.lastUsed)}</span>
                   </>
                 )}
               </>
@@ -688,7 +688,7 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
           style={{ background: 'rgba(108,59,255,0.08)', color: '#9B6DFF', border: '1px solid rgba(108,59,255,0.15)' }}>
-          <Wand2 size={11} /> Campos detectados automaticamente del documento
+          <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -696,18 +696,19 @@ function FacturaConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (c
           value={cfg.rfc ?? ''} onChange={upd('rfc') as (v: string) => void} placeholder="XAXX010101000" />
         <Field label="Prefijo de folio" hint="FAC genera folios FAC-20260721-5892."
           value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="FAC" />
-        <Field label="Direccion fiscal" value={cfg.direccion ?? ''} as="textarea"
+        <Field label="Dirección fiscal" value={cfg.direccion ?? ''} as="textarea"
           onChange={upd('direccion') as (v: string) => void} placeholder="Av. Ejemplo 123, Col. Centro, Monterrey, NL" />
       </div>
       <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
       <Toggle checked={cfg.incluir_iva !== false} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
-        label="Incluir IVA 16%" hint="Se calcula automaticamente sobre el subtotal" />
+        label="Incluir IVA 16%" hint="Se calcula automáticamente sobre el subtotal" />
       <SaveRow saving={saving} saved={saved} onClick={save} />
     </>
   );
 }
 
 // ─── Orden config ─────────────────────────────────────────────────────────────
+
 
 function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg: OrdenConfig) => void }) {
   const [cfg, setCfg]         = useState<OrdenConfig>({});
@@ -755,18 +756,18 @@ function OrdenConfig({ token, onStatsLoad }: { token: string; onStatsLoad?: (cfg
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
           style={{ background: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' }}>
-          <Wand2 size={11} /> Campos detectados automaticamente del documento
+          <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Prefijo de folio" hint="OC genera folios OC-20260721-3841."
           value={cfg.folio_prefix ?? ''} onChange={upd('folio_prefix') as (v: string) => void} placeholder="OC" />
-        <Field label="Terminos de entrega" value={cfg.terminos_entrega ?? ''}
-          onChange={upd('terminos_entrega') as (v: string) => void} placeholder="Entrega en 5 dias habiles" />
+        <Field label="Términos de entrega" value={cfg.terminos_entrega ?? ''}
+          onChange={upd('terminos_entrega') as (v: string) => void} placeholder="Entrega en 5 días hábiles" />
       </div>
       <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
       <Toggle checked={cfg.incluir_iva === true} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
-        label="Incluir IVA 16%" hint="Activa solo si tus ordenes deben mostrar IVA" />
+        label="Incluir IVA 16%" hint="Activa solo si tus órdenes deben mostrar IVA" />
       <SaveRow saving={saving} saved={saved} onClick={save} />
     </>
   );
@@ -820,7 +821,7 @@ function CotizacionConfigSection({ token, onStatsLoad }: { token: string; onStat
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
           style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }}>
-          <Wand2 size={11} /> Campos detectados automaticamente del documento
+          <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -831,7 +832,7 @@ function CotizacionConfigSection({ token, onStatsLoad }: { token: string; onStat
       </div>
       <CondicionesPagoField value={cfg.condiciones_pago ?? ''} onChange={upd('condiciones_pago') as (v: string) => void} />
       <Toggle checked={cfg.incluir_iva !== false} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
-        label="Incluir IVA 16%" hint="Se calcula automaticamente sobre el subtotal" />
+        label="Incluir IVA 16%" hint="Se calcula automáticamente sobre el subtotal" />
       <SaveRow saving={saving} saved={saved} onClick={save} />
     </>
   );
@@ -888,7 +889,7 @@ function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStats
       {autoFilled && (
         <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
           style={{ background: 'rgba(236,72,153,0.08)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.15)' }}>
-          <Wand2 size={11} /> Campos detectados automaticamente del documento
+          <Wand2 size={11} /> Campos detectados automáticamente del documento
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -898,7 +899,7 @@ function NotaVentaConfigSection({ token, onStatsLoad }: { token: string; onStats
           value={cfg.forma_pago ?? ''} onChange={upd('forma_pago') as (v: string) => void} placeholder="Efectivo" />
         <Field label="Aviso legal (opcional)" as="textarea"
           value={cfg.legal_notice ?? ''} onChange={upd('legal_notice') as (v: string) => void}
-          placeholder="Este documento no es una factura fiscal. Solicite su CFDI a facturacion@..." />
+          placeholder="Este documento no es una factura fiscal. Solicite su CFDI a facturación@..." />
       </div>
       <Toggle checked={cfg.incluir_iva === true} onChange={v => setCfg(p => ({ ...p, incluir_iva: v }))}
         label="Mostrar desglose de IVA" hint="Activa solo si tu negocio maneja IVA en las ventas al público." />
@@ -973,7 +974,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
 
   function addClause() {
     const id = `clause_${Date.now()}`;
-    setClauses(prev => [...prev, { id, title: 'NUEVA CLAUSULA', body: '', required: false, enabled: true }]);
+    setClauses(prev => [...prev, { id, title: 'NUEVA CLÁUSULA', body: '', required: false, enabled: true }]);
     setEditingId(id);
   }
 
@@ -991,9 +992,9 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
         <div className="flex flex-col items-center py-10 gap-4 rounded-xl" style={{ background: '#FAFAFB', border: '1px dashed #E8E3F5' }}>
           <FileText size={28} style={{ color: '#6B6480', opacity: 0.35 }} />
           <div className="text-center max-w-xs px-4">
-            <p className="text-sm font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>Plantilla vacia</p>
+            <p className="text-sm font-semibold mb-1.5" style={{ color: '#1A0A3B' }}>Plantilla vacía</p>
             <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
-              Esta es la base que tu empleado usa para generar contratos. Carga las clausulas estandar y ajusta el texto segun tus necesidades.
+              Esta es la base que tu empleado usa para generar contratos. Carga las cláusulas estándar y ajusta el texto según tus necesidades.
             </p>
           </div>
           <button
@@ -1001,17 +1002,17 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ background: '#8b5cf6', color: '#fff' }}
           >
-            <Plus size={14} /> Cargar clausulas estandar
+            <Plus size={14} /> Cargar cláusulas estándar
           </button>
           <button onClick={addClause} className="text-xs transition-opacity hover:opacity-70" style={{ color: '#6B6480' }}>
-            o agregar clausula en blanco
+            o agregar cláusula en blanco
           </button>
         </div>
       ) : (<>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs leading-relaxed" style={{ color: '#6B6480' }}>
-          Tu empleado usara esta plantilla para generar borradores. Edita las clausulas con el icono de lapiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
+          Tu empleado usará esta plantilla para generar borradores. Edita las cláusulas con el ícono de lápiz. Las marcadas como <strong>Requerida</strong> siempre se incluyen.
         </p>
         <button onClick={save} disabled={saving}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all"
@@ -1028,7 +1029,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
             <code key={v} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(139,92,246,0.12)', color: '#c4b5fd', fontFamily: 'monospace' }}>{v}</code>
           ))}
         </div>
-        <p className="text-xs mt-2" style={{ color: '#9B8FB5' }}>Tu empleado sustituira estas variables con los datos del cliente al generar un borrador.</p>
+        <p className="text-xs mt-2" style={{ color: '#9B8FB5' }}>Tu empleado sustituirá estas variables con los datos del cliente al generar un borrador.</p>
       </div>
 
       {/* Clauses */}
@@ -1056,7 +1057,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                     <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>Requerida</span>
                   ) : (
                     <button onClick={() => updateClause(clause.id, { enabled: !clause.enabled })}
-                      title={clause.enabled ? 'Desactivar clausula' : 'Activar clausula'}>
+                      title={clause.enabled ? 'Desactivar cláusula' : 'Activar cláusula'}>
                       {clause.enabled
                         ? <ToggleRight size={18} style={{ color: '#22c55e' }} />
                         : <ToggleLeft  size={18} style={{ color: '#9B8FB5' }} />}
@@ -1086,7 +1087,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
                     <div className="flex items-center gap-2 mt-2">
                       <label className="flex items-center gap-1.5 text-xs cursor-pointer" style={{ color: '#6B6480' }}>
                         <input type="checkbox" checked={clause.required} onChange={e => updateClause(clause.id, { required: e.target.checked })} className="rounded" />
-                        Clausula requerida (tu empleado no puede desactivarla)
+                        Cláusula requerida (tu empleado no puede desactivarla)
                       </label>
                     </div>
                   </>
@@ -1104,7 +1105,7 @@ function ContratoConfig({ token, onConfiguredLoad }: { token: string; onConfigur
       <button onClick={addClause}
         className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
         style={{ background: '#ffffff', border: '1px dashed #E8E3F5', color: '#6B6480' }}>
-        <Plus size={13} /> Agregar clausula
+        <Plus size={13} /> Agregar cláusula
       </button>
     </>)}
   </div>
@@ -1239,7 +1240,7 @@ export default function PlantillasPage() {
 
           <TemplateRow
             id="contrato" icon={FileText} title="Contrato"
-            subtitle="Contrato de prestacion de servicios con clausulas editables"
+            subtitle="Contrato de prestación de servicios con cláusulas editables"
             color="#8b5cf6" stats={contratoStats} configured={contratoConfigured} token={token}
             isLast={true}
           >
