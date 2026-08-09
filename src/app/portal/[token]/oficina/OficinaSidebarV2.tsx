@@ -46,7 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     group: 'CONOCIMIENTO',
     items: [
-      { href: '/aprendizajes',  moduleId: 'of_aprendizajes',  label: 'Cómo trabajamos', icon: Brain,  badgeKey: '' },
+      { href: '/aprendizajes',  moduleId: 'of_aprendizajes',  label: 'Aprendizajes',    icon: Brain,  badgeKey: '' },
       { href: '/investigacion', moduleId: 'of_investigacion', label: 'Investigación',   icon: Search, badgeKey: '' },
     ],
   },

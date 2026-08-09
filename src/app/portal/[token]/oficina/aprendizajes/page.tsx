@@ -4,7 +4,6 @@ import { cookies }                      from 'next/headers';
 import { Brain }                        from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import LearningsSection                 from '../../LearningsSection';
-import ActividadFeed                    from '../ActividadFeed';
 import InsightsSection                  from '../../InsightsSection';
 import { PageSection, SectionHeader }   from '@/components/portal-ui';
 import OficinaPageHero                  from '../OficinaPageHero';
@@ -23,7 +22,7 @@ export default async function AprendizajesPage({ params }: Props) {
     <div id="of-aprendizajes" className="flex flex-col gap-6 max-w-6xl mx-auto w-full p-4 md:p-6">
       <OficinaPageHero
         icon={Brain}
-        eyebrow="Cómo trabajamos"
+        eyebrow="Aprendizajes"
         title="Aprendizajes del equipo"
         description="Lo que el equipo aprende con certeza se aplica automáticamente. Aquí solo aparecen los aprendizajes inciertos que quieren tu confirmación antes de incorporarse a la memoria del equipo."
       />
@@ -39,17 +38,6 @@ export default async function AprendizajesPage({ params }: Props) {
         }
       >
         <InsightsSection token={token} />
-      </PageSection>
-
-      <PageSection
-        heading={
-          <SectionHeader
-            eyebrow="ACTIVIDAD"
-            title="Últimas 24 horas"
-          />
-        }
-      >
-        <ActividadFeed token={token} />
       </PageSection>
     </div>
   );

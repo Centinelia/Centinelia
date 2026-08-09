@@ -30,9 +30,9 @@ interface AgentGroup {
   learnings:  Learning[];
 }
 
-const CATEGORY_LABELS: Record<'role_kb' | 'guardrails', { label: string; icon: typeof BookOpen }> = {
-  role_kb:    { label: 'Instrucciones del puesto', icon: BookOpen },
-  guardrails: { label: 'Límites de autoridad',     icon: ShieldCheck },
+const CATEGORY_LABELS: Record<'role_kb' | 'guardrails', { label: string; icon: typeof BookOpen; hint: string }> = {
+  role_kb:    { label: 'Instrucciones del puesto', icon: BookOpen,    hint: 'Info que amplía cómo responder o qué ofrecer.' },
+  guardrails: { label: 'Límites de autoridad',     icon: ShieldCheck, hint: 'Regla dura de qué NO hacer o cuándo escalar.' },
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -266,60 +266,103 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                       </button>
 
                       {isExpanded && (
-                        <div className="px-5 pb-4 pt-2" style={{ background: '#FAFAFB', borderTop: '1px solid #F0EDF9' }}>
+                        <div className="px-5 py-4 flex flex-col gap-4" style={{ background: '#FAFAFB', borderTop: '1px solid #F0EDF9' }}>
                           {canApprove ? (
                             <>
-                              <textarea
-                                rows={3}
-                                value={edited[l.id] ?? l.content}
-                                onChange={e => setEdited(p => ({ ...p, [l.id]: e.target.value }))}
-                                className="w-full text-[13px] leading-relaxed mb-3 rounded-lg px-3 py-2 resize-y outline-none"
-                                style={{
-                                  background: '#ffffff',
-                                  border:     '1px solid #E8E3F5',
-                                  color:      '#1A0A3B',
-                                  fontFamily: 'inherit',
-                                }}
-                              />
-
-                              {/* Category selector */}
-                              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-                                <span className="text-[11px]" style={{ color: '#6B6480' }}>Destino:</span>
-                                {(['role_kb', 'guardrails'] as const).map(cat => {
-                                  const active = (categories[l.id] ?? 'role_kb') === cat;
-                                  const cfg    = CATEGORY_LABELS[cat];
-                                  const Icon   = cfg.icon;
-                                  return (
-                                    <button
-                                      key={cat}
-                                      onClick={() => setCategories(p => ({ ...p, [l.id]: cat }))}
-                                      className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-medium transition-all"
-                                      style={{
-                                        background: active ? 'rgba(108,59,255,0.12)' : '#ffffff',
-                                        color:      active ? '#6C3BFF' : '#6B6480',
-                                        border:     active ? '1px solid rgba(108,59,255,0.3)' : '1px solid #E8E3F5',
-                                      }}
+                              {/* Contexto: fuente + confidence */}
+                              <div className="flex items-center gap-2 flex-wrap text-[11px]" style={{ color: '#9B8FB5' }}>
+                                <span>Origen:</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
+                                  style={{ background: `${sourceColor(l.source)}18`, color: sourceColor(l.source) }}>
+                                  {SOURCE_LABELS[l.source ?? 'call'] ?? 'evento'}
+                                </span>
+                                {typeof l.confidence === 'number' && (
+                                  <>
+                                    <span>·</span>
+                                    <span>Certeza {Math.round((l.confidence ?? 0) * 100)}%</span>
+                                  </>
+                                )}
+                                {l.vapi_call_id && (
+                                  <>
+                                    <span>·</span>
+                                    <a
+                                      href={`/portal/${token}/oficina/llamadas`}
+                                      className="underline hover:opacity-70"
+                                      style={{ color: '#6C3BFF' }}
                                     >
-                                      <Icon size={11} />
-                                      {cfg.label}
-                                    </button>
-                                  );
-                                })}
+                                      Ver llamada
+                                    </a>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Editar contenido */}
+                              <div>
+                                <label className="block text-[11px] font-semibold mb-1.5" style={{ color: '#6B6480' }}>
+                                  Confirma o edita antes de incorporar
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  value={edited[l.id] ?? l.content}
+                                  onChange={e => setEdited(p => ({ ...p, [l.id]: e.target.value }))}
+                                  className="w-full text-[13px] leading-relaxed rounded-lg px-3 py-2 resize-y outline-none"
+                                  style={{
+                                    background: '#ffffff',
+                                    border:     '1px solid #E8E3F5',
+                                    color:      '#1A0A3B',
+                                    fontFamily: 'inherit',
+                                  }}
+                                />
+                              </div>
+
+                              {/* Category selector con hint */}
+                              <div>
+                                <label className="block text-[11px] font-semibold mb-1.5" style={{ color: '#6B6480' }}>
+                                  Dónde guardarlo
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {(['role_kb', 'guardrails'] as const).map(cat => {
+                                    const active = (categories[l.id] ?? 'role_kb') === cat;
+                                    const cfg    = CATEGORY_LABELS[cat];
+                                    const Icon   = cfg.icon;
+                                    return (
+                                      <button
+                                        key={cat}
+                                        onClick={() => setCategories(p => ({ ...p, [l.id]: cat }))}
+                                        className="flex items-start gap-2 text-left rounded-lg p-3 transition-all"
+                                        style={{
+                                          background: active ? 'rgba(108,59,255,0.08)' : '#ffffff',
+                                          border:     active ? '1px solid rgba(108,59,255,0.4)' : '1px solid #E8E3F5',
+                                        }}
+                                      >
+                                        <Icon size={13} className="mt-0.5 flex-shrink-0" style={{ color: active ? '#6C3BFF' : '#9B8FB5' }} />
+                                        <div>
+                                          <p className="text-[12px] font-semibold" style={{ color: active ? '#6C3BFF' : '#1A0A3B' }}>
+                                            {cfg.label}
+                                          </p>
+                                          <p className="text-[11px] mt-0.5 leading-snug" style={{ color: active ? 'rgba(108,59,255,0.85)' : '#9B8FB5' }}>
+                                            {cfg.hint}
+                                          </p>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
 
                               <div className="flex items-center gap-2 flex-wrap">
                                 <button
                                   onClick={() => act(l.id, 'approve')}
                                   disabled={acting[l.id]}
-                                  className="flex items-center gap-1.5 text-[12px] font-semibold px-3 h-7 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-[12px] font-semibold px-3 h-8 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
                                   style={{ background: '#6C3BFF', color: '#fff', boxShadow: '0 1px 2px rgba(108,59,255,0.24)' }}
                                 >
-                                  <Check size={13} /> Incorporar
+                                  <Check size={13} /> Incorporar al conocimiento
                                 </button>
                                 <button
                                   onClick={() => act(l.id, 'reject')}
                                   disabled={acting[l.id]}
-                                  className="flex items-center gap-1.5 text-[12px] font-medium px-3 h-7 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-[12px] font-medium px-3 h-8 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-50"
                                   style={{ background: '#ffffff', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
                                 >
                                   <X size={13} /> Descartar
@@ -330,7 +373,7 @@ export default function LearningsSection({ token, canApprove = true }: { token: 
                               </div>
                             </>
                           ) : (
-                            <p className="text-[13px] leading-relaxed py-1" style={{ color: '#1A0A3B' }}>
+                            <p className="text-[13px] leading-relaxed" style={{ color: '#1A0A3B' }}>
                               {l.content}
                             </p>
                           )}

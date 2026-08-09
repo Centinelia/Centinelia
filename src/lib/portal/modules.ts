@@ -42,7 +42,7 @@ export const PORTAL_MODULES = [
   },
   // ─ CONOCIMIENTO ─
   {
-    id: 'of_aprendizajes', label: 'Cómo trabajamos', group: 'Oficina', giros: ['all'] as string[],
+    id: 'of_aprendizajes', label: 'Aprendizajes', group: 'Oficina', giros: ['all'] as string[],
     desc: 'Revisión y aprobación de lo que tus empleados aprenden de llamadas, correos y conversaciones.',
   },
   {
