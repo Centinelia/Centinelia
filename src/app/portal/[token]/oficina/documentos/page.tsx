@@ -101,6 +101,8 @@ export default function DocumentosPage() {
   const [agentNames, setAgentNames] = useState<Record<string, string | null>>({});
   const [loading,   setLoading]   = useState(true);
   const [pill,      setPill]      = useState<Pill>('todos');
+  const [dateFrom,       setDateFrom]       = useState('');
+  const [dateTo,         setDateTo]         = useState('');
   const [downloading,    setDownloading]    = useState<string | null>(null);
   const [conserving,     setConserving]     = useState<string | null>(null);
   const [deleting,       setDeleting]       = useState<string | null>(null);
@@ -207,17 +209,23 @@ export default function DocumentosPage() {
   const firstAgentName = Object.values(agentNames).find(Boolean) ?? null;
   const employeeName   = firstAgentName ? contextualizeEmployeeName(firstAgentName) : 'tu empleado';
 
-  // Pill filtering
-  const docsForPill: Doc[] = pill === 'todos'     ? docs
+  // Pill filtering + rango de fechas
+  const inDateRange = (createdAt: string) => {
+    const iso = createdAt?.slice(0, 10) ?? '';
+    if (dateFrom && iso < dateFrom) return false;
+    if (dateTo   && iso > dateTo)   return false;
+    return true;
+  };
+  const docsForPill: Doc[] = (pill === 'todos'     ? docs
     : pill === 'facturas' ? docs.filter(d => d.template_type === 'factura')
     : pill === 'ocs'      ? docs.filter(d => d.template_type === 'orden_compra')
     : pill === 'otros'    ? docs.filter(d => !['factura', 'orden_compra'].includes(d.template_type))
-    : [];
+    : []).filter(d => inDateRange(d.created_at));
 
   const PILLS: { id: Pill; label: string; count: number }[] = [
     { id: 'todos',     label: 'Todos',             count: docs.length },
     { id: 'facturas',  label: 'Facturas',           count: docs.filter(d => d.template_type === 'factura').length },
-    { id: 'ocs',       label: 'Ordenes de compra',  count: docs.filter(d => d.template_type === 'orden_compra').length },
+    { id: 'ocs',       label: 'Órdenes de compra',  count: docs.filter(d => d.template_type === 'orden_compra').length },
     { id: 'contratos', label: 'Contratos',          count: drafts.length },
     { id: 'otros',     label: 'Otros',              count: docs.filter(d => !['factura', 'orden_compra'].includes(d.template_type)).length },
   ];
@@ -263,6 +271,43 @@ export default function DocumentosPage() {
         <>
           <PillsBar pills={PILLS} pill={pill} setPill={setPill} />
 
+          {/* Rango de fechas */}
+          <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: '#6B6480' }}>
+            <span>Desde</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            <span>hasta</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:opacity-70"
+                style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
+              >
+                <X size={11} /> limpiar
+              </button>
+            )}
+          </div>
+
           <div
             className="flex flex-col rounded-2xl overflow-hidden"
             style={{
@@ -301,8 +346,8 @@ export default function DocumentosPage() {
               <div style={{ borderTop: '1px solid #F0EDF9' }}>
                 <EmptyState
                   icon={FileText}
-                  title="Sin documentos en esta categoria"
-                  description={`Pidele a ${employeeName} que genere uno desde el chat.`}
+                  title="Sin documentos en esta categoría"
+                  description={`Pídele a ${employeeName} que genere uno desde el chat.`}
                 />
               </div>
             ) : (
@@ -372,8 +417,8 @@ export default function DocumentosPage() {
 
           {docsForPill.length > 0 && (
             <p className="text-[11px] text-center" style={{ color: '#9B8FB5' }}>
-              Para enviar un documento a un cliente, pidele a {employeeName} en{' '}
-              <strong style={{ color: '#6B6480' }}>Consultar agente</strong> que lo envie por correo.
+              Para enviar un documento a un cliente, pídele a {employeeName} en{' '}
+              <strong style={{ color: '#6B6480' }}>Consultar agente</strong> que lo envíe por correo.
             </p>
           )}
         </>
@@ -476,7 +521,7 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
           Empieza a generar documentos
         </h2>
         <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-          Tu equipo puede crear facturas, ordenes, cotizaciones y contratos.
+          Tu equipo puede crear facturas, órdenes, cotizaciones y contratos.
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2" style={{ borderTop: '1px solid #F0EDF9' }}>
@@ -488,7 +533,7 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
           <div>
             <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Pedirle a {employeeName.replace(/,\s*$/, '')}</p>
             <p className="text-[12px] mt-1 leading-relaxed" style={{ color: '#6B6480' }}>
-              Escribe en Consultar agente: "genera una factura para..." y el documento aparecera aqui en segundos.
+              Escribe en Consultar agente: "genera una factura para..." y el documento aparecerá aquí en segundos.
             </p>
           </div>
           <Link
@@ -507,7 +552,7 @@ function EmptyStart({ token, employeeName }: { token: string; employeeName: stri
           <div>
             <p className="text-[13px] font-semibold" style={{ color: '#1A0A3B' }}>Configurar plantillas</p>
             <p className="text-[12px] mt-1 leading-relaxed" style={{ color: '#6B6480' }}>
-              Sube tu formato de factura u orden de compra para que {employeeName} siempre use el mismo diseno.
+              Sube tu formato de factura u orden de compra para que {employeeName} siempre use el mismo diseño.
             </p>
           </div>
           <Link
