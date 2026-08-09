@@ -196,6 +196,31 @@ const APROBAR_GASTO_TOOL: Anthropic.Tool = {
   },
 };
 
+const EVALUAR_LIMITE_GASTO_TOOL: Anthropic.Tool = {
+  name: 'evaluar_limite_gasto',
+  description: 'Verifica si un gasto propuesto cabe en el presupuesto mensual de la organización. Devuelve presupuesto configurado, gastado este mes y si excede. INVÓCALA antes de aprobar_gasto para decidir con datos.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      monto: { type: 'number', description: 'Monto en MXN del gasto que se está evaluando.' },
+    },
+    required: ['monto'],
+  },
+};
+
+const VERIFICAR_GASTO_RECURRENTE_TOOL: Anthropic.Tool = {
+  name: 'verificar_gasto_recurrente',
+  description: 'Consulta el historial de facturas recibidas de un proveedor. Devuelve si es recurrente (≥2 aprobadas antes), monto del último pago y variación con el actual. Úsala al procesar facturas: si recomendación=auto_approve, puedes marcar pagada sin escalar.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      proveedor: { type: 'string', description: 'Nombre del proveedor (o email si no tienes nombre).' },
+      monto:     { type: 'number', description: 'Monto de la factura actual en MXN (opcional, para detectar variación anómala).' },
+    },
+    required: ['proveedor'],
+  },
+};
+
 const BUSCAR_DOCUMENTO_OFICINA_TOOL: Anthropic.Tool = {
   name: 'buscar_documento_oficina',
   description: 'Busca documentos ya generados y guardados en la Oficina del negocio (facturas, cotizaciones, cartas, propuestas, one-pagers, pitch decks, reportes Excel, órdenes de compra). Úsala cuando el usuario pida "el documento que le mandé la semana pasada" o cuando quieras reutilizar algo antes de generar uno nuevo. Devuelve una lista con id, título, tipo, folio y fecha. Luego usa enviar_documento_oficina con el id para adjuntarlo a un correo. IMPORTANTE: si no estás seguro del tipo exacto, OMITE el parámetro kind y busca solo por query — así verás todos los tipos que matchean.',
@@ -1083,8 +1108,10 @@ const VOICE_TO_CHAT: Record<string, string | null> = {
   qb_crear_factura:          'qb_crear_factura',
   solicitar_factura:         'solicitar_factura',
   consultar_factura:         'consultar_factura',
-  revisar_desempeno_equipo:  'revisar_desempeno_equipo',
-  aprobar_gasto:             'aprobar_gasto',
+  revisar_desempeno_equipo:   'revisar_desempeno_equipo',
+  aprobar_gasto:              'aprobar_gasto',
+  evaluar_limite_gasto:       'evaluar_limite_gasto',
+  verificar_gasto_recurrente: 'verificar_gasto_recurrente',
   marcar_no_llamar:          null,  // voice-only (no aplica a chat)
   agregar_tag_contacto:      'agregar_tag_contacto',
 };
@@ -1100,8 +1127,10 @@ const CHAT_TOOL_BY_NAME: Record<string, Anthropic.Tool> = {
   enviar_documento_oficina:  ENVIAR_DOCUMENTO_OFICINA_TOOL,
   solicitar_factura:         SOLICITAR_FACTURA_TOOL,
   consultar_factura:         CONSULTAR_FACTURA_TOOL,
-  revisar_desempeno_equipo:  REVISAR_DESEMPENO_EQUIPO_TOOL,
-  aprobar_gasto:             APROBAR_GASTO_TOOL,
+  revisar_desempeno_equipo:   REVISAR_DESEMPENO_EQUIPO_TOOL,
+  aprobar_gasto:              APROBAR_GASTO_TOOL,
+  evaluar_limite_gasto:       EVALUAR_LIMITE_GASTO_TOOL,
+  verificar_gasto_recurrente: VERIFICAR_GASTO_RECURRENTE_TOOL,
   agregar_tag_contacto:      AGREGAR_TAG_CONTACTO_TOOL,
   create_file:               CREATE_FILE_TOOL,
   save_to_drive:             SAVE_TO_DRIVE_TOOL,

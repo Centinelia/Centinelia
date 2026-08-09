@@ -240,7 +240,7 @@ export const MEERKAT_VOICE_DISTRIBUTION: Record<string, string[]> = {
   // Nova — recuperación / retención.
   nova:  ['buscar_cliente', 'notificar_transferencia', 'transferir_llamada', 'llamar_a', 'crear_ticket', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'extraer_voz_del_cliente', 'delegar_tarea', 'consultar_agente', 'buscar_en_web', 'reportar_falla'],
   // Nox — coordinador director. Ahora también consulta estado de facturas.
-  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'extraer_voz_del_cliente', 'reportar_falla'],
+  nox:   ['consultar_agente', 'delegar_tarea', 'enviar_correo', 'llamar_a', 'crear_documento', 'buscar_documento_oficina', 'enviar_documento_oficina', 'create_file', 'create_contract_draft', 'buscar_archivo', 'leer_archivo', 'save_to_drive', 'organize_files', 'list_calendar_events', 'create_calendar_event', 'delete_calendar_event', 'qb_consultar_facturas', 'consultar_factura', 'verificar_gasto_recurrente', 'extraer_voz_del_cliente', 'reportar_falla'],
   // Niva — directora general. Visión estratégica: desempeño del equipo,
   // aprobación de gastos, insights de marca/cliente. Delega ejecución fiscal
   // a Nico. Sin qb_crear_factura/qb_reporte_ingresos (los movimos a Nico).
