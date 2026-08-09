@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { MessageSquareText } from 'lucide-react';
+import { PieChart } from 'lucide-react';
 import EncuestasSection from './EncuestasSection';
 
 const SURVEY_MEERKAT_IDS = ['nia', 'nelia', 'naia'];
@@ -42,7 +42,7 @@ export default async function EncuestasPage({ params }: Props) {
           className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
           style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
         >
-          <MessageSquareText size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+          <PieChart size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
         </div>
         <div className="flex flex-col gap-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>

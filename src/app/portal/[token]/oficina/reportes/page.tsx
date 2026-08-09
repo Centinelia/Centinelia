@@ -3,8 +3,10 @@ export const dynamic = 'force-dynamic';
 import { createAdminClient }            from '@/lib/supabase/admin';
 import { cookies }                      from 'next/headers';
 import { redirect }                     from 'next/navigation';
+import { BarChart2 }                    from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import OpsReportsSection                from '../../OpsReportsSection';
+import OficinaPageHero                  from '../OficinaPageHero';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -48,7 +50,13 @@ export default async function ReportesPage({ params }: Props) {
   const reportAgentId = (reporter as any)?.id ?? agents[0]?.id ?? '';
 
   return (
-    <div id="of-reportes">
+    <div id="of-reportes" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+      <OficinaPageHero
+        icon={BarChart2}
+        eyebrow="Reportes"
+        title="Reportes y check-ins"
+        description="Configura reportes periódicos (diarios, semanales, mensuales) que tu equipo genera y te entrega automáticamente."
+      />
       <OpsReportsSection
         token={token}
         agents={agents}

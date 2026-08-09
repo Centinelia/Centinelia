@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { FileText, Clock, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, Copy, Check, Receipt } from 'lucide-react';
 import { EmptyState as PortalEmptyState } from '@/components/portal-ui';
 
 interface Item {
@@ -146,27 +146,72 @@ export default function FacturasPage() {
     { id: 'cancelled',   label: 'Canceladas',  count: counts.cancelled   },
   ];
 
-  return (
-    <div id="of-facturas" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
+  const pendingCount = counts.pending + counts.in_progress;
 
+  return (
+    <div id="of-facturas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <header className="flex items-start gap-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
+        >
+          <Receipt size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
+            Facturación
+          </p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+            Facturas por emitir
+          </h1>
+          <p className="text-[14px]" style={{ color: '#6B6480' }}>
+            {pendingCount > 0
+              ? <><strong style={{ color: '#1A0A3B' }}>{pendingCount}</strong> {pendingCount === 1 ? 'solicitud espera' : 'solicitudes esperan'} que timbres en tu PAC.</>
+              : <>Sin solicitudes pendientes. Cuando tus empleados registren una, aparecerá aquí.</>}
+          </p>
+        </div>
+      </header>
+
+      {/* Filter pills — segmented control style */}
       {!loading && (
-        <div className="flex gap-1 flex-wrap">
-          {PILLS.map(p => (
-            <button key={p.id} onClick={() => setFilter(p.id)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-medium transition-all"
-              style={{
-                background: filter === p.id ? '#6C3BFF' : '#FAFAFB',
-                color:      filter === p.id ? '#fff'    : '#6B6480',
-                border:     filter === p.id ? '1px solid #6C3BFF' : '1px solid #E8E3F5',
-                boxShadow:  filter === p.id ? '0 1px 2px rgba(108,59,255,0.24)' : 'none',
-              }}>
-              {p.label}
-              {p.count > 0 && (
-                <span className="text-[10px] font-bold tabular-nums rounded-full px-1.5"
-                  style={{ background: filter === p.id ? 'rgba(255,255,255,0.2)' : '#F0EDF9', color: filter === p.id ? '#fff' : '#9B8FB5' }}>{p.count}</span>
-              )}
-            </button>
-          ))}
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap"
+          style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
+        >
+          {PILLS.map(p => {
+            const isActive = filter === p.id;
+            const showRed  = (p.id === 'pending' || p.id === 'in_progress') && p.count > 0;
+            return (
+              <button
+                key={p.id}
+                onClick={() => setFilter(p.id)}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
+                style={{
+                  background: isActive ? '#ffffff' : 'transparent',
+                  color:      isActive ? '#1A0A3B' : '#6B6480',
+                  fontWeight: isActive ? 600 : 500,
+                  boxShadow:  isActive ? '0 1px 3px rgba(26,10,59,0.08)' : 'none',
+                  border:     'none',
+                  cursor:     'pointer',
+                }}
+              >
+                {p.label}
+                {p.count > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center text-[10px] font-bold tabular-nums min-w-[18px] h-[18px] px-1 rounded-full"
+                    style={{
+                      background: showRed ? '#ef4444' : (isActive ? '#6C3BFF' : '#E8E3F5'),
+                      color:      showRed || isActive ? '#ffffff' : '#6B6480',
+                    }}
+                  >
+                    {p.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -185,10 +230,11 @@ export default function FacturasPage() {
             <div>
               <div className="flex items-baseline gap-2">
                 <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
-                  Facturas por emitir
+                  Solicitudes
                 </h2>
                 {filtered.length > 0 && (
-                  <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+                  <span className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                    style={{ background: '#F0EDF9', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                     {filtered.length}
                   </span>
                 )}
@@ -285,19 +331,19 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
-      <div className="w-full max-w-2xl m-4 rounded-2xl overflow-hidden" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}
+      <div className="w-full max-w-2xl m-4 rounded-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
         onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--c-border)' }}>
+        <div className="flex items-start justify-between px-6 py-4" style={{ borderBottom: '1px solid #E8E3F5' }}>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Solicitud de factura</p>
-            <h2 className="text-lg font-bold mt-1" style={{ color: 'var(--c-text)' }}>{request.cliente_nombre}</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Solicitud de factura</p>
+            <h2 className="text-lg font-bold mt-1" style={{ color: '#1A0A3B' }}>{request.cliente_nombre}</h2>
             <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: cfg.color }}>
               <span className="font-medium">{cfg.label}</span>
-              <span style={{ color: 'var(--c-text-4)' }}>· solicitada {timeAgo(request.requested_at)}</span>
-              {request.resolved_at && <span style={{ color: 'var(--c-text-4)' }}>· resuelta {timeAgo(request.resolved_at)}</span>}
+              <span style={{ color: '#9B8FB5' }}>· solicitada {timeAgo(request.requested_at)}</span>
+              {request.resolved_at && <span style={{ color: '#9B8FB5' }}>· resuelta {timeAgo(request.resolved_at)}</span>}
             </div>
           </div>
-          <button onClick={onClose} className="text-xs px-2 py-1 rounded-lg hover:opacity-80" style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-3)' }}>Cerrar</button>
+          <button onClick={onClose} className="text-xs px-2 py-1 rounded-lg hover:opacity-80" style={{ background: '#FAFAFB', color: '#6B6480' }}>Cerrar</button>
         </div>
 
         <div className="px-6 py-4 flex flex-col gap-5 max-h-[70vh] overflow-y-auto">
@@ -317,9 +363,9 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
           </Section>
 
           <Section title="Conceptos">
-            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E8E3F5' }}>
               <table className="w-full text-xs">
-                <thead style={{ background: 'var(--c-surface-2)', color: 'var(--c-text-4)' }}>
+                <thead style={{ background: '#FAFAFB', color: '#9B8FB5' }}>
                   <tr>
                     <th className="text-left py-2 px-3 font-semibold uppercase tracking-wide text-[10px]">Descripción</th>
                     <th className="text-right py-2 px-3 font-semibold uppercase tracking-wide text-[10px] w-16">Cant.</th>
@@ -329,20 +375,20 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
                 </thead>
                 <tbody>
                   {request.items.map((it, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid var(--c-border)' }}>
-                      <td className="py-2 px-3" style={{ color: 'var(--c-text)' }}>{it.descripcion}</td>
-                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: 'var(--c-text-2)' }}>{it.cantidad}</td>
-                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: 'var(--c-text-2)' }}>{mxn(it.precio_unitario)}</td>
-                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: 'var(--c-text)' }}>{mxn(it.cantidad * it.precio_unitario)}</td>
+                    <tr key={i} style={{ borderTop: '1px solid #E8E3F5' }}>
+                      <td className="py-2 px-3" style={{ color: '#1A0A3B' }}>{it.descripcion}</td>
+                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: '#1A0A3B' }}>{it.cantidad}</td>
+                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: '#1A0A3B' }}>{mxn(it.precio_unitario)}</td>
+                      <td className="py-2 px-3 text-right tabular-nums" style={{ color: '#1A0A3B' }}>{mxn(it.cantidad * it.precio_unitario)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-col items-end gap-0.5 mt-3 text-xs" style={{ color: 'var(--c-text-3)' }}>
-              <div className="flex gap-6"><span>Subtotal</span><span className="tabular-nums w-24 text-right" style={{ color: 'var(--c-text)' }}>{mxn(request.subtotal, request.currency)}</span></div>
-              {request.iva > 0 && (<div className="flex gap-6"><span>IVA</span><span className="tabular-nums w-24 text-right" style={{ color: 'var(--c-text)' }}>{mxn(request.iva, request.currency)}</span></div>)}
-              <div className="flex gap-6 mt-1 pt-1 text-sm font-bold" style={{ borderTop: '1.5px solid var(--c-text)', color: 'var(--c-text)' }}>
+            <div className="flex flex-col items-end gap-0.5 mt-3 text-xs" style={{ color: '#6B6480' }}>
+              <div className="flex gap-6"><span>Subtotal</span><span className="tabular-nums w-24 text-right" style={{ color: '#1A0A3B' }}>{mxn(request.subtotal, request.currency)}</span></div>
+              {request.iva > 0 && (<div className="flex gap-6"><span>IVA</span><span className="tabular-nums w-24 text-right" style={{ color: '#1A0A3B' }}>{mxn(request.iva, request.currency)}</span></div>)}
+              <div className="flex gap-6 mt-1 pt-1 text-sm font-bold" style={{ borderTop: '1.5px solid #1A0A3B', color: '#1A0A3B' }}>
                 <span>Total</span>
                 <span className="tabular-nums w-24 text-right">{mxn(request.total, request.currency)}</span>
               </div>
@@ -351,7 +397,7 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
 
           {request.notes && (
             <Section title="Notas del empleado">
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--c-text-2)' }}>{request.notes}</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#1A0A3B' }}>{request.notes}</p>
             </Section>
           )}
 
@@ -365,21 +411,21 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
         </div>
 
         {!isTerminal && (
-          <div className="px-6 py-4 flex flex-col gap-3" style={{ borderTop: '1px solid var(--c-border)', background: 'var(--c-surface-2)' }}>
+          <div className="px-6 py-4 flex flex-col gap-3" style={{ borderTop: '1px solid #E8E3F5', background: '#FAFAFB' }}>
             {!showCancel ? (
               <>
                 <div className="flex flex-wrap gap-2 items-end">
                   <div className="flex-1 min-w-[200px]">
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>UUID (opcional)</label>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>UUID (opcional)</label>
                     <input value={uuid} onChange={e => setUuid(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX"
                       className="w-full rounded-lg px-3 py-2 text-xs font-mono"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                   </div>
                   <div className="flex-1 min-w-[150px]">
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--c-text-4)' }}>Folio (opcional)</label>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#9B8FB5' }}>Folio (opcional)</label>
                     <input value={folio} onChange={e => setFolio(e.target.value)} placeholder="FAC-1234"
                       className="w-full rounded-lg px-3 py-2 text-xs font-mono"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                      style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -404,11 +450,11 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
               </>
             ) : (
               <div className="flex flex-col gap-2">
-                <label className="block text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--c-text-4)' }}>Razón de la cancelación</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5' }}>Razón de la cancelación</label>
                 <input value={cancelReason} onChange={e => setCancelReason(e.target.value)} autoFocus
                   placeholder="Ej: RFC no válido, cliente ya no lo necesita, factura duplicada"
                   className="w-full rounded-lg px-3 py-2 text-xs"
-                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-text)', outline: 'none' }} />
+                  style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }} />
                 <div className="flex gap-2">
                   <button onClick={() => onCancel(cancelReason)} disabled={!cancelReason.trim()}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -417,14 +463,14 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
                   </button>
                   <button onClick={() => setShowCancel(false)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ background: 'var(--c-surface)', color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}>
+                    style={{ background: '#ffffff', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                     Volver
                   </button>
                 </div>
               </div>
             )}
             {request.status === 'pending' && (
-              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--c-text-4)' }}>
+              <p className="text-[11px] leading-relaxed" style={{ color: '#9B8FB5' }}>
                 Cuando timbres esta factura en tu sistema fiscal (Solución Factible, CONTPAQ, Aspel, etc.), marca aquí como emitida.
                 Los datos de UUID y folio son opcionales pero útiles para tu récord interno.
               </p>
@@ -439,7 +485,7 @@ function DetailModal({ request, onClose, onMarkInProgress, onMarkIssued, onCance
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--c-text-4)' }}>{title}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#9B8FB5' }}>{title}</p>
       <div className="flex flex-col gap-1.5">{children}</div>
     </div>
   );
@@ -452,10 +498,10 @@ function Row({ k, v, mono, copyable }: { k: string; v: string; mono?: boolean; c
   }
   return (
     <div className="flex items-start gap-3 text-xs">
-      <div className="w-32 shrink-0" style={{ color: 'var(--c-text-4)' }}>{k}</div>
-      <div className={`flex-1 ${mono ? 'font-mono' : ''}`} style={{ color: 'var(--c-text)' }}>{v}</div>
+      <div className="w-32 shrink-0" style={{ color: '#9B8FB5' }}>{k}</div>
+      <div className={`flex-1 ${mono ? 'font-mono' : ''}`} style={{ color: '#1A0A3B' }}>{v}</div>
       {copyable && (
-        <button onClick={copy} title="Copiar" className="p-1 rounded hover:opacity-80" style={{ color: copied ? '#22c55e' : 'var(--c-text-4)' }}>
+        <button onClick={copy} title="Copiar" className="p-1 rounded hover:opacity-80" style={{ color: copied ? '#22c55e' : '#9B8FB5' }}>
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
       )}

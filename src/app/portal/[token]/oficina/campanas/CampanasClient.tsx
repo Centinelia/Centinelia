@@ -49,24 +49,32 @@ export default function CampanasClient({
     <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
 
       {/* Hero */}
-      <header className="flex flex-col gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-          Campañas
-        </p>
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-          Automatiza llamadas salientes
-        </h1>
-        <p className="text-[14px]" style={{ color: '#6B6480' }}>
-          {counters.campanasActivas > 0 ? (
-            <>
-              <strong style={{ color: '#1A0A3B' }}>{counters.campanasActivas}</strong> {counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'}
-              {' · '}{counters.contactos} contactos disponibles
-              {' · '}{counters.completadas} llamadas completadas esta semana
-            </>
-          ) : (
-            <>Sin campañas activas. Crea una para que tu empleado llame a tus contactos automáticamente en el horario que elijas.</>
-          )}
-        </p>
+      <header className="flex items-start gap-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
+        >
+          <Megaphone size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
+            Campañas
+          </p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+            Automatiza llamadas salientes
+          </h1>
+          <p className="text-[14px]" style={{ color: '#6B6480' }}>
+            {counters.campanasActivas > 0 ? (
+              <>
+                <strong style={{ color: '#1A0A3B' }}>{counters.campanasActivas}</strong> {counters.campanasActivas === 1 ? 'campaña activa' : 'campañas activas'}
+                {' · '}{counters.contactos} contactos disponibles
+                {' · '}{counters.completadas} llamadas completadas esta semana
+              </>
+            ) : (
+              <>Sin campañas activas. Crea una para que tu empleado llame a tus contactos automáticamente en el horario que elijas.</>
+            )}
+          </p>
+        </div>
       </header>
 
       {/* KPIs */}

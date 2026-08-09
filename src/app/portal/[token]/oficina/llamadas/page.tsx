@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound, redirect } from 'next/navigation';
+import { Phone }              from 'lucide-react';
 import type { VoiceCall }    from '@/types/agent';
 import LlamadasTabs          from './LlamadasTabs';
 
@@ -159,8 +160,32 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
     outbound: outConnectRes?.count ?? 0,
   };
 
+  const totalCalls = calls.length;
+  const filtroLabel = filtro === 'entrantes' ? 'Entrantes' : filtro === 'salientes' ? 'Salientes' : 'Recuperación';
+
   return (
-    <div id="of-llamadas">
+    <div id="of-llamadas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+      <header className="flex items-start gap-4">
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
+        >
+          <Phone size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
+            Llamadas
+          </p>
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+            {filtroLabel}
+          </h1>
+          <p className="text-[14px]" style={{ color: '#6B6480' }}>
+            {totalCalls > 0
+              ? <><strong style={{ color: '#1A0A3B' }}>{totalCalls}</strong> {totalCalls === 1 ? 'llamada' : 'llamadas'} · registro completo con transcripción y grabación.</>
+              : <>Sin llamadas registradas todavía. Aquí verás transcripciones y grabaciones cuando lleguen.</>}
+          </p>
+        </div>
+      </header>
       <LlamadasTabs
         token={token}
         filtro={filtro}

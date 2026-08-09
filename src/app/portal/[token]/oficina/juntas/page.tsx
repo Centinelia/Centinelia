@@ -2,8 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { cookies }                      from 'next/headers';
 import { redirect }                     from 'next/navigation';
+import { Mic }                          from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import OpsMeetingsSection               from '../../OpsMeetingsSection';
+import OficinaPageHero                  from '../OficinaPageHero';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -17,5 +19,15 @@ export default async function JuntasPage({ params }: Props) {
   if (session?.isSubUser && session.modules && !session.modules.includes('of_juntas'))
     redirect(`/portal/${token}/oficina`);
 
-  return <div id="of-juntas"><OpsMeetingsSection token={token} /></div>;
+  return (
+    <div id="of-juntas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+      <OficinaPageHero
+        icon={Mic}
+        eyebrow="Juntas"
+        title="Reuniones y minutas"
+        description="Graba, transcribe y genera minutas de tus juntas. Tu equipo captura los pendientes automáticamente."
+      />
+      <OpsMeetingsSection token={token} />
+    </div>
+  );
 }

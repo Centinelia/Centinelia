@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 
+import { Search } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import InvestigacionSection  from './InvestigacionSection';
+import OficinaPageHero       from '../OficinaPageHero';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -37,7 +39,15 @@ export default async function InvestigacionPage({ params }: Props) {
   }
 
   return (
-    <div id="of-investigacion">
+    <div id="of-investigacion" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+      <OficinaPageHero
+        icon={Search}
+        eyebrow="Investigación"
+        title="Búsquedas y research"
+        description={agentName
+          ? <><strong style={{ color: '#1A0A3B' }}>{agentName}</strong> investiga en web, redes y competencia. Aquí ves cada búsqueda y su hallazgo.</>
+          : 'Búsquedas realizadas en web, redes y competencia por tu equipo.'}
+      />
       <InvestigacionSection token={token} agentName={agentName} meerkatRoleId={meerkatRoleId} />
     </div>
   );

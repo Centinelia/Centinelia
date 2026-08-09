@@ -5,10 +5,11 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText, Download, Trash2, Clock, FileCheck,
-  BookmarkPlus, AlertTriangle, MessageSquare, Eye, X,
+  BookmarkPlus, AlertTriangle, MessageSquare, Eye, X, FolderOpen,
 } from 'lucide-react';
 import OpsContractsSection from '../../OpsContractsSection';
 import { EmptyState } from '@/components/portal-ui';
+import OficinaPageHero from '../OficinaPageHero';
 
 interface Doc {
   id:               string;
@@ -223,8 +224,19 @@ export default function DocumentosPage() {
 
   const showSurface = pill !== 'contratos';
 
+  const totalDocs = docs.length + drafts.length;
+
   return (
-    <div id="of-documentos" className="flex flex-col gap-5 p-5 sm:p-7 w-full">
+    <div id="of-documentos" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
+
+      <OficinaPageHero
+        icon={FolderOpen}
+        eyebrow="Documentos"
+        title="Documentos y borradores"
+        description={totalDocs > 0
+          ? <><strong style={{ color: '#1A0A3B' }}>{totalDocs}</strong> {totalDocs === 1 ? 'documento' : 'documentos'} generados por tu equipo.</>
+          : 'Facturas, órdenes de compra, contratos y otros documentos creados por tus empleados.'}
+      />
 
       {/* Download error */}
       {downloadError && (

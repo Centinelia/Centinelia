@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { cookies }                      from 'next/headers';
+import { Brain }                        from 'lucide-react';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import LearningsSection                 from '../../LearningsSection';
 import ActividadFeed                    from '../ActividadFeed';
 import InsightsSection                  from '../../InsightsSection';
 import { PageSection, SectionHeader }   from '@/components/portal-ui';
+import OficinaPageHero                  from '../OficinaPageHero';
 
 interface Props { params: Promise<{ token: string }> }
 
@@ -18,7 +20,14 @@ export default async function AprendizajesPage({ params }: Props) {
   const canApprove = !session?.isSubUser || !!(session.modules?.includes('of_aprendizajes'));
 
   return (
-    <div id="of-aprendizajes" className="flex flex-col gap-8">
+    <div id="of-aprendizajes" className="flex flex-col gap-6 max-w-6xl mx-auto w-full p-4 md:p-6">
+      <OficinaPageHero
+        icon={Brain}
+        eyebrow="Cómo trabajamos"
+        title="Aprendizajes del equipo"
+        description="Aprueba lo que tu equipo aprendió en campo. Los cambios se aplican a todos los canales (voz, chat, correo)."
+      />
+
       <LearningsSection token={token} canApprove={canApprove} />
 
       <PageSection
