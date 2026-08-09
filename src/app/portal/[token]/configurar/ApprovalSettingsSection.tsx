@@ -1,65 +1,50 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ShieldCheck, Zap, Sparkles } from 'lucide-react';
+import { Sparkles, ShieldCheck } from 'lucide-react';
 import { SectionHeader } from '@/components/portal-ui';
-
-type Mode = 'auto' | 'always' | 'default';
 
 interface Settings {
   always_approve_delegations: boolean;
   auto_approve_task_plans:    boolean;
 }
 
-const OPTIONS: { key: Mode; label: string; desc: string; icon: typeof ShieldCheck }[] = [
-  {
-    key:   'always',
-    label: 'Modo supervisado',
-    desc:  'TODA tarea que un empleado delegue a otro requiere tu aprobación por correo antes de ejecutarse. Ideal cuando quieres máximo control sobre lo que se envía o se hace en nombre del negocio.',
-    icon:  ShieldCheck,
-  },
-  {
-    key:   'default',
-    label: 'Automático inteligente',
-    desc:  'Los empleados ejecutan tareas cortas sin pedir permiso. Tareas grandes o con palabras como "campaña", "lanzamiento" o "múltiples" piden aprobación por correo antes de ejecutar.',
-    icon:  Sparkles,
-  },
-  {
-    key:   'auto',
-    label: 'Auto-ejecución total',
-    desc:  'Los empleados ejecutan cualquier delegación sin pedir aprobación, incluso tareas grandes. Máxima velocidad, mínima supervisión. Usa este modo solo cuando confíes plenamente en tu equipo de empleados.',
-    icon:  Zap,
-  },
-];
-
+/**
+ * F5 — este panel antes tenía 3 modos (Supervisado / Inteligente / Auto-ejecución).
+ * Post-F4 el heurístico "inteligente" ya solo escala en alto stakes real (dinero,
+ * contratos, envíos masivos), lo que dejó "Auto-ejecución total" redundante.
+ * Colapsamos a un default (inteligente) + un toggle único de máximo control.
+ * Ver [[feedback-empleados-inteligentes]].
+ */
 export default function ApprovalSettingsSection({ token, roleColor }: { token: string; roleColor: string }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving,   setSaving]   = useState(false);
   const [msg,      setMsg]      = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/portal/${token}/org-approval-settings`).then(r => r.json()).then(setSettings).catch(() => setSettings({ always_approve_delegations: false, auto_approve_task_plans: false }));
+    fetch(`/api/portal/${token}/org-approval-settings`)
+      .then(r => r.json())
+      .then(setSettings)
+      .catch(() => setSettings({ always_approve_delegations: false, auto_approve_task_plans: false }));
   }, [token]);
 
-  const currentMode: Mode = settings?.always_approve_delegations
-    ? 'always'
-    : settings?.auto_approve_task_plans
-      ? 'auto'
-      : 'default';
+  const alwaysOn = !!settings?.always_approve_delegations;
 
-  const setMode = async (mode: Mode) => {
-    if (mode === currentMode || !settings) return;
+  const toggleAlways = async (next: boolean) => {
+    if (!settings) return;
     setSaving(true);
     setMsg(null);
     const payload: Settings = {
-      always_approve_delegations: mode === 'always',
-      auto_approve_task_plans:    mode === 'auto',
+      always_approve_delegations: next,
+      // auto_approve_task_plans se mantiene siempre false desde el UI. El flag
+      // sigue vivo en backend para org-level overrides raros (soporte técnico).
+      auto_approve_task_plans:    false,
     };
     try {
       const res = await fetch(`/api/portal/${token}/org-approval-settings`, {
-        method: 'PATCH',
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body:    JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('save failed');
       setSettings(payload);
@@ -78,47 +63,62 @@ export default function ApprovalSettingsSection({ token, roleColor }: { token: s
         as="h2"
         title="Aprobación entre empleados"
         tooltip="Aplica solo cuando un empleado le pide a otro hacer algo (por ejemplo Sofía le pide a Noah que envíe un correo). El nivel de autonomía de arriba controla las acciones que cada empleado hace por su cuenta."
-        className="mb-2"
+        className="mb-4"
       />
-      <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--c-text-3)' }}>
-        ¿Quieres aprobar cada delegación entre empleados antes de que se ejecute?
-      </p>
 
-      {!settings && <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>}
+      {!settings && (
+        <p className="text-sm" style={{ color: 'var(--c-text-2)' }}>Cargando…</p>
+      )}
 
       {settings && (
-        <div className="space-y-2">
-          {OPTIONS.map(o => {
-            const active = currentMode === o.key;
-            const Icon   = o.icon;
-            return (
-              <button
-                key={o.key}
-                type="button"
-                disabled={saving}
-                onClick={() => setMode(o.key)}
-                className="w-full text-left p-4 rounded-lg transition-all"
-                style={{
-                  background: active ? `${roleColor}10` : 'var(--c-surface)',
-                  border:     `1px solid ${active ? roleColor : 'var(--c-border)'}`,
-                  cursor:     saving ? 'wait' : 'pointer',
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex-shrink-0">
-                    <Icon size={18} style={{ color: active ? roleColor : 'var(--c-text-3)' }} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-semibold" style={{ color: active ? roleColor : 'var(--c-text)' }}>{o.label}</span>
-                      {active && <span className="text-xs" style={{ color: roleColor }}>· Activo</span>}
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--c-text-2)' }}>{o.desc}</p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-3">
+          {/* Card de default siempre visible — comunica qué hace el modo inteligente */}
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: `${roleColor}08`, border: `1px solid ${roleColor}22` }}
+          >
+            <div className="flex items-start gap-3">
+              <Sparkles size={18} className="mt-0.5 flex-shrink-0" style={{ color: roleColor }} />
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--c-text)' }}>
+                  Modo inteligente
+                </p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                  Tus empleados ejecutan las delegaciones solos. Solo te piden aprobación cuando la tarea toca dinero (pagos, transferencias, reembolsos), contratos, o envíos masivos a clientes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle opcional — máximo control */}
+          <label
+            className="flex items-start gap-3 p-4 rounded-lg cursor-pointer transition-colors"
+            style={{
+              background: alwaysOn ? `${roleColor}10` : 'var(--c-surface)',
+              border:     `1px solid ${alwaysOn ? roleColor : 'var(--c-border)'}`,
+              opacity:    saving ? 0.6 : 1,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={alwaysOn}
+              disabled={saving}
+              onChange={e => toggleAlways(e.target.checked)}
+              className="mt-1 flex-shrink-0 h-4 w-4 rounded"
+              style={{ accentColor: roleColor }}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <ShieldCheck size={14} style={{ color: alwaysOn ? roleColor : 'var(--c-text-3)' }} />
+                <span className="text-sm font-semibold" style={{ color: alwaysOn ? roleColor : 'var(--c-text)' }}>
+                  Aprobar CADA delegación por correo
+                </span>
+              </div>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
+                Al activarlo, cualquier tarea que un empleado le pida a otro esperará tu OK por correo antes de ejecutarse. Úsalo si prefieres validar todo manualmente.
+              </p>
+            </div>
+          </label>
         </div>
       )}
 
