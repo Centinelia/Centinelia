@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { executeAutoRefillOps } from '@/lib/billing/auto-refill';
 import { consumePoolOps, fireOverageAlertIfNeeded } from '@/lib/annual-contracts/pool-consume';
@@ -46,12 +47,15 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
         crossed_100_threshold: pool.crossed_100_threshold,
         crossed_120_threshold: pool.crossed_120_threshold,
       });
-      // Audit log también en pool path (bug: antes solo se registraba en
-      // path Stripe legacy, admin/analytics subcontaba las tareas de
-      // clientes con pool anual).
-      void supabase
-        .from('ai_ops_log')
-        .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
+      // Audit log — usa after() para sobrevivir al fin de la response HTTP
+      // en Vercel. Antes usaba `void` y el runtime mataba la promesa antes
+      // de que el insert llegara a Supabase (por eso ai_ops_log llevaba
+      // meses sin escrituras reales de producción).
+      after(async () => {
+        await supabase
+          .from('ai_ops_log')
+          .insert({ agent_id: agentId, portal_email: portalEmail, ...logPayload });
+      });
       return { ok: true, used: pool.minutes_used_after, limit: pool.minutes_pool };
     }
   }
@@ -66,15 +70,20 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
   const row = data as { ok: boolean; ops_used: number; ops_limit: number; account_email: string | null };
 
   if (row.ok && row.account_email) {
-    // Fire-and-forget audit log
-    void supabase
-      .from('ai_ops_log')
-      .insert({ agent_id: agentId, portal_email: row.account_email, ...logPayload });
+    const accountEmail = row.account_email;
+    // Audit log — after() garantiza que corra post-response sin que Vercel
+    // mate la promesa (bug histórico: los void supabase.insert nunca
+    // llegaban a Supabase, dejando ai_ops_log vacío en producción).
+    after(async () => {
+      await supabase
+        .from('ai_ops_log')
+        .insert({ agent_id: agentId, portal_email: accountEmail, ...logPayload });
+    });
 
-    // Fire-and-forget ops auto-refill: trigger when remaining just dropped below threshold
+    // Auto-refill: dispara cuando remaining acaba de cruzar el threshold
     const remaining = row.ops_limit - row.ops_used;
     const prevRemaining = remaining + count;
-    void (async () => {
+    after(async () => {
       const { data: cfg } = await supabase
         .from('voice_agents')
         .select('auto_refill_ops_enabled, auto_refill_ops_threshold, stripe_customer_id')
@@ -84,27 +93,39 @@ export async function consumeAiOp(agentId: string, count = 1, meta?: OpsMeta): P
       if (cfg?.auto_refill_ops_enabled && cfg?.stripe_customer_id && prevRemaining >= threshold && remaining < threshold) {
         await executeAutoRefillOps(agentId).catch(() => null);
       }
-    })();
+    });
   }
 
   return { ok: row.ok, used: row.ops_used, limit: row.ops_limit };
 }
 
-// Resets ops counter for all agents in the account. Called on monthly renewal.
+// Resetea el contador de ops del ciclo. Se llama en renovación mensual
+// (billing webhook + cron reset-ops-pool). Resetea tanto el contador de la
+// org (source of truth) como el per-agente (atribución).
 export async function resetAiOps(portalEmail: string): Promise<void> {
   const supabase = createAdminClient();
-  await supabase
-    .from('voice_agents')
-    .update({ ai_ops_used: 0 })
-    .eq('portal_email', portalEmail);
+  await Promise.all([
+    supabase.from('organizations').update({ monthly_ops_used: 0 }).eq('portal_email', portalEmail),
+    supabase.from('voice_agents').update({ ai_ops_used: 0 }).eq('portal_email', portalEmail),
+  ]);
 }
 
-// Sets the per-agent ops limit for all agents in the account. Called on plan change.
-// Pool total = limit × number of agents.
-export async function setAiOpsLimit(portalEmail: string, limitPerAgent: number): Promise<void> {
+// Fija la cuota mensual de ops de la cuenta. El argumento aiOpsPerAgent viene
+// de plans.ts (MONTHLY_CONFIG[plan][tier].aiOps) y mantiene semántica per-agente
+// para no cambiar el pricing histórico: la cuenta paga aiOpsPerAgent × N.
+// Escribe en dos lugares:
+//   organizations.monthly_ops_pool  = source of truth del pool compartido
+//   voice_agents.ai_ops_limit       = valor per-agente (fallback + UI legacy)
+export async function setAiOpsLimit(portalEmail: string, aiOpsPerAgent: number): Promise<void> {
   const supabase = createAdminClient();
-  await supabase
+  const { count } = await supabase
     .from('voice_agents')
-    .update({ ai_ops_limit: limitPerAgent })
+    .select('id', { count: 'exact', head: true })
     .eq('portal_email', portalEmail);
+  const agentCount = count ?? 0;
+  const poolTotal = aiOpsPerAgent * Math.max(1, agentCount);
+  await Promise.all([
+    supabase.from('organizations').update({ monthly_ops_pool: poolTotal }).eq('portal_email', portalEmail),
+    supabase.from('voice_agents').update({ ai_ops_limit: aiOpsPerAgent }).eq('portal_email', portalEmail),
+  ]);
 }

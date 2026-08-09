@@ -75,11 +75,22 @@ export default async function UsuariosPage({ params }: Props) {
   const minutesUsed     = (acctMins?.minutes_used ?? (agent as any).minutes_used ?? 0) as number;
   const minutesRemain   = Math.max(0, minutesIncluded - minutesUsed);
 
-  const { data: opsAgents } = agent.portal_email
-    ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
+  // Pool compartido: prefiere org-level, cae a SUM per-agente si no está migrada.
+  const { data: orgPool } = agent.portal_email
+    ? await supabase.from('organizations')
+        .select('monthly_ops_pool, monthly_ops_used')
+        .eq('portal_email', agent.portal_email)
+        .maybeSingle()
     : { data: null };
-  const aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
-  const aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
+  let aiOpsUsed  = (orgPool?.monthly_ops_used as number | null) ?? 0;
+  let aiOpsLimit = (orgPool?.monthly_ops_pool as number | null) ?? 0;
+  if (!orgPool?.monthly_ops_pool) {
+    const { data: opsAgents } = agent.portal_email
+      ? await supabase.from('voice_agents').select('ai_ops_used, ai_ops_limit').eq('portal_email', agent.portal_email)
+      : { data: null };
+    aiOpsUsed  = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_used  as number) ?? 0), 0);
+    aiOpsLimit = ((opsAgents ?? []) as any[]).reduce((s, a) => s + ((a.ai_ops_limit as number) ?? 0), 0);
+  }
 
   const { data: existingUsers } = agent.portal_email
     ? await supabase

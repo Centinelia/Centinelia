@@ -23,6 +23,7 @@
     { "path": "/api/cron/sync-sales-kb",               "schedule": "0 4 * * 0"    },
     { "path": "/api/cron/weekly-insights",             "schedule": "0 7 * * 1"    },
     { "path": "/api/cron/reset-minutes",               "schedule": "0 6 1 * *"    },
+    { "path": "/api/cron/reset-ops-pool",              "schedule": "0 6 * * *"    },
     { "path": "/api/cron/batch-eval",                  "schedule": "0 * * * *"    },
     { "path": "/api/cron/batch-eval-retrieve",         "schedule": "*/20 * * * *" },
     { "path": "/api/cron/scheduled-tasks",             "schedule": "*/15 * * * *" },
