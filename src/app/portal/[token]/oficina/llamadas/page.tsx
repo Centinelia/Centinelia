@@ -2,8 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { notFound, redirect } from 'next/navigation';
+import { Phone }              from 'lucide-react';
 import type { VoiceCall }    from '@/types/agent';
 import LlamadasTabs          from './LlamadasTabs';
+import OficinaPageHero       from '../OficinaPageHero';
 
 export type LlamadasFiltro = 'entrantes' | 'salientes' | 'recovery';
 
@@ -161,7 +163,22 @@ export default async function OficinaLlamadasPage({ params, searchParams }: Prop
 
   return (
     <div id="of-llamadas" className="flex flex-col gap-5 max-w-6xl mx-auto w-full p-4 md:p-6">
-      {/* Hero unificado en LlamadasTabs (client) — allí vive KPIs + pulse + copy dinámico */}
+      <OficinaPageHero
+        icon={Phone}
+        eyebrow="Llamadas"
+        title="Actividad de voz"
+        description={
+          counters.hoy > 0 ? (
+            <>
+              <strong style={{ color: '#1A0A3B' }}>{counters.hoy}</strong> {counters.hoy === 1 ? 'llamada' : 'llamadas'} hoy
+              {counters.leads > 0 && <> · <strong style={{ color: '#22C55E' }}>{counters.leads}</strong> {counters.leads === 1 ? 'lead' : 'leads'} captados esta semana</>}
+              {' · '}{counters.semana} atendidas en los últimos 7 días
+            </>
+          ) : (
+            <>Sin llamadas hoy. {counters.semana} atendidas en los últimos 7 días.</>
+          )
+        }
+      />
       <LlamadasTabs
         token={token}
         filtro={filtro}

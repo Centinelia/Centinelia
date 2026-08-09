@@ -111,27 +111,6 @@ export default function LlamadasTabs({
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <header className="flex flex-col gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-          Llamadas
-        </p>
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-          Actividad de voz
-        </h1>
-        <p className="text-[14px]" style={{ color: '#6B6480' }}>
-          {c.hoy > 0 ? (
-            <>
-              <strong style={{ color: '#1A0A3B' }}>{c.hoy}</strong> {c.hoy === 1 ? 'llamada' : 'llamadas'} hoy
-              {c.leads > 0 && <> · <strong style={{ color: '#22C55E' }}>{c.leads}</strong> {c.leads === 1 ? 'lead' : 'leads'} captados esta semana</>}
-              {' · '}{c.semana} atendidas en los últimos 7 días
-            </>
-          ) : (
-            <>Sin llamadas hoy. {c.semana} atendidas en los últimos 7 días.</>
-          )}
-        </p>
-      </header>
-
       {/* ── KPI strip ─────────────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiInline label="Hoy"                value={c.hoy}      accent="#6C3BFF" />
