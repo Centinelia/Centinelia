@@ -727,84 +727,96 @@ export default function OpsInboxSection({ token, agents }: OpsInboxSectionProps)
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — segmented control style */}
       <div
-        className="flex gap-0 border-b overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ borderColor: '#E8E3F5' }}
+        className="inline-flex items-center gap-1 p-1 rounded-xl overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ background: '#F5F2FB', border: '1px solid #E8E3F5' }}
       >
-        {TAB_CONFIG.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => {
-              setActiveTab(tab.key);
-              changeCategory(null);
-            }}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors"
-            style={{
-              borderColor:  activeTab === tab.key ? '#6C3BFF' : 'transparent',
-              color:        activeTab === tab.key ? '#1A0A3B' : '#6B6480',
-              fontWeight:   activeTab === tab.key ? 600 : 400,
-              background:   'transparent',
-            }}
-          >
-            {tab.label}
-            {tab.count !== undefined && (
-              <span
-                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{
-                  background: activeTab === tab.key ? 'rgba(108,59,255,0.12)' : 'rgba(239,68,68,0.12)',
-                  color:      activeTab === tab.key ? '#6C3BFF' : '#ef4444',
-                }}
-              >
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9B8FB5', pointerEvents: 'none' }} />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por asunto, remitente o resumen..."
-          className="w-full text-xs rounded-xl"
-          style={{ paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
-        />
-      </div>
-
-      {/* Origen filter chips */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] font-semibold uppercase tracking-widest mr-1" style={{ color: '#9B8FB5' }}>
-          Origen
-        </span>
-        {([
-          { key: 'all',        label: 'Todo' },
-          { key: 'org_shared', label: 'Bandeja compartida' },
-          { key: 'per_agent',  label: 'Buzones propios' },
-        ] as const).map(chip => {
-          const isActive = activeScope === chip.key;
+        {TAB_CONFIG.map(tab => {
+          const isActive = activeTab === tab.key;
+          const showRedBadge = tab.key === 'pendientes' && tab.count !== undefined;
           return (
             <button
-              key={chip.key}
-              type="button"
-              onClick={() => changeScope(chip.key)}
-              className="text-[11px] px-2.5 py-1 rounded-full transition-colors"
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                changeCategory(null);
+              }}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] transition-all"
               style={{
-                background: isActive ? 'rgba(108,59,255,0.10)' : '#ffffff',
-                color:      isActive ? '#6C3BFF' : '#6B6480',
-                border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : '#E8E3F5'}`,
-                fontWeight: isActive ? 600 : 400,
+                background: isActive ? '#ffffff' : 'transparent',
+                color:      isActive ? '#1A0A3B' : '#6B6480',
+                fontWeight: isActive ? 600 : 500,
+                boxShadow:  isActive ? '0 1px 3px rgba(26,10,59,0.08)' : 'none',
+                border:     'none',
                 cursor:     'pointer',
               }}
             >
-              {chip.label}
+              {tab.label}
+              {tab.count !== undefined && (
+                <span
+                  className="inline-flex items-center justify-center text-[10px] font-bold tabular-nums min-w-[18px] h-[18px] px-1 rounded-full"
+                  style={{
+                    background: showRedBadge ? '#ef4444' : (isActive ? '#6C3BFF' : '#E8E3F5'),
+                    color:      showRedBadge || isActive ? '#ffffff' : '#6B6480',
+                  }}
+                >
+                  {tab.count}
+                </span>
+              )}
             </button>
           );
         })}
+      </div>
+
+      {/* Search + Origen filter — juntos en una card */}
+      <div
+        className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center px-4 py-3 rounded-xl"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5' }}
+      >
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9B8FB5', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por asunto, remitente o resumen..."
+            className="w-full text-[13px] rounded-lg transition-colors focus:border-[#6C3BFF]"
+            style={{ paddingLeft: 34, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: '#FAFAFB', border: '1px solid #E8E3F5', color: '#1A0A3B', outline: 'none' }}
+          />
+        </div>
+
+        {/* Origen chips */}
+        <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
+          <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline" style={{ color: '#9B8FB5', letterSpacing: '0.08em' }}>
+            Origen
+          </span>
+          {([
+            { key: 'all',        label: 'Todo' },
+            { key: 'org_shared', label: 'Compartida' },
+            { key: 'per_agent',  label: 'Propios' },
+          ] as const).map(chip => {
+            const isActive = activeScope === chip.key;
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => changeScope(chip.key)}
+                className="text-[12px] px-2.5 py-1 rounded-full transition-colors"
+                style={{
+                  background: isActive ? 'rgba(108,59,255,0.10)' : '#FAFAFB',
+                  color:      isActive ? '#6C3BFF' : '#6B6480',
+                  border:     `1px solid ${isActive ? 'rgba(108,59,255,0.30)' : '#E8E3F5'}`,
+                  fontWeight: isActive ? 600 : 500,
+                  cursor:     'pointer',
+                }}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Category filter chips */}

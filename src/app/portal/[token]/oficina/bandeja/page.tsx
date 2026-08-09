@@ -6,7 +6,7 @@ import { getAgentAccess }    from '@/lib/portal/agent-access';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies }           from 'next/headers';
 import Link                  from 'next/link';
-import { Headphones, Settings2 }  from 'lucide-react';
+import { Headphones, Settings2, Inbox, AlertTriangle, Clock } from 'lucide-react';
 import CommsRoutingEditor    from './CommsRoutingEditor';
 import OpsInboxSection       from '../../OpsInboxSection';
 import type { InboxAgent }   from '../../inbox/categories';
@@ -109,33 +109,35 @@ export default async function BandejaPage({ params }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-5 max-w-6xl mx-auto w-full">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex flex-col gap-2 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
-            Bandeja
-          </p>
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
-            Correos y solicitudes
-          </h1>
-          <p className="text-[14px]" style={{ color: '#6B6480' }}>
-            {totalAtn > 0 ? (
-              <>
-                <strong style={{ color: '#1A0A3B' }}>{totalAtn}</strong> {totalAtn === 1 ? 'requiere' : 'requieren'} tu atención
-                {escCount > 0 && <> · <strong style={{ color: '#EF4444' }}>{escCount}</strong> escalado{escCount !== 1 ? 's' : ''}</>}
-                {' · '}{todayCnt} en las últimas 24h
-              </>
-            ) : (
-              <>Todo al día. {todayCnt} {todayCnt === 1 ? 'evento' : 'eventos'} en las últimas 24h.</>
-            )}
-          </p>
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}
+          >
+            <Inbox size={26} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col gap-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: '#9B6DFF' }}>
+              Bandeja
+            </p>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+              Correos y solicitudes
+            </h1>
+            <p className="text-[14px]" style={{ color: '#6B6480' }}>
+              {totalAtn > 0
+                ? <><strong style={{ color: '#1A0A3B' }}>{totalAtn}</strong> {totalAtn === 1 ? 'requiere' : 'requieren'} tu atención</>
+                : <>Todo al día. Ninguna acción pendiente en este momento.</>}
+            </p>
+          </div>
         </div>
 
         {hasNeo && (
           <Link
             href={`/portal/${token}/oficina/helpdesk`}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold transition-all shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all shrink-0 hover:shadow-[0_4px_12px_rgba(108,59,255,0.15)]"
             style={{
               background: '#ffffff',
               border:     '1px solid #E8E3F5',
@@ -143,11 +145,69 @@ export default async function BandejaPage({ params }: Props) {
               boxShadow:  '0 1px 2px rgba(26,10,59,0.04)',
             }}
           >
-            <Headphones size={14} />
-            Ver bandeja de IT
+            <Headphones size={14} strokeWidth={2.25} />
+            Bandeja de IT
           </Link>
         )}
       </header>
+
+      {/* ── KPIs de la bandeja (3 stat cards con divisores) ──────────────── */}
+      <div
+        className="grid grid-cols-3 rounded-2xl overflow-hidden"
+        style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}
+      >
+        <div className="flex flex-col gap-2 px-5 py-4" style={{ borderRight: '1px solid #F0EDF9' }}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.22)' }}>
+              <Inbox size={13} style={{ color: '#6C3BFF' }} strokeWidth={2.25} />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+              Pendientes
+            </p>
+          </div>
+          <p className="text-[26px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>
+            {pendCount}
+          </p>
+          <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+            {pendCount === 0 ? 'Todo revisado' : 'Esperan tu decisión'}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 px-5 py-4" style={{ borderRight: '1px solid #F0EDF9', opacity: escCount === 0 ? 0.7 : 1 }}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: escCount > 0 ? 'rgba(239,68,68,0.10)' : '#FAFAFB', border: `1px solid ${escCount > 0 ? 'rgba(239,68,68,0.25)' : '#E8E3F5'}` }}>
+              <AlertTriangle size={13} style={{ color: escCount > 0 ? '#EF4444' : '#9B8FB5' }} strokeWidth={2.25} />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+              Escalados
+            </p>
+          </div>
+          <p className="text-[26px] font-bold leading-none tabular-nums tracking-tight" style={{ color: escCount > 0 ? '#EF4444' : '#1A0A3B' }}>
+            {escCount}
+          </p>
+          <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+            {escCount === 0 ? 'Sin escalaciones' : 'Requieren tu revisión'}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.25)' }}>
+              <Clock size={13} style={{ color: '#0EA5E9' }} strokeWidth={2.25} />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+              Últimas 24h
+            </p>
+          </div>
+          <p className="text-[26px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>
+            {todayCnt}
+          </p>
+          <p className="text-[11px]" style={{ color: '#9B8FB5' }}>
+            {todayCnt === 0 ? 'Sin actividad' : 'Correos recibidos'}
+          </p>
+        </div>
+      </div>
 
       {/* ── OpsInboxSection — lista principal (mantiene su UX interna) ─── */}
       <OpsInboxSection token={token} agents={agents} />
