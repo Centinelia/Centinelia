@@ -167,7 +167,7 @@ export default function ReceivedInvoicesSection({ token }: { token: string }) {
   return (
     <div
       id="facturas-recibidas"
-      className="flex flex-col rounded-2xl overflow-hidden"
+      className="flex flex-col rounded-2xl"
       style={{
         background: '#ffffff',
         border:     '1px solid #E8E3F5',
