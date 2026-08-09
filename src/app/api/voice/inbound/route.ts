@@ -361,7 +361,7 @@ Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_n
 
   const systemPrompt = await buildSystemPrompt(typedAgent, null, typedAgent.portal_email ?? undefined, supabase) + (teamCallerContext || callerContext) + memoryContext + surveyPrompt +
     (minsLow ? `\n\nAVISO INTERNO: Al inicio de esta llamada, antes de atender cualquier solicitud, avisa al dueño que le quedan ${minutesRemain} minutos este mes (de ${minutesIncluded} incluidos). Dilo de forma natural y breve, en una sola frase. Ejemplo: "Por cierto, te quedan ${minutesRemain} minutos este mes, puedes comprar más desde el portal." Luego atiende su solicitud normalmente.` : '');
-  const tools = await buildTools(typedAgent, qbConnected);
+  const tools = await buildTools(typedAgent, qbConnected, orgCalendar);
 
   const defaultGreeting = typedAgent.speech_style === 'tu'
     ? `Hola, gracias por llamar a ${typedAgent.business_name}. Te habla ${agentName}. ¿En qué te puedo ayudar?`
@@ -481,7 +481,14 @@ Esta llamada proviene de ${memberName}, ${memberRole} de ${typedAgent.business_n
   });
 }
 
-async function buildTools(agent: VoiceAgent, qbConnected = false) {
+interface OrgCalendarConfig {
+  calendar_type?:          string | null;
+  calendar_api_key?:       string | null;
+  calendar_event_type_id?: string | null;
+  calendar_link?:          string | null;
+}
+
+async function buildTools(agent: VoiceAgent, qbConnected = false, orgCalendar: OrgCalendarConfig = {}) {
   const tools: object[] = [];
   const f = agent.features;
 
