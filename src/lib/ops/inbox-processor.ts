@@ -745,7 +745,22 @@ Al final de cada respuesta que no use herramientas, produce SOLO JSON válido, s
 Si algo no se puede determinar del email, pon null.
 Incluye en el JSON un campo "invoice_data" con estos campos.
 Incluye "invoice_valid": true si todos los datos esenciales están presentes, false si falta información clave.
-Si hay discrepancia o dato sospechoso, descríbela en "invoice_discrepancy" (o null si todo OK).` : '';
+Si hay discrepancia o dato sospechoso, descríbela en "invoice_discrepancy" (o null si todo OK).
+
+=== FACTURAS: NO ESPERES INSTRUCCIÓN DEL HUMANO ===
+
+Eres un empleado inteligente. NO le pidas al humano que decida por defecto:
+
+- Si detectas discrepancia (invoice_discrepancy != null): CONTACTA al proveedor tú mismo.
+  → needs_info: true
+  → request_to_sender: mensaje profesional pidiendo aclaración específica del problema detectado. Ejemplo: "Recibimos su factura #FA-123 por $2,500 MXN. Detectamos que el monto no coincide con nuestra orden de compra OC-456 que era por $1,800 MXN. ¿Podrían revisar y confirmarnos el monto correcto?"
+  → El humano verá "empleado detectó discrepancia y contactó al proveedor" — no "empleado te pregunta qué hacer".
+
+- Si datos incompletos (invoice_valid=false) Y el remitente sí tiene la info faltante: PIDESELA al proveedor con needs_info + request_to_sender.
+
+- Si datos incompletos por otra razón (adjunto ilegible, factura sin proveedor claro): draft=null, needs_info=false. Solo así aparece como "necesita revisión" al humano.
+
+- Si todo OK (invoice_valid=true, sin discrepancia): draft=null, needs_info=false. Se registra como verificada, lista para pagar.` : '';
 
   const userPrompt = `EMAIL ENTRANTE:
 De: ${emailFrom}
