@@ -75,6 +75,37 @@ function isPrivateUrl(rawUrl: string): boolean {
   }
 }
 
+// ── Message-history integrity guard ───────────────────────────────────────────
+// Anthropic 400: cada bloque tool_use debe tener un tool_result con el mismo
+// tool_use_id en el MENSAJE inmediatamente siguiente. Si algún día la
+// construcción del historial se corrompe, preferimos abortar con un error
+// controlado a lanzar el 400 crudo al cliente (que además desperdicia una call).
+function assertToolUsePairing(msgs: Anthropic.MessageParam[]): void {
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    if (m.role !== 'assistant' || !Array.isArray(m.content)) continue;
+    const toolUseIds = (m.content as Array<{ type: string; id?: string }>)
+      .filter(b => b.type === 'tool_use')
+      .map(b => b.id!)
+      .filter(Boolean);
+    if (toolUseIds.length === 0) continue;
+    const next = msgs[i + 1];
+    if (!next || next.role !== 'user' || !Array.isArray(next.content)) {
+      throw new Error(`tool_use en msg[${i}] sin user/tool_result adyacente (ids: ${toolUseIds.join(',')})`);
+    }
+    const resultIds = new Set(
+      (next.content as Array<{ type: string; tool_use_id?: string }>)
+        .filter(b => b.type === 'tool_result')
+        .map(b => b.tool_use_id!)
+        .filter(Boolean)
+    );
+    const orphaned = toolUseIds.filter(id => !resultIds.has(id));
+    if (orphaned.length > 0) {
+      throw new Error(`tool_use huérfano en msg[${i}] sin tool_result en msg[${i + 1}] (ids: ${orphaned.join(',')})`);
+    }
+  }
+}
+
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
 const CREATE_CONTRACT_DRAFT_TOOL: Anthropic.Tool = {
@@ -1822,13 +1853,19 @@ ${context}`;
           });
 
           const assistantBlocks: AssistantBlock[] = [];
-          let toolInputBuffer  = '';
-          let pendingToolId:   string | null = null;
-          let pendingToolName: string | null = null;
+          // Buffer per-block: cuando Sonnet emite múltiples tool_use en un solo
+          // turno (parallel tool calls, default), cada bloque llega en orden
+          // (start → deltas → stop) antes del siguiente. Rastreamos el índice
+          // del content_block actual para bufferizar el JSON en el slot correcto
+          // y NO perder tool_use anteriores. Bug histórico: se sobreescribía
+          // pendingToolId y el orphan tool_use disparaba 400 de Anthropic.
+          const toolInputBuffers = new Map<number, string>();
+          let currentBlockIdx: number | null = null;
           let didToolUse = false;
 
           for await (const chunk of stream) {
             if (chunk.type === 'content_block_start') {
+              currentBlockIdx = chunk.index;
               if (chunk.content_block.type === 'text') {
                 // Si ya emitimos texto en ESTA sesión (esta iteración o previa),
                 // separar visualmente el nuevo párrafo con doble salto de línea.
@@ -1839,9 +1876,7 @@ ${context}`;
                 }
                 assistantBlocks.push({ type: 'text', text: '' });
               } else if (chunk.content_block.type === 'tool_use') {
-                pendingToolId   = chunk.content_block.id;
-                pendingToolName = chunk.content_block.name;
-                toolInputBuffer = '';
+                toolInputBuffers.set(chunk.index, '');
                 assistantBlocks.push({ type: 'tool_use', id: chunk.content_block.id, name: chunk.content_block.name, input: {} });
                 // Emit tool marker to UI so el usuario ve qué está haciendo el agente
                 controller.enqueue(enc.encode(`data: ${JSON.stringify({ tool: chunk.content_block.name })}\n\n`));
@@ -1852,19 +1887,19 @@ ${context}`;
                 if (chunk.delta.text.trim()) hasEmittedText = true;
                 const last = assistantBlocks.at(-1);
                 if (last?.type === 'text') last.text += chunk.delta.text;
-              } else if (chunk.delta.type === 'input_json_delta') {
-                toolInputBuffer += chunk.delta.partial_json;
+              } else if (chunk.delta.type === 'input_json_delta' && currentBlockIdx !== null) {
+                const prev = toolInputBuffers.get(currentBlockIdx) ?? '';
+                toolInputBuffers.set(currentBlockIdx, prev + chunk.delta.partial_json);
               }
-            } else if (chunk.type === 'content_block_stop' && pendingToolId) {
+            } else if (chunk.type === 'content_block_stop' && toolInputBuffers.has(chunk.index)) {
               try {
-                const parsed = JSON.parse(toolInputBuffer) as Record<string, unknown>;
-                const last = assistantBlocks.at(-1);
-                if (last?.type === 'tool_use') last.input = parsed;
+                const parsed = JSON.parse(toolInputBuffers.get(chunk.index) ?? '') as Record<string, unknown>;
+                const block  = assistantBlocks[chunk.index];
+                if (block?.type === 'tool_use') block.input = parsed;
               } catch { /* malformed — keep empty input */ }
             } else if (
               chunk.type === 'message_delta' &&
-              chunk.delta.stop_reason === 'tool_use' &&
-              pendingToolId
+              chunk.delta.stop_reason === 'tool_use'
             ) {
               didToolUse = true;
             }
@@ -1873,65 +1908,76 @@ ${context}`;
           // No tool use → text was already streamed, we're done
           if (!didToolUse) break;
 
-          const toolInput = (() => {
-            try { return JSON.parse(toolInputBuffer) as Record<string, unknown>; }
-            catch { return {} as Record<string, unknown>; }
-          })();
-          const lastBlock = assistantBlocks.at(-1);
-          if (lastBlock?.type === 'tool_use') lastBlock.input = toolInput;
+          // Colecta TODOS los tool_use del turno (Sonnet puede pedir varios en
+          // paralelo). Ejecutamos cada uno y devolvemos N tool_result en un
+          // único user message. Anthropic exige que cada tool_use tenga su
+          // tool_result correspondiente en el mensaje inmediatamente siguiente.
+          const pendingToolCalls = assistantBlocks
+            .map((b, idx) => (b.type === 'tool_use' ? { id: b.id, name: b.name, input: b.input, idx } : null))
+            .filter((b): b is { id: string; name: string; input: Record<string, unknown>; idx: number } => b !== null);
 
-          // ── Execute the requested tool via shared executor ────────────────
-          let toolResult: unknown;
-          toolResult = await executeAgentTool(
-            pendingToolName!,
-            toolInput,
-            {
-              agentId:      agent.id as string,
-              portalEmail:  accountAgent.portal_email,
-              agentName,
-              businessName: agent.business_name as string,
-              portalToken:  token,
-              agent:        agent as Record<string, unknown>,
-              supabase,
-              userContext:  lastUserText(conversationMessages),
-              cookieHeader: req.cookies.get(PORTAL_COOKIE)?.value,
-              readUrlCount: readUrlCountRef,
-            }
-          );
+          const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string }> = [];
 
-          // Track tool call for run log
-          toolsCalled.push({
-            name: pendingToolName ?? 'unknown',
-            ok:   (toolResult as { ok?: boolean })?.ok !== false,
-            ...((toolResult as { ok?: boolean; error?: string })?.ok === false
-              ? { error: String((toolResult as { error?: unknown })?.error ?? '') }
-              : {}),
-          });
+          for (const call of pendingToolCalls) {
+            const toolResult = await executeAgentTool(
+              call.name,
+              call.input,
+              {
+                agentId:      agent.id as string,
+                portalEmail:  accountAgent.portal_email,
+                agentName,
+                businessName: agent.business_name as string,
+                portalToken:  token,
+                agent:        agent as Record<string, unknown>,
+                supabase,
+                userContext:  lastUserText(conversationMessages),
+                cookieHeader: req.cookies.get(PORTAL_COOKIE)?.value,
+                readUrlCount: readUrlCountRef,
+              }
+            );
 
-          // Debug SSE: qué le regresamos al LLM. Útil para diagnosticar cuando
-          // el agente dice "no encontré" pero la tool sí devolvió filas.
-          try {
-            const dbgResult = toolResult as { ok?: boolean; count?: number; message?: string; error?: string };
-            const preview   = typeof dbgResult?.message === 'string' ? dbgResult.message.slice(0, 200) : null;
-            controller.enqueue(enc.encode(`data: ${JSON.stringify({
-              debug: {
-                source:     'agent-chat/tool-result',
-                tool:       pendingToolName,
-                input:      toolInput,
-                ok:         dbgResult?.ok !== false,
-                count:      dbgResult?.count ?? null,
-                messagePreview: preview,
-                error:      dbgResult?.error ?? null,
-              },
-            })}\n\n`));
-          } catch { /* debug best-effort */ }
+            toolsCalled.push({
+              name: call.name,
+              ok:   (toolResult as { ok?: boolean })?.ok !== false,
+              ...((toolResult as { ok?: boolean; error?: string })?.ok === false
+                ? { error: String((toolResult as { error?: unknown })?.error ?? '') }
+                : {}),
+            });
 
-          // Extend conversation with this tool turn
+            // Debug SSE: qué le regresamos al LLM. Útil para diagnosticar cuando
+            // el agente dice "no encontré" pero la tool sí devolvió filas.
+            try {
+              const dbgResult = toolResult as { ok?: boolean; count?: number; message?: string; error?: string };
+              const preview   = typeof dbgResult?.message === 'string' ? dbgResult.message.slice(0, 200) : null;
+              controller.enqueue(enc.encode(`data: ${JSON.stringify({
+                debug: {
+                  source:     'agent-chat/tool-result',
+                  tool:       call.name,
+                  input:      call.input,
+                  ok:         dbgResult?.ok !== false,
+                  count:      dbgResult?.count ?? null,
+                  messagePreview: preview,
+                  error:      dbgResult?.error ?? null,
+                },
+              })}\n\n`));
+            } catch { /* debug best-effort */ }
+
+            toolResults.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(toolResult) });
+          }
+
+          // Extend conversation con el turno completo: assistant con todos los
+          // tool_use + user con todos los tool_result correspondientes.
           conversationMessages = [
             ...conversationMessages,
             { role: 'assistant' as const, content: assistantBlocks as Anthropic.ContentBlock[] },
-            { role: 'user' as const, content: [{ type: 'tool_result' as const, tool_use_id: pendingToolId!, content: JSON.stringify(toolResult) }] },
+            { role: 'user' as const, content: toolResults },
           ];
+
+          // Guard defensivo: valida el pairing antes de la siguiente iteración.
+          // Si algo se corrompe (bug futuro), preferimos abortar la sesión con
+          // un error controlado que dispare un 400 de Anthropic con toda la
+          // conversación en logs.
+          assertToolUsePairing(conversationMessages);
         }
 
         controller.enqueue(enc.encode('data: [DONE]\n\n'));
