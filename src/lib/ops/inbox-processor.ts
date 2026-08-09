@@ -719,6 +719,18 @@ REGLA DE ORO — NO NEGOCIABLE:
 - Si dudas entre "escalar al equipo" o "pedir al remitente": ¿la info que necesito la tiene el remitente mismo? Sí → needs_info + request_to_sender. No → pedir_a_humano.
 - En correo legítimo (no spam) SIEMPRE emites algo accionable: draft, needs_info+request_to_sender, o pedir_a_humano. Nunca las tres en null.
 
+=== NO TE RINDAS EN LA PRIMERA HERRAMIENTA — INSISTE ===
+
+Eres un empleado competente, no un triador tímido. Si la primera tool no encontró lo que buscabas, EL PROBLEMA ES TU QUERY, NO QUE LA INFO NO EXISTA:
+
+1. **search_files** devolvió 0 resultados → REPHRASEA con sinónimos y REINTENTA (ej. "cotización" → "propuesta económica", "precio", "presupuesto"). Prueba con términos del cliente O términos del negocio.
+2. Si el KB del negocio no tiene la respuesta → **buscar_en_web** con contexto ("horarios notaría 5 Monterrey" no "horarios notaría"). Puedes intentar 2-3 queries diferentes antes de rendirte.
+3. Si necesitas conocimiento de otro rol (contador, RH, cocinero) → **consultar_agente** con el rol correcto, no escales al humano.
+4. Si el remitente tiene la info que falta (ej. RFC para factura, alcance para cotizar) → **needs_info + request_to_sender**.
+5. Solo si agotaste tools + no puede el remitente resolver + otro compañero no ayuda → **pedir_a_humano**.
+
+PROHIBIDO emitir draft=null con needs_info=false sin haber intentado al menos 2 tools distintas. Si te salta esa combinación, el sistema lo detecta como "empleado se rindió sin pelear" y penaliza tu score.
+
 Si puedes responder SOLO con información verificada (herramientas usadas + resultados reales), pon "needs_info": false y llena "draft".
 
 === AUDITORÍA FINAL DEL DRAFT — ANTES DE EMITIR ===
@@ -1081,7 +1093,10 @@ CATEGORÍAS:
 
     try {
       let lastText = '{}';
-      const MAX_ITER = 6;
+      // 10 iters (era 6). Con [[feedback-empleados-inteligentes]] pusheamos al
+      // empleado a intentar múltiples tools antes de rendirse — necesita headroom.
+      const MAX_ITER = 10;
+      let nudged = false; // reintento único cuando el empleado se rindió temprano
 
       for (let i = 0; i < MAX_ITER; i++) {
         const isLastIter = i === MAX_ITER - 1;
@@ -1112,7 +1127,31 @@ CATEGORÍAS:
         const textBlock = response.content.find(b => b.type === 'text');
         if (textBlock?.type === 'text') lastText = textBlock.text.trim();
 
-        if (response.stop_reason !== 'tool_use') break;
+        if (response.stop_reason !== 'tool_use') {
+          // Nudge de rescate: si el empleado emitió texto (parece JSON final)
+          // sin haber intentado ninguna tool Y el texto sugiere que se rindió
+          // (draft null, needs_info false), le damos UN empujón para que use
+          // sus herramientas antes de dejar el correo pending.
+          // Ver [[feedback-empleados-inteligentes]] + F3 audit.
+          if (!nudged && toolsInvokedOk.length === 0 && tools.length > 0 && !isLastIter) {
+            try {
+              const preview = JSON.parse(lastText.match(/\{[\s\S]*\}/)?.[0] ?? '{}') as Record<string, unknown>;
+              const gaveUp =
+                (preview.draft === null || preview.draft === undefined || preview.draft === '') &&
+                preview.needs_info !== true;
+              if (gaveUp) {
+                nudged = true;
+                messages.push({ role: 'assistant', content: response.content });
+                messages.push({
+                  role: 'user',
+                  content: `Espera — no llamaste ninguna herramienta. Antes de emitir draft=null, DEBES intentar al menos: search_files (con 2 queries diferentes si la primera no devuelve) y buscar_en_web si el KB no tiene. Reintenta con las tools disponibles.`,
+                });
+                continue;
+              }
+            } catch { /* JSON malformado, dejar break normal */ }
+          }
+          break;
+        }
 
         // Execute tools via shared executor — fan-out paralelo cuando hay múltiples
         // tools en la misma respuesta. Un fallo aislado no rompe el batch.
