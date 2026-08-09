@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Building2,
@@ -122,6 +123,7 @@ function isGroupActive(group: NavGroup, token: string, path: string, search: str
 export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   const { currentPath, currentSearch = '', status, ...input } = props;
   const { token, hasOpsAgent } = input;
+  const router = useRouter();
 
   const groups = buildPortalNav(input);
 
@@ -172,16 +174,30 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
   }
 
   /**
-   * Next.js Link internally uses history.pushState which does NOT fire
-   * hashchange events per HTML spec — the event only fires on direct
-   * location.hash assignment, forward/back navigation, or non-intercepted
-   * link clicks. Sin este dispatch manual, NegocioTabs / CuentaUsageTabsCard
-   * / HashScrollHighlight nunca se enteran de cambios de anchor y no cambian
-   * al sub-tab correcto.
+   * Next.js Link tiene comportamiento inconsistente cuando el nuevo href
+   * difiere solo en el hash o cambia searchParams+hash — a veces no dispara
+   * router.push, o dispara pushState (que por spec HTML no dispara
+   * hashchange). Además la ORDER de user onClick vs Link navigate no es
+   * garantizada entre versiones.
+   *
+   * Fix: prevent default, hacer router.push explícito, luego forzar
+   * hashchange manualmente. Con eso: sub-tab switch + scroll + pulse
+   * funcionan consistentemente cross sub-tab.
    */
-  function handleAnchorClick(anchor?: string) {
+  function handleAnchorClick(
+    e: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+    anchor?: string,
+  ) {
+    // Respetar modifier clicks (cmd+click abre nueva pestaña, etc.)
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
     if (anchor) setPendingIds([anchor]);
-    setTimeout(() => window.dispatchEvent(new Event('hashchange')), 0);
+    router.push(href, { scroll: false });
+    // Dispatch en microtask + segundo dispatch en macrotask para cubrir
+    // posibles delays de reconciliation antes de que suscriptores oigan.
+    Promise.resolve().then(() => window.dispatchEvent(new Event('hashchange')));
+    setTimeout(() => window.dispatchEvent(new Event('hashchange')), 30);
   }
 
   return (
@@ -345,7 +361,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                             <Link
                               href={itemHref}
                               scroll={false}
-                              onClick={() => handleAnchorClick(item.anchor)}
+                              onClick={e => handleAnchorClick(e, itemHref, item.anchor)}
                               aria-current={itemActive ? 'page' : undefined}
                               className={[
                                 'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',
@@ -392,9 +408,7 @@ export default function PortalSidebarV2(props: PortalSidebarV2Props) {
                                   <Link
                                     href={itemHref}
                                     scroll={false}
-                                    onClick={() => {
-                                      if (item.anchor) setPendingIds([item.anchor]);
-                                    }}
+                                    onClick={e => handleAnchorClick(e, itemHref, item.anchor)}
                                     aria-current={itemActive ? 'page' : undefined}
                                     className={[
                                       'flex h-9 items-center rounded-md pl-11 pr-3 text-[13px] leading-none',

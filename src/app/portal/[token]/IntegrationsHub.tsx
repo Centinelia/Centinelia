@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign } from 'lucide-react';
+import { Calendar, Mail, MessageSquare, ShoppingCart, ChevronDown, Check, Users, DollarSign, Plug, Sparkles } from 'lucide-react';
 import type { Plan } from '@/types/agent';
 
 import IntegrationsSection  from './IntegrationsSection';
@@ -183,52 +183,90 @@ function OfficeSummaryBar({ caps }: { caps: CapabilitySummary[] }) {
   const pending   = caps.filter(c => !c.connected);
   if (caps.length === 0) return null;
 
+  const pct       = Math.round((connected.length / caps.length) * 100);
+  const allDone   = pending.length === 0 && connected.length > 0;
+  const accent    = allDone ? '#16a34a' : '#6C3BFF';
+  const accentBg  = allDone ? 'rgba(34,197,94,0.06)' : 'rgba(108,59,255,0.05)';
+  const accentBd  = allDone ? '1px solid rgba(34,197,94,0.22)' : '1px solid rgba(108,59,255,0.22)';
+
   return (
     <div
-      className="rounded-2xl px-5 py-4 flex flex-col gap-3"
+      className="flex flex-col rounded-2xl overflow-hidden"
       style={{
         background: '#ffffff',
-        border: '1px solid #E8E3F5',
+        border: accentBd,
         boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
       }}
     >
-      {connected.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-bold tracking-widest uppercase"
-            style={{ color: '#9B8FB5' }}>
-            Tu equipo tiene acceso a
+      {/* Hero: badge + % + progress */}
+      <div className="flex items-center gap-4 px-5 pt-5 pb-4 flex-wrap"
+        style={{ background: accentBg, borderBottom: accentBd }}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${accent}14`, border: `1px solid ${accent}33` }}>
+          <Sparkles size={20} style={{ color: accent }} strokeWidth={2} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[15px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
+            {allDone
+              ? 'Tu equipo tiene acceso completo'
+              : connected.length === 0
+                ? 'Aún no has equipado tu oficina'
+                : 'Tu equipo tiene acceso parcial'}
+          </h3>
+          <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
+            {connected.length} de {caps.length} capacidades conectadas.
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {connected.map(c => (
-              <span key={c.id}
-                className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
-                <Check size={10} /> {c.label}
-              </span>
-            ))}
+        </div>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <span className="text-[15px] font-bold px-3 py-1 rounded-lg tabular-nums"
+            style={{ background: `${accent}18`, color: accent, border: `1px solid ${accent}30` }}>
+            {pct}%
+          </span>
+          <div className="w-28 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
+            <div className="h-1.5 rounded-full transition-all"
+              style={{ width: `${pct}%`, background: accent }} />
           </div>
         </div>
-      )}
+      </div>
 
-      {pending.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-bold tracking-widest uppercase"
-            style={{ color: '#9B8FB5' }}>
-            {connected.length === 0 ? 'Para equipar la oficina' : 'Todavía no pueden usar'}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {pending.map(c => (
-              <span key={c.id}
-                className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
-                style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: '#C7BEE0' }} />
-                {c.label}
-              </span>
-            ))}
+      {/* Chips */}
+      <div className="flex flex-col gap-3 px-5 py-4">
+        {connected.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+              Ya pueden usar
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {connected.map(c => (
+                <span key={c.id}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(34,197,94,0.1)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)' }}>
+                  <Check size={10} strokeWidth={2.5} /> {c.label}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {pending.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+              {connected.length === 0 ? 'Para equipar la oficina' : 'Todavía no pueden usar'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {pending.map(c => (
+                <span key={c.id}
+                  className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                  style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}>
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: '#C7BEE0' }} />
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -603,18 +641,23 @@ export default function IntegrationsHub({ token, plan, hasOpsAgent, hasNotion }:
           boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
         }}
       >
-        <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
-          <div>
+        <div className="flex items-start gap-4 px-5 pt-5 pb-4">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(108,59,255,0.1)', border: '1px solid rgba(108,59,255,0.25)' }}>
+            <Plug size={20} style={{ color: '#6C3BFF' }} strokeWidth={2} />
+          </div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
               <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
                 Integraciones
               </h2>
-              <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
+              <span className="text-[13px] font-semibold tabular-nums px-2 py-0.5 rounded-full"
+                style={{ background: '#F0EDF9', color: '#6B6480', border: '1px solid #E8E3F5' }}>
                 {rows.length}
               </span>
             </div>
-            <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
-              Conecta los servicios que ya usas para que tu equipo trabaje directo sobre ellos.
+            <p className="text-[13px] mt-1 leading-relaxed" style={{ color: '#6B6480' }}>
+              Conecta los servicios que ya usas para que tu equipo trabaje directo sobre ellos, sin pedirte cambiar de herramienta.
             </p>
           </div>
         </div>

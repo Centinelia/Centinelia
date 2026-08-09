@@ -23,17 +23,32 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (session.portalEmail && agent?.portal_email && session.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
+  // Calendar vive per-agent pero se comparte a nivel org: si el agente por
+  // token no lo tiene, buscamos cualquier hermano que sí. Así todos los
+  // empleados de la cuenta ven la misma integración.
+  let source = agent;
+  if (!source?.calendar_type && agent?.portal_email) {
+    const { data: sibling } = await supabase
+      .from('voice_agents')
+      .select('portal_email, calendar_type, calendar_event_type_id, calendar_link, calendar_api_key')
+      .eq('portal_email', agent.portal_email)
+      .not('calendar_type', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (sibling) source = sibling;
+  }
+
   // google_review_url is org-level — read from organizations
   const { data: org } = agent?.portal_email
     ? await supabase.from('organizations').select('google_review_url').eq('portal_email', agent.portal_email).single()
     : { data: null };
 
   return NextResponse.json({
-    calendar_type:            agent?.calendar_type           ?? null,
-    calendar_event_type_id:   agent?.calendar_event_type_id  ?? '',
-    calendar_link:            agent?.calendar_link            ?? '',
-    cal_api_configured:       !!(agent?.calendar_api_key),
-    google_review_url:        org?.google_review_url         ?? '',
+    calendar_type:            source?.calendar_type           ?? null,
+    calendar_event_type_id:   source?.calendar_event_type_id  ?? '',
+    calendar_link:            source?.calendar_link            ?? '',
+    cal_api_configured:       !!(source?.calendar_api_key),
+    google_review_url:        org?.google_review_url          ?? '',
   });
 }
 

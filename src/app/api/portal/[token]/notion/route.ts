@@ -16,7 +16,11 @@ async function getAgent(token: string) {
   return data;
 }
 
-// GET — status + available pages (when connected but db not set)
+// GET — status + available pages (when connected but db not set).
+// Notion vive per-agent en voice_agents pero es una integración de ORG: si
+// CUALQUIER agente de la misma cuenta la tiene conectada, todos deben verla.
+// Preferimos primero el agente por token; si no tiene, buscamos en cualquier
+// hermano de la misma portal_email.
 export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
   const cookieStore = await cookies();
@@ -28,20 +32,35 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (auth.portalEmail && agent.portal_email && auth.portalEmail !== agent.portal_email)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-  const connected = !!agent.notion_access_token;
+  // Escoger el agente con la conexión: preferir el propio; si no, cualquier
+  // hermano de la misma org que sí la tenga.
+  let source = agent;
+  if (!source.notion_access_token && agent.portal_email) {
+    const supabase = createAdminClient();
+    const { data: sibling } = await supabase
+      .from('voice_agents')
+      .select('id, portal_email, business_name, notion_access_token, notion_workspace_name, notion_db_id, features')
+      .eq('portal_email', agent.portal_email)
+      .not('notion_access_token', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (sibling) source = sibling;
+  }
+
+  const connected = !!source.notion_access_token;
   if (!connected) return NextResponse.json({ connected: false });
 
   let pages: { id: string; title: string }[] = [];
-  if (!agent.notion_db_id) {
-    pages = await getAccessiblePages(agent.notion_access_token as string).catch(() => []);
+  if (!source.notion_db_id) {
+    pages = await getAccessiblePages(source.notion_access_token as string).catch(() => []);
   }
 
-  const productsDbId = ((agent.features as Record<string, unknown>)?.notion_products_db_id as string | null) ?? null;
+  const productsDbId = ((source.features as Record<string, unknown>)?.notion_products_db_id as string | null) ?? null;
 
   return NextResponse.json({
     connected:       true,
-    workspace_name:  agent.notion_workspace_name,
-    db_id:           agent.notion_db_id,
+    workspace_name:  source.notion_workspace_name,
+    db_id:           source.notion_db_id,
     products_db_id:  productsDbId,
     pages,
   });

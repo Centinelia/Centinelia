@@ -6,10 +6,11 @@ import { cookies }                      from 'next/headers';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { isPortalV2Enabled }            from '@/lib/portal/portal-v2-flag';
 import Link                             from 'next/link';
-import { Settings2, Bot, Zap, Clock, AlertTriangle } from 'lucide-react';
+import { Settings2, Bot, Zap, Clock, AlertTriangle, Users, PhoneCall, Sparkles, Layers, Mail } from 'lucide-react';
 import PauseResumeButton               from '../PauseResumeButton';
 import AgentAvatarPicker               from '../AgentAvatarPicker';
 import MeerkatPicker                   from './MeerkatPicker';
+import Meerkat                         from '@/components/icons/Meerkat';
 import AnnualContractCallout           from '../AnnualContractCallout';
 import AgentRankingSection             from '../AgentRankingSection';
 import { COORDINATOR_ROLE_IDS, MEERKAT_MAP } from '@/lib/portal/meerkat-roles';
@@ -311,6 +312,14 @@ export default async function AgentesPage({ params }: Props) {
   const totalOpsMonth   = agents.reduce((sum, a) => sum + ((a.ai_ops_used as number) ?? 0), 0);
   const agentsWithRole  = agents.filter(a => !!((a.role as string | null)?.trim())).length;
   const rolePct         = agents.length > 0 ? Math.round((agentsWithRole / agents.length) * 100) : 0;
+
+  // Empleados con email propio conectado (Gmail/Outlook a nivel agent).
+  // Contamos agent_ids distintos con al menos una integración en email_integrations.
+  const { data: emailRows } = agents.length > 0
+    ? await supabase.from('email_integrations').select('agent_id').in('agent_id', agents.map(a => a.id))
+    : { data: [] as { agent_id: string }[] };
+  const agentsWithEmail = new Set((emailRows ?? []).map(r => r.agent_id)).size;
+  const emailPct        = agents.length > 0 ? Math.round((agentsWithEmail / agents.length) * 100) : 0;
   let annualContractInfo: { folio: string; endDate: string; isExpired: boolean } | null = null;
   if (isAnnualOrExpired) {
     // Última contrato activo o expirado más reciente
@@ -403,6 +412,52 @@ export default async function AgentesPage({ params }: Props) {
   // Agent cards grid + capability banner are rendered identically in V1 and V2.
   // Only the outer wrapper (header section + container) differs.
 
+  const teamMetrics: Array<{ icon: React.ComponentType<{ size?: number; style?: React.CSSProperties; strokeWidth?: number }>; label: string; value: React.ReactNode; caption: string; color: string }> = [
+    { icon: Users,      label: 'Empleados activos',    value: <>{activeAgentsCount} <span className="text-[13px] font-normal" style={{ color: '#9B8FB5' }}>/ {agents.length}</span></>, caption: agents.length === 1 ? 'del equipo' : 'del equipo',              color: '#6C3BFF' },
+    { icon: PhoneCall,  label: 'Llamadas atendidas',   value: totalCallsMonth,                                                                                                       caption: 'en total del mes',                                                color: '#0EA5E9' },
+    { icon: Zap,        label: 'Tareas ejecutadas',    value: totalOpsMonth,                                                                                                         caption: 'ops del mes',                                                     color: '#10B981' },
+    { icon: Mail,       label: 'Con email integrado',  value: <>{emailPct}<span className="text-[16px] font-semibold" style={{ color: '#9B8FB5' }}>%</span></>,                      caption: `${agentsWithEmail} de ${agents.length}`,                           color: '#F59E0B' },
+  ];
+
+  const teamMetricsBlock = (
+    <div className="flex flex-col rounded-2xl overflow-hidden"
+      style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+      <div className="flex items-start justify-between gap-3 flex-wrap px-5 pt-5 pb-4">
+        <div>
+          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Tu equipo este mes</h2>
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>Actividad agregada de todos tus empleados en el mes actual.</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+        {teamMetrics.map((m, i) => {
+          const Icon = m.icon;
+          return (
+            <div key={m.label}
+              className="flex flex-col gap-2.5 px-5 py-4"
+              style={{
+                borderRight: i < teamMetrics.length - 1 ? '1px solid #F0EDF9' : 'none',
+                borderBottom: i < 2 ? '1px solid #F0EDF9' : 'none',
+              }}>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${m.color}14`, border: `1px solid ${m.color}30` }}>
+                  <Icon size={14} style={{ color: m.color }} strokeWidth={2.25} />
+                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+                  {m.label}
+                </p>
+              </div>
+              <p className="text-[28px] font-bold leading-none tabular-nums tracking-tight" style={{ color: '#1A0A3B' }}>
+                {m.value}
+              </p>
+              <p className="text-[11px]" style={{ color: '#9B8FB5' }}>{m.caption}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const agentCardsGrid = (
     <div id="lista-agentes" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {agents.map(a => {
@@ -435,137 +490,199 @@ export default async function AgentesPage({ params }: Props) {
         const tools         = getAgentTools(agentFeatures);
         const capabilities  = getAgentCapabilities(tools);
 
+        const accentColor = hasRole ? roleColor : color;
+        const MAX_CAP_CHIPS = 5;
+        const visibleCaps   = capabilities.slice(0, MAX_CAP_CHIPS);
+        const hiddenCapsN   = Math.max(0, capabilities.length - MAX_CAP_CHIPS);
+        const agentName     = (a.agent_name as string | null)?.trim() || 'Centinelia';
+
         return (
           <div key={a.id}
-            className="rounded-2xl flex flex-col"
-            style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+            className="group flex flex-col rounded-2xl overflow-hidden transition-all hover:shadow-[0_8px_28px_rgba(26,10,59,0.08)] hover:-translate-y-0.5"
+            style={{
+              background: '#ffffff',
+              border: '1px solid #E8E3F5',
+              boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+            }}>
 
-            {/* Color bar */}
-            <div style={{ height: 3, borderRadius: '12px 12px 0 0', background: `linear-gradient(90deg, ${hasRole ? roleColor : color}, ${hasRole ? roleColor : color}55)` }} />
+            {/* Hero: gradient wash + avatar centrado */}
+            <div className="relative flex flex-col items-center px-5 pt-7 pb-5"
+              style={{
+                background: `linear-gradient(180deg, ${accentColor}14 0%, ${accentColor}04 60%, #ffffff 100%)`,
+              }}>
+              {/* Accent bar arriba (top-only) */}
+              <div className="absolute top-0 left-0 right-0"
+                style={{
+                  height: 4,
+                  background: `linear-gradient(90deg, ${accentColor}, ${accentColor}66)`,
+                }} />
 
-            <div className="p-5 flex flex-col items-center gap-4 flex-1">
+              {/* Status pill flotante top-right */}
+              <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                style={{
+                  background: '#ffffff',
+                  border: `1px solid ${statusColor}40`,
+                  color: statusColor,
+                  boxShadow: '0 1px 2px rgba(26,10,59,0.04)',
+                }}>
+                <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
+                  style={{ background: 'currentColor' }} />
+                {statusLabel}
+              </span>
 
-              {/* Avatar — grande, centrado arriba */}
+              {/* Avatar */}
               <div className="relative">
                 <AgentAvatarPicker
                   token={a.portal_token as string}
                   avatarSrc={avatarSrc}
                   initial={initial}
-                  color={hasRole ? roleColor : color}
-                  size={120}
+                  color={accentColor}
+                  size={104}
                   locked={avatarLocked}
                 />
-                <span
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm whitespace-nowrap"
-                  style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color, backdropFilter: 'blur(4px)' }}>
-                  {jornada.icon}
-                  {jornada.label}
-                </span>
               </div>
 
-              {/* Nombre + rol + estado */}
-              <div className="flex flex-col items-center gap-1 text-center w-full">
-                <span className="font-bold text-base sm:text-lg leading-tight" style={{ color: '#1A0A3B' }}>
-                  {(a.agent_name as string | null)?.trim() || 'Centinelia'}
+              {/* Nombre + rol */}
+              <div className="flex flex-col items-center gap-0.5 text-center w-full mt-3">
+                <span className="font-bold text-[17px] leading-tight tracking-tight" style={{ color: '#1A0A3B' }}>
+                  {agentName}
                 </span>
                 {hasRole && (
-                  <span className="text-sm font-medium" style={{ color: roleColor }}>
+                  <span className="text-[13px] font-medium" style={{ color: accentColor }}>
                     {a.role as string}
                   </span>
                 )}
-                <span className="flex items-center gap-1 text-xs mt-0.5" style={{ color: statusColor }}>
-                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${isOnline ? 'animate-pulse' : ''}`}
-                    style={{ background: 'currentColor' }} />
-                  {statusLabel}
-                </span>
               </div>
 
-              {/* Descripción + capacidades — siempre al fondo del cuerpo */}
-              <div className="flex flex-col gap-3 flex-1 justify-end w-full">
-              {meerkatDef?.descripcion && (
-                <p className="text-xs text-center leading-relaxed" style={{ color: '#6B6480' }}>
-                  {meerkatDef.descripcion}
-                </p>
-              )}
-
-              {/* Capacidades — colapsadas por defecto */}
-              {capabilities.length > 0 && (
-                <details className="w-full group">
-                  <summary
-                    className="cursor-pointer list-none select-none flex items-center gap-1.5 w-fit"
-                    style={{ WebkitAppearance: 'none' } as React.CSSProperties}>
-                    <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#9B8FB5' }}>
-                      Ver capacidades
-                    </span>
-                    <span className="text-[10px]" style={{ color: '#9B8FB5' }}>▸</span>
-                  </summary>
-                  <div className="flex flex-wrap gap-1.5 pt-2">
-                    {capabilities.map(c => (
-                      <span key={c.label}
-                        className="text-[11px] font-medium px-2.5 py-0.5 rounded-lg"
-                        style={{
-                          background: `${c.color}10`,
-                          color:      c.color,
-                          border:     `1px solid ${c.color}25`,
-                        }}>
-                        {c.label}
-                      </span>
-                    ))}
-                    {isCoordinator && !hasPassphrase && (
-                      <p className="w-full text-[10px] mt-1 leading-relaxed" style={{ color: '#f59e0b' }}>
-                        Sin passphrase del responsable este director no puede actuar. Configura una en Empleados → Configurar.
-                      </p>
-                    )}
-                  </div>
-                </details>
-              )}
-              </div>{/* end description+capacidades wrapper */}
-
-              {/* Stats */}
-              <div className="flex items-center justify-center gap-4 w-full" style={{ color: '#6B6480' }}>
-                {!isCoordinator && (
-                  <span className="flex items-center gap-1 text-xs">
-                    <Bot size={12} />
-                    {callCount} llam. este mes
-                  </span>
-                )}
-                {hasRole && (
-                  <span className="flex items-center gap-1 text-xs">
-                    <Zap size={12} />
-                    {(a.ai_ops_used as number) ?? 0} tareas este mes
-                  </span>
-                )}
-              </div>
-
+              {/* Jornada chip */}
+              <span className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                style={{ background: jornada.bg, border: `1px solid ${jornada.border}`, color: jornada.color }}>
+                {jornada.icon}
+                {jornada.label}
+              </span>
             </div>
 
-            {/* Botones — abajo */}
-            <div className="flex items-center px-4 py-3 gap-2" style={{ borderTop: '1px solid #E8E3F5' }}>
-              <div className="flex-1 flex justify-start min-w-0">
-                <Link
-                  href={`/portal/${a.portal_token as string}/configurar`}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
-                  style={{ background: `${color}12`, color, border: `1px solid ${color}30` }}
-                >
-                  <Settings2 size={11} />
-                  <span className="inline sm:hidden xl:inline">Configurar</span>
-                </Link>
+            {/* Descripción */}
+            {meerkatDef?.descripcion && (
+              <div className="px-5 pt-4 pb-3" style={{ borderTop: '1px solid #F0EDF9' }}>
+                <p className="text-[12px] leading-relaxed text-center" style={{ color: '#6B6480' }}>
+                  {meerkatDef.descripcion}
+                </p>
               </div>
-              <div className="flex-1 flex justify-end min-w-0">
-                {!isBillingPaused
-                  ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
-                  : (
-                    <a
-                      href={`/api/billing/portal-session?token=${a.portal_token as string}`}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 flex-shrink-0"
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
-                      <span className="inline sm:hidden xl:inline">Resolver pago</span>
-                      <span className="hidden sm:inline xl:hidden">→</span>
-                      <span className="inline sm:hidden xl:inline">→</span>
-                    </a>
-                  )
-                }
+            )}
+
+            {/* Stats: 2 columnas con divider */}
+            <div className="grid grid-cols-2" style={{ borderTop: '1px solid #F0EDF9' }}>
+              <div className="flex flex-col items-center gap-1 py-3.5"
+                style={{ borderRight: '1px solid #F0EDF9', opacity: isCoordinator ? 0.4 : 1 }}>
+                <div className="flex items-center gap-1.5">
+                  <PhoneCall size={13} style={{ color: '#9B8FB5' }} strokeWidth={2.25} />
+                  <span className="text-[18px] font-bold tabular-nums leading-none" style={{ color: '#1A0A3B' }}>
+                    {isCoordinator ? '—' : callCount}
+                  </span>
+                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+                  Llamadas
+                </p>
               </div>
+              <div className="flex flex-col items-center gap-1 py-3.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap size={13} style={{ color: '#9B8FB5' }} strokeWidth={2.25} />
+                  <span className="text-[18px] font-bold tabular-nums leading-none" style={{ color: '#1A0A3B' }}>
+                    {(a.ai_ops_used as number) ?? 0}
+                  </span>
+                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+                  Tareas
+                </p>
+              </div>
+            </div>
+
+            {/* Capacidades — visibles siempre, overflow con +N (hover reveal) */}
+            {capabilities.length > 0 && (
+              <div className="px-5 py-3.5 flex flex-col gap-2" style={{ borderTop: '1px solid #F0EDF9' }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+                  Capacidades
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {visibleCaps.map(c => (
+                    <span key={c.label}
+                      className="text-[11px] font-medium px-2 py-0.5 rounded-md"
+                      style={{
+                        background: `${c.color}12`,
+                        color:      c.color,
+                        border:     `1px solid ${c.color}25`,
+                      }}>
+                      {c.label}
+                    </span>
+                  ))}
+                  {hiddenCapsN > 0 && (
+                    <span className="relative group/more">
+                      <span
+                        className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-md cursor-default transition-colors group-hover/more:bg-[#F0EDF9] group-hover/more:border-[#9B8FB5]"
+                        style={{ background: '#FAFAFB', color: '#6B6480', border: '1px solid #E8E3F5' }}
+                      >
+                        +{hiddenCapsN} más
+                      </span>
+                      {/* Popover UP con las restantes al hover — evita clipping por
+                          overflow-hidden del card y no compite con el footer */}
+                      <span
+                        className="absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover/more:flex flex-wrap gap-1.5 rounded-xl p-2.5 w-[220px]"
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #E8E3F5',
+                          boxShadow: '0 8px 24px rgba(26,10,59,0.15)',
+                        }}
+                      >
+                        {capabilities.slice(MAX_CAP_CHIPS).map(c => (
+                          <span key={c.label}
+                            className="text-[11px] font-medium px-2 py-0.5 rounded-md"
+                            style={{
+                              background: `${c.color}12`,
+                              color:      c.color,
+                              border:     `1px solid ${c.color}25`,
+                            }}>
+                            {c.label}
+                          </span>
+                        ))}
+                      </span>
+                    </span>
+                  )}
+                </div>
+                {isCoordinator && !hasPassphrase && (
+                  <p className="text-[10px] leading-relaxed mt-1" style={{ color: '#f59e0b' }}>
+                    Sin passphrase del responsable, este director no puede actuar. Configúrala abajo.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Acciones — footer */}
+            <div className="flex items-center gap-2 px-4 py-3 mt-auto"
+              style={{ borderTop: '1px solid #F0EDF9', background: '#FAFAFB' }}>
+              <Link
+                href={`/portal/${a.portal_token as string}/configurar`}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all hover:opacity-90"
+                style={{
+                  background: accentColor,
+                  color: '#ffffff',
+                  boxShadow: `0 2px 6px ${accentColor}30`,
+                }}
+              >
+                <Settings2 size={13} strokeWidth={2.25} />
+                Configurar
+              </Link>
+              {!isBillingPaused
+                ? <PauseResumeButton agentId={a.id} clientPaused={isClientPaused} />
+                : (
+                  <a
+                    href={`/api/billing/portal-session?token=${a.portal_token as string}`}
+                    className="flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-[13px] font-semibold transition-opacity hover:opacity-90 flex-shrink-0"
+                    style={{ background: '#ef4444', color: '#ffffff', boxShadow: '0 2px 6px rgba(239,68,68,0.3)' }}>
+                    Resolver pago
+                  </a>
+                )
+              }
             </div>
           </div>
         );
@@ -573,49 +690,58 @@ export default async function AgentesPage({ params }: Props) {
     </div>
   );
 
-  const capabilityBanner = agents.length > 0 ? (
-    <div className="rounded-2xl p-5"
-      style={{
-        background: overallPct === 100 ? 'rgba(34,197,94,0.04)'        : 'rgba(108,59,255,0.04)',
-        border:     overallPct === 100 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(108,59,255,0.18)',
-      }}>
+  const capabilityBanner = agents.length > 0 ? (() => {
+    const isComplete = overallPct === 100;
+    const accentColor = isComplete ? '#16a34a' : '#6C3BFF';
+    const accentBg    = isComplete ? 'rgba(34,197,94,0.06)' : 'rgba(108,59,255,0.05)';
+    const accentBd    = isComplete ? '1px solid rgba(34,197,94,0.22)' : '1px solid rgba(108,59,255,0.22)';
 
-      {/* Header row: coverage label + areas + % + progress bar */}
-      <div className="flex items-center gap-3 mb-3">
+    return (
+    <div className="flex flex-col rounded-2xl overflow-hidden"
+      style={{ background: '#ffffff', border: accentBd, boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
+
+      {/* Hero header — badge lila + título + gauge */}
+      <div className="flex items-center gap-4 px-5 pt-5 pb-4 flex-wrap"
+        style={{ background: accentBg, borderBottom: accentBd }}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${accentColor}14`, border: `1px solid ${accentColor}33` }}>
+          <Layers size={20} style={{ color: accentColor }} strokeWidth={2} />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#6B6480' }}>
-            Cobertura funcional
-          </p>
+          <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>Cobertura funcional</h2>
           {overallPct < 100 && missingCats.length > 0 && (
-            <p className="text-xs mt-1 truncate" style={{ color: '#1A0A3B' }}>
+            <p className="text-[12px] mt-0.5 truncate" style={{ color: '#6B6480' }}>
               Sin cubrir:{' '}
-              {missingCats.length <= 3
-                ? missingCats.map(c => c.label).join(', ')
-                : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
+              <span style={{ color: '#1A0A3B' }}>
+                {missingCats.length <= 3
+                  ? missingCats.map(c => c.label).join(', ')
+                  : `${missingCats.slice(0, 3).map(c => c.label).join(', ')} y ${missingCats.length - 3} más`}
+              </span>
             </p>
           )}
-          {overallPct === 100 && (
-            <p className="text-xs mt-1" style={{ color: '#1A0A3B' }}>
+          {isComplete && (
+            <p className="text-[12px] mt-0.5" style={{ color: '#6B6480' }}>
               Tu equipo cubre todas las áreas funcionales.
             </p>
           )}
         </div>
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          <span className="text-sm font-bold px-2.5 py-1 rounded-lg"
-            style={{
-              background: overallPct === 100 ? 'rgba(34,197,94,0.1)' : 'rgba(108,59,255,0.1)',
-              color:      overallPct === 100 ? '#16a34a' : '#6C3BFF',
-            }}>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <span className="text-[15px] font-bold px-3 py-1 rounded-lg tabular-nums"
+            style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}30` }}>
             {overallPct}%
           </span>
-          <div className="w-24 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
-            <div className="h-1.5 rounded-full"
-              style={{ width: `${overallPct}%`, background: overallPct === 100 ? '#16a34a' : '#6C3BFF' }} />
+          <div className="w-28 h-1.5 rounded-full overflow-hidden" style={{ background: '#E8E3F5' }}>
+            <div className="h-1.5 rounded-full transition-all"
+              style={{ width: `${overallPct}%`, background: accentColor }} />
           </div>
         </div>
       </div>
 
-      {/* Core categories — 3 columnas */}
+      {/* Core categories */}
+      <div className="px-5 py-4">
+        <p className="text-[11px] font-semibold tracking-widest uppercase mb-2.5" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
+          Áreas principales
+        </p>
       <div className="grid grid-cols-3 gap-x-3 gap-y-0">
         {coreStats.map(cat => (
           <details key={cat.label}>
@@ -668,9 +794,11 @@ export default async function AgentesPage({ params }: Props) {
         ))}
       </div>
 
+      </div>
+
       {/* Módulos adicionales */}
-      <div className="pt-3" style={{ borderTop: '1px solid #E8E3F5' }}>
-        <p className="text-[10px] font-semibold tracking-widest uppercase mb-1.5" style={{ color: '#9B8FB5' }}>
+      <div className="px-5 py-4" style={{ borderTop: '1px solid #F0EDF9' }}>
+        <p className="text-[11px] font-semibold tracking-widest uppercase mb-2.5" style={{ color: '#9B8FB5', letterSpacing: '0.05em' }}>
           Módulos adicionales
         </p>
         <div className="grid grid-cols-3 gap-x-3 gap-y-0">
@@ -721,9 +849,19 @@ export default async function AgentesPage({ params }: Props) {
         </div>
       </div>
 
-      {/* CTA */}
+      {/* CTA — contratar meerkats recomendados para cerrar los huecos */}
       {missingCats.length > 0 && !annualContractInfo && (
-        <div className="mt-4 pt-4" style={{ borderTop: '1px solid #E8E3F5' }}>
+        <div className="flex items-center gap-3 flex-wrap px-5 py-4"
+          style={{ background: '#FAFAFB', borderTop: '1px solid #F0EDF9' }}>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `${accentColor}14`, border: `1px solid ${accentColor}30` }}>
+              <Sparkles size={14} style={{ color: accentColor }} strokeWidth={2.25} />
+            </div>
+            <p className="text-[12px]" style={{ color: '#6B6480' }}>
+              Contrata los empleados recomendados para cubrir las áreas que faltan.
+            </p>
+          </div>
           <MeerkatPicker
             token={token}
             plan={(baseAgent.plan ?? 'pro') as 'pro'}
@@ -733,7 +871,8 @@ export default async function AgentesPage({ params }: Props) {
         </div>
       )}
     </div>
-  ) : null;
+    );
+  })() : null;
 
   // Empleados con pago fallido — banner consolidado con reactivación granular
   const pausedByBilling = agents.filter(a =>
@@ -807,7 +946,6 @@ export default async function AgentesPage({ params }: Props) {
             token={token}
             plan={(baseAgent.plan ?? 'pro') as 'pro'}
             defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
-            recommendations={meerkatRecs}
           />
         )}
       </div>
@@ -824,40 +962,8 @@ export default async function AgentesPage({ params }: Props) {
       {/* Empleados pausados por pago — banner destacado (urgencia) */}
       {billingAlertBanner}
 
-      {/* Métricas del equipo — bloque estilo /inicio */}
-      {agents.length > 0 && (
-        <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-          <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
-            Tu equipo este mes
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Empleados activos</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{activeAgentsCount}</p>
-                <span className="text-xs" style={{ color: '#6B6480' }}>de {agents.length}</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Llamadas atendidas</p>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalCallsMonth}</p>
-              <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>en total del mes</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Tareas ejecutadas</p>
-              <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalOpsMonth}</p>
-              <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>ops del mes</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Con puesto asignado</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{rolePct}%</p>
-                <span className="text-xs" style={{ color: '#6B6480' }}>({agentsWithRole}/{agents.length})</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Métricas del equipo — hero + stat cards */}
+      {agents.length > 0 && teamMetricsBlock}
 
       {/* Empty state */}
       {agents.length === 0 && (
@@ -865,7 +971,7 @@ export default async function AgentesPage({ params }: Props) {
           style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{ background: 'rgba(108,59,255,0.08)', border: '1px solid rgba(108,59,255,0.15)' }}>
-            <Bot size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
+            <Meerkat size={22} style={{ color: '#6C3BFF', opacity: 0.5 }} />
           </div>
           <p className="text-sm" style={{ color: '#6B6480' }}>Sin empleados en tu cuenta</p>
         </div>
@@ -900,7 +1006,6 @@ export default async function AgentesPage({ params }: Props) {
                   token={token}
                   plan={(baseAgent.plan ?? 'pro') as 'pro'}
                   defaultTier={(baseAgent.minutes_plan ?? 'starter') as any}
-                  recommendations={meerkatRecs}
                 />
               ) : undefined
             }
@@ -919,46 +1024,14 @@ export default async function AgentesPage({ params }: Props) {
         {/* Empleados pausados por pago — banner destacado (urgencia) */}
         {billingAlertBanner}
 
-        {/* Métricas del equipo — bloque estilo /inicio */}
-        {agents.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: '#ffffff', border: '1px solid #E8E3F5', boxShadow: '0 1px 2px rgba(26,10,59,0.04)' }}>
-            <h2 className="text-xs font-semibold mb-4 tracking-widest uppercase" style={{ color: '#6B6480' }}>
-              Tu equipo este mes
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Empleados activos</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{activeAgentsCount}</p>
-                  <span className="text-xs" style={{ color: '#6B6480' }}>de {agents.length}</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Llamadas atendidas</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalCallsMonth}</p>
-                <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>en total del mes</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Tareas ejecutadas</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{totalOpsMonth}</p>
-                <p className="text-[11px] mt-1" style={{ color: '#9B8FB5' }}>total del mes</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: '#9B8FB5' }}>Con puesto asignado</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: '#1A0A3B' }}>{rolePct}%</p>
-                  <span className="text-xs" style={{ color: '#6B6480' }}>({agentsWithRole}/{agents.length})</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Métricas del equipo — hero + stat cards */}
+        {agents.length > 0 && teamMetricsBlock}
 
         {/* Empty state */}
         {agents.length === 0 && (
           <Card>
             <EmptyState
-              icon={Bot}
+              icon={Meerkat as any}
               title="Sin empleados en tu cuenta"
               size="md"
             />
