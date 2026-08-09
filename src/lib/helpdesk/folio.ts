@@ -1,11 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getNextTicketFolio(agentId: string, supabase: SupabaseClient): Promise<string> {
+export async function getNextTicketFolio(_agentId: string, supabase: SupabaseClient): Promise<string> {
+  // El constraint UNIQUE de folio es GLOBAL (no per-agente), así que contamos
+  // TODOS los tickets del año — no solo los del agente actual. Antes había
+  // .eq('agent_id', agentId) → 2 agentes distintos generaban el mismo folio
+  // y el INSERT rompía con duplicate key.
   const year = new Date().getFullYear();
   const { count } = await supabase
     .from('helpdesk_tickets')
     .select('id', { count: 'exact', head: true })
-    .eq('agent_id', agentId)
     .gte('created_at', `${year}-01-01T00:00:00`);
   const seq = String((count ?? 0) + 1).padStart(3, '0');
   return `TKT-${year}-${seq}`;

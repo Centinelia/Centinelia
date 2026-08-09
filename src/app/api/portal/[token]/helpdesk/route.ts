@@ -6,6 +6,7 @@ import { sendEmail } from '@/lib/email/send';
 import { ticketEmailHtml } from '@/lib/ops/approval-email';
 import { verifySession, PORTAL_COOKIE } from '@/lib/portal/auth';
 import { cookies } from 'next/headers';
+import { classifyTicket } from '@/lib/helpdesk/classify';
 
 export async function GET(
   req: NextRequest,
@@ -70,6 +71,17 @@ export async function POST(
   };
   if (!body.titulo) return NextResponse.json({ error: 'Título requerido' }, { status: 400 });
 
+  // Auto-clasificar si el caller no mandó categoria/prioridad.
+  // Aplica [[feedback-empleados-inteligentes]]: Neo infiere en vez de pedir
+  // al usuario que llene dropdowns. Voz/API que ya los manda toman precedencia.
+  let classifiedCategoria = body.categoria;
+  let classifiedPrioridad = body.prioridad;
+  if (!classifiedCategoria || !classifiedPrioridad) {
+    const inferred = await classifyTicket({ titulo: body.titulo, descripcion: body.descripcion ?? null });
+    classifiedCategoria = classifiedCategoria ?? inferred.categoria;
+    classifiedPrioridad = classifiedPrioridad ?? inferred.prioridad;
+  }
+
   // Nuevos tickets se crean bajo el agente primario del portal
   const folio = await getNextTicketFolio(access.primaryId, supabase);
   // Captura quién registra: sub-user usa su portal_email; owner usa "owner"
@@ -104,8 +116,8 @@ export async function POST(
       agent_id:      access.primaryId,
       folio,
       titulo:        body.titulo,
-      categoria:     body.categoria    ?? 'otro',
-      prioridad:     body.prioridad    ?? 'normal',
+      categoria:     classifiedCategoria ?? 'otro',
+      prioridad:     classifiedPrioridad ?? 'normal',
       descripcion:   body.descripcion  ?? null,
       asignado_a:    body.asignado_a   ?? null,
       asignado_tel:  body.asignado_tel ?? null,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy, Phone, User, RotateCcw, Megaphone } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, Clock, CheckCircle, Loader2, Siren, LifeBuoy, Phone, User, RotateCcw, Megaphone, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -55,8 +55,6 @@ const STA_ICON: Record<string, React.ReactNode> = {
   cerrado:    <CheckCircle size={11} />,
 };
 
-const CATEGORIAS = ['red','servidores','usuario','software','hardware','accesos','otro'];
-const PRIORIDADES = ['baja','normal','alta','critica'];
 const STATUSES    = ['abierto','en_proceso','pendiente','resuelto','cerrado'];
 
 // Filtros del toolbar. Todos client-side: cargamos todo el pool y filtramos
@@ -110,10 +108,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
   const [saving, setSaving]     = useState(false);
 
   const [newTitulo,   setNewTitulo]   = useState('');
-  const [newCat,      setNewCat]      = useState('otro');
-  const [newPri,      setNewPri]      = useState('normal');
   const [newDesc,     setNewDesc]     = useState('');
-  const [newAsig,     setNewAsig]     = useState('');
   // Anuncio en llamadas (crea it_incidents linkeado al ticket)
   const [newAnuncio,  setNewAnuncio]  = useState(false);
   const [newVoz,      setNewVoz]      = useState('');
@@ -156,11 +151,15 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
     if (newAnuncio && !newVoz.trim()) return;
     setSaving(true);
     try {
+      // Neo (backend classifyTicket) infiere categoria + prioridad. El
+      // sub-user se auto-asigna a sí mismo si aplica; el owner deja null y
+      // lo puede ajustar después desde el detalle del ticket.
       const res = await fetch(`/api/portal/${token}/helpdesk`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titulo: newTitulo, categoria: newCat, prioridad: newPri, descripcion: newDesc,
-          asignado_a: newAsig || subUserName || undefined,
+          titulo: newTitulo,
+          descripcion: newDesc,
+          asignado_a: subUserName || undefined,
           anunciar_en_llamadas: newAnuncio,
           mensaje_voz:          newAnuncio ? newVoz.trim() : undefined,
           incident_keywords:    newAnuncio ? newKw.split(',').map(k => k.trim()).filter(Boolean) : undefined,
@@ -170,7 +169,7 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
         const d = await res.json();
         setTickets(t => [d.ticket, ...t]);
         setShowAdd(false);
-        setNewTitulo(''); setNewDesc(''); setNewAsig('');
+        setNewTitulo(''); setNewDesc('');
         setNewAnuncio(false); setNewVoz(''); setNewKw('');
       }
     } finally {
@@ -283,46 +282,26 @@ export default function HelpdeskSection({ token, subUserName, employeeName }: { 
           ))}
         </div>
 
-        {/* Add form */}
+        {/* Add form — Neo auto-clasifica categoría + prioridad desde título/descripción.
+            Ver [[feedback-empleados-inteligentes]]: usuario reporta, empleado decide. */}
         {showAdd && (
           <div className="px-5 py-4 flex flex-col gap-3"
             style={{ borderTop: '1px solid #F0EDF9', background: 'rgba(108,59,255,0.04)' }}>
             <input value={newTitulo} onChange={e => setNewTitulo(e.target.value)}
-              placeholder="Título de la solicitud *"
+              placeholder="¿Qué está pasando? *"
               className="w-full px-3 py-2 rounded-lg text-[13px]"
               style={inputStyle} />
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Categoría</label>
-                <Select value={newCat} onValueChange={setNewCat}>
-                  <SelectTrigger className="text-[13px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{CAT_LABELS[c] ?? c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="block text-[11px] mb-1 font-medium" style={{ color: '#6B6480' }}>Prioridad</label>
-                <Select value={newPri} onValueChange={setNewPri}>
-                  <SelectTrigger className="text-[13px]" style={{ background: '#ffffff', border: '1px solid #E8E3F5', color: '#1A0A3B' }}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORIDADES.map(p => <SelectItem key={p} value={p}>{PRI_LABELS[p] ?? p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2}
-              placeholder="Descripción (opcional)"
+            <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={3}
+              placeholder="Cuenta un poco más — cuándo empezó, a quién afecta, qué ya intentaste (opcional)"
               className="w-full px-3 py-2 rounded-lg text-[12px] resize-none"
               style={inputStyle} />
-            <input value={newAsig} onChange={e => setNewAsig(e.target.value)}
-              placeholder="Asignar a (opcional)"
-              className="w-full px-3 py-2 rounded-lg text-[12px]"
-              style={inputStyle} />
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-[11px]"
+              style={{ background: '#ffffff', border: '1px solid rgba(108,59,255,0.2)', color: '#6B6480' }}>
+              <Sparkles size={12} className="mt-0.5 flex-shrink-0" style={{ color: '#6C3BFF' }} />
+              <span>
+                {empName} categoriza y asigna prioridad automáticamente al crear el ticket. Si necesitas cambiarlo, se ajusta desde el detalle.
+              </span>
+            </div>
 
             {/* Anuncio en llamadas — crea un it_incident linkeado al ticket */}
             <div className="rounded-lg px-3 py-2.5"
