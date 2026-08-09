@@ -861,6 +861,11 @@ CATEGORÍAS:
     ? { ok: false as const, error: 'skipped_observador_mode' as const }
     : await consumeAiOp(agentId, 1, { source: 'inbox_processor', label: 'Procesamiento de bandeja (correo/tarea)' });
 
+  // Instrumentación F3 — declaradas al scope del summary log al final del archivo.
+  // Se actualizan dentro del loop del tool-use (path opsResult.ok && portalEmail).
+  let itersUsedF3 = 0;
+  let nudgedF3    = false;
+
   if (opsResult.ok && portalEmail) {
     // Fetch full agent row for executor context
     const { data: agentRow } = await supabase
@@ -1183,10 +1188,10 @@ CATEGORÍAS:
       // 10 iters (era 6). Con [[feedback-empleados-inteligentes]] pusheamos al
       // empleado a intentar múltiples tools antes de rendirse — necesita headroom.
       const MAX_ITER = 10;
-      let nudged = false; // reintento único cuando el empleado se rindió temprano
 
       for (let i = 0; i < MAX_ITER; i++) {
         const isLastIter = i === MAX_ITER - 1;
+        itersUsedF3 = i + 1;
 
         // Charge 1 op per iteration after the first (first was charged above)
         if (i > 0) {
@@ -1220,14 +1225,14 @@ CATEGORÍAS:
           // (draft null, needs_info false), le damos UN empujón para que use
           // sus herramientas antes de dejar el correo pending.
           // Ver [[feedback-empleados-inteligentes]] + F3 audit.
-          if (!nudged && toolsInvokedOk.length === 0 && tools.length > 0 && !isLastIter) {
+          if (!nudgedF3 && toolsInvokedOk.length === 0 && tools.length > 0 && !isLastIter) {
             try {
               const preview = JSON.parse(lastText.match(/\{[\s\S]*\}/)?.[0] ?? '{}') as Record<string, unknown>;
               const gaveUp =
                 (preview.draft === null || preview.draft === undefined || preview.draft === '') &&
                 preview.needs_info !== true;
               if (gaveUp) {
-                nudged = true;
+                nudgedF3 = true;
                 messages.push({ role: 'assistant', content: response.content });
                 messages.push({
                   role: 'user',
@@ -1496,6 +1501,39 @@ CATEGORÍAS:
       console.error('[inbox-processor] unmarkSpam failed for', rawMessageId, err)
     );
   }
+
+  // Instrumentación F3 — summary log por email procesado. Fire-and-forget.
+  // Se lee via SQL para medir distribución de iters y validar que F3 no
+  // dispara el gasto de tareas del cliente:
+  //   SELECT (meta->>'iters_used')::int AS iters,
+  //          (meta->>'nudged')::bool     AS nudged,
+  //          meta->>'final_status'       AS status,
+  //          COUNT(*)
+  //   FROM llm_call_log
+  //   WHERE source='inbox_processor_summary'
+  //     AND created_at > NOW() - INTERVAL '7 days'
+  //   GROUP BY 1, 2, 3
+  //   ORDER BY iters;
+  void logLlmCall({
+    source:      'inbox_processor_summary',
+    model:       'claude-haiku-4-5-20251001',
+    usage:       { input_tokens: 0, output_tokens: 0 },
+    agentId,
+    portalEmail,
+    meta: {
+      iters_used:          itersUsedF3,
+      nudged:              nudgedF3,
+      tools_invoked_count: toolsInvokedOk.length,
+      tools_invoked:       toolsInvokedOk,
+      final_status:        finalStatus,
+      category:            result.category,
+      auto_mode_decision:  autoModeVerdict?.decision ?? null,
+      auto_mode_reason:    autoModeVerdict?.reason ?? null,
+      looks_like_invoice:  looksLikeInvoice,
+      from_spam_folder:    fromSpamFolder,
+      auto_mode:           autoMode,
+    },
+  });
 
   if (!item || finalStatus === 'skipped') return;
 
