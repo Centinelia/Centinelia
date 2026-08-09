@@ -35,10 +35,10 @@ const FAILED_STATUSES:  TaskStatus[] = ['failed', 'cancelled'];
 
 type Filter = 'active' | 'done' | 'failed';
 
-const FILTERS: { key: Filter; label: string; statuses: TaskStatus[] }[] = [
-  { key: 'active', label: 'En curso',   statuses: ACTIVE_STATUSES },
-  { key: 'done',   label: 'Terminadas', statuses: DONE_STATUSES },
-  { key: 'failed', label: 'Fallidas',   statuses: FAILED_STATUSES },
+const FILTERS: { key: Filter; label: string; statuses: TaskStatus[]; isHistory: boolean }[] = [
+  { key: 'active', label: 'En curso',   statuses: ACTIVE_STATUSES, isHistory: false },
+  { key: 'done',   label: 'Terminadas', statuses: DONE_STATUSES,   isHistory: true  },
+  { key: 'failed', label: 'Fallidas',   statuses: FAILED_STATUSES, isHistory: true  },
 ];
 
 export default function AgentTasksSection({ token }: { token: string }) {
@@ -60,14 +60,23 @@ export default function AgentTasksSection({ token }: { token: string }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const currentFilter = FILTERS.find(f => f.key === filter);
+  const currentLabel  = currentFilter?.label ?? '';
+  const showDateRange = currentFilter?.isHistory ?? false;
+
   const filteredItems = items.filter(t => {
+    if (!showDateRange) return true; // En curso ignora fechas — es dashboard vivo
     const createdISO = t.created_at?.slice(0, 10) ?? '';
     const matchFrom  = !dateFrom || createdISO >= dateFrom;
     const matchTo    = !dateTo   || createdISO <= dateTo;
     return matchFrom && matchTo;
   });
 
-  const currentLabel = FILTERS.find(f => f.key === filter)?.label ?? '';
+  const filterSubtitle: Record<Filter, string> = {
+    active: 'Tareas activas: en cola para ejecutar o en curso ahora mismo.',
+    done:   'Historial de tareas resueltas por el equipo (completas o con detalles).',
+    failed: 'Historial de tareas canceladas o que fallaron durante la ejecución.',
+  };
 
   return (
     <div
@@ -85,14 +94,14 @@ export default function AgentTasksSection({ token }: { token: string }) {
             <h2 className="text-[17px] font-bold tracking-tight" style={{ color: '#1A0A3B' }}>
               Tareas del equipo
             </h2>
-            {items.length > 0 && (
+            {filteredItems.length > 0 && (
               <span className="text-[13px] font-medium tabular-nums" style={{ color: '#9B8FB5' }}>
-                {items.length}
+                {filteredItems.length}
               </span>
             )}
           </div>
-          <p className="text-[12px] mt-1 whitespace-nowrap" style={{ color: '#6B6480' }}>
-            Trabajo delegado a los empleados.
+          <p className="text-[12px] mt-1" style={{ color: '#6B6480' }}>
+            {filterSubtitle[filter]}
           </p>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -131,41 +140,45 @@ export default function AgentTasksSection({ token }: { token: string }) {
             );
           })}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] ml-auto" style={{ color: '#6B6480' }}>
-          <span>Desde</span>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="rounded-md px-2 py-1 text-xs"
-            style={{
-              background: '#ffffff',
-              border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
-              color: '#1A0A3B', outline: 'none',
-            }}
-          />
-          <span>hasta</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="rounded-md px-2 py-1 text-xs"
-            style={{
-              background: '#ffffff',
-              border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
-              color: '#1A0A3B', outline: 'none',
-            }}
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:opacity-70"
-              style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
-            >
-              <X size={10} /> limpiar
-            </button>
-          )}
-        </div>
+        {/* Rango de fechas — solo en tabs de historial (Terminadas / Fallidas).
+            En curso es dashboard vivo (pocos items, no necesita filtro). */}
+        {showDateRange && (
+          <div className="flex flex-wrap items-center gap-2 text-[11px] ml-auto" style={{ color: '#6B6480' }}>
+            <span>Desde</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateFrom ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            <span>hasta</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{
+                background: '#ffffff',
+                border: dateTo ? '1px solid rgba(108,59,255,0.5)' : '1px solid #E8E3F5',
+                color: '#1A0A3B', outline: 'none',
+              }}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded hover:opacity-70"
+                style={{ background: 'none', border: 'none', color: '#9B6DFF', cursor: 'pointer', fontWeight: 600 }}
+              >
+                <X size={10} /> limpiar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -176,21 +189,25 @@ export default function AgentTasksSection({ token }: { token: string }) {
         >
           <Loader2 size={16} className="animate-spin" style={{ color: '#9B8FB5' }} />
         </div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div style={{ borderTop: '1px solid #F0EDF9' }}>
           <EmptyState
             icon={ListChecks}
-            title={`Sin tareas ${currentLabel.toLowerCase()}`}
-            description="Cuando tu equipo tenga trabajo en este estado, aparecerá aquí."
+            title={items.length === 0
+              ? `Sin tareas ${currentLabel.toLowerCase()}`
+              : 'Sin resultados en el rango de fechas'}
+            description={items.length === 0
+              ? 'Cuando tu equipo tenga trabajo en este estado, aparecerá aquí.'
+              : 'Ajusta las fechas o limpia el filtro para ver más resultados.'}
           />
         </div>
       ) : (
         <div className="flex flex-col" style={{ borderTop: '1px solid #F0EDF9' }}>
-          {items.map((t, idx) => (
+          {filteredItems.map((t, idx) => (
             <div
               key={t.id}
               className="px-5 py-4 flex flex-col gap-3"
-              style={{ borderBottom: idx === items.length - 1 ? 'none' : '1px solid #F0EDF9' }}
+              style={{ borderBottom: idx === filteredItems.length - 1 ? 'none' : '1px solid #F0EDF9' }}
             >
               <TaskRow task={t} />
             </div>
